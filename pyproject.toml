@@ -1,0 +1,38 @@
+# 工作区根：只承载开发依赖与统一的 lint / 测试 / 类型检查配置，本身不发布。
+# 每个组件是 packages/ 下的独立包，各自版本、各自发布（ADR 0001 决策 4）。
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.5",
+    "mypy>=1.10",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "ASYNC", "S", "B", "C4", "RET", "SIM", "TC"]
+# S101(裸 assert)放行：沿用 taifeng 口径——assert 只用于 mypy strict 要求的类型收窄
+# (断内部不变量)；外部输入校验一律抛异常，不用 assert。
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+# S108(硬编码 /tmp)：tests/ 里只允许作占位字符串，真落盘必须用 tmp_path fixture
+"packages/*/tests/**" = ["S108"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["packages"]
+# 各包 tests/ 下会有同名测试文件，importlib 模式避免模块名冲突
+addopts = "--import-mode=importlib"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true

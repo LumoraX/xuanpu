@@ -1,0 +1,60 @@
+# AGENTS.md
+
+给所有 AI agent 的工程协作约定。
+
+## 项目身份
+
+**xuanpu（玄圃）** 是基于 [taifeng](https://github.com/LumoraX/taifeng) 内核的企业级 agent 平台。业务方只提交业务包（skills、连接器声明、策略、评测用例），会话调度、恢复、隔离、存储、计量审计全部由平台负责。
+
+taifeng 是内核，xuanpu 是建在内核上的发行版；两者的分界见 `docs/decisions/0001-positioning-and-layering.md`。
+
+## 红线
+
+| # | 红线 | 说明 |
+| --- | --- | --- |
+| 1 | **业务扩展只走进程外** | 平台进程内不加载任何业务方代码；自定义能力只能是 MCP server 或沙盒内脚本（ADR 0002） |
+| 2 | **平台概念不下沉** | 租户、业务包、配额等概念只存在于 xuanpu，不得推进 taifeng 或 taifeng-* 适配包 |
+| 3 | **只依赖 taifeng 稳定层** | 只 import `taifeng.__all__`；缺对接口回 taifeng 立项，不 monkeypatch、不 fork |
+| 4 | **成熟组件采用不自研** | 新增自研组件前先写明现成方案为何不行（ADR 0003） |
+| 5 | **租户隔离强制** | 所有读写都带租户上下文，严禁跨租户访问；租户在组装引擎时注入，taifeng 本身不知道租户 |
+| 6 | **规范是对外契约** | `xuanpu-spec` 不依赖任何其他组件；不兼容变更必须升规范大版本 |
+
+## 实现约束
+
+- Python 3.12+，所有模块顶部 `from __future__ import annotations`
+- 异步用 `anyio` / `asyncio`，不写同步阻塞 IO；长时操作必须可取消
+- 配置经构造函数注入，业务代码**禁止 `os.getenv`**
+- 文件 ≤ 800 行（警戒 500），函数 ≤ 80 行，圈复杂度 ≤ 10
+- 所有 module / class / function 必须有中文 docstring，关键逻辑块写中文注释
+- 禁止 silent fallback（`except: pass`、带默认值吞掉异常数据）
+- 新组件加在 `packages/<包名>/`，各自 `pyproject.toml`、各自版本
+
+## 常用命令
+
+```bash
+uv sync --all-packages
+uv run pytest                                          # 全量测试
+uv run ruff check --select F,S108,I,TC packages        # 门禁 lint
+uv run mypy packages/*/src                             # 门禁类型检查（strict）
+```
+
+## 完成定义
+
+标记完成或提交前：
+
+1. 跑通 `uv run pytest`、门禁 ruff、mypy，三者全绿；
+2. 在对话或 PR 描述里贴出实际命令与关键输出；
+3. 红测试不得以「本来就红」为由跳过，先查清是否与本次改动相关。
+
+## 文档体系
+
+| 目录 | 是什么 | 变更后怎么处理 |
+| --- | --- | --- |
+| `docs/architecture/` | 当前生效的设计（活文档） | 直接更新，永远代表现状 |
+| `docs/decisions/` | ADR（为什么这么定） | 只增不改；推翻旧决策写新 ADR 标 `Supersedes #NNNN` |
+
+实现完成但 `docs/architecture/` 未同步，不得合并。
+
+## 语言
+
+文档、注释、commit message 用中文；变量 / 函数 / 类名用英文。
