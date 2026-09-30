@@ -161,8 +161,8 @@ async function openSession(session) {
 }
 
 async function loadHistory(sessionId) {
-  // 从审计里把这个会话的对话重建出来：用户消息看 turn_started 之前的 user_message，
-  // 回复看 turn_text；工具调用与挂起作为事件行
+  // 从审计里把这个会话的对话重建出来：用户消息看 message_sent，回复看 turn_text；
+  // 工具调用与挂起作为事件行
   const params = `session_id=${encodeURIComponent(sessionId)}&limit=1000`;
   let after = 0;
   const records = [];
@@ -175,7 +175,7 @@ async function loadHistory(sessionId) {
   for (const record of records) {
     if (record.kind === "session_created") append("event", "会话创建 · " + when(record.at));
     else if (record.kind === "turn_started") append("event", "— 一轮对话 " + when(record.at) + " —");
-    else if (record.kind === "user_input_injected" && record.data.text) append("user", record.data.text);
+    else if (record.kind === "message_sent" && record.data.text) append("user", record.data.text);
     else if (record.kind === "tool_call_completed") append("event", `工具 ${record.data.name}${record.data.is_error ? " ✗" : " ✓"} ${record.data.duration_ms ?? ""}ms`);
     else if (record.kind === "turn_text" && record.data.text) append("assistant", record.data.text);
     else if (record.kind === "turn_suspended") append("event", "等待审批");
