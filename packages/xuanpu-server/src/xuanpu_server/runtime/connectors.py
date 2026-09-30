@@ -342,7 +342,8 @@ class ConnectorSet:
                 f"连接器 {spec.name!r} 的 OpenAPI 文档里没有这些 operation：{', '.join(missing)}"
             )
         if spec.auth is not None:
-            # 组装时就确认凭据已配置（与 stdio 连接器一致：缺密钥时对话起不来，而不是跑到一半才失败）。
+            # 组装时就确认凭据已配置：与 stdio 连接器一致，缺密钥时对话起不来，
+            # 而不是跑到一半才失败。
             # 取值不保留，调用时再现取
             await self._vault.get(self._tenant_id, spec.auth.secret)
         client = HttpApiClient(

@@ -149,7 +149,8 @@ def _check_http_connector(
     for tool in connector.tools:
         if tool.name not in document.operations:
             findings.errors.append(
-                f"连接器 {connector.name!r} 的白名单里有 {tool.name!r}，但 OpenAPI 文档里没有这个 operation"
+                f"连接器 {connector.name!r} 的白名单里有 {tool.name!r}，"
+                "但 OpenAPI 文档里没有这个 operation"
             )
     if connector.base_url is None and not any(
         server.startswith(("http://", "https://")) for server in document.servers

@@ -230,7 +230,10 @@ class ConnectorSpec(_Strict):
         return self.tool_prefix + tool
 
     def effect_of(self, tool_name: str, *, read_only: bool = False) -> Effect:
-        """某个工具的副作用分类：逐工具声明优先；HTTP 只读 operation 默认 ``read``；否则用连接器默认值。"""
+        """某个工具的副作用分类。
+
+        逐工具声明优先；HTTP 只读 operation 默认 ``read``；否则用连接器默认值。
+        """
         for tool in self.tools:
             if tool.name == tool_name and tool.effect is not None:
                 return tool.effect
