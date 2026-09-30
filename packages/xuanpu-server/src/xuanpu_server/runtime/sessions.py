@@ -40,6 +40,22 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 MAX_MESSAGE_CHARS = 200_000
+MAX_METADATA_ITEMS = 16
+MAX_METADATA_CHARS = 256
+
+
+def validate_metadata(metadata: dict[str, str] | None) -> dict[str, str]:
+    """业务方附加的关联标识：条数与长度有限，键值都是字符串。"""
+    if not metadata:
+        return {}
+    if len(metadata) > MAX_METADATA_ITEMS:
+        raise InvalidRequestError(f"metadata 最多 {MAX_METADATA_ITEMS} 项")
+    for key, value in metadata.items():
+        if not isinstance(key, str) or not isinstance(value, str):
+            raise InvalidRequestError("metadata 的键和值必须都是字符串")
+        if not key or len(key) > MAX_METADATA_CHARS or len(value) > MAX_METADATA_CHARS:
+            raise InvalidRequestError(f"metadata 的键值长度须在 1 到 {MAX_METADATA_CHARS} 之间")
+    return dict(metadata)
 
 
 @dataclass
@@ -122,9 +138,11 @@ class SessionManager:
         package: str,
         version: str | None = None,
         entry: str | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> SessionRecord:
         """新建会话。版本在此钉死：之后业务包切换生效版本不影响这个会话。"""
         tenant_id = principal.require_tenant()
+        labels = validate_metadata(metadata)
         await self._quota.check_new_session(tenant_id)
         resolved = await self._packages.resolve(tenant_id, package, version)
         entries = resolved.manifest.spec.skills.entries
@@ -143,13 +161,19 @@ class SessionManager:
             created_at=now,
             updated_at=now,
             created_by=principal.actor,
+            metadata=labels,
         )
         await self._store.create_session(record)
         await self._audit.control(
             principal,
             tenant_id,
             "session_created",
-            {"package": record.package, "version": record.version, "entry": record.entry},
+            {
+                "package": record.package,
+                "version": record.version,
+                "entry": record.entry,
+                "metadata": labels,
+            },
             session_id=record.session_id,
         )
         return record
@@ -162,11 +186,19 @@ class SessionManager:
         return record
 
     async def list_sessions(
-        self, principal: Principal, *, status: str | None = None, limit: int = 50
+        self,
+        principal: Principal,
+        *,
+        status: str | None = None,
+        mine: bool = False,
+        limit: int = 50,
     ) -> list[SessionRecord]:
-        """列出本租户的会话。"""
+        """列出本租户的会话；``mine`` 只看本凭据创建的。"""
         return await self._store.list_sessions(
-            principal.require_tenant(), status=status, limit=limit
+            principal.require_tenant(),
+            status=status,
+            created_by=principal.actor if mine else None,
+            limit=limit,
         )
 
     async def _open(self, record: SessionRecord) -> _LiveSession:

@@ -45,7 +45,7 @@
 | `GET /v1/packages` | 租户成员 | 列出已发布版本 |
 | `POST /v1/packages/{name}/activate` | 租户管理员 | 切换生效版本（前进或回滚） |
 | `POST /v1/packages/{name}/evals` | 租户管理员 | 运行评测用例，返回报告；可指定 `version`、`names` |
-| `POST /v1/sessions` · `GET /v1/sessions` | 租户成员 | 新建、列出会话 |
+| `POST /v1/sessions` · `GET /v1/sessions?status=&mine=` | 租户成员 | 新建（可带 `metadata`：业务方自己的关联标识，原样返回并进审计）、列出会话（`mine=true` 只看本凭据创建的） |
 | `GET /v1/sessions/{id}` · `DELETE /v1/sessions/{id}` | 租户成员 | 取会话、关闭会话 |
 | `GET /v1/sessions/{id}/pending` | 租户成员 | 会话当前等待处理的审批或表单请求 |
 | `GET /v1/sessions/{id}/events?submission_id=&after_seq=` | 租户成员 | 回放一轮对话已记入审计的事件（断线后补齐） |

@@ -278,7 +278,11 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     async def create_session(body: schemas.CreateSessionBody, who: Caller) -> dict[str, Any]:
         """新建会话。"""
         record = await platform.sessions.create(
-            who, package=body.package, version=body.version, entry=body.entry
+            who,
+            package=body.package,
+            version=body.version,
+            entry=body.entry,
+            metadata=body.metadata,
         )
         return schemas.session_view(record)
 
@@ -286,10 +290,11 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     async def list_sessions(
         who: Caller,
         status: Annotated[str | None, Query(pattern="^(active|closed)$")] = None,
+        mine: Annotated[bool, Query()] = False,
         limit: Annotated[int, Query(ge=1, le=200)] = 50,
     ) -> dict[str, Any]:
-        """列出本租户的会话。"""
-        records = await platform.sessions.list_sessions(who, status=status, limit=limit)
+        """列出本租户的会话；``mine=true`` 只看本凭据创建的。"""
+        records = await platform.sessions.list_sessions(who, status=status, mine=mine, limit=limit)
         return {"sessions": [schemas.session_view(record) for record in records]}
 
     @app.get("/v1/sessions/{session_id}")

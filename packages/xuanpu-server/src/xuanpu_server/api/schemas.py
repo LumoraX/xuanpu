@@ -76,6 +76,7 @@ class CreateSessionBody(_Request):
     package: str
     version: str | None = None
     entry: str | None = None
+    metadata: dict[str, str] = Field(default_factory=dict)
 
 
 class MessageBody(_Request):
@@ -141,6 +142,7 @@ def session_view(record: SessionRecord) -> dict[str, Any]:
         "created_at": record.created_at,
         "updated_at": record.updated_at,
         "created_by": record.created_by,
+        "metadata": dict(record.metadata),
     }
 
 

@@ -94,23 +94,32 @@ class Sessions:
         self._http = http
 
     async def create(
-        self, package: str, *, version: str | None = None, entry: str | None = None
+        self,
+        package: str,
+        *,
+        version: str | None = None,
+        entry: str | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> Session:
-        """新建会话。"""
+        """新建会话。``metadata`` 是业务方自己的关联标识，会原样返回并进审计。"""
         body: dict[str, Any] = {"package": package}
         if version is not None:
             body["version"] = version
         if entry is not None:
             body["entry"] = entry
+        if metadata:
+            body["metadata"] = metadata
         return Session.from_json(await self._http.request("POST", "/v1/sessions", json=body))
 
     async def get(self, session_id: str) -> Session:
         """取会话。"""
         return Session.from_json(await self._http.request("GET", f"/v1/sessions/{session_id}"))
 
-    async def list(self, *, status: str | None = None, limit: int = 50) -> list[Session]:
-        """列出会话。"""
-        params: dict[str, Any] = {"limit": limit}
+    async def list(
+        self, *, status: str | None = None, mine: bool = False, limit: int = 50
+    ) -> list[Session]:
+        """列出会话；``mine`` 只看本凭据创建的。"""
+        params: dict[str, Any] = {"limit": limit, "mine": "true" if mine else "false"}
         if status is not None:
             params["status"] = status
         body = await self._http.request("GET", "/v1/sessions", params=params)

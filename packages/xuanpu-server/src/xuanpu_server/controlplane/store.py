@@ -121,9 +121,14 @@ class ControlPlaneStore(Protocol):
         ...
 
     async def list_sessions(
-        self, tenant_id: str, *, status: str | None = None, limit: int = 50
+        self,
+        tenant_id: str,
+        *,
+        status: str | None = None,
+        created_by: str | None = None,
+        limit: int = 50,
     ) -> list[SessionRecord]:
-        """列出会话，最近活动的在前。"""
+        """列出会话，最近活动的在前；可按状态与创建者过滤。"""
         ...
 
     async def count_active_sessions(self, tenant_id: str) -> int:

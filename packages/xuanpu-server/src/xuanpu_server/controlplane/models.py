@@ -62,6 +62,8 @@ class SessionRecord:
         created_at: 创建时间。
         updated_at: 最近活动时间。
         created_by: 创建者。
+        metadata: 业务方附加的关联标识（客户号、工单号等），原样返回并写进审计；
+            平台不解释它的含义。
     """
 
     session_id: str
@@ -76,6 +78,7 @@ class SessionRecord:
     status: SessionStatus = "active"
     owner: str | None = None
     lease_expires_at: float = 0.0
+    metadata: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

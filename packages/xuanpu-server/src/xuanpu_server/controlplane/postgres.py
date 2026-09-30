@@ -30,7 +30,11 @@ if TYPE_CHECKING:
 
 _SESSION_COLUMNS = (
     "tenant_id, session_id, package, version, entry, thread_id, status, owner, "
-    "lease_expires_at, created_at, updated_at, created_by"
+    "lease_expires_at, created_at, updated_at, created_by, metadata::text AS metadata"
+)
+_SESSION_INSERT_COLUMNS = (
+    "tenant_id, session_id, package, version, entry, thread_id, status, owner, "
+    "lease_expires_at, created_at, updated_at, created_by, metadata"
 )
 _AUDIT_COLUMNS = (
     "audit_id, tenant_id, source, kind, at, actor, session_id, stream, seq, data::text AS data"
@@ -72,7 +76,9 @@ def _package(row: asyncpg.Record) -> PackageVersionRecord:
 
 def _session(row: asyncpg.Record) -> SessionRecord:
     """行 → 会话。"""
-    return SessionRecord(**dict(row))
+    fields = dict(row)
+    fields["metadata"] = json.loads(fields["metadata"])
+    return SessionRecord(**fields)
 
 
 def _usage(row: asyncpg.Record) -> UsageRecord:
@@ -345,8 +351,8 @@ class PostgresControlPlane:
         """新建会话。"""
         try:
             await self._execute(
-                f"INSERT INTO {self._t['session']} ({_SESSION_COLUMNS}) "
-                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+                f"INSERT INTO {self._t['session']} ({_SESSION_INSERT_COLUMNS}) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::text::jsonb)",
                 record.tenant_id,
                 record.session_id,
                 record.package,
@@ -359,6 +365,7 @@ class PostgresControlPlane:
                 record.created_at,
                 record.updated_at,
                 record.created_by,
+                json.dumps(record.metadata, ensure_ascii=False),
             )
         except asyncpg.UniqueViolationError as exc:
             raise ConflictError("会话标识冲突") from exc
@@ -374,16 +381,23 @@ class PostgresControlPlane:
         return _session(row) if row is not None else None
 
     async def list_sessions(
-        self, tenant_id: str, *, status: str | None = None, limit: int = 50
+        self,
+        tenant_id: str,
+        *,
+        status: str | None = None,
+        created_by: str | None = None,
+        limit: int = 50,
     ) -> list[SessionRecord]:
         """列出会话。"""
         rows = await self._fetch(
             f"SELECT {_SESSION_COLUMNS} FROM {self._t['session']} "
             "WHERE tenant_id = $1 AND ($2::text IS NULL OR status = $2) "
+            "AND ($4::text IS NULL OR created_by = $4) "
             "ORDER BY updated_at DESC, session_id DESC LIMIT $3",
             tenant_id,
             status,
             limit,
+            created_by,
         )
         return [_session(row) for row in rows]
 

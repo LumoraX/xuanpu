@@ -165,13 +165,20 @@ class InMemoryControlPlane:
         return self._sessions.get((tenant_id, session_id))
 
     async def list_sessions(
-        self, tenant_id: str, *, status: str | None = None, limit: int = 50
+        self,
+        tenant_id: str,
+        *,
+        status: str | None = None,
+        created_by: str | None = None,
+        limit: int = 50,
     ) -> list[SessionRecord]:
         """列出会话。"""
         found = [
             record
             for record in self._sessions.values()
-            if record.tenant_id == tenant_id and (status is None or record.status == status)
+            if record.tenant_id == tenant_id
+            and (status is None or record.status == status)
+            and (created_by is None or record.created_by == created_by)
         ]
         found.sort(key=lambda record: (record.updated_at, record.session_id), reverse=True)
         return found[:limit]

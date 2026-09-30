@@ -21,11 +21,12 @@ class Session:
     created_at: float
     updated_at: float
     created_by: str
+    metadata: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> Session:
         """由响应构造。"""
-        return cls(**{key: data[key] for key in cls.__dataclass_fields__})
+        return cls(**{key: data[key] for key in cls.__dataclass_fields__ if key in data})
 
 
 @dataclass(frozen=True)

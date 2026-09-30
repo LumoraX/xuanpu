@@ -228,8 +228,19 @@ async def test_session_lifecycle(store: ControlPlaneStore) -> None:
 
     assert [s.session_id for s in await store.list_sessions("acme")] == ["s1", "s2"]
     assert [s.session_id for s in await store.list_sessions("acme", status="active")] == ["s1"]
+    assert [s.session_id for s in await store.list_sessions("acme", created_by="key:abc")] == [
+        "s1",
+        "s2",
+    ]
+    assert await store.list_sessions("acme", created_by="key:other") == []
+
+    labeled = _session(
+        "acme", "s3", at=3.0, metadata={"customer_id": "C-42", "备注": "中文 '引号'"}
+    )
+    await store.create_session(labeled)
+    assert await store.get_session("acme", "s3") == labeled
     assert [s.session_id for s in await store.list_sessions("acme", limit=1)] == ["s1"]
-    assert await store.count_active_sessions("acme") == 1
+    assert await store.count_active_sessions("acme") == 2
     assert await store.count_active_sessions("other") == 1
     assert await store.count_active_sessions("nobody") == 0
 
