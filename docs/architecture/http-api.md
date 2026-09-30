@@ -54,6 +54,21 @@
 | `GET /v1/audit` | 租户管理员 | 查询审计，按 `next_after_id` 翻页 |
 | `GET /v1/usage?since=&until=` | 租户管理员 | 查询用量 |
 
+## 租户与配额
+
+新建租户时可以带配额，三项都可省略，省略表示不限：
+
+```
+POST /v1/admin/tenants
+{"name": "acme", "quota": {"max_active_sessions": 200, "max_daily_tokens": 5000000, "max_concurrent_turns": 20}}
+```
+
+| 字段 | 含义 | 超出时 |
+| --- | --- | --- |
+| `max_active_sessions` | 同时处于活动状态的会话数 | 新建会话返回 429 |
+| `max_daily_tokens` | 每个自然日（UTC）的 token 用量 | 发消息返回 429；拦的是下一轮，当天实际用量可能超出一轮对话的量 |
+| `max_concurrent_turns` | 同一时刻进行中的对话数 | 发消息返回 429；只在本实例内计数 |
+
 ## 事件流
 
 发消息与送回审批结果的响应都是 Server-Sent Events：

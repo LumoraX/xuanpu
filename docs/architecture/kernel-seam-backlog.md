@@ -17,4 +17,5 @@
 | 9 | `TelemetrySink` 协议未导出 | 适配包无法按契约发 `directory_cursor_reset` 等事件 | 适配包改为写日志；平台侧审计走 `engine.subscribe_all_envelopes()` |
 | 10 | `CancelTurn` 不在稳定层（稳定层的操作只有 `UserMessage`、`Resume`、`SendToPeer`、`UpdateInstructions`） | 平台无法只取消进行中的那一轮对话 | 第一版只提供关闭会话（`EnginePool.release(force=True)`），关闭即取消 |
 | 11 | 审批通过后重跑工具时，`ToolContext.extras` 里没有 `submission_id`（正常派发路径有） | 工具无法把这次执行归到具体的一轮对话 | 平台的过闸审计按线程标识归属到会话 |
-| 12 | `McpHttpClient` 在实验层，不在稳定层 | 平台无法以 HTTP 传输接远端 MCP server 或 MCP 网关（ADR 0006） | 第一版只支持 stdio 连接器；HTTP 连接器等它晋升稳定层 |
+| 12 | `McpHttpClient` 在实验层，不在稳定层 | 平台无法以 HTTP 传输接远端 MCP server 或 MCP 网关（ADR 0006） | MCP 连接器第一版只支持 stdio；以 HTTP 传输接 MCP 等它晋升稳定层。按 OpenAPI 直接调用的 HTTP 连接器（ADR 0008）不经 MCP，不受此项影响 |
+| 13 | `ScriptInvocation` 只有 `descriptor`、`args`、`cancel`，不带线程或会话标识 | `ScriptExecutor` 不知道这次脚本属于哪个会话，做不出按会话隔离的沙盒工作区 | 同一运行时（租户 + 业务包版本）下的会话共用一个工作区 |

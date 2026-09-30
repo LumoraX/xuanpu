@@ -11,3 +11,4 @@
 | [0005](0005-first-release-scope.md) | 第一版的取舍 —— 连接器先内置、密钥先自管、会话靠租约单写 | Accepted |
 | [0006](0006-mcp-gateway-evaluation.md) | MCP 网关的评估 —— 远端连接器经 IBM ContextForge 接入，平台自己的闸门保留 | Proposed |
 | [0007](0007-workbench-enterprise-apps-and-personal-space.md) | 企业版产品形态 —— 员工工作台、企业应用、个人空间（参照 open-dots） | Proposed |
+| [0008](0008-declarative-http-connectors.md) | 声明式 HTTP 连接器 —— 用 OpenAPI 文档把外部接口接成工具（修订 0002） | Accepted |

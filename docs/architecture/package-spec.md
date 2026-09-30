@@ -62,8 +62,9 @@ spec:
       entry: triage
       input: 你好
       expect:
-        contains: ["您好"]
-        maxTokens: 2000
+        contains: ["您好"]         # 回复必须包含的片段
+        notContains: ["无法处理"]  # 回复不得包含的片段
+        maxTokens: 2000           # 本轮 token 上限
 ```
 
 ## 规则
@@ -85,11 +86,13 @@ spec:
 | 凭据 | `auth.type`：`bearer`、`header`（配 `header`）、`query`（配 `name`）、`basic`（密钥取值形如 `用户:口令`）；取值只写密钥名 |
 | 出口范围 | 主机由 `baseUrl`（或文档 `servers`）定死；路径参数整体转义；模型只能填声明过的参数 |
 | 响应 | 不跟随重定向；4xx / 5xx 连同响应体交给模型并记为出错；响应体上限 1 MiB，非文本类型只给占位 |
-| 不支持 | cookie 参数（忽略）、非 JSON 请求体、外部 `$ref`、`Authorization` 等由平台设置的头参数 |
+| 不支持 | cookie 参数（忽略）、非 JSON 请求体、外部 `$ref`、`Authorization` 等由平台设置的头参数、需要换取令牌的 OAuth2 流程 |
 
 接口很多时不会撑爆上下文：连接器声明多少 operation 都可以，模型只看得到当前 skill 在 `tool_names` 里点名的那几个。
 
 限流、熔断、重试、双向 TLS 不在平台里做，交给企业已有的 API 网关。
+
+平台不限制 `baseUrl` 可以指向哪里（包括内网地址）：出网范围靠部署的网络策略约束。设计理由见 [ADR 0008](../decisions/0008-declarative-http-connectors.md)。
 
 ## 归档
 
