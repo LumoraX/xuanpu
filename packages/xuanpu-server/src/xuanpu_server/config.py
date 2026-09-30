@@ -144,6 +144,7 @@ class ServerConfig(_Section):
     limits: LimitsConfig = LimitsConfig()
     audit: AuditConfig = AuditConfig()
     lease_seconds: float = Field(default=60.0, ge=5)
+    shutdown_drain_seconds: float = Field(default=30.0, ge=0)
     instance_id: str | None = None
 
     @model_validator(mode="after")

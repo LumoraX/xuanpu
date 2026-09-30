@@ -236,6 +236,7 @@ class Admin:
         *,
         max_active_sessions: int | None = None,
         max_daily_tokens: int | None = None,
+        max_concurrent_turns: int | None = None,
     ) -> dict[str, Any]:
         """新建租户（平台管理员）。"""
         return await self._http.request(
@@ -247,6 +248,7 @@ class Admin:
                 "quota": {
                     "max_active_sessions": max_active_sessions,
                     "max_daily_tokens": max_daily_tokens,
+                    "max_concurrent_turns": max_concurrent_turns,
                 },
             },
         )

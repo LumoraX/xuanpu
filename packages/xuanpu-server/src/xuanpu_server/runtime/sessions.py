@@ -17,7 +17,13 @@ from typing import TYPE_CHECKING, Any
 import taifeng
 
 from xuanpu_server.controlplane.models import AuditQuery, AuditRecord, SessionRecord
-from xuanpu_server.errors import ConflictError, InvalidRequestError, NotFoundError
+from xuanpu_server.errors import (
+    ConflictError,
+    InvalidRequestError,
+    NotFoundError,
+    QuotaExceededError,
+    RuntimeUnavailableError,
+)
 from xuanpu_server.ids import new_id
 from xuanpu_server.runtime.events import EngineEventHub, SubmissionIndex, TurnStream
 
@@ -102,6 +108,7 @@ class SessionManager:
         self._live: dict[tuple[str, str], _LiveSession] = {}
         self._locks: dict[tuple[str, str], asyncio.Lock] = {}
         self._heartbeat: asyncio.Task[None] | None = None
+        self._draining = False
 
     async def start(self) -> None:
         """启动租约续期。"""
@@ -230,6 +237,19 @@ class SessionManager:
             raise ConflictError(f"会话 {session_id!r} 已关闭")
         return await self._open(record)
 
+    def in_flight_turns(self, tenant_id: str) -> int:
+        """本实例上该租户进行中的对话数。"""
+        return sum(len(live.in_flight) for key, live in self._live.items() if key[0] == tenant_id)
+
+    async def _admit_turn(self, tenant_id: str) -> None:
+        """开始一轮对话前的准入：不在停机中，且未超过租户的并发上限。"""
+        if self._draining:
+            raise RuntimeUnavailableError("本实例正在停机，请重试其他实例")
+        tenant = await self._quota.active_tenant(tenant_id)
+        limit = tenant.quota.max_concurrent_turns
+        if limit is not None and self.in_flight_turns(tenant_id) >= limit:
+            raise QuotaExceededError(f"进行中的对话数已达上限 {limit}，请稍后再试")
+
     async def _submit(self, live: _LiveSession, op: Any) -> Turn:
         """提交一个操作并登记它的事件流。"""
         submission_id = await live.engine.submit(op)
@@ -250,6 +270,7 @@ class SessionManager:
         if len(text) > MAX_MESSAGE_CHARS:
             raise InvalidRequestError(f"消息超过 {MAX_MESSAGE_CHARS} 个字符")
         await self._quota.check_new_turn(principal.require_tenant())
+        await self._admit_turn(principal.require_tenant())
         live = await self._active(principal, session_id)
         turn = await self._submit(live, taifeng.UserMessage(text=text))
         # 用户说了什么不在内核事件里，审计要有它才完整（超长部分会被截断）
@@ -268,6 +289,7 @@ class SessionManager:
         """送回审批结果（或表单答案），让挂起的那一轮对话续跑。"""
         if not resolutions:
             raise InvalidRequestError("resolutions 不能为空")
+        await self._admit_turn(principal.require_tenant())
         live = await self._active(principal, session_id)
         turn = await self._submit(
             live, taifeng.Resume(thread_id=live.engine.thread_id, resolutions=resolutions)
@@ -438,8 +460,30 @@ class SessionManager:
             except Exception:
                 logger.exception("会话维护失败")
 
-    async def shutdown(self) -> None:
-        """停止续期，释放本实例持有的全部会话。会话本身保持活动状态，可由别的实例接手。"""
+    async def drain(self, timeout_seconds: float) -> int:
+        """停止接受新的对话，等在途对话结束（最多等这么久），返回到期时仍在途的对话数。"""
+        self._draining = True
+        deadline = asyncio.get_running_loop().time() + timeout_seconds
+        while asyncio.get_running_loop().time() < deadline:
+            remaining = sum(len(live.in_flight) for live in self._live.values())
+            if remaining == 0:
+                return 0
+            await asyncio.sleep(0.1)
+        return sum(len(live.in_flight) for live in self._live.values())
+
+    async def shutdown(self, *, drain_seconds: float = 0.0) -> None:
+        """停止续期，释放本实例持有的全部会话。会话本身保持活动状态，可由别的实例接手。
+
+        Args:
+            drain_seconds: 释放之前给在途对话多少时间跑完；0 表示立即释放（在途对话被取消）。
+        """
+        if drain_seconds > 0:
+            remaining = await self.drain(drain_seconds)
+            if remaining:
+                logger.warning(
+                    "停机等待 %.0f 秒后仍有 %d 轮对话在途，将被取消", drain_seconds, remaining
+                )
+        self._draining = True
         if self._heartbeat is not None:
             self._heartbeat.cancel()
             with contextlib.suppress(asyncio.CancelledError):

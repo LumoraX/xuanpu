@@ -46,6 +46,7 @@ def _tenant(row: asyncpg.Record) -> Tenant:
         quota=QuotaLimits(
             max_active_sessions=row["max_active_sessions"],
             max_daily_tokens=row["max_daily_tokens"],
+            max_concurrent_turns=row["max_concurrent_turns"],
         ),
         created_at=row["created_at"],
     )
@@ -138,13 +139,14 @@ class PostgresControlPlane:
         try:
             await self._execute(
                 f"INSERT INTO {self._t['tenant']} (tenant_id, name, status, "
-                "max_active_sessions, max_daily_tokens, created_at) "
-                "VALUES ($1, $2, $3, $4, $5, $6)",
+                "max_active_sessions, max_daily_tokens, max_concurrent_turns, created_at) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7)",
                 tenant.tenant_id,
                 tenant.name,
                 tenant.status,
                 tenant.quota.max_active_sessions,
                 tenant.quota.max_daily_tokens,
+                tenant.quota.max_concurrent_turns,
                 tenant.created_at,
             )
         except asyncpg.UniqueViolationError as exc:
@@ -166,12 +168,14 @@ class PostgresControlPlane:
         """整体替换租户记录。"""
         changed = await self._execute(
             f"UPDATE {self._t['tenant']} SET name = $2, status = $3, "
-            "max_active_sessions = $4, max_daily_tokens = $5 WHERE tenant_id = $1",
+            "max_active_sessions = $4, max_daily_tokens = $5, max_concurrent_turns = $6 "
+            "WHERE tenant_id = $1",
             tenant.tenant_id,
             tenant.name,
             tenant.status,
             tenant.quota.max_active_sessions,
             tenant.quota.max_daily_tokens,
+            tenant.quota.max_concurrent_turns,
         )
         if not changed:
             raise NotFoundError(f"租户 {tenant.tenant_id!r} 不存在")

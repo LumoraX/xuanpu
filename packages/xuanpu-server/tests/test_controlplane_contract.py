@@ -88,7 +88,7 @@ async def test_tenant_lifecycle(store: ControlPlaneStore) -> None:
     tenant = Tenant(
         tenant_id="acme",
         name="Acme 公司",
-        quota=QuotaLimits(max_active_sessions=5, max_daily_tokens=10**12),
+        quota=QuotaLimits(max_active_sessions=5, max_daily_tokens=10**12, max_concurrent_turns=8),
         created_at=123.5,
     )
     await store.create_tenant(tenant)

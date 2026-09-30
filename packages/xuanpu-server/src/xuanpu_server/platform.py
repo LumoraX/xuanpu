@@ -73,6 +73,7 @@ class Platform:
         defaults: RuntimeDefaults | None = None,
         instance_id: str | None = None,
         lease_seconds: float = 60.0,
+        shutdown_drain_seconds: float = 0.0,
         now: Callable[[], float] = time.time,
     ) -> None:
         """
@@ -87,6 +88,7 @@ class Platform:
             defaults: 运行时默认参数。
             instance_id: 本实例的标识；None 则随机生成。
             lease_seconds: 会话租约时长。
+            shutdown_drain_seconds: 关闭时给在途对话多少时间跑完。
             now: 取当前时间的函数，测试时可替换。
         """
         self.store = store
@@ -94,6 +96,7 @@ class Platform:
         self.data_dir = data_dir
         self.instance_id = instance_id or new_id("inst")
         self._root_key_hash = root_key_hash
+        self._drain_seconds = shutdown_drain_seconds
         self._now = now
         self.audit = AuditLog(store, now=now)
         self.quota = QuotaGuard(store, now=now)
@@ -128,8 +131,8 @@ class Platform:
         await self.sessions.start()
 
     async def close(self) -> None:
-        """释放会话、关闭运行时。"""
-        await self.sessions.shutdown()
+        """停止接单、等在途对话跑完、释放会话、关闭运行时。"""
+        await self.sessions.shutdown(drain_seconds=self._drain_seconds)
         await self.runtimes.close()
 
     # --- 认证 ---

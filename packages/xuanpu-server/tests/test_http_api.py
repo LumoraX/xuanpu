@@ -70,7 +70,11 @@ async def test_full_flow_over_http(world: Any, step: Any, client: httpx.AsyncCli
         json={"tenant_id": "globex", "name": "Globex", "quota": {"max_active_sessions": 3}},
     )
     assert created.status_code == 201
-    assert created.json()["quota"] == {"max_active_sessions": 3, "max_daily_tokens": None}
+    assert created.json()["quota"] == {
+        "max_active_sessions": 3,
+        "max_daily_tokens": None,
+        "max_concurrent_turns": None,
+    }
 
     issued = await client.post(
         "/v1/admin/tenants/globex/keys",

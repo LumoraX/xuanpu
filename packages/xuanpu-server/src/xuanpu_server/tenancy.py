@@ -32,14 +32,16 @@ class QuotaLimits:
     Attributes:
         max_active_sessions: 同时处于活动状态的会话数上限。
         max_daily_tokens: 每个自然日（UTC）的 token 用量上限。
+        max_concurrent_turns: 同一时刻进行中的对话数上限（本实例内计数）。
     """
 
     max_active_sessions: int | None = None
     max_daily_tokens: int | None = None
+    max_concurrent_turns: int | None = None
 
     def __post_init__(self) -> None:
         """上限必须为正数。"""
-        for name in ("max_active_sessions", "max_daily_tokens"):
+        for name in ("max_active_sessions", "max_daily_tokens", "max_concurrent_turns"):
             value = getattr(self, name)
             if value is not None and value < 1:
                 raise ValueError(f"{name} 必须为正数或 None，得到 {value}")

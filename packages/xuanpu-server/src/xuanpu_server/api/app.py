@@ -153,6 +153,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
             quota=QuotaLimits(
                 max_active_sessions=body.quota.max_active_sessions,
                 max_daily_tokens=body.quota.max_daily_tokens,
+                max_concurrent_turns=body.quota.max_concurrent_turns,
             ),
         )
         return schemas.tenant_view(tenant)

@@ -27,6 +27,7 @@ class QuotaBody(_Request):
 
     max_active_sessions: int | None = Field(default=None, ge=1)
     max_daily_tokens: int | None = Field(default=None, ge=1)
+    max_concurrent_turns: int | None = Field(default=None, ge=1)
 
 
 class CreateTenantBody(_Request):
@@ -98,6 +99,7 @@ def tenant_view(tenant: Tenant) -> dict[str, Any]:
         "quota": {
             "max_active_sessions": tenant.quota.max_active_sessions,
             "max_daily_tokens": tenant.quota.max_daily_tokens,
+            "max_concurrent_turns": tenant.quota.max_concurrent_turns,
         },
         "created_at": tenant.created_at,
     }

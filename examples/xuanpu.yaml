@@ -62,3 +62,4 @@ audit:
   capture_requests: false   # 是否把每次发给模型的完整请求写进审计；内容敏感，默认关闭
 
 lease_seconds: 60
+shutdown_drain_seconds: 30   # 停机时给在途对话多少秒跑完，到期仍未结束的会被取消
