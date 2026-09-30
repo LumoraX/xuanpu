@@ -259,6 +259,12 @@ def create_app(platform: Platform) -> FastAPI:  # noqa: PLR0915, C901 —— 路
         await platform.packages.activate(who, name, body.version)
         return {"name": name, "active": body.version}
 
+    @app.post("/v1/packages/{name}/evals")
+    async def run_evals(name: str, body: schemas.EvalBody, who: Caller) -> dict[str, Any]:
+        """运行业务包的评测用例，返回报告。用例较多时这个请求会比较久。"""
+        report = await platform.evals.run(who, name, version=body.version, names=body.names)
+        return report.as_dict()
+
     # --- 会话 ---
 
     @app.post("/v1/sessions", status_code=201)

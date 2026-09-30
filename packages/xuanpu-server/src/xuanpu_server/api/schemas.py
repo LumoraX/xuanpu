@@ -62,6 +62,13 @@ class ActivateBody(_Request):
     version: str
 
 
+class EvalBody(_Request):
+    """运行评测。"""
+
+    version: str | None = None
+    names: list[str] | None = None
+
+
 class CreateSessionBody(_Request):
     """新建会话。"""
 
@@ -165,6 +172,7 @@ __all__ = [
     "ActivateBody",
     "CreateSessionBody",
     "CreateTenantBody",
+    "EvalBody",
     "IssueKeyBody",
     "MessageBody",
     "QuotaBody",

@@ -160,3 +160,93 @@ def test_unknown_command_is_usage_error() -> None:
     with pytest.raises(SystemExit) as caught:
         main(["launch-rockets"])
     assert caught.value.code == 2
+
+
+class _FakePackages:
+    """假的业务包接口。"""
+
+    def __init__(self, report: dict[str, object]) -> None:
+        self.report = report
+        self.calls: list[tuple[object, ...]] = []
+
+    async def evaluate(
+        self, name: str, *, version: str | None = None, names: list[str] | None = None
+    ) -> dict[str, object]:
+        self.calls.append((name, version, names))
+        return self.report
+
+
+class _FakeClient:
+    """假的 SDK 客户端。"""
+
+    instances: list[_FakeClient] = []
+    report: dict[str, object] = {}
+
+    def __init__(self, url: str, key: str) -> None:
+        self.url, self.key = url, key
+        self.packages = _FakePackages(self.report)
+        _FakeClient.instances.append(self)
+
+    async def __aenter__(self) -> _FakeClient:
+        return self
+
+    async def __aexit__(self, *exc: object) -> None:
+        return
+
+
+def _report(passed: bool) -> dict[str, object]:
+    """一份评测报告。"""
+    return {
+        "package": "support-desk",
+        "version": "1.0.0",
+        "passed": passed,
+        "total": 2,
+        "failed": 0 if passed else 1,
+        "total_tokens": 240,
+        "cases": [
+            {
+                "name": "greet", "passed": True, "reasons": [], "reply": "您好",
+                "outcome": "completed", "total_tokens": 120, "duration_ms": 12, "session_id": "s1",
+            },
+            {
+                "name": "refund", "passed": passed, "reasons": [] if passed else ["回复里没有 '7 个工作日'"],
+                "reply": "3 天", "outcome": "completed", "total_tokens": 120, "duration_ms": 15,
+                "session_id": "s2",
+            },
+        ],
+    }  # fmt: skip
+
+
+def test_eval_prints_report_and_exit_code(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """评测：报告逐条打印；有未通过的用例时退出码非 0；凭据可以来自环境变量。"""
+    import xuanpu_sdk
+
+    monkeypatch.setenv("XUANPU_API_KEY", "xp_from_env")
+    _FakeClient.instances.clear()
+    _FakeClient.report = _report(False)
+    monkeypatch.setattr(xuanpu_sdk, "XuanpuClient", _FakeClient)
+    code = main(["eval", "--url", "http://p:1", "--package", "support-desk", "--case", "refund"])
+    assert code == 1
+    out = capsys.readouterr().out
+    assert "1 个未通过" in out
+    assert "[未通过] refund" in out
+    assert "回复里没有 '7 个工作日'" in out
+    client = _FakeClient.instances[-1]
+    assert (client.url, client.key) == ("http://p:1", "xp_from_env")
+    assert client.packages.calls == [("support-desk", None, ["refund"])]
+
+    _FakeClient.report = _report(True)
+    assert main(["eval", "--key", "xp_arg", "--package", "support-desk", "--version", "1.0.0"]) == 0
+    assert _FakeClient.instances[-1].key == "xp_arg"
+    assert _FakeClient.instances[-1].packages.calls == [("support-desk", "1.0.0", None)]
+
+
+def test_eval_requires_credentials(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """没有凭据时按用法错误退出。"""
+    monkeypatch.delenv("XUANPU_API_KEY", raising=False)
+    assert main(["eval", "--package", "x"]) == 2
+    assert "XUANPU_API_KEY" in capsys.readouterr().err

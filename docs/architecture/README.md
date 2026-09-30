@@ -6,7 +6,7 @@
 
 ## 现状
 
-第一版：业务包规范、平台服务（控制面 + 运行时 + HTTP 接口）、命令行三个包可用。独立的 MCP 网关、控制台、客户端 SDK 未开始。
+第一版：业务包规范、平台服务（控制面 + 运行时 + HTTP 接口 + 评测运行器）、命令行、Python 客户端四个包可用。独立的 MCP 网关、控制台未开始。
 
 ## 分层与依赖方向
 
@@ -15,8 +15,9 @@
         │ 发布
 xuanpu
   ├─ xuanpu-spec          业务包规范（对外契约，不依赖其他组件，也不依赖 taifeng）
-  ├─ xuanpu-cli           校验 / 打包 / 生成凭据 / 迁移 / 启动服务
-  └─ xuanpu-server        控制面 + 运行时 + HTTP 接口
+  ├─ xuanpu-cli           校验 / 打包 / 生成凭据 / 迁移 / 启动服务 / 运行评测
+  ├─ xuanpu-sdk-py        Python 客户端（只依赖 HTTP 库）
+  └─ xuanpu-server        控制面 + 运行时 + HTTP 接口 + 评测运行器
         │ 只依赖稳定层
 taifeng-sandbox · taifeng-stores
         │
@@ -34,7 +35,7 @@ taifeng
 | 计算面 | 组装并承载内核引擎、会话租约、事件分发 | `runtime/assembler.py`、`runtime/sessions.py`、`runtime/events.py` |
 | 效应面 | 副作用的出口：沙盒、连接器、模型 | `runtime/sandbox.py`、`runtime/connectors.py`、`runtime/models.py`、`runtime/approval.py` |
 | 状态面 | 会话消息、线程目录、长期记忆 | `bootstrap.py` 里的 `PostgresStateBackends`，实现来自 taifeng-stores |
-| 治理面 | 租户、凭据、业务包版本、密钥、配额、审计、用量 | `platform.py`、`tenancy.py`、`packages.py`、`secrets.py`、`quota.py`、`audit.py`、`controlplane/` |
+| 治理面 | 租户、凭据、业务包版本、密钥、配额、审计、用量、评测 | `platform.py`、`tenancy.py`、`packages.py`、`secrets.py`、`quota.py`、`audit.py`、`evals.py`、`controlplane/` |
 
 所有外部依赖（存储、密钥保管库、模型客户端工厂、沙盒供给方、状态面后端）都经 `Platform` 的构造参数注入；平台代码不读环境变量，环境变量只在命令行入口读取。
 
@@ -111,8 +112,9 @@ taifeng 不知道租户。隔离体现在平台组装运行时注入的每一样
 | `xuanpu-cli` | 可用 |
 | `xuanpu-mcp-gateway` | 未开始（先评估现成方案） |
 | `xuanpu-console` | 未开始 |
-| `xuanpu-sdk-*` | 未开始 |
-| 评测运行器 | 未开始（规范里已有评测用例的格式） |
+| `xuanpu-sdk-py` | 可用 |
+| `xuanpu-sdk-js` | 未开始 |
+| 评测运行器 | 可用：每个用例一个会话，按 contains / notContains / maxTokens 检查；走正常的闸门、计量、审计 |
 
 ## 已知限制
 

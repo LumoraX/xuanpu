@@ -13,7 +13,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from xuanpu_spec import (
     ArchiveError,
@@ -149,6 +149,48 @@ def cmd_serve(args: argparse.Namespace) -> int:
     return asyncio.run(_serve(_load(args)))
 
 
+def format_eval_report(report: dict[str, Any]) -> str:
+    """把评测报告排成可读的文本。"""
+    lines = [
+        f"{report['package']} {report['version']}：{report['total']} 个用例，"
+        f"{report['failed']} 个未通过，共 {report['total_tokens']} token"
+    ]
+    for case in report["cases"]:
+        mark = "通过" if case["passed"] else "未通过"
+        lines.append(
+            f"  [{mark}] {case['name']}  {case['outcome']}  "
+            f"{case['total_tokens']} token  {case['duration_ms']} ms"
+        )
+        for reason in case["reasons"]:
+            lines.append(f"      - {reason}")
+    return "\n".join(lines)
+
+
+async def _eval(args: argparse.Namespace, api_key: str) -> int:
+    """经平台接口运行评测并打印报告。"""
+    from xuanpu_sdk import XuanpuClient, XuanpuError
+
+    async with XuanpuClient(args.url, api_key) as client:
+        try:
+            report = await client.packages.evaluate(
+                args.package, version=args.version, names=args.case or None
+            )
+        except XuanpuError as exc:
+            print(f"错误：{exc}", file=sys.stderr)
+            return EXIT_FAILED
+    print(format_eval_report(report))
+    return EXIT_OK if report["passed"] else EXIT_FAILED
+
+
+def cmd_eval(args: argparse.Namespace) -> int:
+    """在平台上运行业务包的评测用例。"""
+    api_key = args.key or os.environ.get("XUANPU_API_KEY")
+    if not api_key:
+        print("错误：请用 --key 或环境变量 XUANPU_API_KEY 提供凭据", file=sys.stderr)
+        return EXIT_USAGE
+    return asyncio.run(_eval(args, api_key))
+
+
 def build_parser() -> argparse.ArgumentParser:
     """命令行参数定义。"""
     parser = argparse.ArgumentParser(prog="xuanpu", description="xuanpu 平台命令行")
@@ -177,6 +219,14 @@ def build_parser() -> argparse.ArgumentParser:
     serve = commands.add_parser("serve", help="启动平台服务")
     serve.add_argument("--config", required=True, help="配置文件")
     serve.set_defaults(handler=cmd_serve)
+
+    evaluate = commands.add_parser("eval", help="在平台上运行业务包的评测用例")
+    evaluate.add_argument("--url", default="http://127.0.0.1:8420", help="平台地址")
+    evaluate.add_argument("--key", help="凭据；缺省读环境变量 XUANPU_API_KEY")
+    evaluate.add_argument("--package", required=True, help="业务包名")
+    evaluate.add_argument("--version", help="版本；缺省用生效版本")
+    evaluate.add_argument("--case", action="append", help="只跑这些用例，可重复")
+    evaluate.set_defaults(handler=cmd_eval)
     return parser
 
 

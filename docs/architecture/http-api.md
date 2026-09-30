@@ -44,6 +44,7 @@
 | `POST /v1/packages?activate=` | 租户管理员 | 发布业务包，请求体是 zip 归档 |
 | `GET /v1/packages` | 租户成员 | 列出已发布版本 |
 | `POST /v1/packages/{name}/activate` | 租户管理员 | 切换生效版本（前进或回滚） |
+| `POST /v1/packages/{name}/evals` | 租户管理员 | 运行评测用例，返回报告；可指定 `version`、`names` |
 | `POST /v1/sessions` · `GET /v1/sessions` | 租户成员 | 新建、列出会话 |
 | `GET /v1/sessions/{id}` · `DELETE /v1/sessions/{id}` | 租户成员 | 取会话、关闭会话 |
 | `POST /v1/sessions/{id}/messages` | 租户成员 | 发消息；响应是事件流 |

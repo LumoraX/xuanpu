@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from xuanpu_server.audit import AuditLog
 from xuanpu_server.errors import AuthenticationError, ConflictError, NotFoundError
+from xuanpu_server.evals import EvalRunner
 from xuanpu_server.ids import new_id
 from xuanpu_server.packages import PackageRegistry
 from xuanpu_server.quota import QuotaGuard
@@ -119,6 +120,7 @@ class Platform:
             lease_seconds=lease_seconds,
             now=now,
         )
+        self.evals = EvalRunner(self.sessions, self.packages, self.audit)
 
     async def start(self) -> None:
         """启动后台任务。"""

@@ -18,6 +18,7 @@ classifiers = [
 dependencies = [
     "xuanpu-spec",
     "xuanpu-server",
+    "xuanpu-sdk-py",
 ]
 
 [project.scripts]

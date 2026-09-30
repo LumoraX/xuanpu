@@ -9,6 +9,7 @@ resolution-markers = [
 [manifest]
 members = [
     "xuanpu-cli",
+    "xuanpu-sdk-py",
     "xuanpu-server",
     "xuanpu-spec",
 ]
@@ -22,6 +23,7 @@ dev = [
     { name = "pytest-asyncio", specifier = ">=0.23" },
     { name = "ruff", specifier = ">=0.5" },
     { name = "types-pyyaml", specifier = ">=6.0" },
+    { name = "xuanpu-sdk-py", editable = "packages/xuanpu-sdk-py" },
 ]
 
 [[package]]
@@ -960,15 +962,28 @@ name = "xuanpu-cli"
 version = "2026.9.30.1"
 source = { editable = "packages/xuanpu-cli" }
 dependencies = [
+    { name = "xuanpu-sdk-py" },
     { name = "xuanpu-server" },
     { name = "xuanpu-spec" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "xuanpu-sdk-py", editable = "packages/xuanpu-sdk-py" },
     { name = "xuanpu-server", editable = "packages/xuanpu-server" },
     { name = "xuanpu-spec", editable = "packages/xuanpu-spec" },
 ]
+
+[[package]]
+name = "xuanpu-sdk-py"
+version = "2026.9.30.1"
+source = { editable = "packages/xuanpu-sdk-py" }
+dependencies = [
+    { name = "httpx" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "httpx", specifier = ">=0.27" }]
 
 [[package]]
 name = "xuanpu-server"
