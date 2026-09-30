@@ -318,3 +318,39 @@ async def test_unexpected_error_does_not_leak_details(
         response = await http.get("/v1/sessions", headers=bearer(world.admin_key))
     assert response.status_code == 500
     assert response.json() == {"error": {"code": "internal_error", "message": "服务内部错误"}}
+
+
+async def test_console_is_served_when_configured(world: Any, tmp_path: Any) -> None:
+    """给了静态目录就挂在 /console/，不给就没有。"""
+    console = tmp_path / "console"
+    console.mkdir()
+    (console / "index.html").write_text("<title>xuanpu 控制台</title>")
+    (console / "app.js").write_text("console.log(1)")
+    with_console = httpx.ASGITransport(app=create_app(world.platform, console_dir=console))
+    async with httpx.AsyncClient(transport=with_console, base_url="http://xuanpu") as http:
+        page = await http.get("/console/")
+        assert page.status_code == 200
+        assert "xuanpu 控制台" in page.text
+        assert (await http.get("/console/app.js")).status_code == 200
+        assert (await http.get("/console/../xuanpu.yaml")).status_code in (400, 404)
+        # 控制台不需要凭据，但接口仍然需要
+        assert (await http.get("/v1/sessions")).status_code == 401
+    without = httpx.ASGITransport(app=create_app(world.platform))
+    async with httpx.AsyncClient(transport=without, base_url="http://xuanpu") as http:
+        assert (await http.get("/console/")).status_code == 404
+
+
+async def test_user_messages_are_audited(world: Any, step: Any, client: httpx.AsyncClient) -> None:
+    """用户发的消息记进审计（超长截断），审批送回也有记录。"""
+    await world.publish()
+    admin = bearer(world.admin_key)
+    session = await client.post("/v1/sessions", headers=admin, json={"package": "support-desk"})
+    session_id = session.json()["session_id"]
+    world.models.script(step(text="好"))
+    await client.post(f"/v1/sessions/{session_id}/messages", headers=admin, json={"text": "问题一"})
+    audit = await client.get(
+        "/v1/audit", headers=admin, params={"session_id": session_id, "kind": "message_sent"}
+    )
+    records = audit.json()["records"]
+    assert [record["data"]["text"] for record in records] == ["问题一"]
+    assert records[0]["data"]["submission_id"].startswith("sub")

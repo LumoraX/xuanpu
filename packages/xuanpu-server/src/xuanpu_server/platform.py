@@ -175,9 +175,7 @@ class Platform:
         await self.audit.control(principal, tenant_id, "tenant_created", {"name": name})
         return tenant
 
-    async def set_tenant_status(
-        self, principal: Principal, tenant_id: str, status: str
-    ) -> Tenant:
+    async def set_tenant_status(self, principal: Principal, tenant_id: str, status: str) -> Tenant:
         """启用或停用租户。停用后该租户的凭据立即失效。"""
         principal.require_platform_admin()
         if status not in ("active", "suspended"):

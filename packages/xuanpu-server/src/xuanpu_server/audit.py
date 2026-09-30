@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -31,23 +32,32 @@ STREAMING_KINDS: frozenset[str] = frozenset({"assistant_text", "assistant_reason
 SENSITIVE_KINDS: frozenset[str] = frozenset({"llm_request_recorded"})
 
 _REDACTED = "[已脱敏]"
-_SENSITIVE_KEY_PARTS = (
-    "secret",
-    "password",
-    "passwd",
-    "token",
-    "api_key",
-    "apikey",
-    "authorization",
+# 键名里出现这些整词就当作凭据（按 _ - . 与大小写切词；"input_tokens" 切出的是 "tokens"，不算）
+_SENSITIVE_WORDS = frozenset(
+    {
+        "secret",
+        "secrets",
+        "password",
+        "passwd",
+        "token",
+        "apikey",
+        "authorization",
+        "credential",
+        "credentials",
+    }
 )
 _MAX_STRING = 8000
 _MAX_DEPTH = 8
+_WORD_SPLIT = re.compile(r"[^a-z0-9]+")
 
 
 def _looks_sensitive(key: str) -> bool:
     """键名看起来像是装凭据的。"""
-    lowered = key.lower()
-    return any(part in lowered for part in _SENSITIVE_KEY_PARTS)
+    words = [word for word in _WORD_SPLIT.split(key.lower()) if word]
+    if any(word in _SENSITIVE_WORDS for word in words):
+        return True
+    # api_key / apiKey 切出来是 api + key
+    return any(a == "api" and b == "key" for a, b in zip(words, words[1:], strict=False))
 
 
 def sanitize(value: Any, *, depth: int = 0) -> Any:
@@ -60,7 +70,10 @@ def sanitize(value: Any, *, depth: int = 0) -> Any:
         return "[嵌套过深，已截断]"
     if isinstance(value, dict):
         return {
-            str(key): _REDACTED if _looks_sensitive(str(key)) else sanitize(item, depth=depth + 1)
+            # 只脱敏字符串：数字（如 token 用量）不是凭据
+            str(key): _REDACTED
+            if isinstance(item, str) and _looks_sensitive(str(key))
+            else sanitize(item, depth=depth + 1)
             for key, item in value.items()
         }
     if isinstance(value, list | tuple):

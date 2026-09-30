@@ -1,0 +1,26 @@
+[project]
+name = "xuanpu-console"
+version = "2026.9.30.1"
+description = "xuanpu 控制台 —— 业务视角的网页界面（静态页面，直接调用平台的 HTTP 接口）"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [
+    { name = "Xuanpu Contributors" },
+]
+keywords = ["llm", "agent", "platform", "xuanpu"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+# 控制台是平台 HTTP 接口的客户端：只有静态文件，不依赖平台其他组件
+dependencies = []
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xuanpu_console"]

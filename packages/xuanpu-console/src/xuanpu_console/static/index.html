@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>xuanpu 控制台</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">玄圃 <span class="sub">xuanpu 控制台</span></div>
+  <form id="connect" class="connect">
+    <input id="base-url" type="url" placeholder="平台地址（留空 = 当前站点）" autocomplete="off">
+    <input id="api-key" type="password" placeholder="API key" autocomplete="off" required>
+    <button type="submit">连接</button>
+    <span id="conn-status" class="status"></span>
+  </form>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="sessions" class="active">会话</button>
+  <button data-tab="packages">业务包</button>
+  <button data-tab="audit">审计</button>
+  <button data-tab="usage">用量</button>
+</nav>
+
+<main>
+  <!-- 会话 -->
+  <section id="tab-sessions" class="tab active">
+    <aside class="list-pane">
+      <form id="new-session" class="row">
+        <input id="new-package" placeholder="业务包名" required>
+        <input id="new-entry" placeholder="入口（可选）">
+        <button type="submit">新建会话</button>
+      </form>
+      <div class="row">
+        <label><input type="checkbox" id="show-closed"> 显示已关闭</label>
+        <button id="refresh-sessions" type="button" class="ghost">刷新</button>
+      </div>
+      <ul id="session-list" class="items"></ul>
+    </aside>
+    <div class="chat-pane">
+      <div id="chat-head" class="chat-head">选择或新建一个会话</div>
+      <div id="pending" class="pending hidden"></div>
+      <div id="transcript" class="transcript"></div>
+      <form id="send" class="send">
+        <textarea id="message" rows="2" placeholder="输入消息，Enter 发送，Shift+Enter 换行" disabled></textarea>
+        <button type="submit" id="send-btn" disabled>发送</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- 业务包 -->
+  <section id="tab-packages" class="tab">
+    <form id="publish" class="row">
+      <input id="archive" type="file" accept=".zip" required>
+      <label><input type="checkbox" id="publish-activate" checked> 发布后设为生效</label>
+      <button type="submit">发布</button>
+      <span id="publish-status" class="status"></span>
+    </form>
+    <table id="package-table" class="table">
+      <thead><tr><th>包名</th><th>版本</th><th>状态</th><th>发布时间</th><th>发布者</th><th>指纹</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <pre id="eval-report" class="report hidden"></pre>
+  </section>
+
+  <!-- 审计 -->
+  <section id="tab-audit" class="tab">
+    <form id="audit-filter" class="row">
+      <input id="audit-session" placeholder="会话标识">
+      <input id="audit-kind" placeholder="事件类型，如 connector_call">
+      <select id="audit-source">
+        <option value="">全部来源</option>
+        <option value="engine">engine</option>
+        <option value="gate">gate</option>
+        <option value="control">control</option>
+      </select>
+      <button type="submit">查询</button>
+      <button type="button" id="audit-more" class="ghost" disabled>下一页</button>
+    </form>
+    <table id="audit-table" class="table">
+      <thead><tr><th>#</th><th>时间</th><th>来源</th><th>类型</th><th>触发者</th><th>会话</th><th>内容</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- 用量 -->
+  <section id="tab-usage" class="tab">
+    <form id="usage-filter" class="row">
+      <input id="usage-since" type="date" required>
+      <input id="usage-until" type="date" required>
+      <button type="submit">查询</button>
+    </form>
+    <table id="usage-table" class="table">
+      <thead><tr><th>日期</th><th>轮数</th><th>输入 token</th><th>输出 token</th><th>合计</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+</main>
+
+<div id="toast" class="toast hidden"></div>
+<script src="app.js"></script>
+</body>
+</html>

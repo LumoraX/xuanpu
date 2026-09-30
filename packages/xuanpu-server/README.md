@@ -9,7 +9,7 @@ from xuanpu_server.config import load_config
 
 config = load_config(path, variables=environ)
 async with open_platform(config) as platform:
-    app = create_app(platform)      # 交给任意 ASGI 服务器
+    app = create_app(platform)  # 交给任意 ASGI 服务器
 ```
 
 多实例部署装 `postgres` extra。设计见仓库根目录的 `docs/architecture/`。

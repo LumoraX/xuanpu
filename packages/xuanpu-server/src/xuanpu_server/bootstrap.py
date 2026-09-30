@@ -65,9 +65,7 @@ class PostgresStateBackends:
         async with self._lock:
             ready = self._ready.get(tenant_id)
             if ready is None:
-                namespace = SqlNamespace(
-                    schema=self._schema, prefix=tenant_table_prefix(tenant_id)
-                )
+                namespace = SqlNamespace(schema=self._schema, prefix=tenant_table_prefix(tenant_id))
                 await apply_migrations(self._pool, namespace)
                 ready = StateBackends(
                     thread_directory=PostgresThreadDirectory(self._pool, namespace=namespace),
@@ -81,9 +79,7 @@ async def _open_pool(stack: AsyncExitStack, config: PostgresConfig) -> asyncpg.P
     """建连接池，并登记到退出栈里。"""
     import asyncpg
 
-    pool = await asyncpg.create_pool(
-        config.dsn, min_size=config.pool_min, max_size=config.pool_max
-    )
+    pool = await asyncpg.create_pool(config.dsn, min_size=config.pool_min, max_size=config.pool_max)
     stack.push_async_callback(pool.close)
     return pool
 

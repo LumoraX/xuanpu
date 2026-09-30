@@ -6,7 +6,7 @@
 
 ## 现状
 
-第一版：业务包规范、平台服务（控制面 + 运行时 + HTTP 接口 + 评测运行器）、命令行、Python 客户端四个包可用。独立的 MCP 网关、控制台未开始。
+第一版：业务包规范、平台服务（控制面 + 运行时 + HTTP 接口 + 评测运行器）、命令行、Python 客户端、控制台五个包可用。独立的 MCP 网关未开始。
 
 ## 分层与依赖方向
 
@@ -17,6 +17,7 @@ xuanpu
   ├─ xuanpu-spec          业务包规范（对外契约，不依赖其他组件，也不依赖 taifeng）
   ├─ xuanpu-cli           校验 / 打包 / 生成凭据 / 迁移 / 启动服务 / 运行评测
   ├─ xuanpu-sdk-py        Python 客户端（只依赖 HTTP 库）
+  ├─ xuanpu-console       控制台：纯静态页面，调用 HTTP 接口；服务装了本包就挂在 /console/
   └─ xuanpu-server        控制面 + 运行时 + HTTP 接口 + 评测运行器
         │ 只依赖稳定层
 taifeng-sandbox · taifeng-stores
@@ -110,7 +111,7 @@ taifeng 不知道租户。隔离体现在平台组装运行时注入的每一样
 | --- | --- | --- |
 | `engine` | 内核事件。流式增量不记，改在一轮结束时记一条 `turn_text` 带回复全文；含完整提示词的事件默认不记 | 按 `(事件流, 序号)`；引擎每次被创建是一条新的事件流 |
 | `gate` | 连接器调用的过闸记录 | 不去重 |
-| `control` | 控制面操作：租户、凭据、密钥、业务包、会话 | 不去重 |
+| `control` | 控制面操作：租户、凭据、密钥、业务包、会话、用户发出的消息（`message_sent`） | 不去重 |
 
 内核因队列满丢事件时，事件枢纽会记一条 `audit_gap`，审计不完整不会悄悄发生。
 
@@ -122,7 +123,7 @@ taifeng 不知道租户。隔离体现在平台组装运行时注入的每一样
 | `xuanpu-server` | 可用（第一版，取舍见 [ADR 0005](../decisions/0005-first-release-scope.md)） |
 | `xuanpu-cli` | 可用 |
 | `xuanpu-mcp-gateway` | 未开始（先评估现成方案） |
-| `xuanpu-console` | 未开始 |
+| `xuanpu-console` | 可用（第一版：会话对话与审批、业务包发布与评测、审计、用量） |
 | `xuanpu-sdk-py` | 可用 |
 | `xuanpu-sdk-js` | 未开始 |
 | 评测运行器 | 可用：每个用例一个会话，按 contains / notContains / maxTokens 检查；走正常的闸门、计量、审计 |

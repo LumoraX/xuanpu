@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 from fastapi import Depends, FastAPI, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from xuanpu_server import __version__
 from xuanpu_server.api import schemas
@@ -30,6 +31,7 @@ from xuanpu_server.tenancy import Principal, QuotaLimits
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+    from pathlib import Path
 
     from xuanpu_server.platform import Platform
     from xuanpu_server.runtime.sessions import Turn
@@ -91,8 +93,7 @@ def _install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(RequestValidationError)
     async def _validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
         problems = [
-            f"{'.'.join(str(part) for part in item['loc'])}：{item['msg']}"
-            for item in exc.errors()
+            f"{'.'.join(str(part) for part in item['loc'])}：{item['msg']}" for item in exc.errors()
         ]
         return _error(400, "invalid_request", "请求参数不合法", problems=problems)
 
@@ -107,8 +108,15 @@ def _install_error_handlers(app: FastAPI) -> None:
         return _error(500, "internal_error", "服务内部错误")
 
 
-def create_app(platform: Platform) -> FastAPI:  # noqa: PLR0915, C901 —— 路由登记的平铺清单
-    """用一个装配好的平台创建 HTTP 应用。"""
+def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
+    platform: Platform, *, console_dir: Path | None = None
+) -> FastAPI:
+    """用一个装配好的平台创建 HTTP 应用。
+
+    Args:
+        platform: 装配好的平台。
+        console_dir: 控制台静态页面的目录；给了就挂在 ``/console/``。
+    """
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -169,9 +177,7 @@ def create_app(platform: Platform) -> FastAPI:  # noqa: PLR0915, C901 —— 路
     ) -> dict[str, Any]:
         """给某个租户签发 API key。完整的 key 只在这次响应里出现。"""
         who.require_platform_admin()
-        issued = await platform.issue_key(
-            who, tenant_id=tenant_id, name=body.name, role=body.role
-        )
+        issued = await platform.issue_key(who, tenant_id=tenant_id, name=body.name, role=body.role)
         return {"key": issued.key, **schemas.key_view(issued.record)}
 
     # --- 凭据 ---
@@ -367,6 +373,9 @@ def create_app(platform: Platform) -> FastAPI:  # noqa: PLR0915, C901 —— 路
             who.require_tenant_admin(), since=since, until=until
         )
         return {"usage": [schemas.usage_view(record) for record in records]}
+
+    if console_dir is not None:
+        app.mount("/console", StaticFiles(directory=str(console_dir), html=True), name="console")
 
     return app
 

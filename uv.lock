@@ -9,6 +9,7 @@ resolution-markers = [
 [manifest]
 members = [
     "xuanpu-cli",
+    "xuanpu-console",
     "xuanpu-sdk-py",
     "xuanpu-server",
     "xuanpu-spec",
@@ -962,6 +963,7 @@ name = "xuanpu-cli"
 version = "2026.9.30.1"
 source = { editable = "packages/xuanpu-cli" }
 dependencies = [
+    { name = "xuanpu-console" },
     { name = "xuanpu-sdk-py" },
     { name = "xuanpu-server" },
     { name = "xuanpu-spec" },
@@ -969,10 +971,16 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "xuanpu-console", editable = "packages/xuanpu-console" },
     { name = "xuanpu-sdk-py", editable = "packages/xuanpu-sdk-py" },
     { name = "xuanpu-server", editable = "packages/xuanpu-server" },
     { name = "xuanpu-spec", editable = "packages/xuanpu-spec" },
 ]
+
+[[package]]
+name = "xuanpu-console"
+version = "2026.9.30.1"
+source = { editable = "packages/xuanpu-console" }
 
 [[package]]
 name = "xuanpu-sdk-py"

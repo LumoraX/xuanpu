@@ -19,6 +19,7 @@ dependencies = [
     "xuanpu-spec",
     "xuanpu-server",
     "xuanpu-sdk-py",
+    "xuanpu-console",
 ]
 
 [project.scripts]

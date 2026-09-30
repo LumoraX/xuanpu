@@ -143,9 +143,7 @@ class ConnectorGate:
                 "submission_id": ctx.extras.get("submission_id"),
                 "duration_ms": int((time.monotonic() - started) * 1000),
             },
-            session_id=self._submissions.session_of(
-                ctx.extras.get("submission_id"), ctx.thread_id
-            ),
+            session_id=self._submissions.session_of(ctx.extras.get("submission_id"), ctx.thread_id),
         )
 
     async def __call__(self, args: dict[str, Any], ctx: taifeng.ToolContext) -> taifeng.ToolResult:
@@ -260,9 +258,7 @@ class ConnectorSet:
                 f"连接器 {spec.name!r} 启动失败：{type(exc).__name__}"
             ) from exc
         self._clients.append(client)
-        listed = {
-            str(tool["name"]): tool for tool in await client.list_tools() if "name" in tool
-        }
+        listed = {str(tool["name"]): tool for tool in await client.list_tools() if "name" in tool}
         missing = [tool.name for tool in spec.tools if tool.name not in listed]
         if missing:
             raise RuntimeUnavailableError(

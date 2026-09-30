@@ -251,7 +251,16 @@ class SessionManager:
             raise InvalidRequestError(f"消息超过 {MAX_MESSAGE_CHARS} 个字符")
         await self._quota.check_new_turn(principal.require_tenant())
         live = await self._active(principal, session_id)
-        return await self._submit(live, taifeng.UserMessage(text=text))
+        turn = await self._submit(live, taifeng.UserMessage(text=text))
+        # 用户说了什么不在内核事件里，审计要有它才完整（超长部分会被截断）
+        await self._audit.control(
+            principal,
+            live.record.tenant_id,
+            "message_sent",
+            {"submission_id": turn.submission_id, "text": text},
+            session_id=session_id,
+        )
+        return turn
 
     async def resume(
         self, principal: Principal, session_id: str, resolutions: dict[str, Any]
@@ -309,9 +318,7 @@ class SessionManager:
             if len(page) < query.limit:
                 break
             after = page[-1].audit_id
-            query = AuditQuery(
-                session_id=session_id, source="engine", limit=1000, after_id=after
-            )
+            query = AuditQuery(session_id=session_id, source="engine", limit=1000, after_id=after)
         if suspended is None:
             return []
         pending = suspended.data.get("pending")

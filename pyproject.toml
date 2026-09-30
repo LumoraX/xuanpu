@@ -12,6 +12,7 @@ xuanpu-spec = { workspace = true }
 xuanpu-server = { workspace = true }
 xuanpu-cli = { workspace = true }
 xuanpu-sdk-py = { workspace = true }
+xuanpu-console = { workspace = true }
 
 [dependency-groups]
 dev = [

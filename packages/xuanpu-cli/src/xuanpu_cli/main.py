@@ -125,6 +125,15 @@ def cmd_migrate(args: argparse.Namespace) -> int:
     return asyncio.run(_migrate(_load(args)))
 
 
+def _console_dir() -> Path | None:
+    """控制台的静态目录；没装 xuanpu-console 就不挂。"""
+    try:
+        from xuanpu_console import static_dir
+    except ImportError:
+        return None
+    return static_dir()
+
+
 async def _serve(config: ServerConfig) -> int:
     """启动平台服务，直到收到终止信号。"""
     import uvicorn
@@ -134,7 +143,7 @@ async def _serve(config: ServerConfig) -> int:
     async with open_platform(config) as platform:
         server = uvicorn.Server(
             uvicorn.Config(
-                create_app(platform),
+                create_app(platform, console_dir=_console_dir()),
                 host=config.listen.host,
                 port=config.listen.port,
                 log_level="info",

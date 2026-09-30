@@ -4,7 +4,7 @@
 
 > 玄圃：昆仑山上众神居住的园子。泰逢是山海经里的神，玄圃是承载它们的地方。
 
-> **状态**：第一版。业务包规范、平台服务（控制面 + 运行时 + HTTP 接口 + 评测）、命令行、Python 客户端可用；独立的 MCP 网关、控制台未开始。第一版的取舍与已知限制见 [ADR 0005](docs/decisions/0005-first-release-scope.md)。
+> **状态**：第一版。业务包规范、平台服务（控制面 + 运行时 + HTTP 接口 + 评测）、命令行、Python 客户端、控制台可用；独立的 MCP 网关未开始。第一版的取舍与已知限制见 [ADR 0005](docs/decisions/0005-first-release-scope.md)。
 
 ## 定位：像用数据库一样用 agent
 
@@ -40,7 +40,7 @@ uv run xuanpu keygen master
 
 # 2. 写配置（参照 examples/xuanpu.yaml），迁移表结构，启动
 uv run xuanpu migrate --config xuanpu.yaml
-uv run xuanpu serve --config xuanpu.yaml
+uv run xuanpu serve --config xuanpu.yaml     # 控制台在 http://127.0.0.1:8420/console/
 
 # 3. 业务方：校验并打包业务包
 uv run xuanpu validate ./support-desk
@@ -78,8 +78,8 @@ curl -N -X POST localhost:8420/v1/sessions/$SESSION/messages -H "Authorization: 
 | 平台服务（运行时 + 控制面） | `xuanpu-server` | 可用（第一版） |
 | 命令行 | `xuanpu-cli` | 可用 |
 | Python 客户端 | `xuanpu-sdk-py` | 可用 |
+| 控制台 | `xuanpu-console` | 可用（服务启动后访问 `/console/`） |
 | MCP 网关 | `xuanpu-mcp-gateway` | 未开始（先评估现成方案，见 ADR 0003） |
-| 控制台 | `xuanpu-console` | 未开始 |
 | JavaScript 客户端 | `xuanpu-sdk-js` | 未开始 |
 
 ## 文档

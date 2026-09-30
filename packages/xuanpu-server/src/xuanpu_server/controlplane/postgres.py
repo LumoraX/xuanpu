@@ -195,16 +195,13 @@ class PostgresControlPlane:
 
     async def get_api_key(self, key_id: str) -> ApiKeyRecord | None:
         """按标识取 API key。"""
-        row = await self._fetchrow(
-            f"SELECT * FROM {self._t['api_key']} WHERE key_id = $1", key_id
-        )
+        row = await self._fetchrow(f"SELECT * FROM {self._t['api_key']} WHERE key_id = $1", key_id)
         return _api_key(row) if row is not None else None
 
     async def list_api_keys(self, tenant_id: str) -> list[ApiKeyRecord]:
         """列出租户的 API key。"""
         rows = await self._fetch(
-            f"SELECT * FROM {self._t['api_key']} WHERE tenant_id = $1 "
-            "ORDER BY created_at, key_id",
+            f"SELECT * FROM {self._t['api_key']} WHERE tenant_id = $1 ORDER BY created_at, key_id",
             tenant_id,
         )
         return [_api_key(row) for row in rows]
@@ -239,9 +236,7 @@ class PostgresControlPlane:
                 record.published_by,
             )
         except asyncpg.UniqueViolationError as exc:
-            raise ConflictError(
-                f"业务包 {record.name} 的版本 {record.version} 已发布"
-            ) from exc
+            raise ConflictError(f"业务包 {record.name} 的版本 {record.version} 已发布") from exc
 
     async def get_package_version(
         self, tenant_id: str, name: str, version: str
