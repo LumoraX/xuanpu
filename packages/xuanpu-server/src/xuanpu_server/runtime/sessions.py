@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 import taifeng
 
-from xuanpu_server.controlplane.models import SessionRecord
+from xuanpu_server.controlplane.models import AuditQuery, AuditRecord, SessionRecord
 from xuanpu_server.errors import ConflictError, InvalidRequestError, NotFoundError
 from xuanpu_server.ids import new_id
 from xuanpu_server.runtime.events import EngineEventHub, SubmissionIndex, TurnStream
@@ -147,7 +147,7 @@ class SessionManager:
             raise NotFoundError(f"会话 {session_id!r} 不存在")
         return record
 
-    async def list(
+    async def list_sessions(
         self, principal: Principal, *, status: str | None = None, limit: int = 50
     ) -> list[SessionRecord]:
         """列出本租户的会话。"""
@@ -257,6 +257,78 @@ class SessionManager:
             session_id=session_id,
         )
         return turn
+
+    async def pending(self, principal: Principal, session_id: str) -> list[dict[str, Any]]:
+        """会话当前等待处理的审批或表单请求。
+
+        以审计为准（各实例共享）：最近一次挂起里的请求，减去之后已经核销或到期的。
+        """
+        record = await self.get(principal, session_id)
+        query = AuditQuery(session_id=session_id, source="engine", limit=1000)
+        suspended: AuditRecord | None = None
+        settled: set[str] = set()
+        after = 0
+        while True:
+            page = await self._store.query_audit(record.tenant_id, query)
+            for item in page:
+                if item.kind == "turn_suspended":
+                    suspended, settled = item, set()
+                elif suspended is not None and item.kind in (
+                    "suspension_resolved",
+                    "suspension_partially_resolved",
+                    "suspension_expired",
+                ):
+                    if item.data.get("record_id") == suspended.data.get("record_id"):
+                        resolved = item.data.get("resolved_request_ids") or item.data.get(
+                            "request_ids"
+                        )
+                        if item.kind == "suspension_expired" or not isinstance(resolved, list):
+                            suspended = None
+                        else:
+                            settled.update(str(value) for value in resolved)
+            if len(page) < query.limit:
+                break
+            after = page[-1].audit_id
+            query = AuditQuery(
+                session_id=session_id, source="engine", limit=1000, after_id=after
+            )
+        if suspended is None:
+            return []
+        pending = suspended.data.get("pending")
+        if not isinstance(pending, list):
+            return []
+        return [
+            dict(item)
+            for item in pending
+            if isinstance(item, dict) and str(item.get("request_id")) not in settled
+        ]
+
+    async def replay(
+        self, principal: Principal, session_id: str, submission_id: str, *, after_seq: int = -1
+    ) -> list[dict[str, Any]]:
+        """回放一轮对话已经记入审计的事件（流式增量除外；回复全文在 ``turn_text`` 里）。"""
+        record = await self.get(principal, session_id)
+        events: list[dict[str, Any]] = []
+        after = 0
+        while True:
+            page = await self._store.query_audit(
+                record.tenant_id,
+                AuditQuery(
+                    session_id=session_id,
+                    submission_id=submission_id,
+                    source="engine",
+                    after_id=after,
+                    limit=1000,
+                ),
+            )
+            for item in page:
+                if item.seq is not None and item.seq <= after_seq:
+                    continue
+                data = {key: value for key, value in item.data.items() if key != "submission_id"}
+                events.append({"kind": item.kind, "seq": item.seq, "at": item.at, "data": data})
+            if len(page) < 1000:
+                return events
+            after = page[-1].audit_id
 
     async def _detach(self, key: tuple[str, str], *, force: bool) -> None:
         """释放本实例对会话的持有：关引擎、写完审计、放弃租约。"""

@@ -431,7 +431,6 @@ async def test_audit_query_filters_and_pagination(store: ControlPlaneStore) -> N
         "acme", AuditQuery(session_id="s1", since=103.0, until=106.0, source="engine")
     )
     assert [r.seq for r in combined] == [3, 5]
-
     seen: list[int] = []
     after = 0
     for _ in range(10):
@@ -442,6 +441,35 @@ async def test_audit_query_filters_and_pagination(store: ControlPlaneStore) -> N
         after = page[-1].audit_id
     assert len(seen) == 11
     assert seen == sorted(set(seen))
+
+
+async def test_audit_query_by_submission(store: ControlPlaneStore) -> None:
+    """按一轮对话过滤：看记录里的 ``submission_id``。"""
+    await _tenants(store, "acme")
+    await store.append_audit(
+        [
+            AuditRecord(
+                tenant_id="acme",
+                source="engine",
+                kind="turn_text",
+                at=200.0,
+                actor="engine",
+                session_id="s1",
+                data={"submission_id": "sub_x", "text": "全文"},
+            ),
+            AuditRecord(
+                tenant_id="acme",
+                source="engine",
+                kind="turn_text",
+                at=201.0,
+                actor="engine",
+                session_id="s1",
+                data={"submission_id": "sub_y", "text": "别的"},
+            ),
+        ]  # fmt: skip
+    )
+    by_submission = await store.query_audit("acme", AuditQuery(submission_id="sub_x"))
+    assert [r.data["text"] for r in by_submission] == ["全文"]
 
 
 @pytest.mark.parametrize("limit", [0, 1001])

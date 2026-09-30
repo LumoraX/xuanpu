@@ -120,6 +120,22 @@ class Sessions:
         """关闭会话。"""
         return Session.from_json(await self._http.request("DELETE", f"/v1/sessions/{session_id}"))
 
+    async def pending(self, session_id: str) -> Sequence[dict[str, Any]]:
+        """会话当前等待处理的审批或表单请求。"""
+        body = await self._http.request("GET", f"/v1/sessions/{session_id}/pending")
+        return [dict(item) for item in body["pending"]]
+
+    async def replay(
+        self, session_id: str, submission_id: str, *, after_seq: int = -1
+    ) -> Sequence[dict[str, Any]]:
+        """回放一轮对话已记入审计的事件（流式增量除外；回复全文在 ``turn_text`` 里）。"""
+        body = await self._http.request(
+            "GET",
+            f"/v1/sessions/{session_id}/events",
+            params={"submission_id": submission_id, "after_seq": after_seq},
+        )
+        return [dict(item) for item in body["events"]]
+
     def send(self, session_id: str, text: str) -> AsyncIterator[Event]:
         """发一条消息，逐条产出这一轮对话的事件。"""
         return self._http.stream(f"/v1/sessions/{session_id}/messages", {"text": text})

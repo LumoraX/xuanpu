@@ -126,6 +126,7 @@ class AuditQuery:
 
     Attributes:
         session_id: 只看某个会话。
+        submission_id: 只看某一轮对话（记录 ``data.submission_id`` 等于它的）。
         kind: 只看某种事件。
         source: 只看某个来源。
         since: 只看这个时刻（含）之后的。
@@ -135,6 +136,7 @@ class AuditQuery:
     """
 
     session_id: str | None = None
+    submission_id: str | None = None
     kind: str | None = None
     source: AuditSource | None = None
     since: float | None = None
@@ -151,6 +153,7 @@ class AuditQuery:
         """某条记录是否命中（不含翻页位置与条数）。"""
         checks = (
             self.session_id is None or record.session_id == self.session_id,
+            self.submission_id is None or record.data.get("submission_id") == self.submission_id,
             self.kind is None or record.kind == self.kind,
             self.source is None or record.source == self.source,
             self.since is None or record.at >= self.since,

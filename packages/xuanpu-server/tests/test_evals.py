@@ -58,7 +58,7 @@ async def test_report_marks_each_case(world: Any, step: Any) -> None:
     assert by_name["budget"].reasons == ("消耗 120 token，超过上限 50",)
     assert all(case.session_id for case in report.cases)
 
-    listed = await world.platform.sessions.list(world.admin, status="active")
+    listed = await world.platform.sessions.list_sessions(world.admin, status="active")
     assert listed == []
     audit = await world.platform.store.query_audit("acme", AuditQuery(kind="eval_completed"))
     assert audit[-1].data["failed"] == ["budget", "refund"] or set(audit[-1].data["failed"]) == {

@@ -551,6 +551,7 @@ class PostgresControlPlane:
             "AND ($5::text IS NULL OR source = $5) "
             "AND ($6::float8 IS NULL OR at >= $6) "
             "AND ($7::float8 IS NULL OR at < $7) "
+            "AND ($9::text IS NULL OR data->>'submission_id' = $9) "
             "ORDER BY audit_id LIMIT $8",
             tenant_id,
             query.after_id,
@@ -560,6 +561,7 @@ class PostgresControlPlane:
             query.since,
             query.until,
             query.limit,
+            query.submission_id,
         )
         return [_audit(row) for row in rows]
 

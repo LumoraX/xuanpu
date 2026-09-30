@@ -139,7 +139,7 @@ async def test_tenants_cannot_see_each_other(world: Any, step: Any, read_turn: A
         await world.platform.sessions.resume(outsider, session.session_id, {"r": {}})
     with pytest.raises(NotFoundError):
         await world.platform.sessions.close(outsider, session.session_id)
-    assert await world.platform.sessions.list(outsider) == []
+    assert await world.platform.sessions.list_sessions(outsider) == []
     assert await world.platform.packages.list_versions("globex") == []
     assert await world.platform.vault.names("globex") == []
     with pytest.raises(SecretMissingError):
@@ -446,7 +446,8 @@ async def test_closed_session_rejects_messages(world: Any, step: Any, read_turn:
     with pytest.raises(ConflictError, match="已关闭"):
         await world.platform.sessions.send_message(world.member, session.session_id, "还在吗")
     assert [
-        s.session_id for s in await world.platform.sessions.list(world.member, status="active")
+        s.session_id
+        for s in await world.platform.sessions.list_sessions(world.member, status="active")
     ] == []
 
 

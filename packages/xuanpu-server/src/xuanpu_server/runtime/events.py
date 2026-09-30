@@ -158,6 +158,8 @@ class EngineEventHub:
         # 引擎每次被创建是一条新的事件流，序号从头计
         self._stream_id = "st_" + secrets.token_hex(8)
         self._streams: dict[str, TurnStream] = {}
+        # 每轮对话的流式文本：增量本身不进审计，结束时落一条拼好的全文供回放
+        self._texts: dict[str, list[str]] = {}
         self._buffer: list[AuditRecord] = []
         self._expected_delivery = 0
         self._task: asyncio.Task[None] | None = None
@@ -220,9 +222,15 @@ class EngineEventHub:
                 self._streams.pop(event.submission_id, None)
 
         kind = event.msg.kind
+        if kind == "assistant_text":
+            self._texts.setdefault(event.submission_id, []).append(
+                str(event.msg.data.get("delta", ""))
+            )
         if kind not in STREAMING_KINDS and (kind not in SENSITIVE_KINDS or self._capture_requests):
             self._buffer.append(self._record(kind, event, dict(event.msg.data), seq=event.seq))
         if is_terminal(event):
+            text = "".join(self._texts.pop(event.submission_id, []))
+            self._buffer.append(self._record("turn_text", event, {"text": text}, seq=None))
             await self._account(event)
             await self._flush()
         elif len(self._buffer) >= _FLUSH_SIZE:

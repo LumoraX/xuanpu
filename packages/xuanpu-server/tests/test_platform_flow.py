@@ -63,7 +63,7 @@ async def test_plain_conversation(world: Any, step: Any, read_turn: Any) -> None
     recorded = await audit_kinds(world, session_id=session.session_id)
     assert recorded[0] == "session_created"
     assert "turn_started" in recorded
-    assert recorded[-1] == "turn_completed"
+    assert recorded[-2:] == ["turn_completed", "turn_text"]
     # 流式增量不进审计
     assert "assistant_text" not in recorded
 

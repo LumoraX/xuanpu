@@ -47,6 +47,8 @@
 | `POST /v1/packages/{name}/evals` | 租户管理员 | 运行评测用例，返回报告；可指定 `version`、`names` |
 | `POST /v1/sessions` · `GET /v1/sessions` | 租户成员 | 新建、列出会话 |
 | `GET /v1/sessions/{id}` · `DELETE /v1/sessions/{id}` | 租户成员 | 取会话、关闭会话 |
+| `GET /v1/sessions/{id}/pending` | 租户成员 | 会话当前等待处理的审批或表单请求 |
+| `GET /v1/sessions/{id}/events?submission_id=&after_seq=` | 租户成员 | 回放一轮对话已记入审计的事件（断线后补齐） |
 | `POST /v1/sessions/{id}/messages` | 租户成员 | 发消息；响应是事件流 |
 | `POST /v1/sessions/{id}/resume` | 租户成员 | 送回审批结果；响应是事件流 |
 | `GET /v1/audit` | 租户管理员 | 查询审计，按 `next_after_id` 翻页 |
@@ -80,6 +82,8 @@ data: {"submission_id": "sub_…", "overflowed": false}
 - 之后每条内核事件一帧，事件名就是事件类型。
 - 一轮对话以 `turn_completed`、`turn_failed` 或 `turn_suspended` 结束，最后补一帧 `end`。
 - 含完整提示词的事件不外发。
+
+调用方在本轮结束前断开时，用 `GET /v1/sessions/{id}/events?submission_id=…` 回放：里面是已记入审计的事件（不含流式增量），本轮结束时另有一条 `turn_text` 带着拼好的回复全文。
 
 ## 审批
 

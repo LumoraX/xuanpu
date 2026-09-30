@@ -282,7 +282,7 @@ def create_app(platform: Platform) -> FastAPI:  # noqa: PLR0915, C901 —— 路
         limit: Annotated[int, Query(ge=1, le=200)] = 50,
     ) -> dict[str, Any]:
         """列出本租户的会话。"""
-        records = await platform.sessions.list(who, status=status, limit=limit)
+        records = await platform.sessions.list_sessions(who, status=status, limit=limit)
         return {"sessions": [schemas.session_view(record) for record in records]}
 
     @app.get("/v1/sessions/{session_id}")
@@ -294,6 +294,22 @@ def create_app(platform: Platform) -> FastAPI:  # noqa: PLR0915, C901 —— 路
     async def close_session(session_id: str, who: Caller) -> dict[str, Any]:
         """关闭会话。进行中的对话会被取消。"""
         return schemas.session_view(await platform.sessions.close(who, session_id))
+
+    @app.get("/v1/sessions/{session_id}/pending")
+    async def pending_requests(session_id: str, who: Caller) -> dict[str, Any]:
+        """会话当前等待处理的审批或表单请求。"""
+        return {"pending": await platform.sessions.pending(who, session_id)}
+
+    @app.get("/v1/sessions/{session_id}/events")
+    async def replay_events(
+        session_id: str,
+        who: Caller,
+        submission_id: Annotated[str, Query()],
+        after_seq: Annotated[int, Query(ge=-1)] = -1,
+    ) -> dict[str, Any]:
+        """回放一轮对话已记入审计的事件：断线之后用它补齐，而不是重发消息。"""
+        events = await platform.sessions.replay(who, session_id, submission_id, after_seq=after_seq)
+        return {"submission_id": submission_id, "events": events}
 
     @app.post("/v1/sessions/{session_id}/messages")
     async def send_message(
