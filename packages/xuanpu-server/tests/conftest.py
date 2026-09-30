@@ -27,7 +27,7 @@ from xuanpu_server.controlplane import InMemoryControlPlane
 from xuanpu_server.controlplane.postgres import PostgresControlPlane
 from xuanpu_server.controlplane.schema import apply_migrations
 from xuanpu_server.platform import ROOT_PRINCIPAL, Platform
-from xuanpu_server.runtime import LocalSandboxProvider
+from xuanpu_server.runtime import DockerSandboxProvider, LocalSandboxProvider
 from xuanpu_server.secrets import EncryptedVault, generate_master_key
 from xuanpu_server.tenancy import generate_root_key
 from xuanpu_spec import pack_package
@@ -408,9 +408,22 @@ def step() -> type[Step]:
     return Step
 
 
-@pytest.fixture
-async def world(tmp_path: Path) -> AsyncIterator[World]:
-    """装配好的平台：内存控制面、脚本化模型、本机沙盒；已有一个租户、两把凭据、一条密钥。"""
+def _sandbox_provider(kind: str) -> Any:
+    """按参数选沙盒供给方。Docker 变体在没有 Docker 时跳过。"""
+    if kind == "local":
+        return LocalSandboxProvider()
+    if not _docker_available():
+        pytest.skip("没有可用的 Docker 守护进程")
+    env = {"PATH": os.environ["PATH"], "HOME": os.environ["HOME"]}
+    if "DOCKER_HOST" in os.environ:
+        env["DOCKER_HOST"] = os.environ["DOCKER_HOST"]
+    return DockerSandboxProvider(image="python:3.12-slim", docker_env=env, memory_mb=256)
+
+
+@pytest.fixture(params=["local"])
+async def world(request: pytest.FixtureRequest, tmp_path: Path) -> AsyncIterator[World]:
+    """装配好的平台：内存控制面、脚本化模型、沙盒（默认本机隔离，可参数化为 Docker）；
+    已有一个租户、两把凭据、一条密钥。"""
     data_dir = (tmp_path / "data").resolve()
     data_dir.mkdir()
     store = InMemoryControlPlane()
@@ -420,7 +433,7 @@ async def world(tmp_path: Path) -> AsyncIterator[World]:
         store=store,
         vault=EncryptedVault(store, keys={"k1": generate_master_key()}, primary="k1"),
         models=models,
-        sandboxes=LocalSandboxProvider(),
+        sandboxes=_sandbox_provider(request.param),
         data_dir=data_dir,
         root_key_hash=root_hash,
         instance_id="inst-test",

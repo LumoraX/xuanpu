@@ -33,6 +33,7 @@ for name, path in targets.items():
     except OSError:
         out["read_" + name] = None
 out["env"] = sorted(os.environ)
+out["platform"] = sys.platform
 try:
     import socket
     socket.create_connection(("127.0.0.1", int(targets.get("port", "9"))), timeout=2)
@@ -43,10 +44,19 @@ print(json.dumps(out))
 """
 
 
+@pytest.mark.parametrize("world", ["local", "docker"], indirect=True)
 async def test_script_is_confined(
-    world: Any, step: Any, read_turn: Any, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+    request: pytest.FixtureRequest,
+    world: Any,
+    step: Any,
+    read_turn: Any,
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """脚本只能写工作区；平台数据目录里别处的文件读不到也写不了；拿不到宿主环境变量。"""
+    """脚本只能写工作区；平台数据目录里别处的文件读不到也写不了；拿不到宿主环境变量。
+
+    本机隔离与 Docker 两种沙盒都要满足同一组断言。
+    """
     monkeypatch.setenv("HOST_ONLY_SECRET", "host-leak-value")
     archive_root = world.package_dir / "probe"
     world.archive()
@@ -113,6 +123,9 @@ async def test_script_is_confined(
     payload = completed.msg.data["output"]
     report = json.loads(payload[payload.index("{") : payload.rindex("}") + 1])
 
+    runtime = next(iter(world.platform.runtimes._runtimes.values()))  # noqa: SLF001
+    assert runtime.sandbox.backend == request.node.callspec.params["world"]
+    assert report["platform"] == ("linux" if runtime.sandbox.backend == "docker" else sys.platform)
     assert report["write_workspace"] is True
     assert report["write_other_tenant"] is False
     assert report["read_other_tenant"] is None
