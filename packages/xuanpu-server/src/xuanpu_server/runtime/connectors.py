@@ -1,13 +1,14 @@
-"""连接器：把业务包声明的 MCP server 接成模型可用的工具。
+"""连接器：把业务包声明的外部能力接成模型可用的工具。
 
 连接器是业务方扩展平台能力的通道（ADR 0002），也是效应面的一个闸门（ADR 0004 决策 3）。
-每次调用依次经过：白名单 → 审批 → 调用 → 审计。
+两种传输共用同一个闸门，每次调用依次经过：白名单 → 审批 → 调用 → 审计。
 
-凭据注入：业务包里只写密钥名；启动连接器进程时从保管库取出明文，放进它的环境变量。
-进程的环境只有清单里声明的变量加上平台给的最小集合，不继承平台进程自己的环境。
+- ``stdio``：平台启动业务包声明的 MCP server 进程。只用内核稳定层的 ``McpStdioClient``
+  自行包装工具；进程跑在平台节点上（见 ``docs/architecture/kernel-seam-backlog.md`` 第 6、7 项）。
+- ``http``：按业务包里的 OpenAPI 文档直接调用 HTTP 接口，每个 operation 是一个工具
+  （调用细节在 ``http_api.py``）。
 
-第一版只用内核稳定层的 ``McpStdioClient`` 自行包装工具；连接器进程跑在平台节点上
-（见 ``docs/architecture/kernel-seam-backlog.md`` 第 6、7 项）。
+凭据注入：业务包里只写密钥名；明文在启动连接器进程或发出 HTTP 请求时才从保管库取出。
 """
 
 from __future__ import annotations
@@ -16,17 +17,20 @@ import asyncio
 import json
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import taifeng
-from xuanpu_spec import connector_tool_name
+from xuanpu_spec import OpenApiError, load_openapi
 
 from xuanpu_server.audit import digest_arguments
-from xuanpu_server.errors import RuntimeUnavailableError
+from xuanpu_server.errors import PackageInvalidError, PlatformError, RuntimeUnavailableError
+from xuanpu_server.runtime.http_api import ConnectorCallError, HttpApiClient, resolve_base_url
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+    from pathlib import Path
 
     from xuanpu_spec.manifest import ConnectorSpec, Effect
 
@@ -51,6 +55,9 @@ _EFFECT_KIND: dict[str, str] = {
     "external": "external_non_idempotent",
 }
 
+# 一次调用的实现：参数 → (给模型看的文本, 是否出错)
+Invoke = Callable[[dict[str, Any]], Awaitable[tuple[str, bool]]]
+
 
 @dataclass(frozen=True)
 class ConnectorTool:
@@ -65,6 +72,25 @@ class ConnectorTool:
     def name(self) -> str:
         """模型看到的工具名。"""
         return self.spec.name
+
+
+@dataclass(frozen=True)
+class _Pending:
+    """已列出、等权限策略生成之后再建的工具。"""
+
+    spec: ConnectorSpec
+    tool: str
+    effect: Effect
+    description: str
+    input_schema: dict[str, Any]
+    invoke: Invoke
+
+
+def truncate(text: str) -> str:
+    """给模型看的文本有上限，超出部分截掉并说明。"""
+    if len(text) > _MAX_OUTPUT_CHARS:
+        return text[:_MAX_OUTPUT_CHARS] + f"\n…[共 {len(text)} 字符，已截断]"
+    return text
 
 
 def render_result(result: Mapping[str, Any]) -> tuple[str, bool]:
@@ -82,21 +108,20 @@ def render_result(result: Mapping[str, Any]) -> tuple[str, bool]:
     structured = result.get("structuredContent")
     if structured is not None and not parts:
         parts.append(json.dumps(structured, ensure_ascii=False))
-    text = "\n".join(parts)
-    if len(text) > _MAX_OUTPUT_CHARS:
-        text = text[:_MAX_OUTPUT_CHARS] + f"\n…[共 {len(text)} 字符，已截断]"
-    return text, bool(result.get("isError"))
+    return truncate("\n".join(parts)), bool(result.get("isError"))
 
 
 class ConnectorGate:
-    """一个连接器工具的闸门：审批、调用、审计。"""
+    """一个连接器工具的闸门：审批、调用、审计。与传输方式无关。"""
 
     def __init__(
         self,
         *,
-        client: taifeng.McpStdioClient,
+        invoke: Invoke,
         connector: str,
+        transport: str,
         tool: str,
+        full_name: str,
         effect: Effect,
         tenant_id: str,
         policy: taifeng.PermissionPolicy,
@@ -105,16 +130,17 @@ class ConnectorGate:
         timeout_seconds: float,
     ) -> None:
         """绑定一个工具。"""
-        self._submissions = submissions
-        self._client = client
+        self._invoke = invoke
         self._connector = connector
+        self._transport = transport
         self._tool = tool
         self._effect = effect
         self._tenant_id = tenant_id
         self._policy = policy
         self._audit = audit
+        self._submissions = submissions
         self._timeout = timeout_seconds
-        self.full_name = connector_tool_name(connector, tool)
+        self.full_name = full_name
 
     async def _record(
         self,
@@ -132,6 +158,7 @@ class ConnectorGate:
             "connector_call",
             {
                 "connector": self._connector,
+                "transport": self._transport,
                 "tool": self._tool,
                 "effect": self._effect,
                 "decision": decision,
@@ -155,7 +182,7 @@ class ConnectorGate:
             taifeng.PermissionRequest(
                 scope="tool_use",
                 target=self.full_name,
-                reason=f"调用连接器 {self._connector} 的工具 {self._tool}（{self._effect}）",
+                reason=f"调用连接器 {self._connector} 的 {self._tool}（{self._effect}）",
                 metadata={"call_id": ctx.call_id, "thread_id": ctx.thread_id, "args": args},
             )
         )
@@ -167,20 +194,23 @@ class ConnectorGate:
                 f"permission_denied: {decision.reason}", reason="permission_denied"
             )
         try:
-            result = await asyncio.wait_for(
-                self._client.call_tool(self._tool, args), timeout=self._timeout
-            )
+            text, is_error = await asyncio.wait_for(self._invoke(args), timeout=self._timeout)
         except TimeoutError:
             await self._record(
                 ctx, args, decision="allowed", started=started, is_error=True, detail="timeout"
             )
             return taifeng.ToolResult.error("connector_timeout", reason="timeout")
-        except taifeng.McpToolError as exc:
+        except (taifeng.McpToolError, ConnectorCallError) as exc:
             await self._record(
                 ctx, args, decision="allowed", started=started, is_error=True, detail=str(exc)
             )
             return taifeng.ToolResult.error(f"connector_error: {exc}", reason="connector_error")
-        text, is_error = render_result(result)
+        except PlatformError as exc:
+            # 调用途中平台侧出了问题（比如密钥刚被删掉）：记下来，告诉模型这次调用没成
+            await self._record(
+                ctx, args, decision="allowed", started=started, is_error=True, detail=exc.code
+            )
+            return taifeng.ToolResult.error(f"{exc.code}: {exc.message}", reason=exc.code)
         await self._record(ctx, args, decision="allowed", started=started, is_error=is_error)
         if is_error:
             return taifeng.ToolResult.error(text or "connector_error", reason="tool_error")
@@ -208,7 +238,7 @@ class ConnectorSet:
             audit: 审计写入口。
             submissions: submission → 会话的对照表，过闸记录据此归到会话名下。
             base_env: 连接器进程的基础环境。
-            call_timeout_seconds: 单次工具调用的超时。
+            call_timeout_seconds: 单次工具调用的超时（HTTP 连接器另受清单里的超时约束）。
             startup_timeout_seconds: 启动连接器并列出工具的超时。
         """
         self._tenant_id = tenant_id
@@ -218,8 +248,27 @@ class ConnectorSet:
         self._base_env = dict(base_env)
         self._call_timeout = call_timeout_seconds
         self._startup_timeout = startup_timeout_seconds
-        self._clients: list[taifeng.McpStdioClient] = []
-        self._pending: list[tuple[ConnectorSpec, taifeng.McpStdioClient, dict[str, Any]]] = []
+        self._mcp_clients: list[taifeng.McpStdioClient] = []
+        self._http_clients: list[HttpApiClient] = []
+        self._pending: list[_Pending] = []
+
+    async def start(self, spec: ConnectorSpec, *, package_root: Path) -> dict[str, Effect]:
+        """接入一个连接器并列出它的工具，返回「完整工具名 → 副作用分类」。
+
+        此时还不生成工具：工具的处理函数要用到权限策略，而策略要等所有连接器的工具
+        都列出来之后才能生成。
+
+        Raises:
+            SecretMissingError: 引用的密钥尚未配置。
+            RuntimeUnavailableError: 连接器起不来，或没有提供清单里声明的工具。
+            PackageInvalidError: OpenAPI 文档读不出来。
+        """
+        if spec.transport == "http":
+            found = await self._start_http(spec, package_root)
+        else:
+            found = await self._start_stdio(spec, str(package_root))
+        self._pending.extend(found)
+        return {spec.tool_name(item.tool): item.effect for item in found}
 
     async def _environment(self, spec: ConnectorSpec) -> dict[str, str]:
         """连接器进程的完整环境：基础环境加清单声明的变量，密钥在此解析成明文。"""
@@ -232,16 +281,8 @@ class ConnectorSet:
                 env[name] = item.value
         return env
 
-    async def start(self, spec: ConnectorSpec, *, cwd: str) -> dict[str, Effect]:
-        """启动一个连接器并列出它的工具，返回「完整工具名 → 副作用分类」。
-
-        此时还不生成工具：工具的处理函数要用到权限策略，而策略要等所有连接器的工具
-        都列出来之后才能生成。
-
-        Raises:
-            SecretMissingError: 引用的密钥尚未配置。
-            RuntimeUnavailableError: 连接器起不来，或没有提供清单里声明的工具。
-        """
+    async def _start_stdio(self, spec: ConnectorSpec, cwd: str) -> list[_Pending]:
+        """启动 MCP server 进程并列出工具。"""
         env = await self._environment(spec)
         try:
             client = await asyncio.wait_for(
@@ -257,52 +298,121 @@ class ConnectorSet:
             raise RuntimeUnavailableError(
                 f"连接器 {spec.name!r} 启动失败：{type(exc).__name__}"
             ) from exc
-        self._clients.append(client)
+        self._mcp_clients.append(client)
         listed = {str(tool["name"]): tool for tool in await client.list_tools() if "name" in tool}
         missing = [tool.name for tool in spec.tools if tool.name not in listed]
         if missing:
             raise RuntimeUnavailableError(
                 f"连接器 {spec.name!r} 没有提供清单里声明的工具：{', '.join(missing)}"
             )
-        effects: dict[str, Effect] = {}
+
+        def invoker(name: str) -> Invoke:
+            async def invoke(args: dict[str, Any]) -> tuple[str, bool]:
+                return render_result(await client.call_tool(name, args))
+
+            return invoke
+
+        found: list[_Pending] = []
         for name, meta in listed.items():
-            if spec.allows(name):
-                effects[connector_tool_name(spec.name, name)] = spec.effect_of(name)
-                self._pending.append((spec, client, meta))
-        return effects
+            if not spec.allows(name):
+                continue
+            schema = meta.get("inputSchema")
+            found.append(
+                _Pending(
+                    spec=spec,
+                    tool=name,
+                    effect=spec.effect_of(name),
+                    description=str(meta.get("description") or f"{spec.name} / {name}"),
+                    input_schema=schema if isinstance(schema, dict) else {"type": "object"},
+                    invoke=invoker(name),
+                )
+            )
+        return found
+
+    async def _start_http(self, spec: ConnectorSpec, package_root: Path) -> list[_Pending]:
+        """读 OpenAPI 文档，把白名单内的 operation 列成工具。不发起任何网络请求。"""
+        assert spec.openapi is not None
+        try:
+            document = await asyncio.to_thread(load_openapi, package_root / spec.openapi)
+        except OpenApiError as exc:
+            raise PackageInvalidError(f"连接器 {spec.name!r} 的 OpenAPI 文档：{exc}") from exc
+        missing = [tool.name for tool in spec.tools if tool.name not in document.operations]
+        if missing:
+            raise RuntimeUnavailableError(
+                f"连接器 {spec.name!r} 的 OpenAPI 文档里没有这些 operation：{', '.join(missing)}"
+            )
+        if spec.auth is not None:
+            # 组装时就确认凭据已配置（与 stdio 连接器一致：缺密钥时对话起不来，而不是跑到一半才失败）。
+            # 取值不保留，调用时再现取
+            await self._vault.get(self._tenant_id, spec.auth.secret)
+        client = HttpApiClient(
+            base_url=resolve_base_url(spec, document),
+            auth=spec.auth,
+            tenant_id=self._tenant_id,
+            vault=self._vault,
+            timeout_seconds=min(spec.timeout_seconds, self._call_timeout),
+        )
+        self._http_clients.append(client)
+
+        def invoker(operation_id: str) -> Invoke:
+            operation = document.operations[operation_id]
+
+            async def invoke(args: dict[str, Any]) -> tuple[str, bool]:
+                text, is_error = await client.call(operation, args)
+                return truncate(text), is_error
+
+            return invoke
+
+        found: list[_Pending] = []
+        for operation_id, operation in document.operations.items():
+            if not spec.allows(operation_id):
+                continue
+            found.append(
+                _Pending(
+                    spec=spec,
+                    tool=operation_id,
+                    effect=spec.effect_of(operation_id, read_only=operation.read_only),
+                    description=operation.summary or f"{operation.method.upper()} {operation.path}",
+                    input_schema=operation.input_schema(),
+                    invoke=invoker(operation_id),
+                )
+            )
+        return found
 
     def build_tools(self, policy: taifeng.PermissionPolicy) -> list[ConnectorTool]:
         """用最终的权限策略生成全部工具。"""
         tools: list[ConnectorTool] = []
-        for spec, client, meta in self._pending:
-            name = str(meta["name"])
-            effect = spec.effect_of(name)
+        for item in self._pending:
+            timeout = self._call_timeout
+            if item.spec.transport == "http":
+                timeout = min(item.spec.timeout_seconds, self._call_timeout)
             gate = ConnectorGate(
-                client=client,
-                connector=spec.name,
-                tool=name,
-                effect=effect,
+                invoke=item.invoke,
+                connector=item.spec.name,
+                transport=item.spec.transport,
+                tool=item.tool,
+                full_name=item.spec.tool_name(item.tool),
+                effect=item.effect,
                 tenant_id=self._tenant_id,
                 policy=policy,
                 audit=self._audit,
                 submissions=self._submissions,
-                timeout_seconds=self._call_timeout,
+                timeout_seconds=timeout,
             )
-            schema = meta.get("inputSchema")
             tools.append(
                 ConnectorTool(
-                    connector=spec.name,
-                    tool=name,
-                    effect=effect,
+                    connector=item.spec.name,
+                    tool=item.tool,
+                    effect=item.effect,
                     spec=taifeng.ToolSpec(
                         name=gate.full_name,
-                        description=str(meta.get("description") or f"{spec.name} / {name}"),
-                        input_schema=schema if isinstance(schema, dict) else {"type": "object"},
+                        description=item.description,
+                        input_schema=item.input_schema,
                         handler=gate,
-                        parallel_safe=effect == "read",
+                        parallel_safe=item.effect == "read",
                         # 内核自己的超时留出余量，让闸门先超时并写下审计
-                        timeout_seconds=self._call_timeout + 5.0,
-                        effect_kind=_EFFECT_KIND[effect],
+                        timeout_seconds=timeout + 5.0,
+                        effect_kind=_EFFECT_KIND[item.effect],
                         can_suspend=True,
                     ),
                 )
@@ -310,19 +420,23 @@ class ConnectorSet:
         return tools
 
     async def close(self) -> None:
-        """关闭全部连接器进程。"""
-        clients, self._clients, self._pending = self._clients, [], []
-        for client in clients:
+        """关闭全部连接器进程与 HTTP 连接。"""
+        mcp, self._mcp_clients = self._mcp_clients, []
+        http, self._http_clients = self._http_clients, []
+        self._pending = []
+        for closer in [client.close for client in mcp] + [client.close for client in http]:
             try:
-                await client.close()
+                await closer()
             except Exception:
-                logger.exception("关闭连接器进程失败")
+                logger.exception("关闭连接器失败")
 
 
 __all__ = [
     "DEFAULT_BASE_ENV",
+    "ConnectorCallError",
     "ConnectorGate",
     "ConnectorSet",
     "ConnectorTool",
     "render_result",
+    "truncate",
 ]

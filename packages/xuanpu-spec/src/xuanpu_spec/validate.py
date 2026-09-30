@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING
 
 from xuanpu_spec.errors import ManifestError
 from xuanpu_spec.loader import load_manifest
-from xuanpu_spec.manifest import MANIFEST_FILENAME, PackageManifest
+from xuanpu_spec.manifest import MANIFEST_FILENAME, ConnectorSpec, PackageManifest
+from xuanpu_spec.openapi import ApiDocument, OpenApiError, load_openapi
 from xuanpu_spec.skills import scan_skills
 
 if TYPE_CHECKING:
@@ -17,11 +18,22 @@ if TYPE_CHECKING:
     from xuanpu_spec.skills import SkillSummary
 
 MCP_TOOL_PREFIX = "mcp__"
+API_TOOL_PREFIX = "api__"
+_TOOL_PREFIXES = (MCP_TOOL_PREFIX, API_TOOL_PREFIX)
 
 
 def connector_tool_name(connector: str, tool: str) -> str:
-    """模型看到的连接器工具名。"""
+    """模型看到的 MCP 连接器工具名。HTTP 连接器的工具名见 ``ConnectorSpec.tool_name``。"""
     return f"{MCP_TOOL_PREFIX}{connector}__{tool}"
+
+
+def split_tool_name(tool_name: str) -> tuple[str, str, str] | None:
+    """把工具名拆成 ``(前缀, 连接器名, 工具名)``；不是连接器工具返回 None。"""
+    for prefix in _TOOL_PREFIXES:
+        if tool_name.startswith(prefix):
+            connector, _, tool = tool_name[len(prefix) :].partition("__")
+            return prefix, connector, tool
+    return None
 
 
 @dataclass(frozen=True)
@@ -95,24 +107,57 @@ def _check_skills(
 def _check_tool_references(
     manifest: PackageManifest, skills: list[SkillSummary], findings: _Findings
 ) -> None:
-    """skill 引用的连接器工具必须对应清单里声明的连接器与白名单。"""
+    """skill 引用的连接器工具必须对应清单里声明的连接器、正确的前缀与白名单。"""
     connectors = {connector.name: connector for connector in manifest.spec.connectors}
     for skill in skills:
         for tool_name in skill.tool_names:
-            if not tool_name.startswith(MCP_TOOL_PREFIX):
+            parts = split_tool_name(tool_name)
+            if parts is None:
                 continue
-            connector_name, _, tool = tool_name[len(MCP_TOOL_PREFIX) :].partition("__")
+            prefix, connector_name, tool = parts
             connector = connectors.get(connector_name)
             if connector is None or not tool:
                 findings.errors.append(
                     f"skill {skill.skill_id!r} 引用了工具 {tool_name!r}，"
                     f"但清单里没有连接器 {connector_name!r}"
                 )
+            elif connector.tool_prefix != prefix + connector_name + "__":
+                findings.errors.append(
+                    f"skill {skill.skill_id!r} 引用的工具 {tool_name!r} 前缀与连接器 "
+                    f"{connector_name!r} 的传输方式不符（应为 {connector.tool_prefix}…）"
+                )
             elif not connector.allows(tool):
                 findings.errors.append(
                     f"skill {skill.skill_id!r} 引用了工具 {tool_name!r}，"
                     f"但它不在连接器 {connector_name!r} 的工具白名单里"
                 )
+
+
+def _check_http_connector(
+    root: Path, connector: ConnectorSpec, findings: _Findings
+) -> ApiDocument | None:
+    """HTTP 连接器：文档要读得出来，白名单里的 operation 要存在，基地址要有着落。"""
+    assert connector.openapi is not None
+    if not is_safe_relative(connector.openapi):
+        findings.errors.append(f"连接器 {connector.name!r} 的 openapi 必须是包内的相对路径")
+        return None
+    try:
+        document = load_openapi(root / connector.openapi)
+    except OpenApiError as exc:
+        findings.errors.append(f"连接器 {connector.name!r} 的 OpenAPI 文档：{exc}")
+        return None
+    for tool in connector.tools:
+        if tool.name not in document.operations:
+            findings.errors.append(
+                f"连接器 {connector.name!r} 的白名单里有 {tool.name!r}，但 OpenAPI 文档里没有这个 operation"
+            )
+    if connector.base_url is None and not any(
+        server.startswith(("http://", "https://")) for server in document.servers
+    ):
+        findings.errors.append(
+            f"连接器 {connector.name!r} 没有 baseUrl，OpenAPI 文档里也没有绝对地址的 servers"
+        )
+    return document
 
 
 def _check_policy(manifest: PackageManifest, findings: _Findings) -> None:
@@ -139,6 +184,9 @@ def validate_package(root: Path) -> ValidationReport:
         findings.errors.append(f"skills.dir 必须是包内的相对路径：{skills_dir!r}")
     else:
         _check_skills(manifest, scan_skills(root / skills_dir), findings)
+    for connector in manifest.spec.connectors:
+        if connector.transport == "http":
+            _check_http_connector(root, connector, findings)
     _check_policy(manifest, findings)
     return ValidationReport(
         manifest=manifest, errors=tuple(findings.errors), warnings=tuple(findings.warnings)
@@ -146,9 +194,11 @@ def validate_package(root: Path) -> ValidationReport:
 
 
 __all__ = [
+    "API_TOOL_PREFIX",
     "MCP_TOOL_PREFIX",
     "ValidationReport",
     "connector_tool_name",
     "is_safe_relative",
+    "split_tool_name",
     "validate_package",
 ]

@@ -34,7 +34,7 @@ taifeng
 | 平面 | 职责 | 模块 |
 | --- | --- | --- |
 | 计算面 | 组装并承载内核引擎、会话租约、事件分发 | `runtime/assembler.py`、`runtime/sessions.py`、`runtime/events.py` |
-| 效应面 | 副作用的出口：沙盒、连接器、模型 | `runtime/sandbox.py`、`runtime/connectors.py`、`runtime/models.py`、`runtime/approval.py` |
+| 效应面 | 副作用的出口：沙盒、连接器（MCP 与 HTTP）、模型 | `runtime/sandbox.py`、`runtime/connectors.py`、`runtime/http_api.py`、`runtime/models.py`、`runtime/approval.py` |
 | 状态面 | 会话消息、线程目录、长期记忆 | `bootstrap.py` 里的 `PostgresStateBackends`，实现来自 taifeng-stores |
 | 治理面 | 租户、凭据、业务包版本、密钥、配额、审计、用量、评测 | `platform.py`、`tenancy.py`、`packages.py`、`secrets.py`、`quota.py`、`audit.py`、`evals.py`、`controlplane/` |
 
@@ -91,7 +91,7 @@ SessionManager.send_message
 | 出口 | 放行条件 | 审计 |
 | --- | --- | --- |
 | 沙盒内脚本、命令 | 内核工具层按权限策略检查；需要审批时本轮挂起 | 内核事件（工具调用、脚本执行） |
-| 连接器工具 | 在清单白名单内；按副作用分类与审批强度放行或挂起 | 每次调用一条 `connector_call`：连接器、工具、副作用、决定、耗时、参数摘要 |
+| 连接器工具（MCP 进程或 OpenAPI 描述的 HTTP 接口，共用一个闸门） | 在清单白名单内；按副作用分类与审批强度放行或挂起 | 每次调用一条 `connector_call`：连接器、传输、工具、副作用、决定、耗时、参数摘要 |
 | 模型调用 | 租户可用、当天用量未超、会话预算未超 | 内核事件；开启留痕时另记完整请求 |
 
 审批强度与副作用的对应关系在 `runtime/approval.py` 的文档里。没有被规则覆盖的副作用一律走审批。

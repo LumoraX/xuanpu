@@ -208,7 +208,7 @@ class RuntimeAssembler:
         try:
             effects: dict[str, Effect] = {}
             for connector in spec.connectors:
-                effects.update(await connectors.start(connector, cwd=str(package.root)))
+                effects.update(await connectors.start(connector, package_root=package.root))
             policy = build_policy(spec.policy.approval, effects)
             sandbox = await self._sandboxes.open(package, self._scoped("workspaces", package))
             pool = await self._create_pool(package, policy, sandbox, connectors)

@@ -465,3 +465,35 @@ async def world(request: pytest.FixtureRequest, tmp_path: Path) -> AsyncIterator
         )
     finally:
         await platform.close()
+
+
+@pytest.fixture
+async def serve() -> AsyncIterator[Any]:
+    """返回一个函数：把一个 ASGI 应用真的跑在本机端口上，返回它的地址。用例结束时全部停掉。"""
+    import socket
+
+    import uvicorn
+
+    running: list[tuple[uvicorn.Server, asyncio.Task[None]]] = []
+
+    async def start(app: Any) -> str:
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = int(probe.getsockname()[1])
+        server = uvicorn.Server(
+            uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
+        )
+        task = asyncio.ensure_future(server.serve())
+        running.append((server, task))
+        for _ in range(200):
+            if server.started:
+                return f"http://127.0.0.1:{port}"
+            await asyncio.sleep(0.02)
+        raise RuntimeError("HTTP 服务没有启动")
+
+    try:
+        yield start
+    finally:
+        for server, task in running:
+            server.should_exit = True
+            await asyncio.wait_for(task, timeout=10)

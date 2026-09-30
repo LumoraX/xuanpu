@@ -26,15 +26,24 @@ from xuanpu_spec.manifest import (
     PolicySpec,
     version_key,
 )
-from xuanpu_spec.validate import ValidationReport, connector_tool_name, validate_package
+from xuanpu_spec.openapi import ApiDocument, OpenApiError, Operation, load_openapi, parse_openapi
+from xuanpu_spec.validate import (
+    ValidationReport,
+    connector_tool_name,
+    split_tool_name,
+    validate_package,
+)
 
 __all__ = [
     "API_VERSION",
     "MANIFEST_FILENAME",
+    "ApiDocument",
     "ArchiveError",
     "ConnectorSpec",
     "EvalCase",
     "ManifestError",
+    "OpenApiError",
+    "Operation",
     "PackageManifest",
     "PackageSpec",
     "PolicySpec",
@@ -45,9 +54,12 @@ __all__ = [
     "connector_tool_name",
     "dump_manifest",
     "load_manifest",
+    "load_openapi",
     "manifest_json_schema",
     "pack_package",
     "parse_manifest",
+    "parse_openapi",
+    "split_tool_name",
     "unpack_package",
     "validate_package",
     "version_key",

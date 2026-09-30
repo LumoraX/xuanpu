@@ -136,37 +136,106 @@ class ConnectorTool(_Strict):
     effect: Effect | None = None
 
 
-class ConnectorSpec(_Strict):
-    """一个 MCP 连接器。
+HttpAuthType = Literal["bearer", "header", "query", "basic"]
+
+
+class HttpAuth(_Strict):
+    """HTTP 连接器的凭据注入方式。取值一律来自密钥保管库，清单里只写名字。
 
     Attributes:
-        name: 连接器名。模型看到的工具名是 ``mcp__<连接器名>__<工具名>``。
+        type: ``bearer`` 放 ``Authorization: Bearer <密钥>``；``header`` 放到 ``header`` 指定的头；
+            ``query`` 放到 ``name`` 指定的查询参数；``basic`` 的密钥取值形如 ``用户:口令``。
+        secret: 密钥名。
+        header: ``type=header`` 时的头名。
+        name: ``type=query`` 时的参数名。
+    """
+
+    type: HttpAuthType
+    secret: Name
+    header: Annotated[str | None, StringConstraints(pattern=r"^[A-Za-z0-9-]{1,64}$")] = None
+    name: Annotated[str | None, StringConstraints(pattern=r"^[A-Za-z0-9_.-]{1,64}$")] = None
+
+    @model_validator(mode="after")
+    def _shape(self) -> HttpAuth:
+        if self.type == "header" and not self.header:
+            raise ValueError("type 为 header 时必须给 header")
+        if self.type == "query" and not self.name:
+            raise ValueError("type 为 query 时必须给 name")
+        if self.type == "header" and self.header and self.header.lower() == "authorization":
+            raise ValueError("Authorization 头请用 type: bearer")
+        return self
+
+
+class ConnectorSpec(_Strict):
+    """一个连接器：业务方接入外部能力的通道。
+
+    两种传输：
+
+    - ``stdio``：由平台启动的 MCP server 进程。模型看到的工具名是 ``mcp__<连接器名>__<工具名>``。
+    - ``http``：按 OpenAPI 文档直接调用的 HTTP 接口，每个 operation 是一个工具，
+      工具名是 ``api__<连接器名>__<operationId>``。
+
+    Attributes:
+        name: 连接器名。
         transport: 传输方式。
         command: ``stdio`` 传输下启动 MCP server 的命令。
         env: 传给 MCP server 进程的环境变量。
+        openapi: ``http`` 传输下 OpenAPI 文档在包内的相对路径。
+        base_url: ``http`` 传输下接口的基地址；不给则用文档 ``servers`` 里的第一个。
+        auth: ``http`` 传输下的凭据注入方式；不给表示接口不需要凭据。
+        timeout_seconds: ``http`` 传输下单次调用的超时。
         effect: 该连接器工具的默认副作用分类；默认按最保守的 ``external``。
-        tools: 工具白名单与逐工具的副作用分类。留空表示开放该 server 的全部工具。
+            ``http`` 传输下 GET / HEAD 的 operation 默认是 ``read``。
+        tools: 工具白名单与逐工具的副作用分类（``http`` 传输下按 operationId）。
+            留空表示开放全部。
     """
 
     name: Name
-    transport: Literal["stdio"] = "stdio"
-    command: Annotated[tuple[str, ...], Field(min_length=1)]
+    transport: Literal["stdio", "http"] = "stdio"
+    command: tuple[str, ...] = ()
     env: dict[EnvName, EnvValue] = Field(default_factory=dict)
+    openapi: RelativePath | None = None
+    base_url: Annotated[str | None, Field(alias="baseUrl")] = None
+    auth: HttpAuth | None = None
+    timeout_seconds: Annotated[float, Field(alias="timeoutSeconds", gt=0, le=600)] = 30.0
     effect: Effect = "external"
     tools: tuple[ConnectorTool, ...] = ()
 
     @model_validator(mode="after")
-    def _tools_unique(self) -> ConnectorSpec:
+    def _shape(self) -> ConnectorSpec:
         names = [tool.name for tool in self.tools]
         if len(set(names)) != len(names):
             raise ValueError("tools 里有重复的工具名")
+        if self.transport == "stdio":
+            if not self.command:
+                raise ValueError("stdio 连接器必须给 command")
+            if self.openapi or self.base_url or self.auth:
+                raise ValueError("openapi / baseUrl / auth 只用于 http 连接器")
+        else:
+            if not self.openapi:
+                raise ValueError("http 连接器必须给 openapi")
+            if self.command or self.env:
+                raise ValueError("command / env 只用于 stdio 连接器")
+            if self.base_url is not None and not self.base_url.startswith(("http://", "https://")):
+                raise ValueError("baseUrl 必须以 http:// 或 https:// 开头")
         return self
 
-    def effect_of(self, tool_name: str) -> Effect:
-        """某个工具的副作用分类：逐工具声明优先，否则用连接器默认值。"""
+    @property
+    def tool_prefix(self) -> str:
+        """模型看到的工具名前缀。"""
+        return f"{'mcp' if self.transport == 'stdio' else 'api'}__{self.name}__"
+
+    def tool_name(self, tool: str) -> str:
+        """模型看到的完整工具名。"""
+        return self.tool_prefix + tool
+
+    def effect_of(self, tool_name: str, *, read_only: bool = False) -> Effect:
+        """某个工具的副作用分类：逐工具声明优先；HTTP 只读 operation 默认 ``read``；否则用连接器默认值。"""
         for tool in self.tools:
             if tool.name == tool_name and tool.effect is not None:
                 return tool.effect
+        if read_only:
+            return "read"
         return self.effect
 
     def allows(self, tool_name: str) -> bool:
@@ -176,7 +245,10 @@ class ConnectorSpec(_Strict):
     @property
     def secret_names(self) -> tuple[str, ...]:
         """该连接器引用的全部密钥名。"""
-        return tuple(sorted({item.secret for item in self.env.values() if item.secret}))
+        found = {item.secret for item in self.env.values() if item.secret}
+        if self.auth is not None:
+            found.add(self.auth.secret)
+        return tuple(sorted(found))
 
 
 class EvalExpectation(_Strict):
@@ -277,6 +349,8 @@ __all__ = [
     "EnvValue",
     "EvalCase",
     "EvalExpectation",
+    "HttpAuth",
+    "HttpAuthType",
     "Metadata",
     "ModelSpec",
     "ModelTier",
