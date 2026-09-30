@@ -75,6 +75,48 @@ class _LiveSession:
         return not self.in_flight
 
 
+_SETTLING_KINDS = frozenset(
+    {"suspension_resolved", "suspension_partially_resolved", "suspension_expired"}
+)
+
+
+class _PendingTracker:
+    """顺着审计记录推算当前还挂着的请求。"""
+
+    def __init__(self) -> None:
+        """从没有挂起开始。"""
+        self._suspended: AuditRecord | None = None
+        self._settled: set[str] = set()
+
+    def observe(self, item: AuditRecord) -> None:
+        """看一条引擎事件。"""
+        if item.kind == "turn_suspended":
+            self._suspended, self._settled = item, set()
+            return
+        if self._suspended is None or item.kind not in _SETTLING_KINDS:
+            return
+        if item.data.get("record_id") != self._suspended.data.get("record_id"):
+            return
+        resolved = item.data.get("resolved_request_ids") or item.data.get("request_ids")
+        if item.kind == "suspension_expired" or not isinstance(resolved, list):
+            self._suspended = None
+        else:
+            self._settled.update(str(value) for value in resolved)
+
+    def remaining(self) -> list[dict[str, Any]]:
+        """还没处理的请求。"""
+        if self._suspended is None:
+            return []
+        pending = self._suspended.data.get("pending")
+        if not isinstance(pending, list):
+            return []
+        return [
+            dict(item)
+            for item in pending
+            if isinstance(item, dict) and str(item.get("request_id")) not in self._settled
+        ]
+
+
 @dataclass(frozen=True)
 class Turn:
     """已提交的一轮对话。"""
@@ -347,42 +389,16 @@ class SessionManager:
         以审计为准（各实例共享）：最近一次挂起里的请求，减去之后已经核销或到期的。
         """
         record = await self.get(principal, session_id)
-        query = AuditQuery(session_id=session_id, source="engine", limit=1000)
-        suspended: AuditRecord | None = None
-        settled: set[str] = set()
+        tracker = _PendingTracker()
         after = 0
         while True:
+            query = AuditQuery(session_id=session_id, source="engine", limit=1000, after_id=after)
             page = await self._store.query_audit(record.tenant_id, query)
             for item in page:
-                if item.kind == "turn_suspended":
-                    suspended, settled = item, set()
-                elif suspended is not None and item.kind in (
-                    "suspension_resolved",
-                    "suspension_partially_resolved",
-                    "suspension_expired",
-                ):
-                    if item.data.get("record_id") == suspended.data.get("record_id"):
-                        resolved = item.data.get("resolved_request_ids") or item.data.get(
-                            "request_ids"
-                        )
-                        if item.kind == "suspension_expired" or not isinstance(resolved, list):
-                            suspended = None
-                        else:
-                            settled.update(str(value) for value in resolved)
+                tracker.observe(item)
             if len(page) < query.limit:
-                break
+                return tracker.remaining()
             after = page[-1].audit_id
-            query = AuditQuery(session_id=session_id, source="engine", limit=1000, after_id=after)
-        if suspended is None:
-            return []
-        pending = suspended.data.get("pending")
-        if not isinstance(pending, list):
-            return []
-        return [
-            dict(item)
-            for item in pending
-            if isinstance(item, dict) and str(item.get("request_id")) not in settled
-        ]
 
     async def replay(
         self, principal: Principal, session_id: str, submission_id: str, *, after_seq: int = -1
