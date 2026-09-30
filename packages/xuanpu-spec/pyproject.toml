@@ -10,13 +10,16 @@ authors = [
 ]
 keywords = ["llm", "agent", "platform", "xuanpu"]
 classifiers = [
-    "Development Status :: 1 - Planning",
+    "Development Status :: 3 - Alpha",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
-# 规范是业务方与平台之间的对外契约，不依赖平台其他组件
-dependencies = []
+# 规范是业务方与平台之间的对外契约，不依赖平台其他组件，也不依赖 taifeng
+dependencies = [
+    "pydantic>=2.6",
+    "pyyaml>=6.0",
+]
 
 [build-system]
 requires = ["hatchling>=1.24"]
