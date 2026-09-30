@@ -1,0 +1,160 @@
+"""配置的解析与校验。"""
+
+from __future__ import annotations
+
+import base64
+from typing import TYPE_CHECKING, Any
+
+import pytest
+import yaml
+from xuanpu_server.config import ConfigError, expand, load_config, parse_config
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+KEY = base64.b64encode(b"k" * 32).decode()
+
+BASE: dict[str, Any] = {
+    "data_dir": "/var/lib/xuanpu",
+    "root_key_hash": "a" * 64,
+    "master_keys": {"k1": KEY},
+    "primary_master_key": "k1",
+    "models": {
+        "base_url": "http://gateway:4000/v1",
+        "api_key": "${GATEWAY_KEY}",
+        "tiers": {
+            "fast": {"model": "small"},
+            "balanced": {"model": "medium"},
+            "deep": {"model": "large", "timeout_seconds": 600},
+        },
+    },
+}
+VARIABLES = {"GATEWAY_KEY": "sk-gateway", "PG": "postgresql://u:p@db/x"}
+
+
+def edited(**changes: Any) -> str:
+    """在合法配置的基础上按双下划线路径改字段；值为 ``...`` 表示删除。"""
+    data = yaml.safe_load(yaml.safe_dump(BASE))
+    for path, value in changes.items():
+        *parents, last = path.split("__")
+        node = data
+        for key in parents:
+            node = node.setdefault(key, {})
+        if value is ...:
+            del node[last]
+        else:
+            node[last] = value
+    return yaml.safe_dump(data)
+
+
+def test_minimal_config_and_defaults() -> None:
+    """最小配置可用；缺省值偏保守：只监听本机、内存控制面、本机沙盒、不留提示词。"""
+    config = parse_config(edited(), variables=VARIABLES)
+    assert config.models.api_key == "sk-gateway"
+    assert config.models.tiers["deep"].timeout_seconds == 600
+    assert (config.listen.host, config.listen.port) == ("127.0.0.1", 8420)
+    assert config.control_plane.backend == "memory"
+    assert config.state.backend == "local"
+    assert config.sandbox.backend == "local"
+    assert config.audit.capture_requests is False
+    assert config.decoded_master_keys() == {"k1": b"k" * 32}
+
+
+def test_postgres_sections() -> None:
+    """Postgres 后端的连接配置。"""
+    config = parse_config(
+        edited(
+            control_plane={"backend": "postgres", "postgres": {"dsn": "${PG}", "schema": "cp"}},
+            state={"backend": "postgres", "postgres": {"dsn": "${PG}", "pool_max": 20}},
+        ),
+        variables=VARIABLES,
+    )
+    assert config.control_plane.postgres is not None
+    assert config.control_plane.postgres.dsn == VARIABLES["PG"]
+    assert config.control_plane.postgres.schema_name == "cp"
+    assert config.state.postgres is not None
+    assert (config.state.postgres.schema_name, config.state.postgres.pool_max) == ("public", 20)
+
+
+def test_expand() -> None:
+    """变量在字符串、映射、列表里都展开；非字符串原样保留。"""
+    value = {"a": "${X}-${Y}", "b": ["${X}", 1, None, True], "c": {"d": "plain"}}
+    assert expand(value, {"X": "1", "Y": "2"}) == {
+        "a": "1-2",
+        "b": ["1", 1, None, True],
+        "c": {"d": "plain"},
+    }
+
+
+def test_undefined_variable_is_an_error() -> None:
+    """引用了没提供的变量要报错，不能悄悄当成空串。"""
+    with pytest.raises(ConfigError, match="GATEWAY_KEY"):
+        parse_config(edited(), variables={})
+
+
+@pytest.mark.parametrize(
+    ("changes", "fragment"),
+    [
+        ({"data_dir": "relative/dir"}, "绝对路径"),
+        ({"root_key_hash": "not-a-hash"}, "root_key_hash"),
+        ({"root_key_hash": "A" * 64}, "root_key_hash"),
+        ({"master_keys": {}}, "master_keys"),
+        ({"master_keys": {"k1": "not base64!!"}}, "base64"),
+        ({"master_keys": {"k1": base64.b64encode(b"short").decode()}}, "32 字节"),
+        ({"primary_master_key": "k9"}, "primary_master_key"),
+        ({"models__api_key": ...}, "只能给一个"),
+        ({"models__api_key_secret": "also"}, "只能给一个"),
+        ({"models__tiers__deep": ...}, "deep"),
+        ({"models__tiers__huge": {"model": "x"}}, "tiers"),
+        ({"listen": {"port": 0}}, "port"),
+        ({"control_plane": {"backend": "postgres"}}, "postgres 段"),
+        ({"control_plane": {"backend": "sqlite"}}, "backend"),
+        ({"state": {"backend": "postgres"}}, "postgres 段"),
+        ({"sandbox": {"backend": "none"}}, "backend"),
+        ({"sandbox": {"memory_mb": 1}}, "memory_mb"),
+        ({"limits": {"max_iterations": 0}}, "max_iterations"),
+        ({"lease_seconds": 1}, "lease_seconds"),
+        ({"unknown_section": {}}, "unknown_section"),
+        ({"audit": {"capture_request": True}}, "capture_request"),
+    ],
+)
+def test_invalid_config(changes: dict[str, Any], fragment: str) -> None:
+    """不合法的取值被拒绝，错误信息指到具体字段；拼错的键不被忽略。"""
+    with pytest.raises(ConfigError) as caught:
+        parse_config(edited(**changes), variables=VARIABLES)
+    assert fragment in str(caught.value)
+
+
+@pytest.mark.parametrize("text", ["", "- a\n", "a: [unclosed"])
+def test_malformed_document(text: str) -> None:
+    """不是映射、不是合法 YAML。"""
+    with pytest.raises(ConfigError):
+        parse_config(text, variables=VARIABLES)
+
+
+def test_load_from_file(tmp_path: Path) -> None:
+    """从文件读取；文件不存在时报配置错误。"""
+    path = tmp_path / "xuanpu.yaml"
+    path.write_text(edited())
+    assert load_config(path, variables=VARIABLES).root_key_hash == "a" * 64
+    with pytest.raises(ConfigError, match="读不到"):
+        load_config(tmp_path / "missing.yaml", variables=VARIABLES)
+
+
+def test_example_config_is_valid() -> None:
+    """仓库里的配置示例要能通过解析，免得示例与代码走偏。"""
+    from pathlib import Path
+
+    example = Path(__file__).resolve().parents[3] / "examples" / "xuanpu.yaml"
+    config = load_config(
+        example,
+        variables={
+            "XUANPU_ROOT_KEY_HASH": "a" * 64,
+            "XUANPU_MASTER_KEY": KEY,
+            "MODEL_GATEWAY_KEY": "sk-x",
+            "XUANPU_PG_DSN": "postgresql://u:p@db/x",
+        },
+    )
+    assert config.control_plane.backend == "postgres"
+    assert config.state.backend == "postgres"
+    assert set(config.models.tiers) == {"fast", "balanced", "deep"}
