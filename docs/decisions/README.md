@@ -7,3 +7,5 @@
 | [0001](0001-positioning-and-layering.md) | 定位与分层 —— 业务方只管业务，平台是 taifeng 之上的发行版 | Accepted |
 | [0002](0002-out-of-process-extensions-only.md) | 业务扩展只走进程外 —— 平台进程内不加载业务方代码 | Accepted |
 | [0003](0003-adopt-mature-components.md) | 成熟组件采用不自研 | Accepted |
+| [0004](0004-planes-and-effect-gates.md) | 平台按「四平面 + 效应闸门」组织，不照搬「CPU + 外设」 | Accepted |
+| [0005](0005-first-release-scope.md) | 第一版的取舍 —— 连接器先内置、密钥先自管、会话靠租约单写 | Accepted |

@@ -1,0 +1,31 @@
+[project]
+name = "xuanpu-cli"
+version = "2026.9.30.1"
+description = "xuanpu 命令行 —— 业务包校验与打包、本地运行、启动平台服务"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [
+    { name = "Xuanpu Contributors" },
+]
+keywords = ["llm", "agent", "platform", "xuanpu"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "xuanpu-spec",
+    "xuanpu-server",
+]
+
+[project.scripts]
+xuanpu = "xuanpu_cli.main:main"
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xuanpu_cli"]

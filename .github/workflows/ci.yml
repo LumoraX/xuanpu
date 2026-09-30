@@ -25,9 +25,43 @@ jobs:
       matrix:
         # 与 pyproject classifiers 声明的受支持版本一一对应
         python-version: ["3.12", "3.13"]
+    # 控制面与状态面的用例对真实数据库执行
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready --host 127.0.0.1 --username postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      XUANPU_TEST_PG_DSN: postgresql://postgres:test@127.0.0.1:5432/test
+    defaults:
+      run:
+        working-directory: xuanpu
     steps:
       - name: 检出代码
         uses: actions/checkout@v7
+        with:
+          path: xuanpu
+
+      # 两个适配包尚未发布到 PyPI，工作区从同级目录取源码（pyproject 的 tool.uv.sources）
+      - name: 检出 taifeng-sandbox
+        uses: actions/checkout@v7
+        with:
+          repository: LumoraX/taifeng-sandbox
+          path: taifeng-sandbox
+
+      - name: 检出 taifeng-stores
+        uses: actions/checkout@v7
+        with:
+          repository: LumoraX/taifeng-stores
+          path: taifeng-stores
 
       - name: 安装 uv
         # setup-uv 不发滚动大版本 tag，按上游写法用 commit SHA 钉死 + 版本号注释
@@ -36,8 +70,15 @@ jobs:
       - name: 校验锁文件与 pyproject 一致
         run: uv lock --check
 
+      - name: 安装 bubblewrap 并放开用户命名空间
+        # 沙盒用例是真跑的；Ubuntu 24.04 默认用 AppArmor 限制非特权用户命名空间
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       - name: 全量测试
-        run: uv run --python ${{ matrix.python-version }} --all-packages pytest -q
+        run: uv run --python ${{ matrix.python-version }} --all-packages --all-extras pytest -q
 
   lint:
     # F 未用/未定义名 · S108 硬编码 /tmp · I 导入排序 · TC 仅类型用 import 进 TYPE_CHECKING。
@@ -45,15 +86,33 @@ jobs:
     name: 静态检查 (ruff F + S108 + I + TC · mypy strict)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: xuanpu
     steps:
       - name: 检出代码
         uses: actions/checkout@v7
+        with:
+          path: xuanpu
+
+      # 两个适配包尚未发布到 PyPI，工作区从同级目录取源码（pyproject 的 tool.uv.sources）
+      - name: 检出 taifeng-sandbox
+        uses: actions/checkout@v7
+        with:
+          repository: LumoraX/taifeng-sandbox
+          path: taifeng-sandbox
+
+      - name: 检出 taifeng-stores
+        uses: actions/checkout@v7
+        with:
+          repository: LumoraX/taifeng-stores
+          path: taifeng-stores
 
       - name: 安装 uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
 
       - name: ruff F + S108 + I + TC 必须零错
-        run: uv run --frozen --all-packages ruff check --select F,S108,I,TC packages
+        run: uv run --frozen --all-packages --all-extras ruff check --select F,S108,I,TC packages
 
       - name: mypy strict 必须零错
-        run: uv run --frozen --all-packages mypy packages/*/src
+        run: uv run --frozen --all-packages --all-extras mypy packages/*/src

@@ -1,0 +1,62 @@
+# xuanpu 平台服务的配置示例。
+#
+# ${NAME} 由 `xuanpu` 命令在启动时用进程的环境变量展开；引用了没有设置的变量会报错。
+# 凭据不要直接写在这个文件里。
+
+data_dir: /var/lib/xuanpu
+
+# `xuanpu keygen root` 生成根凭据与这个摘要。根凭据本身由平台管理员保管。
+root_key_hash: ${XUANPU_ROOT_KEY_HASH}
+
+# 加密租户密钥用的主密钥。`xuanpu keygen master` 生成。
+# 轮换：加一把新的并把 primary_master_key 指向它；旧密文全部重写之后再删掉旧的。
+master_keys:
+  k1: ${XUANPU_MASTER_KEY}
+primary_master_key: k1
+
+listen:
+  host: 127.0.0.1      # 对外提供服务时放在做 TLS 的反向代理之后
+  port: 8420
+
+# 模型网关：任何兼容 OpenAI Chat 接口的网关（如 LiteLLM Proxy）。
+models:
+  base_url: http://litellm:4000/v1
+  # 二选一：
+  api_key: ${MODEL_GATEWAY_KEY}        # 所有租户共用平台的网关凭据
+  # api_key_secret: gateway-key        # 各租户用自己保管库里名为 gateway-key 的凭据
+  tiers:
+    fast: {model: gpt-4o-mini}
+    balanced: {model: claude-sonnet-5-5}
+    deep: {model: claude-opus-5-5, timeout_seconds: 600}
+
+# 控制面存储。memory 只用于试用：进程退出即丢失。
+control_plane:
+  backend: postgres
+  postgres:
+    dsn: ${XUANPU_PG_DSN}
+    schema: xuanpu
+
+# 状态面。local：线程目录与消息只在节点本地；postgres：另外镜像进库，供多实例与审计查询。
+state:
+  backend: postgres
+  postgres:
+    dsn: ${XUANPU_PG_DSN}
+    schema: xuanpu
+
+# 沙盒。local：macOS seatbelt / Linux bubblewrap；docker：每个运行时一个容器。
+sandbox:
+  backend: local
+  # backend: docker
+  # image: python:3.12-slim
+  # docker_env: {PATH: /usr/local/bin:/usr/bin:/bin, HOME: /var/lib/xuanpu}
+
+# 平台给每个会话的上限。业务包可以调低，不能调高。
+limits:
+  max_session_tokens: 2000000
+  max_iterations: 60
+  connector_timeout_seconds: 60
+
+audit:
+  capture_requests: false   # 是否把每次发给模型的完整请求写进审计；内容敏感，默认关闭
+
+lease_seconds: 60
