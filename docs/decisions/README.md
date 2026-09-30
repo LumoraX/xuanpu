@@ -9,3 +9,4 @@
 | [0003](0003-adopt-mature-components.md) | 成熟组件采用不自研 | Accepted |
 | [0004](0004-planes-and-effect-gates.md) | 平台按「四平面 + 效应闸门」组织，不照搬「CPU + 外设」 | Accepted |
 | [0005](0005-first-release-scope.md) | 第一版的取舍 —— 连接器先内置、密钥先自管、会话靠租约单写 | Accepted |
+| [0006](0006-mcp-gateway-evaluation.md) | MCP 网关的评估 —— 远端连接器经 IBM ContextForge 接入，平台自己的闸门保留 | Proposed |

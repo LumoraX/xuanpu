@@ -17,3 +17,4 @@
 | 9 | `TelemetrySink` 协议未导出 | 适配包无法按契约发 `directory_cursor_reset` 等事件 | 适配包改为写日志；平台侧审计走 `engine.subscribe_all_envelopes()` |
 | 10 | `CancelTurn` 不在稳定层（稳定层的操作只有 `UserMessage`、`Resume`、`SendToPeer`、`UpdateInstructions`） | 平台无法只取消进行中的那一轮对话 | 第一版只提供关闭会话（`EnginePool.release(force=True)`），关闭即取消 |
 | 11 | 审批通过后重跑工具时，`ToolContext.extras` 里没有 `submission_id`（正常派发路径有） | 工具无法把这次执行归到具体的一轮对话 | 平台的过闸审计按线程标识归属到会话 |
+| 12 | `McpHttpClient` 在实验层，不在稳定层 | 平台无法以 HTTP 传输接远端 MCP server 或 MCP 网关（ADR 0006） | 第一版只支持 stdio 连接器；HTTP 连接器等它晋升稳定层 |

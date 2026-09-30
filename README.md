@@ -79,7 +79,7 @@ curl -N -X POST localhost:8420/v1/sessions/$SESSION/messages -H "Authorization: 
 | 命令行 | `xuanpu-cli` | 可用 |
 | Python 客户端 | `xuanpu-sdk-py` | 可用 |
 | 控制台 | `xuanpu-console` | 可用（服务启动后访问 `/console/`） |
-| MCP 网关 | `xuanpu-mcp-gateway` | 未开始（先评估现成方案，见 ADR 0003） |
+| MCP 网关 | — | 已评估：建议采用 IBM ContextForge 接远端连接器，不自研（ADR 0006，待拍板） |
 | JavaScript 客户端 | `xuanpu-sdk-js` | 未开始 |
 
 ## 文档

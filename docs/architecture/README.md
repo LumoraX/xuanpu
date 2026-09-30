@@ -6,7 +6,7 @@
 
 ## 现状
 
-第一版：业务包规范、平台服务（控制面 + 运行时 + HTTP 接口 + 评测运行器）、命令行、Python 客户端、控制台五个包可用。独立的 MCP 网关未开始。
+第一版：业务包规范、平台服务（控制面 + 运行时 + HTTP 接口 + 评测运行器）、命令行、Python 客户端、控制台五个包可用。MCP 网关已评估，建议采用现成方案。
 
 ## 分层与依赖方向
 
@@ -132,7 +132,7 @@ taifeng 不知道租户。隔离体现在平台组装运行时注入的每一样
 | `xuanpu-spec` | 可用 |
 | `xuanpu-server` | 可用（第一版，取舍见 [ADR 0005](../decisions/0005-first-release-scope.md)） |
 | `xuanpu-cli` | 可用 |
-| `xuanpu-mcp-gateway` | 未开始（先评估现成方案） |
+| MCP 网关 | 已评估，建议采用 ContextForge，不自研（ADR 0006，待拍板）；接入等内核 `McpHttpClient` 晋升稳定层 |
 | `xuanpu-console` | 可用（第一版：会话对话与审批、业务包发布与评测、审计、用量） |
 | `xuanpu-sdk-py` | 可用 |
 | `xuanpu-sdk-js` | 未开始 |
