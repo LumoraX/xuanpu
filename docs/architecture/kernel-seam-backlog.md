@@ -19,3 +19,4 @@
 | 11 | 审批通过后重跑工具时，`ToolContext.extras` 里没有 `submission_id`（正常派发路径有） | 工具无法把这次执行归到具体的一轮对话 | 平台的过闸审计按线程标识归属到会话 |
 | 12 | `McpHttpClient` 在实验层，不在稳定层 | 平台无法以 HTTP 传输接远端 MCP server 或 MCP 网关（ADR 0006） | MCP 连接器第一版只支持 stdio；以 HTTP 传输接 MCP 等它晋升稳定层。按 OpenAPI 直接调用的 HTTP 连接器（ADR 0008）不经 MCP，不受此项影响 |
 | 13 | `ScriptInvocation` 只有 `descriptor`、`args`、`cancel`，不带线程或会话标识 | `ScriptExecutor` 不知道这次脚本属于哪个会话，做不出按会话隔离的沙盒工作区 | 同一运行时（租户 + 业务包版本）下的会话共用一个工作区 |
+| 14 | PDF 附件的 `FileAttachmentV1`、`FileInputPolicy` 已在 `taifeng.llm.file_input` 实现，但不在稳定层（图片附件的 `ImageAttachmentV1`、`ImageInputPolicy` 在）。依据 taifeng 主干 `039ceae` 核实 | 平台无法把员工的 PDF 作为消息附件交给模型（ADR 0007 决策 5） | 尚未用到。个人空间进会话（P4）落地前若仍未晋升，PDF 只能拷进沙盒由脚本处理 |
