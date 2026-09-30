@@ -3,6 +3,8 @@
 > 本目录只描述**当前生效的设计**；为什么这么定见 [../decisions/](../decisions/README.md)。
 >
 > 相关：[内核对接口缺口清单](kernel-seam-backlog.md) · [HTTP 接口](http-api.md) · [业务包规范](package-spec.md)
+>
+> 怎么用平台（而不是它怎么设计的）见[使用手册](../guides/README.md)。
 
 ## 现状
 
@@ -35,7 +37,7 @@ taifeng
 | --- | --- | --- |
 | 计算面 | 组装并承载内核引擎、会话租约、事件分发 | `runtime/assembler.py`、`runtime/sessions.py`、`runtime/events.py` |
 | 效应面 | 副作用的出口：沙盒、连接器（MCP 与 HTTP）、模型 | `runtime/sandbox.py`、`runtime/connectors.py`、`runtime/http_api.py`、`runtime/models.py`、`runtime/approval.py` |
-| 状态面 | 会话消息、线程目录、长期记忆 | `bootstrap.py` 里的 `PostgresStateBackends`，实现来自 taifeng-stores |
+| 状态面 | 会话消息、线程目录、长期记忆 | `bootstrap.py` 里的 `PostgresStateBackends`，实现来自 taifeng-stores。长期记忆的槽位在（`StateBackends.memory_store`），但配置文件尚未接入 |
 | 治理面 | 租户、凭据、业务包版本、密钥、配额、审计、用量、评测 | `platform.py`、`tenancy.py`、`packages.py`、`secrets.py`、`quota.py`、`audit.py`、`evals.py`、`controlplane/` |
 
 所有外部依赖（存储、密钥保管库、模型客户端工厂、沙盒供给方、状态面后端）都经 `Platform` 的构造参数注入；平台代码不读环境变量，环境变量只在命令行入口读取。
@@ -85,7 +87,9 @@ SessionManager.send_message
 | `max_daily_tokens` | 每轮对话开始前（用量在一轮结束时入账，拦的是下一轮） | 429 |
 | `max_concurrent_turns` | 每轮对话开始前（本实例内计数） | 429 |
 
-停机分两步：先拒绝新的对话（503 `runtime_unavailable`），等在途对话跑完，最多等 `shutdown_drain_seconds`；到期仍未结束的被取消。之后释放本实例持有的全部会话，会话保持活动，可由别的实例接手。
+平台关闭（`Platform.close`）分两步：先拒绝新的对话（503 `runtime_unavailable`），等在途对话跑完，最多等 `shutdown_drain_seconds`；到期仍未结束的被取消。之后释放本实例持有的全部会话，会话保持活动，可由别的实例接手。
+
+`xuanpu serve` 下，平台关闭排在 HTTP 服务器自己的收尾之后：服务器先停止接受连接，并等已打开的响应（事件流）发完，这一段没有时限；之后才轮到上面的两步。所以 `shutdown_drain_seconds` 实际约束的是调用方已断开、仍在后台跑的对话。
 
 ## 效应闸门
 
@@ -95,7 +99,7 @@ SessionManager.send_message
 | 连接器工具（MCP 进程或 OpenAPI 描述的 HTTP 接口，共用一个闸门） | 在清单白名单内；按副作用分类与审批强度放行或挂起 | 每次调用一条 `connector_call`：连接器、传输、工具、副作用、决定、耗时、参数摘要 |
 | 模型调用 | 租户可用、当天用量未超、会话预算未超 | 内核事件；开启留痕时另记完整请求 |
 
-审批强度与副作用的对应关系在 `runtime/approval.py` 的文档里。没有被规则覆盖的副作用一律走审批。
+审批强度与副作用的对应关系见[编写业务包](../guides/writing-packages.md#审批强度)（实现在 `runtime/approval.py`）。没有被规则覆盖的副作用一律走审批。
 
 ## 租户隔离
 
@@ -149,3 +153,10 @@ taifeng 不知道租户。隔离体现在平台组装运行时注入的每一样
 - 配额拦的是「下一轮」，当天实际用量可能超出上限一轮对话的量；并发对话数只在本实例内计数。
 - 同一运行时下的会话共用沙盒工作区。
 - 前台 shell 与文件类工具未开放（内核的这些工具工厂不在稳定层）。
+- 长期记忆没有接进配置文件：taifeng-stores 提供了向量记忆后端，但平台还没有嵌入服务的配置项。以库的方式装配平台时可以自己注入（见 `packages/xuanpu-server/README.md`）。
+- 租户的配额只能在新建时设置，没有修改接口；没有删除租户的接口。
+- 主密钥轮换后没有批量重新加密的工具，要逐条重写密钥。
+- 没有指标端点；审计表没有内置的清理与归档。
+- 人工拒绝的连接器调用不产生过闸记录（调用没有走到闸门），拒绝本身记在控制面的 `suspension_resolved_by` 里。
+- 内核事件里的工具调用参数是一段 JSON 文本，按键名脱敏对它不起作用（见[审计与用量](../guides/audit-and-usage.md#审计里有哪些敏感内容)）。
+- `GET /openapi.json` 不需要凭据（只暴露接口形状，不含数据）。

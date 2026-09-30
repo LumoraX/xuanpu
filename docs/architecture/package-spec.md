@@ -2,6 +2,9 @@
 
 > 规范版本 `xuanpu/v1`。权威定义在 `packages/xuanpu-spec/src/xuanpu_spec/manifest.py`；
 > `xuanpu schema` 可以导出 JSON Schema。
+>
+> 本文是字段与规则的参考。怎么一步步写出一个业务包见[编写业务包](../guides/writing-packages.md)，
+> 完整的样例在 [`examples/support-desk`](../../examples/support-desk/)。
 
 业务包是一个目录，根下有清单 `xuanpu.yaml`：
 
@@ -67,10 +70,84 @@ spec:
         maxTokens: 2000           # 本轮 token 上限
 ```
 
+## 字段参考
+
+清单里的键用驼峰（`maxSessionTokens`、`baseUrl`）。没标「必填」的都可省略。
+
+### `metadata`
+
+| 字段 | 约束 | 说明 |
+| --- | --- | --- |
+| `name` | 必填。小写字母开头，只含小写字母、数字、连字符，最长 63 | 包名，租户内唯一 |
+| `version` | 必填。语义化版本 `主.次.修订`，可带预发布后缀（`1.2.0-rc.1`），不支持构建元数据（`+…`） | 发布后不可变 |
+| `description` | 最长 500 个字符 | |
+
+### `spec.skills`
+
+| 字段 | 默认 | 说明 |
+| --- | --- | --- |
+| `dir` | `skills` | skill 目录在包内的相对路径 |
+| `entries` | 必填，至少一个，不能重复 | 可以作为会话入口的 skill。第一个是建会话时的默认入口 |
+
+### `spec.model`
+
+| 字段 | 默认 | 说明 |
+| --- | --- | --- |
+| `tier` | `balanced` | `fast`、`balanced`、`deep`。对应哪个模型由平台的部署配置决定 |
+
+### `spec.policy`
+
+| 字段 | 默认 | 说明 |
+| --- | --- | --- |
+| `approval` | `standard` | `strict`、`standard`、`relaxed`。各强度下哪些动作要审批，见[编写业务包](../guides/writing-packages.md#审批强度) |
+| `budget.maxSessionTokens` | 平台上限 | 一个会话累计的 token 上限，至少 1000。高于平台上限时按平台上限 |
+| `budget.maxIterations` | 平台上限 | 一轮对话里模型与工具往返次数的上限，1–500。高于平台上限时按平台上限 |
+| `sandbox.network` | `false` | 沙盒里的脚本与命令能否出网 |
+| `sandbox.shell` | `false` | 是否提供在沙盒里执行后台命令的工具（`run_in_background`、`wait_for_task`） |
+
+### `spec.connectors[]`
+
+连接器名在包内不能重复。
+
+| 字段 | 适用 | 默认 | 说明 |
+| --- | --- | --- | --- |
+| `name` | 全部 | 必填 | 命名规则同包名。出现在工具名里 |
+| `transport` | 全部 | `stdio` | `stdio`：平台启动的 MCP server 进程；`http`：按 OpenAPI 文档调用的接口 |
+| `effect` | 全部 | `external` | 这个连接器的工具默认的副作用分类：`read`、`write`、`external` |
+| `tools` | 全部 | 空（开放全部） | 白名单。每项 `{name, effect}`，`effect` 省略时用默认分类；不能重名 |
+| `command` | stdio | 必填 | 启动 MCP server 的命令，字符串数组。工作目录是业务包根目录 |
+| `env` | stdio | 空 | 传给进程的环境变量。每项是 `{value: 字面量}` 或 `{secret: 密钥名}`，二选一 |
+| `openapi` | http | 必填 | OpenAPI 3.x 文档在包内的相对路径（YAML 或 JSON，最大 8 MiB） |
+| `baseUrl` | http | 文档 `servers` 的第一个绝对地址 | 接口的基地址，`http://` 或 `https://` 开头 |
+| `auth` | http | 无（接口不需要凭据） | 见下文「HTTP 连接器」 |
+| `timeoutSeconds` | http | `30` | 单次调用的超时，最大 600。另受平台的连接器超时约束，取小的 |
+
+把另一种传输的字段写进来（比如 stdio 连接器写了 `openapi`）会报错。
+
+### `spec.evals[]`
+
+用例名在包内不能重复。
+
+| 字段 | 约束 | 说明 |
+| --- | --- | --- |
+| `name` | 必填，命名规则同包名 | |
+| `entry` | 必填，必须在 `skills.entries` 里 | 用哪个入口 |
+| `input` | 必填，非空 | 发给模型的那句话 |
+| `expect.contains` | 字符串数组 | 回复必须包含的片段 |
+| `expect.notContains` | 字符串数组 | 回复不得包含的片段 |
+| `expect.maxTokens` | 正整数 | 本轮消耗的 token 上限 |
+
+不写 `expect` 的用例只检查这一轮是否正常完成。
+
+### 密钥名
+
+`env` 里的 `secret` 与 `auth.secret` 写的是密钥名，命名规则同包名。取值由租户管理员经 `PUT /v1/secrets/<名字>` 存进平台。
+
 ## 规则
 
 - **多余的字段一律拒绝**：拼错的字段名在校验时报错。
 - **只声明需求，不写实现细节**：模型只选档位；审批只选强度；凭据只写密钥名。skill 的 `model` 字段只在取值是档位名时生效。
+- **工具可见性**：模型只看得到当前 skill 在 `tool_names` 里点名的连接器工具；内核自带的 `call_skill`、`read_skill` 总是可用，skill 声明了 `scripts` 就自动可用 `run_script`。
 - **连接器工具名**：stdio 连接器是 `mcp__<连接器名>__<工具名>`，HTTP 连接器是 `api__<连接器名>__<operationId>`；skill 在 `tool_names` 里按这个名字引用。引用了清单里没有的连接器、前缀与传输方式不符、或白名单之外的工具，校验不通过。
 - **入口**：清单 `entries` 里的 skill 必须在 SKILL.md 里声明 `entry: true`。
 - **版本**：发布后不可变，改动必须发新版本。不兼容的规范变更升 `apiVersion`。

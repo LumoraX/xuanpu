@@ -1,0 +1,19 @@
+# 试用配置：单机、不依赖 Postgres 与 Docker。配套步骤见 docs/guides/quickstart.md。
+#
+# 控制面在内存里：租户、凭据、密钥、业务包登记、会话、审计都在进程退出时丢失。
+# 正式部署用 examples/xuanpu.yaml。
+
+data_dir: /tmp/xuanpu-trial
+
+root_key_hash: ${XUANPU_ROOT_KEY_HASH}
+master_keys:
+  k1: ${XUANPU_MASTER_KEY}
+primary_master_key: k1
+
+models:
+  base_url: ${MODEL_GATEWAY_URL}       # 任何兼容 OpenAI Chat 接口的地址，以 /v1 结尾
+  api_key: ${MODEL_GATEWAY_KEY}
+  tiers:
+    fast: {model: "${MODEL_NAME}"}
+    balanced: {model: "${MODEL_NAME}"}
+    deep: {model: "${MODEL_NAME}"}

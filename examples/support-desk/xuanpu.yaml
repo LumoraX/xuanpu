@@ -1,0 +1,42 @@
+# 样例业务包：客服工单助手。
+# 配套说明见 docs/guides/writing-packages.md；字段定义见 docs/architecture/package-spec.md。
+apiVersion: xuanpu/v1
+kind: Package
+metadata:
+  name: support-desk
+  version: 1.0.0
+  description: 客服工单助手：查工单、给出处理时限、改派优先级
+spec:
+  skills:
+    entries: [triage]
+  model:
+    tier: balanced
+  policy:
+    approval: standard          # 只读的连接器调用与脚本直接放行，写操作要人批准
+    budget:
+      maxSessionTokens: 200000
+      maxIterations: 20
+  connectors:
+    - name: tickets
+      transport: http
+      openapi: apis/tickets.yaml
+      # 不写 baseUrl 时用 OpenAPI 文档 servers 里的第一个地址
+      auth: {type: bearer, secret: tickets-token}
+      timeoutSeconds: 15
+      tools:                    # 白名单：文档里没列在这里的 operation 不会变成工具
+        - {name: listTickets}   # GET，默认分类 read
+        - {name: getTicket}
+        - {name: updateTicket, effect: write}
+  evals:
+    - name: greet
+      entry: triage
+      input: 你好
+      expect:
+        contains: ["工单"]
+        maxTokens: 4000
+    - name: refund-window
+      entry: triage
+      input: 退款多久到账？
+      expect:
+        contains: ["7 个工作日"]
+        notContains: ["无法回答"]

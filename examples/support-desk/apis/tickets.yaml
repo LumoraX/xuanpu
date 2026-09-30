@@ -1,0 +1,48 @@
+openapi: 3.0.3
+info:
+  title: 工单系统
+  version: 1.0.0
+servers:
+  - url: http://127.0.0.1:8431
+paths:
+  /tickets:
+    get:
+      operationId: listTickets
+      summary: 按状态列出工单
+      parameters:
+        - name: status
+          in: query
+          description: 工单状态
+          schema: {type: string, enum: [open, closed]}
+      responses:
+        "200": {description: 工单列表}
+  /tickets/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: 工单号，形如 T-1001
+        schema: {type: string}
+    get:
+      operationId: getTicket
+      summary: 查一张工单
+      responses:
+        "200": {description: 工单}
+        "404": {description: 工单不存在}
+    patch:
+      operationId: updateTicket
+      summary: 修改工单的优先级或状态
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/TicketPatch"}
+      responses:
+        "200": {description: 修改后的工单}
+components:
+  schemas:
+    TicketPatch:
+      type: object
+      properties:
+        priority: {type: string, enum: [low, normal, high]}
+        status: {type: string, enum: [open, closed]}

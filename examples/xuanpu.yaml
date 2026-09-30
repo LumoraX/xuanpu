@@ -1,4 +1,5 @@
-# xuanpu 平台服务的配置示例。
+# xuanpu 平台服务的配置示例（正式部署）。各项含义见 docs/guides/operations.md。
+# 单机试用的最小配置见 xuanpu.trial.yaml。
 #
 # ${NAME} 由 `xuanpu` 命令在启动时用进程的环境变量展开；引用了没有设置的变量会报错。
 # 凭据不要直接写在这个文件里。
@@ -35,6 +36,8 @@ control_plane:
   postgres:
     dsn: ${XUANPU_PG_DSN}
     schema: xuanpu
+    pool_min: 1
+    pool_max: 10
 
 # 状态面。local：线程目录与消息只在节点本地；postgres：另外镜像进库，供多实例与审计查询。
 state:
@@ -47,7 +50,11 @@ state:
 sandbox:
   backend: local
   # backend: docker
-  # image: python:3.12-slim
+  # image: python:3.12-slim      # 镜像里要有 python3；业务包脚本能用什么命令取决于它
+  # memory_mb: 1024
+  # cpus: 1.0
+  # docker_binary: docker
+  # 平台不把自己的环境传给子进程：docker 客户端要靠这里给的变量找到守护进程
   # docker_env: {PATH: /usr/local/bin:/usr/bin:/bin, HOME: /var/lib/xuanpu}
 
 # 平台给每个会话的上限。业务包可以调低，不能调高。

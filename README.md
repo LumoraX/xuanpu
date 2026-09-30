@@ -31,43 +31,17 @@ taifeng（内核，零租户概念）
 
 ## 试用
 
+跟着[快速上手](docs/guides/quickstart.md)走一遍：在一台机器上启动平台、发布样例业务包 [`examples/support-desk`](examples/support-desk/)、走通一次带审批的对话，不需要 Postgres 和 Docker。
+
 ```bash
 uv sync --all-packages --all-extras
 
-# 1. 生成根凭据与主密钥
-uv run xuanpu keygen root
-uv run xuanpu keygen master
+uv run xuanpu keygen root                                   # 根凭据与摘要
+uv run xuanpu keygen master                                 # 主密钥
+uv run xuanpu serve --config examples/xuanpu.trial.yaml     # 控制台在 http://127.0.0.1:8420/console/
 
-# 2. 写配置（参照 examples/xuanpu.yaml），迁移表结构，启动
-uv run xuanpu migrate --config xuanpu.yaml
-uv run xuanpu serve --config xuanpu.yaml     # 控制台在 http://127.0.0.1:8420/console/
-
-# 3. 业务方：校验并打包业务包
-uv run xuanpu validate ./support-desk
-uv run xuanpu pack ./support-desk -o support-desk.zip
-```
-
-```bash
-# 4. 平台管理员开通租户、签发凭据
-curl -X POST localhost:8420/v1/admin/tenants -H "Authorization: Bearer $ROOT_KEY" \
-     -H 'Content-Type: application/json' -d '{"tenant_id": "acme", "name": "Acme"}'
-curl -X POST localhost:8420/v1/admin/tenants/acme/keys -H "Authorization: Bearer $ROOT_KEY" \
-     -H 'Content-Type: application/json' -d '{"name": "admin", "role": "tenant_admin"}'
-
-# 5. 租户管理员配密钥、发布业务包
-curl -X PUT localhost:8420/v1/secrets/crm-token -H "Authorization: Bearer $KEY" \
-     -H 'Content-Type: application/json' -d '{"value": "…"}'
-curl -X POST 'localhost:8420/v1/packages?activate=true' -H "Authorization: Bearer $KEY" \
-     --data-binary @support-desk.zip
-
-# 6. 发布前先跑评测
-uv run xuanpu eval --key $KEY --package support-desk
-
-# 7. 建会话、对话（响应是事件流）
-curl -X POST localhost:8420/v1/sessions -H "Authorization: Bearer $KEY" \
-     -H 'Content-Type: application/json' -d '{"package": "support-desk"}'
-curl -N -X POST localhost:8420/v1/sessions/$SESSION/messages -H "Authorization: Bearer $KEY" \
-     -H 'Content-Type: application/json' -d '{"text": "你好"}'
+uv run xuanpu validate examples/support-desk
+uv run xuanpu pack examples/support-desk -o support-desk.zip
 ```
 
 ## 组件
@@ -84,13 +58,17 @@ curl -N -X POST localhost:8420/v1/sessions/$SESSION/messages -H "Authorization: 
 
 ## 文档
 
-| 文档 | 内容 |
+| 你想 | 看 |
 | --- | --- |
-| [docs/architecture/README.md](docs/architecture/README.md) | 架构总览：四个平面、一轮对话的路径、租户隔离、审计、已知限制 |
-| [docs/architecture/package-spec.md](docs/architecture/package-spec.md) | 业务包规范 |
-| [docs/architecture/http-api.md](docs/architecture/http-api.md) | HTTP 接口、事件流、审批 |
-| [docs/architecture/kernel-seam-backlog.md](docs/architecture/kernel-seam-backlog.md) | 内核稳定层的对接口缺口与平台的现行处理 |
-| [docs/decisions/](docs/decisions/README.md) | 决策记录 |
+| 先跑起来 | [快速上手](docs/guides/quickstart.md) |
+| 把业务场景写成业务包 | [编写业务包](docs/guides/writing-packages.md) |
+| 在自己的系统里调用平台 | [应用接入](docs/guides/integrating.md) |
+| 部署、配置、多实例、密钥轮换、备份 | [部署与运维](docs/guides/operations.md) |
+| 了解审计里有什么、怎么查、用量怎么算 | [审计与用量](docs/guides/audit-and-usage.md) |
+| 查字段与接口 | [业务包规范](docs/architecture/package-spec.md) · [HTTP 接口](docs/architecture/http-api.md) · [命令行](packages/xuanpu-cli/README.md) · [Python 客户端](packages/xuanpu-sdk-py/README.md) |
+| 了解设计 | [架构总览](docs/architecture/README.md)：四个平面、一轮对话的路径、租户隔离、已知限制 |
+| 了解为什么这么定 | [决策记录](docs/decisions/README.md) |
+| 给 taifeng 内核提需求 | [内核对接口缺口清单](docs/architecture/kernel-seam-backlog.md) |
 
 ## 开发
 

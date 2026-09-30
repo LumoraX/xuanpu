@@ -52,8 +52,10 @@ uv run mypy packages/*/src                             # 门禁类型检查（st
 | --- | --- | --- |
 | `docs/architecture/` | 当前生效的设计（活文档） | 直接更新，永远代表现状 |
 | `docs/decisions/` | ADR（为什么这么定） | 只增不改；推翻旧决策写新 ADR 标 `Supersedes #NNNN` |
+| `docs/guides/` | 使用手册（给业务方、应用开发者、平台管理员） | 直接更新；里面的命令与输出必须是实际跑过的 |
+| `examples/` | 可以直接运行的样例业务包与配置 | 直接更新；有测试保证它们始终通过校验 |
 
-实现完成但 `docs/architecture/` 未同步，不得合并。
+实现完成但 `docs/architecture/` 与受影响的 `docs/guides/` 未同步，不得合并。
 
 ## 语言
 
