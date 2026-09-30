@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
@@ -19,7 +20,7 @@ from xuanpu_server.runtime.approval import build_policy
 from xuanpu_server.runtime.connectors import DEFAULT_BASE_ENV, ConnectorSet
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping
     from pathlib import Path
 
     from xuanpu_spec.manifest import Effect
@@ -46,6 +47,10 @@ class RuntimeDefaults:
         connector_timeout_seconds: 连接器单次调用的超时。
         connector_env: 连接器进程的基础环境。
         capture_requests: 是否把完整提示词写进审计。
+        session_idle_seconds: 会话多久没有对话就释放它的引擎（会话本身保持活动，下次
+            对话时从存储续接）。
+        runtime_idle_seconds: 运行时多久没有会话使用就回收（连接器进程、沙盒、引擎池
+            一起关掉，下次使用时重新组装）。
     """
 
     max_session_tokens: int = 2_000_000
@@ -53,6 +58,8 @@ class RuntimeDefaults:
     connector_timeout_seconds: float = 60.0
     connector_env: Mapping[str, str] | None = None
     capture_requests: bool = False
+    session_idle_seconds: float = 300.0
+    runtime_idle_seconds: float = 900.0
 
 
 @dataclass
@@ -91,6 +98,11 @@ class TenantRuntime:
     sandbox: SandboxHandle
     connectors: ConnectorSet
     tool_effects: dict[str, Effect] = field(default_factory=dict)
+    last_used: float = 0.0
+
+    def live_sessions(self) -> int:
+        """引擎池里当前活着的会话数。"""
+        return len(self.pool.introspect())
 
     async def close(self) -> None:
         """依次关闭引擎池、连接器、沙盒。某一步失败不影响后面的收尾。"""
@@ -128,6 +140,7 @@ class RuntimeAssembler:
         audit: AuditLog,
         submissions: SubmissionIndex,
         defaults: RuntimeDefaults | None = None,
+        now: Callable[[], float] = time.time,
     ) -> None:
         """
         Args:
@@ -139,7 +152,9 @@ class RuntimeAssembler:
             audit: 审计写入口。
             submissions: submission → 会话的对照表。
             defaults: 平台默认参数。
+            now: 取当前时间的函数，测试时可替换。
         """
+        self._now = now
         self._submissions = submissions
         self._data_dir = data_dir
         self._models = models
@@ -167,14 +182,14 @@ class RuntimeAssembler:
         record = package.record
         key: RuntimeKey = (record.tenant_id, record.name, record.version)
         existing = self._runtimes.get(key)
-        if existing is not None:
-            return existing
-        lock = self._locks.setdefault(key, asyncio.Lock())
-        async with lock:
-            existing = self._runtimes.get(key)
-            if existing is None:
-                existing = await self._assemble(key, package)
-                self._runtimes[key] = existing
+        if existing is None:
+            lock = self._locks.setdefault(key, asyncio.Lock())
+            async with lock:
+                existing = self._runtimes.get(key)
+                if existing is None:
+                    existing = await self._assemble(key, package)
+                    self._runtimes[key] = existing
+        existing.last_used = self._now()
         return existing
 
     async def _assemble(self, key: RuntimeKey, package: ResolvedPackage) -> TenantRuntime:
@@ -276,6 +291,22 @@ class RuntimeAssembler:
             enable_request_capture=defaults.capture_requests,
             **options,
         )
+
+    async def evict_idle(self) -> list[RuntimeKey]:
+        """回收没有会话在用、且空闲超过 ``runtime_idle_seconds`` 的运行时，返回回收了哪些。"""
+        deadline = self._now() - self._defaults.runtime_idle_seconds
+        evicted: list[RuntimeKey] = []
+        for key, runtime in list(self._runtimes.items()):
+            if runtime.last_used <= deadline and runtime.live_sessions() == 0:
+                lock = self._locks.setdefault(key, asyncio.Lock())
+                async with lock:
+                    # 拿到锁之后再核对一次：这期间可能刚有会话进来
+                    current = self._runtimes.get(key)
+                    if current is runtime and runtime.live_sessions() == 0:
+                        del self._runtimes[key]
+                        await runtime.close()
+                        evicted.append(key)
+        return evicted
 
     async def evict(self, key: RuntimeKey) -> bool:
         """关闭并移除一个运行时；返回是否确实有这个运行时。"""

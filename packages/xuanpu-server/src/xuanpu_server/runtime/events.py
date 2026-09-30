@@ -18,7 +18,7 @@ from xuanpu_server.controlplane.models import AuditRecord
 from xuanpu_server.quota import usage_day
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Callable
 
     import taifeng
 
@@ -139,6 +139,7 @@ class EngineEventHub:
         audit: AuditLog,
         store: ControlPlaneStore,
         capture_requests: bool = False,
+        on_turn_end: Callable[[str], None] | None = None,
     ) -> None:
         """
         Args:
@@ -148,7 +149,9 @@ class EngineEventHub:
             audit: 审计写入口。
             store: 控制面存储，用量入账用。
             capture_requests: 是否把含完整提示词的事件写进审计。
+            on_turn_end: 一轮对话结束时的回调，参数是 submission 标识。
         """
+        self._on_turn_end = on_turn_end
         self._engine = engine
         self._tenant_id = tenant_id
         self._session_id = session_id
@@ -229,6 +232,8 @@ class EngineEventHub:
         if kind not in STREAMING_KINDS and (kind not in SENSITIVE_KINDS or self._capture_requests):
             self._buffer.append(self._record(kind, event, dict(event.msg.data), seq=event.seq))
         if is_terminal(event):
+            if self._on_turn_end is not None:
+                self._on_turn_end(event.submission_id)
             text = "".join(self._texts.pop(event.submission_id, []))
             self._buffer.append(self._record("turn_text", event, {"text": text}, seq=None))
             await self._account(event)

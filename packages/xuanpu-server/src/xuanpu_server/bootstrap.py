@@ -159,6 +159,8 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
                 max_iterations=config.limits.max_iterations,
                 connector_timeout_seconds=config.limits.connector_timeout_seconds,
                 capture_requests=config.audit.capture_requests,
+                session_idle_seconds=config.limits.session_idle_seconds,
+                runtime_idle_seconds=config.limits.runtime_idle_seconds,
             ),
             instance_id=config.instance_id,
             lease_seconds=config.lease_seconds,

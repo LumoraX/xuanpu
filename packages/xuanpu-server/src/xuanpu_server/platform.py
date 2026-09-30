@@ -108,6 +108,7 @@ class Platform:
             audit=self.audit,
             submissions=submissions,
             defaults=defaults,
+            now=now,
         )
         self.sessions = SessionManager(
             store=store,

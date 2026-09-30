@@ -118,6 +118,8 @@ class LimitsConfig(_Section):
     max_session_tokens: int = Field(default=2_000_000, ge=1000)
     max_iterations: int = Field(default=60, ge=1)
     connector_timeout_seconds: float = Field(default=60.0, gt=0)
+    session_idle_seconds: float = Field(default=300.0, ge=1)
+    runtime_idle_seconds: float = Field(default=900.0, ge=1)
 
 
 class AuditConfig(_Section):

@@ -11,7 +11,7 @@ import asyncio
 import contextlib
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import taifeng
@@ -44,6 +44,13 @@ class _LiveSession:
     runtime: TenantRuntime
     engine: taifeng.AgentEngine
     hub: EngineEventHub
+    last_used: float = 0.0
+    in_flight: set[str] = field(default_factory=set)
+
+    @property
+    def idle(self) -> bool:
+        """是否没有进行中的对话。"""
+        return not self.in_flight
 
 
 @dataclass(frozen=True)
@@ -189,6 +196,14 @@ class SessionManager:
             entry_skill_id=record.entry,
             resume_thread_id=record.thread_id,
         )
+        key = (record.tenant_id, record.session_id)
+
+        def turn_ended(submission_id: str) -> None:
+            live = self._live.get(key)
+            if live is not None:
+                live.in_flight.discard(submission_id)
+                live.last_used = self._now()
+
         hub = EngineEventHub(
             engine,
             tenant_id=record.tenant_id,
@@ -196,6 +211,7 @@ class SessionManager:
             audit=self._audit,
             store=self._store,
             capture_requests=self._runtimes.defaults.capture_requests,
+            on_turn_end=turn_ended,
         )
         await hub.start()
         self._submissions.register_thread(engine.thread_id, record.session_id)
@@ -203,7 +219,9 @@ class SessionManager:
             record = await self._store.update_session(
                 record.tenant_id, record.session_id, at=self._now(), thread_id=engine.thread_id
             )
-        return _LiveSession(record=record, runtime=runtime, engine=engine, hub=hub)
+        return _LiveSession(
+            record=record, runtime=runtime, engine=engine, hub=hub, last_used=self._now()
+        )
 
     async def _active(self, principal: Principal, session_id: str) -> _LiveSession:
         """取一个可以继续对话的会话。"""
@@ -217,6 +235,8 @@ class SessionManager:
         submission_id = await live.engine.submit(op)
         # 提交与登记之间不能有让出点，否则内核先发出的事件会漏掉
         stream = live.hub.open_stream(submission_id)
+        live.in_flight.add(submission_id)
+        live.last_used = self._now()
         self._submissions.register(submission_id, live.record.session_id)
         await self._store.update_session(
             live.record.tenant_id, live.record.session_id, at=self._now()
@@ -330,16 +350,47 @@ class SessionManager:
                 return events
             after = page[-1].audit_id
 
-    async def _detach(self, key: tuple[str, str], *, force: bool) -> None:
-        """释放本实例对会话的持有：关引擎、写完审计、放弃租约。"""
-        live = self._live.pop(key, None)
+    async def _detach(self, key: tuple[str, str], *, force: bool) -> bool:
+        """释放本实例对会话的持有：关引擎、写完审计、放弃租约。
+
+        ``force=False`` 时内核会因为还有后台子任务而拒绝释放引擎；这种情况下什么都不动，
+        返回 False，下一轮再试。
+        """
+        live = self._live.get(key)
         if live is None:
-            return
+            return False
+        await live.runtime.pool.release(live.record.session_id, force=force)
+        if live.record.session_id in live.runtime.pool.introspect():
+            return False
+        self._live.pop(key, None)
         try:
-            await live.runtime.pool.release(live.record.session_id, force=force)
-        finally:
             await live.hub.close()
+        finally:
             await self._store.release_lease(key[0], key[1], owner=self._instance)
+        return True
+
+    async def release_idle(self) -> list[str]:
+        """释放空闲超过 ``session_idle_seconds`` 的会话的引擎，返回释放了哪些会话。
+
+        会话本身保持活动；下次对话时从存储续接。内存里不再为每个历史会话常驻一个引擎，
+        这是并发承载量的前提。
+        """
+        deadline = self._now() - self._runtimes.defaults.session_idle_seconds
+        released: list[str] = []
+        for key, live in list(self._live.items()):
+            if live.idle and live.last_used <= deadline:
+                lock = self._locks.setdefault(key, asyncio.Lock())
+                async with lock:
+                    current = self._live.get(key)
+                    if current is live and live.idle and await self._detach(key, force=False):
+                        released.append(key[1])
+        return released
+
+    async def maintain(self) -> None:
+        """一次维护：续期、释放空闲会话、回收空闲运行时。"""
+        await self._renew_leases_once()
+        await self.release_idle()
+        await self._runtimes.evict_idle()
 
     async def close(self, principal: Principal, session_id: str) -> SessionRecord:
         """关闭会话。正在进行的对话会被取消。关闭后不能再发消息。"""
@@ -355,23 +406,30 @@ class SessionManager:
         )
         return closed
 
+    async def _renew_leases_once(self) -> None:
+        """给本实例持有的会话续期。续期失败说明持有权已经丢了，立即放手。"""
+        for key in list(self._live):
+            try:
+                await self._store.acquire_lease(
+                    key[0],
+                    key[1],
+                    owner=self._instance,
+                    now=self._now(),
+                    ttl_seconds=self._lease_seconds,
+                )
+            except Exception:
+                logger.exception("会话 %s 续期失败，本实例放弃持有", key[1])
+                with contextlib.suppress(Exception):
+                    await self._detach(key, force=True)
+
     async def _renew_leases(self) -> None:
-        """定期给本实例持有的会话续期。续期失败说明持有权已经丢了，立即放手。"""
+        """定期维护：续期、释放空闲会话、回收空闲运行时。"""
         while True:
             await asyncio.sleep(self._lease_seconds / 3)
-            for key in list(self._live):
-                try:
-                    await self._store.acquire_lease(
-                        key[0],
-                        key[1],
-                        owner=self._instance,
-                        now=self._now(),
-                        ttl_seconds=self._lease_seconds,
-                    )
-                except Exception:
-                    logger.exception("会话 %s 续期失败，本实例放弃持有", key[1])
-                    with contextlib.suppress(Exception):
-                        await self._detach(key, force=True)
+            try:
+                await self.maintain()
+            except Exception:
+                logger.exception("会话维护失败")
 
     async def shutdown(self) -> None:
         """停止续期，释放本实例持有的全部会话。会话本身保持活动状态，可由别的实例接手。"""
