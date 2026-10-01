@@ -39,6 +39,7 @@ if TYPE_CHECKING:
 
     import taifeng
     from xuanpu_server.controlplane import ControlPlaneStore
+    from xuanpu_server.runtime import SandboxProvider, StateBackendFactory
     from xuanpu_server.tenancy import Principal
 
 PG_IMAGE = "pgvector/pgvector:pg16"
@@ -374,6 +375,26 @@ class World:
     member: Principal
     admin_key: str
     member_key: str
+    states: StateBackendFactory | None = None
+
+    def sibling(self, instance_id: str, *, data_dir: Path, **kwargs: Any) -> Platform:
+        """同一份控制面、密钥、模型、对象存储与状态面上的另一个平台实例（未启动）。
+
+        ``data_dir`` 必须显式给出：数据目录归一个进程独占，几个实例共用它只在 local
+        状态面下为了跨实例接手会话才这么做（会话主存在数据目录里）。
+        """
+        return Platform(
+            store=self.platform.store,
+            vault=self.platform.vault,
+            models=self.models,
+            sandboxes=LocalSandboxProvider(),
+            data_dir=data_dir,
+            root_key_hash="0" * 64,
+            objects=self.objects,
+            states=self.states,
+            instance_id=instance_id,
+            **kwargs,
+        )
 
     def archive(
         self, *, version: str = "1.0.0", approval: str = "standard", shell: bool = False
@@ -465,26 +486,35 @@ def _sandbox_provider(kind: str) -> Any:
     return DockerSandboxProvider(image="python:3.12-slim", docker_env=env, memory_mb=256)
 
 
-@pytest.fixture(params=["local"])
-async def world(request: pytest.FixtureRequest, tmp_path: Path) -> AsyncIterator[World]:
-    """装配好的平台：内存控制面、脚本化模型、沙盒（默认本机隔离，可参数化为 Docker）、
-    数据目录之外的本机对象存储；已有一个租户、两把凭据、一条密钥。"""
-    data_dir = (tmp_path / "data").resolve()
+async def open_world(
+    tmp_path: Path,
+    *,
+    store: ControlPlaneStore,
+    sandboxes: SandboxProvider,
+    states: StateBackendFactory | None = None,
+    instance_id: str = "inst-test",
+    data_dir_name: str = "data",
+) -> World:
+    """在 ``tmp_path`` 下装配并启动一个平台，开通一个租户、两把凭据、一条密钥。
+
+    对象存储放在数据目录之外（``tmp_path/objects``），几个实例可以共用。平台由调用方关闭。
+    """
+    data_dir = (tmp_path / data_dir_name).resolve()
     data_dir.mkdir()
     objects_dir = (tmp_path / "objects").resolve()
     objects = LocalObjectStore(objects_dir)
-    store = InMemoryControlPlane()
     models = ScriptedModels()
     root_key, root_hash = generate_root_key()
     platform = Platform(
         store=store,
         vault=EncryptedVault(store, keys={"k1": generate_master_key()}, primary="k1"),
         models=models,
-        sandboxes=_sandbox_provider(request.param),
+        sandboxes=sandboxes,
         data_dir=data_dir,
         root_key_hash=root_hash,
-        instance_id="inst-test",
+        instance_id=instance_id,
         objects=objects,
+        states=states,
     )
     await platform.start()
     await platform.create_tenant(ROOT_PRINCIPAL, tenant_id="acme", name="Acme")
@@ -498,23 +528,44 @@ async def world(request: pytest.FixtureRequest, tmp_path: Path) -> AsyncIterator
     await platform.put_secret(admin_principal, "crm-token", "s3cret-token-value")
     package_dir = tmp_path / "packages-src"
     package_dir.mkdir()
+    return World(
+        platform=platform,
+        models=models,
+        data_dir=data_dir,
+        objects=objects,
+        objects_dir=objects_dir,
+        root_key=root_key,
+        call_log=tmp_path / "mcp-calls.jsonl",
+        package_dir=package_dir,
+        admin=admin_principal,
+        member=await platform.authenticate(member.key),
+        admin_key=admin.key,
+        member_key=member.key,
+        states=states,
+    )
+
+
+@pytest.fixture
+def world_opener(tmp_path: Path) -> Any:
+    """返回 ``open_world`` 绑定好本用例临时目录的版本，给需要换后端的用例自己装配平台。"""
+
+    async def opener(**kwargs: Any) -> World:
+        return await open_world(tmp_path, **kwargs)
+
+    return opener
+
+
+@pytest.fixture(params=["local"])
+async def world(request: pytest.FixtureRequest, tmp_path: Path) -> AsyncIterator[World]:
+    """装配好的平台：内存控制面、脚本化模型、沙盒（默认本机隔离，可参数化为 Docker）、
+    数据目录之外的本机对象存储、local 状态面；已有一个租户、两把凭据、一条密钥。"""
+    world = await open_world(
+        tmp_path, store=InMemoryControlPlane(), sandboxes=_sandbox_provider(request.param)
+    )
     try:
-        yield World(
-            platform=platform,
-            models=models,
-            data_dir=data_dir,
-            objects=objects,
-            objects_dir=objects_dir,
-            root_key=root_key,
-            call_log=tmp_path / "mcp-calls.jsonl",
-            package_dir=package_dir,
-            admin=admin_principal,
-            member=await platform.authenticate(member.key),
-            admin_key=admin.key,
-            member_key=member.key,
-        )
+        yield world
     finally:
-        await platform.close()
+        await world.platform.close()
 
 
 @pytest.fixture

@@ -182,10 +182,14 @@ async def schema(postgres_dsn: str) -> AsyncIterator[str]:
 def make_config(
     tmp_path: Path, dsn: str, schema: str, gateway_url: str, root_hash: str, instance: str
 ) -> Any:
-    """一份指向真实后端的配置。"""
+    """一份指向真实后端的配置。每个实例一个自己的数据目录（以实例标识命名），对象存储共用。"""
     postgres = {"dsn": "${PG_DSN}", "schema": schema}
     document = {
-        "data_dir": str((tmp_path / "data").resolve()),
+        "data_dir": str((tmp_path / f"data-{instance}").resolve()),
+        "object_store": {
+            "backend": "local",
+            "local": {"root": str((tmp_path / "objects").resolve())},
+        },
         "root_key_hash": root_hash,
         "master_keys": {"k1": base64.b64encode(b"m" * 32).decode()},
         "primary_master_key": "k1",
@@ -229,7 +233,7 @@ async def test_unmigrated_database_fails_at_startup(
 async def test_real_deployment_end_to_end(
     tmp_path: Path, postgres_dsn: str, schema: str, gateway: tuple[FakeGateway, str]
 ) -> None:
-    """真实部署形态下走完整流程，再让第二个实例从同一份存储接手。"""
+    """真实部署形态下走完整流程，再让第二个实例（数据目录不同）从库里接手同一个会话。"""
     fake, gateway_url = gateway
     root_key, root_hash = generate_root_key()
     pool = await asyncpg.create_pool(postgres_dsn, min_size=1, max_size=2)
@@ -249,7 +253,7 @@ async def test_real_deployment_end_to_end(
 
         await _check_database(pool, schema, session_id)
 
-        # 第二个实例：同一份数据库与数据目录，接手同一个会话
+        # 第二个实例：同一份数据库与对象存储、另一个数据目录，接手同一个会话
         second = make_config(tmp_path, postgres_dsn, schema, gateway_url, root_hash, "inst-b")
         async with open_platform(second) as platform:
             served = Served(create_app(platform))
@@ -258,6 +262,9 @@ async def test_real_deployment_end_to_end(
                 await _drive_second_instance(served.url, root_key, session_id, fake)
             finally:
                 await served.stop()
+        # 会话主存在库里：两个实例的数据目录里都没有会话文件
+        assert not (tmp_path / "data-inst-a" / "threads").exists()
+        assert not (tmp_path / "data-inst-b" / "threads").exists()
     finally:
         await pool.close()
 
@@ -305,7 +312,7 @@ async def _drive_first_instance(url: str, root_key: str, archive: bytes, fake: F
 
 
 async def _check_database(pool: asyncpg.Pool, schema: str, session_id: str) -> None:
-    """数据都落进了库里：控制面的表，以及该租户专属前缀下的线程目录与消息镜像。"""
+    """数据都落进了库里：控制面的表，以及该租户专属前缀下的线程目录与会话主存。"""
     prefix = tenant_table_prefix("acme")
     async with pool.acquire() as conn:
         tables = {
@@ -326,16 +333,13 @@ async def _check_database(pool: asyncpg.Pool, schema: str, session_id: str) -> N
         # 实例退出时放弃了持有权，会话保持活动
         assert (session["owner"], session["status"]) == (None, "active")
 
-        for _ in range(100):
-            mirrored = await conn.fetch(
-                f'SELECT kind, payload->>\'text\' AS text FROM "{schema}"."{prefix}message" '
-                "WHERE thread_id = $1 ORDER BY position, seq",
-                session["thread_id"],
-            )
-            if len(mirrored) >= 2:
-                break
-            await asyncio.sleep(0.05)
-        assert [(row["kind"], row["text"]) for row in mirrored] == [
+        # 主存是同步写的：一轮结束时消息已经在库里，每条只有一份
+        stored = await conn.fetch(
+            f'SELECT kind, payload->>\'text\' AS text FROM "{schema}"."{prefix}message" '
+            "WHERE thread_id = $1 ORDER BY position, seq",
+            session["thread_id"],
+        )
+        assert [(row["kind"], row["text"]) for row in stored] == [
             ("user_message", "查一下订单"),
             ("assistant_message", "订单号是 A-1024"),
         ]

@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
-from xuanpu_server.platform import Platform
-from xuanpu_server.runtime import LocalSandboxProvider, RuntimeDefaults
+from xuanpu_server.runtime import RuntimeDefaults
+
+if TYPE_CHECKING:
+    from xuanpu_server.platform import Platform
 
 
 class Clock:
@@ -26,19 +28,17 @@ class Clock:
 
 @pytest.fixture
 async def timed(world: Any) -> Any:
-    """同一份存储上的另一个实例，用可拨动的时钟，空闲阈值很短。"""
-    # 与 world 共用数据目录，违反「数据目录归一个进程独占」的前提；这里测的是空闲回收，
-    # 与该前提无关。C4 会把多实例测试改成各用各的数据目录。
+    """同一份存储上的另一个实例，用可拨动的时钟，空闲阈值很短。
+
+    会话从建到释放再续接都在这一个实例上，不跨实例接手，所以它有自己的数据目录，
+    不与 world 共用（local 状态面下会话主存就在它自己的数据目录里）。
+    """
     clock = Clock()
-    platform = Platform(
-        store=world.platform.store,
-        vault=world.platform.vault,
-        models=world.models,
-        sandboxes=LocalSandboxProvider(),
-        data_dir=world.data_dir,
-        root_key_hash="0" * 64,
-        objects=world.objects,
-        instance_id="inst-timed",
+    data_dir = world.data_dir.parent / "data-timed"
+    data_dir.mkdir()
+    platform = world.sibling(
+        "inst-timed",
+        data_dir=data_dir,
         defaults=RuntimeDefaults(session_idle_seconds=60, runtime_idle_seconds=120),
         now=clock,
     )

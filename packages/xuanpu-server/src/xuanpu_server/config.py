@@ -64,7 +64,16 @@ class ControlPlaneConfig(_Section):
 
 
 class StateConfig(_Section):
-    """状态面后端。``local`` 用内核的本机默认实现；``postgres`` 把线程目录与消息镜像进库。"""
+    """状态面后端：会话主存与线程目录放在哪里。
+
+    Attributes:
+        backend: ``local`` 用内核的本机默认实现，会话主存与线程目录都在数据目录下，
+            只适合单实例（多实例跨实例接手会话就得共用数据目录）；``postgres`` 把线程
+            目录与会话主存都放进库里，每个租户一组带专属前缀的表，多实例不需要共享
+            数据目录。早先版本的 ``postgres`` 只是把消息镜像进库，镜像与主存是同一张表，
+            升级后直接从库里续接。
+        postgres: ``backend`` 为 ``postgres`` 时的连接。
+    """
 
     backend: Literal["local", "postgres"] = "local"
     postgres: PostgresConfig | None = None

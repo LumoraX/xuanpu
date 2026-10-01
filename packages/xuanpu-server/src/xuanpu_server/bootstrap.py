@@ -42,7 +42,15 @@ def tenant_table_prefix(tenant_id: str) -> str:
 
 
 class PostgresStateBackends:
-    """把线程目录与消息镜像放进 Postgres，每个租户一组带专属前缀的表。"""
+    """把线程目录与会话主存放进 Postgres，每个租户一组带专属前缀的表。
+
+    会话主存在库里，各实例不需要为接手会话共享数据目录。每个运行时（引擎池）用一个
+    自己的 ``PostgresMessageStore``，全部共用同一个连接池；引擎池关闭时会调用存储的
+    ``close()``，那不会关闭连接池（连接池归 ``open_platform`` 管）。
+
+    不挂 ``PostgresMessageMirror``：它与主存写的是同一张消息表。也因此，状态面原先镜像
+    进库的历史，切到主存之后可以直接续接。单写者由会话租约保证（见 ``SessionManager``）。
+    """
 
     def __init__(self, pool: asyncpg.Pool, *, schema: str) -> None:
         """
@@ -59,7 +67,7 @@ class PostgresStateBackends:
         """返回租户的后端；首次使用时为它建表（开通租户的一部分，不是运行时的隐式行为）。"""
         from taifeng_stores import SqlNamespace
         from taifeng_stores.postgres import (
-            PostgresMessageMirror,
+            PostgresMessageStore,
             PostgresThreadDirectory,
             apply_migrations,
         )
@@ -69,9 +77,15 @@ class PostgresStateBackends:
             if ready is None:
                 namespace = SqlNamespace(schema=self._schema, prefix=tenant_table_prefix(tenant_id))
                 await apply_migrations(self._pool, namespace)
+                pool = self._pool
+
+                def message_store() -> PostgresMessageStore:
+                    """给一个运行时造它专用的会话主存（与线程目录同库、同命名空间）。"""
+                    return PostgresMessageStore(pool, namespace=namespace)
+
                 ready = StateBackends(
-                    thread_directory=PostgresThreadDirectory(self._pool, namespace=namespace),
-                    index_hook=PostgresMessageMirror(self._pool, namespace=namespace),
+                    thread_directory=PostgresThreadDirectory(pool, namespace=namespace),
+                    message_store=message_store,
                 )
                 self._ready[tenant_id] = ready
             return ready

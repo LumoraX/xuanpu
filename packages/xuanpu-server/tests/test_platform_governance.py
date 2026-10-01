@@ -20,8 +20,7 @@ from xuanpu_server.errors import (
     SecretMissingError,
     SessionBusyError,
 )
-from xuanpu_server.platform import ROOT_PRINCIPAL, Platform
-from xuanpu_server.runtime import LocalSandboxProvider
+from xuanpu_server.platform import ROOT_PRINCIPAL
 from xuanpu_server.secrets import (
     EncryptedVault,
     SecretCorruptedError,
@@ -30,6 +29,7 @@ from xuanpu_server.secrets import (
 from xuanpu_server.tenancy import QuotaLimits
 
 if TYPE_CHECKING:
+    from xuanpu_server.platform import Platform
     from xuanpu_server.tenancy import Principal
 
 
@@ -492,19 +492,10 @@ async def test_concurrent_sessions_do_not_mix(world: Any, step: Any, read_turn: 
 
 def _another_instance(world: Any, instance_id: str, **kwargs: Any) -> Platform:
     """同一份存储、对象存储与数据目录上的另一个平台实例。"""
-    # 两个实例共用数据目录，违反「数据目录归一个进程独占」的前提；这里测的是会话接管
-    # （会话主存目前还在数据目录里），与该前提无关。C4 会把多实例测试改成各用各的数据目录。
-    return Platform(
-        store=world.platform.store,
-        vault=world.platform.vault,
-        models=world.models,
-        sandboxes=LocalSandboxProvider(),
-        data_dir=world.data_dir,
-        root_key_hash="0" * 64,
-        objects=world.objects,
-        instance_id=instance_id,
-        **kwargs,
-    )
+    # world 用 local 状态面，会话主存在数据目录里，跨实例接手会话只能共用数据目录——这违反
+    # 「数据目录归一个进程独占」的前提，但这里测的是会话的持有与接手，与该前提无关。
+    # postgres 状态面下主存在库里，各实例各用各的数据目录，见 test_multi_instance.py。
+    return world.sibling(instance_id, data_dir=world.data_dir, **kwargs)
 
 
 async def test_session_has_a_single_holder(world: Any, step: Any, read_turn: Any) -> None:

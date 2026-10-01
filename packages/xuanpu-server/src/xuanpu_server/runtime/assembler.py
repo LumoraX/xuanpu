@@ -1,7 +1,8 @@
 """运行时组装：为「租户 + 业务包 + 版本」组装一个内核引擎池。
 
 内核不知道租户（红线 2）。租户隔离体现在组装时注入的每一样资源上（红线 5）：
-会话存储目录、沙盒与工作区、连接器凭据、模型凭据、权限策略，全部按租户分开。
+会话存储（数据目录下的专属目录，或状态库里的专属表）、沙盒与工作区、连接器凭据、
+模型凭据、权限策略，全部按租户分开。
 """
 
 from __future__ import annotations
@@ -64,11 +65,32 @@ class RuntimeDefaults:
 
 @dataclass
 class StateBackends:
-    """一个租户的状态面后端。None 表示用内核的本机默认实现。"""
+    """一个租户的状态面后端。None 表示用内核的本机默认实现。
+
+    Attributes:
+        thread_directory: 线程目录。给了 ``message_store`` 时应与之配套（同一个库、同一个
+            命名空间），否则线程列表与实际存的消息对不上；这时不给，内核用空目录
+            （``NullThreadDirectory``）。两者都不给时用数据目录下的本机索引。
+        index_hook: 线程生命周期的订阅方（例如把消息镜像到别处）。
+        memory_store: 长期记忆。
+        message_store: 会话主存的工厂，每个运行时调用一次、得到该运行时引擎池专用的存储
+            实例（池关闭时关闭它）。给了它，会话主存就在外部存储里，不再用数据目录，
+            多实例接手会话也就不需要共享数据目录。不能与 ``index_hook`` 同时给：外部
+            主存与消息镜像同时挂上，多半是两者写同一张表、每条消息写两遍。
+    """
 
     thread_directory: taifeng.ThreadDirectory | None = None
     index_hook: taifeng.IndexHook | None = None
     memory_store: taifeng.MemoryStore | None = None
+    message_store: Callable[[], taifeng.MessageStore] | None = None
+
+    def __post_init__(self) -> None:
+        """拒绝把外部主存与消息镜像一起挂上。"""
+        if self.message_store is not None and self.index_hook is not None:
+            raise ValueError(
+                "message_store 与 index_hook 不能同时给出：会话主存已在外部存储里，"
+                "再挂消息镜像会把同一批消息写两遍"
+            )
 
 
 @runtime_checkable
@@ -239,6 +261,28 @@ class RuntimeAssembler:
             tools.append(taifeng.make_wait_for_task_tool(registry=registry))
         return tools
 
+    async def _state_options(self, package: ResolvedPackage) -> dict[str, Any]:
+        """引擎池的状态面参数：会话主存放在哪里，外加线程目录、生命周期订阅、长期记忆。
+
+        状态面给了会话主存的工厂，就用它造一个本池专用的存储，不建数据目录下的
+        ``threads``；否则会话主存是数据目录下的本机文件。
+        """
+        states = await self._states.for_tenant(package.record.tenant_id)
+        options: dict[str, Any] = {}
+        if states.message_store is not None:
+            options["message_store"] = states.message_store()
+        else:
+            storage = self._scoped("threads", package)
+            await asyncio.to_thread(storage.mkdir, parents=True, exist_ok=True)
+            options["storage_dir"] = storage
+        if states.thread_directory is not None:
+            options["thread_directory"] = states.thread_directory
+        if states.index_hook is not None:
+            options["index_hook"] = states.index_hook
+        if states.memory_store is not None:
+            options["memory_store"] = states.memory_store
+        return options
+
     async def _create_pool(
         self,
         package: ResolvedPackage,
@@ -251,37 +295,34 @@ class RuntimeAssembler:
         spec = package.manifest.spec
         budget = spec.policy.budget
         defaults = self._defaults
-        states = await self._states.for_tenant(tenant_id)
-        storage = self._scoped("threads", package)
-        await asyncio.to_thread(storage.mkdir, parents=True, exist_ok=True)
-        options: dict[str, Any] = {}
-        if states.thread_directory is not None:
-            options["thread_directory"] = states.thread_directory
-        if states.index_hook is not None:
-            options["index_hook"] = states.index_hook
-        if states.memory_store is not None:
-            options["memory_store"] = states.memory_store
-        return await taifeng.EnginePool.create(
-            skills_dir=package.skills_dir,
-            storage_dir=storage,
-            model_client=await self._models.create(tenant_id, spec.model.tier),
-            extra_tools=self._extra_tools(package, policy, sandbox, connectors),
-            script_executors={
-                "shell": shell_script_executor(sandbox.executor, env=sandbox.process_env()),
-                "python": python_script_executor(sandbox.executor, env=sandbox.process_env()),
-            },
-            permission_policy=policy,
-            # 业务包可以把预算调低，不能调高过平台上限
-            max_session_tokens=min(
-                budget.max_session_tokens or defaults.max_session_tokens,
-                defaults.max_session_tokens,
-            ),
-            max_iterations=min(
-                budget.max_iterations or defaults.max_iterations, defaults.max_iterations
-            ),
-            enable_request_capture=defaults.capture_requests,
-            **options,
-        )
+        options = await self._state_options(package)
+        try:
+            return await taifeng.EnginePool.create(
+                skills_dir=package.skills_dir,
+                model_client=await self._models.create(tenant_id, spec.model.tier),
+                extra_tools=self._extra_tools(package, policy, sandbox, connectors),
+                script_executors={
+                    "shell": shell_script_executor(sandbox.executor, env=sandbox.process_env()),
+                    "python": python_script_executor(sandbox.executor, env=sandbox.process_env()),
+                },
+                permission_policy=policy,
+                # 业务包可以把预算调低，不能调高过平台上限
+                max_session_tokens=min(
+                    budget.max_session_tokens or defaults.max_session_tokens,
+                    defaults.max_session_tokens,
+                ),
+                max_iterations=min(
+                    budget.max_iterations or defaults.max_iterations, defaults.max_iterations
+                ),
+                enable_request_capture=defaults.capture_requests,
+                **options,
+            )
+        except BaseException:
+            # 池建成之前，注入的存储仍归我们（ADR 0111）：建池失败要自己关掉
+            store = options.get("message_store")
+            if store is not None:
+                await store.close()
+            raise
 
     async def evict_idle(self) -> list[RuntimeKey]:
         """回收没有会话在用、且空闲超过 ``runtime_idle_seconds`` 的运行时，返回回收了哪些。"""
