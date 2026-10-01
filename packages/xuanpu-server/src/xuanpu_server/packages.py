@@ -7,13 +7,15 @@
 永远落在不同的对象上：多个实例并发发布同一版本时谁也覆盖不了谁，同内容重试写同一个键无害。
 各实例不共享数据目录：用到某个版本时由 ``PackageCache`` 从对象存储取归档、核对指纹、解到
 本机缓存 ``<数据目录>/cache/packages/``。
+
+发布的顺序是：写归档 → 登记 → 把校验过的暂存目录转正进本机缓存。缓存只是个加速，转正失败
+不影响发布结果。
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-import re
 import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -29,9 +31,18 @@ from xuanpu_spec import (
 )
 
 from xuanpu_server.controlplane.models import PackageVersionRecord
-from xuanpu_server.errors import ConflictError, NotFoundError, PackageInvalidError
-from xuanpu_server.objectstore import validate_key
-from xuanpu_server.package_cache import PackageCache, unpack_archive
+from xuanpu_server.errors import (
+    ConflictError,
+    NotFoundError,
+    PackageInvalidError,
+    RuntimeUnavailableError,
+)
+from xuanpu_server.package_cache import (
+    PackageCache,
+    archive_key,
+    run_to_completion,
+    unpack_archive,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -45,7 +56,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 ARCHIVE_CONTENT_TYPE = "application/zip"
-_SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 
 
 @dataclass(frozen=True)
@@ -66,23 +76,6 @@ class ResolvedPackage:
     def skills_dir(self) -> Path:
         """skill 目录。"""
         return self.root / self.manifest.spec.skills.dir
-
-
-def archive_key(tenant_id: str, name: str, version: str, digest: str) -> str:
-    """某个版本的归档在对象存储里的键：``tenants/<租户>/packages/<名>/<版本>/<十六进制>.zip``。
-
-    以租户开头（对象存储的键规则）；带上指纹，内容不同的归档永远是不同的对象。
-
-    Args:
-        digest: ``archive_digest`` 给出的指纹，形如 ``sha256:<十六进制>``；键里只放十六进制。
-
-    Raises:
-        ValueError: 指纹不是 sha256 的形状。
-    """
-    algorithm, _, hexdigest = digest.partition(":")
-    if algorithm != "sha256" or not _SHA256_HEX.match(hexdigest):
-        raise ValueError(f"不认识的归档指纹：{digest!r}")
-    return validate_key(f"tenants/{tenant_id}/packages/{name}/{version}/{hexdigest}.zip")
 
 
 def _unpack_and_validate(archive: bytes, staging: Path) -> tuple[PackageManifest, str]:
@@ -110,9 +103,9 @@ class PackageRegistry:
         Args:
             store: 控制面存储。
             audit: 审计写入口。
-            data_dir: 平台数据目录。业务包缓存在其下的 ``cache/packages/``，发布与重建
-                时的暂存目录在 ``cache/.staging/``——两者同在 ``cache/`` 下，保证在同一个
-                文件系统上，暂存目录转正时改名是原子的。
+            data_dir: 平台数据目录，必须归本进程独占。业务包缓存在其下的 ``cache/packages/``，
+                发布与重建时的暂存目录在 ``cache/.staging/``——两者同在 ``cache/`` 下，保证在
+                同一个文件系统上，暂存目录转正时改名是原子的。
             objects: 对象存储，业务包归档的正本放在这里。
             now: 取当前时间的函数，测试时可替换。
         """
@@ -124,6 +117,10 @@ class PackageRegistry:
         )
         self._now = now
         self._publishing: dict[tuple[str, str, str], asyncio.Lock] = {}
+
+    async def start(self) -> None:
+        """启动时清掉上次进程留下的暂存目录残留。前提：数据目录归本进程独占。"""
+        await self._cache.clear_staging()
 
     async def _check_loadable(self, manifest: PackageManifest, staging: Path) -> None:
         """交给内核实际加载一遍 skill：规范校验通过不代表内核认这些 skill。"""
@@ -153,10 +150,11 @@ class PackageRegistry:
         Raises:
             PackageInvalidError: 归档或包内容不符合规范。
             ConflictError: 同名同版本已经发布过。
+            RuntimeUnavailableError: 写归档时对象存储出错（可重试）。
         """
         tenant_id = principal.require_tenant_admin()
         async with self._cache.staging() as staging:
-            manifest, manifest_yaml = await asyncio.to_thread(
+            manifest, manifest_yaml = await run_to_completion(
                 _unpack_and_validate, archive, staging
             )
             await self._check_loadable(manifest, staging)
@@ -171,7 +169,8 @@ class PackageRegistry:
                 published_at=self._now(),
                 published_by=principal.actor,
             )
-            await self._commit(record, archive, staging)
+            await self._commit(record, archive)
+            await self._adopt(record, staging)
         await self._audit.control(
             principal,
             tenant_id,
@@ -182,36 +181,64 @@ class PackageRegistry:
             await self.activate(principal, record.name, record.version)
         return record
 
-    async def _commit(self, record: PackageVersionRecord, archive: bytes, staging: Path) -> None:
-        """查重 → 归档写进对象存储 → 暂存目录转正进缓存 → 登记。
+    async def _commit(self, record: PackageVersionRecord, archive: bytes) -> None:
+        """查重 → 归档写进对象存储 → 登记。
 
-        本实例内同一版本的发布串行，查重到登记之间不会被自己人插队。任何一步失败都撤回
-        已经写下的归档与缓存，不留下没有记录的包。
+        本实例内同一版本的发布串行，查重到登记之间不会被自己人插队。写归档或登记失败都撤回
+        本次写入的对象，不留下没有记录的归档。
+
+        Raises:
+            ConflictError: 同名同版本已经发布过。
+            RuntimeUnavailableError: 对象存储出错（可重试）。
         """
         key = (record.tenant_id, record.name, record.version)
         async with self._publishing.setdefault(key, asyncio.Lock()):
             if await self._store.get_package_version(*key):
                 raise ConflictError(f"业务包 {record.name} 的版本 {record.version} 已发布")
             try:
-                await self._objects.put(record.location, archive, content_type=ARCHIVE_CONTENT_TYPE)
-                await self._cache.adopt(record, staging)
+                await self._put_archive(record, archive)
                 await self._store.add_package_version(record)
             except BaseException:
                 await self._rollback(record)
                 raise
 
-    async def _rollback(self, record: PackageVersionRecord) -> None:
-        """登记失败后撤回本次写下的归档与缓存。清理失败只记日志，不盖掉原始异常。
+    async def _put_archive(self, record: PackageVersionRecord, archive: bytes) -> None:
+        """把归档写进对象存储。对象存储出错转成 503（可重试），原异常挂在 ``__cause__`` 上。"""
+        try:
+            await self._objects.put(record.location, archive, content_type=ARCHIVE_CONTENT_TYPE)
+        except Exception as exc:
+            logger.exception("业务包归档 %s 写入对象存储失败", record.location)
+            raise RuntimeUnavailableError("对象存储暂时不可用，业务包没有发布，请稍后重试") from exc
 
-        先查控制面里这个版本现在的记录，再决定删什么：
+    async def _adopt(self, record: PackageVersionRecord, staging: Path) -> None:
+        """已登记的版本把校验过的暂存目录转正进本机缓存。
+
+        失败不影响发布结果：记录已登记、归档在对象存储里，缓存下次用到时重建。只记 warning。
+        """
+        try:
+            await self._cache.adopt(record, staging)
+        except Exception:
+            logger.warning(
+                "业务包 %s/%s@%s 已发布，但转正进本机缓存失败；下次用到时从对象存储重建",
+                record.tenant_id, record.name, record.version,
+                exc_info=True,
+            )  # fmt: skip
+
+    async def _rollback(self, record: PackageVersionRecord) -> None:
+        """写归档或登记失败后撤回本次写入的对象。清理失败只记日志，不盖掉原始异常。
+
+        这时还没有转正进本机缓存，缓存不用管。先查控制面里这个版本现在的记录，再决定删不删：
 
         - 记录不存在，或存在但 ``location`` 不是本次的键（别的实例以不同内容抢先登记了）：
           删掉本次写入的对象——它没有记录指向，留着只是垃圾；
         - 记录存在且 ``location`` 就是本次的键（提交其实成功了，或别的实例以相同内容抢先
           登记）：对象有人在用，不删。
 
-        本地缓存同理，只在记录不存在、或登记的指纹与本次不同时删。查不了记录时什么都不删：
-        留下的对象没有记录指向，缓存带着指纹，都不影响正确性。
+        查不了记录时不删：留下的对象没有记录指向，不影响正确性。
+
+        已知窗口：查记录与删对象之间不是原子的。若本实例查到「没有记录」之后、删除之前，另一个
+        实例恰好以相同内容（同一个键）登记成功，本实例会删掉它在用的对象，之后解析该版本报 503。
+        彻底解决要靠对象存储的条件删除，或改为按记录做垃圾回收（只删没有记录指向的对象）。
         """
         try:
             registered = await self._store.get_package_version(
@@ -223,19 +250,12 @@ class PackageRegistry:
                 record.tenant_id, record.name, record.version, record.location,
             )  # fmt: skip
             return
-        if registered is None or registered.location != record.location:
-            try:
-                await self._objects.delete(record.location)
-            except Exception:
-                logger.exception("撤回业务包归档 %s 失败", record.location)
-        if registered is None or registered.digest != record.digest:
-            try:
-                await self._cache.discard(record)
-            except Exception:
-                logger.exception(
-                    "撤回业务包 %s/%s@%s 的本地缓存失败",
-                    record.tenant_id, record.name, record.version,
-                )  # fmt: skip
+        if registered is not None and registered.location == record.location:
+            return
+        try:
+            await self._objects.delete(record.location)
+        except Exception:
+            logger.exception("撤回业务包归档 %s 失败", record.location)
 
     async def activate(self, principal: Principal, name: str, version: str) -> None:
         """把某个已发布版本设为生效版本（前进或回滚）。"""
@@ -270,7 +290,7 @@ class PackageRegistry:
         Raises:
             NotFoundError: 包不存在、版本不存在，或没有指定版本且尚无生效版本。
             PackageInvalidError: 对象存储里的归档与登记的指纹不符。
-            RuntimeUnavailableError: 版本已登记，归档却不在对象存储里。
+            RuntimeUnavailableError: 归档不在对象存储里、对象存储出错，或记录本身异常。
         """
         chosen = version or await self._store.get_active_version(tenant_id, name)
         if chosen is None:
@@ -284,4 +304,4 @@ class PackageRegistry:
         )
 
 
-__all__ = ["ARCHIVE_CONTENT_TYPE", "PackageRegistry", "ResolvedPackage", "archive_key"]
+__all__ = ["ARCHIVE_CONTENT_TYPE", "PackageRegistry", "ResolvedPackage"]

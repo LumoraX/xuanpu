@@ -273,10 +273,9 @@ async def test_invalid_packages_are_rejected_and_leave_nothing(
         await world.platform.packages.publish(world.admin, _archive(files))
     assert fragment in caught.value.message + "".join(caught.value.problems)
     assert await world.platform.packages.list_versions("acme") == []
-    # world 夹具的对象存储放在数据目录旁边的 objects/
     leftovers = [
         path
-        for root in (world.data_dir / "cache", world.data_dir.parent / "objects")
+        for root in (world.data_dir / "cache", world.objects_dir)
         for path in (root.rglob("*") if root.exists() else ())
         if path.is_file() or (path.is_dir() and path.name != ".staging")
     ]
@@ -493,6 +492,8 @@ async def test_concurrent_sessions_do_not_mix(world: Any, step: Any, read_turn: 
 
 def _another_instance(world: Any, instance_id: str, **kwargs: Any) -> Platform:
     """同一份存储、对象存储与数据目录上的另一个平台实例。"""
+    # 两个实例共用数据目录，违反「数据目录归一个进程独占」的前提；这里测的是会话接管
+    # （会话主存目前还在数据目录里），与该前提无关。C4 会把多实例测试改成各用各的数据目录。
     return Platform(
         store=world.platform.store,
         vault=world.platform.vault,

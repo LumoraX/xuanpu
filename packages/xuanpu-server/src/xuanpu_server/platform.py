@@ -85,7 +85,9 @@ class Platform:
             vault: 密钥保管库。
             models: 模型客户端工厂。
             sandboxes: 沙盒供给方。
-            data_dir: 平台数据目录（业务包的本地缓存、会话存储、工作区）。
+            data_dir: 平台数据目录（业务包的本地缓存、会话存储、工作区）。只能归一个进程
+                独占，不能被多个进程共用：业务包缓存的锁只在进程内，启动时还会清掉暂存
+                目录的残留。
             root_key_hash: 平台根凭据的摘要。
             objects: 对象存储，业务包归档的正本放在这里；None 用 ``<data_dir>/objects``
                 下的本机目录（只适合单机试用，多实例必须注入共用的对象存储）。
@@ -137,7 +139,8 @@ class Platform:
         self.evals = EvalRunner(self.sessions, self.packages, self.audit)
 
     async def start(self) -> None:
-        """启动后台任务。"""
+        """清掉上次进程留下的暂存残留，再启动后台任务。"""
+        await self.packages.start()
         await self.sessions.start()
 
     async def close(self) -> None:

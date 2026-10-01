@@ -31,7 +31,7 @@ from xuanpu_server.platform import ROOT_PRINCIPAL, Platform
 from xuanpu_server.runtime import DockerSandboxProvider, LocalSandboxProvider
 from xuanpu_server.secrets import EncryptedVault, generate_master_key
 from xuanpu_server.tenancy import generate_root_key
-from xuanpu_spec import pack_package
+from xuanpu_spec import archive_digest, pack_package
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Iterator
@@ -306,6 +306,15 @@ class _ScriptedSession:
         return
 
 
+def _last_user_input(request: Any) -> str | None:
+    """采样请求里最后一条用户输入的文本；没有用户输入时为 None。"""
+    for message in reversed(request.messages or []):
+        if message.role == "user":
+            content = message.content
+            return content if isinstance(content, str) else json.dumps(content, default=str)
+    return None
+
+
 class ScriptedModels:
     """按脚本回复的模型：既是模型客户端，也是给平台用的客户端工厂。"""
 
@@ -320,17 +329,18 @@ class ScriptedModels:
         self.steps.extend(steps)
 
     def script_for(self, fragment: str, *steps: Step) -> None:
-        """追加只给某类采样用的脚本：提示词里含 ``fragment`` 的采样先取这里的。
+        """追加只给某类采样用的脚本：最后一条用户输入里含 ``fragment`` 的采样先取这里的。
 
         几个会话并发跑、谁先采样说不准时（例如评测用例并发执行），用它按输入对上回复。
+        只看最后一条用户输入，不看整个请求：片段可能恰好出现在 skill 文本或历史里。
         """
         self.keyed.setdefault(fragment, []).extend(steps)
 
     def next_step(self, request: Any) -> Step:
-        """取这次采样要用的一步：先找按提示词对上的脚本，没有再按顺序取。"""
-        prompt = json.dumps(request.model_dump(), ensure_ascii=False, default=str)
+        """取这次采样要用的一步：先找按最后一条用户输入对上的脚本，没有再按顺序取。"""
+        latest = _last_user_input(request)
         for fragment, queue in self.keyed.items():
-            if queue and fragment in prompt:
+            if queue and latest is not None and fragment in latest:
                 return queue.pop(0)
         return self.steps.pop(0) if self.steps else Step(text="（脚本已用完）")
 
@@ -356,6 +366,7 @@ class World:
     models: ScriptedModels
     data_dir: Path
     objects: LocalObjectStore
+    objects_dir: Path
     root_key: str
     call_log: Path
     package_dir: Path
@@ -397,6 +408,22 @@ class World:
     async def publish(self, **kwargs: Any) -> None:
         """发布样例业务包并设为生效版本。"""
         await self.platform.packages.publish(self.admin, self.archive(**kwargs), activate=True)
+
+    def archive_key(self, **kwargs: Any) -> str:
+        """样例业务包（参数同 ``archive``）在对象存储里应有的键：版本目录下按指纹命名。"""
+        version = kwargs.get("version", "1.0.0")
+        hexdigest = archive_digest(self.archive(**kwargs)).removeprefix("sha256:")
+        return f"tenants/acme/packages/support-desk/{version}/{hexdigest}.zip"
+
+    def object_keys(self) -> list[str]:
+        """对象存储里现有的全部键，已排序。"""
+        if not self.objects_dir.exists():
+            return []
+        return sorted(
+            path.relative_to(self.objects_dir).as_posix()
+            for path in self.objects_dir.rglob("*")
+            if path.is_file()
+        )
 
     def calls(self) -> list[dict[str, Any]]:
         """假 MCP server 实际收到的调用。"""
@@ -444,7 +471,8 @@ async def world(request: pytest.FixtureRequest, tmp_path: Path) -> AsyncIterator
     数据目录之外的本机对象存储；已有一个租户、两把凭据、一条密钥。"""
     data_dir = (tmp_path / "data").resolve()
     data_dir.mkdir()
-    objects = LocalObjectStore((tmp_path / "objects").resolve())
+    objects_dir = (tmp_path / "objects").resolve()
+    objects = LocalObjectStore(objects_dir)
     store = InMemoryControlPlane()
     models = ScriptedModels()
     root_key, root_hash = generate_root_key()
@@ -476,6 +504,7 @@ async def world(request: pytest.FixtureRequest, tmp_path: Path) -> AsyncIterator
             models=models,
             data_dir=data_dir,
             objects=objects,
+            objects_dir=objects_dir,
             root_key=root_key,
             call_log=tmp_path / "mcp-calls.jsonl",
             package_dir=package_dir,
@@ -486,6 +515,25 @@ async def world(request: pytest.FixtureRequest, tmp_path: Path) -> AsyncIterator
         )
     finally:
         await platform.close()
+
+
+@pytest.fixture
+def object_gets(world: World, monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """记下 ``world`` 的对象存储每次 ``get`` 取的键（按调用先后），用来数下载次数。
+
+    每次读取前让出一次事件循环，给并发的读取留出交错的机会。发布不读对象存储，所以从
+    用例一开始就计数也不影响结果。
+    """
+    seen: list[str] = []
+    original = world.objects.get
+
+    async def counting(key: str) -> bytes:
+        seen.append(key)
+        await asyncio.sleep(0)
+        return await original(key)
+
+    monkeypatch.setattr(world.objects, "get", counting)
+    return seen
 
 
 @pytest.fixture

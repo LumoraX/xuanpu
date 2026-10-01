@@ -27,6 +27,8 @@ class Clock:
 @pytest.fixture
 async def timed(world: Any) -> Any:
     """同一份存储上的另一个实例，用可拨动的时钟，空闲阈值很短。"""
+    # 与 world 共用数据目录，违反「数据目录归一个进程独占」的前提；这里测的是空闲回收，
+    # 与该前提无关。C4 会把多实例测试改成各用各的数据目录。
     clock = Clock()
     platform = Platform(
         store=world.platform.store,
