@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 import yaml
+from xuanpu_server.bootstrap import _object_store
 from xuanpu_server.config import ConfigError, expand, load_config, parse_config
+from xuanpu_server.objectstore import LocalObjectStore, S3ObjectStore
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -158,3 +160,57 @@ def test_example_config_is_valid() -> None:
     assert config.control_plane.backend == "postgres"
     assert config.state.backend == "postgres"
     assert set(config.models.tiers) == {"fast", "balanced", "deep"}
+
+
+S3_SECTION: dict[str, Any] = {
+    "endpoint": "https://oss-cn-hangzhou.aliyuncs.com",
+    "bucket": "b",
+    "region": "oss-cn-hangzhou",
+    "access_key_id": "id",
+    "secret_access_key": "${OSS_KEY}",
+}
+
+
+def test_object_store_defaults_to_local() -> None:
+    """对象存储默认是本机目录，目录未指定。"""
+    config = parse_config(edited(), variables=VARIABLES)
+    assert config.object_store.backend == "local"
+    assert config.object_store.local.root is None
+    assert config.object_store.s3 is None
+
+
+def test_object_store_s3_expands_secret() -> None:
+    """s3 后端的密钥经 ${VAR} 展开，寻址风格默认 virtual。"""
+    text = edited(object_store={"backend": "s3", "s3": S3_SECTION})
+    config = parse_config(text, variables={**VARIABLES, "OSS_KEY": "oss-secret"})
+    assert config.object_store.s3 is not None
+    assert config.object_store.s3.secret_access_key == "oss-secret"
+    assert config.object_store.s3.addressing_style == "virtual"
+
+
+def test_object_store_s3_requires_section() -> None:
+    """backend 为 s3 却没给 s3 段，报错。"""
+    with pytest.raises(ConfigError, match="s3"):
+        parse_config(edited(object_store={"backend": "s3"}), variables=VARIABLES)
+
+
+def test_object_store_local_root_must_be_absolute() -> None:
+    """local.root 给相对路径，报错。"""
+    with pytest.raises(ConfigError, match="绝对路径"):
+        parse_config(edited(object_store={"local": {"root": "objects"}}), variables=VARIABLES)
+
+
+async def test_local_backend_defaults_under_data_dir(tmp_path: Path) -> None:
+    """local 后端缺省把对象放在 <data_dir>/objects 下。"""
+    config = parse_config(edited(data_dir=str(tmp_path)), variables=VARIABLES)
+    store = _object_store(config)
+    assert isinstance(store, LocalObjectStore)
+    await store.put("t/a", b"x")
+    assert (tmp_path / "objects" / "t" / "a").read_bytes() == b"x"
+
+
+def test_s3_backend_builds_without_network() -> None:
+    """s3 后端构造时不发请求，用假 endpoint 也能建出来。"""
+    text = edited(object_store={"backend": "s3", "s3": S3_SECTION})
+    config = parse_config(text, variables={**VARIABLES, "OSS_KEY": "k"})
+    assert isinstance(_object_store(config), S3ObjectStore)

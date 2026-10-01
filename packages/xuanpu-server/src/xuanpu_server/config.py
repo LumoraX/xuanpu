@@ -112,6 +112,45 @@ class SandboxConfig(_Section):
     docker_env: dict[str, str] = Field(default_factory=dict)
 
 
+class LocalObjectStoreConfig(_Section):
+    """本机目录形态的对象存储。"""
+
+    root: Path | None = None
+    """存放对象的目录；缺省为 ``<data_dir>/objects``。给了必须是绝对路径。"""
+
+    @model_validator(mode="after")
+    def _absolute(self) -> LocalObjectStoreConfig:
+        if self.root is not None and not self.root.is_absolute():
+            raise ValueError("root 必须是绝对路径")
+        return self
+
+
+class S3ObjectStoreConfig(_Section):
+    """S3 兼容的对象存储（阿里云 OSS 等）。两个密钥经 ``${VAR}`` 从环境展开，与主密钥同等对待。"""
+
+    endpoint: str
+    bucket: str
+    region: str
+    prefix: str = ""
+    access_key_id: str
+    secret_access_key: str
+    addressing_style: Literal["virtual", "path"] = "virtual"
+
+
+class ObjectStoreConfig(_Section):
+    """对象存储。``local`` 落本地目录，只用于试用与单机；多实例用 ``s3``（阿里云 OSS 等）。"""
+
+    backend: Literal["local", "s3"] = "local"
+    local: LocalObjectStoreConfig = LocalObjectStoreConfig()
+    s3: S3ObjectStoreConfig | None = None
+
+    @model_validator(mode="after")
+    def _s3_needs_section(self) -> ObjectStoreConfig:
+        if self.backend == "s3" and self.s3 is None:
+            raise ValueError("backend 为 s3 时必须给出 s3 段")
+        return self
+
+
 class LimitsConfig(_Section):
     """平台给每个会话的上限。业务包可以调低，不能调高。"""
 
@@ -141,6 +180,7 @@ class ServerConfig(_Section):
     control_plane: ControlPlaneConfig = ControlPlaneConfig()
     state: StateConfig = StateConfig()
     sandbox: SandboxConfig = SandboxConfig()
+    object_store: ObjectStoreConfig = ObjectStoreConfig()
     limits: LimitsConfig = LimitsConfig()
     audit: AuditConfig = AuditConfig()
     lease_seconds: float = Field(default=60.0, ge=5)
@@ -226,7 +266,10 @@ __all__ = [
     "LimitsConfig",
     "ListenConfig",
     "ModelsConfig",
+    "LocalObjectStoreConfig",
+    "ObjectStoreConfig",
     "PostgresConfig",
+    "S3ObjectStoreConfig",
     "SandboxConfig",
     "ServerConfig",
     "StateConfig",

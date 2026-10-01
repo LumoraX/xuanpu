@@ -8,6 +8,7 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from typing import TYPE_CHECKING
 
 from xuanpu_server.controlplane import InMemoryControlPlane
+from xuanpu_server.objectstore import LocalObjectStore, S3ObjectStore, S3Settings
 from xuanpu_server.platform import Platform
 from xuanpu_server.runtime import (
     DockerSandboxProvider,
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
 
     from xuanpu_server.config import PostgresConfig, ServerConfig
     from xuanpu_server.controlplane.store import ControlPlaneStore
+    from xuanpu_server.objectstore import ObjectStore
     from xuanpu_server.runtime import SandboxProvider, StateBackendFactory
 
 
@@ -121,6 +123,25 @@ def _sandboxes(config: ServerConfig) -> SandboxProvider:
         memory_mb=config.sandbox.memory_mb,
         cpus=config.sandbox.cpus,
         docker_binary=config.sandbox.docker_binary,
+    )
+
+
+def _object_store(config: ServerConfig) -> ObjectStore:
+    """对象存储。``local`` 的目录缺省为 ``<data_dir>/objects``；``s3`` 构造时不发请求。"""
+    section = config.object_store
+    if section.backend == "local":
+        return LocalObjectStore(section.local.root or config.data_dir / "objects")
+    assert section.s3 is not None
+    return S3ObjectStore(
+        S3Settings(
+            endpoint=section.s3.endpoint,
+            bucket=section.s3.bucket,
+            region=section.s3.region,
+            access_key_id=section.s3.access_key_id,
+            secret_access_key=section.s3.secret_access_key,
+            prefix=section.s3.prefix,
+            addressing_style=section.s3.addressing_style,
+        )
     )
 
 

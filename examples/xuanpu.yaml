@@ -57,6 +57,21 @@ sandbox:
   # 平台不把自己的环境传给子进程：docker 客户端要靠这里给的变量找到守护进程
   # docker_env: {PATH: /usr/local/bin:/usr/bin:/bin, HOME: /var/lib/xuanpu}
 
+# 对象存储：业务包归档与员工文件。local 只用于试用与单机；多实例用 s3（阿里云 OSS 等）。
+object_store:
+  backend: local
+  # local:
+  #   root: /var/lib/xuanpu/objects     # 缺省为 <data_dir>/objects；给了必须是绝对路径
+  # backend: s3                         # 需要安装 xuanpu-server[s3]
+  # s3:
+  #   endpoint: https://oss-cn-hangzhou.aliyuncs.com
+  #   bucket: xuanpu-prod
+  #   region: oss-cn-hangzhou
+  #   prefix: xuanpu/
+  #   access_key_id: ${XUANPU_OSS_KEY_ID}
+  #   secret_access_key: ${XUANPU_OSS_KEY_SECRET}
+  #   addressing_style: virtual         # OSS 只接受 virtual；本机 moto / MinIO 用 path
+
 # 平台给每个会话的上限。业务包可以调低，不能调高。
 limits:
   max_session_tokens: 2000000

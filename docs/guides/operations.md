@@ -64,6 +64,7 @@ uv run xuanpu --help
 | `control_plane` | 否 | `memory` | 控制面存储，见下 |
 | `state` | 否 | `local` | 状态面后端，见下 |
 | `sandbox` | 否 | `local` | 沙盒后端，见下 |
+| `object_store` | 否 | `local` | 对象存储，见下 |
 | `limits` | 否 | 见下 | 每个会话的上限与回收时间 |
 | `audit.capture_requests` | 否 | `false` | 是否把每次发给模型的完整请求写进审计。内容敏感、体量大，排查问题时才开 |
 | `lease_seconds` | 否 | `60` | 会话租约时长，最小 5。实例崩溃后，别的实例最多等这么久才能接手它的会话 |
@@ -121,6 +122,24 @@ uv run xuanpu --help
 沙盒后端不可用时，对话会以 `503 runtime_unavailable` 失败。平台**不会**退回到无隔离执行。
 
 生产环境建议用 `docker`：本机隔离不限制资源用量，一个失控的脚本可以占满节点。
+
+### `object_store`
+
+业务包归档与以后的员工文件放在对象存储里。**多实例部署必须用 `s3`**（阿里云 OSS 等 S3 兼容服务）；`local` 只落本机目录，只用于试用与单机。
+
+| 键 | 默认 | 说明 |
+| --- | --- | --- |
+| `backend` | `local` | `local`：本机目录。`s3`：S3 兼容服务，需要安装 `xuanpu-server[s3]` |
+| `local.root` | `<data_dir>/objects` | 存放对象的目录。给了必须是绝对路径 |
+| `s3.endpoint` | — | 服务地址，如 `https://oss-cn-hangzhou.aliyuncs.com` |
+| `s3.bucket` | — | 桶名 |
+| `s3.region` | — | 地域，如 `oss-cn-hangzhou` |
+| `s3.prefix` | 空 | 加在所有对象键前面的前缀，如 `xuanpu/` |
+| `s3.access_key_id` | — | 访问密钥标识，用 `${VAR}` 从环境取，不要直接写进文件 |
+| `s3.secret_access_key` | — | 访问密钥，同上，与主密钥同等对待 |
+| `s3.addressing_style` | `virtual` | `virtual`：虚拟主机风格，阿里云 OSS 只接受这种。`path`：路径风格，本机 moto、MinIO 等用 |
+
+`backend` 为 `s3` 时必须给出 `s3` 段。
 
 ### `limits`
 
