@@ -269,3 +269,122 @@ async def test_cancel_over_http(world: Any, step: Any) -> None:
             headers={"Authorization": f"Bearer {world.member_key}"},
         )
     assert (response.status_code, response.json()) == (200, {"cancelled": []})
+
+
+async def test_cancel_right_after_sending(world: Any, step: Any, read_turn: Any) -> None:
+    """发完消息立刻取消（中间没有让出点）也能停下：等内核受理了这一轮再提交取消。
+
+    会话的第一轮（引擎刚打开）与之后的一轮各试一次。
+    """
+    await world.publish()
+    session = await world.platform.sessions.create(world.member, package="support-desk")
+    for text in ("第一轮", "第二轮"):
+        world.models.script(step(text=text, wait=asyncio.Event()))
+        turn = await world.platform.sessions.send_message(world.member, session.session_id, text)
+        cancelled = await world.platform.sessions.cancel(world.member, session.session_id)
+        assert cancelled == [turn.submission_id]
+        events = await read_turn(turn, timeout=10)
+        assert events[-1].msg.kind == "turn_completed"
+        assert events[-1].msg.data["end_reason"] == "cancelled"
+    assert world.platform.sessions.in_flight_turns("acme") == 0
+
+
+async def test_cancel_the_resumed_turn(world: Any, step: Any, read_turn: Any) -> None:
+    """审批通过之后续跑的那一轮也能停下，停在它的事件流上。"""
+    await world.publish()
+    session = await world.platform.sessions.create(world.member, package="support-desk")
+    gate = asyncio.Event()
+    world.models.script(
+        step(text="要更新", calls=[("c1", "mcp__crm__update_ticket", {"id": "T-1"})]),
+        step(text="续跑到一半", wait=gate),
+    )
+    suspended = await read_turn(
+        await world.platform.sessions.send_message(world.member, session.session_id, "更新")
+    )
+    request_id = suspended[-1].msg.data["pending"][0]["request_id"]
+    resumed = await world.platform.sessions.resume(
+        world.member, session.session_id, {request_id: {"granted": True}}
+    )
+    # 送回审批之后立刻取消：同样要等内核受理了这次续跑
+    cancelled = await world.platform.sessions.cancel(world.member, session.session_id)
+    assert cancelled == [resumed.submission_id]
+    events = await read_turn(resumed, timeout=10)
+    assert events[-1].msg.kind == "turn_completed"
+    assert events[-1].msg.data["end_reason"] == "cancelled"
+    assert not gate.is_set()
+
+
+def lag_suspensions(world: Any, session_id: str, seconds: float) -> None:
+    """让会话的事件枢纽处理 ``turn_suspended`` 时落后一段时间（模拟内核已挂起、平台还不知道）。"""
+    hub = world.platform.sessions._live[("acme", session_id)].hub  # noqa: SLF001
+    original = hub._handle  # noqa: SLF001
+
+    async def lagging(envelope: Any) -> None:
+        """遇到挂起事件先等一会儿再照常处理。"""
+        if envelope.event.msg.kind == "turn_suspended":
+            await asyncio.sleep(seconds)
+        await original(envelope)
+
+    hub._handle = lagging  # noqa: SLF001
+
+
+async def suspend_with_lagging_hub(world: Any, step: Any, read_turn: Any, lag: float) -> Any:
+    """开一个会话、热身一轮，再发一条会挂起等审批的消息；返回 ``(会话, 这一轮)``。"""
+    await world.publish()
+    session = await world.platform.sessions.create(world.member, package="support-desk")
+    world.models.script(step(text="热身"))
+    await read_turn(
+        await world.platform.sessions.send_message(world.member, session.session_id, "热身")
+    )
+    lag_suspensions(world, session.session_id, lag)
+    world.models.script(
+        step(text="要更新", calls=[("c1", "mcp__crm__update_ticket", {"id": "T-1"})]),
+        step(text="工单已更新"),
+    )
+    turn = await world.platform.sessions.send_message(world.member, session.session_id, "更新")
+    # 内核已经挂起（离开了它的在飞表），事件枢纽还没处理挂起事件
+    await wait_until(lambda: bool(world.models.requests) and len(world.models.requests) >= 2)
+    await asyncio.sleep(0.05)
+    return session, turn
+
+
+async def approve_and_finish(world: Any, session_id: str, read_turn: Any) -> None:
+    """待办还在：批准它，续跑的事件流照常收尾，工具真的调到了。"""
+    pending = await world.platform.sessions.pending(world.member, session_id)
+    assert len(pending) == 1
+    done = await read_turn(
+        await world.platform.sessions.resume(
+            world.member, session_id, {pending[0]["request_id"]: {"granted": True}}
+        ),
+        timeout=10,
+    )
+    assert done[-1].msg.kind == "turn_completed"
+    assert [call["arguments"] for call in world.calls()] == [{"id": "T-1"}]
+
+
+async def test_cancel_skips_a_turn_that_just_suspended(
+    world: Any, step: Any, read_turn: Any
+) -> None:
+    """内核已挂起、平台还没处理挂起事件时取消：不提交取消（否则内核会清掉挂起，平台的待办却还在）。"""
+    session, turn = await suspend_with_lagging_hub(world, step, read_turn, lag=0.3)
+    assert world.platform.sessions.in_flight_turns("acme") == 1
+    assert await world.platform.sessions.cancel(world.member, session.session_id) == []
+    events = await read_turn(turn)
+    assert events[-1].msg.kind == "turn_suspended"
+    assert "turn_cancel_requested" not in await audit_kinds(world, session.session_id)
+    await approve_and_finish(world, session.session_id, read_turn)
+
+
+async def test_cancel_gives_up_when_the_kernel_never_admits(
+    world: Any, step: Any, read_turn: Any, monkeypatch: Any, caplog: Any
+) -> None:
+    """等内核受理有上限：到点仍没受理就跳过、记警告，返回空列表。"""
+    monkeypatch.setattr("xuanpu_server.runtime.cancellation.ADMISSION_WAIT_SECONDS", 0.1)
+    session, turn = await suspend_with_lagging_hub(world, step, read_turn, lag=0.6)
+    with caplog.at_level("WARNING", logger="xuanpu_server.runtime.cancellation"):
+        assert await world.platform.sessions.cancel(world.member, session.session_id) == []
+    assert turn.submission_id in caplog.text
+    assert world.platform.sessions.in_flight_turns("acme") == 1
+    events = await read_turn(turn)
+    assert events[-1].msg.kind == "turn_suspended"
+    await approve_and_finish(world, session.session_id, read_turn)

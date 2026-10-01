@@ -154,9 +154,10 @@ class Sessions:
         return self._http.stream(f"/v1/sessions/{session_id}/resume", {"resolutions": resolutions})
 
     async def cancel(self, session_id: str, *, submission_id: str | None = None) -> Sequence[str]:
-        """停止生成：取消会话里在途的对话，返回停了哪些 submission。
+        """停止生成：取消会话里在途的对话，返回提交了取消的 submission。
 
         ``submission_id`` 省略时停掉全部在途的；给了但它不在途是 400 ``invalid_request``。
+        平台等内核接手了那一轮才提交取消（最多约 1 秒）；这期间已经收尾或挂起的不在返回里。
         被停的那一轮的事件流照常收尾：``turn_completed`` 的 ``end_reason`` 是 ``cancelled``。
         """
         body: dict[str, Any] = {}

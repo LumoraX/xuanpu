@@ -426,11 +426,11 @@ class SessionManager:
     async def cancel(
         self, principal: Principal, session_id: str, submission_id: str | None = None
     ) -> list[str]:
-        """停止生成：取消会话里在途的对话，返回停了哪些 submission。
+        """停止生成：取消会话里在途的对话，返回提交了取消的 submission。
 
-        只管在途的对话（内核怎么收尾见 ``cancellation`` 模块）。挂起等审批的那一轮已不在途，
-        不归这里管，拒绝仍走 ``resume``。本实例没持有会话时不为了取消去打开引擎：别的实例
-        持有着就抛 ``SessionBusyError``（带持有者），否则这里没有在途对话。
+        只管在途、且内核已受理的对话（为什么要等受理见 ``cancellation`` 模块）。挂起等审批的
+        那一轮已不在途，拒绝仍走 ``resume``。本实例没持有会话时不为了取消去打开引擎：别的
+        实例持有着就抛 ``SessionBusyError``（带持有者），否则这里没有在途对话。
 
         Args:
             submission_id: 只停这一轮；省略则停全部在途的。给了但不在途抛
