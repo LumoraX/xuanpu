@@ -92,9 +92,13 @@ class ResumeBody(_Request):
 
 
 class CancelBody(_Request):
-    """停止生成。``submission_id`` 省略时停掉会话里全部在途的对话。"""
+    """停止生成。``submission_id`` 省略时停掉会话里全部在途的对话。
 
-    submission_id: str | None = None
+    长度设上限（内核的 submission 标识是 ``sub_`` 加 12 位十六进制），超长输入在校验处
+    就拒绝，错误信息里不回显它。
+    """
+
+    submission_id: str | None = Field(default=None, min_length=1, max_length=64)
 
 
 def tenant_view(tenant: Tenant) -> dict[str, Any]:

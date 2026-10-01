@@ -225,8 +225,7 @@ class InMemoryControlPlane:
         """取得或续期持有权。"""
         async with self._lock:
             record = self._require_session(tenant_id, session_id)
-            held_by_other = record.owner not in (None, owner) and record.lease_expires_at > now
-            if held_by_other:
+            if record.held_elsewhere(owner, now):
                 assert record.owner is not None
                 raise SessionBusyError(
                     f"会话 {session_id!r} 正由另一个实例持有", owner=record.owner

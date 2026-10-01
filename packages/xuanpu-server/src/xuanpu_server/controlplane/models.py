@@ -80,6 +80,16 @@ class SessionRecord:
     lease_expires_at: float = 0.0
     metadata: dict[str, str] = field(default_factory=dict)
 
+    def held_elsewhere(self, instance_id: str, now: float) -> bool:
+        """在 ``now`` 这一刻是否由 ``instance_id`` 之外的实例持有（租约未到期）。
+
+        与 Postgres 实现里取得租约的条件互为否定：无人持有、本实例持有或租约已到期，
+        都可以取得。
+        """
+        return (
+            self.owner is not None and self.owner != instance_id and self.lease_expires_at > now
+        )
+
 
 @dataclass(frozen=True)
 class UsageRecord:

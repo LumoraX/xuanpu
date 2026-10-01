@@ -79,14 +79,15 @@ async def test_cancel_stops_the_running_turn(world: Any, step: Any, read_turn: A
     requested = [record for record in records if record.kind == "turn_cancel_requested"]
     assert [record.data["submission_ids"] for record in requested] == [[turn.submission_id]]
     assert requested[0].actor == world.member.actor
-    # CancelTurn 自己那个 submission 只有一条引擎日志：不登记事件流，也不算在途
-    logs = [
-        record
-        for record in records
-        if record.kind == "engine_log" and turn.submission_id in str(record.data.get("message"))
-    ]
-    assert len(logs) == 1
-    assert logs[0].data["submission_id"] != turn.submission_id
+    # CancelTurn 自己那个 submission：平台不知道它的标识，也不为它登记事件流、不算在途；
+    # 内核为它发的只有引擎日志（不看日志文案，只看 submission 与事件类型）
+    ours = {turn.submission_id, done[-1].submission_id}
+    engine = [record for record in records if record.source == "engine"]
+    extra = {record.data["submission_id"] for record in engine} - ours
+    assert len(extra) == 1
+    assert {record.kind for record in engine if record.data["submission_id"] in extra} == {
+        "engine_log"
+    }
     texts = [record.data["text"] for record in records if record.kind == "turn_text"]
     assert texts == ["写到一半", "下一轮"]
 
@@ -441,3 +442,27 @@ async def test_cancel_gives_up_when_the_kernel_never_admits(
     events = await read_turn(turn)
     assert events[-1].msg.kind == "turn_suspended"
     await approve_and_finish(world, session.session_id, read_turn)
+
+
+async def test_cancel_over_http_rejects_busy_and_bad_requests(world: Any) -> None:
+    """经 HTTP：别的实例持有是 409 session_busy（带 owner）；submission 标识为空或超长是 400，
+    超长输入不回显。"""
+    await world.publish()
+    session = await world.platform.sessions.create(world.member, package="support-desk")
+    transport = httpx.ASGITransport(app=create_app(world.platform))
+    path = f"/v1/sessions/{session.session_id}/cancel"
+    auth = {"Authorization": f"Bearer {world.member_key}"}
+    async with httpx.AsyncClient(transport=transport, base_url="http://xuanpu") as raw:
+        for submission_id in ("", "x" * 100_000):
+            response = await raw.post(path, headers=auth, json={"submission_id": submission_id})
+            assert response.status_code == 400
+            assert response.json()["error"]["code"] == "invalid_request"
+            assert len(response.text) < 1_000
+
+        await world.platform.store.acquire_lease(
+            "acme", session.session_id, owner="inst-other", now=time.time(), ttl_seconds=60
+        )
+        response = await raw.post(path, headers=auth, json={})
+    assert response.status_code == 409
+    error = response.json()["error"]
+    assert (error["code"], error["owner"]) == ("session_busy", "inst-other")

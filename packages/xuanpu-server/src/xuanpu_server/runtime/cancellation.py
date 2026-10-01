@@ -47,6 +47,8 @@ ADMISSION_WAIT_SECONDS = 1.0
 # 轮询间隔从 1 毫秒起逐次翻倍、封顶 50 毫秒：introspect 每次都算一遍上下文估算，不宜空转
 _POLL_FIRST_SECONDS = 0.001
 _POLL_MAX_SECONDS = 0.05
+# 错误信息里最多显示 submission 标识的多少个字符
+_SHOWN_ID_CHARS = 64
 
 
 def pick_targets(in_flight: Collection[str], submission_id: str | None) -> list[str]:
@@ -54,7 +56,9 @@ def pick_targets(in_flight: Collection[str], submission_id: str | None) -> list[
     if submission_id is None:
         return sorted(in_flight)
     if submission_id not in in_flight:
-        raise InvalidRequestError(f"submission {submission_id!r} 不在途（已经结束或不存在）")
+        # 不原样回显调用方给的任意长输入
+        shown = submission_id[:_SHOWN_ID_CHARS]
+        raise InvalidRequestError(f"submission {shown!r} 不在途（已经结束或不存在）")
     return [submission_id]
 
 

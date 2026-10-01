@@ -8,10 +8,12 @@ test_multi_instance.py。
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 import pytest
 from xuanpu_server.controlplane import AuditQuery
+from xuanpu_server.controlplane.models import SessionRecord
 from xuanpu_server.errors import ConflictError, LeaseInterruptedError, SessionBusyError
 
 if TYPE_CHECKING:
@@ -341,3 +343,16 @@ async def test_session_closed_during_assembly_is_not_opened(
         assert (record.status, record.owner, record.thread_id) == ("closed", None, None)
     finally:
         await slow.close()
+
+
+def test_held_elsewhere_matches_the_lease_rule() -> None:
+    """「被别的实例持有」：有持有者、不是自己、租约未到期，三者同时成立（到期那一刻算已到期）。"""
+    record = SessionRecord(
+        session_id="ses_1", tenant_id="acme", package="p", version="1", entry="e",
+        created_at=0.0, updated_at=0.0, created_by="key:x",
+    )  # fmt: skip
+    assert not record.held_elsewhere("inst-a", now=10.0)
+    held = replace(record, owner="inst-b", lease_expires_at=20.0)
+    assert held.held_elsewhere("inst-a", now=10.0)
+    assert not held.held_elsewhere("inst-b", now=10.0)
+    assert not held.held_elsewhere("inst-a", now=20.0)

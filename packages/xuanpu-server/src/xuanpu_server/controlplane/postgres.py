@@ -20,7 +20,12 @@ from xuanpu_server.controlplane.models import (
     UsageRecord,
 )
 from xuanpu_server.controlplane.schema import DEFAULT_NAMESPACE, ensure_current
-from xuanpu_server.errors import ConflictError, NotFoundError, SessionBusyError
+from xuanpu_server.errors import (
+    ConflictError,
+    LeaseInterruptedError,
+    NotFoundError,
+    SessionBusyError,
+)
 from xuanpu_server.tenancy import ApiKeyRecord, QuotaLimits, Tenant
 
 if TYPE_CHECKING:
@@ -453,16 +458,20 @@ class PostgresControlPlane:
             )
             if row is not None:
                 return _session(row)
-            holder = await conn.fetchrow(
-                f"SELECT owner FROM {self._t['session']} WHERE tenant_id = $1 AND session_id = $2",
+            current = await conn.fetchrow(
+                f"SELECT {_SESSION_COLUMNS} FROM {self._t['session']} "
+                "WHERE tenant_id = $1 AND session_id = $2",
                 tenant_id,
                 session_id,
             )
-        if holder is None:
+        if current is None:
             raise NotFoundError(f"会话 {session_id!r} 不存在")
-        raise SessionBusyError(
-            f"会话 {session_id!r} 正由另一个实例持有", owner=str(holder["owner"])
-        )
+        record = _session(current)
+        if not record.held_elsewhere(owner, now):
+            # 两条语句之间持有者放了手（或租约到期）：这次没取得，直接重试即可
+            raise LeaseInterruptedError(f"会话 {session_id!r} 的持有者刚刚变化，请重试")
+        assert record.owner is not None
+        raise SessionBusyError(f"会话 {session_id!r} 正由另一个实例持有", owner=record.owner)
 
     async def release_lease(self, tenant_id: str, session_id: str, *, owner: str) -> bool:
         """放弃持有权。"""

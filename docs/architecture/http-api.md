@@ -302,12 +302,16 @@ POST /v1/sessions/{id}/cancel
 | 正在跑 | `turn_completed`，`data.end_reason` 为 `cancelled`、`data.success` 为 `false`、`data.cancel_reason` 为 `requested` |
 | 还在排队（前一轮没结束） | `turn_failed`，`data.kind` 为 `cancelled` |
 
-会话保持活动，可以接着发消息。被停的那一轮照样记一轮用量；卡在半路的那次采样没有收尾，网关报不出它的 token，平台按上下文估算计入输入（审计里记一条 `usage_estimated`，见[审计与用量](../guides/audit-and-usage.md)）。
+会话保持活动，可以接着发消息。被停的那一轮照样记一轮用量，排队中被停、没开始跑的那一轮也计一轮（token 为 0）；卡在半路的那次采样没有收尾，网关报不出它的 token，平台按上下文估算计入输入（审计里记一条 `usage_estimated`，见[审计与用量](../guides/audit-and-usage.md)）。
+
+本租户任何一把 API key 都能停任何会话里的对话，与 `resume` 一样不区分对话是谁发起的；审计里的 `turn_cancel_requested` 记下是哪把 key 停的。只想停自己发起的那一轮，就带上它的 `submission_id`。
 
 | 情况 | 响应 |
 | --- | --- |
-| 没有在途的对话 | `200`，`cancelled` 为空列表 |
+| 没有在途的对话（包括会话已关闭） | `200`，`cancelled` 为空列表 |
+| 这一轮还没开始（会话还在准备引擎，或内核约 1 秒内仍没接手） | `200`，`cancelled` 里没有它 |
 | 给了 `submission_id`，但它不在途（已经结束或不存在） | `400 invalid_request` |
+| `submission_id` 为空串或超过 64 个字符 | `400 invalid_request` |
 | 会话正由另一个实例持有 | `409 session_busy`，带 `owner` |
 | 会话不存在或属于别的租户 | `404 not_found` |
 

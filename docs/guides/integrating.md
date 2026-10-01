@@ -161,7 +161,7 @@ async for event in client.sessions.resume(session.session_id, decision):
 
 ## 断线之后
 
-调用方断开连接，**这一轮对话不会停**，平台会把它跑完。重新连上之后不要重发消息（那会开启新的一轮），用 `submission_id` 回放：
+调用方断开连接，**这一轮对话不会停**，平台会把它跑完；要让它停下，调 `await client.sessions.cancel(session_id, submission_id=...)`（见[停止生成](../architecture/http-api.md#停止生成)）。重新连上之后不要重发消息（那会开启新的一轮），用 `submission_id` 回放：
 
 ```python
 events = await client.sessions.replay(session.session_id, submission_id)
@@ -231,6 +231,6 @@ except XuanpuError as exc:
 
 ## 目前做不到的
 
-- 不能只取消进行中的那一轮对话，只能关闭整个会话。
+- [停止生成](../architecture/http-api.md#停止生成)只停在途的那一轮：挂起等审批的那一轮要靠拒绝审批来放弃，已经执行的调用不会撤回。
 - 没有 JavaScript 客户端；浏览器端请直接用 `fetch` 读事件流（控制台的 [`app.js`](../../packages/xuanpu-console/src/xuanpu_console/static/app.js) 是一个可以参照的实现）。
 - 消息只支持文本，不支持图片与文件。

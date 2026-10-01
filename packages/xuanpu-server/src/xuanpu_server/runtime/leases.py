@@ -94,9 +94,11 @@ class SessionLeases:
 
     def ensure_not_held_elsewhere(self, record: SessionRecord) -> None:
         """只看记录、不碰租约：会话正由别的实例持有（租约未到期）时抛 ``SessionBusyError``。"""
-        owner = record.owner
-        if owner is not None and owner != self._owner and record.lease_expires_at > self._now():
-            raise SessionBusyError(f"会话 {record.session_id!r} 正由另一个实例持有", owner=owner)
+        if record.held_elsewhere(self._owner, self._now()):
+            assert record.owner is not None
+            raise SessionBusyError(
+                f"会话 {record.session_id!r} 正由另一个实例持有", owner=record.owner
+            )
 
     async def release(self, record: SessionRecord) -> bool:
         """放弃持有权；本来就不归本实例时什么也不改，返回 False。"""
