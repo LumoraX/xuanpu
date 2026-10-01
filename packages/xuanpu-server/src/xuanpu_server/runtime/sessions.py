@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Any
 
 import taifeng
 
-from xuanpu_server.controlplane.models import AuditQuery, AuditRecord, SessionRecord
+from xuanpu_server.controlplane.models import SessionRecord
 from xuanpu_server.errors import (
     ConflictError,
     InvalidRequestError,
@@ -40,6 +40,8 @@ from xuanpu_server.errors import (
 )
 from xuanpu_server.ids import new_id
 from xuanpu_server.runtime.events import EngineEventHub, SubmissionIndex, TurnStream
+from xuanpu_server.runtime.leases import SessionLeases
+from xuanpu_server.runtime.session_history import pending_requests, replay_turn
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -89,48 +91,6 @@ class _LiveSession:
         return not self.in_flight
 
 
-_SETTLING_KINDS = frozenset(
-    {"suspension_resolved", "suspension_partially_resolved", "suspension_expired"}
-)
-
-
-class _PendingTracker:
-    """顺着审计记录推算当前还挂着的请求。"""
-
-    def __init__(self) -> None:
-        """从没有挂起开始。"""
-        self._suspended: AuditRecord | None = None
-        self._settled: set[str] = set()
-
-    def observe(self, item: AuditRecord) -> None:
-        """看一条引擎事件。"""
-        if item.kind == "turn_suspended":
-            self._suspended, self._settled = item, set()
-            return
-        if self._suspended is None or item.kind not in _SETTLING_KINDS:
-            return
-        if item.data.get("record_id") != self._suspended.data.get("record_id"):
-            return
-        resolved = item.data.get("resolved_request_ids") or item.data.get("request_ids")
-        if item.kind == "suspension_expired" or not isinstance(resolved, list):
-            self._suspended = None
-        else:
-            self._settled.update(str(value) for value in resolved)
-
-    def remaining(self) -> list[dict[str, Any]]:
-        """还没处理的请求。"""
-        if self._suspended is None:
-            return []
-        pending = self._suspended.data.get("pending")
-        if not isinstance(pending, list):
-            return []
-        return [
-            dict(item)
-            for item in pending
-            if isinstance(item, dict) and str(item.get("request_id")) not in self._settled
-        ]
-
-
 @dataclass(frozen=True)
 class Turn:
     """已提交的一轮对话。"""
@@ -174,8 +134,9 @@ class SessionManager:
         self._quota = quota
         self._audit = audit
         self._submissions = submissions
-        self._instance = instance_id
-        self._lease_seconds = lease_seconds
+        self._leases = SessionLeases(
+            store, instance_id=instance_id, lease_seconds=lease_seconds, now=now
+        )
         self._now = now
         self._live: dict[tuple[str, str], _LiveSession] = {}
         self._locks: dict[tuple[str, str], asyncio.Lock] = {}
@@ -265,33 +226,21 @@ class SessionManager:
             live = self._live.get(key)
             if live is not None:
                 return live
-            await self._hold(record)
+            await self._leases.hold(record)
             try:
                 live = await self._start_engine(record)
             except BaseException:
-                await self._store.release_lease(
-                    record.tenant_id, record.session_id, owner=self._instance
-                )
+                await self._leases.release(record)
                 raise
             try:
                 # 准备引擎期间没人续期，租约可能已经过期、被别人拿走：放进来之前再确认一次
-                await self._hold(record)
+                await self._leases.confirm(record)
                 live.record = await self._bind_thread(live)
             except BaseException:
                 await self._discard(live)
                 raise
             self._live[key] = live
             return live
-
-    async def _hold(self, record: SessionRecord) -> None:
-        """取得或续上本实例对会话的租约；被别的实例持有时抛 ``SessionBusyError``。"""
-        await self._store.acquire_lease(
-            record.tenant_id,
-            record.session_id,
-            owner=self._instance,
-            now=self._now(),
-            ttl_seconds=self._lease_seconds,
-        )
 
     async def _bind_thread(self, live: _LiveSession) -> SessionRecord:
         """确认持有之后，才把引擎的线程登记到会话上（避免拿过期租约改写别人的线程）。"""
@@ -312,12 +261,7 @@ class SessionManager:
         steps: list[tuple[str, Callable[[], Awaitable[object]]]] = [
             ("引擎", lambda: live.runtime.pool.release(record.session_id, force=True)),
             ("事件枢纽", live.hub.close),
-            (
-                "租约",
-                lambda: self._store.release_lease(
-                    record.tenant_id, record.session_id, owner=self._instance
-                ),
-            ),
+            ("租约", lambda: self._leases.release(record)),
         ]
         for name, step in steps:
             try:
@@ -330,7 +274,7 @@ class SessionManager:
         package = await self._packages.resolve(record.tenant_id, record.package, record.version)
         runtime = await self._runtimes.get(package)
         # 组装运行时可能比租约还久：续接（可能回填悬空的工具调用、写进存储）之前先确认持有
-        await self._hold(record)
+        await self._leases.confirm(record)
         engine = await runtime.pool.get_or_create(
             session_id=record.session_id,
             entry_skill_id=record.entry,
@@ -443,43 +387,16 @@ class SessionManager:
         以审计为准（各实例共享）：最近一次挂起里的请求，减去之后已经核销或到期的。
         """
         record = await self.get(principal, session_id)
-        tracker = _PendingTracker()
-        after = 0
-        while True:
-            query = AuditQuery(session_id=session_id, source="engine", limit=1000, after_id=after)
-            page = await self._store.query_audit(record.tenant_id, query)
-            for item in page:
-                tracker.observe(item)
-            if len(page) < query.limit:
-                return tracker.remaining()
-            after = page[-1].audit_id
+        return await pending_requests(self._store, record.tenant_id, session_id)
 
     async def replay(
         self, principal: Principal, session_id: str, submission_id: str, *, after_seq: int = -1
     ) -> list[dict[str, Any]]:
         """回放一轮对话已经记入审计的事件（流式增量除外；回复全文在 ``turn_text`` 里）。"""
         record = await self.get(principal, session_id)
-        events: list[dict[str, Any]] = []
-        after = 0
-        while True:
-            page = await self._store.query_audit(
-                record.tenant_id,
-                AuditQuery(
-                    session_id=session_id,
-                    submission_id=submission_id,
-                    source="engine",
-                    after_id=after,
-                    limit=1000,
-                ),
-            )
-            for item in page:
-                if item.seq is not None and item.seq <= after_seq:
-                    continue
-                data = {key: value for key, value in item.data.items() if key != "submission_id"}
-                events.append({"kind": item.kind, "seq": item.seq, "at": item.at, "data": data})
-            if len(page) < 1000:
-                return events
-            after = page[-1].audit_id
+        return await replay_turn(
+            self._store, record.tenant_id, session_id, submission_id, after_seq=after_seq
+        )
 
     async def _detach(self, key: tuple[str, str], *, force: bool) -> bool:
         """释放本实例对会话的持有：关引擎、写完审计、放弃租约。
@@ -497,7 +414,7 @@ class SessionManager:
         try:
             await live.hub.close()
         finally:
-            await self._store.release_lease(key[0], key[1], owner=self._instance)
+            await self._leases.release(live.record)
         return True
 
     async def release_idle(self) -> list[str]:
@@ -539,24 +456,14 @@ class SessionManager:
 
     async def _renew_leases_once(self) -> None:
         """给本实例持有的会话续期。续期失败说明持有权已经丢了，立即放手。"""
-        for key in list(self._live):
-            try:
-                await self._store.acquire_lease(
-                    key[0],
-                    key[1],
-                    owner=self._instance,
-                    now=self._now(),
-                    ttl_seconds=self._lease_seconds,
-                )
-            except Exception:
-                logger.exception("会话 %s 续期失败，本实例放弃持有", key[1])
-                with contextlib.suppress(Exception):
-                    await self._detach(key, force=True)
+        for key in await self._leases.renew(list(self._live)):
+            with contextlib.suppress(Exception):
+                await self._detach(key, force=True)
 
     async def _renew_leases(self) -> None:
         """定期维护：续期、释放空闲会话、回收空闲运行时。"""
         while True:
-            await asyncio.sleep(self._lease_seconds / 3)
+            await asyncio.sleep(self._leases.lease_seconds / 3)
             try:
                 await self.maintain()
             except Exception:
