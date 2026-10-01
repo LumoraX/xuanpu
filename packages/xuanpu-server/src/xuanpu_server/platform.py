@@ -23,6 +23,7 @@ from xuanpu_server.runtime.assembler import (
     RuntimeDefaults,
     StateBackendFactory,
 )
+from xuanpu_server.runtime.connector_process import install_kernel_mcp_log_guard
 from xuanpu_server.runtime.events import SubmissionIndex
 from xuanpu_server.runtime.sessions import SessionManager
 from xuanpu_server.tenancy import (
@@ -98,6 +99,9 @@ class Platform:
             shutdown_drain_seconds: 关闭时给在途对话多少时间跑完。
             now: 取当前时间的函数，测试时可替换。
         """
+        # 内核 MCP 客户端会把连接器 stdout 上的非 JSON 行原样写进日志；平台装配时给这些
+        # logger 挂上过滤器（只记长度、截断长参数，见 connector_process 模块说明）
+        install_kernel_mcp_log_guard()
         self.store = store
         self.vault = vault
         self.data_dir = data_dir

@@ -287,29 +287,35 @@ async def test_connector_sandbox_closes_with_its_runtime(
 
     assert await world.platform.runtimes.evict(runtime.key) is True
     assert sandboxes.closed == ["connectors", "scripts"]
-    assert runtime.connectors._mcp_clients == []  # noqa: SLF001
+    assert runtime.connectors._stdio == []  # noqa: SLF001
 
 
 async def test_failed_assembly_closes_the_connector_sandbox(
     recorded: tuple[Any, RecordingSandboxes],
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """连接器起不来：组装失败，已开的连接器沙盒一并收回；错误提示与日志里都没有凭据。"""
+    """连接器起不来：组装失败，已开的连接器沙盒一并收回。
+
+    返回的提示只带异常类型；日志里有排障线索（异常、退出码、stderr 末尾），凭据按值换成
+    ``***``。
+    """
     world, sandboxes = recorded
     world.archive()
     root = world.package_dir / "1.0.0-standard-False"
     # 一启动就把拿到的凭据打到 stderr、再退出的连接器
-    (root / "fake_mcp.py").write_text(
-        'import os, sys\nsys.stderr.write("token=" + os.environ["CRM_TOKEN"])\nsys.exit(3)\n'
-    )
+    (root / "fake_mcp.py").write_text(CRASHING_SERVER)
     await world.platform.packages.publish(world.admin, pack_package(root), activate=True)
     session = await world.platform.sessions.create(world.member, package="support-desk")
 
     caplog.set_level(logging.DEBUG)
-    with pytest.raises(RuntimeUnavailableError, match="启动失败") as caught:
+    with pytest.raises(RuntimeUnavailableError) as caught:
         await world.platform.sessions.send_message(world.member, session.session_id, "查")
-    assert CREDENTIAL not in str(caught.value)
+    assert str(caught.value) == "连接器 'crm' 启动失败：RuntimeError"
+    assert caught.value.__cause__ is None
     assert CREDENTIAL not in caplog.text
+    [logged] = [r.getMessage() for r in caplog.records if "启动失败" in r.getMessage()]
+    assert "退出码 3" in logged
+    assert "token=***" in logged
     assert sandboxes.opened == ["connectors"]
     assert sandboxes.closed == ["connectors"]
     assert world.platform.runtimes._runtimes == {}  # noqa: SLF001
@@ -419,6 +425,32 @@ async def test_loader_variables_never_reach_the_launcher(tmp_path: Path, name: s
     assert executor.started == []
 
 
+CRASHING_SERVER = """\
+import os, sys, time
+sys.stderr.write("token=" + os.environ["CRM_TOKEN"] + "\\n")
+sys.stderr.flush()
+time.sleep(0.3)
+sys.exit(3)
+"""
+
+TOOLS_LIST_FAILS = """\
+import json, sys
+for line in sys.stdin:
+    message = json.loads(line)
+    if "id" not in message:
+        continue
+    if message["method"] == "initialize":
+        result = {
+            "protocolVersion": message["params"]["protocolVersion"],
+            "capabilities": {"tools": {}},
+            "serverInfo": {"name": "broken", "version": "1"},
+        }
+        print(json.dumps({"jsonrpc": "2.0", "id": message["id"], "result": result}), flush=True)
+    else:
+        error = {"code": -32603, "message": "列不出工具"}
+        print(json.dumps({"jsonrpc": "2.0", "id": message["id"], "error": error}), flush=True)
+"""
+
 HANGING_SERVER = """\
 import os, time
 with open(os.path.join(os.environ["HOME"], "pid.txt"), "w") as handle:
@@ -478,3 +510,105 @@ async def test_startup_timeout_does_not_leak_the_connector_process(
     assert handle.executor.processes == ()
     with pytest.raises(OSError, match="已关闭"):
         await handle.executor.start(None)
+
+
+async def open_bare_connector(
+    tmp_path: Path, local_sandboxes: Any, script: str, *, startup_timeout: float = 30.0
+) -> tuple[Any, ConnectorSet, ConnectorSpec, Path]:
+    """不经平台：开一个本机连接器沙盒，备好跑 ``script`` 的连接器。"""
+    package_root = tmp_path / "pkg"
+    package_root.mkdir()
+    (package_root / "server.py").write_text(script)
+    handle = await local_sandboxes().open_connectors(
+        SimpleNamespace(root=package_root), tmp_path / "work"
+    )
+    spec = ConnectorSpec.model_validate({"name": "crm", "command": [sys.executable, "server.py"]})
+    connectors = ConnectorSet(
+        tenant_id="acme",
+        vault=None,
+        audit=None,
+        submissions=None,
+        executor=handle.executor,
+        base_env=handle.process_env(),
+        startup_timeout_seconds=startup_timeout,
+    )
+    return handle, connectors, spec, package_root
+
+
+async def test_failing_tools_list_is_a_startup_failure(
+    tmp_path: Path, local_sandboxes: Any
+) -> None:
+    """握手成功、列工具失败：同样算启动失败（只带异常类型），关闭后进程退出。"""
+    handle, connectors, spec, root = await open_bare_connector(
+        tmp_path, local_sandboxes, TOOLS_LIST_FAILS
+    )
+    with pytest.raises(RuntimeUnavailableError) as caught:
+        await connectors.start(spec, package_root=root)
+    assert str(caught.value) == "连接器 'crm' 启动失败：McpToolError"
+    [process] = handle.executor.processes
+    await connectors.close()
+    assert process.returncode is not None
+    await handle.close()
+
+
+async def call_failing(
+    world: Any, step: Any, read_turn: Any, arguments: dict[str, Any]
+) -> dict[str, Any]:
+    """让模型调一次连接器工具（预期失败），返回那次调用的结果事件数据。"""
+    session = await world.platform.sessions.create(world.member, package="support-desk")
+    world.models.script(
+        step(calls=[("c1", "mcp__crm__search_customer", arguments)]), step(text="好")
+    )
+    events = await read_turn(
+        await world.platform.sessions.send_message(world.member, session.session_id, "查")
+    )
+    data: dict[str, Any] = next(e.msg.data for e in events if e.msg.kind == "tool_call_completed")
+    assert data["is_error"] is True
+    return data
+
+
+async def gate_details(world: Any) -> list[str]:
+    """过闸记录里的 detail。"""
+    records = await world.platform.store.query_audit("acme", AuditQuery(limit=1000))
+    return [record.data["detail"] for record in records if record.kind == "connector_call"]
+
+
+async def test_tool_error_text_is_redacted_everywhere(
+    world: Any, step: Any, read_turn: Any, caplog: pytest.LogCaptureFixture
+) -> None:
+    """工具回了消息里带凭据的错误：交给模型的文本、审计的 detail、日志里都换成了 ***。"""
+    caplog.set_level(logging.DEBUG)
+    await world.publish()
+    data = await call_failing(world, step, read_turn, {"name": "x", "fail": True})
+    assert "后端拒绝了 token=***" in data["output"]
+    assert CREDENTIAL not in data["output"]
+    assert await gate_details(world) == ["[-32001] 后端拒绝了 token=***"]
+    assert "调用失败" in caplog.text
+    assert CREDENTIAL not in caplog.text
+
+
+async def test_connector_dying_mid_call_logs_exit_code_and_last_words(
+    world: Any, step: Any, read_turn: Any, caplog: pytest.LogCaptureFixture
+) -> None:
+    """调用途中连接器进程退出：调用记为失败并进审计；日志里有退出码与脱敏后的遗言。"""
+    caplog.set_level(logging.DEBUG)
+    await world.publish()
+    data = await call_failing(world, step, read_turn, {"name": "x", "exit": 7})
+    assert "connector_error" in data["output"]
+    assert len(await gate_details(world)) == 1
+    [logged] = [r.getMessage() for r in caplog.records if "调用失败" in r.getMessage()]
+    assert "退出码 7" in logged
+    assert "dying with token=***" in logged
+    assert CREDENTIAL not in caplog.text
+
+
+async def test_noise_on_connector_stdout_stays_out_of_the_log(
+    world: Any, step: Any, read_turn: Any, caplog: pytest.LogCaptureFixture
+) -> None:
+    """连接器往 stdout 写了带凭据的非 JSON 行：内核照常跳过它，日志里只记长度不记内容。"""
+    caplog.set_level(logging.DEBUG)
+    await world.publish()
+    output = await call_connector(world, step, read_turn, {"name": "x", "noise": True})
+    assert output["token_length"] == len(CREDENTIAL)
+    assert "内容不记" in caplog.text
+    assert CREDENTIAL not in caplog.text

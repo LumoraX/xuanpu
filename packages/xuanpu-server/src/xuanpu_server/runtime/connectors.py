@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import time
@@ -28,6 +29,8 @@ from xuanpu_spec import OpenApiError, load_openapi
 
 from xuanpu_server.audit import digest_arguments
 from xuanpu_server.errors import PackageInvalidError, PlatformError, RuntimeUnavailableError
+from xuanpu_server.redaction import redact, tail
+from xuanpu_server.runtime.connector_process import ObservingExecutor
 from xuanpu_server.runtime.http_api import ConnectorCallError, HttpApiClient, resolve_base_url
 from xuanpu_server.runtime.sandbox import DEFAULT_BASE_ENV
 
@@ -49,6 +52,11 @@ logger = logging.getLogger(__name__)
 _LOADER_ENV_PREFIXES = ("LD_", "DYLD_")
 
 _MAX_OUTPUT_CHARS = 64 * 1024
+
+# 排障日志里记连接器 stderr 的末尾多少字符（脱敏之后再截）
+_LOGGED_STDERR_CHARS = 2048
+# 启动失败时等进程退出片刻，让退出码与最后的 stderr 落定
+_SETTLE_SECONDS = 1.0
 
 # 副作用分类 → 内核的 effect 分类（崩溃恢复时据此决定能否安全重发）
 _EFFECT_KIND: dict[str, str] = {
@@ -111,6 +119,89 @@ def render_result(result: Mapping[str, Any]) -> tuple[str, bool]:
     if structured is not None and not parts:
         parts.append(json.dumps(structured, ensure_ascii=False))
     return truncate("\n".join(parts)), bool(result.get("isError"))
+
+
+@dataclass
+class _StdioRun:
+    """一个 stdio 连接器的进程、客户端与排障线索。
+
+    Attributes:
+        name: 连接器名。
+        secrets: 这次注入给它的密钥明文，日志与错误文本按它们脱敏。
+        observer: 起它的执行器（记下进程与 stderr 末尾）。
+        client: 握手成功后的客户端；启动没走完时为 None（进程可能已经起来了）。
+    """
+
+    name: str
+    secrets: tuple[str, ...]
+    observer: ObservingExecutor
+    client: taifeng.McpStdioClient | None = None
+
+    def redact(self, text: str) -> str:
+        """按这个连接器的密钥脱敏。"""
+        return redact(text, self.secrets)
+
+    async def diagnostics(self, exc: BaseException | None, *, settle: bool = False) -> str:
+        """脱敏后的排障线索：异常文本、退出码（拿得到的话）、stderr 末尾约 2 KiB。
+
+        各段都用 repr 写出，连接器输出里的换行不会在日志里伪造出新的一行。
+
+        Args:
+            exc: 这次失败的异常。
+            settle: 先等进程退出片刻（至多 ``_SETTLE_SECONDS``）再取退出码与 stderr。
+        """
+        parts: list[str] = []
+        if exc is not None:
+            text = self.redact(str(exc))
+            parts.append(f"{type(exc).__name__}: {text!r}" if text else type(exc).__name__)
+        process = self.observer.process
+        if process is None:
+            return "；".join([*parts, "进程没有起来"])
+        if settle and process.returncode is None:
+            # 进程还没退出（例如卡在握手上）就不再等：退出码记「未退出」，这不是错误
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(asyncio.shield(process.wait()), timeout=_SETTLE_SECONDS)
+        code = process.returncode
+        parts.append("退出码 " + ("未退出" if code is None else str(code)))
+        stderr = tail(self.redact(process.stderr_text()), _LOGGED_STDERR_CHARS)
+        parts.append(f"stderr 末尾 {stderr!r}")
+        return "；".join(parts)
+
+    def invoker(self, tool: str) -> Invoke:
+        """调用这个连接器的某个工具。须在握手成功之后调用。
+
+        调用失败（工具报错、请求超时、进程退出断开……）时，日志记脱敏后的排障线索；交给
+        模型与审计的文本同样按值脱敏（``ConnectorCallError``）。
+        """
+        client = self.client
+        assert client is not None
+
+        async def invoke(args: dict[str, Any]) -> tuple[str, bool]:
+            try:
+                result = await client.call_tool(tool, args)
+            except (taifeng.McpToolError, RuntimeError, OSError) as exc:
+                # 连接断开多半是进程退出了：等它片刻，好记下退出码与遗言
+                settle = not isinstance(exc, taifeng.McpToolError)
+                logger.warning(
+                    "连接器 %s 的工具 %s 调用失败：%s",
+                    self.name,
+                    tool,
+                    await self.diagnostics(exc, settle=settle),
+                )
+                raise ConnectorCallError(self.redact(str(exc))) from None
+            return render_result(result)
+
+        return invoke
+
+    async def close(self) -> None:
+        """关闭连接器：有客户端就关客户端（它会等进程退出）；启动没走完的直接强杀进程。
+
+        启动被取消（例如启动时限到了）时内核不会关掉已经起来的进程，只能在这里强杀。
+        """
+        if self.client is not None:
+            await self.client.close()
+        else:
+            await self.observer.kill()
 
 
 class ConnectorGate:
@@ -255,7 +346,7 @@ class ConnectorSet:
         self._base_env = dict(base_env)
         self._call_timeout = call_timeout_seconds
         self._startup_timeout = startup_timeout_seconds
-        self._mcp_clients: list[taifeng.McpStdioClient] = []
+        self._stdio: list[_StdioRun] = []
         self._http_clients: list[HttpApiClient] = []
         self._pending: list[_Pending] = []
 
@@ -278,8 +369,11 @@ class ConnectorSet:
         self._pending.extend(found)
         return {spec.tool_name(item.tool): item.effect for item in found}
 
-    async def _environment(self, spec: ConnectorSpec) -> dict[str, str]:
+    async def _environment(self, spec: ConnectorSpec) -> tuple[dict[str, str], tuple[str, ...]]:
         """连接器进程的完整环境：基础环境加清单声明的变量，密钥在此解析成明文。
+
+        Returns:
+            完整环境，以及其中的密钥明文（排障日志按它们脱敏）。
 
         Raises:
             PackageInvalidError: 清单要设置动态链接器变量（``LD_*``、``DYLD_*``）。
@@ -293,13 +387,15 @@ class ConnectorSet:
                 "加载任意代码"
             )
         env = dict(self._base_env)
+        secrets: list[str] = []
         for name, item in spec.env.items():
             if item.secret is not None:
                 env[name] = await self._vault.get(self._tenant_id, item.secret)
+                secrets.append(env[name])
             else:
                 assert item.value is not None
                 env[name] = item.value
-        return env
+        return env, tuple(secrets)
 
     async def _start_stdio(self, spec: ConnectorSpec, cwd: str) -> list[_Pending]:
         """在连接器沙盒里启动 MCP server 进程并列出工具。
@@ -313,47 +409,36 @@ class ConnectorSet:
             raise RuntimeUnavailableError(
                 f"连接器 {spec.name!r} 是 stdio 连接器，但这个运行时没有连接器沙盒"
             )
-        env = await self._environment(spec)
+        env, secrets = await self._environment(spec)
+        run = _StdioRun(name=spec.name, secrets=secrets, observer=ObservingExecutor(self._executor))
+        # 先登记再启动：启动到一半失败，进程也归 close() 收拾
+        self._stdio.append(run)
         try:
-            client = await asyncio.wait_for(
-                taifeng.McpStdioClient.spawn(
-                    list(spec.command),
-                    env=env,
-                    cwd=cwd,
-                    executor=self._executor,
-                    request_timeout_seconds=self._call_timeout,
-                ),
-                timeout=self._startup_timeout,
+            listed = await asyncio.wait_for(
+                self._connect(run, spec, env, cwd), timeout=self._startup_timeout
             )
         except Exception as exc:
-            # 外部进程的失败方式不可穷举（起不来、握手超时、协议版本不符……），统一归为
-            # 运行时不可用。提示与日志里都只带异常类型，不带异常文本与堆栈：异常文本可能
-            # 含有注入进去的凭据（例如沙盒后端把启动参数或环境回显在错误里）
-            logger.error("连接器 %s 启动失败：%s", spec.name, type(exc).__name__)
+            # 外部进程的失败方式不可穷举（起不来、握手超时、协议版本不符、列不出工具……），
+            # 统一归为运行时不可用。返回的提示只带异常类型：异常文本可能含有注入进去的凭据。
+            # 日志里记按值脱敏后的排障线索；不带原异常（from None），免得别处打印堆栈时
+            # 把未脱敏的异常文本带出去
+            logger.error(
+                "连接器 %s 启动失败：%s", spec.name, await run.diagnostics(exc, settle=True)
+            )
             raise RuntimeUnavailableError(
                 f"连接器 {spec.name!r} 启动失败：{type(exc).__name__}"
-            ) from exc
-        self._mcp_clients.append(client)
-        listed = {str(tool["name"]): tool for tool in await client.list_tools() if "name" in tool}
+            ) from None
         missing = [tool.name for tool in spec.tools if tool.name not in listed]
         if missing:
-            # 排查线索只记 stderr 尾部的长度，不记内容：连接器可能把拿到的凭据打到 stderr 上
             logger.error(
-                "连接器 %s 缺少声明的工具 %s；stderr 尾部 %d 字符（内容不记，可能含凭据）",
+                "连接器 %s 缺少声明的工具 %s：%s",
                 spec.name,
                 ", ".join(missing),
-                len(client.stderr_tail),
+                await run.diagnostics(None),
             )
             raise RuntimeUnavailableError(
                 f"连接器 {spec.name!r} 没有提供清单里声明的工具：{', '.join(missing)}"
             )
-
-        def invoker(name: str) -> Invoke:
-            async def invoke(args: dict[str, Any]) -> tuple[str, bool]:
-                return render_result(await client.call_tool(name, args))
-
-            return invoke
-
         found: list[_Pending] = []
         for name, meta in listed.items():
             if not spec.allows(name):
@@ -366,10 +451,24 @@ class ConnectorSet:
                     effect=spec.effect_of(name),
                     description=str(meta.get("description") or f"{spec.name} / {name}"),
                     input_schema=schema if isinstance(schema, dict) else {"type": "object"},
-                    invoke=invoker(name),
+                    invoke=run.invoker(name),
                 )
             )
         return found
+
+    async def _connect(
+        self, run: _StdioRun, spec: ConnectorSpec, env: dict[str, str], cwd: str
+    ) -> dict[str, dict[str, Any]]:
+        """起进程、握手、列出工具。握手一成功就把客户端记到 ``run`` 上，之后的失败由
+        ``close()`` 关掉它。"""
+        run.client = await taifeng.McpStdioClient.spawn(
+            list(spec.command),
+            env=env,
+            cwd=cwd,
+            executor=run.observer,
+            request_timeout_seconds=self._call_timeout,
+        )
+        return {str(tool["name"]): tool for tool in await run.client.list_tools() if "name" in tool}
 
     async def _start_http(self, spec: ConnectorSpec, package_root: Path) -> list[_Pending]:
         """读 OpenAPI 文档，把白名单内的 operation 列成工具。不发起任何网络请求。"""
@@ -464,10 +563,10 @@ class ConnectorSet:
 
     async def close(self) -> None:
         """关闭全部连接器进程与 HTTP 连接。"""
-        mcp, self._mcp_clients = self._mcp_clients, []
+        stdio, self._stdio = self._stdio, []
         http, self._http_clients = self._http_clients, []
         self._pending = []
-        for closer in [client.close for client in mcp] + [client.close for client in http]:
+        for closer in [run.close for run in stdio] + [client.close for client in http]:
             try:
                 await closer()
             except Exception:

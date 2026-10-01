@@ -4,6 +4,10 @@
 解释器，容器沙盒用镜像里的 ``python3``。调用日志写在 ``$HOME``（连接器的工作目录）下；
 回包里另外报告工作目录之外能否写。参数里带了探测项（试读文件、试连端口）时，探测结果
 写进 ``$HOME/probe.json``——结果可能很长，事件里的工具输出只留预览，放不下。
+
+为了检查平台的日志与错误文本不漏凭据，几个参数让它故意「说漏嘴」：``noise`` 先往 stdout
+写一行带凭据的非 JSON 文本；``fail`` 回一个消息里带凭据的 JSON-RPC 错误；``exit`` 往 stderr
+写带凭据的遗言后按给定的退出码退出。
 """
 
 from __future__ import annotations
@@ -76,6 +80,25 @@ def reply(message_id: object, result: dict[str, object]) -> None:
     sys.stdout.flush()
 
 
+def leak(message_id: object, arguments: dict[str, object]) -> bool:
+    """按参数故意把凭据写到不该出现的地方；回过错误（不用再回结果）时返回 True。"""
+    token = os.environ.get("CRM_TOKEN", "")
+    if arguments.get("noise"):
+        sys.stdout.write("debug: token=" + token + "\n")
+        sys.stdout.flush()
+    if arguments.get("fail"):
+        error = {"code": -32001, "message": "后端拒绝了 token=" + token}
+        sys.stdout.write(json.dumps({"jsonrpc": "2.0", "id": message_id, "error": error}) + "\n")
+        sys.stdout.flush()
+        return True
+    code = arguments.get("exit")
+    if isinstance(code, int):
+        sys.stderr.write("dying with token=" + token + "\n")
+        sys.stderr.flush()
+        sys.exit(code)
+    return False
+
+
 for line in sys.stdin:
     message = json.loads(line)
     method = message.get("method")
@@ -98,6 +121,8 @@ for line in sys.stdin:
         log_path = os.path.join(os.environ["HOME"], "mcp-calls.jsonl")
         with open(log_path, "a", encoding="utf-8") as log:
             log.write(json.dumps(params, ensure_ascii=False) + "\n")
+        if leak(message["id"], params["arguments"]):
+            continue
         probes = probe(params["arguments"])
         if probes:
             probe_path = os.path.join(os.environ["HOME"], "probe.json")
