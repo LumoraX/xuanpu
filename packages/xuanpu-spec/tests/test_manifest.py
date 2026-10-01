@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 import yaml
+from pydantic import ValidationError
 from xuanpu_spec import (
+    ConnectorSpec,
     ManifestError,
     dump_manifest,
     load_manifest,
@@ -209,6 +211,128 @@ def test_json_schema_uses_public_field_names(samples: Any) -> None:
     assert "apiVersion" in schema["properties"]
     assert schema["additionalProperties"] is False
     assert "maxSessionTokens" in schema["$defs"]["BudgetSpec"]["properties"]
+
+
+def test_remote_connector_shape() -> None:
+    """remote 连接器：工具名前缀与 stdio 一样是 mcp__，凭据只引用密钥名。"""
+    spec = ConnectorSpec.model_validate(
+        {
+            "name": "docs",
+            "transport": "remote",
+            "url": "https://mcp.example.com/mcp",
+            "auth": {"type": "bearer", "secret": "docs-token"},
+        }
+    )
+    assert spec.tool_name("search") == "mcp__docs__search"
+    assert spec.secret_names == ("docs-token",)
+    assert spec.timeout_seconds == 30.0
+    assert spec.effect_of("search") == "external"
+
+
+def test_remote_connector_optional_fields() -> None:
+    """remote 连接器可以不要凭据；试用时可以用 http://；可以设单次调用的超时与 header 凭据。"""
+    plain = ConnectorSpec.model_validate(
+        {"name": "docs", "transport": "remote", "url": "http://127.0.0.1:8080/mcp"}
+    )
+    assert (plain.auth, plain.secret_names) == (None, ())
+    keyed = ConnectorSpec.model_validate(
+        {
+            "name": "docs",
+            "transport": "remote",
+            "url": "https://mcp.example.com/mcp",
+            "timeoutSeconds": 5,
+            "auth": {"type": "header", "secret": "docs-key", "header": "X-Api-Key"},
+        }
+    )
+    assert (keyed.timeout_seconds, keyed.secret_names) == (5.0, ("docs-key",))
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"command": ["x"]},
+        {"openapi": "a.yaml"},
+        {"env": {"A": {"value": "1"}}},
+        {"baseUrl": "https://x"},
+    ],
+)
+def test_remote_connector_rejects_other_transport_fields(extra: dict[str, Any]) -> None:
+    """remote 连接器不能带别的传输方式的字段：command / env / openapi / baseUrl 一律拒绝。"""
+    with pytest.raises(ValidationError):
+        ConnectorSpec.model_validate(
+            {"name": "d", "transport": "remote", "url": "https://x/mcp", **extra}
+        )
+
+
+def test_remote_connector_needs_an_http_url() -> None:
+    """remote 连接器必须给 url，且是带主机名的 http:// 或 https:// 地址。"""
+    for url in (None, "ftp://x", "mcp.example.com", "https://", "https:///mcp"):
+        with pytest.raises(ValidationError):
+            ConnectorSpec.model_validate({"name": "d", "transport": "remote", "url": url})
+
+
+@pytest.mark.parametrize(
+    "url", ["https://user:pass@mcp.example.com/mcp", "https://token@mcp.example.com/mcp"]
+)
+def test_remote_url_cannot_carry_credentials(url: str) -> None:
+    """url 里不能带用户名或口令：凭据只能写进 auth，并且只写密钥名。"""
+    with pytest.raises(ValidationError, match="auth"):
+        ConnectorSpec.model_validate({"name": "d", "transport": "remote", "url": url})
+
+
+@pytest.mark.parametrize(
+    "auth",
+    [
+        {"type": "query", "secret": "docs-token", "name": "key"},
+        {"type": "basic", "secret": "docs-token"},
+    ],
+)
+def test_remote_connector_only_takes_header_style_auth(auth: dict[str, Any]) -> None:
+    """remote 连接器的凭据只能放在请求头里：bearer 或 header；query 与 basic 不支持。"""
+    with pytest.raises(ValidationError, match="bearer"):
+        ConnectorSpec.model_validate(
+            {"name": "d", "transport": "remote", "url": "https://x/mcp", "auth": auth}
+        )
+
+
+@pytest.mark.parametrize(
+    "base",
+    [
+        {"name": "d", "command": ["uvx", "x"]},
+        {"name": "d", "transport": "http", "openapi": "a.yaml"},
+    ],
+)
+def test_url_only_belongs_to_remote_connectors(base: dict[str, Any]) -> None:
+    """url 只用于 remote 连接器：stdio 与 http 连接器写了 url 都报错。"""
+    with pytest.raises(ValidationError, match="url"):
+        ConnectorSpec.model_validate({**base, "url": "https://x/mcp"})
+
+
+def test_stdio_connector_still_rejects_auth() -> None:
+    """stdio 连接器仍然不能写 auth（凭据经 env 的 secret 注入）。"""
+    with pytest.raises(ValidationError, match="auth"):
+        ConnectorSpec.model_validate(
+            {"name": "d", "command": ["x"], "auth": {"type": "bearer", "secret": "t"}}
+        )
+
+
+def test_remote_connector_in_manifest_roundtrip(samples: Any) -> None:
+    """清单里的 remote 连接器能解析、写回再解析；JSON Schema 里有 remote 与 url。"""
+    remote = {
+        "name": "docs",
+        "transport": "remote",
+        "url": "https://mcp.example.com/mcp",
+        "auth": {"type": "bearer", "secret": "docs-token"},
+        "tools": [{"name": "search", "effect": "read"}],
+    }
+    data = yaml.safe_load(samples.manifest)
+    data["spec"]["connectors"].append(remote)
+    manifest = parse_manifest(yaml.safe_dump(data, allow_unicode=True))
+    assert manifest.spec.secret_names == ("crm-token", "docs-token")
+    assert parse_manifest(dump_manifest(manifest)) == manifest
+    connector = manifest_json_schema()["$defs"]["ConnectorSpec"]
+    assert "remote" in connector["properties"]["transport"]["enum"]
+    assert "url" in connector["properties"]
 
 
 def test_version_ordering(samples: Any) -> None:

@@ -23,7 +23,10 @@ _TOOL_PREFIXES = (MCP_TOOL_PREFIX, API_TOOL_PREFIX)
 
 
 def connector_tool_name(connector: str, tool: str) -> str:
-    """模型看到的 MCP 连接器工具名。HTTP 连接器的工具名见 ``ConnectorSpec.tool_name``。"""
+    """模型看到的 MCP 连接器（``stdio`` 与 ``remote``）工具名。
+
+    HTTP 连接器的工具名见 ``ConnectorSpec.tool_name``。
+    """
     return f"{MCP_TOOL_PREFIX}{connector}__{tool}"
 
 
@@ -107,7 +110,11 @@ def _check_skills(
 def _check_tool_references(
     manifest: PackageManifest, skills: list[SkillSummary], findings: _Findings
 ) -> None:
-    """skill 引用的连接器工具必须对应清单里声明的连接器、正确的前缀与白名单。"""
+    """skill 引用的连接器工具必须对应清单里声明的连接器、正确的前缀与白名单。
+
+    前缀由连接器的传输方式决定（``ConnectorSpec.tool_prefix``）：``stdio`` 与 ``remote``
+    是 ``mcp__``，``http`` 是 ``api__``。
+    """
     connectors = {connector.name: connector for connector in manifest.spec.connectors}
     for skill in skills:
         for tool_name in skill.tool_names:

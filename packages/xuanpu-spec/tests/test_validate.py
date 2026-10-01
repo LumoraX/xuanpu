@@ -121,6 +121,59 @@ def test_skill_references_tool_outside_allowlist(
     assert any("工具白名单" in error for error in report.errors)
 
 
+REMOTE_CONNECTOR = """\
+    - name: docs
+      transport: remote
+      url: https://mcp.example.com/mcp
+      auth: {type: bearer, secret: docs-token}
+      tools:
+        - {name: search, effect: read}
+"""
+
+
+def _with_remote_connector(manifest: str) -> str:
+    """在样例清单的连接器列表末尾加一个 remote 连接器 ``docs``。"""
+    return manifest.replace("  evals:", REMOTE_CONNECTOR + "  evals:")
+
+
+def test_skill_references_remote_connector_tool(
+    make_package: Callable[..., Path], samples: Any
+) -> None:
+    """remote 连接器的工具与 stdio 一样按 mcp__<连接器>__<工具> 引用，校验通过。"""
+    triage = samples.triage.replace(
+        "[mcp__crm__search_customer]", "[mcp__crm__search_customer, mcp__docs__search]"
+    )
+    report = validate_package(
+        make_package(
+            manifest=_with_remote_connector(samples.manifest),
+            skills={"triage": triage, "faq": samples.faq},
+        )
+    )
+    assert report.ok, report.errors
+    assert report.manifest is not None
+    assert report.manifest.spec.secret_names == ("crm-token", "docs-token")
+
+
+def test_remote_connector_tool_with_api_prefix_rejected(
+    make_package: Callable[..., Path], samples: Any
+) -> None:
+    """remote 连接器的工具用 api__ 前缀引用：前缀与传输方式不符，校验不通过。"""
+    triage = samples.triage.replace(
+        "[mcp__crm__search_customer]", "[mcp__crm__search_customer, api__docs__search]"
+    )
+    report = validate_package(
+        make_package(
+            manifest=_with_remote_connector(samples.manifest),
+            skills={"triage": triage, "faq": samples.faq},
+        )
+    )
+    assert not report.ok
+    assert any(
+        "api__docs__search" in error and "传输方式不符" in error and "mcp__docs__" in error
+        for error in report.errors
+    )
+
+
 def test_skills_dir_cannot_escape_package(make_package: Callable[..., Path], samples: Any) -> None:
     """skill 目录不能指到包外面。"""
     report = validate_package(

@@ -60,6 +60,13 @@ spec:
       timeoutSeconds: 30
       tools:                    # 按 operationId；留空表示开放文档里的全部 operation
         - {name: createOrder, effect: write}
+    - name: docs                # remote：部署在别处、经 Streamable HTTP 访问的 MCP server
+      transport: remote
+      url: https://mcp.example.com/mcp
+      auth: {type: bearer, secret: docs-token}
+      timeoutSeconds: 30
+      tools:
+        - {name: search, effect: read}
   evals:
     - name: greet
       entry: triage
@@ -112,17 +119,18 @@ spec:
 | 字段 | 适用 | 默认 | 说明 |
 | --- | --- | --- | --- |
 | `name` | 全部 | 必填 | 命名规则同包名。出现在工具名里 |
-| `transport` | 全部 | `stdio` | `stdio`：平台启动的 MCP server 进程；`http`：按 OpenAPI 文档调用的接口 |
+| `transport` | 全部 | `stdio` | `stdio`：平台启动的 MCP server 进程；`http`：按 OpenAPI 文档调用的接口；`remote`：部署在别处的 MCP server |
 | `effect` | 全部 | `external` | 这个连接器的工具默认的副作用分类：`read`、`write`、`external` |
 | `tools` | 全部 | 空（开放全部） | 白名单。每项 `{name, effect}`，`effect` 省略时用默认分类；不能重名 |
 | `command` | stdio | 必填 | 启动 MCP server 的命令，字符串数组。工作目录是业务包根目录 |
 | `env` | stdio | 空 | 传给进程的环境变量。每项是 `{value: 字面量}` 或 `{secret: 密钥名}`，二选一 |
 | `openapi` | http | 必填 | OpenAPI 3.x 文档在包内的相对路径（YAML 或 JSON，最大 8 MiB） |
 | `baseUrl` | http | 文档 `servers` 的第一个绝对地址 | 接口的基地址，`http://` 或 `https://` 开头 |
-| `auth` | http | 无（接口不需要凭据） | 见下文「HTTP 连接器」 |
-| `timeoutSeconds` | http | `30` | 单次调用的超时，最大 600。另受平台的连接器超时约束，取小的 |
+| `url` | remote | 必填 | MCP server 的端点地址，带主机名，`https://` 开头（试用可用 `http://`）；不能带用户名与口令 |
+| `auth` | http、remote | 无（不需要凭据） | 见下文「HTTP 连接器」「远端 MCP 连接器」 |
+| `timeoutSeconds` | http、remote | `30` | 单次调用的超时，最大 600。另受平台的连接器超时约束，取小的 |
 
-把另一种传输的字段写进来（比如 stdio 连接器写了 `openapi`）会报错。
+把另一种传输的字段写进来（比如 stdio 连接器写了 `openapi`、remote 连接器写了 `command`）会报错。
 
 ### `spec.evals[]`
 
@@ -148,7 +156,7 @@ spec:
 - **多余的字段一律拒绝**：拼错的字段名在校验时报错。
 - **只声明需求，不写实现细节**：模型只选档位；审批只选强度；凭据只写密钥名。skill 的 `model` 字段只在取值是档位名时生效。
 - **工具可见性**：模型只看得到当前 skill 在 `tool_names` 里点名的连接器工具；内核自带的 `call_skill`、`read_skill` 总是可用，skill 声明了 `scripts` 就自动可用 `run_script`。
-- **连接器工具名**：stdio 连接器是 `mcp__<连接器名>__<工具名>`，HTTP 连接器是 `api__<连接器名>__<operationId>`；skill 在 `tool_names` 里按这个名字引用。引用了清单里没有的连接器、前缀与传输方式不符、或白名单之外的工具，校验不通过。
+- **连接器工具名**：stdio 与 remote 连接器是 `mcp__<连接器名>__<工具名>`，HTTP 连接器是 `api__<连接器名>__<operationId>`；skill 在 `tool_names` 里按这个名字引用。引用了清单里没有的连接器、前缀与传输方式不符、或白名单之外的工具，校验不通过。
 - **入口**：清单 `entries` 里的 skill 必须在 SKILL.md 里声明 `entry: true`。
 - **版本**：发布后不可变，改动必须发新版本。不兼容的规范变更升 `apiVersion`。
 
@@ -170,6 +178,33 @@ spec:
 限流、熔断、重试、双向 TLS 不在平台里做，交给企业已有的 API 网关。
 
 平台不限制 `baseUrl` 可以指向哪里（包括内网地址）：出网范围靠部署的网络策略约束。设计理由见 [ADR 0008](../decisions/0008-declarative-http-connectors.md)。
+
+## 远端 MCP 连接器
+
+MCP server 已经部署在别处（企业自建或第三方提供），经 MCP Streamable HTTP 访问时，声明一个 `transport: remote` 的连接器，不必让平台起进程：
+
+```yaml
+connectors:
+  - name: docs
+    transport: remote
+    url: https://mcp.example.com/mcp
+    auth: {type: bearer, secret: docs-token}
+    timeoutSeconds: 30
+    tools:
+      - {name: search, effect: read}
+```
+
+| 项 | 规则 |
+| --- | --- |
+| 字段 | `url` 必填；可选 `auth`、`timeoutSeconds`、`effect`、`tools`。不能写 `command`、`env`、`openapi`、`baseUrl` |
+| 工具名 | 与 stdio 连接器一样是 `mcp__<连接器名>__<工具名>`，skill 在 `tool_names` 里按这个名字引用 |
+| 地址 | 带主机名的 `https://` 地址；`http://` 只宜试用（凭据会明文经过网络）。地址里不能带用户名与口令，凭据写进 `auth` |
+| 凭据 | `auth.type` 只支持放在请求头里的两种：`bearer`（`Authorization: Bearer <密钥>`）、`header`（配 `header` 头名）；取值只写密钥名，平台在每次请求发出时从保管库取出 |
+| 副作用分类 | 逐工具声明优先，否则用连接器的 `effect`（默认 `external`）；不采信 server 自己声称的只读标注 |
+| 白名单 | `tools` 里声明的工具 server 必须提供，否则会话起不来；没声明的工具模型看不到 |
+| 超时 | 单次调用按 `timeoutSeconds` 与平台的连接器超时取小的；超时的调用记为 `connector_timeout` |
+
+远端 MCP 连接器与另外两种传输共用同一个闸门：白名单、审批、审计都一样。
 
 ## 归档
 

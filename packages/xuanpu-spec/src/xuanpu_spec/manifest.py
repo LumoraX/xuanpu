@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
@@ -169,14 +170,34 @@ class HttpAuth(_Strict):
         return self
 
 
+Transport = Literal["stdio", "http", "remote"]
+
+# remote 连接器的凭据只能放在请求头里：query 会把明文写进 URL（URL 常被日志、异常文本带出去），
+# basic 暂不开放（需要时可以向后兼容地加上）
+_REMOTE_AUTH_TYPES = ("bearer", "header")
+
+
+def _check_remote_url(url: str | None) -> None:
+    """remote 连接器的地址：必填，带主机名的 ``http://`` / ``https://``，不带用户名与口令。"""
+    if url is None:
+        raise ValueError("remote 连接器必须给 url")
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        raise ValueError("url 必须是带主机名、以 http:// 或 https:// 开头的地址")
+    if "@" in parts.netloc:
+        raise ValueError("url 里不能带用户名或口令：凭据请写进 auth，只写密钥名")
+
+
 class ConnectorSpec(_Strict):
     """一个连接器：业务方接入外部能力的通道。
 
-    两种传输：
+    三种传输：
 
     - ``stdio``：由平台启动的 MCP server 进程。模型看到的工具名是 ``mcp__<连接器名>__<工具名>``。
     - ``http``：按 OpenAPI 文档直接调用的 HTTP 接口，每个 operation 是一个工具，
       工具名是 ``api__<连接器名>__<operationId>``。
+    - ``remote``：已经部署在别处、经 MCP Streamable HTTP 访问的 MCP server。工具名与
+      ``stdio`` 一样是 ``mcp__<连接器名>__<工具名>``。
 
     Attributes:
         name: 连接器名。
@@ -185,8 +206,11 @@ class ConnectorSpec(_Strict):
         env: 传给 MCP server 进程的环境变量。
         openapi: ``http`` 传输下 OpenAPI 文档在包内的相对路径。
         base_url: ``http`` 传输下接口的基地址；不给则用文档 ``servers`` 里的第一个。
-        auth: ``http`` 传输下的凭据注入方式；不给表示接口不需要凭据。
-        timeout_seconds: ``http`` 传输下单次调用的超时。
+        url: ``remote`` 传输下 MCP server 的端点地址；正式使用应为 ``https://``，
+            试用可以是 ``http://``。不能带用户名与口令。
+        auth: ``http`` 与 ``remote`` 传输下的凭据注入方式；不给表示不需要凭据。
+            ``remote`` 只支持放在请求头里的 ``bearer`` 与 ``header``。
+        timeout_seconds: ``http`` 与 ``remote`` 传输下单次调用的超时。
         effect: 该连接器工具的默认副作用分类；默认按最保守的 ``external``。
             ``http`` 传输下 GET / HEAD 的 operation 默认是 ``read``。
         tools: 工具白名单与逐工具的副作用分类（``http`` 传输下按 operationId）。
@@ -194,11 +218,12 @@ class ConnectorSpec(_Strict):
     """
 
     name: Name
-    transport: Literal["stdio", "http"] = "stdio"
+    transport: Transport = "stdio"
     command: tuple[str, ...] = ()
     env: dict[EnvName, EnvValue] = Field(default_factory=dict)
     openapi: RelativePath | None = None
     base_url: Annotated[str | None, Field(alias="baseUrl")] = None
+    url: str | None = None
     auth: HttpAuth | None = None
     timeout_seconds: Annotated[float, Field(alias="timeoutSeconds", gt=0, le=600)] = 30.0
     effect: Effect = "external"
@@ -206,22 +231,49 @@ class ConnectorSpec(_Strict):
 
     @model_validator(mode="after")
     def _shape(self) -> ConnectorSpec:
+        """各传输方式的必填字段齐全，且没有写进别的传输方式的字段。"""
         names = [tool.name for tool in self.tools]
         if len(set(names)) != len(names):
             raise ValueError("tools 里有重复的工具名")
+        if self.url is not None and self.transport != "remote":
+            raise ValueError("url 只用于 remote 连接器")
         if self.transport == "stdio":
-            if not self.command:
-                raise ValueError("stdio 连接器必须给 command")
-            if self.openapi or self.base_url or self.auth:
-                raise ValueError("openapi / baseUrl / auth 只用于 http 连接器")
+            self._check_stdio()
+        elif self.transport == "http":
+            self._check_http()
         else:
-            if not self.openapi:
-                raise ValueError("http 连接器必须给 openapi")
-            if self.command or self.env:
-                raise ValueError("command / env 只用于 stdio 连接器")
-            if self.base_url is not None and not self.base_url.startswith(("http://", "https://")):
-                raise ValueError("baseUrl 必须以 http:// 或 https:// 开头")
+            self._check_remote()
         return self
+
+    def _check_stdio(self) -> None:
+        """stdio 连接器：必须有 command；凭据经 env 的 secret 注入，不用 auth。"""
+        if not self.command:
+            raise ValueError("stdio 连接器必须给 command")
+        if self.openapi or self.base_url:
+            raise ValueError("openapi / baseUrl 只用于 http 连接器")
+        if self.auth:
+            raise ValueError("auth 只用于 http 与 remote 连接器；stdio 连接器的凭据写在 env 里")
+
+    def _check_http(self) -> None:
+        """http 连接器：必须有 openapi；baseUrl 若给出须是 http(s) 地址。"""
+        if not self.openapi:
+            raise ValueError("http 连接器必须给 openapi")
+        if self.command or self.env:
+            raise ValueError("command / env 只用于 stdio 连接器")
+        if self.base_url is not None and not self.base_url.startswith(("http://", "https://")):
+            raise ValueError("baseUrl 必须以 http:// 或 https:// 开头")
+
+    def _check_remote(self) -> None:
+        """remote 连接器：必须有合法的 url；凭据只能放在请求头里。"""
+        _check_remote_url(self.url)
+        if self.command or self.env:
+            raise ValueError("command / env 只用于 stdio 连接器")
+        if self.openapi or self.base_url:
+            raise ValueError("openapi / baseUrl 只用于 http 连接器")
+        if self.auth is not None and self.auth.type not in _REMOTE_AUTH_TYPES:
+            raise ValueError(
+                f"remote 连接器的 auth.type 只支持 bearer 与 header，不支持 {self.auth.type}"
+            )
 
     @model_validator(mode="after")
     def _no_loader_variables(self) -> ConnectorSpec:
@@ -237,7 +289,8 @@ class ConnectorSpec(_Strict):
     @property
     def tool_prefix(self) -> str:
         """模型看到的工具名前缀。"""
-        return f"{'mcp' if self.transport == 'stdio' else 'api'}__{self.name}__"
+        # stdio 与 remote 都是 MCP server，前缀相同；只有按 OpenAPI 调用的 http 是 api
+        return f"{'api' if self.transport == 'http' else 'mcp'}__{self.name}__"
 
     def tool_name(self, tool: str) -> str:
         """模型看到的完整工具名。"""
@@ -376,5 +429,6 @@ __all__ = [
     "PolicySpec",
     "SandboxSpec",
     "SkillsSpec",
+    "Transport",
     "version_key",
 ]
