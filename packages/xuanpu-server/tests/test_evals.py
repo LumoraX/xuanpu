@@ -43,11 +43,10 @@ async def publish_with_evals(world: Any) -> None:
 async def test_report_marks_each_case(world: Any, step: Any) -> None:
     """三个用例：一个通过、一个回复不符、一个超预算；报告逐条说明，会话跑完即关闭。"""
     await publish_with_evals(world)
-    world.models.script(
-        step(text="您好，请问有什么可以帮您？"),
-        step(text="退款在 3 个工作日内到账"),
-        step(text="从前有座山……"),
-    )
+    # 用例并发执行，谁先采样说不准：按各用例的输入对上回复
+    world.models.script_for("你好", step(text="您好，请问有什么可以帮您？"))
+    world.models.script_for("退款多久到账", step(text="退款在 3 个工作日内到账"))
+    world.models.script_for("讲个长故事", step(text="从前有座山……"))
     report = await world.platform.evals.run(world.admin, "support-desk")
     assert (report.package, report.version, report.passed) == ("support-desk", "1.0.0", False)
     by_name = {case.name: case for case in report.cases}

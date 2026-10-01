@@ -35,6 +35,7 @@ async def timed(world: Any) -> Any:
         sandboxes=LocalSandboxProvider(),
         data_dir=world.data_dir,
         root_key_hash="0" * 64,
+        objects=world.objects,
         instance_id="inst-timed",
         defaults=RuntimeDefaults(session_idle_seconds=60, runtime_idle_seconds=120),
         now=clock,

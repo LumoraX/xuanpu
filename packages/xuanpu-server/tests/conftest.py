@@ -26,6 +26,7 @@ from taifeng_stores import SqlNamespace
 from xuanpu_server.controlplane import InMemoryControlPlane
 from xuanpu_server.controlplane.postgres import PostgresControlPlane
 from xuanpu_server.controlplane.schema import apply_migrations
+from xuanpu_server.objectstore import LocalObjectStore
 from xuanpu_server.platform import ROOT_PRINCIPAL, Platform
 from xuanpu_server.runtime import DockerSandboxProvider, LocalSandboxProvider
 from xuanpu_server.secrets import EncryptedVault, generate_master_key
@@ -283,7 +284,7 @@ class _ScriptedSession:
     async def stream(self, request: Any) -> Any:
         """按脚本产出事件。"""
         self._owner.requests.append(request)
-        step = self._owner.steps.pop(0) if self._owner.steps else Step(text="（脚本已用完）")
+        step = self._owner.next_step(request)
         yield ResponseEvent(kind="created")
         if step.text:
             yield ResponseEvent(kind="text_delta", data={"text": step.text})
@@ -310,12 +311,28 @@ class ScriptedModels:
 
     def __init__(self) -> None:
         self.steps: list[Step] = []
+        self.keyed: dict[str, list[Step]] = {}
         self.requests: list[Any] = []
         self.created_for: list[tuple[str, str]] = []
 
     def script(self, *steps: Step) -> None:
-        """追加脚本。"""
+        """追加脚本：按采样的先后顺序取用。"""
         self.steps.extend(steps)
+
+    def script_for(self, fragment: str, *steps: Step) -> None:
+        """追加只给某类采样用的脚本：提示词里含 ``fragment`` 的采样先取这里的。
+
+        几个会话并发跑、谁先采样说不准时（例如评测用例并发执行），用它按输入对上回复。
+        """
+        self.keyed.setdefault(fragment, []).extend(steps)
+
+    def next_step(self, request: Any) -> Step:
+        """取这次采样要用的一步：先找按提示词对上的脚本，没有再按顺序取。"""
+        prompt = json.dumps(request.model_dump(), ensure_ascii=False, default=str)
+        for fragment, queue in self.keyed.items():
+            if queue and fragment in prompt:
+                return queue.pop(0)
+        return self.steps.pop(0) if self.steps else Step(text="（脚本已用完）")
 
     def session(self, *, cancel: taifeng.CancellationToken, model: str | None = None) -> Any:
         """创建一轮采样的会话。"""
@@ -338,6 +355,7 @@ class World:
     platform: Platform
     models: ScriptedModels
     data_dir: Path
+    objects: LocalObjectStore
     root_key: str
     call_log: Path
     package_dir: Path
@@ -422,10 +440,11 @@ def _sandbox_provider(kind: str) -> Any:
 
 @pytest.fixture(params=["local"])
 async def world(request: pytest.FixtureRequest, tmp_path: Path) -> AsyncIterator[World]:
-    """装配好的平台：内存控制面、脚本化模型、沙盒（默认本机隔离，可参数化为 Docker）；
-    已有一个租户、两把凭据、一条密钥。"""
+    """装配好的平台：内存控制面、脚本化模型、沙盒（默认本机隔离，可参数化为 Docker）、
+    数据目录之外的本机对象存储；已有一个租户、两把凭据、一条密钥。"""
     data_dir = (tmp_path / "data").resolve()
     data_dir.mkdir()
+    objects = LocalObjectStore((tmp_path / "objects").resolve())
     store = InMemoryControlPlane()
     models = ScriptedModels()
     root_key, root_hash = generate_root_key()
@@ -437,6 +456,7 @@ async def world(request: pytest.FixtureRequest, tmp_path: Path) -> AsyncIterator
         data_dir=data_dir,
         root_key_hash=root_hash,
         instance_id="inst-test",
+        objects=objects,
     )
     await platform.start()
     await platform.create_tenant(ROOT_PRINCIPAL, tenant_id="acme", name="Acme")
@@ -455,6 +475,7 @@ async def world(request: pytest.FixtureRequest, tmp_path: Path) -> AsyncIterator
             platform=platform,
             models=models,
             data_dir=data_dir,
+            objects=objects,
             root_key=root_key,
             call_log=tmp_path / "mcp-calls.jsonl",
             package_dir=package_dir,

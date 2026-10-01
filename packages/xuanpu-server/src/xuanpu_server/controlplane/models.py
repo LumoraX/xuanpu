@@ -19,7 +19,7 @@ class PackageVersionRecord:
         version: 版本号。
         digest: 归档的指纹。
         manifest_yaml: 清单原文。
-        location: 解包后的目录。
+        location: 归档在对象存储里的键。
         published_at: 发布时间。
         published_by: 发布者。
     """

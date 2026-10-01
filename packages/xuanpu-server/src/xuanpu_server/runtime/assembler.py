@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import logging
 import time
 from dataclasses import dataclass, field
@@ -18,6 +17,7 @@ from taifeng_sandbox import python_script_executor, shell_script_executor
 
 from xuanpu_server.runtime.approval import build_policy
 from xuanpu_server.runtime.connectors import DEFAULT_BASE_ENV, ConnectorSet
+from xuanpu_server.tenancy import tenant_directory
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
@@ -115,15 +115,6 @@ class TenantRuntime:
                 await closer()
             except Exception:
                 logger.exception("关闭运行时 %s 的%s失败", self.key, name)
-
-
-def tenant_directory(tenant_id: str) -> str:
-    """租户在数据目录下的子目录名。
-
-    租户标识本身的字符集已受限；再拼上摘要，避免大小写不敏感的文件系统上两个租户撞目录。
-    """
-    digest = hashlib.sha256(tenant_id.encode("utf-8")).hexdigest()[:8]
-    return f"{tenant_id}-{digest}"
 
 
 class RuntimeAssembler:
@@ -331,5 +322,4 @@ __all__ = [
     "StateBackendFactory",
     "StateBackends",
     "TenantRuntime",
-    "tenant_directory",
 ]

@@ -123,6 +123,15 @@ def validate_tenant_id(tenant_id: str) -> str:
     return tenant_id
 
 
+def tenant_directory(tenant_id: str) -> str:
+    """租户在本机目录（会话存储、工作区、业务包缓存）下的子目录名。
+
+    租户标识本身的字符集已受限；再拼上摘要，避免大小写不敏感的文件系统上两个租户撞目录。
+    """
+    digest = hashlib.sha256(tenant_id.encode("utf-8")).hexdigest()[:8]
+    return f"{tenant_id}-{digest}"
+
+
 def hash_secret(secret: str) -> str:
     """密钥的摘要。密钥本身是高熵随机串，用 SHA-256 足够，不需要慢哈希。"""
     return hashlib.sha256(secret.encode("utf-8")).hexdigest()
@@ -183,6 +192,7 @@ __all__ = [
     "generate_root_key",
     "hash_secret",
     "parse_api_key",
+    "tenant_directory",
     "validate_tenant_id",
     "verify_root_key",
     "verify_secret",

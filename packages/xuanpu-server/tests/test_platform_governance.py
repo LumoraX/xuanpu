@@ -168,8 +168,11 @@ async def test_same_package_name_in_two_tenants(world: Any, step: Any, read_turn
     first = await world.platform.packages.resolve("acme", "support-desk")
     second = await world.platform.packages.resolve("globex", "support-desk")
     assert first.root != second.root
-    assert first.root.is_relative_to(world.data_dir / "packages" / "acme")
-    assert second.root.is_relative_to(world.data_dir / "packages" / "globex")
+    cache = world.data_dir / "cache" / "packages"
+    assert first.root.relative_to(cache).parts[0].startswith("acme-")
+    assert second.root.relative_to(cache).parts[0].startswith("globex-")
+    assert first.record.location == "tenants/acme/packages/support-desk/1.0.0.zip"
+    assert second.record.location == "tenants/globex/packages/support-desk/1.0.0.zip"
     thread_dirs = sorted(path.name for path in (world.data_dir / "threads").iterdir())
     assert len(thread_dirs) == 2
     assert thread_dirs[0].startswith("acme-")
@@ -264,15 +267,17 @@ HELPER_SKILL = "---\nname: helper\ndescription: d\nversion: 1.0.0\ntype: atomic\
 async def test_invalid_packages_are_rejected_and_leave_nothing(
     world: Any, files: dict[str, str], fragment: str
 ) -> None:
-    """不合格的业务包发布失败，数据目录里不留下任何东西。"""
+    """不合格的业务包发布失败，数据目录与对象存储里都不留下任何东西。"""
     with pytest.raises(PackageInvalidError) as caught:
         await world.platform.packages.publish(world.admin, _archive(files))
     assert fragment in caught.value.message + "".join(caught.value.problems)
     assert await world.platform.packages.list_versions("acme") == []
+    # world 夹具的对象存储放在数据目录旁边的 objects/
     leftovers = [
         path
-        for path in (world.data_dir / "packages").rglob("*")
-        if path.is_file() or (path.is_dir() and path.name not in (".staging", "packages"))
+        for root in (world.data_dir / "cache", world.data_dir.parent / "objects")
+        for path in (root.rglob("*") if root.exists() else ())
+        if path.is_file() or (path.is_dir() and path.name != ".staging")
     ]
     assert leftovers == []
     assert not (world.data_dir.parent / "escape.txt").exists()
@@ -486,7 +491,7 @@ async def test_concurrent_sessions_do_not_mix(world: Any, step: Any, read_turn: 
 
 
 def _another_instance(world: Any, instance_id: str, **kwargs: Any) -> Platform:
-    """同一份存储与数据目录上的另一个平台实例。"""
+    """同一份存储、对象存储与数据目录上的另一个平台实例。"""
     return Platform(
         store=world.platform.store,
         vault=world.platform.vault,
@@ -494,6 +499,7 @@ def _another_instance(world: Any, instance_id: str, **kwargs: Any) -> Platform:
         sandboxes=LocalSandboxProvider(),
         data_dir=world.data_dir,
         root_key_hash="0" * 64,
+        objects=world.objects,
         instance_id=instance_id,
         **kwargs,
     )

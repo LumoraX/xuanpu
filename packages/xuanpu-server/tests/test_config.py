@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 import yaml
-from xuanpu_server.bootstrap import _object_store
+from xuanpu_server.bootstrap import object_store
 from xuanpu_server.config import ConfigError, expand, load_config, parse_config
 from xuanpu_server.objectstore import LocalObjectStore, S3ObjectStore
 
@@ -203,7 +203,7 @@ def test_object_store_local_root_must_be_absolute() -> None:
 async def test_local_backend_defaults_under_data_dir(tmp_path: Path) -> None:
     """local 后端缺省把对象放在 <data_dir>/objects 下。"""
     config = parse_config(edited(data_dir=str(tmp_path)), variables=VARIABLES)
-    store = _object_store(config)
+    store = object_store(config)
     assert isinstance(store, LocalObjectStore)
     await store.put("t/a", b"x")
     assert (tmp_path / "objects" / "t" / "a").read_bytes() == b"x"
@@ -213,7 +213,7 @@ def test_s3_backend_builds_without_network() -> None:
     """s3 后端构造时不发请求，用假 endpoint 也能建出来。"""
     text = edited(object_store={"backend": "s3", "s3": S3_SECTION})
     config = parse_config(text, variables={**VARIABLES, "OSS_KEY": "k"})
-    assert isinstance(_object_store(config), S3ObjectStore)
+    assert isinstance(object_store(config), S3ObjectStore)
 
 
 @pytest.mark.parametrize(

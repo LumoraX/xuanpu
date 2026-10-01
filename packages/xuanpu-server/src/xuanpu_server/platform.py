@@ -14,6 +14,7 @@ from xuanpu_server.audit import AuditLog
 from xuanpu_server.errors import AuthenticationError, ConflictError, NotFoundError
 from xuanpu_server.evals import EvalRunner
 from xuanpu_server.ids import new_id
+from xuanpu_server.objectstore import LocalObjectStore
 from xuanpu_server.packages import PackageRegistry
 from xuanpu_server.quota import QuotaGuard
 from xuanpu_server.runtime.assembler import (
@@ -42,6 +43,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from xuanpu_server.controlplane.store import ControlPlaneStore
+    from xuanpu_server.objectstore import ObjectStore
     from xuanpu_server.runtime.models import ModelClientFactory
     from xuanpu_server.runtime.sandbox import SandboxProvider
     from xuanpu_server.secrets import SecretVault
@@ -69,6 +71,7 @@ class Platform:
         sandboxes: SandboxProvider,
         data_dir: Path,
         root_key_hash: str,
+        objects: ObjectStore | None = None,
         states: StateBackendFactory | None = None,
         defaults: RuntimeDefaults | None = None,
         instance_id: str | None = None,
@@ -82,8 +85,10 @@ class Platform:
             vault: 密钥保管库。
             models: 模型客户端工厂。
             sandboxes: 沙盒供给方。
-            data_dir: 平台数据目录（业务包、会话存储、工作区）。
+            data_dir: 平台数据目录（业务包的本地缓存、会话存储、工作区）。
             root_key_hash: 平台根凭据的摘要。
+            objects: 对象存储，业务包归档的正本放在这里；None 用 ``<data_dir>/objects``
+                下的本机目录（只适合单机试用，多实例必须注入共用的对象存储）。
             states: 状态面后端工厂；None 用内核的本机默认实现。
             defaults: 运行时默认参数。
             instance_id: 本实例的标识；None 则随机生成。
@@ -94,13 +99,18 @@ class Platform:
         self.store = store
         self.vault = vault
         self.data_dir = data_dir
+        self.objects: ObjectStore = (
+            objects if objects is not None else LocalObjectStore(data_dir / "objects")
+        )
         self.instance_id = instance_id or new_id("inst")
         self._root_key_hash = root_key_hash
         self._drain_seconds = shutdown_drain_seconds
         self._now = now
         self.audit = AuditLog(store, now=now)
         self.quota = QuotaGuard(store, now=now)
-        self.packages = PackageRegistry(store, self.audit, data_dir=data_dir, now=now)
+        self.packages = PackageRegistry(
+            store, self.audit, data_dir=data_dir, objects=self.objects, now=now
+        )
         submissions = SubmissionIndex()
         self.runtimes = RuntimeAssembler(
             data_dir=data_dir,

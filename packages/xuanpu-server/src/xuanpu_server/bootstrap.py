@@ -126,8 +126,8 @@ def _sandboxes(config: ServerConfig) -> SandboxProvider:
     )
 
 
-def _object_store(config: ServerConfig) -> ObjectStore:
-    """对象存储。``local`` 的目录缺省为 ``<data_dir>/objects``；``s3`` 构造时不发请求。"""
+def object_store(config: ServerConfig) -> ObjectStore:
+    """按配置建对象存储。``local`` 的目录缺省为 ``<data_dir>/objects``；``s3`` 构造时不发请求。"""
     section = config.object_store
     if section.backend == "local":
         return LocalObjectStore(section.local.root or config.data_dir / "objects")
@@ -171,6 +171,7 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
             states=await _states(stack, config),
             data_dir=config.data_dir,
             root_key_hash=config.root_key_hash,
+            objects=object_store(config),
             defaults=RuntimeDefaults(
                 max_session_tokens=config.limits.max_session_tokens,
                 max_iterations=config.limits.max_iterations,
@@ -187,4 +188,4 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
         yield platform
 
 
-__all__ = ["PostgresStateBackends", "open_platform", "tenant_table_prefix"]
+__all__ = ["PostgresStateBackends", "object_store", "open_platform", "tenant_table_prefix"]
