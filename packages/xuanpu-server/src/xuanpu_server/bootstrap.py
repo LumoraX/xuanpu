@@ -250,6 +250,7 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
                 max_session_tokens=config.limits.max_session_tokens,
                 max_iterations=config.limits.max_iterations,
                 connector_timeout_seconds=config.limits.connector_timeout_seconds,
+                connector_startup_seconds=config.limits.connector_startup_seconds,
                 capture_requests=config.audit.capture_requests,
                 session_idle_seconds=config.limits.session_idle_seconds,
                 runtime_idle_seconds=config.limits.runtime_idle_seconds,

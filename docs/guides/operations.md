@@ -154,6 +154,7 @@ uv run xuanpu --help
 | `max_session_tokens` | `2000000` | 单个会话累计 token 的上限。业务包可以调低，不能调高 |
 | `max_iterations` | `60` | 单轮对话里模型与工具往返次数的上限。同上 |
 | `connector_timeout_seconds` | `60` | 连接器单次调用的超时。HTTP 连接器另受业务包里声明的超时约束，取两者中小的 |
+| `connector_startup_seconds` | `30` | 启动一个 stdio 连接器（起进程、握手、列出工具）的时限。超时算连接器启动失败，对话以 `503 runtime_unavailable` 失败，已经起来的进程会被收回 |
 | `session_idle_seconds` | `300` | 会话多久没有对话就释放它的引擎。会话保持活动，下次对话时从存储续接 |
 | `runtime_idle_seconds` | `900` | 运行时（一个租户的一个业务包版本）多久没有会话使用就回收：关掉连接器进程、沙盒、引擎池 |
 

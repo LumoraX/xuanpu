@@ -21,6 +21,7 @@ import pytest
 import yaml
 from xuanpu_server.controlplane import AuditQuery, InMemoryControlPlane
 from xuanpu_server.errors import PackageInvalidError, RuntimeUnavailableError
+from xuanpu_server.runtime import RuntimeDefaults
 from xuanpu_server.runtime.connectors import ConnectorSet
 from xuanpu_server.tenancy import tenant_directory
 from xuanpu_spec import pack_package
@@ -630,3 +631,24 @@ async def test_noise_on_connector_stdout_stays_out_of_the_log(
     assert output["token_length"] == len(CREDENTIAL)
     assert "内容不记" in caplog.text
     assert CREDENTIAL not in caplog.text
+
+
+async def test_startup_limit_comes_from_the_platform_defaults(world: Any, tmp_path: Path) -> None:
+    """启动时限取平台默认参数里的 connector_startup_seconds：卡住的连接器按它判失败。"""
+    world.archive()
+    root = world.package_dir / "1.0.0-standard-False"
+    (root / "fake_mcp.py").write_text(HANGING_SERVER)
+    await world.platform.packages.publish(world.admin, pack_package(root), activate=True)
+    data_dir = (tmp_path / "data-quick").resolve()
+    data_dir.mkdir()
+    platform = world.sibling(
+        "inst-quick", data_dir=data_dir, defaults=RuntimeDefaults(connector_startup_seconds=1.0)
+    )
+    try:
+        session = await platform.sessions.create(world.member, package="support-desk")
+        started = time.monotonic()
+        with pytest.raises(RuntimeUnavailableError, match="启动失败：TimeoutError"):
+            await platform.sessions.send_message(world.member, session.session_id, "查")
+        assert time.monotonic() - started < 10
+    finally:
+        await platform.close()

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 import yaml
-from xuanpu_server.bootstrap import _sandboxes, object_store
+from xuanpu_server.bootstrap import _sandboxes, object_store, open_platform
 from xuanpu_server.config import ConfigError, expand, load_config, parse_config
 from xuanpu_server.objectstore import LocalObjectStore, S3ObjectStore
 from xuanpu_server.runtime import DockerSandboxProvider, LocalSandboxProvider
@@ -346,3 +346,13 @@ def test_connector_readable_roots_are_checked_after_resolving(
     with pytest.raises(ConfigError, match="connector_readable_roots") as caught:
         _sandboxes(config)
     assert fragment in str(caught.value)
+
+
+async def test_connector_startup_limit_reaches_the_runtime(tmp_path: Path) -> None:
+    """limits.connector_startup_seconds：缺省 30 秒；给了就交到运行时的默认参数里。"""
+    assert parse_config(edited(), variables=VARIABLES).limits.connector_startup_seconds == 30
+    text = edited(data_dir=str(tmp_path / "data"), limits={"connector_startup_seconds": 7.5})
+    async with open_platform(parse_config(text, variables=VARIABLES)) as platform:
+        assert platform.runtimes.defaults.connector_startup_seconds == 7.5
+    with pytest.raises(ConfigError, match="connector_startup_seconds"):
+        parse_config(edited(limits={"connector_startup_seconds": 0}), variables=VARIABLES)

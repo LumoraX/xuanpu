@@ -84,6 +84,7 @@ limits:
   max_session_tokens: 2000000
   max_iterations: 60
   connector_timeout_seconds: 60
+  connector_startup_seconds: 30 # 启动一个 stdio 连接器（起进程、握手、列出工具）的时限
   session_idle_seconds: 300     # 会话多久没对话就释放它的引擎（下次对话从存储续接）
   runtime_idle_seconds: 900     # 运行时多久没会话使用就回收连接器、沙盒与引擎池
 

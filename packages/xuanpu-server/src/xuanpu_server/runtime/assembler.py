@@ -47,6 +47,7 @@ class RuntimeDefaults:
         max_session_tokens: 单个会话的 token 上限。
         max_iterations: 单轮对话里模型与工具往返的次数上限。
         connector_timeout_seconds: 连接器单次调用的超时。
+        connector_startup_seconds: 启动一个 stdio 连接器（起进程、握手、列出工具）的时限。
         connector_env: 连接器进程的基础环境；None 时用最小环境 ``DEFAULT_BASE_ENV``。
             上面再加指向连接器工作目录的 ``HOME`` / ``TMPDIR`` / ``WORKSPACE``，以及清单
             声明的变量与密钥。
@@ -60,6 +61,7 @@ class RuntimeDefaults:
     max_session_tokens: int = 2_000_000
     max_iterations: int = 60
     connector_timeout_seconds: float = 60.0
+    connector_startup_seconds: float = 30.0
     connector_env: Mapping[str, str] | None = None
     capture_requests: bool = False
     session_idle_seconds: float = 300.0
@@ -264,6 +266,7 @@ class RuntimeAssembler:
             executor=None if connector_sandbox is None else connector_sandbox.executor,
             base_env=base if connector_sandbox is None else connector_sandbox.process_env(base),
             call_timeout_seconds=self._defaults.connector_timeout_seconds,
+            startup_timeout_seconds=self._defaults.connector_startup_seconds,
         )
 
     async def _assemble(self, key: RuntimeKey, package: ResolvedPackage) -> TenantRuntime:
