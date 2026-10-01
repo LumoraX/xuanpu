@@ -35,7 +35,8 @@ TOKEN = "tok-123"
 SESSION = "sess-1"
 
 # 清单白名单里的工具与副作用分类。search 回显参数；update_doc 是写操作；fail 回 isError 并回显
-# 凭据；slow 等到放行才返回；bad_code / null_code / not_utf8 回内核解析不了的响应（见 _malformed）
+# 凭据；slow 等到放行才返回；bad_code / null_code / not_utf8 回内核解析不了的响应（见 _malformed）；
+# sse_noise 回 SSE 流，先夹一条回显凭据、解析不了的 data
 WHITELIST: dict[str, str] = {
     "search": "read",
     "update_doc": "write",
@@ -44,6 +45,7 @@ WHITELIST: dict[str, str] = {
     "bad_code": "read",
     "null_code": "read",
     "not_utf8": "read",
+    "sse_noise": "read",
 }
 
 # 远端提供的工具：白名单里的全部，外加不在白名单里的 admin_purge
@@ -182,7 +184,17 @@ def _malformed(request: Request, message: dict[str, Any]) -> Response | None:
     if name == "not_utf8":
         body = f'{{"jsonrpc": "2.0", "id": {message["id"]}, "result": "'.encode()
         return Response(body + b"\xff " + echoed.encode() + b'"}', media_type="application/json")
+    if name == "sse_noise":
+        result = {"content": [{"type": "text", "text": "噪声之后的结果"}]}
+        response = {"jsonrpc": "2.0", "id": message["id"], "result": result}
+        return _sse(f"not-json {echoed}", json.dumps(response, ensure_ascii=False))
     return None
+
+
+def _sse(*events: str) -> Response:
+    """SSE 响应：每段文本是一个 ``event: message`` 事件的 data。"""
+    body = "".join(f"event: message\ndata: {data}\n\n" for data in events)
+    return Response(body, media_type="text/event-stream")
 
 
 @pytest.fixture
@@ -523,6 +535,25 @@ async def test_malformed_remote_responses_still_pass_the_gate(
     ]
     assert TOKEN not in world.models.last_prompt()
     assert TOKEN not in await everything(world)
+    assert TOKEN not in caplog.text
+
+
+async def test_kernel_logs_of_remote_sse_noise_keep_no_plaintext(
+    world: Any,
+    serve: Any,
+    step: Any,
+    read_turn: Any,
+    fake_remote_mcp: FakeRemoteMcp,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """远端的 SSE 流里夹了一条解析不了、回显凭据的 data：内核照常跳过它并记日志，日志里只有
+    长度没有内容；后面的响应照常交给模型。"""
+    caplog.set_level(logging.DEBUG)
+    session_id = await ready(world, serve, fake_remote_mcp)
+    events = await ask(world, step, read_turn, session_id, [("c1", "mcp__docs__sse_noise", {})])
+    assert output_of(events)["output"] == "噪声之后的结果"
+    [noise] = [r for r in caplog.records if "invalid SSE JSON" in r.getMessage()]
+    assert noise.getMessage().endswith("内容不记>")
     assert TOKEN not in caplog.text
 
 

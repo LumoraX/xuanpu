@@ -75,7 +75,7 @@ def test_cut_after_redacting_never_leaves_half_a_secret() -> None:
 
 
 def test_kernel_mcp_log_guard_hides_raw_output(caplog: pytest.LogCaptureFixture) -> None:
-    """内核 MCP 日志：字节串（连接器的原始输出）只记长度；超长参数截断并标注；数字原样。"""
+    """内核 MCP 日志：数字原样；字节串与字符串只记长度、其他对象只记类型，内容一律不记。"""
     install_kernel_mcp_log_guard()
     install_kernel_mcp_log_guard()
     target = logging.getLogger("taifeng.mcp.stdio_client")
@@ -84,9 +84,33 @@ def test_kernel_mcp_log_guard_hides_raw_output(caplog: pytest.LogCaptureFixture)
     target.warning("mcp: invalid JSON: %r", b"debug: token=s3cret-token-value\n")
     target.warning("mcp: response for unknown or abandoned request id=%r", 42)
     logging.getLogger("taifeng.mcp.server_messages").warning("method %r", {"m": "x" * 500})
+    http = logging.getLogger("taifeng.mcp.http_client")
+    http.warning("mcp http: invalid SSE JSON: %r", "not-json Bearer s3cret-token-value")
+    http.info("mcp http: SSE stream broken (%s), last event id %r", "ReadError", None)
     messages = [record.getMessage() for record in caplog.records]
-    assert messages[0] == "mcp: invalid JSON: <连接器输出 32 字节，内容不记>"
-    assert messages[1].endswith("id=42")
-    assert "已截断，原长" in messages[2]
-    assert len(messages[2]) < 300
+    assert messages == [
+        "mcp: invalid JSON: <连接器输出 32 字节，内容不记>",
+        "mcp: response for unknown or abandoned request id=42",
+        # 只有一个映射参数时 logging 把它当作按名字取值的参数表：逐个值处理
+        "method {'m': <文本 500 字符，内容不记>}",
+        "mcp http: invalid SSE JSON: <文本 34 字符，内容不记>",
+        "mcp http: SSE stream broken (<文本 9 字符，内容不记>), last event id None",
+    ]
+    assert "s3cret" not in caplog.text
+
+
+def test_kernel_mcp_log_guard_drops_exception_text(caplog: pytest.LogCaptureFixture) -> None:
+    """内核 MCP 日志附带的异常：只留异常类型，堆栈与异常文本不记。"""
+    install_kernel_mcp_log_guard()
+    caplog.set_level(logging.DEBUG, logger="taifeng.mcp")
+    target = logging.getLogger("taifeng.mcp.cancellation")
+    try:
+        raise ValueError("远端回显了 s3cret-token-value")
+    except ValueError:
+        target.warning("mcp: failed to send cancellation for request %r", 7, exc_info=True)
+    [record] = caplog.records
+    assert record.getMessage() == (
+        "mcp: failed to send cancellation for request 7（附带异常 ValueError，堆栈不记）"
+    )
+    assert record.exc_info is None
     assert "s3cret" not in caplog.text

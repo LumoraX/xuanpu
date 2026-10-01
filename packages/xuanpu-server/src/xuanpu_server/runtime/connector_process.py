@@ -3,12 +3,14 @@
 - ``ObservingExecutor``：每个 stdio 连接器起进程时包一层，记下进程本身与它 stderr 的末尾。
   内核照常读走 stderr（不读的话进程写满管道会卡死），读过的末尾在这里留一份。启动失败时
   内核已经把客户端关掉了，拿不到 ``stderr_tail``，退出码与 stderr 只能从这里取。
-- ``install_kernel_mcp_log_guard``：内核 MCP 客户端会把连接器写到 stdout 上的非 JSON 行原样、
-  不限长度写进日志（``mcp: invalid JSON: %r``）。那是连接器的原始输出，可能带着注入给它的
-  凭据；而内核的日志记录里不知道是哪个连接器、该用哪些密钥脱敏，按值脱敏做不到。所以给
-  这几个 logger 挂过滤器：字节串参数（连接器的原始输出）一律不记内容、只记长度；其余参数
-  的表示超过 200 字符的截断并标注。远端 MCP 连接器用的 HTTP 客户端（``taifeng.mcp.http_client``）
-  也在其列：它会把远端回的、解析不了的 SSE 数据截取前 200 字符写进日志。
+- ``install_kernel_mcp_log_guard``：内核 MCP 客户端会把外部输出原样写进日志——stdio 客户端
+  写连接器 stdout 上的非 JSON 行（``mcp: invalid JSON: %r``，字节串、不限长度），远端 MCP 用的
+  HTTP 客户端写解析不了的 SSE 数据（截到 200 字符的字符串）、远端给的请求 id 与内容类型。
+  这些都是外部可控的内容，可能带着注入出去的凭据；而内核的日志记录里不知道是哪个连接器、
+  该用哪些密钥脱敏，按值脱敏做不到。所以给内核 MCP 的几个 logger 挂过滤器：参数里只有
+  None、布尔与数字原样记下；字节串只记长度，字符串只记长度，其他对象只记类型，内容一律
+  不记；附带的异常只记类型，堆栈与异常文本不记。代价是这些日志里看不到工具名、方法名之类，
+  要排障看平台自己按值脱敏后记的那几条。
 """
 
 from __future__ import annotations
@@ -34,7 +36,6 @@ _KERNEL_MCP_LOGGERS = (
     "taifeng.mcp.bridge",
     "taifeng.mcp.cancellation",
 )
-_MAX_LOGGED_ARG_CHARS = 200
 
 logger = logging.getLogger(__name__)
 
@@ -170,28 +171,33 @@ class _Clipped:
 
 
 def _scrub(value: Any) -> Any:
-    """一个日志参数：字节串不记内容；表示太长的截断并标注；其余原样。"""
+    """一个日志参数：None、布尔与数字原样；其余只记长度或类型，内容不记。"""
     if value is None or isinstance(value, bool | int | float):
         return value
     if isinstance(value, bytes | bytearray):
         return _Clipped(f"<连接器输出 {len(value)} 字节，内容不记>")
-    shown = repr(value)
-    if len(shown) <= _MAX_LOGGED_ARG_CHARS:
-        return value
-    return _Clipped(f"{shown[:_MAX_LOGGED_ARG_CHARS]}…[已截断，原长 {len(shown)} 字符]")
+    if isinstance(value, str):
+        return _Clipped(f"<文本 {len(value)} 字符，内容不记>")
+    return _Clipped(f"<{type(value).__name__}，内容不记>")
 
 
 class KernelMcpLogGuard(logging.Filter):
-    """内核 MCP 日志的过滤器：见模块说明。只改写参数，记录照常放行。"""
+    """内核 MCP 日志的过滤器：见模块说明。只改写参数与附带的异常，记录照常放行。"""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        """改写这条记录的参数。"""
+        """改写这条记录的参数；附带的异常只留类型。"""
         args = record.args
         if isinstance(args, tuple):
             record.args = tuple(_scrub(item) for item in args)
         elif args:
             mapping: Mapping[str, Any] = args
             record.args = {key: _scrub(item) for key, item in mapping.items()}
+        if record.exc_info:
+            # 堆栈里的异常文本同样是外部可控的内容：只留异常类型
+            kind = record.exc_info[0]
+            record.msg = f"{record.msg}（附带异常 {getattr(kind, '__name__', kind)}，堆栈不记）"
+            record.exc_info = None
+            record.exc_text = None
         return True
 
 
