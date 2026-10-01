@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>玄圃工作站</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600&display=swap">
+<style>
+/* v2：工作区面向业务。左边是「同事」（财务、行政、人事……都是 agent），桌面上是「我的事项」，
+   底部对话是入口。把文件丢给同事、一句话交代事情，剩下的它去办，要紧的事回来问你。数据全是编的。 */
+:root {
+  --bg: #e9ece8; --bg-2: #d7ddd6;
+  --panel: rgba(255,255,255,.88); --panel-solid: #ffffff; --panel-2: #eef1ee; --line: #cfd6cf;
+  --fg: #1d2420; --muted: #5f6a64;
+  --accent: #2f7d6d; --accent-ink: #fff; --accent-soft: #dcebe6;
+  --warn: #b9731a; --warn-soft: #fbefdc; --danger: #b4423a; --danger-soft: #f9e4e2; --ok: #2f7d6d;
+  --shadow: 0 12px 40px rgba(20,30,26,.18);
+  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --serif: "Noto Serif SC", "Songti SC", serif;
+  --mono: "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15191a; --bg-2: #0f1213; --panel: rgba(29,34,36,.92); --panel-solid: #1d2224; --panel-2: #262c2e; --line: #343c3e;
+    --fg: #e6e9e6; --muted: #9aa5a0; --accent: #5fb49f; --accent-ink: #0f1a17; --accent-soft: #1f3330;
+    --warn: #e0a24a; --warn-soft: #3a2d18; --danger: #e0756c; --danger-soft: #3d2322; --ok: #5fb49f;
+    --shadow: 0 12px 40px rgba(0,0,0,.5); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15191a; --bg-2: #0f1213; --panel: rgba(29,34,36,.92); --panel-solid: #1d2224; --panel-2: #262c2e; --line: #343c3e;
+  --fg: #e6e9e6; --muted: #9aa5a0; --accent: #5fb49f; --accent-ink: #0f1a17; --accent-soft: #1f3330;
+  --warn: #e0a24a; --warn-soft: #3a2d18; --danger: #e0756c; --danger-soft: #3d2322; --ok: #5fb49f;
+  --shadow: 0 12px 40px rgba(0,0,0,.5); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { font-family: var(--sans); font-size: 14px; line-height: 1.5; color: var(--fg); background: var(--bg); overflow: hidden; }
+button { font: inherit; color: inherit; }
+h1, h2, h3 { margin: 0; font-weight: 600; }
+.muted { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+#desktop { position: fixed; inset: 0; background:
+  radial-gradient(1200px 700px at 85% -10%, color-mix(in oklab, var(--accent) 18%, transparent), transparent 60%),
+  radial-gradient(900px 600px at -10% 110%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 60%),
+  linear-gradient(180deg, var(--bg), var(--bg-2)); }
+#topbar { position: fixed; top: 0; left: 0; right: 0; height: 34px; padding: 0 14px; padding-top: env(safe-area-inset-top, 0px); display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; background: var(--panel); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); z-index: 50; }
+#topbar .brand { font-family: var(--serif); font-size: 15px; }
+#topbar .status { display: flex; gap: 14px; align-items: center; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--line); vertical-align: middle; margin-right: 4px; }
+.dot.ok { background: var(--ok); } .dot.off { background: var(--danger); } .dot.busy { background: var(--warn); }
+
+/* 左栏：同事 */
+#people { position: fixed; top: 34px; left: 0; bottom: 0; width: 224px; padding: 14px 10px 180px; background: var(--panel); backdrop-filter: blur(10px); border-right: 1px solid var(--line); z-index: 5; overflow: auto; display: grid; align-content: start; gap: 2px; }
+#people .eyebrow { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 8px 8px 4px; }
+.person { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center; width: 100%; text-align: left; border: 0; background: none; border-radius: 8px; padding: 7px 8px; cursor: pointer; }
+.person:hover, .person.drop { background: var(--panel-2); }
+.person.drop { outline: 2px dashed var(--accent); }
+.person .av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-family: var(--serif); font-size: 15px; color: #fff; }
+.person .nm { font-weight: 500; line-height: 1.2; }
+.person .rl { font-size: 11px; color: var(--muted); }
+.person .st { font-size: 11px; color: var(--muted); }
+.person .st.busy { color: var(--warn); }
+.person .st.ask { color: var(--danger); font-weight: 500; }
+
+/* 桌面：我的事项 */
+#matters { position: fixed; top: 50px; left: 240px; right: 16px; z-index: 1; display: grid; gap: 10px; }
+#matters .eyebrow { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.matter { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; display: grid; gap: 6px; text-align: left; }
+.matter:hover { border-color: var(--accent); }
+.matter .h { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.matter h3 { font-size: 14px; }
+.matter .by { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.matter .by i { width: 16px; height: 16px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 9px; color: #fff; font-family: var(--serif); }
+.pill { display: inline-block; font-size: 11px; line-height: 18px; padding: 0 8px; border-radius: 9px; background: var(--panel-2); color: var(--muted); white-space: nowrap; }
+.pill.ask { background: var(--danger-soft); color: var(--danger); }
+.pill.busy { background: var(--warn-soft); color: var(--warn); }
+.pill.ok { background: var(--accent-soft); color: var(--ok); }
+.pill.read { background: var(--accent-soft); color: var(--accent); }
+.pill.write { background: var(--warn-soft); color: var(--warn); }
+.pill.external { background: var(--danger-soft); color: var(--danger); }
+#quick { display: flex; gap: 8px; flex-wrap: wrap; }
+#quick button { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 5px 10px; font-size: 12px; cursor: pointer; }
+#quick button:hover { background: var(--panel-2); }
+
+/* 窗口 */
+.win { position: fixed; min-width: 320px; min-height: 180px; background: var(--panel-solid); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); display: grid; grid-template-rows: auto 1fr; overflow: hidden; z-index: 10; max-width: calc(100vw - 24px); max-height: calc(100vh - 410px); }
+.win.focus { z-index: 20; border-color: color-mix(in oklab, var(--accent) 50%, var(--line)); }
+.win .bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); background: var(--panel-2); cursor: grab; user-select: none; }
+.win .bar .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.win .bar .s { font-size: 11px; color: var(--muted); }
+.win .bar button { width: 22px; height: 22px; border-radius: 6px; border: 0; background: none; cursor: pointer; color: var(--muted); }
+.win .bar button:hover { background: var(--line); color: var(--fg); }
+.win .body { overflow: auto; min-height: 0; }
+.pad { padding: 12px 14px; }
+.row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sp { justify-content: space-between; }
+.btn { border: 1px solid var(--line); background: var(--panel-solid); border-radius: 6px; padding: 5px 11px; cursor: pointer; }
+.btn:hover { background: var(--panel-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.sm { padding: 3px 9px; font-size: 12px; }
+.btn[disabled] { opacity: .5; cursor: default; }
+input[type=text], select, textarea { width: 100%; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-solid); color: var(--fg); padding: 7px 10px; font: inherit; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, .btn:focus-visible, .person:focus-visible, .matter:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+label.f { display: block; margin-bottom: 10px; }
+label.f span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; background: none; padding: 4px 10px; cursor: pointer; }
+.seg button.on { background: var(--accent); color: var(--accent-ink); }
+
+/* 对话窗口（IM 式） */
+.chat { display: grid; grid-template-rows: auto 1fr auto; height: 100%; }
+.chat .who { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.chat .who .av { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-family: var(--serif); color: #fff; }
+.chat .who .nm { font-weight: 500; line-height: 1.2; }
+.chat .who .rl { font-size: 11px; color: var(--muted); }
+.msgs { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; overflow: auto; }
+.m { max-width: 58ch; }
+.m.user { align-self: flex-end; background: var(--accent-soft); border-radius: 12px 12px 2px 12px; padding: 7px 11px; }
+.m.them { align-self: flex-start; background: var(--panel-2); border-radius: 12px 12px 12px 2px; padding: 7px 11px; }
+.m.event { align-self: flex-start; font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.m.event::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--line); flex: none; }
+.m.event.ok::before { background: var(--ok); } .m.event.warn::before { background: var(--warn); }
+.card { border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; background: var(--panel-2); display: grid; gap: 7px; max-width: 58ch; align-self: flex-start; }
+.card.approval { border-color: var(--warn); background: var(--panel-solid); }
+.card.files { grid-template-columns: repeat(3, auto); justify-content: start; }
+.fi { width: 34px; height: 42px; border: 1.5px solid var(--muted); border-radius: 3px; display: grid; place-items: end center; font-size: 9px; color: var(--muted); padding-bottom: 3px; }
+.fitem { display: grid; justify-items: center; gap: 3px; font-size: 11px; text-align: center; max-width: 70px; }
+.kv { font-family: var(--mono); font-size: 12px; background: var(--panel-2); border-radius: 6px; padding: 7px 9px; white-space: pre-wrap; }
+.composer { border-top: 1px solid var(--line); padding: 8px 10px; display: flex; gap: 8px; }
+.composer input { flex: 1; }
+.cursor::after { content: "▍"; color: var(--accent); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cursor::after { animation: none; } }
+
+/* 事项窗口 */
+.tl { list-style: none; margin: 0; padding: 0 14px 12px; }
+.tl li { display: grid; grid-template-columns: 64px 1fr; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.tl time { font-size: 12px; color: var(--muted); }
+.files { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; padding: 8px 14px 12px; }
+.file { border: 0; background: none; border-radius: 8px; padding: 6px 2px; display: grid; justify-items: center; gap: 4px; font-size: 11px; cursor: grab; text-align: center; }
+.file:hover { background: var(--panel-2); }
+.file .n { max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sec { padding: 10px 14px 4px; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+
+/* 底部 */
+#bottom { position: fixed; left: 224px; right: 0; bottom: 0; padding: 0 14px calc(10px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: grid; gap: 8px; justify-items: center; pointer-events: none; }
+#shell { width: min(860px, 100%); pointer-events: auto; background: var(--panel); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+#log { max-height: 22vh; overflow: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--line); }
+#log:empty { display: none; }
+#log.compact .m:not(.recent) { display: none; }
+#log .m.them { background: transparent; padding: 0; }
+#logbar { display: flex; justify-content: flex-end; padding: 0 12px; }
+#logbar button { border: 0; background: none; color: var(--muted); font-size: 11px; cursor: pointer; padding: 2px 6px; }
+#shellform { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 8px 10px; }
+#shellform .pfx { font-family: var(--serif); color: var(--accent); font-size: 16px; padding-left: 4px; }
+#shellform input { border: 0; background: transparent; font-size: 15px; padding: 8px 4px; }
+#shellform input:focus-visible { outline: none; }
+#hints { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 12px 10px; }
+#hints button { border: 1px solid var(--line); background: transparent; border-radius: 12px; font-size: 12px; padding: 2px 10px; color: var(--muted); cursor: pointer; }
+#hints button:hover { color: var(--fg); background: var(--panel-2); }
+#dock { pointer-events: auto; display: flex; gap: 6px; padding: 6px 8px; background: var(--panel); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 12px; }
+#dock button { border: 0; background: none; border-radius: 8px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: var(--muted); }
+#dock button.open { color: var(--fg); }
+#dock button:hover { background: var(--panel-2); }
+.toast { position: fixed; top: calc(44px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 7px 14px; border-radius: 6px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 99; }
+.toast.show { opacity: 1; }
+@media (max-width: 820px) {
+  #people { width: 100%; bottom: auto; top: 34px; padding: 6px 8px; display: flex; overflow-x: auto; gap: 4px; }
+  .person { grid-template-columns: 30px auto; width: auto; } .person .st, .person .rl { display: none; }
+  #matters { left: 12px; top: 110px; }
+  #bottom { left: 0; }
+  .win { left: 8px !important; top: 110px !important; width: calc(100vw - 16px) !important; height: calc(100vh - 300px) !important; }
+  #dock { display: none; }
+}
+</style>
+</head>
+<body>
+<div id="desktop" aria-hidden="true"></div>
+<header id="topbar">
+  <div class="row"><span class="brand">玄圃</span><span class="muted">Acme · 张伟</span><span class="muted">示意稿 v2</span></div>
+  <div class="status"><span><i class="dot ok"></i>飞书</span><span><i class="dot ok"></i>Gmail</span><span id="st-ask"><i class="dot busy"></i>等你确认 2</span><span class="num" id="clock">09:41</span></div>
+</header>
+
+<aside id="people" aria-label="同事"></aside>
+
+<section id="matters" aria-label="我的事项">
+  <div class="row sp"><span class="eyebrow">我的事项</span><div id="quick"><button data-open="folder">我的文件</button><button data-open="me">我的助理设置</button></div></div>
+  <div class="mgrid" id="mgrid"></div>
+</section>
+
+<div id="bottom">
+  <div id="dock"></div>
+  <div id="shell">
+    <div id="log" class="compact"></div>
+    <div id="logbar"><button type="button" id="logtoggle">展开记录</button></div>
+    <form id="shellform"><span class="pfx">›</span><input type="text" id="shellin" placeholder="跟谁说都行：@财务 这三张发票报了 / 下周二去上海出差两天 / 请假" autocomplete="off"><button class="btn primary sm" type="submit">发送</button></form>
+    <div id="hints"><button data-say="@财务 把我的文件里那三张发票报了">把三张发票丢给财务</button><button data-say="下周二去上海出差两天，帮我安排">下周二去上海出差两天</button><button data-say="周五请一天年假">周五请一天年假</button><button data-say="C-42 的工单怎么样了">C-42 的工单怎么样了</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  let toastTimer; const toast = (t) => { const e = $("toast"); e.textContent = t; e.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => e.classList.remove("show"), 1800); };
+  (function clock() { const d = new Date(); $("clock").textContent = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); setTimeout(clock, 30000); })();
+
+  // ---------- 同事（都是 agent；名字、性别、称呼可以自己改） ----------
+  const people = {
+    me:      { name: "小玄", role: "我的助理", color: "#2f7d6d", gender: "女", callme: "张伟", style: "简洁", status: "", hello: "我是你的助理。你的个人 skill 都在我这里；没指定给谁的事先找我。", personal: true },
+    finance: { name: "小青", role: "财务 · 报销", color: "#4f6d9a", gender: "女", callme: "张伟", style: "简洁", status: "", hello: "发票丢给我就行。识别、填单、提交报销系统，提交前会请你确认金额。", sys: "报销系统（独立部署）" },
+    admin:   { name: "阿远", role: "行政 · 出差、用章", color: "#8a6a3f", gender: "男", callme: "伟哥", style: "详细", status: "", hello: "出差、订票、用章找我。订票要花钱，我会先问你。", sys: "飞书日历、差旅系统" },
+    hr:      { name: "小禾", role: "人事 · 假期、入职", color: "#9a4f6d", gender: "女", callme: "张伟", style: "简洁", status: "", hello: "请假、调休、入职材料找我。", sys: "飞书审批" },
+    support: { name: "客服台", role: "工单 · 客户", color: "#5f6a64", gender: "中性", callme: "张伟", style: "简洁", status: "", hello: "查工单、改优先级、跟进客户。", sys: "工单系统" },
+  };
+  const order = ["me", "finance", "admin", "hr", "support"];
+  const avatar = (p, size) => `<span class="av" style="background:${p.color};width:${size}px;height:${size}px">${esc(p.name[0] === "客" ? "客" : p.name.slice(-1))}</span>`;
+  function renderPeople() {
+    $("people").innerHTML = `<div class="eyebrow">同事</div>` + order.map(k => { const p = people[k]; return `<button class="person" data-k="${k}">${avatar(p, 36)}<span><div class="nm">${esc(p.name)}</div><div class="rl">${esc(p.role)}</div></span><span class="st ${p.status === "等你确认" ? "ask" : p.status ? "busy" : ""}">${esc(p.status)}</span></button>`; }).join("");
+    $("people").querySelectorAll(".person").forEach(b => {
+      b.addEventListener("click", () => openChat(b.dataset.k));
+      b.addEventListener("dragover", (e) => { e.preventDefault(); b.classList.add("drop"); });
+      b.addEventListener("dragleave", () => b.classList.remove("drop"));
+      b.addEventListener("drop", (e) => { e.preventDefault(); b.classList.remove("drop"); const name = e.dataTransfer.getData("text/plain"); openChat(b.dataset.k); handle(b.dataset.k, "（丢给你一个文件：" + name + "）", { file: name }); });
+    });
+  }
+  function setStatus(k, s) { people[k].status = s; renderPeople(); const n = order.filter(x => people[x].status === "等你确认").length; $("st-ask").innerHTML = `<i class="dot ${n ? "busy" : "ok"}"></i>等你确认 ${n}`; }
+
+  // ---------- 我的事项 ----------
+  const matters = [
+    { id: "m1", title: "9 月报销", by: "finance", state: "等你确认", pill: "ask", sum: "3 张发票，¥1,280", tl: [["昨天 17:20", "你把 3 张发票丢给小青"], ["昨天 17:21", "小青识别了发票：餐费 2 张、打车 1 张，共 ¥1,280"], ["昨天 17:22", "在报销系统填好了单据 BX-2311，等你确认提交"]], files: ["发票_0928.jpg", "发票_0929.jpg", "打车_0929.pdf"] },
+    { id: "m2", title: "出差 · 上海", by: "admin", state: "阿远处理中", pill: "busy", sum: "10/9–10/10，机票待订", tl: [["09:02", "你说下周二去上海两天"], ["09:02", "阿远查了你的日历：周二下午有一个会，已标注冲突"], ["09:03", "出差申请已在差旅系统起草，机票方案两套，等你选"]], files: ["出差申请_上海.pdf"] },
+    { id: "m3", title: "客户 C-42", by: "support", state: "已更新", pill: "ok", sum: "T-1001 已改为高优先级", tl: [["昨天 22:05", "工单 T-1001 有新回复"], ["昨天 22:06", "客服台汇总了要点；改优先级等你确认"], ["今天 08:40", "你批准，已改为高优先级，处理时限 4 小时"]], files: ["T-1001_沟通记录.md"] },
+    { id: "m4", title: "周报 · 第 40 周", by: "me", state: "已发送", pill: "ok", sum: "已发给李总", tl: [["07:30", "小玄按定时任务生成周报草稿（用了你的 me.weekly-report）"], ["08:03", "你确认后发给了李总"]], files: ["周报_第40周.docx"] },
+  ];
+  function renderMatters() {
+    $("mgrid").innerHTML = matters.map(m => { const p = people[m.by]; return `<button class="matter" data-id="${m.id}"><div class="h"><h3>${esc(m.title)}</h3><span class="pill ${m.pill}">${esc(m.state)}</span></div><div class="muted" style="font-size:12px">${esc(m.sum)}</div><div class="by"><i style="background:${p.color}">${esc(p.name.slice(-1))}</i>${esc(p.name)} · ${esc(p.role.split(" · ")[0])}</div></button>`; }).join("");
+    $("mgrid").querySelectorAll(".matter").forEach(b => b.addEventListener("click", () => openMatter(b.dataset.id)));
+  }
+  function updateMatter(id, patch, entry) { const m = matters.find(x => x.id === id); Object.assign(m, patch); if (entry) m.tl.push(entry); renderMatters(); if (wins.has("matter:" + id)) renderMatterBody(m, wins.get("matter:" + id).querySelector(".body")); }
+
+  // ---------- 窗口管理 ----------
+  const wins = new Map(); let z = 10, cascade = 0;
+  const focus = (w) => { document.querySelectorAll(".win").forEach(x => x.classList.remove("focus")); w.classList.add("focus"); w.style.zIndex = ++z; };
+  function openWin(key, title, sub, w, h, render) {
+    if (wins.has(key)) { const e = wins.get(key); e.hidden = false; focus(e); renderDock(); return e; }
+    const el = document.createElement("section"); el.className = "win"; el.dataset.key = key;
+    el.style.cssText = `left:${250 + (cascade % 6) * 28}px; top:${190 + (cascade % 4) * 16}px; width:${w}px; height:${h}px;`; cascade++;
+    el.innerHTML = `<div class="bar"><span class="t">${esc(title)}</span><span class="s">${esc(sub || "")}</span><button data-w="min" title="收起">–</button><button data-w="close" title="关闭">×</button></div><div class="body"></div>`;
+    document.body.appendChild(el); wins.set(key, el); focus(el);
+    el.addEventListener("pointerdown", () => focus(el));
+    el.querySelector('[data-w="close"]').addEventListener("click", () => { el.remove(); wins.delete(key); renderDock(); });
+    el.querySelector('[data-w="min"]').addEventListener("click", () => { el.hidden = true; renderDock(); });
+    const bar = el.querySelector(".bar"); let drag = null;
+    bar.addEventListener("pointerdown", (e) => { if (e.target.tagName === "BUTTON") return; drag = { x: e.clientX - el.offsetLeft, y: e.clientY - el.offsetTop }; bar.setPointerCapture(e.pointerId); });
+    bar.addEventListener("pointermove", (e) => { if (!drag) return; el.style.left = Math.max(0, e.clientX - drag.x) + "px"; el.style.top = Math.max(36, e.clientY - drag.y) + "px"; });
+    bar.addEventListener("pointerup", () => { drag = null; });
+    render(el.querySelector(".body"), el); renderDock(); return el;
+  }
+  function renderDock() {
+    const d = $("dock");
+    d.innerHTML = [...wins.keys()].map(k => `<button class="${wins.get(k).hidden ? "" : "open"}" data-k="${esc(k)}">${esc(wins.get(k).querySelector(".bar .t").textContent)}</button>`).join("") || `<button disabled>没有打开的窗口</button>`;
+    d.querySelectorAll("button[data-k]").forEach(b => b.addEventListener("click", () => { const w = wins.get(b.dataset.k); w.hidden = !w.hidden; if (!w.hidden) focus(w); renderDock(); }));
+  }
+
+  // ---------- 对话窗口 ----------
+  const threads = {};
+  function openChat(k) {
+    const p = people[k];
+    return openWin("chat:" + k, p.name, p.role, 520, 380, (body) => {
+      body.innerHTML = `<div class="chat"><div class="who">${avatar(p, 32)}<div><div class="nm">${esc(p.name)} <span class="muted" style="font-weight:400">· ${esc(p.role)}</span></div><div class="rl">${p.sys ? "接入：" + esc(p.sys) : "用你的个人 skill"} · 以你的身份工作</div></div><span style="flex:1"></span><button class="btn sm" data-settings>设置</button></div><div class="msgs"></div><form class="composer"><input type="text" placeholder="跟${esc(p.name)}说… 也可以把文件拖进来" autocomplete="off"><button class="btn primary sm" type="submit">发送</button></form></div>`;
+      const msgs = body.querySelector(".msgs"); threads[k] = { msgs };
+      say(k, "them", esc(p.hello));
+      body.querySelector(".composer").addEventListener("submit", (e) => { e.preventDefault(); const i = e.target.querySelector("input"); const t = i.value.trim(); if (!t) return; i.value = ""; handle(k, t); });
+      body.querySelector("[data-settings]").addEventListener("click", () => openSettings(k));
+      msgs.addEventListener("dragover", (e) => e.preventDefault());
+      msgs.addEventListener("drop", (e) => { e.preventDefault(); const n = e.dataTransfer.getData("text/plain"); if (n) handle(k, "（丢给你一个文件：" + n + "）", { file: n }); });
+    });
+  }
+  function say(k, cls, html) { if (!threads[k]) openChat(k); const m = threads[k].msgs; const d = document.createElement("div"); d.innerHTML = cls === "card" ? html : `<div class="m ${cls}">${html}</div>`; const el = d.firstElementChild; m.appendChild(el); m.scrollTop = m.scrollHeight; el.querySelectorAll("[data-matter]").forEach(b => b.addEventListener("click", () => openMatter(b.dataset.matter))); return el; }
+  async function stream(k, text) { const el = say(k, "them cursor", ""); for (let i = 0; i < text.length; i += 2) { el.textContent = text.slice(0, i + 2); threads[k].msgs.scrollTop = threads[k].msgs.scrollHeight; await sleep(24); } el.classList.remove("cursor"); }
+  function approval(k, preview, effect, args, onOk, onNo) {
+    setStatus(k, "等你确认");
+    const card = say(k, "card", `<div class="card approval"><div class="row sp"><strong>要你确认</strong><span class="pill ${effect}">${effect === "external" ? "对外" : "写"}</span></div><div>${esc(preview)}</div><div class="kv">${esc(args)}</div><div class="row"><button class="btn primary sm" data-a="ok">确认</button><button class="btn sm" data-a="no">不要</button></div></div>`);
+    card.querySelectorAll("button").forEach(b => b.addEventListener("click", () => { card.querySelector(".row:last-child").innerHTML = `<span class="muted" style="font-size:12px">你已${b.dataset.a === "ok" ? "确认" : "拒绝"}</span>`; setStatus(k, ""); (b.dataset.a === "ok" ? onOk : onNo)(); }));
+  }
+  const you = (k) => people[k].callme;
+  async function handle(k, text, opt) {
+    say(k, "user", esc(text)); await sleep(300);
+    const t = text.replace(/\s+/g, "");
+    if (k === "finance" || /发票|报销/.test(t)) {
+      if (k !== "finance") { await stream(k, `这是报销的事，我转给小青了。`); openChat("finance"); k = "finance"; say(k, "user", esc(text)); await sleep(300); }
+      setStatus(k, "处理中");
+      say(k, "card", `<div class="card files"><div class="fitem"><div class="fi">jpg</div>发票_0928.jpg</div><div class="fitem"><div class="fi">jpg</div>发票_0929.jpg</div><div class="fitem"><div class="fi">pdf</div>打车_0929.pdf</div></div>`);
+      say(k, "event ok", "沙盒脚本识别发票 · 3 张"); await sleep(500);
+      say(k, "event ok", "报销系统 · 查询我的费用科目 · 以你的身份 · 读，放行"); await sleep(500);
+      say(k, "event ok", "报销系统 · 起草单据 BX-2311 · 写，放行（草稿不对外）"); await sleep(400);
+      await stream(k, `${you(k)}，三张发票我看过了：餐费两张 ¥1,080，打车一张 ¥200，合计 ¥1,280，科目填的是「客户招待」和「市内交通」。单据在报销系统起草好了，提交就要走审批流了，你确认一下。`);
+      approval(k, "在报销系统提交单据 BX-2311（¥1,280）", "external", '{"form": "BX-2311", "amount": 1280, "items": 3, "approver": "李总"}',
+        async () => { say(k, "event ok", "报销系统 · 提交单据 · 已执行 · 审计 #77"); await stream(k, "提交了，单号 BX-2311，等李总审批。到账我会告诉你。"); updateMatter("m1", { state: "审批中", pill: "busy", sum: "BX-2311 已提交，等李总审批" }, ["刚刚", "你确认，小青提交了单据 BX-2311"]); },
+        async () => { await stream(k, "好，先不提交。草稿留着，你改好了再说。"); });
+      return;
+    }
+    if (k === "admin" || /出差|订票|用章/.test(t)) {
+      if (k !== "admin") { await stream(k, `出差找阿远，我转给他了。`); openChat("admin"); k = "admin"; say(k, "user", esc(text)); await sleep(300); }
+      setStatus(k, "处理中");
+      say(k, "event ok", "飞书日历 · 查看下周二到周三 · 以你的身份 · 读，放行"); await sleep(500);
+      say(k, "event ok", "差旅系统 · 查询机票 · 读，放行"); await sleep(500);
+      say(k, "event ok", "差旅系统 · 起草出差申请 · 写，放行"); await sleep(400);
+      await stream(k, `${you(k)}，下周二（10 月 9 日）下午两点你有一个「客户 C-42 复盘」会，我在申请里标了冲突，你看要不要改时间。出差申请起草好了，机票两个方案：早上 8:00 的 ¥860，中午 12:30 的 ¥720。订票要扣预算，你定一个。`);
+      approval(k, "订 10 月 9 日 08:00 的航班（¥860）并提交出差申请", "external", '{"flight": "MU5101 08:00", "price": 860, "return": "10/10 18:30", "application": "TR-0918"}',
+        async () => { say(k, "event ok", "差旅系统 · 订票 + 提交申请 · 已执行 · 审计 #78"); await stream(k, "订好了，行程已经放进你的日历，出差申请 TR-0918 提交了。那个会我帮你给对方留了言问能不能改到周一。"); updateMatter("m2", { state: "已订票", pill: "ok", sum: "10/9 08:00 MU5101，申请 TR-0918 已提交" }, ["刚刚", "你确认，阿远订了机票、提交了出差申请"]); },
+        async () => { await stream(k, "好，先不订。方案我留着，你想好了再说。"); });
+      return;
+    }
+    if (k === "hr" || /请假|年假|调休/.test(t)) {
+      if (k !== "hr") { await stream(k, `请假找小禾，转给她了。`); openChat("hr"); k = "hr"; say(k, "user", esc(text)); await sleep(300); }
+      say(k, "event ok", "飞书审批 · 查看年假余额 · 以你的身份 · 读，放行"); await sleep(400);
+      await stream(k, `${you(k)}，你还有 6 天年假。周五请一天，我在飞书审批里起好了单，提交后会发给你的直属上级。`);
+      approval(k, "在飞书审批提交年假申请（10 月 3 日，1 天）", "external", '{"type": "年假", "date": "2026-10-03", "days": 1, "approver": "李总"}',
+        async () => { say(k, "event ok", "飞书审批 · 提交 · 已执行 · 审计 #79"); await stream(k, "提交了。批了我会告诉你。"); matters.unshift({ id: "m5", title: "年假 · 10/3", by: "hr", state: "审批中", pill: "busy", sum: "1 天，等李总审批", tl: [["刚刚", "你让小禾请周五的年假"], ["刚刚", "小禾提交了飞书审批"]], files: [] }); renderMatters(); },
+        async () => { await stream(k, "好，先不提交。"); });
+      return;
+    }
+    if (k === "support" || /工单|C-42|T-\d+/.test(t)) {
+      if (k !== "support") { await stream(k, `客户的事客服台最清楚，转过去了。`); openChat("support"); k = "support"; say(k, "user", esc(text)); await sleep(300); }
+      say(k, "event ok", "工单系统 · 读取 T-1001 · 企业凭据 · 读，放行"); await sleep(400);
+      await stream(k, "T-1001 今早已经改成高优先级，处理时限 4 小时，技术那边 10:30 回复了初步原因（登录服务证书过期），预计中午修复。要我把进展同步给客户吗？");
+      say(k, "card", `<div class="card"><div class="muted" style="font-size:12px">相关事项</div><button class="btn sm" data-matter="m3">客户 C-42</button></div>`);
+      return;
+    }
+    if (opt && opt.file) { await stream(k, `收到「${opt.file}」。要我拿它做什么？`); return; }
+    if (/周报/.test(t)) { say(k, "event ok", "调用 me.weekly-report（你的个人 skill）"); await sleep(400); await stream(k, "周报草稿我先按你的格式整理，整理好了放进「周报 · 第 40 周」。"); return; }
+    await stream(k, "收到。这是示意稿，真实的回复由模型生成。");
+  }
+
+  // ---------- 事项窗口 ----------
+  function renderMatterBody(m, body) {
+    const p = people[m.by];
+    body.innerHTML = `<div class="pad row sp"><div class="row">${avatar(p, 28)}<span>${esc(p.name)} 在办</span><span class="pill ${m.pill}">${esc(m.state)}</span></div><div class="row"><button class="btn sm" data-chat="${m.by}">跟 ${esc(p.name)} 说</button><button class="btn sm">归档</button></div></div>
+      <div class="sec"><span>进展</span></div><ul class="tl">${m.tl.map(e => `<li><time>${esc(e[0])}</time><span>${esc(e[1])}</span></li>`).join("")}</ul>
+      <div class="sec"><span>这件事的文件</span><span>拖到左边的同事头上就是交给他</span></div>
+      <div class="files">${m.files.map(f => `<div class="file" draggable="true" data-n="${esc(f)}"><div class="fi">${esc(f.split(".").pop())}</div><span class="n">${esc(f)}</span></div>`).join("") || '<div class="muted" style="padding:0 2px;font-size:12px">还没有文件</div>'}</div>`;
+    body.querySelector("[data-chat]").addEventListener("click", () => openChat(m.by));
+    body.querySelectorAll(".file").forEach(f => f.addEventListener("dragstart", (e) => e.dataTransfer.setData("text/plain", f.dataset.n)));
+  }
+  function openMatter(id) { const m = matters.find(x => x.id === id); openWin("matter:" + id, m.title, "事项", 520, 400, (body) => renderMatterBody(m, body)); }
+
+  // ---------- 我的文件 / 助理设置 ----------
+  function openFolder() {
+    openWin("folder", "我的文件", "我的空间", 520, 360, (body) => {
+      const all = ["发票_0928.jpg", "发票_0929.jpg", "打车_0929.pdf", "周报_第40周.docx", "周报模板.docx", "客户分级.xlsx", "出差申请_上海.pdf"];
+      body.innerHTML = `<div class="sec"><span>全部文件（按事项归档的也在这里）</span><span>拖到同事头上就是交给他</span></div><div class="files">${all.map(f => `<div class="file" draggable="true" data-n="${esc(f)}"><div class="fi">${esc(f.split(".").pop())}</div><span class="n">${esc(f)}</span></div>`).join("")}</div><div class="pad muted" style="font-size:12px">内容在对象存储；每次改动是一个版本；管理员看不到内容。</div>`;
+      body.querySelectorAll(".file").forEach(f => f.addEventListener("dragstart", (e) => e.dataTransfer.setData("text/plain", f.dataset.n)));
+    });
+  }
+  function openSettings(k) {
+    const p = people[k];
+    openWin("settings:" + k, "设置 · " + p.name, "只影响你自己看到的", 440, 430, (body) => {
+      body.innerHTML = `<div class="pad">
+        <label class="f"><span>名字</span><input type="text" id="s-name" value="${esc(p.name)}"></label>
+        <label class="f"><span>性别 / 声音</span><div class="seg" id="s-gender">${["女", "男", "中性"].map(g => `<button type="button" class="${p.gender === g ? "on" : ""}">${g}</button>`).join("")}</div></label>
+        <label class="f"><span>怎么称呼你</span><input type="text" id="s-callme" value="${esc(p.callme)}"></label>
+        <label class="f"><span>说话风格</span><div class="seg" id="s-style">${["简洁", "详细"].map(g => `<button type="button" class="${p.style === g ? "on" : ""}">${g}</button>`).join("")}</div></label>
+        ${p.personal ? `<label class="f"><span>它能用的个人 skill</span><div class="row"><span class="pill ok">me.weekly-report</span><span class="pill ok">me.customer-tiering</span><span class="pill">me.expense-notes</span></div></label>` : `<label class="f"><span>它不用问我就能做的（在管理员允许的范围内）</span><div class="row"><span class="pill ok">读取 ✓</span><span class="pill ok">起草 ✓</span><span class="pill">对外提交：总要问我</span></div></label>`}
+        <div class="muted" style="font-size:12px;margin-bottom:10px">这些设置只改变 ${esc(p.name)} 对你的样子和说话方式。它能做什么、要不要审批，由管理员上架时定。</div>
+        <button class="btn primary sm" id="s-save">保存</button></div>`;
+      body.querySelectorAll(".seg").forEach(seg => seg.querySelectorAll("button").forEach(b => b.addEventListener("click", () => { seg.querySelectorAll("button").forEach(x => x.classList.remove("on")); b.classList.add("on"); })));
+      $("s-save").addEventListener("click", () => { p.name = $("s-name").value.trim() || p.name; p.callme = $("s-callme").value.trim() || p.callme; p.gender = body.querySelector("#s-gender .on").textContent; p.style = body.querySelector("#s-style .on").textContent; renderPeople(); renderMatters(); const w = wins.get("chat:" + k); if (w) { w.querySelector(".bar .t").textContent = p.name; w.querySelector(".who .nm").firstChild.textContent = p.name + " "; } toast("已保存，只对你生效"); });
+    });
+  }
+  $("quick").querySelector('[data-open="folder"]').addEventListener("click", openFolder);
+  $("quick").querySelector('[data-open="me"]').addEventListener("click", () => openSettings("me"));
+
+  // ---------- 底部对话：说给谁听 ----------
+  const log = $("log");
+  function shellSay(cls, html) { const d = document.createElement("div"); d.innerHTML = `<div class="m ${cls}">${html}</div>`; const el = d.firstElementChild; log.querySelectorAll(".recent").forEach(x => x.classList.remove("recent")); el.classList.add("recent"); const prev = log.lastElementChild; if (prev && prev.classList.contains("user")) prev.classList.add("recent"); log.appendChild(el); log.scrollTop = log.scrollHeight; el.querySelectorAll("[data-chat]").forEach(b => b.addEventListener("click", () => openChat(b.dataset.chat))); el.querySelectorAll("[data-matter]").forEach(b => b.addEventListener("click", () => openMatter(b.dataset.matter))); return el; }
+  async function route(text) {
+    shellSay("user", esc(text)); await sleep(200);
+    const at = text.match(/^@(\S+)\s*/);
+    let k = "me"; let body = text;
+    if (at) { body = text.slice(at[0].length); const n = at[1]; k = order.find(x => people[x].name === n || people[x].role.includes(n)) || "me"; }
+    else if (/发票|报销/.test(text)) k = "finance"; else if (/出差|订票|用章/.test(text)) k = "admin"; else if (/请假|年假|调休/.test(text)) k = "hr"; else if (/工单|C-\d+|T-\d+/.test(text)) k = "support";
+    openChat(k);
+    shellSay("them", `${k === "me" ? "我来" : "交给 " + esc(people[k].name) + "（" + esc(people[k].role.split(" · ")[0]) + "）"}。<button class="btn sm" data-chat="${k}" style="margin-left:6px">看进度</button>`);
+    handle(k, body);
+  }
+  $("shellform").addEventListener("submit", (e) => { e.preventDefault(); const v = $("shellin").value.trim(); if (!v) return; $("shellin").value = ""; route(v); });
+  $("hints").querySelectorAll("button").forEach(b => b.addEventListener("click", () => { $("shellin").value = b.dataset.say; $("shellform").requestSubmit(); }));
+  $("logtoggle").addEventListener("click", () => { const c = log.classList.toggle("compact"); $("logtoggle").textContent = c ? "展开记录" : "只看最近"; });
+  document.addEventListener("keydown", (e) => { if (e.key === "/" && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) { e.preventDefault(); $("shellin").focus(); } });
+
+  renderPeople(); renderMatters(); renderDock();
+  setStatus("finance", "等你确认"); setStatus("admin", "等你确认");
+  shellSay("them", `早上好，张伟。小青的报销单和阿远的机票都在等你确认；周报已经发给李总了。<span style="margin-left:6px"><button class="btn sm" data-matter="m1">9 月报销</button> <button class="btn sm" data-matter="m2">出差 · 上海</button></span>`);
+  $("shellin").focus();
+})();
+</script>
+</body>
+</html>
