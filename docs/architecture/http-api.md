@@ -245,7 +245,7 @@ data: {"submission_id": "sub_…", "overflowed": false}
 
 - 第一帧 `turn` 给出本轮的 `submission_id`（响应头 `X-Submission-Id` 里也有）。
 - 之后每条内核事件一帧，事件名就是事件类型，`id` 是事件序号。
-- 一轮对话以 `turn_completed`、`turn_failed`（两者要 `data.is_root` 为真）或 `turn_suspended` 结束，最后补一帧 `end`。
+- 一轮对话以 `turn_completed`、`turn_failed`（两者要 `data.is_root` 为真）或 `turn_suspended` 结束，最后补一帧 `end`。送回审批的那次请求没有续跑时，以 `suspension_resolve_rejected`（被拒，`data.reason` 说明原因）或 `suspension_partially_resolved`（只核销了一部分待办）结束，见[审批](#审批)。
 - 没有事件时每 15 秒发一行 `: keepalive` 注释。
 - 含完整提示词的事件不外发。
 - `end` 里的 `overflowed` 为真，表示调用方读得太慢、这条流被平台放弃（缓冲 8192 条）；对话本身不受影响。
@@ -276,6 +276,16 @@ POST /v1/sessions/{id}/resume
 ```
 
 拒绝是 `{"granted": false, "reason": "…"}`。批准后被挂起的那次调用才真正执行；拒绝则不执行，模型收到被拒的结果后继续。`resolutions` 不能为空。
+
+不是每次送回都会续跑：
+
+| 情况 | 事件流的最后一条 |
+| --- | --- |
+| 送回之后全部待办都处理了 | 续跑的那一轮照常结束（`turn_completed` 等） |
+| 只送回了一部分待办 | `suspension_partially_resolved`：送回的已处理（批准的调用已执行），其余还在 `pending` 里等着；全部送回之后才续跑 |
+| 被内核拒绝（没有活跃的挂起、答复不合格、同一挂起正在处理等） | `suspension_resolve_rejected`，`data.reason` 说明原因；什么也没执行 |
+
+后两种没有采样，不记一轮用量，回放里也没有 `turn_text`。
 
 ### 停止生成
 

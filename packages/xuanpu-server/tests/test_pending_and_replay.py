@@ -43,6 +43,69 @@ async def test_pending_follows_suspend_and_resume(world: Any, step: Any, read_tu
     assert [item["detail"]["args"] for item in pending] == [{"id": "T-2"}]
 
 
+async def test_rejected_resume_ends_its_stream(world: Any, step: Any, read_turn: Any) -> None:
+    """没有挂起时送回审批：内核以 suspension_resolve_rejected 拒绝，事件流就此收尾、不算在途。"""
+    await world.publish()
+    session = await world.platform.sessions.create(world.member, package="support-desk")
+    world.models.script(step(text="好了"))
+    await read_turn(
+        await world.platform.sessions.send_message(world.member, session.session_id, "你好")
+    )
+    resumed = await world.platform.sessions.resume(
+        world.member, session.session_id, {"req_nope": {"granted": True}}
+    )
+    events = await read_turn(resumed, timeout=10)
+    assert [event.msg.kind for event in events] == ["suspension_resolve_rejected"]
+    assert events[0].msg.data["reason"] == "no_active_suspension"
+    assert events[0].submission_id == resumed.submission_id
+    assert world.platform.sessions.in_flight_turns("acme") == 0
+    # 没有采样：不落回复全文，也不计一轮
+    replayed = await world.platform.sessions.replay(
+        world.member, session.session_id, resumed.submission_id
+    )
+    assert [event["kind"] for event in replayed] == ["suspension_resolve_rejected"]
+    usage = await world.platform.store.list_usage("acme", since="2000-01-01", until="2999-12-31")
+    assert sum(record.turns for record in usage) == 1
+
+
+async def test_partial_resume_ends_its_stream(world: Any, step: Any, read_turn: Any) -> None:
+    """一次挂起两个待办、只送回一个：这次送回以 suspension_partially_resolved 收尾，另一个还等着。"""
+    await world.publish()
+    session = await world.platform.sessions.create(world.member, package="support-desk")
+    world.models.script(
+        step(
+            calls=[
+                ("c1", "mcp__crm__update_ticket", {"id": "T-1"}),
+                ("c2", "mcp__crm__update_ticket", {"id": "T-2"}),
+            ]
+        ),
+        step(text="都更新了"),
+    )
+    await read_turn(
+        await world.platform.sessions.send_message(world.member, session.session_id, "更新两个")
+    )
+    first, second = await world.platform.sessions.pending(world.member, session.session_id)
+    partial = await read_turn(
+        await world.platform.sessions.resume(
+            world.member, session.session_id, {first["request_id"]: {"granted": True}}
+        ),
+        timeout=10,
+    )
+    assert partial[-1].msg.kind == "suspension_partially_resolved"
+    assert world.platform.sessions.in_flight_turns("acme") == 0
+    remaining = await world.platform.sessions.pending(world.member, session.session_id)
+    assert [item["request_id"] for item in remaining] == [second["request_id"]]
+
+    done = await read_turn(
+        await world.platform.sessions.resume(
+            world.member, session.session_id, {second["request_id"]: {"granted": True}}
+        ),
+        timeout=10,
+    )
+    assert done[-1].msg.kind == "turn_completed"
+    assert await world.platform.sessions.pending(world.member, session.session_id) == []
+
+
 async def test_replay_returns_audited_events_with_full_text(
     world: Any, step: Any, read_turn: Any
 ) -> None:

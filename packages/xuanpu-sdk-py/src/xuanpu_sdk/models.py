@@ -6,6 +6,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 TERMINAL_KINDS: frozenset[str] = frozenset({"turn_completed", "turn_failed", "turn_suspended"})
+# 送回审批被拒或只核销了一部分：没有续跑，这条事件就是结束（与平台口径一致）
+RESUME_ENDING_KINDS: frozenset[str] = frozenset(
+    {"suspension_resolve_rejected", "suspension_partially_resolved"}
+)
 
 
 @dataclass(frozen=True)
@@ -42,7 +46,7 @@ class Event:
     @property
     def terminal(self) -> bool:
         """是否结束了这一轮对话。"""
-        if self.kind == "turn_suspended":
+        if self.kind == "turn_suspended" or self.kind in RESUME_ENDING_KINDS:
             return True
         return self.kind in TERMINAL_KINDS and bool(self.data.get("is_root", False))
 
@@ -123,6 +127,7 @@ class IssuedKey:
 
 
 __all__ = [
+    "RESUME_ENDING_KINDS",
     "TERMINAL_KINDS",
     "AuditRecord",
     "Event",

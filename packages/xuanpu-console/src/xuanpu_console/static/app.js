@@ -182,6 +182,7 @@ async function loadHistory(sessionId) {
     else if (record.kind === "turn_suspended") append("event", "等待审批");
     else if (record.kind === "turn_failed") append("error", "本轮失败：" + (record.data.error || ""));
     else if (record.kind === "suspension_resolved_by") append("event", "审批结果已送回");
+    else if (record.kind === "suspension_resolve_rejected") append("error", "审批结果未被受理：" + (record.data.reason || ""));
   }
 }
 
@@ -279,6 +280,10 @@ async function streamTurn(path, json) {
         append("event", `工具 ${data.data.name}${data.data.is_error ? " ✗" : " ✓"} ${data.data.duration_ms ?? ""}ms`);
       } else if (name === "turn_suspended") {
         append("event", "等待审批");
+      } else if (name === "suspension_partially_resolved") {
+        append("event", "已送回部分审批，其余待办仍在等待");
+      } else if (name === "suspension_resolve_rejected") {
+        append("error", "审批结果未被受理：" + (data.data.reason || ""));
       } else if (name === "turn_completed" && data.data.end_reason === "cancelled") {
         append("event", "已停止");
       } else if (name === "turn_failed" && data.data.kind === "cancelled") {

@@ -130,6 +130,13 @@ async def test_stream_yields_events_until_terminal() -> None:
     assert (reply, last.kind, last.terminal) == ("你好", "turn_completed", True)
 
 
+def test_rejected_or_partial_resume_is_terminal() -> None:
+    """送回审批被拒或只核销了一部分：没有续跑，这条事件就是终结事件（与平台口径一致）。"""
+    for kind in ("suspension_resolve_rejected", "suspension_partially_resolved"):
+        assert Event(kind=kind, submission_id="sub", seq=1, at=1.0).terminal
+    assert not Event(kind="suspension_resolved", submission_id="sub", seq=1, at=1.0).terminal
+
+
 async def test_stream_error_response_raises() -> None:
     """事件流请求被拒时抛平台错误。"""
 

@@ -103,7 +103,7 @@ async for event in client.sessions.send(session.session_id, "查一下工单 T-1
 
 一轮对话以这三种事件之一结束：`turn_completed`、`turn_failed`、`turn_suspended`。
 
-有子 skill 参与时，子 skill 自己的完成事件也会出现在流里。区分办法是看 `data.is_root`：`turn_completed` 和 `turn_failed` 只有 `is_root` 为真才是这一轮的结束；`turn_suspended` 出现即结束。客户端的 `event.terminal` 已经按这个规则算好了。
+有子 skill 参与时，子 skill 自己的完成事件也会出现在流里。区分办法是看 `data.is_root`：`turn_completed` 和 `turn_failed` 只有 `is_root` 为真才是这一轮的结束；`turn_suspended` 出现即结束。送回审批（`resume`）没有续跑时，事件流以 `suspension_resolve_rejected`（被拒）或 `suspension_partially_resolved`（只处理了一部分待办）结束。客户端的 `event.terminal` 已经按这些规则算好了。
 
 直接读 HTTP 响应的话更简单：平台在一轮结束后补一帧 `event: end`，读到它就结束。
 

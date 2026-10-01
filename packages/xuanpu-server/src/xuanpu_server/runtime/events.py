@@ -28,6 +28,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 TERMINAL_KINDS: frozenset[str] = frozenset({"turn_completed", "turn_failed", "turn_suspended"})
+# 送回审批的那一次到此为止、没有续跑：被拒（没有活跃挂起、答复不合格等），或只核销了一部分
+# 待办。内核此后不再为这个 submission 发任何事件，不当作结束的话事件流挂死、在途永不归零
+RESUME_ENDING_KINDS: frozenset[str] = frozenset(
+    {"suspension_resolve_rejected", "suspension_partially_resolved"}
+)
 
 _FLUSH_SIZE = 64
 _FLUSH_INTERVAL_SECONDS = 0.5
@@ -80,10 +85,11 @@ def is_terminal(event: taifeng.EventMsg) -> bool:
     """这条事件是否结束了它所属的那一轮对话。
 
     子 skill 的完成 / 失败事件也带着同一个 submission 标识，但它们发生在根 turn 的执行
-    窗口之内，不算结束；挂起事件没有这层区分，出现即结束。
+    窗口之内，不算结束；挂起事件没有这层区分，出现即结束。送回审批被拒或只核销了一部分
+    （``RESUME_ENDING_KINDS``，带的是那次送回的 submission）同样出现即结束。
     """
     kind = event.msg.kind
-    if kind == "turn_suspended":
+    if kind == "turn_suspended" or kind in RESUME_ENDING_KINDS:
         return True
     return kind in TERMINAL_KINDS and bool(event.msg.data.get("is_root", False))
 
@@ -232,14 +238,20 @@ class EngineEventHub:
         if kind not in STREAMING_KINDS and (kind not in SENSITIVE_KINDS or self._capture_requests):
             self._buffer.append(self._record(kind, event, dict(event.msg.data), seq=event.seq))
         if is_terminal(event):
-            if self._on_turn_end is not None:
-                self._on_turn_end(event.submission_id)
-            text = "".join(self._texts.pop(event.submission_id, []))
-            self._buffer.append(self._record("turn_text", event, {"text": text}, seq=None))
-            await self._account(event)
-            await self._flush()
+            await self._finish(event)
         elif len(self._buffer) >= _FLUSH_SIZE:
             await self._flush()
+
+    async def _finish(self, event: taifeng.EventMsg) -> None:
+        """一轮（或送回审批的那一次）结束：移出在途、落回复全文、入账，并写出审计。"""
+        if self._on_turn_end is not None:
+            self._on_turn_end(event.submission_id)
+        text = "".join(self._texts.pop(event.submission_id, []))
+        # 送回审批被拒或只核销了一部分：没有采样，不落回复全文、不计一轮
+        if event.msg.kind not in RESUME_ENDING_KINDS:
+            self._buffer.append(self._record("turn_text", event, {"text": text}, seq=None))
+            await self._account(event)
+        await self._flush()
 
     def _record(
         self, kind: str, event: taifeng.EventMsg, data: dict[str, Any], *, seq: int | None
@@ -311,4 +323,11 @@ class EngineEventHub:
         await self._flush()
 
 
-__all__ = ["TERMINAL_KINDS", "EngineEventHub", "SubmissionIndex", "TurnStream", "is_terminal"]
+__all__ = [
+    "RESUME_ENDING_KINDS",
+    "TERMINAL_KINDS",
+    "EngineEventHub",
+    "SubmissionIndex",
+    "TurnStream",
+    "is_terminal",
+]
