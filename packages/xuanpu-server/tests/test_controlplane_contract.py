@@ -37,7 +37,7 @@ def _package(tenant: str, name: str, version: str, at: float = 1.0) -> PackageVe
         version=version,
         digest="sha256:" + "0" * 64,
         manifest_yaml="apiVersion: xuanpu/v1\n",
-        location=f"tenants/{tenant}/packages/{name}/{version}.zip",
+        location=f"tenants/{tenant}/packages/{name}/{version}/{'0' * 64}.zip",
         published_at=at,
         published_by="key:abc",
     )

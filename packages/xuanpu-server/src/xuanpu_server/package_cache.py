@@ -93,6 +93,10 @@ class PackageCache:
         """某个版本解包后的目录：``<root>/<租户目录>/<名>/<版本>``。
 
         包名与版本号在发布时已按规范的字符集校验过，不会逃出缓存根目录。
+
+        已知限制：版本号的预发布段可以含大写字母（``1.0.0-RC`` 与 ``1.0.0-rc`` 是两个版本），
+        在大小写不敏感的文件系统上（如 macOS 默认）两者的目录会相撞。指纹文件能发现内容不符
+        并重建，但两个版本交替使用时会反复互相覆盖。
         """
         return self._root / tenant_directory(record.tenant_id) / record.name / record.version
 
@@ -153,9 +157,12 @@ class PackageCache:
         return self.directory(record)
 
     async def discard(self, record: PackageVersionRecord) -> None:
-        """删掉某个版本的缓存（先删指纹、再删目录）；不在不算错。"""
+        """删掉按这条记录装入的缓存（先删指纹、再删目录）；不在不算错。
+
+        指纹文件已是别的指纹时不动：那是之后按登记的另一份内容重建的，可能正有人在用。
+        """
         async with self._lock(record):
-            await asyncio.to_thread(self._remove, record)
+            await asyncio.to_thread(self._remove_own, record)
 
     async def _fetch(self, record: PackageVersionRecord) -> bytes:
         """从对象存储取归档并核对登记的指纹。"""
@@ -207,6 +214,18 @@ class PackageCache:
         """删指纹、再删版本目录。阻塞调用，放在线程里跑。"""
         self._marker(record).unlink(missing_ok=True)
         _remove_tree(self.directory(record))
+
+    def _remove_own(self, record: PackageVersionRecord) -> None:
+        """指纹文件缺失或等于 ``record.digest`` 时才删。阻塞调用，放在线程里跑。
+
+        指纹缺失说明目录不完整，没人能用上它（用到时会在同一把锁里重建），可以删。
+        """
+        try:
+            recorded: bytes | None = self._marker(record).read_bytes()
+        except FileNotFoundError:
+            recorded = None
+        if recorded is None or recorded == record.digest.encode("utf-8"):
+            self._remove(record)
 
 
 __all__ = ["PackageCache", "unpack_archive"]

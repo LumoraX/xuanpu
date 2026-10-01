@@ -8,15 +8,26 @@ import shutil
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from xuanpu_server.errors import NotFoundError, PackageInvalidError, RuntimeUnavailableError
+from xuanpu_server.errors import (
+    ConflictError,
+    NotFoundError,
+    PackageInvalidError,
+    RuntimeUnavailableError,
+)
+from xuanpu_server.packages import archive_key
 from xuanpu_server.platform import Platform
 from xuanpu_server.runtime import LocalSandboxProvider
 from xuanpu_server.tenancy import generate_root_key
+from xuanpu_spec import archive_digest
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-ARCHIVE_KEY = "tenants/acme/packages/support-desk/1.0.0.zip"
+
+def _expected_key(world: Any, **kwargs: Any) -> str:
+    """样例业务包（按 ``world.archive`` 的参数打包）在对象存储里应有的键：版本目录下按指纹命名。"""
+    hexdigest = archive_digest(world.archive(**kwargs)).removeprefix("sha256:")
+    return f"tenants/acme/packages/support-desk/1.0.0/{hexdigest}.zip"
 
 
 def _other_instance(world: Any, data_dir: Path) -> Platform:
@@ -52,12 +63,21 @@ def _files_under(path: Path) -> list[Path]:
     return [item for item in path.rglob("*") if item.is_file()] if path.exists() else []
 
 
+def _object_keys(world: Any) -> list[str]:
+    """对象存储里现有的全部键。world 夹具的本机对象存储放在数据目录旁边的 objects/。"""
+    root = world.data_dir.parent / "objects"
+    return sorted(path.relative_to(root).as_posix() for path in _files_under(root))
+
+
 async def test_published_archive_lives_in_object_storage(world: Any) -> None:
-    """发布后归档在对象存储里，记录的 location 是对象键。"""
+    """发布后归档在对象存储里，记录的 location 是对象键；键里带归档指纹（十六进制部分）。"""
     await world.publish()
     record = (await world.platform.packages.list_versions("acme", "support-desk"))[0]
-    assert record.location == ARCHIVE_KEY
+    hexdigest = record.digest.removeprefix("sha256:")
+    assert record.location == f"tenants/acme/packages/support-desk/1.0.0/{hexdigest}.zip"
+    assert record.location == _expected_key(world)
     assert await world.objects.exists(record.location)
+    assert _object_keys(world) == [record.location]
 
 
 async def test_publishing_instance_reuses_staging_without_download(
@@ -99,7 +119,7 @@ async def test_tampered_archive_is_refused(world: Any, tmp_path: Path) -> None:
 async def test_missing_archive_is_a_server_error(world: Any) -> None:
     """登记了、对象存储里却没有归档，本地缓存也没了：报运行时不可用（5xx），不是 404。"""
     await world.publish()
-    await world.objects.delete(ARCHIVE_KEY)
+    await world.objects.delete(_expected_key(world))
     shutil.rmtree(world.data_dir / "cache")
     with pytest.raises(RuntimeUnavailableError) as caught:
         await world.platform.packages.resolve("acme", "support-desk")
@@ -116,7 +136,7 @@ async def test_concurrent_resolves_unpack_once(world: Any, monkeypatch: pytest.M
         *[world.platform.packages.resolve("acme", "support-desk") for _ in range(5)]
     )
     assert len({item.root for item in roots}) == 1
-    assert seen == [ARCHIVE_KEY]
+    assert seen == [_expected_key(world)]
     assert (roots[0].root / "xuanpu.yaml").is_file()
 
 
@@ -137,7 +157,7 @@ async def test_damaged_cache_is_rebuilt(
     seen = _count_gets(world, monkeypatch)
 
     rebuilt = await world.platform.packages.resolve("acme", "support-desk")
-    assert seen == [ARCHIVE_KEY]
+    assert seen == [_expected_key(world)]
     assert rebuilt.root == root
     assert not (root / "stray.txt").exists()
     assert (root / "xuanpu.yaml").is_file()
@@ -156,7 +176,7 @@ async def test_failed_registration_leaves_nothing(
     monkeypatch.setattr(world.platform.store, "add_package_version", failing)
     with pytest.raises(RuntimeError, match="控制面写入失败"):
         await world.publish()
-    assert not await world.objects.exists(ARCHIVE_KEY)
+    assert _object_keys(world) == []
     assert _files_under(world.data_dir / "cache") == []
     assert await world.platform.packages.list_versions("acme") == []
 
@@ -196,7 +216,7 @@ async def test_registration_that_actually_succeeded_keeps_the_archive(
     monkeypatch.setattr(world.platform.store, "add_package_version", committed_then_failed)
     with pytest.raises(ConnectionError):
         await world.publish()
-    assert await world.objects.exists(ARCHIVE_KEY)
+    assert _object_keys(world) == [_expected_key(world)]
     resolved = await world.platform.packages.resolve("acme", "support-desk", "1.0.0")
     assert (resolved.root / "xuanpu.yaml").is_file()
 
@@ -212,6 +232,44 @@ async def test_concurrent_publishes_of_one_version_on_one_instance(world: Any) -
     errors = [item for item in results if isinstance(item, BaseException)]
     assert len(errors) == 1
     assert getattr(errors[0], "code", None) == "conflict"
-    assert await world.objects.exists(ARCHIVE_KEY)
+    assert _object_keys(world) == [_expected_key(world)]
     resolved = await world.platform.packages.resolve("acme", "support-desk", "1.0.0")
     assert (resolved.root / "xuanpu.yaml").is_file()
+
+
+async def test_other_instance_registers_different_content_first(
+    world: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """查重之后、登记之前，另一个实例以不同内容抢先发布了同一版本：本次报冲突，
+    撤回自己写的归档与缓存；对象存储里只剩登记记录指向的那个对象，本实例解析得到对方的内容。"""
+    other = _other_instance(world, (tmp_path / "other-data").resolve())
+    original = world.platform.store.add_package_version
+    raced = False
+
+    async def racing(record: Any) -> None:
+        nonlocal raced
+        if not raced:
+            # 只在本次发布登记时插一次队；对方自己的登记直接放行
+            raced = True
+            await other.packages.publish(world.admin, world.archive(approval="strict"))
+        await original(record)
+
+    monkeypatch.setattr(world.platform.store, "add_package_version", racing)
+    with pytest.raises(ConflictError):
+        await world.publish()
+
+    winner = (await world.platform.packages.list_versions("acme", "support-desk"))[0]
+    assert winner.location == _expected_key(world, approval="strict")
+    assert winner.location != _expected_key(world)
+    assert _object_keys(world) == [winner.location]
+    assert _files_under(world.data_dir / "cache") == []
+    resolved = await world.platform.packages.resolve("acme", "support-desk", "1.0.0")
+    assert resolved.record.digest == winner.digest
+    assert resolved.manifest.spec.policy.approval == "strict"
+
+
+@pytest.mark.parametrize("digest", ["md5:" + "0" * 32, "sha256:" + "0" * 63, "sha256:" + "G" * 64])
+def test_archive_key_requires_a_sha256_digest(digest: str) -> None:
+    """归档键里的指纹只认 sha256 的十六进制形状，别的形状直接报错，不拼出奇怪的键。"""
+    with pytest.raises(ValueError, match="不认识的归档指纹"):
+        archive_key("acme", "support-desk", "1.0.0", digest)

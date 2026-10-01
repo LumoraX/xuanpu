@@ -2,15 +2,18 @@
 
 发布即不可变：同名同版本不能再次发布，改动必须发新版本。回滚就是把生效版本指回旧版本。
 
-归档的正本放在对象存储里，键是 ``tenants/<租户>/packages/<包名>/<版本>.zip``，登记在
-``PackageVersionRecord.location``。各实例不共享数据目录：用到某个版本时由 ``PackageCache``
-从对象存储取归档、核对指纹、解到本机缓存 ``<数据目录>/cache/packages/``。
+归档的正本放在对象存储里，键是 ``tenants/<租户>/packages/<包名>/<版本>/<指纹>.zip``（指纹
+只取 sha256 的十六进制部分），登记在 ``PackageVersionRecord.location``。键里带指纹，不同内容
+永远落在不同的对象上：多个实例并发发布同一版本时谁也覆盖不了谁，同内容重试写同一个键无害。
+各实例不共享数据目录：用到某个版本时由 ``PackageCache`` 从对象存储取归档、核对指纹、解到
+本机缓存 ``<数据目录>/cache/packages/``。
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -42,6 +45,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 ARCHIVE_CONTENT_TYPE = "application/zip"
+_SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 
 
 @dataclass(frozen=True)
@@ -64,9 +68,21 @@ class ResolvedPackage:
         return self.root / self.manifest.spec.skills.dir
 
 
-def archive_key(tenant_id: str, name: str, version: str) -> str:
-    """某个版本的归档在对象存储里的键。以租户开头（对象存储的键规则）。"""
-    return validate_key(f"tenants/{tenant_id}/packages/{name}/{version}.zip")
+def archive_key(tenant_id: str, name: str, version: str, digest: str) -> str:
+    """某个版本的归档在对象存储里的键：``tenants/<租户>/packages/<名>/<版本>/<十六进制>.zip``。
+
+    以租户开头（对象存储的键规则）；带上指纹，内容不同的归档永远是不同的对象。
+
+    Args:
+        digest: ``archive_digest`` 给出的指纹，形如 ``sha256:<十六进制>``；键里只放十六进制。
+
+    Raises:
+        ValueError: 指纹不是 sha256 的形状。
+    """
+    algorithm, _, hexdigest = digest.partition(":")
+    if algorithm != "sha256" or not _SHA256_HEX.match(hexdigest):
+        raise ValueError(f"不认识的归档指纹：{digest!r}")
+    return validate_key(f"tenants/{tenant_id}/packages/{name}/{version}/{hexdigest}.zip")
 
 
 def _unpack_and_validate(archive: bytes, staging: Path) -> tuple[PackageManifest, str]:
@@ -144,13 +160,14 @@ class PackageRegistry:
                 _unpack_and_validate, archive, staging
             )
             await self._check_loadable(manifest, staging)
+            digest = await asyncio.to_thread(archive_digest, archive)
             record = PackageVersionRecord(
                 tenant_id=tenant_id,
                 name=manifest.name,
                 version=manifest.version,
-                digest=await asyncio.to_thread(archive_digest, archive),
+                digest=digest,
                 manifest_yaml=manifest_yaml,
-                location=archive_key(tenant_id, manifest.name, manifest.version),
+                location=archive_key(tenant_id, manifest.name, manifest.version, digest),
                 published_at=self._now(),
                 published_by=principal.actor,
             )
@@ -186,9 +203,15 @@ class PackageRegistry:
     async def _rollback(self, record: PackageVersionRecord) -> None:
         """登记失败后撤回本次写下的归档与缓存。清理失败只记日志，不盖掉原始异常。
 
-        只有确认控制面里确实没有这个版本时才删：登记可能其实已经成功（提交后连接断开），
-        也可能是别的实例在查重之后抢先登记了同一版本，这两种情况下对象存储里的归档都有人
-        在用。确认不了时归档留着——没有记录指向它，下次发布同一版本时会被覆盖。
+        先查控制面里这个版本现在的记录，再决定删什么：
+
+        - 记录不存在，或存在但 ``location`` 不是本次的键（别的实例以不同内容抢先登记了）：
+          删掉本次写入的对象——它没有记录指向，留着只是垃圾；
+        - 记录存在且 ``location`` 就是本次的键（提交其实成功了，或别的实例以相同内容抢先
+          登记）：对象有人在用，不删。
+
+        本地缓存同理，只在记录不存在、或登记的指纹与本次不同时删。查不了记录时什么都不删：
+        留下的对象没有记录指向，缓存带着指纹，都不影响正确性。
         """
         try:
             registered = await self._store.get_package_version(
@@ -196,27 +219,23 @@ class PackageRegistry:
             )
         except Exception:
             logger.exception(
-                "登记失败后无法确认业务包 %s/%s@%s 是否已登记，归档 %s 留在对象存储里",
+                "登记失败后无法确认业务包 %s/%s@%s 的登记情况，归档 %s 留在对象存储里",
                 record.tenant_id, record.name, record.version, record.location,
             )  # fmt: skip
             return
-        if registered is not None:
-            if registered.digest != record.digest:
-                logger.error(
-                    "业务包 %s/%s@%s 被并发发布，登记的指纹与本次不同，归档 %s 可能已被覆盖",
-                    record.tenant_id, record.name, record.version, record.location,
+        if registered is None or registered.location != record.location:
+            try:
+                await self._objects.delete(record.location)
+            except Exception:
+                logger.exception("撤回业务包归档 %s 失败", record.location)
+        if registered is None or registered.digest != record.digest:
+            try:
+                await self._cache.discard(record)
+            except Exception:
+                logger.exception(
+                    "撤回业务包 %s/%s@%s 的本地缓存失败",
+                    record.tenant_id, record.name, record.version,
                 )  # fmt: skip
-            return
-        try:
-            await self._objects.delete(record.location)
-        except Exception:
-            logger.exception("撤回业务包归档 %s 失败", record.location)
-        try:
-            await self._cache.discard(record)
-        except Exception:
-            logger.exception(
-                "撤回业务包 %s/%s@%s 的本地缓存失败", record.tenant_id, record.name, record.version
-            )
 
     async def activate(self, principal: Principal, name: str, version: str) -> None:
         """把某个已发布版本设为生效版本（前进或回滚）。"""

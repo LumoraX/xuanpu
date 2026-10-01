@@ -171,8 +171,9 @@ async def test_same_package_name_in_two_tenants(world: Any, step: Any, read_turn
     cache = world.data_dir / "cache" / "packages"
     assert first.root.relative_to(cache).parts[0].startswith("acme-")
     assert second.root.relative_to(cache).parts[0].startswith("globex-")
-    assert first.record.location == "tenants/acme/packages/support-desk/1.0.0.zip"
-    assert second.record.location == "tenants/globex/packages/support-desk/1.0.0.zip"
+    hexdigest = first.record.digest.removeprefix("sha256:")
+    assert first.record.location == f"tenants/acme/packages/support-desk/1.0.0/{hexdigest}.zip"
+    assert second.record.location == f"tenants/globex/packages/support-desk/1.0.0/{hexdigest}.zip"
     thread_dirs = sorted(path.name for path in (world.data_dir / "threads").iterdir())
     assert len(thread_dirs) == 2
     assert thread_dirs[0].startswith("acme-")
