@@ -5,8 +5,10 @@ from __future__ import annotations
 import asyncio
 import hashlib
 from contextlib import AsyncExitStack, asynccontextmanager
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+from xuanpu_server.config import ConfigError
 from xuanpu_server.controlplane import InMemoryControlPlane
 from xuanpu_server.objectstore import LocalObjectStore, S3ObjectStore, S3Settings
 from xuanpu_server.platform import Platform
@@ -145,11 +147,47 @@ async def _states(stack: AsyncExitStack, config: ServerConfig) -> StateBackendFa
     return PostgresStateBackends(pool, schema=config.state.postgres.schema_name)
 
 
+def _connector_readable_roots(config: ServerConfig) -> tuple[Path, ...]:
+    """本机连接器沙盒额外可读的目录：先解析成真实路径，再逐个校验。
+
+    放开它们等于让每个租户的连接器都能读，所以拒绝根目录，也拒绝与数据目录、本机对象
+    存储目录相同或互为上下级的目录（那里有别的租户的数据）。解析符号链接之后再比，免得
+    借链接绕过。目录必须已经存在：不存在多半是配错了，连接器会起不来。
+
+    Raises:
+        ConfigError: 有目录不合要求。
+    """
+    guarded = {"data_dir": config.data_dir.resolve()}
+    store = config.object_store
+    if store.backend == "local" and store.local.root is not None:
+        guarded["object_store.local.root"] = store.local.root.resolve()
+    roots: list[Path] = []
+    for root in config.sandbox.connector_readable_roots:
+        resolved = root.resolve()
+        where = f"sandbox.connector_readable_roots 里的 {root}（解析为 {resolved}）"
+        if resolved == Path(resolved.anchor):
+            raise ConfigError(f"{where} 是根目录：等于让连接器读整个文件系统")
+        for name, path in guarded.items():
+            if resolved == path or resolved in path.parents or path in resolved.parents:
+                raise ConfigError(
+                    f"{where} 与 {name}（{path}）相同或互为上下级：每个租户的连接器都能读到"
+                    "那里的平台数据，包括别的租户的"
+                )
+        if not resolved.is_dir():
+            raise ConfigError(f"{where} 不存在或不是目录")
+        roots.append(resolved)
+    return tuple(roots)
+
+
 def _sandboxes(config: ServerConfig) -> SandboxProvider:
-    """沙盒供给方（脚本沙盒与连接器沙盒都由它开）。"""
+    """沙盒供给方（脚本沙盒与连接器沙盒都由它开）。
+
+    Raises:
+        ConfigError: 连接器沙盒的可读目录不合要求（见 ``_connector_readable_roots``）。
+    """
     section = config.sandbox
     if section.backend == "local":
-        return LocalSandboxProvider(connector_readable_roots=section.connector_readable_roots)
+        return LocalSandboxProvider(connector_readable_roots=_connector_readable_roots(config))
     return DockerSandboxProvider(
         image=section.image,
         docker_env=section.docker_env,
@@ -184,6 +222,8 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
     """按配置装配平台；退出时关闭平台并释放连接池。"""
     async with AsyncExitStack() as stack:
         await asyncio.to_thread(config.data_dir.mkdir, parents=True, exist_ok=True)
+        # 沙盒配置先查：配错了在连库之前就报出来
+        sandboxes = await asyncio.to_thread(_sandboxes, config)
         store = await _control_plane(stack, config)
         vault = EncryptedVault(
             store, keys=config.decoded_master_keys(), primary=config.primary_master_key
@@ -201,7 +241,7 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
             store=store,
             vault=vault,
             models=GatewayModelClientFactory(gateway, vault),
-            sandboxes=_sandboxes(config),
+            sandboxes=sandboxes,
             states=await _states(stack, config),
             data_dir=config.data_dir,
             root_key_hash=config.root_key_hash,

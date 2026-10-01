@@ -13,7 +13,14 @@ from pathlib import Path  # noqa: TC003 —— pydantic 在运行时解析字段
 from typing import TYPE_CHECKING, Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -137,9 +144,14 @@ class SandboxConfig(_Section):
     Attributes:
         connector_readable_roots: ``local`` 后端下连接器沙盒里额外可读的目录（绝对路径），
             用来放开连接器自己的解释器与依赖所在的目录；受限读策略下系统运行时目录之外
-            的地方默认都读不到。
+            的地方默认都读不到。只用于 ``local`` 后端。不能是根目录，也不能与数据目录、
+            本机对象存储目录相同或互为上下级——这些要解析符号链接、看目录是否存在，在
+            装配平台时检查（``bootstrap``）。
         connector_image: ``docker`` 后端下连接器容器用的镜像；不给则与 ``image`` 相同。
-            镜像里要装好连接器需要的运行时。
+            镜像里要装好连接器需要的运行时。只用于 ``docker`` 后端。
+
+    后端对不上的连接器选项（``docker`` 后端配了 ``connector_readable_roots``、``local``
+    后端配了 ``connector_image``）直接报错，不悄悄忽略。
     """
 
     backend: Literal["local", "docker"] = "local"
@@ -149,13 +161,34 @@ class SandboxConfig(_Section):
     docker_binary: str = "docker"
     docker_env: dict[str, str] = Field(default_factory=dict)
     connector_readable_roots: tuple[Path, ...] = ()
-    connector_image: str | None = Field(default=None, min_length=1)
+    connector_image: str | None = None
+
+    @field_validator("connector_image")
+    @classmethod
+    def _image_not_blank(cls, value: str | None) -> str | None:
+        """去掉首尾空白；空白的镜像名拒绝。"""
+        if value is None:
+            return None
+        if not value.strip():
+            raise ValueError("connector_image 不能为空白；不给则与 image 相同")
+        return value.strip()
 
     @model_validator(mode="after")
-    def _absolute_roots(self) -> SandboxConfig:
+    def _connector_options(self) -> SandboxConfig:
+        """连接器选项：可读目录须为绝对路径；后端对不上的选项报错，不悄悄忽略。"""
         relative = [str(root) for root in self.connector_readable_roots if not root.is_absolute()]
         if relative:
             raise ValueError(f"connector_readable_roots 必须是绝对路径：{', '.join(relative)}")
+        if self.backend == "docker" and self.connector_readable_roots:
+            raise ValueError(
+                "connector_readable_roots 只用于 local 后端；docker 后端下连接器的运行时"
+                "装在 connector_image 里"
+            )
+        if self.backend == "local" and self.connector_image is not None:
+            raise ValueError(
+                "connector_image 只用于 docker 后端；local 后端用 connector_readable_roots "
+                "放开连接器的运行时"
+            )
         return self
 
 

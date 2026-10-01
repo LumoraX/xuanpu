@@ -158,7 +158,10 @@ def test_undefined_variable_is_an_error() -> None:
         ({"sandbox": {"backend": "none"}}, "backend"),
         ({"sandbox": {"memory_mb": 1}}, "memory_mb"),
         ({"sandbox": {"connector_readable_roots": ["venv"]}}, "connector_readable_roots"),
-        ({"sandbox": {"connector_image": ""}}, "connector_image"),
+        ({"sandbox": {"backend": "docker", "connector_image": ""}}, "connector_image"),
+        ({"sandbox": {"backend": "docker", "connector_image": "  \t"}}, "空白"),
+        ({"sandbox": {"backend": "docker", "connector_readable_roots": ["/x"]}}, "只用于 local"),
+        ({"sandbox": {"connector_image": "connectors:1"}}, "只用于 docker"),
         ({"limits": {"max_iterations": 0}}, "max_iterations"),
         ({"lease_seconds": 1}, "lease_seconds"),
         ({"unknown_section": {}}, "unknown_section"),
@@ -277,20 +280,26 @@ def test_object_store_s3_rejects_bad_shapes(field: str, value: str) -> None:
         parse_config(text, variables={**VARIABLES, "OSS_KEY": "k"})
 
 
-def test_connector_sandbox_settings_reach_the_provider() -> None:
-    """连接器沙盒的两个配置项：缺省为空、同脚本镜像；给了就交到沙盒供给方手里。"""
-    from pathlib import Path
+def test_connector_sandbox_settings_reach_the_provider(tmp_path: Path) -> None:
+    """连接器沙盒的两个配置项：缺省为空、同脚本镜像；给了就交到沙盒供给方手里。
 
+    可读目录解析成真实路径之后交出去；镜像名去掉首尾空白。
+    """
     config = parse_config(edited(), variables=VARIABLES)
     assert config.sandbox.connector_readable_roots == ()
     assert config.sandbox.connector_image is None
 
-    roots = ["/srv/connectors/.venv", "/opt/python"]
-    local = _sandboxes(
-        parse_config(edited(sandbox={"connector_readable_roots": roots}), variables=VARIABLES)
-    )
+    (tmp_path / "venv").mkdir()
+    (tmp_path / "python").mkdir()
+    (tmp_path / "python-link").symlink_to(tmp_path / "python")
+    roots = [str(tmp_path / "venv"), str(tmp_path / "python-link")]
+    text = edited(data_dir=str(tmp_path / "data"), sandbox={"connector_readable_roots": roots})
+    local = _sandboxes(parse_config(text, variables=VARIABLES))
     assert isinstance(local, LocalSandboxProvider)
-    assert local._connector_roots == tuple(Path(root) for root in roots)  # noqa: SLF001
+    assert local._connector_roots == (  # noqa: SLF001
+        (tmp_path / "venv").resolve(),
+        (tmp_path / "python").resolve(),
+    )
 
     docker = {"backend": "docker", "image": "scripts:1", "docker_env": {"PATH": "/usr/bin"}}
     default = _sandboxes(parse_config(edited(sandbox=docker), variables=VARIABLES))
@@ -298,8 +307,42 @@ def test_connector_sandbox_settings_reach_the_provider() -> None:
     assert default._connector_image == "scripts:1"  # noqa: SLF001
     chosen = _sandboxes(
         parse_config(
-            edited(sandbox={**docker, "connector_image": "connectors:2"}), variables=VARIABLES
+            edited(sandbox={**docker, "connector_image": " connectors:2 "}), variables=VARIABLES
         )
     )
     assert isinstance(chosen, DockerSandboxProvider)
     assert chosen._connector_image == "connectors:2"  # noqa: SLF001
+
+
+@pytest.mark.parametrize(
+    ("root", "fragment"),
+    [
+        ("/", "根目录"),
+        ("{data}", "data_dir"),
+        ("{workdir}", "data_dir"),
+        ("{data}/cache", "data_dir"),
+        ("{tmp}/link-to-data", "data_dir"),
+        ("{tmp}/objects", "object_store.local.root"),
+        ("{tmp}/objects/sub", "object_store.local.root"),
+        ("{tmp}/missing", "不存在"),
+    ],
+)
+def test_connector_readable_roots_are_checked_after_resolving(
+    tmp_path: Path, root: str, fragment: str
+) -> None:
+    """本机连接器沙盒的可读目录：解析符号链接之后，拒绝根目录、与数据目录或本机对象存储
+    目录相同或互为上下级的目录，以及不存在的目录。错误指出原因。"""
+    data = tmp_path / "workdir" / "data"
+    data.mkdir(parents=True)
+    (tmp_path / "objects" / "sub").mkdir(parents=True)
+    (tmp_path / "link-to-data").symlink_to(data)
+    value = root.format(data=data, workdir=data.parent, tmp=tmp_path)
+    text = edited(
+        data_dir=str(data),
+        object_store={"local": {"root": str(tmp_path / "objects")}},
+        sandbox={"connector_readable_roots": [value]},
+    )
+    config = parse_config(text, variables=VARIABLES)
+    with pytest.raises(ConfigError, match="connector_readable_roots") as caught:
+        _sandboxes(config)
+    assert fragment in str(caught.value)

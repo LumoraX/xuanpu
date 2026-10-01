@@ -112,8 +112,8 @@ uv run xuanpu --help
 | `cpus` | `1.0` | 容器 CPU 配额 |
 | `docker_binary` | `docker` | docker 命令 |
 | `docker_env` | 空 | 运行 docker 命令时的环境变量。平台不把自己的环境传给子进程，所以要在这里给出 `PATH`，以及 `HOME` 或 `DOCKER_HOST`，docker 客户端才找得到守护进程 |
-| `connector_readable_roots` | 空 | 只对 `local` 后端有意义：连接器沙盒里额外可读的目录，必须是绝对路径。本机连接器沙盒用受限读策略，系统运行时目录（如 `/usr`、`/bin`、`/opt`）之外默认都读不到，所以要把连接器自己的解释器与依赖所在的目录列进来，例如虚拟环境目录与它背后的解释器安装目录 |
-| `connector_image` | 同 `image` | 只对 `docker` 后端有意义：连接器容器用的镜像，里面必须有 `python3`（3.9+），还要装好业务包里 stdio 连接器需要的运行时（如 `node`），否则连接器起不来 |
+| `connector_readable_roots` | 空 | 只用于 `local` 后端（`docker` 后端配了会报错）：连接器沙盒里额外可读的目录，必须是绝对路径。本机连接器沙盒用受限读策略，系统运行时目录（如 `/usr`、`/bin`、`/opt`）之外默认都读不到，所以要把连接器自己的解释器与依赖所在的目录列进来，例如虚拟环境目录与它背后的解释器安装目录。启动时解析符号链接后检查：目录必须存在；不能是 `/`；不能与 `data_dir`、本机对象存储目录相同或互为上下级（每个租户的连接器都能读这些目录） |
+| `connector_image` | 同 `image` | 只用于 `docker` 后端（`local` 后端配了会报错）：连接器容器用的镜像，里面必须有 `python3`（3.9+），还要装好业务包里 stdio 连接器需要的运行时（如 `node`），否则连接器起不来 |
 
 `memory_mb`、`cpus`、`docker_binary`、`docker_env` 只对 `docker` 后端有意义。
 
