@@ -3,7 +3,7 @@
 - 状态：Accepted（2026-10-02 用户对示意稿 v4 与定义回复「可以，就现在这样定义」）
 - 日期：2026-10-02
 - 关联：ADR 0007（取代其决策 1 的「工作台」、决策 3 上层「应用」的员工视角、决策 7 的页面骨架）、ADR 0009（检验标准）、ADR 0011（改其子项目清单）
-- 参照：示意稿 `docs/superpowers/specs/prototypes/2026-10-02-workstation-v4.html`（v1–v3 是淘汰的中间稿，留作记录）
+- 参照：示意稿 `docs/superpowers/specs/prototypes/2026-10-02-workstation-v6.html`（v5 加了日程；v6 把日程、待办、事项改为按需打开的窗口；v1–v4 是淘汰的中间稿，留作记录）
 
 ## 背景
 
