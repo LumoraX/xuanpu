@@ -278,6 +278,9 @@ class EngineEventHub:
         input_tokens = int(usage.get("input_tokens") or 0)
         output_tokens = int(usage.get("output_tokens") or 0)
         total = int(usage.get("total_tokens") or 0) or input_tokens + output_tokens
+        estimated = self._interrupted_input_estimate(event)
+        input_tokens += estimated
+        total += estimated
         try:
             await self._store.add_usage(
                 self._tenant_id,
@@ -289,6 +292,31 @@ class EngineEventHub:
             )
         except Exception:
             logger.exception("会话 %s 的用量入账失败", self._session_id)
+
+    def _interrupted_input_estimate(self, event: taifeng.EventMsg) -> int:
+        """被停下的那一轮里被打断的那次采样，估算它的输入 token；不是被停下的一轮返回 0。
+
+        被打断的采样没有收尾，内核报不出它的用量，但 provider 照样按 prompt 收费；计 0 的话，
+        长上下文 + 收到第一个增量就停，可以绕过当天的 token 配额。这里取内核按上次实测用量
+        校准过的上下文估算（``introspect()["context_tokens"]``）顶上，宁可多算。停在工具执行
+        而不是采样中时同样按此计入。拿不到估算就记警告、按 0 入账，审计里留一条带 ``error``
+        的 ``usage_estimated``。
+        """
+        data = event.msg.data
+        if event.msg.kind != "turn_completed" or data.get("end_reason") != "cancelled":
+            return 0
+        record: dict[str, Any] = {"estimated_input_tokens": 0, "reason": "cancelled"}
+        try:
+            record["estimated_input_tokens"] = int(self._engine.introspect()["context_tokens"])
+        except Exception as exc:
+            logger.warning(
+                "会话 %s 被停下的一轮拿不到上下文估算，按 0 入账",
+                self._session_id,
+                exc_info=True,
+            )
+            record["error"] = type(exc).__name__
+        self._buffer.append(self._record("usage_estimated", event, record, seq=None))
+        return int(record["estimated_input_tokens"])
 
     async def _flush(self) -> None:
         """把缓冲里的审计记录写出去。写失败时放回缓冲，等下一次重试。"""

@@ -91,6 +91,7 @@ taifeng 内核的事件，成批写入（最迟半秒或攒够 64 条）。一�
 | `turn_completed` / `turn_failed` | 一轮结束 | token 用量、往返次数、耗时 |
 | `turn_text` | 平台在一轮结束时补的一条 | **这一轮回复的全文** |
 | `audit_gap` | 平台发现内核丢了事件 | 期望与实际收到的投递序号 |
+| `usage_estimated` | 平台在被停下的一轮结束时补的一条（见下文「用量」） | `submission_id`、`estimated_input_tokens`、`reason`（`cancelled`）；拿不到估算时 `estimated_input_tokens` 为 0，另有 `error` |
 
 内核事件的种类随内核版本增加，上表不是全集。
 
@@ -229,7 +230,8 @@ curl "https://xuanpu.internal/v1/usage?since=2026-09-01&until=2026-09-30" -H "Au
 | --- | --- |
 | 粒度 | 每个租户每天一条。`since`、`until` 是日期，两端都含；没有用量的日子不出现 |
 | 「天」 | 按 UTC 划分 |
-| 什么时候入账 | 一轮对话结束时（完成、失败、挂起都算）。数字来自模型网关返回的用量 |
+| 什么时候入账 | 一轮对话结束时（完成、失败、挂起、被停下都算）。数字来自模型网关返回的用量 |
+| 被停下的一轮 | 被打断的那次采样没有收尾，网关报不出它的用量，但照样按 prompt 收费。平台按内核的上下文估算把它计入 `input_tokens`（同样计入 `max_daily_tokens`），并记一条 `usage_estimated`；拿不到估算时按 0 计并记警告 |
 | `turns` | 对话轮数。一轮被审批打断的对话算两轮：挂起前一轮，续跑一轮 |
 | 子 skill | 算在内 |
 | 评测 | 算在内。评测走的是真实路径 |

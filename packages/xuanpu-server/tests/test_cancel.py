@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 import pytest
+import taifeng
 from xuanpu_sdk import XuanpuClient, XuanpuError
 from xuanpu_server.api import create_app
 from xuanpu_server.controlplane import AuditQuery
@@ -215,23 +216,75 @@ async def test_cancel_respects_tenant_isolation(world: Any, step: Any) -> None:
     assert events[-1].msg.data["end_reason"] != "cancelled"
 
 
-async def test_cancelled_turn_is_still_metered(world: Any, step: Any) -> None:
-    """被停的一轮照样记一轮用量；卡在半路的那次采样没有收尾，内核报不出它的 token。"""
+async def stop_mid_sample(world: Any, step: Any) -> tuple[Any, list[Any]]:
+    """开一个会话，让第一轮卡在采样半路再停掉；返回 ``(会话, 这一轮的事件)``。"""
     await world.publish()
     session = await world.platform.sessions.create(world.member, package="support-desk")
-    gate = asyncio.Event()
-    world.models.script(step(text="写到一半", wait=gate))
+    world.models.script(step(text="写到一半", wait=asyncio.Event()))
     turn = await world.platform.sessions.send_message(world.member, session.session_id, "写")
     events: list[Any] = []
     task = reader(turn, events)
     await wait_until(lambda: any(e.msg.kind == "assistant_text" for e in events))
     await world.platform.sessions.cancel(world.member, session.session_id)
     await asyncio.wait_for(task, 10)
+    return session, events
 
+
+async def usage_of_turn(world: Any, last: Any) -> list[tuple[int, int, int]]:
+    """这一轮入账那天的用量：``(轮数, 输入 token, 合计 token)``。按收尾事件的时刻取日期。"""
+    day = usage_day(last.timestamp.timestamp())
+    usage = await world.platform.store.list_usage("acme", since=day, until=day)
+    return [(record.turns, record.input_tokens, record.total_tokens) for record in usage]
+
+
+async def test_cancelled_turn_is_metered_with_an_estimate(world: Any, step: Any) -> None:
+    """被停的一轮照样记一轮；被打断的那次采样内核报不出 token，按上下文估算计入输入。
+
+    provider 对被打断的请求照样按 prompt 收费，计 0 会被用来绕过当天的 token 配额。
+    """
+    session, events = await stop_mid_sample(world, step)
     assert events[-1].msg.data["usage"]["total_tokens"] == 0
-    today = usage_day(time.time())
-    usage = await world.platform.store.list_usage("acme", since=today, until=today)
-    assert [(record.turns, record.total_tokens) for record in usage] == [(1, 0)]
+    records = await world.platform.store.query_audit(
+        "acme", AuditQuery(session_id=session.session_id, kind="usage_estimated", limit=10)
+    )
+    assert [record.data["reason"] for record in records] == ["cancelled"]
+    assert records[0].data["submission_id"] == events[-1].submission_id
+    estimated = records[0].data["estimated_input_tokens"]
+    assert estimated > 0
+    assert await usage_of_turn(world, events[-1]) == [(1, estimated, estimated)]
+
+
+async def test_metering_without_an_estimate_is_logged(
+    world: Any, step: Any, monkeypatch: Any, caplog: Any
+) -> None:
+    """拿不到估算：记警告、审计里留痕，按 0 入账，这一轮照常收尾。"""
+
+    def broken(self: Any) -> dict[str, Any]:
+        """模拟内核的快照不可用。"""
+        raise RuntimeError("introspect 不可用")
+
+    monkeypatch.setattr("taifeng.AgentEngine.introspect", broken)
+    monkeypatch.setattr("xuanpu_server.runtime.cancellation.ADMISSION_WAIT_SECONDS", 0.0)
+    await world.publish()
+    session = await world.platform.sessions.create(world.member, package="support-desk")
+    world.models.script(step(text="写到一半", wait=asyncio.Event()))
+    turn = await world.platform.sessions.send_message(world.member, session.session_id, "写")
+    events: list[Any] = []
+    task = reader(turn, events)
+    await wait_until(lambda: any(e.msg.kind == "assistant_text" for e in events))
+    live = world.platform.sessions._live[("acme", session.session_id)]  # noqa: SLF001
+    # introspect 坏了，平台确认不了受理：直接向内核提交取消，只为走到入账这一步
+    await live.engine.submit(taifeng.CancelTurn(submission_id=turn.submission_id))
+    with caplog.at_level("WARNING", logger="xuanpu_server.runtime.events"):
+        await asyncio.wait_for(task, 10)
+    assert events[-1].msg.data["end_reason"] == "cancelled"
+    assert "估算" in caplog.text
+    records = await world.platform.store.query_audit(
+        "acme", AuditQuery(session_id=session.session_id, kind="usage_estimated", limit=10)
+    )
+    assert [record.data["estimated_input_tokens"] for record in records] == [0]
+    assert records[0].data["error"] == "RuntimeError"
+    assert await usage_of_turn(world, events[-1]) == [(1, 0, 0)]
 
 
 async def test_cancel_over_http(world: Any, step: Any) -> None:

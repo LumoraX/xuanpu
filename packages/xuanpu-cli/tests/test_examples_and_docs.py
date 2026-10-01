@@ -219,7 +219,7 @@ def test_every_manifest_field_is_documented() -> None:
 
 def test_every_audit_kind_is_documented() -> None:
     """审计手册覆盖平台自己写入的全部事件类型。"""
-    kinds: set[str] = {"connector_call", "turn_text", "audit_gap"}
+    kinds: set[str] = {"connector_call", "turn_text", "audit_gap", "usage_estimated"}
     for path in SERVER_SRC.rglob("*.py"):
         kinds |= set(
             re.findall(

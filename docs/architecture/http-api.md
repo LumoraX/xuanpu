@@ -302,7 +302,7 @@ POST /v1/sessions/{id}/cancel
 | 正在跑 | `turn_completed`，`data.end_reason` 为 `cancelled`、`data.success` 为 `false`、`data.cancel_reason` 为 `requested` |
 | 还在排队（前一轮没结束） | `turn_failed`，`data.kind` 为 `cancelled` |
 
-会话保持活动，可以接着发消息。被停的那一轮照样记一轮用量；卡在半路的那次采样没有收尾，它的 token 报不出来，不计。
+会话保持活动，可以接着发消息。被停的那一轮照样记一轮用量；卡在半路的那次采样没有收尾，网关报不出它的 token，平台按上下文估算计入输入（审计里记一条 `usage_estimated`，见[审计与用量](../guides/audit-and-usage.md)）。
 
 | 情况 | 响应 |
 | --- | --- |
