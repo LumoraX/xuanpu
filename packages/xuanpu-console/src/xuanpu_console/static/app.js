@@ -96,7 +96,8 @@ $("tabs").addEventListener("click", (event) => {
 
 // ---------- 会话 ----------
 
-// streaming：正在流式输出的那个会话（停止按钮停的是它）；没有在输出时为 null
+// streaming：正在流式输出的那一轮 { sessionId, submissionId }（停止按钮停的是它）；
+// submissionId 在收到 turn 帧之前为 null；没有在输出时 streaming 为 null
 const chat = { sessionId: null, status: null, streaming: null };
 
 async function loadSessions() {
@@ -173,17 +174,34 @@ async function loadHistory(sessionId) {
     if (page.next_after_id == null) break;
     after = page.next_after_id;
   }
+  const stopped = new Set();
   for (const record of records) {
     if (record.kind === "session_created") append("event", "会话创建 · " + when(record.at));
     else if (record.kind === "turn_started") append("event", "— 一轮对话 " + when(record.at) + " —");
     else if (record.kind === "message_sent" && record.data.text) append("user", record.data.text);
     else if (record.kind === "tool_call_completed") append("event", `工具 ${record.data.name}${record.data.is_error ? " ✗" : " ✓"} ${record.data.duration_ms ?? ""}ms`);
-    else if (record.kind === "turn_text" && record.data.text) append("assistant", record.data.text);
+    else if (isStopped(record)) stopped.add(record.data.submission_id);
+    else if (record.kind === "turn_text") {
+      if (record.data.text) append("assistant", record.data.text);
+      // 被停下的一轮：收尾记录在回复全文之前，「已停止」补在全文之后
+      if (stopped.has(record.data.submission_id)) append("event", "已停止");
+    }
     else if (record.kind === "turn_suspended") append("event", "等待审批");
+    else if (isStoppedInQueue(record)) append("event", "已停止（还在排队，没有开始）");
     else if (record.kind === "turn_failed") append("error", "本轮失败：" + (record.data.error || ""));
     else if (record.kind === "suspension_resolved_by") append("event", "审批结果已送回");
     else if (record.kind === "suspension_resolve_rejected") append("error", "审批结果未被受理：" + (record.data.reason || ""));
   }
+}
+
+// 正在跑时被停下：根 turn 以 turn_completed 收尾，end_reason 为 cancelled
+function isStopped(event) {
+  return event.kind === "turn_completed" && event.data.is_root && event.data.end_reason === "cancelled";
+}
+
+// 还在排队时被停下：以 turn_failed 收尾，kind 为 cancelled
+function isStoppedInQueue(event) {
+  return event.kind === "turn_failed" && event.data.is_root && event.data.kind === "cancelled";
 }
 
 async function loadPending() {
@@ -233,24 +251,39 @@ $("message").addEventListener("keydown", (event) => {
   }
 });
 
-// 流式输出时把「发送」换成「停止」，流结束后换回来
+// 流式输出时把「发送」换成「停止」，流结束后换回来。「停止」要等拿到这一轮的 submission_id 才可用
 function setStreaming(sessionId) {
-  chat.streaming = sessionId;
+  chat.streaming = sessionId === null ? null : { sessionId, submissionId: null };
   $("send-btn").classList.toggle("hidden", sessionId !== null);
   $("stop-btn").classList.toggle("hidden", sessionId === null);
-  $("stop-btn").disabled = sessionId === null;
+  $("stop-btn").disabled = true;
   $("send-btn").disabled = sessionId !== null || chat.status !== "active";
 }
 
+// 停不了（还没开始或已经结束）：提示一下，按钮恢复，流还在的话可以再试
+function notStopped() {
+  toast("这一轮还没开始或已经结束", "info");
+  $("stop-btn").disabled = !(chat.streaming && chat.streaming.submissionId);
+}
+
 $("stop-btn").addEventListener("click", async () => {
-  if (!chat.streaming) return;
+  const target = chat.streaming;
+  if (!target || !target.submissionId) return;
   $("stop-btn").disabled = true;
   try {
-    // 停掉这个会话里在途的对话；被停的那一轮照常从事件流收尾
-    await api("POST", `/v1/sessions/${chat.streaming}/cancel`, { json: {} });
+    // 只停这个页面正在看的这一轮，不碰同一会话里别的标签页、别的凭据发起的对话；
+    // 被停的那一轮照常从事件流收尾
+    const body = await api("POST", `/v1/sessions/${target.sessionId}/cancel`, {
+      json: { submission_id: target.submissionId },
+    });
+    if (!body.cancelled.length) notStopped();
   } catch (error) {
-    $("stop-btn").disabled = false;
-    fail(error);
+    if (error.code === "invalid_request") {
+      notStopped();
+    } else {
+      $("stop-btn").disabled = false;
+      fail(error);
+    }
   }
 });
 
@@ -269,7 +302,10 @@ async function streamTurn(path, json) {
       throw new Error((body.error && body.error.message) || ("HTTP " + response.status));
     }
     for await (const [name, data] of sse(response)) {
-      if (name === "assistant_text") {
+      if (name === "turn") {
+        chat.streaming.submissionId = data.submission_id;
+        $("stop-btn").disabled = false;
+      } else if (name === "assistant_text") {
         if (!bubble) bubble = append("assistant", "");
         bubble.textContent += data.data.delta || "";
         $("transcript").scrollTop = $("transcript").scrollHeight;
@@ -284,9 +320,9 @@ async function streamTurn(path, json) {
         append("event", "已送回部分审批，其余待办仍在等待");
       } else if (name === "suspension_resolve_rejected") {
         append("error", "审批结果未被受理：" + (data.data.reason || ""));
-      } else if (name === "turn_completed" && data.data.end_reason === "cancelled") {
+      } else if (isStopped(data)) {
         append("event", "已停止");
-      } else if (name === "turn_failed" && data.data.kind === "cancelled") {
+      } else if (isStoppedInQueue(data)) {
         append("event", "已停止（还在排队，没有开始）");
       } else if (name === "turn_failed") {
         append("error", "本轮失败：" + (data.data.error || ""));

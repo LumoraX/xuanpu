@@ -30,9 +30,13 @@ def test_console_only_talks_to_documented_endpoints() -> None:
 
 
 def test_console_can_stop_a_streaming_turn() -> None:
-    """对话框有「停止」按钮，点了调停止生成的接口。"""
+    """对话框有「停止」按钮：拿到这一轮的 submission_id 才可用，只停这一轮。"""
     html = (static_dir() / "index.html").read_text(encoding="utf-8")
     script = (static_dir() / "app.js").read_text(encoding="utf-8")
     assert re.search(r'<button[^>]*id="stop-btn"[^>]*>停止</button>', html)
-    assert "/v1/sessions/${chat.streaming}/cancel`" in script
-    assert '$("stop-btn")' in script
+    assert "/v1/sessions/${target.sessionId}/cancel`" in script
+    # 带上这一轮的 submission_id，不发空请求体（那会停掉同一会话里别处发起的对话）
+    assert "json: { submission_id: target.submissionId }" in script
+    assert "json: {} }" not in script
+    # 收到 turn 帧才启用
+    assert 'if (name === "turn") {' in script
