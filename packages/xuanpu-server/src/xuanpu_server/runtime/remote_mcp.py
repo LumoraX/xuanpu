@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any
 import httpx
 import taifeng
 
-from xuanpu_server.errors import PlatformError
+from xuanpu_server.errors import PackageInvalidError, PlatformError
 from xuanpu_server.redaction import head, redact
 from xuanpu_server.runtime.http_api import ConnectorCallError, auth_header
 from xuanpu_server.runtime.mcp_connectors import (
@@ -139,7 +139,16 @@ class RemoteRun:
     transport: VaultAuthTransport = field(init=False)
 
     def __post_init__(self) -> None:
-        """备好凭据传输。"""
+        """备好凭据传输。
+
+        Raises:
+            PackageInvalidError: 地址通过了规范校验、httpx 却解析不了。先解析再建传输，失败时
+                不会留下建了一半的传输。
+        """
+        try:
+            httpx.URL(self.url)
+        except httpx.InvalidURL:
+            raise PackageInvalidError(f"连接器 {self.name!r} 的 url 不是合法的地址") from None
         # 不读环境里的代理与证书配置（与 HTTP 连接器一致）：出口走哪里由部署决定
         inner = self.inner_transport
         if inner is None:

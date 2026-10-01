@@ -399,6 +399,23 @@ async def test_secret_removed_mid_session_fails_the_call_not_the_turn(
     assert [(r.data["is_error"], r.data["detail"]) for r in gate] == [(True, "secret_missing")]
 
 
+async def test_secret_value_with_line_breaks_is_refused(
+    world: Any, step: Any, read_turn: Any, external: tuple[ExternalApi, str]
+) -> None:
+    """密钥取值里有换行：放进请求头会改写报文，请求不发出；报 invalid_request，不回显取值。"""
+    api, url = external
+    await world.platform.put_secret(world.admin, "crm-token", "s3cret\r\nX-Injected: 1")
+    await publish(world, url)
+    _, events = await ask(world, step, read_turn, [("c1", "api__crm__getCustomer", {"id": "1"})])
+    result = output_of(events)
+    assert result["is_error"] is True
+    assert result["output"].startswith("invalid_request: 密钥 'crm-token'")
+    assert "s3cret" not in result["output"]
+    assert api.calls == []
+    gate = await world.platform.store.query_audit("acme", AuditQuery(source="gate"))
+    assert [(r.data["is_error"], r.data["detail"]) for r in gate] == [(True, "invalid_request")]
+
+
 async def test_redirects_errors_and_large_or_binary_bodies(
     world: Any, step: Any, read_turn: Any, external: tuple[ExternalApi, str]
 ) -> None:

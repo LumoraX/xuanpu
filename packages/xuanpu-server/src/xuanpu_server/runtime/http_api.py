@@ -19,7 +19,7 @@ from urllib.parse import quote, urlsplit
 
 import httpx
 
-from xuanpu_server.errors import PackageInvalidError
+from xuanpu_server.errors import InvalidRequestError, PackageInvalidError
 
 if TYPE_CHECKING:
     from xuanpu_spec import ApiDocument, Operation
@@ -28,6 +28,8 @@ if TYPE_CHECKING:
     from xuanpu_server.secrets import SecretVault
 
 MAX_RESPONSE_BYTES = 1024 * 1024
+# 凭据头的取值里不能有的字符：放进请求头会断开或改写报文
+_HEADER_BREAKERS = ("\r", "\n", "\0")
 _TEXT_TYPES = ("text/", "application/json", "application/xml", "application/problem+json")
 
 
@@ -52,13 +54,20 @@ async def auth_header(auth: HttpAuth, *, tenant_id: str, vault: SecretVault) -> 
     ``basic`` 放 ``Authorization: Basic``（密钥取值形如 ``用户:口令``），``header`` 放到
     清单指定的头。``query`` 方式的凭据在查询参数里、不在头里，由调用方自己处理。
 
+    取值里有换行或空字符时拒绝：放进请求头会改写报文。报错里只有密钥名，不回显取值。
+
     Raises:
         SecretMissingError: 密钥尚未配置。
+        InvalidRequestError: 密钥取值里有 CR、LF 或空字符。
         ValueError: ``auth.type`` 是 ``query``。
     """
     if auth.type == "query":
         raise ValueError("query 方式的凭据放在查询参数里，不是请求头")
     secret = await vault.get(tenant_id, auth.secret)
+    if any(char in secret for char in _HEADER_BREAKERS):
+        raise InvalidRequestError(
+            f"密钥 {auth.secret!r} 的取值里有换行或空字符，不能放进请求头；请重新写入这条密钥"
+        )
     if auth.type == "bearer":
         return "Authorization", f"Bearer {secret}"
     if auth.type == "basic":

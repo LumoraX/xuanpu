@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 import pytest
-from xuanpu_server.errors import SecretMissingError
+from xuanpu_server.errors import InvalidRequestError, PackageInvalidError, SecretMissingError
 from xuanpu_server.runtime.remote_mcp import UNREDACTABLE, RemoteRun, VaultAuthTransport
 from xuanpu_spec.manifest import HttpAuth
 
@@ -126,6 +126,20 @@ async def test_vault_transport_missing_secret_and_close() -> None:
             await client.get("https://mcp.example.com/mcp")
     await transport.aclose()
     assert closed == ["inner"]
+
+
+@pytest.mark.parametrize("value", ["abc\r\nX-Evil: 1", "abc\ndef", "abc\x00def"])
+async def test_vault_transport_refuses_values_that_break_the_header(value: str) -> None:
+    """密钥取值里有 CR、LF 或空字符：请求不发出，报 invalid_request，报错里没有取值。"""
+    inner, received = recording_inner()
+    vault = FakeVault({"docs-token": value})
+    transport = vault_transport(inner, vault, HttpAuth(type="bearer", secret="docs-token"))
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(InvalidRequestError, match="docs-token") as caught:
+            await client.get("https://mcp.example.com/mcp")
+    assert received == []
+    assert "abc" not in str(caught.value)
+    assert caught.value.code == "invalid_request"
 
 
 # ---------------------------------------------------------------------------
@@ -272,3 +286,15 @@ async def test_close_after_the_secret_was_deleted(caplog: pytest.LogCaptureFixtu
     assert "DELETE" not in seen
     warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
     assert any("没能结束远端会话（secret_missing）" in message for message in warnings)
+
+
+def test_url_that_httpx_cannot_parse_is_a_package_error() -> None:
+    """地址通过了规范校验、httpx 却解析不了（这里是不合法的国际化域名）：报业务包不合法。"""
+    with pytest.raises(PackageInvalidError, match="'docs' 的 url 不是合法的地址"):
+        RemoteRun(
+            name="docs",
+            url="https://例-.com/mcp",
+            auth=None,
+            tenant_id="acme",
+            vault=FakeVault({}),  # type: ignore[arg-type]
+        )
