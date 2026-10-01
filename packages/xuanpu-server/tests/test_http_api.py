@@ -48,6 +48,14 @@ async def test_health_needs_no_credentials(client: httpx.AsyncClient) -> None:
     assert response.json()["status"] == "ok"
 
 
+@pytest.mark.parametrize("path", ["/openapi.json", "/docs", "/redoc"])
+async def test_interface_description_is_not_served(client: httpx.AsyncClient, path: str) -> None:
+    """自动生成的接口描述与交互式文档页面都不开放：不带凭据也不能借此看接口形状。"""
+    response = await client.get(path)
+    assert response.status_code == 404
+    assert "paths" not in response.text
+
+
 @pytest.mark.parametrize(
     "headers",
     [{}, {"Authorization": "Basic abc"}, {"Authorization": "Bearer nope"}, {"Authorization": ""}],

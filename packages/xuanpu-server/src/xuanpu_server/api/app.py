@@ -126,12 +126,14 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
         finally:
             await platform.close()
 
+    # 自动生成的接口描述与交互式文档页面都不开放：它们不需要凭据，接口参考以 http-api.md 为准
     app = FastAPI(
         title="xuanpu",
         version=__version__,
         lifespan=lifespan,
         docs_url=None,
         redoc_url=None,
+        openapi_url=None,
     )
     app.state.platform = platform
     _install_error_handlers(app)
