@@ -43,7 +43,7 @@ from xuanpu_server.errors import (
 )
 from xuanpu_server.ids import new_id
 from xuanpu_server.runtime.events import EngineEventHub, SubmissionIndex, TurnStream
-from xuanpu_server.runtime.leases import SessionLeases
+from xuanpu_server.runtime.leases import SessionKey, SessionLeases
 from xuanpu_server.runtime.session_history import pending_requests, replay_turn
 
 if TYPE_CHECKING:
@@ -147,8 +147,8 @@ class SessionManager:
             store, instance_id=instance_id, lease_seconds=lease_seconds, now=now
         )
         self._now = now
-        self._live: dict[tuple[str, str], _LiveSession] = {}
-        self._locks: dict[tuple[str, str], asyncio.Lock] = {}
+        self._live: dict[SessionKey, _LiveSession] = {}
+        self._locks: dict[SessionKey, asyncio.Lock] = {}
         self._heartbeat: asyncio.Task[None] | None = None
         self._draining = False
 
@@ -230,8 +230,7 @@ class SessionManager:
     async def _open(self, record: SessionRecord) -> _LiveSession:
         """取得会话的持有权并准备好引擎。同一个会话的并发请求只准备一次。"""
         key = (record.tenant_id, record.session_id)
-        lock = self._locks.setdefault(key, asyncio.Lock())
-        async with lock:
+        async with self._lock_for(key):
             live = self._live.get(key)
             if live is not None:
                 return live
@@ -239,16 +238,20 @@ class SessionManager:
             try:
                 live = await self._start_engine(held)
             except BaseException:
-                await self._leases.release(held)
+                await self._let_go(held)
                 raise
             try:
                 # 准备引擎期间没人续期，租约可能已经过期、被别人拿走：放进来之前再确认一次
                 live.record = await self._bind_thread(live, await self._leases.confirm(live.record))
             except BaseException:
-                await self._discard(live)
+                await self._retire(live)
                 raise
             self._live[key] = live
             return live
+
+    def _lock_for(self, key: SessionKey) -> asyncio.Lock:
+        """一个会话的锁：准备引擎、放进或移出本实例，同一会话同一时刻只做一件。"""
+        return self._locks.setdefault(key, asyncio.Lock())
 
     async def _bind_thread(self, live: _LiveSession, fresh: SessionRecord) -> SessionRecord:
         """确认持有之后，才把引擎的线程登记到会话上（避免拿过期租约改写别人的线程）。
@@ -268,10 +271,11 @@ class SessionManager:
         self._submissions.register_thread(thread_id, fresh.session_id)
         return fresh
 
-    async def _discard(self, live: _LiveSession) -> None:
-        """丢掉刚准备好、还没放进本实例的会话：关引擎与事件枢纽，放弃租约（若还在手里）。
+    async def _retire(self, live: _LiveSession) -> None:
+        """收尾一个已经不在本实例里接单的会话：放掉引擎、关事件枢纽、放弃租约。
 
-        按续期失败处理。收尾某一步失败只记日志、继续后面的，不盖住让它被丢掉的那个异常。
+        尽力而为：某一步失败只记日志、接着做下一步，不抛出——调用方要么正在处理让它被
+        丢掉的那个异常，要么已经认定持有权丢了，收尾失败不改变这一结论（租约到期自然失效）。
         """
         record = live.record
         steps: list[tuple[str, Callable[[], Awaitable[object]]]] = [
@@ -283,7 +287,14 @@ class SessionManager:
             try:
                 await step()
             except Exception:
-                logger.exception("丢弃会话 %s 时收尾%s失败", record.session_id, name)
+                logger.exception("收尾会话 %s 时%s没有关好", record.session_id, name)
+
+    async def _let_go(self, record: SessionRecord) -> None:
+        """放弃租约。失败只记日志（租约到期自然失效），不盖住调用方正在处理的异常。"""
+        try:
+            await self._leases.release(record)
+        except Exception:
+            logger.exception("放弃会话 %s 的租约失败，等它到期", record.session_id)
 
     async def _start_engine(self, held: SessionRecord) -> _LiveSession:
         """创建（或从存储里续接）引擎，并接上事件枢纽。线程在确认持有之后才登记到会话上。
@@ -310,16 +321,24 @@ class SessionManager:
                 live.in_flight.discard(submission_id)
                 live.last_used = self._now()
 
-        hub = EngineEventHub(
-            engine,
-            tenant_id=record.tenant_id,
-            session_id=record.session_id,
-            audit=self._audit,
-            store=self._store,
-            capture_requests=self._runtimes.defaults.capture_requests,
-            on_turn_end=turn_ended,
-        )
-        await hub.start()
+        try:
+            hub = EngineEventHub(
+                engine,
+                tenant_id=record.tenant_id,
+                session_id=record.session_id,
+                audit=self._audit,
+                store=self._store,
+                capture_requests=self._runtimes.defaults.capture_requests,
+                on_turn_end=turn_ended,
+            )
+            await hub.start()
+        except BaseException:
+            # 引擎已经在池里了：接不上事件枢纽就把它放掉，免得留一个没人管的引擎
+            try:
+                await runtime.pool.release(record.session_id, force=True)
+            except Exception:
+                logger.exception("释放会话 %s 的引擎失败", record.session_id)
+            raise
         return _LiveSession(
             record=record, runtime=runtime, engine=engine, hub=hub, last_used=self._now()
         )
@@ -419,23 +438,22 @@ class SessionManager:
             self._store, record.tenant_id, session_id, submission_id, after_seq=after_seq
         )
 
-    async def _detach(self, key: tuple[str, str], *, force: bool) -> bool:
-        """释放本实例对会话的持有：关引擎、写完审计、放弃租约。
+    async def _detach(self, key: SessionKey, *, force: bool) -> bool:
+        """释放本实例对会话的持有：关引擎、写完审计、放弃租约。调用方须持有该会话的锁。
 
-        ``force=False`` 时内核会因为还有后台子任务而拒绝释放引擎；这种情况下什么都不动，
-        返回 False，下一轮再试。
+        ``force=False``（空闲释放）先核对、再移除：内核因为还有后台子任务而拒绝释放引擎时
+        什么都不动，返回 False，下一轮再试。``force=True``（持有权丢了、关闭会话、停机）
+        先从本实例移除、立即停止接单，再尽力收尾，收尾失败只记日志。
         """
         live = self._live.get(key)
         if live is None:
             return False
-        await live.runtime.pool.release(live.record.session_id, force=force)
-        if live.record.session_id in live.runtime.pool.introspect():
-            return False
-        self._live.pop(key, None)
-        try:
-            await live.hub.close()
-        finally:
-            await self._leases.release(live.record)
+        if not force:
+            await live.runtime.pool.release(live.record.session_id, force=False)
+            if live.record.session_id in live.runtime.pool.introspect():
+                return False
+        del self._live[key]
+        await self._retire(live)
         return True
 
     async def release_idle(self) -> list[str]:
@@ -448,8 +466,7 @@ class SessionManager:
         released: list[str] = []
         for key, live in list(self._live.items()):
             if live.idle and live.last_used <= deadline:
-                lock = self._locks.setdefault(key, asyncio.Lock())
-                async with lock:
+                async with self._lock_for(key):
                     current = self._live.get(key)
                     if current is live and live.idle and await self._detach(key, force=False):
                         released.append(key[1])
@@ -466,7 +483,9 @@ class SessionManager:
         record = await self.get(principal, session_id)
         if record.status == "closed":
             return record
-        await self._detach((record.tenant_id, session_id), force=True)
+        key = (record.tenant_id, session_id)
+        async with self._lock_for(key):
+            await self._detach(key, force=True)
         closed = await self._store.update_session(
             record.tenant_id, session_id, at=self._now(), status="closed"
         )
@@ -476,9 +495,9 @@ class SessionManager:
         return closed
 
     async def _renew_leases_once(self) -> None:
-        """给本实例持有的会话续期。续期失败说明持有权已经丢了，立即放手。"""
+        """给本实例持有的会话续期。续期失败说明持有权已经丢了，立即放手（续期失败已记日志）。"""
         for key in await self._leases.renew(list(self._live)):
-            with contextlib.suppress(Exception):
+            async with self._lock_for(key):
                 await self._detach(key, force=True)
 
     async def _renew_leases(self) -> None:
@@ -520,10 +539,9 @@ class SessionManager:
                 await self._heartbeat
             self._heartbeat = None
         for key in list(self._live):
-            try:
+            # 收尾是尽力而为，失败已在里面记日志；一个会话收不干净不影响释放其他会话
+            async with self._lock_for(key):
                 await self._detach(key, force=True)
-            except Exception:
-                logger.exception("释放会话 %s 失败", key[1])
 
 
 __all__ = ["MAX_MESSAGE_CHARS", "SessionManager", "Turn"]

@@ -139,6 +139,14 @@ class TenantRuntime:
                 logger.exception("关闭运行时 %s 的%s失败", self.key, name)
 
 
+async def _close_unowned(store: taifeng.MessageStore) -> None:
+    """关掉建池失败后留在手里的会话主存。失败只记日志，不盖住建池失败的那个异常。"""
+    try:
+        await store.close()
+    except Exception:
+        logger.exception("建池失败后关闭会话主存也失败")
+
+
 class RuntimeAssembler:
     """按业务包组装运行时，并缓存已组装的运行时。"""
 
@@ -261,16 +269,23 @@ class RuntimeAssembler:
             tools.append(taifeng.make_wait_for_task_tool(registry=registry))
         return tools
 
-    async def _state_options(self, package: ResolvedPackage) -> dict[str, Any]:
+    async def _state_options(
+        self,
+        package: ResolvedPackage,
+        states: StateBackends,
+        store: taifeng.MessageStore | None,
+    ) -> dict[str, Any]:
         """引擎池的状态面参数：会话主存放在哪里，外加线程目录、生命周期订阅、长期记忆。
 
-        状态面给了会话主存的工厂，就用它造一个本池专用的存储，不建数据目录下的
-        ``threads``；否则会话主存是数据目录下的本机文件。
+        Args:
+            package: 要组装的业务包。
+            states: 该租户的状态面后端。
+            store: 用状态面的工厂给本池造好的会话主存；None 表示会话主存是数据目录下的
+                本机文件（这时才建 ``threads`` 目录）。
         """
-        states = await self._states.for_tenant(package.record.tenant_id)
         options: dict[str, Any] = {}
-        if states.message_store is not None:
-            options["message_store"] = states.message_store()
+        if store is not None:
+            options["message_store"] = store
         else:
             storage = self._scoped("threads", package)
             await asyncio.to_thread(storage.mkdir, parents=True, exist_ok=True)
@@ -295,8 +310,12 @@ class RuntimeAssembler:
         spec = package.manifest.spec
         budget = spec.policy.budget
         defaults = self._defaults
-        options = await self._state_options(package)
+        states = await self._states.for_tenant(tenant_id)
+        store: taifeng.MessageStore | None = None
         try:
+            if states.message_store is not None:
+                store = states.message_store()
+            options = await self._state_options(package, states, store)
             return await taifeng.EnginePool.create(
                 skills_dir=package.skills_dir,
                 model_client=await self._models.create(tenant_id, spec.model.tier),
@@ -318,10 +337,9 @@ class RuntimeAssembler:
                 **options,
             )
         except BaseException:
-            # 池建成之前，注入的存储仍归我们（ADR 0111）：建池失败要自己关掉
-            store = options.get("message_store")
+            # 池建成之前，注入的存储仍归我们（taifeng ADR 0111）：建池失败要自己关掉
             if store is not None:
-                await store.close()
+                await _close_unowned(store)
             raise
 
     async def evict_idle(self) -> list[RuntimeKey]:

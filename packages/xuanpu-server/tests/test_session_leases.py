@@ -149,6 +149,37 @@ async def test_lapsed_lease_is_dropped_on_renewal(world: Any, step: Any, read_tu
         await stalled.close()
 
 
+async def test_lost_session_is_dropped_even_if_teardown_fails(
+    world: Any, step: Any, read_turn: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """持有权丢了：先从本实例移除、停止接单，再尽力收尾；某一步收尾失败也不影响后面放租约。"""
+    await world.publish()
+    session = await world.platform.sessions.create(world.member, package="support-desk")
+    clock = Clock()
+    stalled = _another_instance(world, "inst-stalled", now=clock, lease_seconds=60)
+    try:
+        world.models.script(step(text="第一轮"))
+        await read_turn(await stalled.sessions.send_message(world.member, session.session_id, "1"))
+        live = stalled.sessions._live[("acme", session.session_id)]  # noqa: SLF001
+        release = live.runtime.pool.release
+
+        async def release_then_fail(session_id: str, *, force: bool = False) -> None:
+            """引擎其实放掉了，但释放调用报错（例如内核收尾时审计没写完）。"""
+            await release(session_id, force=force)
+            raise RuntimeError("释放时出错")
+
+        monkeypatch.setattr(live.runtime.pool, "release", release_then_fail)
+        clock.now = 1_061.0
+        await stalled.sessions.maintain()
+        assert stalled.sessions._live == {}  # noqa: SLF001
+        assert session.session_id not in live.runtime.pool.introspect()
+        record = await world.platform.store.get_session("acme", session.session_id)
+        assert record is not None
+        assert record.owner is None  # 引擎那一步之后的关枢纽、放租约照样做了
+    finally:
+        await stalled.close()
+
+
 async def _lease_taken_by_another(world: Any, session_id: str, clock: Clock) -> None:
     """时钟拨过租约期限，另一个实例趁机拿走会话的租约。"""
     clock.now = 1_061.0
