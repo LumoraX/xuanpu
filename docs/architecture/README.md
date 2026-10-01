@@ -89,7 +89,7 @@ SessionManager.send_message
 
 平台关闭（`Platform.close`）分两步：先拒绝新的对话（503 `runtime_unavailable`），等在途对话跑完，最多等 `shutdown_drain_seconds`；到期仍未结束的被取消。之后释放本实例持有的全部会话，会话保持活动，可由别的实例接手。
 
-`xuanpu serve` 下，平台关闭排在 HTTP 服务器自己的收尾之后：服务器先停止接受连接，并等已打开的响应（事件流）发完，这一段没有时限；之后才轮到上面的两步。所以 `shutdown_drain_seconds` 实际约束的是调用方已断开、仍在后台跑的对话。
+`xuanpu serve` 下，平台关闭排在 HTTP 服务器自己的收尾之后：服务器先停止接受连接，并等已打开的响应（事件流）发完，最多等 `shutdown_drain_seconds` 加 5 秒（uvicorn 的 `timeout_graceful_shutdown`），到期断开还没发完的响应，那几轮对话转到后台；之后才轮到上面的两步。所以 `shutdown_drain_seconds` 在第二段约束的是调用方已断开、仍在后台跑的对话，整个停机最长约 `2 × shutdown_drain_seconds + 5` 秒。
 
 ## 效应闸门
 

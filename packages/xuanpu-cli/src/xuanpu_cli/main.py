@@ -10,6 +10,7 @@ import argparse
 import asyncio
 import base64
 import json
+import math
 import os
 import sys
 from pathlib import Path
@@ -26,6 +27,8 @@ from xuanpu_spec import (
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    import uvicorn
+    from fastapi import FastAPI
     from xuanpu_server.config import ServerConfig
 
 EXIT_OK = 0
@@ -134,6 +137,30 @@ def _console_dir() -> Path | None:
     return static_dir()
 
 
+GRACEFUL_SHUTDOWN_MARGIN_SECONDS = 5
+"""HTTP 服务器停机时等已打开的响应发完的时限，比 ``shutdown_drain_seconds`` 多出的余量。"""
+
+
+def uvicorn_config(app: FastAPI, config: ServerConfig) -> uvicorn.Config:
+    """HTTP 服务器的配置。
+
+    停机时 uvicorn 先等已打开的响应（事件流）发完，再让平台关闭（``Platform.close`` 再给在途
+    对话 ``shutdown_drain_seconds``）。前一段原本没有时限，一轮对话跑多久就等多久；这里给它
+    ``shutdown_drain_seconds`` 加 5 秒，到期 uvicorn 取消还没发完的响应，那几轮对话转到后台，
+    由平台关闭时的那一段收尾。uvicorn 的这一项只收整秒，带小数的向上取整（只会多等，不会少等）。
+    """
+    import uvicorn
+
+    return uvicorn.Config(
+        app,
+        host=config.listen.host,
+        port=config.listen.port,
+        log_level="info",
+        timeout_graceful_shutdown=math.ceil(config.shutdown_drain_seconds)
+        + GRACEFUL_SHUTDOWN_MARGIN_SECONDS,
+    )
+
+
 async def _serve(config: ServerConfig) -> int:
     """启动平台服务，直到收到终止信号。"""
     import uvicorn
@@ -141,14 +168,8 @@ async def _serve(config: ServerConfig) -> int:
     from xuanpu_server.bootstrap import open_platform
 
     async with open_platform(config) as platform:
-        server = uvicorn.Server(
-            uvicorn.Config(
-                create_app(platform, console_dir=_console_dir()),
-                host=config.listen.host,
-                port=config.listen.port,
-                log_level="info",
-            )
-        )
+        app = create_app(platform, console_dir=_console_dir())
+        server = uvicorn.Server(uvicorn_config(app, config))
         await server.serve()
     return EXIT_OK
 

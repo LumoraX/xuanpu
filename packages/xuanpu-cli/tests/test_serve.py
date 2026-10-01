@@ -14,11 +14,51 @@ from typing import TYPE_CHECKING
 
 import httpx
 import pytest
+from fastapi import FastAPI
+from xuanpu_cli.main import uvicorn_config
+from xuanpu_server.config import ServerConfig
 from xuanpu_server.tenancy import generate_root_key
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
+
+
+def server_config(tmp_path: Path, **overrides: object) -> ServerConfig:
+    """一份最小的合法配置，``overrides`` 覆盖顶层的键。"""
+    return ServerConfig.model_validate(
+        {
+            "data_dir": str(tmp_path.resolve()),
+            "root_key_hash": "0" * 64,
+            "master_keys": {"k1": base64.b64encode(b"k" * 32).decode()},
+            "primary_master_key": "k1",
+            "models": {
+                "base_url": "http://127.0.0.1:1/v1",
+                "api_key": "sk-test",
+                "tiers": {
+                    "fast": {"model": "s"},
+                    "balanced": {"model": "m"},
+                    "deep": {"model": "l"},
+                },
+            },
+            **overrides,
+        }
+    )
+
+
+@pytest.mark.parametrize(("drain", "expected"), [(30.0, 35), (0.0, 5), (7.5, 13)])
+def test_graceful_shutdown_has_a_deadline(tmp_path: Path, drain: float, expected: int) -> None:
+    """停机时等已打开的响应（事件流）发完有时限：``shutdown_drain_seconds`` 再加 5 秒。
+
+    uvicorn 的这一项只收整秒：带小数的向上取整，只会多等、不会少等。
+    """
+    listen = {"host": "10.0.0.8", "port": 9000}
+    config = server_config(tmp_path, shutdown_drain_seconds=drain, listen=listen)
+    app = FastAPI()
+    built = uvicorn_config(app, config)
+    assert built.timeout_graceful_shutdown == expected
+    assert (built.app, built.host, built.port) == (app, "10.0.0.8", 9000)
+    assert built.log_level == "info"
 
 
 def free_port() -> int:
