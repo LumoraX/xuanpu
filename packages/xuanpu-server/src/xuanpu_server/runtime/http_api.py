@@ -45,6 +45,29 @@ def resolve_base_url(spec: ConnectorSpec, document: ApiDocument) -> str:
     raise PackageInvalidError(f"连接器 {spec.name!r} 没有可用的基地址")
 
 
+async def auth_header(auth: HttpAuth, *, tenant_id: str, vault: SecretVault) -> tuple[str, str]:
+    """按清单声明的方式生成凭据头 ``(头名, 头值)``。密钥现取现用，轮换即时生效。
+
+    HTTP 连接器与远端 MCP 连接器共用这一份写法：``bearer`` 放 ``Authorization: Bearer``，
+    ``basic`` 放 ``Authorization: Basic``（密钥取值形如 ``用户:口令``），``header`` 放到
+    清单指定的头。``query`` 方式的凭据在查询参数里、不在头里，由调用方自己处理。
+
+    Raises:
+        SecretMissingError: 密钥尚未配置。
+        ValueError: ``auth.type`` 是 ``query``。
+    """
+    if auth.type == "query":
+        raise ValueError("query 方式的凭据放在查询参数里，不是请求头")
+    secret = await vault.get(tenant_id, auth.secret)
+    if auth.type == "bearer":
+        return "Authorization", f"Bearer {secret}"
+    if auth.type == "basic":
+        encoded = base64.b64encode(secret.encode("utf-8")).decode("ascii")
+        return "Authorization", f"Basic {encoded}"
+    assert auth.header is not None
+    return auth.header, secret
+
+
 def _scalar(value: Any) -> str:
     """参数值 → 字符串。布尔按 JSON 的写法。"""
     if isinstance(value, bool):
@@ -128,17 +151,12 @@ class HttpApiClient:
         """按清单声明的方式准备凭据，返回 ``(头, 查询参数)``。每次调用现取，密钥轮换即时生效。"""
         if self._auth is None:
             return {}, []
-        secret = await self._vault.get(self._tenant_id, self._auth.secret)
-        if self._auth.type == "bearer":
-            return {"Authorization": f"Bearer {secret}"}, []
-        if self._auth.type == "basic":
-            encoded = base64.b64encode(secret.encode("utf-8")).decode("ascii")
-            return {"Authorization": f"Basic {encoded}"}, []
-        if self._auth.type == "header":
-            assert self._auth.header is not None
-            return {self._auth.header: secret}, []
-        assert self._auth.name is not None
-        return {}, [(self._auth.name, secret)]
+        if self._auth.type == "query":
+            assert self._auth.name is not None
+            secret = await self._vault.get(self._tenant_id, self._auth.secret)
+            return {}, [(self._auth.name, secret)]
+        name, value = await auth_header(self._auth, tenant_id=self._tenant_id, vault=self._vault)
+        return {name: value}, []
 
     async def call(self, operation: Operation, args: dict[str, Any]) -> tuple[str, bool]:
         """调用一个 operation，返回 ``(给模型看的文本, 是否出错)``。
@@ -205,6 +223,7 @@ __all__ = [
     "MAX_RESPONSE_BYTES",
     "ConnectorCallError",
     "HttpApiClient",
+    "auth_header",
     "build_request",
     "resolve_base_url",
 ]

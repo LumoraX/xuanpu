@@ -1,0 +1,225 @@
+"""远端 MCP 连接器（``transport: remote``）：经 MCP Streamable HTTP 访问部署在别处的 server。
+
+客户端用内核稳定层的 ``McpHttpClient``。凭据按规则 2 处理——清单里只有密钥名，明文只在
+出口那一刻取出：
+
+- 不经客户端的 ``headers`` 注入（那会让明文在客户端对象里一直待到连接器关闭）；
+- 而是给客户端一个自定义的 httpx 传输 ``VaultAuthTransport``，每个请求发出之前从保管库现取
+  凭据加到请求头上。密钥轮换即时生效，客户端与传输对象里都不留明文；
+- 只给发往清单 ``url`` 同源（协议、主机、端口）的请求加凭据，别的请求一律拒绝发出。
+
+远端每次请求都拿到凭据，它回的任何文本都可能把凭据带回来：交给模型与审计的文本、日志里的
+排障线索都按值脱敏。脱敏用的明文同样是现取现用。远端 MCP 不进沙盒：它本来就是一次网络调用。
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
+
+import httpx
+import taifeng
+
+from xuanpu_server.errors import PlatformError
+from xuanpu_server.redaction import redact
+from xuanpu_server.runtime.http_api import ConnectorCallError, auth_header
+from xuanpu_server.runtime.mcp_connectors import render_result
+
+if TYPE_CHECKING:
+    from xuanpu_spec.manifest import HttpAuth
+
+    from xuanpu_server.runtime.mcp_connectors import Invoke
+    from xuanpu_server.secrets import SecretVault
+
+logger = logging.getLogger(__name__)
+
+UNREDACTABLE = "[已隐去：密钥这时已取不到，无法按值脱敏]"
+"""要脱敏时密钥已经取不到（例如刚被删掉）：无从按值替换，整段换成这句，不冒险原样写出。"""
+
+
+def _origin(url: httpx.URL) -> tuple[str, str, int | None]:
+    """URL 的源：协议、主机、端口（默认端口记为 None）。"""
+    return url.scheme, url.host, url.port
+
+
+class CredentialScopeError(httpx.TransportError):
+    """请求不是发往清单声明的连接器地址：凭据传输拒绝发出。"""
+
+
+class VaultAuthTransport(httpx.AsyncBaseTransport):
+    """每次请求发出时从保管库取凭据加到请求头；客户端对象里不长期持有明文（规则 2）。
+
+    只放行发往 ``url`` 同源的请求：凭据只会发给清单声明的那台主机。内核客户端只向这一个
+    端点发请求，也不跟随重定向；这道检查挡住以后的改动意外把带凭据的请求引到别处。
+    """
+
+    def __init__(
+        self,
+        inner: httpx.AsyncBaseTransport,
+        *,
+        url: str,
+        auth: HttpAuth | None,
+        tenant_id: str,
+        vault: SecretVault,
+    ) -> None:
+        """
+        Args:
+            inner: 真正发请求的传输。
+            url: 清单里的连接器地址，只有发往它同源的请求才放行。
+            auth: 凭据注入方式；None 表示不加凭据。
+            tenant_id: 所属租户，取密钥时用。
+            vault: 密钥保管库。
+        """
+        self._inner = inner
+        self._origin = _origin(httpx.URL(url))
+        self._auth = auth
+        self._tenant_id = tenant_id
+        self._vault = vault
+        self._closed = False
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        """加上凭据头后交给内层传输。
+
+        Raises:
+            CredentialScopeError: 请求不是发往清单声明的地址。
+            SecretMissingError: 密钥这时已取不到；请求不发出。
+        """
+        if _origin(request.url) != self._origin:
+            raise CredentialScopeError(
+                "请求的地址与清单声明的连接器地址不同源，拒绝发出", request=request
+            )
+        if self._auth is not None:
+            name, value = await auth_header(
+                self._auth, tenant_id=self._tenant_id, vault=self._vault
+            )
+            request.headers[name] = value
+        return await self._inner.handle_async_request(request)
+
+    async def aclose(self) -> None:
+        """关闭内层传输。重复调用无害。"""
+        if self._closed:
+            return
+        self._closed = True
+        await self._inner.aclose()
+
+
+@dataclass
+class RemoteRun:
+    """一个 remote 连接器的客户端与排障线索。
+
+    Attributes:
+        name: 连接器名。
+        url: MCP 端点地址（规范已校验：带主机名的 http(s) 地址，不带用户名与口令）。
+        auth: 凭据注入方式；None 表示不需要凭据。
+        tenant_id: 所属租户。
+        vault: 密钥保管库。
+        client: 握手成功后的客户端；没连上时为 None。
+        transport: 给客户端用的凭据传输（客户端关闭时一并关闭；没连上时由 ``close`` 关）。
+    """
+
+    name: str
+    url: str
+    auth: HttpAuth | None
+    tenant_id: str
+    vault: SecretVault
+    client: taifeng.McpHttpClient | None = None
+    transport: VaultAuthTransport = field(init=False)
+
+    def __post_init__(self) -> None:
+        """备好凭据传输。"""
+        self.transport = VaultAuthTransport(
+            # 不读环境里的代理与证书配置（与 HTTP 连接器一致）：出口走哪里由部署决定
+            httpx.AsyncHTTPTransport(trust_env=False),
+            url=self.url,
+            auth=self.auth,
+            tenant_id=self.tenant_id,
+            vault=self.vault,
+        )
+
+    async def connect(self, *, request_timeout: float) -> taifeng.McpHttpClient:
+        """握手。握手一成功就把客户端记下来，之后的失败由 ``close()`` 关掉它。
+
+        不开 GET 推送流（``listen_notifications=False``）：运行时的工具在组装时定下，之后不随
+        ``tools/list_changed`` 增减（闸门与权限策略是按那时的工具生成的），推送流收到的通知
+        用不上；不开就省掉每个运行时一条常驻连接与断线重连。server 发起的请求仍可夹在各次
+        POST 的响应流里送达。
+        """
+        self.client = await taifeng.McpHttpClient.connect(
+            self.url,
+            transport=self.transport,
+            request_timeout_seconds=request_timeout,
+            listen_notifications=False,
+        )
+        return self.client
+
+    async def redact(self, text: str) -> str:
+        """按当前的密钥明文脱敏：现取现用、用完即弃，不在对象里留存。
+
+        密钥这时已取不到就无从按值替换，整段换成 ``UNREDACTABLE``。轮换恰好发生在请求与
+        脱敏之间时，旧值认不出来——这个窗口只有一次请求那么长。
+        """
+        if self.auth is None:
+            return text
+        try:
+            secret = await self.vault.get(self.tenant_id, self.auth.secret)
+        except PlatformError:
+            return UNREDACTABLE
+        return redact(text, (secret,))
+
+    async def diagnostics(self, exc: BaseException | None, *, settle: bool = False) -> str:
+        """脱敏后的排障线索：异常类型与文本，连上了的话再加 server 自报的身份。
+
+        各段都用 repr 写出，远端回的换行不会在日志里伪造出新的一行。没有进程要等，
+        ``settle`` 不起作用。
+        """
+        parts: list[str] = []
+        if exc is not None:
+            parts.append(_described(exc, await self.redact(str(exc))))
+        if self.client is not None:
+            info = await self.redact(json.dumps(self.client.server_info, ensure_ascii=False))
+            parts.append(f"serverInfo {info!r}")
+        return "；".join(parts) or "没有更多线索"
+
+    def invoker(self, tool: str) -> Invoke:
+        """调用这个连接器的某个工具。须在握手成功之后调用。
+
+        结果与错误文本都按值脱敏后才交给模型与审计。调用失败（工具报错、请求超时、连接
+        断开……）时日志记脱敏后的排障线索，转成 ``ConnectorCallError``；平台侧的失败（例如
+        密钥刚被删掉，请求没有发出）原样上抛，由闸门按错误码记下。
+        """
+        client = self.client
+        assert client is not None
+
+        async def invoke(args: dict[str, Any]) -> tuple[str, bool]:
+            try:
+                result = await client.call_tool(tool, args)
+            except PlatformError:
+                raise
+            except (taifeng.McpToolError, httpx.HTTPError, RuntimeError, OSError) as exc:
+                text = await self.redact(str(exc))
+                logger.warning(
+                    "连接器 %s 的工具 %s 调用失败：%s", self.name, tool, _described(exc, text)
+                )
+                raise ConnectorCallError(text) from None
+            rendered, is_error = render_result(result)
+            return await self.redact(rendered), is_error
+
+        return invoke
+
+    async def close(self) -> None:
+        """关闭客户端（它会 DELETE 结束会话）；没连上、或关客户端失败，也关掉传输的连接池。"""
+        try:
+            if self.client is not None:
+                await self.client.close()
+        finally:
+            await self.transport.aclose()
+
+
+def _described(exc: BaseException, text: str) -> str:
+    """一段排障线索：异常类型加（已脱敏的）文本的 repr。"""
+    return f"{type(exc).__name__}: {text!r}" if text else type(exc).__name__
+
+
+__all__ = ["UNREDACTABLE", "CredentialScopeError", "RemoteRun", "VaultAuthTransport"]

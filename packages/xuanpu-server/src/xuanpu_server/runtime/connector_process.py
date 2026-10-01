@@ -7,7 +7,8 @@
   不限长度写进日志（``mcp: invalid JSON: %r``）。那是连接器的原始输出，可能带着注入给它的
   凭据；而内核的日志记录里不知道是哪个连接器、该用哪些密钥脱敏，按值脱敏做不到。所以给
   这几个 logger 挂过滤器：字节串参数（连接器的原始输出）一律不记内容、只记长度；其余参数
-  的表示超过 200 字符的截断并标注。
+  的表示超过 200 字符的截断并标注。远端 MCP 连接器用的 HTTP 客户端（``taifeng.mcp.http_client``）
+  也在其列：它会把远端回的、解析不了的 SSE 数据截取前 200 字符写进日志。
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ _KILL_WAIT_SECONDS = 5.0
 
 _KERNEL_MCP_LOGGERS = (
     "taifeng.mcp.stdio_client",
+    "taifeng.mcp.http_client",
     "taifeng.mcp.server_messages",
     "taifeng.mcp.bridge",
     "taifeng.mcp.cancellation",
