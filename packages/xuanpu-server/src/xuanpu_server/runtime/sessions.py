@@ -46,6 +46,7 @@ from xuanpu_server.errors import (
 from xuanpu_server.ids import new_id
 from xuanpu_server.runtime.cancellation import cancel_in_flight, pick_targets
 from xuanpu_server.runtime.events import EngineEventHub, SubmissionIndex, TurnStream
+from xuanpu_server.runtime.gate_audit import RejectionAudit
 from xuanpu_server.runtime.leases import SessionKey, SessionLeases
 from xuanpu_server.runtime.session_history import pending_requests, replay_turn
 
@@ -145,6 +146,7 @@ class SessionManager:
         self._runtimes = runtimes
         self._quota = quota
         self._audit = audit
+        self._rejections = RejectionAudit(store=store, audit=audit)
         self._submissions = submissions
         self._leases = SessionLeases(
             store, instance_id=instance_id, lease_seconds=lease_seconds, now=now
@@ -402,14 +404,21 @@ class SessionManager:
     async def resume(
         self, principal: Principal, session_id: str, resolutions: dict[str, Any]
     ) -> Turn:
-        """送回审批结果（或表单答案），让挂起的那一轮对话续跑。"""
+        """送回审批结果（或表单答案），让挂起的那一轮对话续跑。
+
+        人工拒绝的连接器调用走不到闸门，过闸记录由这里补（见 ``gate_audit``）。
+        """
         if not resolutions:
             raise InvalidRequestError("resolutions 不能为空")
-        await self._admit_turn(principal.require_tenant())
+        tenant_id = principal.require_tenant()
+        await self._admit_turn(tenant_id)
+        # 打开引擎之前就读：取到会话之后、提交之前不能有让出点，否则可能被当作空闲释放
+        rejected = await self._rejections.prepare(tenant_id, session_id, resolutions)
         live = await self._active(principal, session_id)
         turn = await self._submit(
             live, taifeng.Resume(thread_id=live.engine.thread_id, resolutions=resolutions)
         )
+        await self._rejections.record(rejected, live.runtime.connectors.describe)
         await self._audit.control(
             principal,
             live.record.tenant_id,

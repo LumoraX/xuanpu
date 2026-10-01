@@ -68,13 +68,13 @@
 | --- | --- |
 | `connector`、`transport`、`tool` | 哪个连接器的哪个工具，走的什么传输 |
 | `effect` | 副作用分类：`read` / `write` / `external` |
-| `decision` | `allowed`：放行并已调用。`denied` 留给策略直接拒绝的情况；人工拒绝的调用不会走到闸门，不产生这条记录（见下文「被拒绝的操作」） |
-| `is_error`、`detail` | 调用是否出错；出错时的简述（超时是 `timeout`） |
-| `duration_ms` | 耗时 |
-| `arguments_digest` | 调用参数的 SHA-256 摘要 |
-| `call_id`、`thread_id`、`submission_id` | 用来和内核事件对上。审批通过后才执行的调用，`submission_id` 为空，靠 `call_id` 对 |
+| `decision` | `allowed`：放行并已调用。`denied` 留给策略直接拒绝的情况。`rejected`：人工拒绝（送回审批时 `granted` 不为真），调用没有发出——这条由平台在送回审批结果时补记，只对连接器工具补（脚本、命令被拒绝没有过闸记录） |
+| `is_error`、`detail` | 调用是否出错；出错时的简述（超时是 `timeout`）。人工拒绝的 `detail` 是 `rejected_by_user`，`is_error` 为 `false` |
+| `duration_ms` | 耗时；人工拒绝的为 0 |
+| `arguments_digest` | 调用参数的 SHA-256 摘要。人工拒绝的按待办里记下的参数算（那份参数经过脱敏与截断） |
+| `call_id`、`thread_id`、`submission_id` | 用来和内核事件对上。`submission_id` 是调用归属的那一轮：审批通过后才执行的调用，是送回审批的那一轮（同 `suspension_resolved_by` 的 `submission_id`）；人工拒绝的，是挂起的那一轮；内核自己发起的重跑没有，为空 |
 
-这条记录的意义是：**有这条记录，调用就确实发出去了**。需要审批的调用在批准之前不会有这条记录。
+`decision` 为 `allowed` 的记录意味着：**调用确实发出去了**。需要审批的调用在批准或拒绝之前不会有过闸记录。
 
 ### `engine`：模型做了什么
 
@@ -166,9 +166,9 @@ async for record in client.admin.audit(session_id=session_id, source="gate"):
 | --- | --- |
 | 某个会话从头到尾发生了什么 | `session_id=…`，按 `at` 排序 |
 | 用户问了什么、模型答了什么 | `kind=message_sent` 与 `kind=turn_text`，用 `data.submission_id` 配对 |
-| 调过哪些外部接口 | `source=gate` |
+| 调过哪些外部接口 | `source=gate` 里 `decision=allowed` 的（`rejected` 的没有调用） |
 | 某次写操作是谁批准的 | `kind=suspension_resolved_by`：`actor` 是送回决定的 API key，`data.decisions` 是每个待办的结论。再用 `kind=turn_suspended` 里同一个待办标识找到当时要批的操作与参数 |
-| 被拒绝的操作 | 同上，`decisions` 里取值为 `false` 的。被拒绝的调用没有执行，所以没有 `connector_call` 记录 |
+| 被拒绝的操作 | 同上，`decisions` 里取值为 `false` 的。其中连接器工具另有一条 `decision=rejected` 的 `connector_call`（调用没有执行） |
 | 谁在什么时候发布、切换了业务包 | `kind=package_published`、`kind=package_activated` |
 | 谁改过密钥 | `kind=secret_written`、`kind=secret_deleted` |
 | 某一轮用了多少 token | `kind=turn_completed` 的 `data.subtree_usage`（含子 skill）；没有这个字段时看 `data.usage` |

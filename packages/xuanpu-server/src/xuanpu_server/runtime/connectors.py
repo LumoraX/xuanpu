@@ -27,9 +27,9 @@ from typing import TYPE_CHECKING, Any
 import taifeng
 from xuanpu_spec import OpenApiError, load_openapi
 
-from xuanpu_server.audit import digest_arguments
 from xuanpu_server.errors import PackageInvalidError, PlatformError, RuntimeUnavailableError
 from xuanpu_server.runtime.connector_process import ObservingExecutor
+from xuanpu_server.runtime.gate_audit import ConnectorToolInfo, gate_call_data
 from xuanpu_server.runtime.http_api import ConnectorCallError, HttpApiClient, resolve_base_url
 from xuanpu_server.runtime.mcp_connectors import (
     StdioRun,
@@ -88,6 +88,21 @@ class _Pending:
     input_schema: dict[str, Any]
     invoke: Invoke
 
+    @property
+    def full_name(self) -> str:
+        """模型看到的工具名。"""
+        return self.spec.tool_name(self.tool)
+
+    @property
+    def info(self) -> ConnectorToolInfo:
+        """登记信息：属于哪个连接器、走什么传输、副作用分类。"""
+        return ConnectorToolInfo(
+            connector=self.spec.name,
+            transport=self.spec.transport,
+            tool=self.tool,
+            effect=self.effect,
+        )
+
 
 def _pending_mcp(spec: ConnectorSpec, tool: McpTool) -> _Pending:
     """MCP 连接器（stdio 与 remote）列出的一个工具：副作用分类按清单，不采信 server 的自述。"""
@@ -108,11 +123,8 @@ class ConnectorGate:
         self,
         *,
         invoke: Invoke,
-        connector: str,
-        transport: str,
-        tool: str,
+        info: ConnectorToolInfo,
         full_name: str,
-        effect: Effect,
         tenant_id: str,
         policy: taifeng.PermissionPolicy,
         audit: AuditLog,
@@ -121,10 +133,10 @@ class ConnectorGate:
     ) -> None:
         """绑定一个工具。"""
         self._invoke = invoke
-        self._connector = connector
-        self._transport = transport
-        self._tool = tool
-        self._effect = effect
+        self._info = info
+        self._connector = info.connector
+        self._tool = info.tool
+        self._effect = info.effect
         self._tenant_id = tenant_id
         self._policy = policy
         self._audit = audit
@@ -142,25 +154,28 @@ class ConnectorGate:
         is_error: bool,
         detail: str = "",
     ) -> None:
-        """写一条过闸记录。参数只记摘要。"""
+        """写一条过闸记录。参数只记摘要。
+
+        归属的那一轮取 ``ctx.extras["submission_id"]``：审批通过后的重跑里，内核放的是触发
+        重跑的那次送回的提交标识；内核自己发起的重跑（如到期裁决）没有这个键，记为 None，
+        会话按线程归属。
+        """
+        submission_id = ctx.extras.get("submission_id")
         await self._audit.gate(
             self._tenant_id,
             "connector_call",
-            {
-                "connector": self._connector,
-                "transport": self._transport,
-                "tool": self._tool,
-                "effect": self._effect,
-                "decision": decision,
-                "is_error": is_error,
-                "detail": detail,
-                "call_id": ctx.call_id,
-                "thread_id": ctx.thread_id,
-                "arguments_digest": digest_arguments(args),
-                "submission_id": ctx.extras.get("submission_id"),
-                "duration_ms": int((time.monotonic() - started) * 1000),
-            },
-            session_id=self._submissions.session_of(ctx.extras.get("submission_id"), ctx.thread_id),
+            gate_call_data(
+                self._info,
+                decision=decision,
+                is_error=is_error,
+                detail=detail,
+                call_id=ctx.call_id,
+                thread_id=ctx.thread_id,
+                args=args,
+                submission_id=submission_id,
+                duration_ms=int((time.monotonic() - started) * 1000),
+            ),
+            session_id=self._submissions.session_of(submission_id, ctx.thread_id),
         )
 
     async def __call__(self, args: dict[str, Any], ctx: taifeng.ToolContext) -> taifeng.ToolResult:
@@ -263,6 +278,8 @@ class ConnectorSet:
         self._mcp: list[McpRun] = []
         self._http_clients: list[HttpApiClient] = []
         self._pending: list[_Pending] = []
+        # 工具全名 → 登记信息。来自清单与列出的工具，关闭连接器之后仍然有效
+        self._catalog: dict[str, ConnectorToolInfo] = {}
 
     async def start(self, spec: ConnectorSpec, *, package_root: Path) -> dict[str, Effect]:
         """接入一个连接器并列出它的工具，返回「完整工具名 → 副作用分类」。
@@ -285,7 +302,16 @@ class ConnectorSet:
                 tools = await self._start_stdio(spec, str(package_root))
             found = [_pending_mcp(spec, tool) for tool in tools]
         self._pending.extend(found)
-        return {spec.tool_name(item.tool): item.effect for item in found}
+        self._catalog.update((item.full_name, item.info) for item in found)
+        return {item.full_name: item.effect for item in found}
+
+    def describe(self, full_name: str) -> ConnectorToolInfo | None:
+        """按模型看到的工具名查它属于哪个连接器、走什么传输、副作用分类。
+
+        不是这个运行时的连接器工具（内核工具、脚本、表单等）返回 None。stdio 与 remote 的
+        工具名前缀相同，要知道传输只能查这里。
+        """
+        return self._catalog.get(full_name)
 
     async def _start_stdio(self, spec: ConnectorSpec, cwd: str) -> list[McpTool]:
         """在连接器沙盒里启动 MCP server 进程并列出工具。
@@ -396,11 +422,8 @@ class ConnectorSet:
             timeout = self._timeout_of(item.spec)
             gate = ConnectorGate(
                 invoke=item.invoke,
-                connector=item.spec.name,
-                transport=item.spec.transport,
-                tool=item.tool,
-                full_name=item.spec.tool_name(item.tool),
-                effect=item.effect,
+                info=item.info,
+                full_name=item.full_name,
                 tenant_id=self._tenant_id,
                 policy=policy,
                 audit=self._audit,

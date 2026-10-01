@@ -319,6 +319,36 @@ async def test_write_operation_needs_approval(
     assert "s3cret-token-value" not in everything
 
 
+async def test_rejected_write_operation_leaves_a_gate_record(
+    world: Any, step: Any, read_turn: Any, external: tuple[ExternalApi, str]
+) -> None:
+    """POST 被人工拒绝：请求不发出；补一条 transport=http 的过闸记录，归到挂起的那一轮。"""
+    api, url = external
+    await publish(world, url)
+    session, events = await ask(
+        world,
+        step,
+        read_turn,
+        [("c1", "api__crm__createTicket", {"body": {"title": "打印机坏了"}})],
+    )
+    pending = events[-1].msg.data["pending"][0]
+    resumed = await read_turn(
+        await world.platform.sessions.resume(
+            world.member, session.session_id, {pending["request_id"]: {"granted": False}}
+        )
+    )
+    assert resumed[-1].msg.kind == "turn_completed"
+    assert api.calls == []
+    gate = await world.platform.store.query_audit("acme", AuditQuery(source="gate"))
+    assert [
+        (r.data["transport"], r.data["connector"], r.data["tool"], r.data["effect"]) for r in gate
+    ] == [("http", "crm", "createTicket", "external")]
+    assert (gate[0].data["decision"], gate[0].data["detail"]) == ("rejected", "rejected_by_user")
+    assert gate[0].data["submission_id"] == events[-1].submission_id
+    assert gate[0].session_id == session.session_id
+    assert "打印机" not in json.dumps(gate[0].data, ensure_ascii=False)
+
+
 @pytest.mark.parametrize(
     ("auth", "secret", "expected"),
     [

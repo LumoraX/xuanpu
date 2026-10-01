@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from xuanpu_server.controlplane.models import AuditQuery
@@ -56,11 +57,35 @@ class _PendingTracker:
             if isinstance(item, dict) and str(item.get("request_id")) not in self._settled
         ]
 
+    def snapshot(self) -> PendingSuspension:
+        """还没处理的请求，连同挂起的那一轮的提交标识。"""
+        if self._suspended is None:
+            return PendingSuspension(submission_id=None, requests=[])
+        # 引擎事件的审计记录都带 submission_id（见 events 模块的 _record）
+        submission_id = self._suspended.data.get("submission_id")
+        return PendingSuspension(
+            submission_id=submission_id if isinstance(submission_id, str) else None,
+            requests=self.remaining(),
+        )
 
-async def pending_requests(
+
+@dataclass(frozen=True)
+class PendingSuspension:
+    """最近一次挂起里还没处理的请求。
+
+    Attributes:
+        submission_id: 挂起的那一轮的提交标识；没有挂起时为 None。
+        requests: 还没处理的请求（内核 ``turn_suspended`` 事件里 ``pending`` 的项）。
+    """
+
+    submission_id: str | None
+    requests: list[dict[str, Any]]
+
+
+async def pending_suspension(
     store: ControlPlaneStore, tenant_id: str, session_id: str
-) -> list[dict[str, Any]]:
-    """会话当前等待处理的审批或表单请求：最近一次挂起里的请求，减去之后已经核销或到期的。"""
+) -> PendingSuspension:
+    """会话当前等待处理的请求及挂起的那一轮：最近一次挂起里的请求，减去之后已经核销或到期的。"""
     tracker = _PendingTracker()
     after = 0
     while True:
@@ -69,8 +94,15 @@ async def pending_requests(
         for item in page:
             tracker.observe(item)
         if len(page) < query.limit:
-            return tracker.remaining()
+            return tracker.snapshot()
         after = page[-1].audit_id
+
+
+async def pending_requests(
+    store: ControlPlaneStore, tenant_id: str, session_id: str
+) -> list[dict[str, Any]]:
+    """会话当前等待处理的审批或表单请求：最近一次挂起里的请求，减去之后已经核销或到期的。"""
+    return (await pending_suspension(store, tenant_id, session_id)).requests
 
 
 async def replay_turn(
@@ -105,4 +137,4 @@ async def replay_turn(
         after = page[-1].audit_id
 
 
-__all__ = ["pending_requests", "replay_turn"]
+__all__ = ["PendingSuspension", "pending_requests", "pending_suspension", "replay_turn"]

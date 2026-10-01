@@ -521,6 +521,36 @@ async def test_remote_write_tool_waits_for_approval(
     assert "新内容" not in json.dumps(gate[0].data, ensure_ascii=False)
 
 
+async def test_rejected_remote_write_leaves_a_gate_record(
+    world: Any, serve: Any, step: Any, read_turn: Any, fake_remote_mcp: FakeRemoteMcp
+) -> None:
+    """写操作被人工拒绝：远端没收到调用；补一条过闸记录，传输按连接器登记是 remote。
+
+    remote 与 stdio 的工具名前缀都是 ``mcp__``，传输不能从前缀推。
+    """
+    session_id = await ready(world, serve, fake_remote_mcp)
+    arguments = {"id": "D-1", "text": "新内容"}
+    events = await ask(
+        world, step, read_turn, session_id, [("c1", "mcp__docs__update_doc", arguments)]
+    )
+    pending = events[-1].msg.data["pending"][0]
+    resumed = await read_turn(
+        await world.platform.sessions.resume(
+            world.member, session_id, {pending["request_id"]: {"granted": False}}
+        )
+    )
+    assert resumed[-1].msg.kind == "turn_completed"
+    assert fake_remote_mcp.state.rpc("tools/call") == []
+    gate = await gate_records(world)
+    assert [
+        (r.data["transport"], r.data["connector"], r.data["tool"], r.data["effect"]) for r in gate
+    ] == [("remote", "docs", "update_doc", "write")]
+    assert (gate[0].data["decision"], gate[0].data["detail"]) == ("rejected", "rejected_by_user")
+    assert gate[0].data["submission_id"] == events[-1].submission_id
+    assert gate[0].session_id == session_id
+    assert "新内容" not in json.dumps(gate[0].data, ensure_ascii=False)
+
+
 @pytest.mark.parametrize(
     ("tool", "kind"),
     [("bad_code", "ValueError"), ("null_code", "TypeError"), ("not_utf8", "UnicodeDecodeError")],
