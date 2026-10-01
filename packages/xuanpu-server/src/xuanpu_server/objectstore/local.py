@@ -8,38 +8,54 @@ import os
 import tempfile
 from typing import TYPE_CHECKING
 
-from xuanpu_server.objectstore.base import ObjectNotFoundError, validate_key
+from xuanpu_server.objectstore.base import TEMP_PREFIX, ObjectNotFoundError, validate_key
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
 class LocalObjectStore:
-    """把对象存成 ``root`` 下的文件。写入先写同目录临时文件再原子替换。"""
+    """把对象存成 ``root`` 下的文件。写入先写同目录临时文件再原子替换。
+
+    限制：键 ``c`` 与 ``c/d`` 不能并存（S3 可以，因为文件与目录互斥）；写入不 fsync，
+    断电可能丢最近的写入。只用于试用与单机。
+    """
 
     def __init__(self, root: Path) -> None:
-        """
+        """记录根目录。
+
         Args:
             root: 存放对象的根目录；不存在时在首次写入时创建。
         """
         self._root = root
 
     def _path(self, key: str) -> Path:
-        """键对应的文件路径（键已校验，不会越出根目录）。"""
-        return self._root / validate_key(key)
+        """键对应的文件路径。
+
+        在解析符号链接之后确认仍在根目录内（纵深防御：根目录下可能有指向外部的链接）。
+        会访问文件系统，只在线程里调用。
+
+        Raises:
+            ValueError: 键不合法，或解析后越出根目录。
+        """
+        path = (self._root / validate_key(key)).resolve()
+        if not path.is_relative_to(self._root.resolve()):
+            raise ValueError(f"对象键越出存储根目录：{key!r}")
+        return path
 
     async def put(
         self, key: str, data: bytes, *, content_type: str = "application/octet-stream"
     ) -> None:
         """写入（覆盖）一个对象。本机实现不保存内容类型。"""
         del content_type
-        await asyncio.to_thread(self._write, self._path(key), data)
+        validate_key(key)
+        await asyncio.to_thread(self._write, key, data)
 
-    @staticmethod
-    def _write(path: Path, data: bytes) -> None:
+    def _write(self, key: str, data: bytes) -> None:
         """原子写入：同目录临时文件写完后 ``os.replace``，失败时清掉临时文件。"""
+        path = self._path(key)
         path.parent.mkdir(parents=True, exist_ok=True)
-        fd, temp_name = tempfile.mkstemp(dir=path.parent, prefix=".tmp-")
+        fd, temp_name = tempfile.mkstemp(dir=path.parent, prefix=TEMP_PREFIX)
         try:
             with os.fdopen(fd, "wb") as handle:
                 handle.write(data)
@@ -51,21 +67,34 @@ class LocalObjectStore:
 
     async def get(self, key: str) -> bytes:
         """读出整个对象。不存在抛 ``ObjectNotFoundError``。"""
-        path = self._path(key)
+        validate_key(key)
         try:
-            return await asyncio.to_thread(path.read_bytes)
+            return await asyncio.to_thread(self._read, key)
         except (FileNotFoundError, IsADirectoryError, NotADirectoryError) as exc:
             raise ObjectNotFoundError(f"对象不存在：{key}") from exc
 
+    def _read(self, key: str) -> bytes:
+        """读文件内容。"""
+        return self._path(key).read_bytes()
+
     async def exists(self, key: str) -> bool:
         """对象是否存在。"""
-        return await asyncio.to_thread(self._path(key).is_file)
+        validate_key(key)
+        return await asyncio.to_thread(self._is_file, key)
+
+    def _is_file(self, key: str) -> bool:
+        """键对应的文件是否存在。"""
+        return self._path(key).is_file()
 
     async def delete(self, key: str) -> None:
         """删除对象；不存在不算错。"""
-        path = self._path(key)
-        with contextlib.suppress(FileNotFoundError):
-            await asyncio.to_thread(path.unlink)
+        validate_key(key)
+        await asyncio.to_thread(self._unlink, key)
+
+    def _unlink(self, key: str) -> None:
+        """删文件，不存在时静默。"""
+        with contextlib.suppress(FileNotFoundError, NotADirectoryError):
+            self._path(key).unlink()
 
 
 __all__ = ["LocalObjectStore"]

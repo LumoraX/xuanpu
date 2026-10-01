@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+import re
 from typing import Protocol, runtime_checkable
 
-from xuanpu_server.errors import PlatformError
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
+TEMP_PREFIX = ".xuanpu-tmp-"
+"""本机实现临时文件的名字前缀；键的段不得以它开头，临时文件因此不会被当成对象读到。"""
 
 
-class ObjectNotFoundError(PlatformError):
-    """对象不存在。"""
+class ObjectNotFoundError(LookupError):
+    """对象不存在。
 
-    code = "object_not_found"
-    status = 404
+    这是基础设施层的异常，不直接透到 HTTP：由各个域按自己的语义转换。例如业务包归档缺失
+    是服务端数据不一致（5xx），以后员工文件缺失才是 404。
+    """
 
 
 @runtime_checkable
@@ -43,7 +47,8 @@ class ObjectStore(Protocol):
 def validate_key(key: str) -> str:
     """校验键的形状并原样返回。
 
-    键必须非空、不以 ``/`` 开头、不含反斜杠，且每一段都不为空、不是 ``.`` 或 ``..``。
+    键必须非空、不以 ``/`` 开头、不含反斜杠与控制字符（``\\x00-\\x1f``、``\\x7f``），
+    且每一段都不为空、不是 ``.`` 或 ``..``、不以 ``.xuanpu-tmp-`` 开头。
 
     Raises:
         ValueError: 键不合法。
@@ -54,11 +59,15 @@ def validate_key(key: str) -> str:
         raise ValueError(f"对象键不能以 / 开头：{key!r}")
     if "\\" in key:
         raise ValueError(f"对象键不能含反斜杠：{key!r}")
+    if _CONTROL_CHARS.search(key):
+        raise ValueError(f"对象键不能含控制字符：{key!r}")
     for segment in key.split("/"):
         if not segment:
             raise ValueError(f"对象键不能含空段：{key!r}")
         if segment in {".", ".."}:
             raise ValueError(f"对象键不能含 . 或 .. 段：{key!r}")
+        if segment.startswith(TEMP_PREFIX):
+            raise ValueError(f"对象键的段不能以 {TEMP_PREFIX} 开头：{key!r}")
     return key
 
 

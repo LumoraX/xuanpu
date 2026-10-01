@@ -128,13 +128,20 @@ class LocalObjectStoreConfig(_Section):
 class S3ObjectStoreConfig(_Section):
     """S3 兼容的对象存储（阿里云 OSS 等）。两个密钥经 ``${VAR}`` 从环境展开，与主密钥同等对待。"""
 
-    endpoint: str
+    endpoint: str = Field(pattern=r"^https?://")
     bucket: str
     region: str
     prefix: str = ""
+    """加在所有对象键前面的前缀：为空，或不以 ``/`` 开头、以 ``/`` 结尾。"""
     access_key_id: str
     secret_access_key: str
     addressing_style: Literal["virtual", "path"] = "virtual"
+
+    @model_validator(mode="after")
+    def _prefix_shape(self) -> S3ObjectStoreConfig:
+        if self.prefix and (self.prefix.startswith("/") or not self.prefix.endswith("/")):
+            raise ValueError("prefix 要么为空，要么不以 / 开头、以 / 结尾")
+        return self
 
 
 class ObjectStoreConfig(_Section):
@@ -265,8 +272,8 @@ __all__ = [
     "ControlPlaneConfig",
     "LimitsConfig",
     "ListenConfig",
-    "ModelsConfig",
     "LocalObjectStoreConfig",
+    "ModelsConfig",
     "ObjectStoreConfig",
     "PostgresConfig",
     "S3ObjectStoreConfig",

@@ -214,3 +214,19 @@ def test_s3_backend_builds_without_network() -> None:
     text = edited(object_store={"backend": "s3", "s3": S3_SECTION})
     config = parse_config(text, variables={**VARIABLES, "OSS_KEY": "k"})
     assert isinstance(_object_store(config), S3ObjectStore)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("endpoint", "oss-cn-hangzhou.aliyuncs.com"),
+        ("prefix", "/xuanpu/"),
+        ("prefix", "xuanpu"),
+    ],
+)
+def test_object_store_s3_rejects_bad_shapes(field: str, value: str) -> None:
+    """endpoint 必须以 http(s):// 开头；prefix 为空或形如 ``a/b/``。"""
+    section = {**S3_SECTION, field: value}
+    text = edited(object_store={"backend": "s3", "s3": section})
+    with pytest.raises(ConfigError):
+        parse_config(text, variables={**VARIABLES, "OSS_KEY": "k"})

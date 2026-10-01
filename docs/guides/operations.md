@@ -131,15 +131,15 @@ uv run xuanpu --help
 | --- | --- | --- |
 | `backend` | `local` | `local`：本机目录。`s3`：S3 兼容服务，需要安装 `xuanpu-server[s3]` |
 | `local.root` | `<data_dir>/objects` | 存放对象的目录。给了必须是绝对路径 |
-| `s3.endpoint` | — | 服务地址，如 `https://oss-cn-hangzhou.aliyuncs.com` |
+| `s3.endpoint` | — | 服务地址，如 `https://s3.oss-cn-hangzhou.aliyuncs.com`（OSS 的 S3 兼容 endpoint） |
 | `s3.bucket` | — | 桶名 |
-| `s3.region` | — | 地域，如 `oss-cn-hangzhou` |
-| `s3.prefix` | 空 | 加在所有对象键前面的前缀，如 `xuanpu/` |
+| `s3.region` | — | 地域，如 `cn-hangzhou` |
+| `s3.prefix` | 空 | 加在所有对象键前面的前缀，如 `xuanpu/`；为空，或不以 `/` 开头、以 `/` 结尾 |
 | `s3.access_key_id` | — | 访问密钥标识，用 `${VAR}` 从环境取，不要直接写进文件 |
 | `s3.secret_access_key` | — | 访问密钥，同上，与主密钥同等对待 |
 | `s3.addressing_style` | `virtual` | `virtual`：虚拟主机风格，阿里云 OSS 只接受这种。`path`：路径风格，本机 moto、MinIO 等用 |
 
-`backend` 为 `s3` 时必须给出 `s3` 段。
+`backend` 为 `s3` 时必须给出 `s3` 段。S3 客户端（boto3）会读取标准的 `AWS_*` 与 `HTTP(S)_PROXY` 环境变量，部署时注意不要残留无关的 AWS 配置或代理设置。
 
 ### `limits`
 

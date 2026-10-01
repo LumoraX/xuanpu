@@ -64,9 +64,9 @@ object_store:
   #   root: /var/lib/xuanpu/objects     # 缺省为 <data_dir>/objects；给了必须是绝对路径
   # backend: s3                         # 需要安装 xuanpu-server[s3]
   # s3:
-  #   endpoint: https://oss-cn-hangzhou.aliyuncs.com
+  #   endpoint: https://s3.oss-cn-hangzhou.aliyuncs.com
   #   bucket: xuanpu-prod
-  #   region: oss-cn-hangzhou
+  #   region: cn-hangzhou
   #   prefix: xuanpu/
   #   access_key_id: ${XUANPU_OSS_KEY_ID}
   #   secret_access_key: ${XUANPU_OSS_KEY_SECRET}
