@@ -146,15 +146,17 @@ async def _states(stack: AsyncExitStack, config: ServerConfig) -> StateBackendFa
 
 
 def _sandboxes(config: ServerConfig) -> SandboxProvider:
-    """沙盒供给方。"""
-    if config.sandbox.backend == "local":
-        return LocalSandboxProvider()
+    """沙盒供给方（脚本沙盒与连接器沙盒都由它开）。"""
+    section = config.sandbox
+    if section.backend == "local":
+        return LocalSandboxProvider(connector_readable_roots=section.connector_readable_roots)
     return DockerSandboxProvider(
-        image=config.sandbox.image,
-        docker_env=config.sandbox.docker_env,
-        memory_mb=config.sandbox.memory_mb,
-        cpus=config.sandbox.cpus,
-        docker_binary=config.sandbox.docker_binary,
+        image=section.image,
+        docker_env=section.docker_env,
+        memory_mb=section.memory_mb,
+        cpus=section.cpus,
+        docker_binary=section.docker_binary,
+        connector_image=section.connector_image,
     )
 
 

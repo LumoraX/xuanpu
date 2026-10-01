@@ -1,8 +1,8 @@
 """运行时组装：为「租户 + 业务包 + 版本」组装一个内核引擎池。
 
 内核不知道租户（红线 2）。租户隔离体现在组装时注入的每一样资源上（红线 5）：
-会话存储（数据目录下的专属目录，或状态库里的专属表）、沙盒与工作区、连接器凭据、
-模型凭据、权限策略，全部按租户分开。
+会话存储（数据目录下的专属目录，或状态库里的专属表）、脚本沙盒与工作区、连接器沙盒与
+连接器工作目录、连接器凭据、模型凭据、权限策略，全部按租户分开。
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from xuanpu_server.runtime.connectors import DEFAULT_BASE_ENV, ConnectorSet
 from xuanpu_server.tenancy import tenant_directory
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Awaitable, Callable, Mapping
     from pathlib import Path
 
     from xuanpu_spec.manifest import Effect
@@ -46,7 +46,9 @@ class RuntimeDefaults:
         max_session_tokens: 单个会话的 token 上限。
         max_iterations: 单轮对话里模型与工具往返的次数上限。
         connector_timeout_seconds: 连接器单次调用的超时。
-        connector_env: 连接器进程的基础环境。
+        connector_env: 连接器进程的基础环境；None 时用最小环境 ``DEFAULT_BASE_ENV``。
+            上面再加指向连接器工作目录的 ``HOME`` / ``TMPDIR`` / ``WORKSPACE``，以及清单
+            声明的变量与密钥。
         capture_requests: 是否把完整提示词写进审计。
         session_idle_seconds: 会话多久没有对话就释放它的引擎（会话本身保持活动，下次
             对话时从存储续接）。
@@ -110,15 +112,47 @@ class LocalStateBackends:
         return StateBackends()
 
 
+async def _close_in_order(
+    key: RuntimeKey, steps: list[tuple[str, Callable[[], Awaitable[None]]]]
+) -> None:
+    """按顺序收尾。某一步失败只记日志，不影响后面的收尾。"""
+    for name, closer in steps:
+        try:
+            await closer()
+        except Exception:
+            logger.exception("关闭运行时 %s 的%s失败", key, name)
+
+
+def _release_steps(
+    connectors: ConnectorSet | None,
+    connector_sandbox: SandboxHandle | None,
+    sandbox: SandboxHandle | None,
+) -> list[tuple[str, Callable[[], Awaitable[None]]]]:
+    """引擎池之外的收尾顺序：先关连接器进程，再关它所在的连接器沙盒，最后关脚本沙盒。"""
+    steps: list[tuple[str, Callable[[], Awaitable[None]]]] = []
+    if connectors is not None:
+        steps.append(("连接器", connectors.close))
+    if connector_sandbox is not None:
+        steps.append(("连接器沙盒", connector_sandbox.close))
+    if sandbox is not None:
+        steps.append(("沙盒", sandbox.close))
+    return steps
+
+
 @dataclass
 class TenantRuntime:
-    """一个已组装好的运行时。"""
+    """一个已组装好的运行时。
+
+    Attributes:
+        connector_sandbox: stdio 连接器进程所在的沙盒；清单里没有 stdio 连接器时为 None。
+    """
 
     key: RuntimeKey
     package: ResolvedPackage
     pool: taifeng.EnginePool
     sandbox: SandboxHandle
     connectors: ConnectorSet
+    connector_sandbox: SandboxHandle | None = None
     tool_effects: dict[str, Effect] = field(default_factory=dict)
     last_used: float = 0.0
 
@@ -127,16 +161,14 @@ class TenantRuntime:
         return len(self.pool.introspect())
 
     async def close(self) -> None:
-        """依次关闭引擎池、连接器、沙盒。某一步失败不影响后面的收尾。"""
-        for name, closer in (
-            ("引擎池", self.pool.close),
-            ("连接器", self.connectors.close),
-            ("沙盒", self.sandbox.close),
-        ):
-            try:
-                await closer()
-            except Exception:
-                logger.exception("关闭运行时 %s 的%s失败", self.key, name)
+        """依次关闭引擎池、连接器、连接器沙盒、脚本沙盒。某一步失败不影响后面的收尾。"""
+        await _close_in_order(
+            self.key,
+            [
+                ("引擎池", self.pool.close),
+                *_release_steps(self.connectors, self.connector_sandbox, self.sandbox),
+            ],
+        )
 
 
 async def _close_unowned(store: taifeng.MessageStore) -> None:
@@ -213,20 +245,42 @@ class RuntimeAssembler:
         existing.last_used = self._now()
         return existing
 
-    async def _assemble(self, key: RuntimeKey, package: ResolvedPackage) -> TenantRuntime:
-        """组装一个运行时。任何一步失败都会收回已经准备好的资源。"""
-        tenant_id = package.record.tenant_id
-        spec = package.manifest.spec
-        connectors = ConnectorSet(
-            tenant_id=tenant_id,
+    def _connector_set(
+        self, package: ResolvedPackage, connector_sandbox: SandboxHandle | None
+    ) -> ConnectorSet:
+        """连接器集合。有连接器沙盒时，stdio 连接器经它的执行器起在沙盒里。
+
+        连接器进程的环境 = 基础环境 + 指向连接器工作目录（沙盒里看到的路径）的
+        ``HOME`` / ``TMPDIR`` / ``WORKSPACE`` + 清单声明的变量与密钥（后者由连接器集合加）。
+        """
+        configured = self._defaults.connector_env
+        base = DEFAULT_BASE_ENV if configured is None else configured
+        return ConnectorSet(
+            tenant_id=package.record.tenant_id,
             vault=self._vault,
             audit=self._audit,
             submissions=self._submissions,
-            base_env=self._defaults.connector_env or DEFAULT_BASE_ENV,
+            executor=None if connector_sandbox is None else connector_sandbox.executor,
+            base_env=base if connector_sandbox is None else connector_sandbox.process_env(base),
             call_timeout_seconds=self._defaults.connector_timeout_seconds,
         )
+
+    async def _assemble(self, key: RuntimeKey, package: ResolvedPackage) -> TenantRuntime:
+        """组装一个运行时。任何一步失败都会收回已经准备好的资源。
+
+        清单里有 stdio 连接器时，先为它们开连接器沙盒（工作目录在
+        ``<data_dir>/connectors/<租户目录>/<名>/<版本>/``），没有就不开。
+        """
+        spec = package.manifest.spec
+        connector_sandbox: SandboxHandle | None = None
+        connectors: ConnectorSet | None = None
         sandbox: SandboxHandle | None = None
         try:
+            if any(connector.transport == "stdio" for connector in spec.connectors):
+                connector_sandbox = await self._sandboxes.open_connectors(
+                    package, self._scoped("connectors", package)
+                )
+            connectors = self._connector_set(package, connector_sandbox)
             effects: dict[str, Effect] = {}
             for connector in spec.connectors:
                 effects.update(await connectors.start(connector, package_root=package.root))
@@ -234,9 +288,7 @@ class RuntimeAssembler:
             sandbox = await self._sandboxes.open(package, self._scoped("workspaces", package))
             pool = await self._create_pool(package, policy, sandbox, connectors)
         except BaseException:
-            await connectors.close()
-            if sandbox is not None:
-                await sandbox.close()
+            await _close_in_order(key, _release_steps(connectors, connector_sandbox, sandbox))
             raise
         return TenantRuntime(
             key=key,
@@ -244,6 +296,7 @@ class RuntimeAssembler:
             pool=pool,
             sandbox=sandbox,
             connectors=connectors,
+            connector_sandbox=connector_sandbox,
             tool_effects=effects,
         )
 

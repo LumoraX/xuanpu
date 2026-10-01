@@ -112,8 +112,12 @@ uv run xuanpu --help
 | `cpus` | `1.0` | 容器 CPU 配额 |
 | `docker_binary` | `docker` | docker 命令 |
 | `docker_env` | 空 | 运行 docker 命令时的环境变量。平台不把自己的环境传给子进程，所以要在这里给出 `PATH`，以及 `HOME` 或 `DOCKER_HOST`，docker 客户端才找得到守护进程 |
+| `connector_readable_roots` | 空 | 只对 `local` 后端有意义：连接器沙盒里额外可读的目录，必须是绝对路径。本机连接器沙盒用受限读策略，系统运行时目录（如 `/usr`、`/bin`、`/opt`）之外默认都读不到，所以要把连接器自己的解释器与依赖所在的目录列进来，例如虚拟环境目录与它背后的解释器安装目录 |
+| `connector_image` | 同 `image` | 只对 `docker` 后端有意义：连接器容器用的镜像，里面必须有 `python3`（3.9+），还要装好业务包里 stdio 连接器需要的运行时（如 `node`），否则连接器起不来 |
 
-后四项只对 `docker` 后端有意义。
+`memory_mb`、`cpus`、`docker_binary`、`docker_env` 只对 `docker` 后端有意义。
+
+业务包声明了 stdio 连接器时，每个运行时另开一个**连接器沙盒**，与脚本的沙盒分开：只读业务包目录，只写这个运行时的连接器工作目录 `<data_dir>/connectors/<租户目录>/<名>/<版本>/`，**允许出网**（脚本是否出网仍按清单）。连接器进程的 `HOME`、`TMPDIR`、`WORKSPACE` 都指向这个工作目录，环境里只有最小的 `PATH`、`LANG` 加上清单声明的变量与密钥。`docker` 后端下连接器容器挂载方式与脚本容器相同，`memory_mb`、`cpus` 对两个容器各自生效。清单里没有 stdio 连接器就不开这个沙盒。
 
 | 后端 | 前提 | 隔离强度 |
 | --- | --- | --- |

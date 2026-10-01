@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 import yaml
-from xuanpu_server.bootstrap import object_store
+from xuanpu_server.bootstrap import _sandboxes, object_store
 from xuanpu_server.config import ConfigError, expand, load_config, parse_config
 from xuanpu_server.objectstore import LocalObjectStore, S3ObjectStore
+from xuanpu_server.runtime import DockerSandboxProvider, LocalSandboxProvider
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -156,6 +157,8 @@ def test_undefined_variable_is_an_error() -> None:
         ),
         ({"sandbox": {"backend": "none"}}, "backend"),
         ({"sandbox": {"memory_mb": 1}}, "memory_mb"),
+        ({"sandbox": {"connector_readable_roots": ["venv"]}}, "connector_readable_roots"),
+        ({"sandbox": {"connector_image": ""}}, "connector_image"),
         ({"limits": {"max_iterations": 0}}, "max_iterations"),
         ({"lease_seconds": 1}, "lease_seconds"),
         ({"unknown_section": {}}, "unknown_section"),
@@ -272,3 +275,31 @@ def test_object_store_s3_rejects_bad_shapes(field: str, value: str) -> None:
     text = edited(object_store={"backend": "s3", "s3": section})
     with pytest.raises(ConfigError):
         parse_config(text, variables={**VARIABLES, "OSS_KEY": "k"})
+
+
+def test_connector_sandbox_settings_reach_the_provider() -> None:
+    """连接器沙盒的两个配置项：缺省为空、同脚本镜像；给了就交到沙盒供给方手里。"""
+    from pathlib import Path
+
+    config = parse_config(edited(), variables=VARIABLES)
+    assert config.sandbox.connector_readable_roots == ()
+    assert config.sandbox.connector_image is None
+
+    roots = ["/srv/connectors/.venv", "/opt/python"]
+    local = _sandboxes(
+        parse_config(edited(sandbox={"connector_readable_roots": roots}), variables=VARIABLES)
+    )
+    assert isinstance(local, LocalSandboxProvider)
+    assert local._connector_roots == tuple(Path(root) for root in roots)  # noqa: SLF001
+
+    docker = {"backend": "docker", "image": "scripts:1", "docker_env": {"PATH": "/usr/bin"}}
+    default = _sandboxes(parse_config(edited(sandbox=docker), variables=VARIABLES))
+    assert isinstance(default, DockerSandboxProvider)
+    assert default._connector_image == "scripts:1"  # noqa: SLF001
+    chosen = _sandboxes(
+        parse_config(
+            edited(sandbox={**docker, "connector_image": "connectors:2"}), variables=VARIABLES
+        )
+    )
+    assert isinstance(chosen, DockerSandboxProvider)
+    assert chosen._connector_image == "connectors:2"  # noqa: SLF001

@@ -19,7 +19,6 @@ spec:
       env:
         CRM_TOKEN: {{secret: crm-token}}
         CRM_REGION: {{value: cn}}
-        CALL_LOG: {{value: {call_log}}}
       tools:
         - {{name: search_customer, effect: read}}
         - {{name: update_ticket, effect: write}}

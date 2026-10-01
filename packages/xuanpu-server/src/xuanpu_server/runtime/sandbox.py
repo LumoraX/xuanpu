@@ -3,7 +3,9 @@
 业务包里的脚本和命令是模型驱动的，必须在隔离环境里运行（ADR 0002、ADR 0004 决策 3）。
 业务方只声明需求（要不要出网、要不要命令执行），用哪种隔离后端由部署方在平台配置里选。
 
-隔离范围：一个运行时（租户 + 业务包 + 版本）一个沙盒，其下的会话共用同一个工作区。
+隔离范围：一个运行时（租户 + 业务包 + 版本）一个脚本沙盒，其下的会话共用同一个工作区。
+业务包声明了 stdio 连接器时，再为连接器进程单独开一个连接器沙盒：同样只读业务包目录，
+只写连接器自己的工作目录，但允许出网——连接器就是去连外部系统的；脚本是否出网仍按清单。
 """
 
 from __future__ import annotations
@@ -25,6 +27,12 @@ if TYPE_CHECKING:
     import taifeng
 
     from xuanpu_server.packages import ResolvedPackage
+
+# 沙盒里进程的最小环境：只够找到解释器。宿主自己的环境变量一概不带进去
+DEFAULT_BASE_ENV: Mapping[str, str] = {
+    "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "LANG": "C.UTF-8",
+}
 
 
 async def _noop() -> None:
@@ -49,11 +57,14 @@ class SandboxHandle:
     backend: str
     closer: Callable[[], Awaitable[None]] = field(default=_noop)
 
-    def process_env(self) -> dict[str, str]:
-        """沙盒里的进程拿到的环境变量：最小集合，加上指向工作区的几个约定变量。"""
+    def process_env(self, base: Mapping[str, str] | None = None) -> dict[str, str]:
+        """沙盒里的进程拿到的环境变量：基础环境，加上指向工作区的几个约定变量。
+
+        Args:
+            base: 基础环境；None 时用最小集合 ``DEFAULT_BASE_ENV``。约定变量总是盖过它。
+        """
         return {
-            "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
-            "LANG": "C.UTF-8",
+            **(DEFAULT_BASE_ENV if base is None else base),
             "HOME": self.workspace_inside,
             "TMPDIR": self.workspace_inside,
             "WORKSPACE": self.workspace_inside,
@@ -69,9 +80,20 @@ class SandboxProvider(Protocol):
     """沙盒供给方。"""
 
     async def open(self, package: ResolvedPackage, workspace: Path) -> SandboxHandle:
-        """为业务包准备沙盒。
+        """为业务包的脚本与命令准备沙盒。
 
         沙盒里的进程只能读业务包目录、只能写 ``workspace``；是否能出网取决于业务包的声明。
+
+        Raises:
+            RuntimeUnavailableError: 隔离后端不可用。平台不会退回到无隔离执行。
+        """
+        ...
+
+    async def open_connectors(self, package: ResolvedPackage, workspace: Path) -> SandboxHandle:
+        """为业务包的 stdio 连接器准备沙盒，与脚本的沙盒分开。
+
+        沙盒里的进程只读业务包目录（另加部署方给连接器放开的目录）、只写 ``workspace``，
+        允许出网。业务包目录在沙盒里与宿主机同路径。
 
         Raises:
             RuntimeUnavailableError: 隔离后端不可用。平台不会退回到无隔离执行。
@@ -82,13 +104,37 @@ class SandboxProvider(Protocol):
 class LocalSandboxProvider:
     """本机 OS 级隔离（macOS seatbelt / Linux bubblewrap）。"""
 
+    def __init__(self, *, connector_readable_roots: tuple[Path, ...] = ()) -> None:
+        """
+        Args:
+            connector_readable_roots: 连接器沙盒里额外可读的目录（绝对路径），通常是连接器
+                自己的解释器与依赖所在的目录。受限读策略下只有系统运行时目录与业务包目录
+                可读，装在别处的解释器不列进来就起不来。
+        """
+        self._connector_roots = connector_readable_roots
+
     async def open(self, package: ResolvedPackage, workspace: Path) -> SandboxHandle:
-        """用受限读策略建沙盒：平台数据目录里其他租户的文件对沙盒不可见。"""
-        await asyncio.to_thread(workspace.mkdir, parents=True, exist_ok=True)
-        policy = SandboxPolicy.workspace_only(
+        """用受限读策略建脚本沙盒：平台数据目录里其他租户的文件对沙盒不可见。"""
+        return await self._open(
             workspace,
             readable_roots=(package.root,),
             network=package.manifest.spec.policy.sandbox.network,
+        )
+
+    async def open_connectors(self, package: ResolvedPackage, workspace: Path) -> SandboxHandle:
+        """用受限读策略建连接器沙盒：可读业务包目录与配置放开的目录，可出网。"""
+        return await self._open(
+            workspace, readable_roots=(package.root, *self._connector_roots), network=True
+        )
+
+    @staticmethod
+    async def _open(
+        workspace: Path, *, readable_roots: tuple[Path, ...], network: bool
+    ) -> SandboxHandle:
+        """按给定的可读目录与出网开关建一个只写 ``workspace`` 的沙盒。"""
+        await asyncio.to_thread(workspace.mkdir, parents=True, exist_ok=True)
+        policy = SandboxPolicy.workspace_only(
+            workspace, readable_roots=readable_roots, network=network
         )
         try:
             executor = await asyncio.to_thread(create_local_executor, policy)
@@ -103,7 +149,7 @@ class LocalSandboxProvider:
 
 
 class DockerSandboxProvider:
-    """容器隔离：每个运行时一个容器。"""
+    """容器隔离：每个运行时一个脚本容器；有 stdio 连接器时另起一个连接器容器。"""
 
     def __init__(
         self,
@@ -113,29 +159,61 @@ class DockerSandboxProvider:
         memory_mb: int | None = 1024,
         cpus: float | None = 1.0,
         docker_binary: str = "docker",
+        connector_image: str | None = None,
     ) -> None:
         """
         Args:
             image: 沙盒镜像，须带 Python 3.9+。
             docker_env: 运行 docker 命令时的环境变量。
-            memory_mb: 内存上限。
-            cpus: CPU 配额。
+            memory_mb: 内存上限（脚本容器与连接器容器各自的）。
+            cpus: CPU 配额（同上）。
             docker_binary: docker 命令。
+            connector_image: 连接器容器的镜像，须带 Python 3.9+ 与连接器需要的运行时；
+                None 时与 ``image`` 相同。
         """
         self._image = image
+        self._connector_image = image if connector_image is None else connector_image
         self._docker_env = dict(docker_env)
         self._memory_mb = memory_mb
         self._cpus = cpus
         self._docker_binary = docker_binary
 
     async def open(self, package: ResolvedPackage, workspace: Path) -> SandboxHandle:
-        """拉起容器：业务包目录按相同路径只读挂载，工作区可写挂载。"""
+        """拉起脚本容器：业务包目录按相同路径只读挂载，工作区可写挂载。"""
+        return await self._launch(
+            package,
+            workspace,
+            image=self._image,
+            network=package.manifest.spec.policy.sandbox.network,
+            labels={},
+        )
+
+    async def open_connectors(self, package: ResolvedPackage, workspace: Path) -> SandboxHandle:
+        """拉起连接器容器：挂载方式与脚本容器相同，镜像用连接器镜像，允许出网。"""
+        return await self._launch(
+            package,
+            workspace,
+            image=self._connector_image,
+            network=True,
+            labels={"xuanpu.role": "connectors"},
+        )
+
+    async def _launch(
+        self,
+        package: ResolvedPackage,
+        workspace: Path,
+        *,
+        image: str,
+        network: bool,
+        labels: Mapping[str, str],
+    ) -> SandboxHandle:
+        """拉起一个容器：业务包目录按相同路径只读挂载，``workspace`` 可写挂载。"""
         await asyncio.to_thread(workspace.mkdir, parents=True, exist_ok=True)
         config = DockerSandboxConfig(
-            image=self._image,
+            image=image,
             workspace_host_dir=workspace,
             mounts=(Mount(package.root, str(package.root)),),
-            network=package.manifest.spec.policy.sandbox.network,
+            network=network,
             memory_mb=self._memory_mb,
             cpus=self._cpus,
             docker_binary=self._docker_binary,
@@ -143,6 +221,7 @@ class DockerSandboxProvider:
             labels={
                 "xuanpu.tenant": package.record.tenant_id,
                 "xuanpu.package": package.record.name,
+                **labels,
             },
         )
         try:
@@ -158,4 +237,10 @@ class DockerSandboxProvider:
         )
 
 
-__all__ = ["DockerSandboxProvider", "LocalSandboxProvider", "SandboxHandle", "SandboxProvider"]
+__all__ = [
+    "DEFAULT_BASE_ENV",
+    "DockerSandboxProvider",
+    "LocalSandboxProvider",
+    "SandboxHandle",
+    "SandboxProvider",
+]

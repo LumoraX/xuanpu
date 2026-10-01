@@ -258,13 +258,14 @@ class World:
     objects: LocalObjectStore
     objects_dir: Path
     root_key: str
-    call_log: Path
     package_dir: Path
     admin: Principal
     member: Principal
     admin_key: str
     member_key: str
     states: StateBackendFactory | None = None
+    python: str = sys.executable
+    """样例业务包里连接器命令用的解释器：本机沙盒用测试进程的解释器，容器沙盒用镜像里的。"""
 
     def sibling(self, instance_id: str, *, data_dir: Path, **kwargs: Any) -> Platform:
         """同一份控制面、密钥、模型、对象存储与状态面上的另一个平台实例（未启动）。
@@ -276,7 +277,7 @@ class World:
             store=self.platform.store,
             vault=self.platform.vault,
             models=self.models,
-            sandboxes=LocalSandboxProvider(),
+            sandboxes=local_sandboxes(),
             data_dir=data_dir,
             root_key_hash="0" * 64,
             objects=self.objects,
@@ -299,9 +300,8 @@ class World:
                     version=version,
                     approval=approval,
                     shell=str(shell).lower(),
-                    python=json.dumps(sys.executable),
+                    python=json.dumps(self.python),
                     server=json.dumps("fake_mcp.py"),
-                    call_log=json.dumps(str(self.call_log)),
                 ),
                 encoding="utf-8",
             )
@@ -335,10 +335,22 @@ class World:
         )
 
     def calls(self) -> list[dict[str, Any]]:
-        """假 MCP server 实际收到的调用。"""
-        if not self.call_log.exists():
+        """假 MCP server 实际收到的调用。
+
+        假 server 把调用日志写在自己的 ``$HOME``，也就是某个实例数据目录下的连接器工作目录
+        （``<data_dir>/connectors/<租户>/<名>/<版本>/``）。同一用例里可能有几个实例（各有
+        数据目录，都在 ``data_dir`` 的上一级），所以在所有实例的连接器目录里找；调用日志
+        应当只有一份，多了说明用例里有几个运行时都调用过，直接报错而不是随便挑一份。
+        """
+        logs = [
+            path
+            for connectors in sorted(self.data_dir.parent.glob("*/connectors"))
+            for path in connectors.rglob("mcp-calls.jsonl")
+        ]
+        if not logs:
             return []
-        return [json.loads(line) for line in self.call_log.read_text().splitlines()]
+        assert len(logs) == 1, f"调用日志不止一份：{logs}"
+        return [json.loads(line) for line in logs[0].read_text().splitlines()]
 
 
 async def collect(turn: Any, *, timeout: float = 30.0) -> list[taifeng.EventMsg]:
@@ -362,10 +374,28 @@ def step() -> type[Step]:
     return Step
 
 
+CONNECTOR_READABLE_ROOTS = tuple(
+    dict.fromkeys(Path(prefix).resolve() for prefix in (sys.prefix, sys.base_prefix))
+)
+"""本机连接器沙盒里额外可读的目录：假 MCP server 用测试进程的解释器跑，要能读到虚拟环境
+（``sys.prefix``）与它背后的解释器安装目录（``sys.base_prefix``）。"""
+
+
+def local_sandboxes() -> LocalSandboxProvider:
+    """本机隔离的沙盒供给方，连接器沙盒能读到运行假 MCP server 的解释器。"""
+    return LocalSandboxProvider(connector_readable_roots=CONNECTOR_READABLE_ROOTS)
+
+
+@pytest.fixture(name="local_sandboxes")
+def local_sandboxes_fixture() -> Any:
+    """返回造本机沙盒供给方的函数，给自己装配平台的用例用。"""
+    return local_sandboxes
+
+
 def _sandbox_provider(kind: str) -> Any:
     """按参数选沙盒供给方。Docker 变体在没有 Docker 时跳过。"""
     if kind == "local":
-        return LocalSandboxProvider()
+        return local_sandboxes()
     if not _docker_available():
         pytest.skip("没有可用的 Docker 守护进程")
     env = {"PATH": os.environ["PATH"], "HOME": os.environ["HOME"]}
@@ -425,13 +455,14 @@ async def open_world(
             objects=objects,
             objects_dir=objects_dir,
             root_key=root_key,
-            call_log=tmp_path / "mcp-calls.jsonl",
             package_dir=package_dir,
             admin=admin_principal,
             member=await platform.authenticate(member.key),
             admin_key=admin.key,
             member_key=member.key,
             states=states,
+            # 容器里没有宿主的解释器：连接器命令改用镜像里的 python3
+            python="python3" if isinstance(sandboxes, DockerSandboxProvider) else sys.executable,
         )
     except BaseException:
         # 开通到一半失败：平台已经启动（有后台续期任务），关掉再上抛

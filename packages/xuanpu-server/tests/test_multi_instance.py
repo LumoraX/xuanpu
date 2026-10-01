@@ -20,7 +20,7 @@ from xuanpu_server.bootstrap import PostgresStateBackends, tenant_table_prefix
 from xuanpu_server.controlplane.postgres import PostgresControlPlane
 from xuanpu_server.controlplane.schema import apply_migrations
 from xuanpu_server.errors import SessionBusyError
-from xuanpu_server.runtime import LocalSandboxProvider, StateBackends
+from xuanpu_server.runtime import StateBackends
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable
@@ -95,7 +95,9 @@ class Cluster:
 
 
 @pytest.fixture
-async def cluster(postgres_dsn: str, world_opener: Any) -> AsyncIterator[Cluster]:
+async def cluster(
+    postgres_dsn: str, world_opener: Any, local_sandboxes: Any
+) -> AsyncIterator[Cluster]:
     """一个独占 schema 的 Postgres（控制面与状态面都在里面）上的平台集群，先只有实例 A。"""
     pool = await asyncpg.create_pool(postgres_dsn, min_size=1, max_size=10)
     schema = "t_" + secrets.token_hex(6)
@@ -105,7 +107,7 @@ async def cluster(postgres_dsn: str, world_opener: Any) -> AsyncIterator[Cluster
         states = PostgresStateBackends(pool, schema=schema)
         world = await world_opener(
             store=PostgresControlPlane(pool, namespace=namespace),
-            sandboxes=LocalSandboxProvider(),
+            sandboxes=local_sandboxes(),
             states=states,
             instance_id="inst-a",
             data_dir_name="data-a",

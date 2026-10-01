@@ -4,11 +4,13 @@
 两种传输共用同一个闸门，每次调用依次经过：白名单 → 审批 → 调用 → 审计。
 
 - ``stdio``：平台启动业务包声明的 MCP server 进程。只用内核稳定层的 ``McpStdioClient``
-  自行包装工具；进程跑在平台节点上（见 ``docs/architecture/kernel-seam-backlog.md`` 第 6、7 项）。
+  自行包装工具；进程经执行器起在这个运行时的连接器沙盒里（只读业务包目录、只写连接器
+  自己的工作目录、可出网，见 ``sandbox.py``），不会退回到在平台节点上直接起。
 - ``http``：按业务包里的 OpenAPI 文档直接调用 HTTP 接口，每个 operation 是一个工具
   （调用细节在 ``http_api.py``）。
 
-凭据注入：业务包里只写密钥名；明文在启动连接器进程或发出 HTTP 请求时才从保管库取出。
+凭据注入：业务包里只写密钥名；明文在启动连接器进程或发出 HTTP 请求时才从保管库取出，
+只进连接器进程的环境（或 HTTP 请求），不进审计、日志与错误提示。
 """
 
 from __future__ import annotations
@@ -27,6 +29,7 @@ from xuanpu_spec import OpenApiError, load_openapi
 from xuanpu_server.audit import digest_arguments
 from xuanpu_server.errors import PackageInvalidError, PlatformError, RuntimeUnavailableError
 from xuanpu_server.runtime.http_api import ConnectorCallError, HttpApiClient, resolve_base_url
+from xuanpu_server.runtime.sandbox import DEFAULT_BASE_ENV
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -39,12 +42,6 @@ if TYPE_CHECKING:
     from xuanpu_server.secrets import SecretVault
 
 logger = logging.getLogger(__name__)
-
-# 连接器进程的最小环境：只够找到解释器
-DEFAULT_BASE_ENV: Mapping[str, str] = {
-    "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
-    "LANG": "C.UTF-8",
-}
 
 _MAX_OUTPUT_CHARS = 64 * 1024
 
@@ -227,6 +224,7 @@ class ConnectorSet:
         vault: SecretVault,
         audit: AuditLog,
         submissions: SubmissionIndex,
+        executor: taifeng.CommandExecutor | None,
         base_env: Mapping[str, str] = DEFAULT_BASE_ENV,
         call_timeout_seconds: float = 60.0,
         startup_timeout_seconds: float = 30.0,
@@ -237,7 +235,10 @@ class ConnectorSet:
             vault: 密钥保管库。
             audit: 审计写入口。
             submissions: submission → 会话的对照表，过闸记录据此归到会话名下。
-            base_env: 连接器进程的基础环境。
+            executor: 在连接器沙盒里起 stdio 连接器进程的执行器；None 表示没有连接器沙盒，
+                这时遇到 stdio 连接器直接报错，不在平台节点上起进程。
+            base_env: 连接器进程的基础环境（由组装方给出，含指向连接器工作目录的
+                ``HOME`` / ``TMPDIR`` / ``WORKSPACE``）；清单声明的变量与密钥加在它上面。
             call_timeout_seconds: 单次工具调用的超时（HTTP 连接器另受清单里的超时约束）。
             startup_timeout_seconds: 启动连接器并列出工具的超时。
         """
@@ -245,6 +246,7 @@ class ConnectorSet:
         self._vault = vault
         self._audit = audit
         self._submissions = submissions
+        self._executor = executor
         self._base_env = dict(base_env)
         self._call_timeout = call_timeout_seconds
         self._startup_timeout = startup_timeout_seconds
@@ -260,7 +262,8 @@ class ConnectorSet:
 
         Raises:
             SecretMissingError: 引用的密钥尚未配置。
-            RuntimeUnavailableError: 连接器起不来，或没有提供清单里声明的工具。
+            RuntimeUnavailableError: stdio 连接器没有连接器沙盒可用、起不来，或没有提供
+                清单里声明的工具。
             PackageInvalidError: OpenAPI 文档读不出来。
         """
         if spec.transport == "http":
@@ -282,19 +285,34 @@ class ConnectorSet:
         return env
 
     async def _start_stdio(self, spec: ConnectorSpec, cwd: str) -> list[_Pending]:
-        """启动 MCP server 进程并列出工具。"""
+        """在连接器沙盒里启动 MCP server 进程并列出工具。
+
+        ``cwd`` 是业务包目录：本机与容器两种沙盒里，业务包目录都与宿主机同路径。
+
+        Raises:
+            RuntimeUnavailableError: 没有连接器沙盒，或连接器起不来、缺工具。
+        """
+        if self._executor is None:
+            raise RuntimeUnavailableError(
+                f"连接器 {spec.name!r} 是 stdio 连接器，但这个运行时没有连接器沙盒"
+            )
         env = await self._environment(spec)
         try:
             client = await asyncio.wait_for(
                 taifeng.McpStdioClient.spawn(
-                    list(spec.command), env=env, cwd=cwd, request_timeout_seconds=self._call_timeout
+                    list(spec.command),
+                    env=env,
+                    cwd=cwd,
+                    executor=self._executor,
+                    request_timeout_seconds=self._call_timeout,
                 ),
                 timeout=self._startup_timeout,
             )
         except Exception as exc:
             # 外部进程的失败方式不可穷举（起不来、握手超时、协议版本不符……），统一归为
-            # 运行时不可用。提示里只带异常类型：异常文本可能含有注入进去的凭据
-            logger.exception("连接器 %s 启动失败", spec.name)
+            # 运行时不可用。提示与日志里都只带异常类型，不带异常文本与堆栈：异常文本可能
+            # 含有注入进去的凭据（例如沙盒后端把启动参数或环境回显在错误里）
+            logger.error("连接器 %s 启动失败：%s", spec.name, type(exc).__name__)
             raise RuntimeUnavailableError(
                 f"连接器 {spec.name!r} 启动失败：{type(exc).__name__}"
             ) from exc
@@ -302,6 +320,13 @@ class ConnectorSet:
         listed = {str(tool["name"]): tool for tool in await client.list_tools() if "name" in tool}
         missing = [tool.name for tool in spec.tools if tool.name not in listed]
         if missing:
+            # 排查线索只记 stderr 尾部的长度，不记内容：连接器可能把拿到的凭据打到 stderr 上
+            logger.error(
+                "连接器 %s 缺少声明的工具 %s；stderr 尾部 %d 字符（内容不记，可能含凭据）",
+                spec.name,
+                ", ".join(missing),
+                len(client.stderr_tail),
+            )
             raise RuntimeUnavailableError(
                 f"连接器 {spec.name!r} 没有提供清单里声明的工具：{', '.join(missing)}"
             )

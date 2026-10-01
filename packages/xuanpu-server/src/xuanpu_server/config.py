@@ -129,7 +129,18 @@ class ModelsConfig(_Section):
 
 
 class SandboxConfig(_Section):
-    """沙盒后端。"""
+    """沙盒后端。
+
+    stdio 连接器进程跑在每个运行时单独的连接器沙盒里（只读业务包目录、只写连接器工作目录、
+    可出网），与脚本的沙盒分开。
+
+    Attributes:
+        connector_readable_roots: ``local`` 后端下连接器沙盒里额外可读的目录（绝对路径），
+            用来放开连接器自己的解释器与依赖所在的目录；受限读策略下系统运行时目录之外
+            的地方默认都读不到。
+        connector_image: ``docker`` 后端下连接器容器用的镜像；不给则与 ``image`` 相同。
+            镜像里要装好连接器需要的运行时。
+    """
 
     backend: Literal["local", "docker"] = "local"
     image: str = "python:3.12-slim"
@@ -137,6 +148,15 @@ class SandboxConfig(_Section):
     cpus: float | None = Field(default=1.0, gt=0)
     docker_binary: str = "docker"
     docker_env: dict[str, str] = Field(default_factory=dict)
+    connector_readable_roots: tuple[Path, ...] = ()
+    connector_image: str | None = Field(default=None, min_length=1)
+
+    @model_validator(mode="after")
+    def _absolute_roots(self) -> SandboxConfig:
+        relative = [str(root) for root in self.connector_readable_roots if not root.is_absolute()]
+        if relative:
+            raise ValueError(f"connector_readable_roots 必须是绝对路径：{', '.join(relative)}")
+        return self
 
 
 class LocalObjectStoreConfig(_Section):
