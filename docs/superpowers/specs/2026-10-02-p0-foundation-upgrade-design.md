@@ -55,7 +55,7 @@
   - `S3ObjectStore`：S3 兼容接口，首选阿里云 OSS（ADR 0009）。★ 用 `boto3`，阻塞调用放进线程；可选依赖 `xuanpu-server[s3]`。OSS 要求虚拟主机风格寻址，配置里给 `addressing_style`，默认 `virtual`。测试用 `moto` 起一个本机 S3 服务。
 - 预签名直传等 P3 再加，P0 只要上面四个方法。
 - **配置**新增 `object_store` 段：`backend: local | s3`；`local.root`（默认 `<data_dir>/objects`）；`s3.endpoint`、`bucket`、`region`、`prefix`、`access_key_id`、`secret_access_key`（经 `${VAR}` 从环境展开，与主密钥同一种做法）、`addressing_style`。
-- **业务包发布**：校验通过后，归档写进对象存储，键为 `tenants/<租户>/packages/<名>/<版本>.zip`；登记记录的 `location` 改存这个键（第一版未发布，没有旧数据要迁）。登记失败时删掉对象。
+- **业务包发布**：校验通过后，归档写进对象存储，键为 `tenants/<租户>/packages/<名>/<版本>/<sha256 十六进制>.zip`——带上指纹，两个实例并发发布同一版本、内容不同时不会互相覆盖（实现时审查发现后改的）；登记记录的 `location` 改存这个键（第一版未发布，没有旧数据要迁）。登记失败时，只有登记记录不指向本次的键才删掉本次写入的对象。
 - **用到时解到本地缓存**：`<data_dir>/cache/packages/<租户目录>/<名>/<版本>/`。缓存里有就直接用；没有就取归档、核对 `digest`、解到暂存目录再改名，同一个包并发只解一次。`ResolvedPackage.root` 指向缓存目录。缓存不做淘汰（版本不可变，体积有限），文档写明可以随时清空。
 
 ### 3.4 xuanpu：会话主存进 Postgres
