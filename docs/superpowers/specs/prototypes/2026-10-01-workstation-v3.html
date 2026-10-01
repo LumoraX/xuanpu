@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>玄圃工作站</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600&display=swap">
+<style>
+/* v3：每个人只有一个助理（小玄）。报销、出差、请假、工单都是它会的事；
+   它直接调系统接口填单，或者去找别的部门的岗位助理交接。你只跟它说话。
+   中间是和它的对话，右边是待办和事项，左边是它和别人的助理。数据全是编的。 */
+:root {
+  --bg: #e9ece8; --bg-2: #d7ddd6;
+  --panel: rgba(255,255,255,.88); --panel-solid: #ffffff; --panel-2: #eef1ee; --line: #cfd6cf;
+  --fg: #1d2420; --muted: #5f6a64;
+  --accent: #2f7d6d; --accent-ink: #fff; --accent-soft: #dcebe6;
+  --warn: #b9731a; --warn-soft: #fbefdc; --danger: #b4423a; --danger-soft: #f9e4e2; --ok: #2f7d6d; --info: #4f6d9a; --info-soft: #e3e9f3;
+  --shadow: 0 12px 40px rgba(20,30,26,.18);
+  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --serif: "Noto Serif SC", "Songti SC", serif;
+  --mono: "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15191a; --bg-2: #0f1213; --panel: rgba(29,34,36,.92); --panel-solid: #1d2224; --panel-2: #262c2e; --line: #343c3e;
+    --fg: #e6e9e6; --muted: #9aa5a0; --accent: #5fb49f; --accent-ink: #0f1a17; --accent-soft: #1f3330;
+    --warn: #e0a24a; --warn-soft: #3a2d18; --danger: #e0756c; --danger-soft: #3d2322; --ok: #5fb49f; --info: #8fa8d0; --info-soft: #23303f;
+    --shadow: 0 12px 40px rgba(0,0,0,.5); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15191a; --bg-2: #0f1213; --panel: rgba(29,34,36,.92); --panel-solid: #1d2224; --panel-2: #262c2e; --line: #343c3e;
+  --fg: #e6e9e6; --muted: #9aa5a0; --accent: #5fb49f; --accent-ink: #0f1a17; --accent-soft: #1f3330;
+  --warn: #e0a24a; --warn-soft: #3a2d18; --danger: #e0756c; --danger-soft: #3d2322; --ok: #5fb49f; --info: #8fa8d0; --info-soft: #23303f;
+  --shadow: 0 12px 40px rgba(0,0,0,.5); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { font-family: var(--sans); font-size: 14px; line-height: 1.5; color: var(--fg); background: var(--bg); overflow: hidden; }
+button { font: inherit; color: inherit; }
+h1, h2, h3 { margin: 0; font-weight: 600; }
+.muted { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+.eyebrow { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+#desktop { position: fixed; inset: 0; background:
+  radial-gradient(1200px 700px at 85% -10%, color-mix(in oklab, var(--accent) 18%, transparent), transparent 60%),
+  radial-gradient(900px 600px at -10% 110%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 60%),
+  linear-gradient(180deg, var(--bg), var(--bg-2)); }
+#topbar { position: fixed; top: 0; left: 0; right: 0; height: 34px; padding: 0 14px; padding-top: env(safe-area-inset-top, 0px); display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; background: var(--panel); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); z-index: 50; }
+#topbar .brand { font-family: var(--serif); font-size: 15px; }
+#topbar .status { display: flex; gap: 14px; align-items: center; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--line); vertical-align: middle; margin-right: 4px; }
+.dot.ok { background: var(--ok); } .dot.busy { background: var(--warn); }
+
+/* 三栏 */
+#layout { position: fixed; top: 34px; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 230px 1fr 300px; gap: 12px; padding: 12px; }
+.col { min-width: 0; min-height: 0; display: grid; gap: 10px; align-content: start; }
+.box { background: var(--panel); backdrop-filter: blur(10px); border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
+.box > .bh { padding: 9px 12px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+.box > .bh h2 { font-size: 13px; }
+
+/* 左：小玄 + 别人的助理 */
+.hero { padding: 14px 12px; display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; cursor: pointer; }
+.hero:hover { background: color-mix(in oklab, var(--panel-solid) 60%, transparent); border-radius: 12px; }
+.av { border-radius: 50%; display: grid; place-items: center; font-family: var(--serif); color: #fff; flex: none; }
+.hero .nm { font-weight: 600; font-size: 15px; }
+.hero .rl { font-size: 12px; color: var(--muted); }
+.abil { padding: 4px 12px 10px; display: flex; flex-wrap: wrap; gap: 4px; }
+.abil span { font-size: 11px; background: var(--panel-2); border-radius: 9px; padding: 1px 8px; color: var(--muted); }
+.list { list-style: none; margin: 0; padding: 0; }
+.person { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center; width: 100%; text-align: left; border: 0; background: none; padding: 8px 12px; cursor: pointer; border-top: 1px solid var(--line); }
+.person:hover { background: var(--panel-2); }
+.person .nm { font-weight: 500; line-height: 1.2; font-size: 13px; }
+.person .rl { font-size: 11px; color: var(--muted); }
+.person .st { font-size: 11px; color: var(--warn); }
+
+/* 中：和小玄的对话 */
+#main { display: grid; grid-template-rows: 1fr auto; min-height: 0; }
+#msgs { overflow: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.m { max-width: 64ch; }
+.m.user { align-self: flex-end; background: var(--accent-soft); border-radius: 12px 12px 2px 12px; padding: 7px 11px; }
+.m.them { align-self: flex-start; background: var(--panel-solid); border: 1px solid var(--line); border-radius: 12px 12px 12px 2px; padding: 8px 12px; }
+.m.event { align-self: flex-start; font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.m.event::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--line); flex: none; }
+.m.event.ok::before { background: var(--ok); } .m.event.warn::before { background: var(--warn); } .m.event.peer::before { background: var(--info); }
+.m.day { align-self: center; font-size: 11px; color: var(--muted); }
+.card { border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; background: var(--panel-solid); display: grid; gap: 7px; max-width: 64ch; align-self: flex-start; }
+.card.approval { border-color: var(--warn); }
+.card.peer { border-left: 3px solid var(--info); }
+.card.files { grid-template-columns: repeat(3, auto); justify-content: start; }
+.fi { width: 34px; height: 42px; border: 1.5px solid var(--muted); border-radius: 3px; display: grid; place-items: end center; font-size: 9px; color: var(--muted); padding-bottom: 3px; }
+.fitem { display: grid; justify-items: center; gap: 3px; font-size: 11px; text-align: center; max-width: 70px; }
+.kv { font-family: var(--mono); font-size: 12px; background: var(--panel-2); border-radius: 6px; padding: 7px 9px; white-space: pre-wrap; word-break: break-word; }
+.pill { display: inline-block; font-size: 11px; line-height: 18px; padding: 0 8px; border-radius: 9px; background: var(--panel-2); color: var(--muted); white-space: nowrap; }
+.pill.ask { background: var(--danger-soft); color: var(--danger); } .pill.busy { background: var(--warn-soft); color: var(--warn); } .pill.ok { background: var(--accent-soft); color: var(--ok); } .pill.info { background: var(--info-soft); color: var(--info); }
+.pill.read { background: var(--accent-soft); color: var(--accent); } .pill.write { background: var(--warn-soft); color: var(--warn); } .pill.external { background: var(--danger-soft); color: var(--danger); }
+#composer { border-top: 1px solid var(--line); padding: 10px 12px; display: grid; gap: 8px; }
+#composer form { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; }
+#composer .pfx { font-family: var(--serif); color: var(--accent); font-size: 16px; padding-left: 4px; }
+#composer input { border: 0; background: transparent; font-size: 15px; padding: 6px 4px; width: 100%; color: var(--fg); }
+#composer input:focus-visible { outline: none; }
+#hints { display: flex; gap: 6px; flex-wrap: wrap; }
+#hints button { border: 1px solid var(--line); background: transparent; border-radius: 12px; font-size: 12px; padding: 2px 10px; color: var(--muted); cursor: pointer; }
+#hints button:hover { color: var(--fg); background: var(--panel-2); }
+.cursor::after { content: "▍"; color: var(--accent); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cursor::after { animation: none; } }
+.btn { border: 1px solid var(--line); background: var(--panel-solid); border-radius: 6px; padding: 5px 11px; cursor: pointer; }
+.btn:hover { background: var(--panel-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.sm { padding: 3px 9px; font-size: 12px; }
+.row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .sp { justify-content: space-between; }
+input[type=text], textarea { width: 100%; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-solid); color: var(--fg); padding: 7px 10px; font: inherit; }
+input:focus-visible, textarea:focus-visible, .btn:focus-visible, .person:focus-visible, .todo:focus-visible, .matter:focus-visible, #hints button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+label.f { display: block; margin-bottom: 10px; } label.f span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; background: none; padding: 4px 10px; cursor: pointer; } .seg button.on { background: var(--accent); color: var(--accent-ink); }
+
+/* 右：待办、事项 */
+.todo, .matter { display: grid; grid-template-columns: 8px 1fr auto; gap: 8px; align-items: start; width: 100%; text-align: left; border: 0; background: none; padding: 8px 12px; cursor: pointer; border-top: 1px solid var(--line); font-size: 13px; }
+.todo:hover, .matter:hover { background: var(--panel-2); }
+.todo i, .matter i { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--line); }
+.todo.ask i { background: var(--danger); } .todo.remind i { background: var(--info); } .todo.out i { background: var(--warn); } .todo.done i { background: var(--ok); }
+.todo .t, .matter .t { line-height: 1.3; } .todo .s, .matter .s { font-size: 11px; color: var(--muted); }
+.todo time { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.todo.done .t { text-decoration: line-through; color: var(--muted); }
+.legend { padding: 6px 12px; display: flex; gap: 10px; font-size: 11px; color: var(--muted); }
+.legend i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 3px; }
+
+/* 窗口 */
+.win { position: fixed; min-width: 320px; background: var(--panel-solid); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); display: grid; grid-template-rows: auto 1fr; overflow: hidden; z-index: 30; max-width: calc(100vw - 24px); max-height: calc(100vh - 80px); }
+.win.focus { z-index: 40; border-color: color-mix(in oklab, var(--accent) 50%, var(--line)); }
+.win .bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); background: var(--panel-2); cursor: grab; user-select: none; }
+.win .bar .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.win .bar .s { font-size: 11px; color: var(--muted); }
+.win .bar button { width: 22px; height: 22px; border-radius: 6px; border: 0; background: none; cursor: pointer; color: var(--muted); }
+.win .bar button:hover { background: var(--line); color: var(--fg); }
+.win .body { overflow: auto; min-height: 0; }
+.pad { padding: 12px 14px; }
+.tl { list-style: none; margin: 0; padding: 0 14px 12px; }
+.tl li { display: grid; grid-template-columns: 70px 1fr; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.tl time { font-size: 12px; color: var(--muted); }
+.sec { padding: 10px 14px 4px; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+.files { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; padding: 8px 14px 12px; }
+.file { border: 0; background: none; border-radius: 8px; padding: 6px 2px; display: grid; justify-items: center; gap: 4px; font-size: 11px; cursor: pointer; text-align: center; }
+.file:hover { background: var(--panel-2); } .file .n { max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toast { position: fixed; top: calc(44px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 7px 14px; border-radius: 6px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 99; }
+.toast.show { opacity: 1; }
+@media (max-width: 900px) { #layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; } #left, #right { max-height: 180px; overflow: auto; } .win { left: 8px !important; top: 44px !important; width: calc(100vw - 16px) !important; height: calc(100vh - 60px) !important; } }
+</style>
+</head>
+<body>
+<div id="desktop" aria-hidden="true"></div>
+<header id="topbar">
+  <div class="row"><span class="brand">玄圃</span><span class="muted">Acme · 张伟</span><span class="muted">示意稿 v3</span></div>
+  <div class="status"><span><i class="dot ok"></i>飞书</span><span><i class="dot ok"></i>Gmail</span><span id="st-ask"><i class="dot busy"></i>等你确认 1</span><span class="num" id="clock">09:41</span></div>
+</header>
+
+<div id="layout">
+  <div class="col" id="left">
+    <div class="box">
+      <div class="hero" id="hero"><span class="av" style="width:44px;height:44px;background:var(--accent);font-size:18px">玄</span><div><div class="nm" id="my-name">小玄</div><div class="rl">你的助理 · 以你的身份工作</div></div></div>
+      <div class="abil" id="abil"></div>
+      <div class="bh"><span>它可以直接做的</span><button class="btn sm" id="btn-settings">设置</button></div>
+      <div class="pad muted" style="font-size:12px;padding-top:8px">读取、起草、算账不问你；提交、付款、对外发消息总要你确认。管理员定上限，你在上限内调。</div>
+    </div>
+    <div class="box">
+      <div class="bh"><h2>别人的助理</h2><span class="muted">小玄去对接，你不用</span></div>
+      <ul class="list" id="peers"></ul>
+    </div>
+  </div>
+
+  <div class="box" id="main">
+    <div id="msgs"></div>
+    <div id="composer">
+      <form id="shellform"><span class="pfx">›</span><input type="text" id="shellin" placeholder="跟小玄说：把发票报了 / 下周二去上海出差 / 提醒我周五交周报 / 每周一汇总工单" autocomplete="off"><button class="btn primary sm" type="submit">发送</button></form>
+      <div id="hints"><button data-say="把我文件里那三张发票报了">把三张发票报了</button><button data-say="下周二去上海出差两天">下周二去上海出差两天</button><button data-say="周五请一天年假">周五请一天年假</button><button data-say="提醒我周五下午交周报">提醒我周五交周报</button><button data-say="每周一早上把上周的工单汇总给我">每周一汇总工单</button><button data-say="C-42 的工单怎么样了">C-42 的工单</button></div>
+    </div>
+  </div>
+
+  <div class="col" id="right">
+    <div class="box">
+      <div class="bh"><h2>待办</h2><span class="muted" id="todo-sub"></span></div>
+      <div class="legend"><span><i style="background:var(--danger)"></i>要你确认</span><span><i style="background:var(--info)"></i>你让它记的</span><span><i style="background:var(--warn)"></i>交出去的</span></div>
+      <ul class="list" id="todos"></ul>
+    </div>
+    <div class="box">
+      <div class="bh"><h2>我的事项</h2><button class="btn sm" id="btn-files">我的文件</button></div>
+      <ul class="list" id="mlist"></ul>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  let toastTimer; const toast = (t) => { const e = $("toast"); e.textContent = t; e.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => e.classList.remove("show"), 1800); };
+  (function clock() { const d = new Date(); $("clock").textContent = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); setTimeout(clock, 30000); })();
+
+  const me = { name: "小玄", gender: "女", callme: "张伟", style: "简洁" };
+  const abilities = [["报销", "报销系统"], ["出差", "差旅系统、飞书日历"], ["请假", "飞书审批"], ["周报", "你的 skill"], ["工单", "工单系统"], ["找人", "飞书消息，需确认"], ["提醒与定时", "到点替你做"]];
+  $("abil").innerHTML = abilities.map(a => `<span title="${esc(a[1])}">${esc(a[0])}</span>`).join("");
+
+  // 别人的助理：部门养的岗位 agent，有自己的身份；小玄跟它们交接
+  const peers = {
+    fin: { name: "小算", owner: "财务部", color: "#4f6d9a", does: "审核报销、对账、开票", st: "在审你的 BX-2311", log: [["昨天 17:22", "小玄递交单据 BX-2311（¥1,280）"], ["昨天 17:40", "小算：已受理，排在今天的批次"]] },
+    adm: { name: "阿远", owner: "行政部", color: "#8a6a3f", does: "差旅标准、订票、用章", st: "", log: [] },
+    hr:  { name: "小禾", owner: "人事部", color: "#9a4f6d", does: "假期登记、入职材料", st: "", log: [] },
+    it:  { name: "小机", owner: "IT", color: "#5f6a64", does: "账号、设备、权限", st: "", log: [["周一 10:02", "小玄申请了工单系统的查看权限"], ["周一 10:05", "小机：已开通"]] },
+  };
+  function renderPeers() {
+    $("peers").innerHTML = Object.entries(peers).map(([k, p]) => `<li><button class="person" data-k="${k}"><span class="av" style="width:30px;height:30px;background:${p.color};font-size:13px">${esc(p.name.slice(-1))}</span><span><div class="nm">${esc(p.owner)} · ${esc(p.name)}</div><div class="rl">${esc(p.does)}</div>${p.st ? `<div class="st">${esc(p.st)}</div>` : ""}</span></button></li>`).join("");
+    $("peers").querySelectorAll(".person").forEach(b => b.addEventListener("click", () => openPeer(b.dataset.k)));
+  }
+
+  // 待办：三种混排
+  const todos = [
+    { id: "t2", kind: "ask", t: "选机票并确认订票（上海 10/9）", s: "两套方案，订票扣预算", when: "现在" },
+    { id: "t3", kind: "out", t: "报销单 BX-2311 在财务部审核", s: "小算受理，今天内", when: "今天" },
+    { id: "t4", kind: "remind", t: "提醒：15:00 客户 C-42 复盘会", s: "来自飞书日历", when: "15:00" },
+    { id: "t5", kind: "remind", t: "每周一 09:00 汇总上周工单", s: "定时任务，做完放进动态", when: "周一" },
+  ];
+  function renderTodos() {
+    const open = todos.filter(x => !x.done);
+    $("todo-sub").textContent = `${open.filter(x => x.kind === "ask").length} 件要你确认`;
+    $("st-ask").innerHTML = `<i class="dot ${open.some(x => x.kind === "ask") ? "busy" : "ok"}"></i>等你确认 ${open.filter(x => x.kind === "ask").length}`;
+    const sorted = [...todos].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || (a.kind === "ask" ? 0 : 1) - (b.kind === "ask" ? 0 : 1));
+    $("todos").innerHTML = sorted.map(x => `<li><button class="todo ${x.kind} ${x.done ? "done" : ""}" data-id="${x.id}"><i></i><span><div class="t">${esc(x.t)}</div><div class="s">${esc(x.s)}</div></span><time>${esc(x.when)}</time></button></li>`).join("");
+    $("todos").querySelectorAll(".todo").forEach(b => b.addEventListener("click", () => { const x = todos.find(y => y.id === b.dataset.id); if (x.kind === "ask" && x.card && !x.done) { x.card.scrollIntoView({ block: "center" }); x.card.style.outline = "2px solid var(--warn)"; setTimeout(() => x.card.style.outline = "", 1200); } else if (x.kind === "remind") openRules(); else if (x.matter) openMatter(x.matter); }));
+  }
+  const matters = [
+    { id: "m1", title: "9 月报销", st: "财务审核中", pill: "busy", tl: [["昨天 17:20", "你把 3 张发票交给小玄"], ["昨天 17:21", "小玄识别发票，在报销系统填好 BX-2311"], ["昨天 17:22", "你确认提交；小玄递给财务部助理小算"], ["昨天 17:40", "小算受理，排在今天的批次"]], files: ["发票_0928.jpg", "发票_0929.jpg", "打车_0929.pdf"] },
+    { id: "m2", title: "出差 · 上海", st: "等你选机票", pill: "ask", tl: [["09:02", "你说下周二去上海两天"], ["09:02", "小玄查日历：周二下午有会，已标冲突"], ["09:03", "小玄问了行政部助理阿远差旅标准：经济舱 ≤ ¥1,000"], ["09:03", "出差申请起草好，机票两套方案等你选"]], files: ["出差申请_上海.pdf"] },
+    { id: "m3", title: "客户 C-42", st: "进行中", pill: "info", tl: [["昨天 22:05", "工单 T-1001 有新回复"], ["今天 08:40", "你批准改为高优先级"]], files: ["T-1001_沟通记录.md"] },
+    { id: "m4", title: "周报 · 第 40 周", st: "已发送", pill: "ok", tl: [["07:30", "定时任务：小玄用你的 me.weekly-report 生成草稿"], ["08:03", "你确认后发给李总"]], files: ["周报_第40周.docx"] },
+  ];
+  function renderMatters() {
+    $("mlist").innerHTML = matters.map(m => `<li><button class="matter" data-id="${m.id}"><i></i><span><div class="t">${esc(m.title)}</div><div class="s">${esc(m.tl[m.tl.length - 1][1])}</div></span><span class="pill ${m.pill}">${esc(m.st)}</span></button></li>`).join("");
+    $("mlist").querySelectorAll(".matter").forEach(b => b.addEventListener("click", () => openMatter(b.dataset.id)));
+  }
+  function updateMatter(id, patch, entry) { const m = matters.find(x => x.id === id); Object.assign(m, patch); if (entry) m.tl.push(entry); renderMatters(); const w = wins.get("matter:" + id); if (w) renderMatterBody(m, w.querySelector(".body")); }
+
+  // 对话
+  const msgs = $("msgs");
+  function say(cls, html) { const d = document.createElement("div"); d.innerHTML = cls === "card" ? html : `<div class="m ${cls}">${html}</div>`; const el = d.firstElementChild; msgs.appendChild(el); msgs.scrollTop = msgs.scrollHeight; el.querySelectorAll("[data-matter]").forEach(b => b.addEventListener("click", () => openMatter(b.dataset.matter))); el.querySelectorAll("[data-peer]").forEach(b => b.addEventListener("click", () => openPeer(b.dataset.peer))); return el; }
+  async function stream(text) { const el = say("them cursor", ""); for (let i = 0; i < text.length; i += 2) { el.textContent = text.slice(0, i + 2); msgs.scrollTop = msgs.scrollHeight; await sleep(22); } el.classList.remove("cursor"); }
+  function approval(todoId, preview, effect, args, onOk, onNo) {
+    const card = say("card", `<div class="card approval"><div class="row sp"><strong>要你确认</strong><span class="pill ${effect}">${effect === "external" ? "对外" : "写"}</span></div><div>${esc(preview)}</div><div class="kv">${esc(args)}</div><div class="row"><button class="btn primary sm" data-a="ok">确认</button><button class="btn sm" data-a="no">不要</button></div></div>`);
+    let x = todos.find(y => y.id === todoId); if (!x) { x = { id: todoId, kind: "ask", t: preview, s: "", when: "现在" }; todos.unshift(x); } x.card = card; renderTodos();
+    card.querySelectorAll("button").forEach(b => b.addEventListener("click", () => { card.querySelector(".row:last-child").innerHTML = `<span class="muted" style="font-size:12px">你已${b.dataset.a === "ok" ? "确认" : "拒绝"}</span>`; x.done = true; renderTodos(); (b.dataset.a === "ok" ? onOk : onNo)(); }));
+  }
+  function peerEvent(k, text) { const p = peers[k]; say("event peer", `${esc(p.owner)}的助理${esc(p.name)} · ${esc(text)}`); }
+
+  async function handle(text) {
+    say("user", esc(text)); await sleep(300);
+    const t = text.replace(/\s+/g, "");
+    if (/发票|报销/.test(t)) {
+      say("card", `<div class="card files"><div class="fitem"><div class="fi">jpg</div>发票_0928.jpg</div><div class="fitem"><div class="fi">jpg</div>发票_0929.jpg</div><div class="fitem"><div class="fi">pdf</div>打车_0929.pdf</div></div>`);
+      say("event ok", "沙盒脚本识别发票 · 3 张"); await sleep(450);
+      say("event ok", "报销系统 · 查询费用科目 · 以你的身份 · 读，放行"); await sleep(450);
+      say("event ok", "报销系统 · 起草单据 BX-2312 · 写，放行（草稿不对外）"); await sleep(350);
+      await stream(`${me.callme}，三张发票看过了：餐费两张 ¥1,080，打车一张 ¥200，合计 ¥1,280，科目填了「客户招待」和「市内交通」。单子在报销系统里填好了，提交后就交给财务部审，你确认一下。`);
+      approval("t6", "在报销系统提交单据 BX-2312（¥1,280）", "external", '{"form": "BX-2312", "amount": 1280, "items": 3}',
+        async () => {
+          say("event ok", "报销系统 · 提交单据 · 已执行 · 审计 #77"); await sleep(400);
+          peerEvent("fin", "小玄把 BX-2312 递了过去，附上发票与科目"); await sleep(600);
+          peerEvent("fin", "回复：已受理，排在今天的批次"); peers.fin.st = "在审你的 BX-2311、BX-2312"; peers.fin.log.push(["刚刚", "小玄递交单据 BX-2312（¥1,280）"], ["刚刚", "小算：已受理"]); renderPeers();
+          todos.push({ id: "t7", kind: "out", t: "报销单 BX-2312 在财务部审核", s: "小算受理，今天内", when: "今天", matter: "m1" }); renderTodos();
+          updateMatter("m1", { st: "财务审核中（2 单）" }, ["刚刚", "BX-2312 已提交，小算受理"]);
+          await stream("提交了，财务部的小算已经受理，说今天内审完。审完或者被退回我都会告诉你。");
+        },
+        async () => { await stream("好，先不提交，草稿留着。"); });
+      return;
+    }
+    if (/出差|订票/.test(t)) {
+      say("event ok", "飞书日历 · 查看 10/9–10/10 · 以你的身份 · 读，放行"); await sleep(450);
+      peerEvent("adm", "小玄问了差旅标准与可订航班"); await sleep(500);
+      peerEvent("adm", "回复：你的级别经济舱 ≤ ¥1,000，可订 MU5101 08:00 ¥860 / MU5103 12:30 ¥720"); peers.adm.st = "刚回复了差旅标准"; peers.adm.log.push(["刚刚", "小玄询问差旅标准与航班"], ["刚刚", "阿远：经济舱 ≤ ¥1,000，给了两个航班"]); renderPeers(); await sleep(350);
+      say("event ok", "差旅系统 · 起草出差申请 TR-0918 · 写，放行"); await sleep(300);
+      await stream(`${me.callme}，10 月 9 日下午两点你有「客户 C-42 复盘」会，我在申请里标了冲突。行政部给的标准是经济舱不超过 ¥1,000，两班都在标准内：早上 8:00 的 ¥860，中午 12:30 的 ¥720。订票要扣预算，你定。`);
+      approval("t2", "订 10 月 9 日 08:00 MU5101（¥860）并提交出差申请 TR-0918", "external", '{"flight": "MU5101", "price": 860, "return": "10/10 18:30"}',
+        async () => { say("event ok", "差旅系统 · 订票 + 提交申请 · 已执行 · 审计 #78"); updateMatter("m2", { st: "已订票", pill: "ok" }, ["刚刚", "你确认，小玄订了 MU5101，提交了 TR-0918"]); await stream("订好了，行程放进你的日历了。那个会我给对方留了言，问能不能挪到周一。"); },
+        async () => { await stream("好，先不订。方案留着。"); updateMatter("m2", { st: "等你选机票", pill: "ask" }); });
+      return;
+    }
+    if (/请假|年假|调休/.test(t)) {
+      say("event ok", "飞书审批 · 查看年假余额 · 以你的身份 · 读，放行"); await sleep(400);
+      await stream(`${me.callme}，你还有 6 天年假。周五请一天的单子我在飞书审批里起好了，提交后发给李总，人事部那边会自动登记。`);
+      approval("t8", "在飞书审批提交年假申请（10 月 3 日，1 天）", "external", '{"type": "年假", "date": "2026-10-03", "days": 1, "approver": "李总"}',
+        async () => { say("event ok", "飞书审批 · 提交 · 已执行 · 审计 #79"); await sleep(400); peerEvent("hr", "收到审批系统的通知，待批准后登记"); peers.hr.st = "等李总批后登记"; renderPeers(); matters.unshift({ id: "m5", title: "年假 · 10/3", st: "等李总批", pill: "busy", tl: [["刚刚", "你让小玄请周五的年假"], ["刚刚", "小玄提交了飞书审批"]], files: [] }); renderMatters(); todos.push({ id: "t9", kind: "out", t: "年假申请等李总批", s: "批了人事部自动登记", when: "今天", matter: "m5" }); renderTodos(); await stream("提交了，批了我告诉你。"); },
+        async () => { await stream("好，先不提交。"); });
+      return;
+    }
+    if (/提醒/.test(t)) {
+      const when = /周五/.test(t) ? "周五 15:00" : /明天/.test(t) ? "明天 09:00" : "到时";
+      todos.push({ id: "t" + Date.now(), kind: "remind", t: "提醒：" + text.replace(/^提醒我/, "").trim(), s: "你让小玄记的", when }); renderTodos();
+      await stream(`记下了，${when} 提醒你。到时你不在工作台的话我发飞书消息。`); return;
+    }
+    if (/每周|每天|定时|每个月/.test(t)) {
+      todos.push({ id: "t" + Date.now(), kind: "remind", t: text, s: "定时任务，做完放进动态", when: /周一/.test(t) ? "周一" : "定时" }); renderTodos();
+      await stream(`好，设成定时任务了：${/周一/.test(t) ? "每周一 09:00" : "按你说的时间"}以你的身份跑一遍，结果放进动态；要对外发的部分会停下来等你确认。规则在我的设置里能改。`); return;
+    }
+    if (/工单|C-\d+|T-\d+/.test(t)) {
+      say("event ok", "工单系统 · 读取 T-1001 · 以你的身份 · 读，放行"); await sleep(400);
+      await stream("T-1001 今早改成高优先级了，处理时限 4 小时。技术 10:30 回复了原因（登录服务证书过期），预计中午修复。要我把进展同步给客户吗？"); say("card", `<div class="card"><button class="btn sm" data-matter="m3">看事项：客户 C-42</button></div>`); return;
+    }
+    if (/周报/.test(t)) { say("event ok", "调用 me.weekly-report（你的个人 skill）"); await sleep(400); await stream("周报草稿按你的格式整理，放进「周报 · 第 40 周」。"); return; }
+    await stream("收到。这是示意稿，真实的回复由模型生成。");
+  }
+  $("shellform").addEventListener("submit", (e) => { e.preventDefault(); const v = $("shellin").value.trim(); if (!v) return; $("shellin").value = ""; handle(v); });
+  $("hints").querySelectorAll("button").forEach(b => b.addEventListener("click", () => { $("shellin").value = b.dataset.say; $("shellform").requestSubmit(); }));
+  document.addEventListener("keydown", (e) => { if (e.key === "/" && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) { e.preventDefault(); $("shellin").focus(); } });
+
+  // 窗口
+  const wins = new Map(); let z = 30, cascade = 0;
+  const focus = (w) => { document.querySelectorAll(".win").forEach(x => x.classList.remove("focus")); w.classList.add("focus"); w.style.zIndex = ++z; };
+  function openWin(key, title, sub, w, h, render) {
+    if (wins.has(key)) { const e = wins.get(key); focus(e); return e; }
+    const el = document.createElement("section"); el.className = "win"; el.dataset.key = key;
+    el.style.cssText = `left:${Math.max(260, window.innerWidth - 300 - w - 40 - (cascade % 5) * 24)}px; top:${70 + (cascade % 5) * 24}px; width:${w}px; height:${h}px;`; cascade++;
+    el.innerHTML = `<div class="bar"><span class="t">${esc(title)}</span><span class="s">${esc(sub || "")}</span><button data-w="close" title="关闭">×</button></div><div class="body"></div>`;
+    document.body.appendChild(el); wins.set(key, el); focus(el);
+    el.addEventListener("pointerdown", () => focus(el));
+    el.querySelector('[data-w="close"]').addEventListener("click", () => { el.remove(); wins.delete(key); });
+    const bar = el.querySelector(".bar"); let drag = null;
+    bar.addEventListener("pointerdown", (e) => { if (e.target.tagName === "BUTTON") return; drag = { x: e.clientX - el.offsetLeft, y: e.clientY - el.offsetTop }; bar.setPointerCapture(e.pointerId); });
+    bar.addEventListener("pointermove", (e) => { if (!drag) return; el.style.left = Math.max(0, e.clientX - drag.x) + "px"; el.style.top = Math.max(36, e.clientY - drag.y) + "px"; });
+    bar.addEventListener("pointerup", () => { drag = null; });
+    render(el.querySelector(".body"), el); return el;
+  }
+  function renderMatterBody(m, body) {
+    body.innerHTML = `<div class="pad row sp"><span class="pill ${m.pill}">${esc(m.st)}</span><div class="row"><button class="btn sm" data-ask>问小玄进展</button><button class="btn sm">归档</button></div></div>
+      <div class="sec"><span>进展</span></div><ul class="tl">${m.tl.map(e => `<li><time>${esc(e[0])}</time><span>${esc(e[1])}</span></li>`).join("")}</ul>
+      <div class="sec"><span>这件事的文件</span></div><div class="files">${m.files.map(f => `<button class="file"><div class="fi">${esc(f.split(".").pop())}</div><span class="n">${esc(f)}</span></button>`).join("") || '<div class="muted" style="padding:0 2px;font-size:12px">还没有文件</div>'}</div>`;
+    body.querySelector("[data-ask]").addEventListener("click", () => { $("shellin").value = `${m.title}怎么样了`; $("shellform").requestSubmit(); });
+  }
+  function openMatter(id) { const m = matters.find(x => x.id === id); openWin("matter:" + id, m.title, "事项", 480, 380, (body) => renderMatterBody(m, body)); }
+  function openPeer(k) {
+    const p = peers[k];
+    openWin("peer:" + k, `${p.owner}的助理 · ${p.name}`, "岗位 agent，有自己的身份", 480, 360, (body) => {
+      body.innerHTML = `<div class="pad"><div class="row"><span class="av" style="width:36px;height:36px;background:${p.color};font-size:15px">${esc(p.name.slice(-1))}</span><div><div style="font-weight:500">${esc(p.name)}</div><div class="muted" style="font-size:12px">${esc(p.owner)}养的，负责：${esc(p.does)}。所有人看到的是同一个它；它的审计记在${esc(p.owner)}名下。</div></div></div></div>
+        <div class="sec"><span>小玄和它的交接（只有和你有关的）</span></div><ul class="tl">${p.log.map(e => `<li><time>${esc(e[0])}</time><span>${esc(e[1])}</span></li>`).join("") || '<li><span class="muted">还没有交接</span></li>'}</ul>
+        <div class="pad row"><button class="btn sm" data-urge>让小玄催一下</button><span class="muted" style="font-size:12px">你不直接跟它说，让小玄去</span></div>`;
+      body.querySelector("[data-urge]").addEventListener("click", async () => { say("user", `催一下${p.owner}`); await sleep(300); peerEvent(k, "小玄问了进度"); await sleep(500); peerEvent(k, "回复：排在今天批次，预计 16:00 前"); await stream(`${p.owner}的${p.name}说今天 16:00 前审完。`); });
+    });
+  }
+  function openRules() {
+    openWin("rules", "提醒与定时任务", "小玄的规则", 480, 320, (body) => {
+      const rs = todos.filter(x => x.kind === "remind");
+      body.innerHTML = `<ul class="tl" style="padding-top:8px">${rs.map(r => `<li><time>${esc(r.when)}</time><span>${esc(r.t)}<div class="muted" style="font-size:12px">${esc(r.s)}</div></span></li>`).join("")}</ul><div class="pad muted" style="font-size:12px">飞书日历、飞书任务里的待办经连接读进来；平台自己只存触发规则。到点你不在工作台就发飞书消息。</div>`;
+    });
+  }
+  function openFiles() { openWin("files", "我的文件", "我的空间", 520, 340, (body) => { const all = ["发票_0928.jpg", "发票_0929.jpg", "打车_0929.pdf", "周报_第40周.docx", "周报模板.docx", "客户分级.xlsx", "出差申请_上海.pdf"]; body.innerHTML = `<div class="sec"><span>全部文件（按事项归档的也在这里）</span></div><div class="files">${all.map(f => `<button class="file"><div class="fi">${esc(f.split(".").pop())}</div><span class="n">${esc(f)}</span></button>`).join("")}</div><div class="pad muted" style="font-size:12px">内容在对象存储，每次改动是一个版本；管理员看不到内容。</div>`; }); }
+  function openSettings() {
+    openWin("settings", "设置 · " + me.name, "只影响你自己看到的", 440, 420, (body) => {
+      body.innerHTML = `<div class="pad">
+        <label class="f"><span>名字</span><input type="text" id="s-name" value="${esc(me.name)}"></label>
+        <label class="f"><span>性别 / 声音</span><div class="seg" id="s-gender">${["女", "男", "中性"].map(g => `<button type="button" class="${me.gender === g ? "on" : ""}">${g}</button>`).join("")}</div></label>
+        <label class="f"><span>怎么称呼你</span><input type="text" id="s-callme" value="${esc(me.callme)}"></label>
+        <label class="f"><span>说话风格</span><div class="seg" id="s-style">${["简洁", "详细"].map(g => `<button type="button" class="${me.style === g ? "on" : ""}">${g}</button>`).join("")}</div></label>
+        <label class="f"><span>它不用问我就能做的（管理员允许的范围内）</span><div class="row"><span class="pill ok">读取 ✓</span><span class="pill ok">起草 ✓</span><span class="pill ok">算账 ✓</span><span class="pill">提交、付款、对外发消息：总要问我</span></div></label>
+        <label class="f"><span>它会用的个人 skill</span><div class="row"><span class="pill ok">me.weekly-report</span><span class="pill ok">me.customer-tiering</span><span class="pill">me.expense-notes</span></div></label>
+        <button class="btn primary sm" id="s-save">保存</button></div>`;
+      body.querySelectorAll(".seg").forEach(seg => seg.querySelectorAll("button").forEach(b => b.addEventListener("click", () => { seg.querySelectorAll("button").forEach(x => x.classList.remove("on")); b.classList.add("on"); })));
+      $("s-save").addEventListener("click", () => { me.name = $("s-name").value.trim() || me.name; me.callme = $("s-callme").value.trim() || me.callme; me.gender = body.querySelector("#s-gender .on").textContent; me.style = body.querySelector("#s-style .on").textContent; $("my-name").textContent = me.name; toast("已保存，只对你生效"); });
+    });
+  }
+  $("btn-settings").addEventListener("click", openSettings); $("hero").addEventListener("click", openSettings); $("btn-files").addEventListener("click", openFiles);
+
+  // 开场：昨晚到现在
+  renderPeers(); renderTodos(); renderMatters();
+  say("day", "昨天");
+  say("user", "这三张发票帮我报了");
+  say("event ok", "报销系统 · 起草 BX-2311 · 写，放行");
+  say("them", "填好了，¥1,280，你确认提交。");
+  say("event ok", "你确认 · 报销系统 · 提交 · 审计 #70");
+  say("event peer", "财务部的助理小算 · 已受理 BX-2311，排在今天的批次");
+  say("day", "今天");
+  say("them", `早上好，${me.callme}。你不在的时候：周报草稿按定时任务生成了，你 8:03 确认后发给了李总；邮件里有 3 封要回的，草稿在「邮件草稿」。上海的机票还在等你选。<div class="row" style="margin-top:6px"><button class="btn sm" data-matter="m2">出差 · 上海</button><button class="btn sm" data-peer="fin">财务部那边</button></div>`);
+  $("shellin").focus();
+})();
+</script>
+</body>
+</html>
