@@ -47,6 +47,7 @@
 | --- | --- | --- |
 | `tenant_created` | 新建租户 | `name` |
 | `tenant_status_changed` | 停用或启用租户 | `status` |
+| `tenant_quota_changed` | 修改租户配额（平台管理员） | `before`、`after`：改之前与改之后的 `max_active_sessions`、`max_daily_tokens`、`max_concurrent_turns`（`null` 是不限） |
 | `api_key_issued` | 签发 API key | `key_id`、`name`、`role` |
 | `api_key_revoked` | 吊销 API key | `key_id` |
 | `secret_written` | 写入或覆盖密钥 | `name`（只有名字） |

@@ -277,6 +277,25 @@ class Admin:
             },
         )
 
+    async def set_quota(
+        self,
+        tenant_id: str,
+        *,
+        max_active_sessions: int | None = None,
+        max_daily_tokens: int | None = None,
+        max_concurrent_turns: int | None = None,
+    ) -> dict[str, Any]:
+        """整体替换租户的配额（平台管理员）。没给的项恢复为不限，不是保留原值。"""
+        return await self._http.request(
+            "PUT",
+            f"/v1/admin/tenants/{tenant_id}/quota",
+            json={
+                "max_active_sessions": max_active_sessions,
+                "max_daily_tokens": max_daily_tokens,
+                "max_concurrent_turns": max_concurrent_turns,
+            },
+        )
+
     async def issue_tenant_key(
         self, tenant_id: str, name: str, *, role: str = "tenant_member"
     ) -> IssuedKey:

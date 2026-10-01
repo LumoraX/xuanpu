@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from xuanpu_server.tenancy import QuotaLimits
+
 if TYPE_CHECKING:
     from xuanpu_server.controlplane.models import (
         AuditRecord,
@@ -23,11 +25,19 @@ class _Request(BaseModel):
 
 
 class QuotaBody(_Request):
-    """租户配额。"""
+    """租户配额：新建租户时的 ``quota``，也是修改配额的请求体。省略或为 null 的项表示不限。"""
 
     max_active_sessions: int | None = Field(default=None, ge=1)
     max_daily_tokens: int | None = Field(default=None, ge=1)
     max_concurrent_turns: int | None = Field(default=None, ge=1)
+
+    def limits(self) -> QuotaLimits:
+        """转成平台的配额对象。"""
+        return QuotaLimits(
+            max_active_sessions=self.max_active_sessions,
+            max_daily_tokens=self.max_daily_tokens,
+            max_concurrent_turns=self.max_concurrent_turns,
+        )
 
 
 class CreateTenantBody(_Request):

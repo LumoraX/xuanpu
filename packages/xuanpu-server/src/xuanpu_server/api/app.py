@@ -27,7 +27,7 @@ from xuanpu_server.errors import (
     PlatformError,
     SessionBusyError,
 )
-from xuanpu_server.tenancy import Principal, QuotaLimits
+from xuanpu_server.tenancy import Principal
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -149,14 +149,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     async def create_tenant(body: schemas.CreateTenantBody, who: Caller) -> dict[str, Any]:
         """新建租户。"""
         tenant = await platform.create_tenant(
-            who,
-            tenant_id=body.tenant_id,
-            name=body.name,
-            quota=QuotaLimits(
-                max_active_sessions=body.quota.max_active_sessions,
-                max_daily_tokens=body.quota.max_daily_tokens,
-                max_concurrent_turns=body.quota.max_concurrent_turns,
-            ),
+            who, tenant_id=body.tenant_id, name=body.name, quota=body.quota.limits()
         )
         return schemas.tenant_view(tenant)
 
@@ -173,6 +166,13 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     ) -> dict[str, Any]:
         """启用或停用租户。"""
         return schemas.tenant_view(await platform.set_tenant_status(who, tenant_id, body.status))
+
+    @app.put("/v1/admin/tenants/{tenant_id}/quota")
+    async def set_tenant_quota(
+        tenant_id: str, body: schemas.QuotaBody, who: Caller
+    ) -> dict[str, Any]:
+        """整体替换租户的配额：请求体里没给的项恢复为不限。"""
+        return schemas.tenant_view(await platform.set_tenant_quota(who, tenant_id, body.limits()))
 
     @app.post("/v1/admin/tenants/{tenant_id}/keys", status_code=201)
     async def issue_tenant_key(

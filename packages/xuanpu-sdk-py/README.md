@@ -15,7 +15,7 @@ async with XuanpuClient("http://localhost:8420", api_key) as client:
 
 ## `XuanpuClient(base_url, api_key, *, timeout_seconds=60.0)`
 
-`api_key` 是租户的 API key；只调 `admin.create_tenant`、`admin.issue_tenant_key` 时用根凭据。`timeout_seconds` 约束普通请求，事件流与评测不受它限制。
+`api_key` 是租户的 API key；只调 `admin.create_tenant`、`admin.set_quota`、`admin.issue_tenant_key` 时用根凭据。`timeout_seconds` 约束普通请求，事件流与评测不受它限制。
 
 用 `async with` 管理连接，或者用完调 `await client.close()`。
 
@@ -82,6 +82,7 @@ await client.packages.publish(pack_package(Path("./support-desk")), activate=Tru
 | 方法 | 需要的身份 | 返回 | 说明 |
 | --- | --- | --- | --- |
 | `await create_tenant(tenant_id, name, *, max_active_sessions=None, max_daily_tokens=None, max_concurrent_turns=None)` | 平台管理员 | `dict` | 新建租户 |
+| `await set_quota(tenant_id, *, max_active_sessions=None, max_daily_tokens=None, max_concurrent_turns=None)` | 平台管理员 | `dict` | 整体替换租户的配额，返回租户对象。没给的项恢复为不限，不保留原值 |
 | `await issue_tenant_key(tenant_id, name, *, role="tenant_member")` | 平台管理员 | `IssuedKey` | 给某个租户签发 API key |
 | `await issue_key(name, *, role="tenant_member")` | 租户管理员 | `IssuedKey` | 给本租户签发 API key |
 | `await revoke_key(key_id)` | 租户管理员 | `None` | 吊销 |

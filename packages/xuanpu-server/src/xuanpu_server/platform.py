@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -212,6 +213,27 @@ class Platform:
         )
         await self.store.update_tenant(updated)
         await self.audit.control(principal, tenant_id, "tenant_status_changed", {"status": status})
+        return updated
+
+    async def set_tenant_quota(
+        self, principal: Principal, tenant_id: str, quota: QuotaLimits
+    ) -> Tenant:
+        """整体替换租户的配额（没给的项就是不限）。配额每次检查都现读，改完立即生效。
+
+        审计里记下改之前与改之后的三项。
+        """
+        principal.require_platform_admin()
+        tenant = await self.store.get_tenant(tenant_id)
+        if tenant is None:
+            raise NotFoundError(f"租户 {tenant_id!r} 不存在")
+        updated = dataclasses.replace(tenant, quota=quota)
+        await self.store.update_tenant(updated)
+        await self.audit.control(
+            principal,
+            tenant_id,
+            "tenant_quota_changed",
+            {"before": dataclasses.asdict(tenant.quota), "after": dataclasses.asdict(quota)},
+        )
         return updated
 
     async def issue_key(

@@ -316,6 +316,62 @@ async def test_quota_and_conflict_status_codes(world: Any, client: httpx.AsyncCl
     assert (await client.get("/v1/sessions", headers=tiny)).status_code == 401
 
 
+async def test_set_tenant_quota_over_http(world: Any, client: httpx.AsyncClient) -> None:
+    """平台管理员整体替换租户配额：列表里生效、配额检查立即按新值；别的身份 403、租户不存在 404。"""
+    await world.publish()
+    root, admin = bearer(world.root_key), bearer(world.admin_key)
+    changed = await client.put(
+        "/v1/admin/tenants/acme/quota", headers=root, json={"max_daily_tokens": 1000}
+    )
+    assert changed.status_code == 200, changed.text
+    quota = {"max_active_sessions": None, "max_daily_tokens": 1000, "max_concurrent_turns": None}
+    assert (changed.json()["tenant_id"], changed.json()["quota"]) == ("acme", quota)
+    listed = (await client.get("/v1/admin/tenants", headers=root)).json()["tenants"]
+    assert [tenant["quota"] for tenant in listed if tenant["tenant_id"] == "acme"] == [quota]
+
+    assert (
+        await client.post("/v1/sessions", headers=admin, json={"package": "support-desk"})
+    ).status_code == 201
+    # 整体替换：只给 max_active_sessions，max_daily_tokens 恢复为不限
+    shrunk = await client.put(
+        "/v1/admin/tenants/acme/quota", headers=root, json={"max_active_sessions": 1}
+    )
+    assert shrunk.json()["quota"] == {**quota, "max_active_sessions": 1, "max_daily_tokens": None}
+    over = await client.post("/v1/sessions", headers=admin, json={"package": "support-desk"})
+    assert (over.status_code, over.json()["error"]["code"]) == (429, "quota_exceeded")
+    assert (await client.put("/v1/admin/tenants/acme/quota", headers=root, json={})).json()[
+        "quota"
+    ] == {key: None for key in quota}
+    assert (
+        await client.post("/v1/sessions", headers=admin, json={"package": "support-desk"})
+    ).status_code == 201
+
+    for headers in (admin, bearer(world.member_key)):
+        denied = await client.put(
+            "/v1/admin/tenants/acme/quota", headers=headers, json={"max_active_sessions": 9}
+        )
+        assert (denied.status_code, denied.json()["error"]["code"]) == (403, "permission_denied")
+    missing = await client.put("/v1/admin/tenants/ghost/quota", headers=root, json={})
+    assert (missing.status_code, missing.json()["error"]["code"]) == (404, "not_found")
+    assert (await client.put("/v1/admin/tenants/acme/quota", json={})).status_code == 401
+
+    for body in (
+        {"max_daily_tokens": -1},
+        {"max_concurrent_turns": 0},
+        {"max_daily_tokens": "lots"},
+        {"max_tokens": 5},
+        {"quota": {"max_daily_tokens": 5}},
+    ):
+        bad = await client.put("/v1/admin/tenants/acme/quota", headers=root, json=body)
+        assert (bad.status_code, bad.json()["error"]["code"]) == (400, "invalid_request"), body
+
+    audit = await client.get(
+        "/v1/audit", headers=admin, params={"kind": "tenant_quota_changed", "limit": 10}
+    )
+    changes = [record["data"]["after"]["max_active_sessions"] for record in audit.json()["records"]]
+    assert changes == [None, 1, None]
+
+
 async def test_unexpected_error_does_not_leak_details(
     world: Any, client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -421,6 +421,66 @@ async def test_daily_token_quota(world: Any, step: Any, read_turn: Any) -> None:
     assert len(world.models.requests) == 2
 
 
+async def test_set_tenant_quota_replaces_it_and_applies_at_once(
+    world: Any, step: Any, read_turn: Any
+) -> None:
+    """改配额是整体替换（没给的项恢复为不限），改完立即按新值检查；审计记下前后值。"""
+    await world.publish()
+    session = await world.platform.sessions.create(world.member, package="support-desk")
+    world.models.script(step(text="一"), step(text="二"))
+    await read_turn(
+        await world.platform.sessions.send_message(world.member, session.session_id, "1")
+    )
+
+    updated = await world.platform.set_tenant_quota(
+        ROOT_PRINCIPAL, "acme", QuotaLimits(max_active_sessions=1, max_daily_tokens=100)
+    )
+    assert updated.quota == QuotaLimits(max_active_sessions=1, max_daily_tokens=100)
+    stored = await world.platform.store.get_tenant("acme")
+    assert stored is not None
+    assert (stored.quota, stored.name, stored.status) == (updated.quota, "Acme", "active")
+    with pytest.raises(QuotaExceededError, match="活动会话数"):
+        await world.platform.sessions.create(world.member, package="support-desk")
+    with pytest.raises(QuotaExceededError, match="token"):
+        await world.platform.sessions.send_message(world.member, session.session_id, "2")
+
+    cleared = await world.platform.set_tenant_quota(ROOT_PRINCIPAL, "acme", QuotaLimits())
+    assert cleared.quota == QuotaLimits()
+    await world.platform.sessions.create(world.member, package="support-desk")
+    await read_turn(
+        await world.platform.sessions.send_message(world.member, session.session_id, "2")
+    )
+
+    records = await world.platform.store.query_audit(
+        "acme", AuditQuery(kind="tenant_quota_changed", limit=10)
+    )
+    unlimited = dict.fromkeys(("max_active_sessions", "max_daily_tokens", "max_concurrent_turns"))
+    limited = {**unlimited, "max_active_sessions": 1, "max_daily_tokens": 100}
+    assert [(record.data["before"], record.data["after"]) for record in records] == [
+        (unlimited, limited),
+        (limited, unlimited),
+    ]
+    assert {(record.source, record.actor) for record in records} == {("control", "key:root")}
+
+
+async def test_set_tenant_quota_needs_platform_admin_and_an_existing_tenant(world: Any) -> None:
+    """只有平台管理员能改配额；租户不存在是 404，什么也不记。"""
+    for principal in (world.admin, world.member):
+        with pytest.raises(PermissionDeniedError):
+            await world.platform.set_tenant_quota(
+                principal, "acme", QuotaLimits(max_active_sessions=1)
+            )
+    with pytest.raises(NotFoundError):
+        await world.platform.set_tenant_quota(ROOT_PRINCIPAL, "ghost", QuotaLimits())
+    tenant = await world.platform.store.get_tenant("acme")
+    assert tenant is not None
+    assert tenant.quota == QuotaLimits()
+    records = await world.platform.store.query_audit(
+        "acme", AuditQuery(kind="tenant_quota_changed", limit=10)
+    )
+    assert records == []
+
+
 # --- 会话 ---
 
 

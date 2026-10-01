@@ -21,6 +21,22 @@ async def root_client(world: Any) -> AsyncIterator[XuanpuClient]:
         yield client
 
 
+async def test_set_quota_with_sdk(root_client: XuanpuClient) -> None:
+    """``admin.set_quota`` 整体替换租户配额：没给的项恢复为不限；租户不存在是 404。"""
+    await root_client.admin.create_tenant("globex", "Globex", max_active_sessions=5)
+    tenant = await root_client.admin.set_quota("globex", max_daily_tokens=1000)
+    assert tenant["quota"] == {
+        "max_active_sessions": None,
+        "max_daily_tokens": 1000,
+        "max_concurrent_turns": None,
+    }
+    cleared = await root_client.admin.set_quota("globex")
+    assert set(cleared["quota"].values()) == {None}
+    with pytest.raises(XuanpuError) as caught:
+        await root_client.admin.set_quota("ghost", max_concurrent_turns=1)
+    assert (caught.value.status, caught.value.code) == (404, "not_found")
+
+
 async def test_full_flow_with_sdk(world: Any, step: Any, root_client: XuanpuClient) -> None:
     """开通租户 → 签发凭据 → 配密钥 → 发布 → 会话 → 审批 → 审计与用量。"""
     await root_client.admin.create_tenant("globex", "Globex", max_active_sessions=5)

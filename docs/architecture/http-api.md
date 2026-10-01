@@ -53,6 +53,7 @@
 | `POST /v1/admin/tenants` | 平台管理员 | 新建租户 |
 | `GET /v1/admin/tenants` | 平台管理员 | 列出租户 |
 | `PUT /v1/admin/tenants/{id}/status` | 平台管理员 | 启用或停用租户 |
+| `PUT /v1/admin/tenants/{id}/quota` | 平台管理员 | 整体替换租户的配额 |
 | `POST /v1/admin/tenants/{id}/keys` | 平台管理员 | 给租户签发 API key |
 | `POST /v1/keys` · `GET /v1/keys` · `DELETE /v1/keys/{id}` | 租户管理员 | 本租户的 API key |
 | `PUT /v1/secrets/{name}` · `GET /v1/secrets` · `DELETE /v1/secrets/{name}` | 租户管理员 | 密钥。取值写入后不可再读出 |
@@ -112,7 +113,29 @@ PUT /v1/admin/tenants/{id}/status
 
 停用后该租户的凭据立即失效（`401`）。
 
-目前没有修改配额与删除租户的接口。
+### 修改配额
+
+```
+PUT /v1/admin/tenants/{id}/quota
+{"max_active_sessions": 200, "max_daily_tokens": 10000000}
+
+→ {"tenant_id": "acme", "name": "Acme", "status": "active",
+   "quota": {"max_active_sessions": 200, "max_daily_tokens": 10000000, "max_concurrent_turns": null},
+   "created_at": 1790898324.358114}
+```
+
+请求体与新建租户时的 `quota` 对象相同。这是**整体替换**：没给的项（或给了 `null`）恢复为不限，不保留原值——只想改一项，也要把另外两项按原值带上。`{}` 就是全部不限。
+
+| 情况 | 响应 |
+| --- | --- |
+| 改成功 | `200`，租户对象。配额每次检查都现读，下一次建会话、发消息就按新值；已经超出新上限的（比如活动会话已经比新的 `max_active_sessions` 多）不受影响，只拦之后的 |
+| 取值不是正整数，或有多余的字段 | `400 invalid_request`，`problems` 指出哪一项 |
+| 不是平台管理员 | `403 permission_denied` |
+| 租户不存在 | `404 not_found` |
+
+审计里记一条 `tenant_quota_changed`，`data` 里是改之前（`before`）与改之后（`after`）的三项。
+
+目前没有删除租户的接口。
 
 ## API key
 

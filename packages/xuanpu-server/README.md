@@ -50,7 +50,7 @@ async for event in turn.stream.events():              # taifeng.EventMsg
 | 入口 | 内容 |
 | --- | --- |
 | `platform.authenticate(凭据)` | 凭据 → `Principal`。之后所有调用都带着它，租户边界由它给出 |
-| `platform.create_tenant` / `set_tenant_status` / `issue_key` / `revoke_key` | 租户与凭据 |
+| `platform.create_tenant` / `set_tenant_status` / `set_tenant_quota` / `issue_key` / `revoke_key` | 租户与凭据 |
 | `platform.put_secret` / `delete_secret`，`platform.vault` | 密钥 |
 | `platform.packages` | 业务包：`publish`、`activate`、`list_versions`、`active_version`、`resolve` |
 | `platform.sessions` | 会话：`create`、`get`、`list_sessions`、`send_message`、`resume`、`pending`、`replay`、`close` |

@@ -261,11 +261,28 @@ primary_master_key: k2          # 新写入的用 k2；k1 留着，旧密文还�
 | --- | --- |
 | 新建（可带配额） | `POST /v1/admin/tenants` |
 | 停用 / 启用 | `PUT /v1/admin/tenants/{id}/status`，`{"status": "suspended"}` 或 `"active"` |
+| 修改配额 | `PUT /v1/admin/tenants/{id}/quota`，整体替换（见下） |
 | 签发 API key | `POST /v1/admin/tenants/{id}/keys` |
 
 停用后，该租户的全部 API key 立即失效；已经在进行的那一轮对话会跑完。
 
-目前没有的：修改已有租户的配额、删除租户。配额要在新建时定好。
+改配额是**整体替换**：请求体里没给的项恢复为不限，不保留原值。只想调一项，先 `GET /v1/admin/tenants` 看现值，把另外两项照原样带上：
+
+```bash
+curl -X PUT localhost:8420/v1/admin/tenants/acme/quota \
+     -H "Authorization: Bearer $ROOT_KEY" -H 'Content-Type: application/json' \
+     -d '{"max_active_sessions": 200, "max_daily_tokens": 10000000}'
+# {"tenant_id":"acme","name":"Acme","status":"active","quota":{"max_active_sessions":200,"max_daily_tokens":10000000,"max_concurrent_turns":null},"created_at":1790898324.358114}
+
+curl -X PUT localhost:8420/v1/admin/tenants/acme/quota \
+     -H "Authorization: Bearer $ROOT_KEY" -H 'Content-Type: application/json' \
+     -d '{"max_daily_tokens": 0}'
+# {"error":{"code":"invalid_request","message":"请求参数不合法","problems":["body.max_daily_tokens：Input should be greater than or equal to 1"]}}
+```
+
+新值立即生效：配额每次检查都现读，下一次建会话、发消息就按新值。已经超出新上限的不受影响（活动会话不会被关掉），只拦之后的。每次修改在该租户的审计里记一条 `tenant_quota_changed`，带改之前与改之后的值。
+
+目前没有删除租户的接口。
 
 ## 备份
 
