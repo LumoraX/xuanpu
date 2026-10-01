@@ -47,6 +47,8 @@ class RecordingSandboxes:
         self.inner = inner
         self.opened: list[str] = []
         self.closed: list[str] = []
+        # 连接器沙盒开始收尾那一刻，它起过的进程各自是否还活着
+        self.alive_at_close: list[bool] = []
 
     async def open(self, package: Any, workspace: Path) -> Any:
         """开脚本沙盒并记下。"""
@@ -62,6 +64,8 @@ class RecordingSandboxes:
         original = handle.closer
 
         async def closer() -> None:
+            if role == "connectors":
+                self.alive_at_close = [p.returncode is None for p in handle.executor.processes]
             self.closed.append(role)
             await original()
 
@@ -128,21 +132,21 @@ def probe_report(world: Any) -> dict[str, Any]:
     return report
 
 
-async def connector_containers() -> list[str]:
-    """正在运行的、样例业务包的连接器容器：每行是「镜像 网络」。"""
+async def run_containers(run_label: str) -> list[str]:
+    """本次测试运行拉起、还在跑的容器：每行是「用途 版本 镜像 网络」。"""
     docker = shutil.which("docker")
     assert docker is not None
     done = await asyncio.to_thread(
         subprocess.run,  # noqa: S603 —— 参数全部来自测试代码
         [
             docker, "ps",
-            "--filter", "label=xuanpu.role=connectors",
-            "--filter", "label=xuanpu.package=support-desk",
-            "--format", "{{.Image}} {{.Networks}}",
+            "--filter", f"label={run_label}",
+            "--format",
+            '{{.Label "xuanpu.role"}} {{.Label "xuanpu.version"}} {{.Image}} {{.Networks}}',
         ],
         capture_output=True, text=True, timeout=60, check=True,
     )  # fmt: skip
-    return done.stdout.split("\n")[:-1]
+    return sorted(done.stdout.split("\n")[:-1])
 
 
 @pytest.mark.parametrize("world", ["local", "docker"], indirect=True)
@@ -152,6 +156,7 @@ async def test_connector_runs_inside_its_sandbox(
     step: Any,
     read_turn: Any,
     monkeypatch: pytest.MonkeyPatch,
+    docker_run_label: str,
 ) -> None:
     """连接器进程的 HOME 是它的工作目录；写工作目录之外被拒绝；宿主环境变量不进去。
 
@@ -173,8 +178,11 @@ async def test_connector_runs_inside_its_sandbox(
         assert output["home"] == str(workdir)
     else:
         assert output["home"] == sandbox.workspace_inside == "/workspace"
-        # 连接器容器用连接器镜像（缺省同脚本镜像），而且接着网
-        assert await connector_containers() == ["python:3.12-slim bridge"]
+        # 两个容器各带用途与版本标签；连接器容器接着网，脚本容器按清单断网
+        assert await run_containers(docker_run_label) == [
+            "connectors 1.0.0 python:3.12-slim bridge",
+            "scripts 1.0.0 python:3.12-slim none",
+        ]
     assert output["can_write_outside"] is False
     assert not (workdir.parent / "escape.txt").exists()
     assert output["inherited"] == []
@@ -277,17 +285,27 @@ async def test_no_connector_sandbox_without_stdio_connectors(
 async def test_connector_sandbox_closes_with_its_runtime(
     recorded: tuple[Any, RecordingSandboxes], step: Any, read_turn: Any
 ) -> None:
-    """回收运行时：先关连接器进程，再关连接器沙盒，最后关脚本沙盒。"""
+    """回收运行时：先关连接器进程，再关连接器沙盒，最后关脚本沙盒。
+
+    关连接器沙盒的时候，连接器进程已经退出了（是连接器集合把它关掉的，不是靠沙盒强杀）。
+    """
     world, sandboxes = recorded
     await world.publish()
     await invoke_connector(world, step, read_turn, {"name": "x"})
     runtime = only_runtime(world)
     assert sandboxes.opened == ["connectors", "scripts"]
     assert sandboxes.closed == []
+    original_close = runtime.connectors.close
+
+    async def close_connectors() -> None:
+        sandboxes.closed.append("connector-processes")
+        await original_close()
+
+    runtime.connectors.close = close_connectors  # type: ignore[method-assign]
 
     assert await world.platform.runtimes.evict(runtime.key) is True
-    assert sandboxes.closed == ["connectors", "scripts"]
-    assert runtime.connectors._stdio == []  # noqa: SLF001
+    assert sandboxes.closed == ["connector-processes", "connectors", "scripts"]
+    assert sandboxes.alive_at_close == [False]
 
 
 async def test_failed_assembly_closes_the_connector_sandbox(

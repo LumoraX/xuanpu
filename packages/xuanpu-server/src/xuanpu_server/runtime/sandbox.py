@@ -223,6 +223,7 @@ class DockerSandboxProvider:
         cpus: float | None = 1.0,
         docker_binary: str = "docker",
         connector_image: str | None = None,
+        labels: Mapping[str, str] | None = None,
     ) -> None:
         """
         Args:
@@ -233,6 +234,8 @@ class DockerSandboxProvider:
             docker_binary: docker 命令。
             connector_image: 连接器容器的镜像，须带 Python 3.9+ 与连接器需要的运行时；
                 None 时与 ``image`` 相同。
+            labels: 加在每个容器上的额外标签（例如部署标识，便于按部署清理）。与平台自己
+                的 ``xuanpu.*`` 标签重名时以平台的为准。
         """
         self._image = image
         self._connector_image = image if connector_image is None else connector_image
@@ -240,6 +243,7 @@ class DockerSandboxProvider:
         self._memory_mb = memory_mb
         self._cpus = cpus
         self._docker_binary = docker_binary
+        self._labels = {} if labels is None else dict(labels)
 
     async def open(self, package: ResolvedPackage, workspace: Path) -> SandboxHandle:
         """拉起脚本容器：业务包目录按相同路径只读挂载，工作区可写挂载。"""
@@ -248,7 +252,7 @@ class DockerSandboxProvider:
             workspace,
             image=self._image,
             network=package.manifest.spec.policy.sandbox.network,
-            labels={},
+            role="scripts",
         )
 
     async def open_connectors(self, package: ResolvedPackage, workspace: Path) -> SandboxHandle:
@@ -258,7 +262,7 @@ class DockerSandboxProvider:
             workspace,
             image=self._connector_image,
             network=True,
-            labels={"xuanpu.role": "connectors"},
+            role="connectors",
         )
 
     async def _launch(
@@ -268,9 +272,13 @@ class DockerSandboxProvider:
         *,
         image: str,
         network: bool,
-        labels: Mapping[str, str],
+        role: str,
     ) -> SandboxHandle:
-        """拉起一个容器：业务包目录按相同路径只读挂载，``workspace`` 可写挂载。"""
+        """拉起一个容器：业务包目录按相同路径只读挂载，``workspace`` 可写挂载。
+
+        容器带上租户、业务包名与版本、用途（``scripts`` / ``connectors``）几个标签，便于
+        事后按运行时查找与清理。
+        """
         await asyncio.to_thread(workspace.mkdir, parents=True, exist_ok=True)
         config = DockerSandboxConfig(
             image=image,
@@ -282,9 +290,11 @@ class DockerSandboxProvider:
             docker_binary=self._docker_binary,
             docker_env=self._docker_env,
             labels={
+                **self._labels,
                 "xuanpu.tenant": package.record.tenant_id,
                 "xuanpu.package": package.record.name,
-                **labels,
+                "xuanpu.version": package.record.version,
+                "xuanpu.role": role,
             },
         )
         try:

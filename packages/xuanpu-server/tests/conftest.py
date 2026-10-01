@@ -392,6 +392,16 @@ def local_sandboxes_fixture() -> Any:
     return local_sandboxes
 
 
+DOCKER_RUN_LABEL = ("xuanpu.test-run", secrets.token_hex(6))
+"""本次测试运行拉起的容器都带这个标签：按它找容器，不会碰到别处（或别的测试运行）的容器。"""
+
+
+@pytest.fixture
+def docker_run_label() -> str:
+    """``docker ps --filter label=…`` 用的本次测试运行的标签。"""
+    return "=".join(DOCKER_RUN_LABEL)
+
+
 def _sandbox_provider(kind: str) -> Any:
     """按参数选沙盒供给方。Docker 变体在没有 Docker 时跳过。"""
     if kind == "local":
@@ -401,7 +411,12 @@ def _sandbox_provider(kind: str) -> Any:
     env = {"PATH": os.environ["PATH"], "HOME": os.environ["HOME"]}
     if "DOCKER_HOST" in os.environ:
         env["DOCKER_HOST"] = os.environ["DOCKER_HOST"]
-    return DockerSandboxProvider(image="python:3.12-slim", docker_env=env, memory_mb=256)
+    return DockerSandboxProvider(
+        image="python:3.12-slim",
+        docker_env=env,
+        memory_mb=256,
+        labels=dict([DOCKER_RUN_LABEL]),
+    )
 
 
 async def open_world(

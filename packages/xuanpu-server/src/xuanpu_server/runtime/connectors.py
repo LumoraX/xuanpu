@@ -574,7 +574,6 @@ class ConnectorSet:
 
 
 __all__ = [
-    "DEFAULT_BASE_ENV",
     "ConnectorCallError",
     "ConnectorGate",
     "ConnectorSet",

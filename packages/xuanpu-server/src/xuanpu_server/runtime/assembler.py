@@ -17,7 +17,8 @@ import taifeng
 from taifeng_sandbox import python_script_executor, shell_script_executor
 
 from xuanpu_server.runtime.approval import build_policy
-from xuanpu_server.runtime.connectors import DEFAULT_BASE_ENV, ConnectorSet
+from xuanpu_server.runtime.connectors import ConnectorSet
+from xuanpu_server.runtime.sandbox import DEFAULT_BASE_ENV
 from xuanpu_server.tenancy import tenant_directory
 
 if TYPE_CHECKING:
