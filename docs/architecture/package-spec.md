@@ -126,7 +126,7 @@ spec:
 | `env` | stdio | 空 | 传给进程的环境变量。每项是 `{value: 字面量}` 或 `{secret: 密钥名}`，二选一 |
 | `openapi` | http | 必填 | OpenAPI 3.x 文档在包内的相对路径（YAML 或 JSON，最大 8 MiB） |
 | `baseUrl` | http | 文档 `servers` 的第一个绝对地址 | 接口的基地址，`http://` 或 `https://` 开头 |
-| `url` | remote | 必填 | MCP server 的端点地址，带主机名，`https://` 开头（试用可用 `http://`）；不能带用户名与口令 |
+| `url` | remote | 必填 | MCP server 的端点地址，带主机名，`https://` 开头（试用可用 `http://`）；端口须是合法数字；不能带用户名与口令，不能有空白与控制字符 |
 | `auth` | http、remote | 无（不需要凭据） | 见下文「HTTP 连接器」「远端 MCP 连接器」 |
 | `timeoutSeconds` | http、remote | `30` | 单次调用的超时，最大 600。另受平台的连接器超时约束，取小的 |
 
@@ -168,7 +168,7 @@ spec:
 | --- | --- |
 | 工具参数 | 路径、查询、头参数与请求体平铺成一个对象，请求体在 `body` 键下；`$ref` 已展开 |
 | 副作用分类 | 逐 operation 声明优先；否则 GET / HEAD 是 `read`，其余用连接器的 `effect`（默认 `external`） |
-| 凭据 | `auth.type`：`bearer`、`header`（配 `header`）、`query`（配 `name`）、`basic`（密钥取值形如 `用户:口令`）；取值只写密钥名 |
+| 凭据 | `auth.type`：`bearer`、`header`（配 `header`）、`query`（配 `name`）、`basic`（密钥取值形如 `用户:口令`）；取值只写密钥名。`header` 的头名限制见下文「凭据头」 |
 | 出口范围 | 主机由 `baseUrl`（或文档 `servers`）定死；路径参数整体转义；模型只能填声明过的参数 |
 | 响应 | 不跟随重定向；4xx / 5xx 连同响应体交给模型并记为出错；响应体上限 1 MiB，非文本类型只给占位 |
 | 不支持 | cookie 参数（忽略）、非 JSON 请求体、外部 `$ref`、`Authorization` 等由平台设置的头参数、需要换取令牌的 OAuth2 流程 |
@@ -199,12 +199,19 @@ connectors:
 | 字段 | `url` 必填；可选 `auth`、`timeoutSeconds`、`effect`、`tools`。不能写 `command`、`env`、`openapi`、`baseUrl` |
 | 工具名 | 与 stdio 连接器一样是 `mcp__<连接器名>__<工具名>`，skill 在 `tool_names` 里按这个名字引用 |
 | 地址 | 带主机名的 `https://` 地址；`http://` 只宜试用（凭据会明文经过网络）。地址里不能带用户名与口令，凭据写进 `auth` |
-| 凭据 | `auth.type` 只支持放在请求头里的两种：`bearer`（`Authorization: Bearer <密钥>`）、`header`（配 `header` 头名）；取值只写密钥名，平台在每次请求发出时从保管库取出 |
+| 凭据 | `auth.type` 只支持放在请求头里的两种：`bearer`（`Authorization: Bearer <密钥>`）、`header`（配 `header` 头名，限制见下文「凭据头」）；取值只写密钥名，平台在每次请求发出时从保管库取出 |
+| 校验提醒 | `http://` 地址又声明了 `auth`（凭据会明文经过网络）、地址带查询参数（不要把凭据放在地址里），`xuanpu validate` 各给一条提醒，不阻止发布 |
 | 副作用分类 | 逐工具声明优先，否则用连接器的 `effect`（默认 `external`）；不采信 server 自己声称的只读标注 |
 | 白名单 | `tools` 里声明的工具 server 必须提供，否则会话起不来；没声明的工具模型看不到 |
 | 超时 | 单次调用按 `timeoutSeconds` 与平台的连接器超时取小的；超时的调用记为 `connector_timeout` |
 
 远端 MCP 连接器与另外两种传输共用同一个闸门：白名单、审批、审计都一样。
+
+## 凭据头
+
+HTTP 连接器与远端 MCP 连接器把凭据放进请求头时，有共同的限制：
+
+- `auth.header`（`type: header` 时的头名）不能是 `Authorization`（请用 `type: bearer`），也不能是协议、连接管理或 MCP 传输自己用的头：`Host`、`Content-Type`、`Content-Length`、`Accept`、`Transfer-Encoding`、`Connection`、`Keep-Alive`、`Proxy-Connection`、`TE`、`Trailer`、`Upgrade`、`Mcp-Session-Id`、`MCP-Protocol-Version`、`Last-Event-ID`。不分大小写，写了在校验时报错。
 
 ## 归档
 

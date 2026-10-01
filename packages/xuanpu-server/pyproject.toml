@@ -20,7 +20,7 @@ dependencies = [
     "taifeng>=2026.10.1.10",
     "taifeng-sandbox",
     "taifeng-stores",
-    "xuanpu-spec",
+    "xuanpu-spec>=2026.10.2.7",
     "pydantic>=2.6",
     "pyyaml>=6.0",
     # HTTP 接入层与密钥加密采用成熟组件（ADR 0003）

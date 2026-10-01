@@ -272,6 +272,81 @@ def test_remote_connector_needs_an_http_url() -> None:
 
 
 @pytest.mark.parametrize(
+    "url",
+    [
+        "https://mcp.example.com:abc/mcp",
+        "https://mcp.example.com:99999/mcp",
+        "https://exa mple.com/mcp",
+        "https://mcp.example.com/m cp",
+        "https://mcp.example.com/mcp\t",
+        "https://mcp.example.com/\x01mcp",
+        "https://mcp\u200b.example.com/mcp",
+        "https://[::1/mcp",
+    ],
+)
+def test_remote_url_must_parse_cleanly(url: str) -> None:
+    """url 的端口必须是合法数字；不能有空白、控制字符与不可见字符；方括号要配对。"""
+    with pytest.raises(ValidationError, match="url"):
+        ConnectorSpec.model_validate({"name": "d", "transport": "remote", "url": url})
+
+
+def test_remote_url_with_port_and_query_is_accepted() -> None:
+    """带端口与查询参数的地址是合法的（查询参数在包级校验里另给提醒）。"""
+    spec = ConnectorSpec.model_validate(
+        {"name": "d", "transport": "remote", "url": "https://mcp.example.com:8443/mcp?tenant=a"}
+    )
+    assert spec.url == "https://mcp.example.com:8443/mcp?tenant=a"
+
+
+RESERVED_HEADERS = [
+    "Host",
+    "content-type",
+    "Content-Length",
+    "ACCEPT",
+    "Transfer-Encoding",
+    "connection",
+    "Keep-Alive",
+    "Proxy-Connection",
+    "TE",
+    "Trailer",
+    "Upgrade",
+    "Mcp-Session-Id",
+    "MCP-Protocol-Version",
+    "last-event-id",
+]
+
+
+@pytest.mark.parametrize("header", RESERVED_HEADERS)
+@pytest.mark.parametrize(
+    "base",
+    [
+        {"name": "d", "transport": "remote", "url": "https://x/mcp"},
+        {"name": "d", "transport": "http", "openapi": "a.yaml"},
+    ],
+    ids=["remote", "http"],
+)
+def test_auth_header_cannot_be_a_protocol_header(base: dict[str, Any], header: str) -> None:
+    """auth 的 header 不能是协议、连接管理或 MCP 传输自己用的头（不分大小写），两种传输都一样。"""
+    auth = {"type": "header", "secret": "k", "header": header}
+    with pytest.raises(ValidationError, match="header 不能是"):
+        ConnectorSpec.model_validate({**base, "auth": auth})
+
+
+def test_ordinary_auth_headers_are_accepted() -> None:
+    """普通的自定义头照常可用。"""
+    for header in ("X-Api-Key", "Api-Key", "X-Host-Token"):
+        spec = ConnectorSpec.model_validate(
+            {
+                "name": "d",
+                "transport": "remote",
+                "url": "https://x/mcp",
+                "auth": {"type": "header", "secret": "k", "header": header},
+            }
+        )
+        assert spec.auth is not None and spec.auth.header == header
+
+
+@pytest.mark.parametrize(
     "url", ["https://user:pass@mcp.example.com/mcp", "https://token@mcp.example.com/mcp"]
 )
 def test_remote_url_cannot_carry_credentials(url: str) -> None:

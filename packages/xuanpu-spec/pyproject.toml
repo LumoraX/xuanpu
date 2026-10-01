@@ -1,6 +1,6 @@
 [project]
 name = "xuanpu-spec"
-version = "2026.10.2.6"
+version = "2026.10.2.7"
 description = "xuanpu 业务包规范 —— skills、连接器、策略、评测用例的清单 schema"
 readme = "README.md"
 requires-python = ">=3.12"

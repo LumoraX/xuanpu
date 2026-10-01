@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import pytest
 from xuanpu_spec import validate_package
 
 if TYPE_CHECKING:
@@ -150,6 +151,7 @@ def test_skill_references_remote_connector_tool(
         )
     )
     assert report.ok, report.errors
+    assert report.warnings == ()
     assert report.manifest is not None
     assert report.manifest.spec.secret_names == ("crm-token", "docs-token")
 
@@ -172,6 +174,34 @@ def test_remote_connector_tool_with_api_prefix_rejected(
         "api__docs__search" in error and "传输方式不符" in error and "mcp__docs__" in error
         for error in report.errors
     )
+
+
+@pytest.mark.parametrize(
+    ("url", "auth", "fragments"),
+    [
+        ("http://mcp.example.com/mcp", "{type: bearer, secret: docs-token}", ["http://"]),
+        ("http://mcp.example.com/mcp", "null", []),
+        ("https://mcp.example.com/mcp?key=abc", "null", ["查询参数"]),
+        (
+            "http://mcp.example.com/mcp?k=1",
+            "{type: bearer, secret: docs-token}",
+            ["http://", "查询参数"],
+        ),
+    ],
+)
+def test_remote_connector_url_warnings(
+    make_package: Callable[..., Path], samples: Any, url: str, auth: str, fragments: list[str]
+) -> None:
+    """remote 连接器：http:// 又带凭据、url 带查询参数，各给一条提醒，但不阻止发布。"""
+    connector = REMOTE_CONNECTOR.replace("https://mcp.example.com/mcp", url).replace(
+        "{type: bearer, secret: docs-token}", auth
+    )
+    manifest = samples.manifest.replace("  evals:", connector + "  evals:")
+    report = validate_package(make_package(manifest=manifest))
+    assert report.ok, report.errors
+    assert len(report.warnings) == len(fragments)
+    for fragment, warning in zip(fragments, report.warnings, strict=True):
+        assert "'docs'" in warning and fragment in warning
 
 
 def test_skills_dir_cannot_escape_package(make_package: Callable[..., Path], samples: Any) -> None:

@@ -142,6 +142,27 @@ class ConnectorTool(_Strict):
 
 HttpAuthType = Literal["bearer", "header", "query", "basic"]
 
+# auth.header 不能用的头名（不分大小写）：由 HTTP 协议本身、连接管理或 MCP 传输使用的头。
+# 凭据写进这些头会改写请求的含义（目标主机、报文长度、会话），而不是多带一条凭据
+_RESERVED_HEADERS = frozenset(
+    {
+        "host",
+        "content-type",
+        "content-length",
+        "accept",
+        "transfer-encoding",
+        "connection",
+        "keep-alive",
+        "proxy-connection",
+        "te",
+        "trailer",
+        "upgrade",
+        "mcp-session-id",
+        "mcp-protocol-version",
+        "last-event-id",
+    }
+)
+
 
 class HttpAuth(_Strict):
     """HTTP 连接器的凭据注入方式。取值一律来自密钥保管库，清单里只写名字。
@@ -150,7 +171,9 @@ class HttpAuth(_Strict):
         type: ``bearer`` 放 ``Authorization: Bearer <密钥>``；``header`` 放到 ``header`` 指定的头；
             ``query`` 放到 ``name`` 指定的查询参数；``basic`` 的密钥取值形如 ``用户:口令``。
         secret: 密钥名。
-        header: ``type=header`` 时的头名。
+        header: ``type=header`` 时的头名。不能是 ``Authorization``（用 ``bearer``），也不能是
+            协议、连接管理或 MCP 传输自己用的头（``Host``、``Content-Type``、``Mcp-Session-Id``
+            等，见 ``_RESERVED_HEADERS``），不分大小写。
         name: ``type=query`` 时的参数名。
     """
 
@@ -167,6 +190,8 @@ class HttpAuth(_Strict):
             raise ValueError("type 为 query 时必须给 name")
         if self.type == "header" and self.header and self.header.lower() == "authorization":
             raise ValueError("Authorization 头请用 type: bearer")
+        if self.type == "header" and self.header and self.header.lower() in _RESERVED_HEADERS:
+            raise ValueError(f"header 不能是协议、连接管理或 MCP 传输自己用的头：{self.header}")
         return self
 
 
@@ -178,10 +203,18 @@ _REMOTE_AUTH_TYPES = ("bearer", "header")
 
 
 def _check_remote_url(url: str | None) -> None:
-    """remote 连接器的地址：必填，带主机名的 ``http://`` / ``https://``，不带用户名与口令。"""
+    """remote 连接器的地址：必填，带主机名的 ``http://`` / ``https://``，端口是数字，不带用户名
+    与口令，没有空白与控制字符。"""
     if url is None:
         raise ValueError("remote 连接器必须给 url")
-    parts = urlsplit(url)
+    if any(char.isspace() or not char.isprintable() for char in url):
+        raise ValueError("url 里不能有空白或控制字符")
+    try:
+        parts = urlsplit(url)
+        # 端口在取用时才解析：不是数字或超出范围都在这里报出来
+        _ = parts.port
+    except ValueError as exc:
+        raise ValueError(f"url 不是合法的地址：{exc}") from None
     if parts.scheme not in ("http", "https") or not parts.hostname:
         raise ValueError("url 必须是带主机名、以 http:// 或 https:// 开头的地址")
     if "@" in parts.netloc:

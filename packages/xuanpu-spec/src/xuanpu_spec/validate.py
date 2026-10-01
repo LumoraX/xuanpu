@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
+from urllib.parse import urlsplit
 
 from xuanpu_spec.errors import ManifestError
 from xuanpu_spec.loader import load_manifest
@@ -168,6 +169,22 @@ def _check_http_connector(
     return document
 
 
+def _check_remote_connector(connector: ConnectorSpec, findings: _Findings) -> None:
+    """remote 连接器：地址的写法里有两种值得提醒的情形（不阻止发布）。"""
+    assert connector.url is not None
+    parts = urlsplit(connector.url)
+    if parts.scheme == "http" and connector.auth is not None:
+        findings.warnings.append(
+            f"连接器 {connector.name!r} 的 url 用的是 http://，凭据会明文经过网络；"
+            "只宜试用，正式使用请换成 https://"
+        )
+    if parts.query:
+        findings.warnings.append(
+            f"连接器 {connector.name!r} 的 url 带查询参数：不要把凭据放在 url 里，"
+            "凭据请写进 auth（只写密钥名）"
+        )
+
+
 def _check_policy(manifest: PackageManifest, findings: _Findings) -> None:
     """对偏宽松的策略组合给出提醒。"""
     policy = manifest.spec.policy
@@ -195,6 +212,8 @@ def validate_package(root: Path) -> ValidationReport:
     for connector in manifest.spec.connectors:
         if connector.transport == "http":
             _check_http_connector(root, connector, findings)
+        elif connector.transport == "remote":
+            _check_remote_connector(connector, findings)
     _check_policy(manifest, findings)
     return ValidationReport(
         manifest=manifest, errors=tuple(findings.errors), warnings=tuple(findings.warnings)

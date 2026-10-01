@@ -2159,7 +2159,7 @@ provides-extras = ["postgres", "s3"]
 
 [[package]]
 name = "xuanpu-spec"
-version = "2026.10.2.6"
+version = "2026.10.2.7"
 source = { editable = "packages/xuanpu-spec" }
 dependencies = [
     { name = "pydantic" },
