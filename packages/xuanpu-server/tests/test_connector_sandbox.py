@@ -17,11 +17,11 @@ from typing import TYPE_CHECKING, Any
 import pytest
 import yaml
 from xuanpu_server.controlplane import AuditQuery, InMemoryControlPlane
-from xuanpu_server.errors import RuntimeUnavailableError
+from xuanpu_server.errors import PackageInvalidError, RuntimeUnavailableError
 from xuanpu_server.runtime.connectors import ConnectorSet
 from xuanpu_server.tenancy import tenant_directory
 from xuanpu_spec import pack_package
-from xuanpu_spec.manifest import ConnectorSpec
+from xuanpu_spec.manifest import ConnectorSpec, EnvValue
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -378,3 +378,38 @@ tool_names: [api__crm__listCustomers]
 """
 
 FAQ = "---\nname: faq\ndescription: 常见问题\nversion: 1.0.0\ntype: atomic\n---\n正文\n"
+
+
+class RefusingExecutor:
+    """记下有没有人让它起过进程；真被调用就报错。"""
+
+    def __init__(self) -> None:
+        self.started: list[Any] = []
+
+    async def start(self, spec: Any) -> Any:
+        """不该走到这里。"""
+        self.started.append(spec)
+        raise AssertionError("不该启动连接器进程")
+
+
+@pytest.mark.parametrize("name", ["LD_PRELOAD", "ld_library_path", "DYLD_INSERT_LIBRARIES"])
+async def test_loader_variables_never_reach_the_launcher(tmp_path: Path, name: str) -> None:
+    """清单里的动态链接器变量（绕过规范校验构造的也一样）在起进程之前就被拒绝。
+
+    本机沙盒的启动器在沙盒之外拿到连接器的整份环境，这类变量能让它在沙盒外执行代码。
+    """
+    spec = ConnectorSpec.model_construct(
+        name="crm",
+        transport="stdio",
+        command=("python3", "server.py"),
+        env={name: EnvValue(value="/tmp/evil.so"), "CRM_REGION": EnvValue(value="cn")},
+        tools=(),
+    )
+    executor = RefusingExecutor()
+    connectors = ConnectorSet(
+        tenant_id="acme", vault=None, audit=None, submissions=None, executor=executor
+    )
+    with pytest.raises(PackageInvalidError, match="动态链接器") as caught:
+        await connectors.start(spec, package_root=tmp_path)
+    assert name in str(caught.value)
+    assert executor.started == []

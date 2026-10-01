@@ -104,6 +104,10 @@ def test_connector_without_tool_list_allows_all_with_default_effect(samples: Any
         ({"spec__connectors__0__env": {"K": {"value": "x", "secret": "s"}}}, "只能给一个"),
         ({"spec__connectors__0__env": {"K": {}}}, "只能给一个"),
         ({"spec__connectors__0__env": {"K": {"secret": "Bad Name"}}}, "secret"),
+        ({"spec__connectors__0__env": {"LD_PRELOAD": {"value": "/x.so"}}}, "LD_PRELOAD"),
+        ({"spec__connectors__0__env": {"ld_library_path": {"value": "/x"}}}, "动态链接器"),
+        ({"spec__connectors__0__env": {"DYLD_INSERT_LIBRARIES": {"value": "/x"}}}, "DYLD_"),
+        ({"spec__connectors__0__env": {"Dyld_Fallback_Library_Path": {"value": "/x"}}}, "沙盒外"),
         ({"spec__evals__0__entry": "not-an-entry"}, "不在 entries"),
         ({"spec__evals__0__input": ""}, "input"),
     ],
@@ -113,6 +117,13 @@ def test_invalid_fields_rejected(changes: dict[str, object], fragment: str, samp
     with pytest.raises(ManifestError) as caught:
         parse_manifest(_edited(samples.manifest, **changes))
     assert fragment in str(caught.value)
+
+
+def test_loader_variable_check_only_looks_at_the_prefix(samples: Any) -> None:
+    """只拦以 LD_ / DYLD_ 开头的名字；名字中间含有这几个字母的照常放行。"""
+    env = {name: {"value": "x"} for name in ("OLD_PATH", "WORLD_LD_X", "LDAP_URL", "XDYLD_Y")}
+    manifest = parse_manifest(_edited(samples.manifest, spec__connectors__0__env=env))
+    assert set(manifest.spec.connectors[0].env) == set(env)
 
 
 @pytest.mark.parametrize(

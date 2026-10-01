@@ -43,6 +43,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# 动态链接器读取的变量前缀，不分大小写。本机沙盒的启动器（bwrap 等）在沙盒之外拿到连接器的
+# 整份环境，这类变量能让它在沙盒外加载任意代码。规范校验里有同一道检查；这里再拦一次，
+# 挡住规范加上这道检查之前发布的包，以及绕过规范构造出来的清单
+_LOADER_ENV_PREFIXES = ("LD_", "DYLD_")
+
 _MAX_OUTPUT_CHARS = 64 * 1024
 
 # 副作用分类 → 内核的 effect 分类（崩溃恢复时据此决定能否安全重发）
@@ -264,7 +269,7 @@ class ConnectorSet:
             SecretMissingError: 引用的密钥尚未配置。
             RuntimeUnavailableError: stdio 连接器没有连接器沙盒可用、起不来，或没有提供
                 清单里声明的工具。
-            PackageInvalidError: OpenAPI 文档读不出来。
+            PackageInvalidError: OpenAPI 文档读不出来，或 stdio 连接器要设置动态链接器变量。
         """
         if spec.transport == "http":
             found = await self._start_http(spec, package_root)
@@ -274,7 +279,19 @@ class ConnectorSet:
         return {spec.tool_name(item.tool): item.effect for item in found}
 
     async def _environment(self, spec: ConnectorSpec) -> dict[str, str]:
-        """连接器进程的完整环境：基础环境加清单声明的变量，密钥在此解析成明文。"""
+        """连接器进程的完整环境：基础环境加清单声明的变量，密钥在此解析成明文。
+
+        Raises:
+            PackageInvalidError: 清单要设置动态链接器变量（``LD_*``、``DYLD_*``）。
+            SecretMissingError: 引用的密钥尚未配置。
+        """
+        blocked = sorted(name for name in spec.env if name.upper().startswith(_LOADER_ENV_PREFIXES))
+        if blocked:
+            raise PackageInvalidError(
+                f"连接器 {spec.name!r} 的 env 不能设置动态链接器变量（LD_*、DYLD_*）："
+                f"{', '.join(blocked)}；连接器进程由沙盒外的启动器拉起，这类变量会让它在沙盒之外"
+                "加载任意代码"
+            )
         env = dict(self._base_env)
         for name, item in spec.env.items():
             if item.secret is not None:

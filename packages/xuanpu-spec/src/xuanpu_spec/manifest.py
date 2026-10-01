@@ -30,6 +30,9 @@ _VERSION_PATTERN = (
 _IDENT_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"
 # 环境变量名
 _ENV_PATTERN = r"^[A-Za-z_][A-Za-z0-9_]{0,127}$"
+# 动态链接器读取的变量前缀（Linux 的 LD_*、macOS 的 DYLD_*），不分大小写一律拒绝：
+# 本机沙盒的启动器（bwrap 等）在沙盒之外拿到这份环境，这类变量能让它在沙盒外加载任意代码
+_LOADER_ENV_PREFIXES = ("LD_", "DYLD_")
 # 包内相对路径：不以 / 开头，逐段检查在校验器里做
 _PATH_PATTERN = r"^[A-Za-z0-9_.][A-Za-z0-9_./-]{0,255}$"
 
@@ -218,6 +221,17 @@ class ConnectorSpec(_Strict):
                 raise ValueError("command / env 只用于 stdio 连接器")
             if self.base_url is not None and not self.base_url.startswith(("http://", "https://")):
                 raise ValueError("baseUrl 必须以 http:// 或 https:// 开头")
+        return self
+
+    @model_validator(mode="after")
+    def _no_loader_variables(self) -> ConnectorSpec:
+        """拒绝动态链接器变量：本机沙盒的启动器在沙盒之外解释它们，等于在沙盒外执行代码。"""
+        blocked = sorted(name for name in self.env if name.upper().startswith(_LOADER_ENV_PREFIXES))
+        if blocked:
+            raise ValueError(
+                f"env 不能设置动态链接器变量（LD_*、DYLD_*，不分大小写）：{', '.join(blocked)}。"
+                "连接器进程由沙盒外的启动器拉起，这类变量会让启动器在沙盒之外加载任意代码"
+            )
         return self
 
     @property
