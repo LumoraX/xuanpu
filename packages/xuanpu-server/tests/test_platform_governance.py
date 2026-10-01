@@ -573,3 +573,79 @@ async def test_expired_lease_can_be_taken_over(world: Any, step: Any) -> None:
     finally:
         await survivor.close()
         await crashed.close()
+
+
+async def _lease_taken_by_another(world: Any, session_id: str, clock: dict[str, float]) -> None:
+    """时钟拨过租约期限，另一个实例趁机拿走会话的租约。"""
+    clock["now"] = 1_061.0
+    await world.platform.store.acquire_lease(
+        "acme", session_id, owner="inst-other", now=clock["now"], ttl_seconds=60
+    )
+
+
+async def _assert_not_held(world: Any, holder: Platform, session_id: str) -> None:
+    """``holder`` 没有持有这个会话：不在本实例的会话里，没有采样，线程也没有记到会话上。"""
+    assert holder.sessions._live == {}  # noqa: SLF001
+    assert world.models.requests == []
+    record = await world.platform.store.get_session("acme", session_id)
+    assert record is not None
+    assert (record.owner, record.thread_id) == ("inst-other", None)
+    sent = await world.platform.store.query_audit(
+        "acme", AuditQuery(kind="message_sent", session_id=session_id)
+    )
+    assert sent == []
+
+
+async def test_lease_lost_while_assembling_is_not_used(
+    world: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """组装运行时比租约还久、期间别的实例拿走了租约：这次请求失败，不续接、不提交任何一轮。"""
+    await world.publish()
+    session = await world.platform.sessions.create(world.member, package="support-desk")
+    clock = {"now": 1_000.0}
+    slow = _another_instance(world, "inst-slow", now=lambda: clock["now"], lease_seconds=60)
+    create_client = world.models.create
+
+    async def assemble_slowly(tenant_id: str, tier: str) -> Any:
+        # 组装运行时要取模型客户端：在这里耗掉整个租约期限
+        await _lease_taken_by_another(world, session.session_id, clock)
+        return await create_client(tenant_id, tier)
+
+    monkeypatch.setattr(world.models, "create", assemble_slowly)
+    try:
+        with pytest.raises(SessionBusyError) as caught:
+            await slow.sessions.send_message(world.member, session.session_id, "你好")
+        assert caught.value.owner == "inst-other"
+        await _assert_not_held(world, slow, session.session_id)
+        runtime = next(iter(slow.runtimes._runtimes.values()))  # noqa: SLF001
+        assert runtime.pool.introspect() == {}  # 没有为它建引擎
+    finally:
+        await slow.close()
+
+
+async def test_lease_lost_while_starting_the_engine_is_not_used(
+    world: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """建引擎（续接历史）期间租约被拿走：刚建的引擎被关掉，不放进本实例持有的会话里。"""
+    await world.publish()
+    session = await world.platform.sessions.create(world.member, package="support-desk")
+    clock = {"now": 1_000.0}
+    slow = _another_instance(world, "inst-slow", now=lambda: clock["now"], lease_seconds=60)
+    try:
+        resolved = await slow.packages.resolve("acme", "support-desk", None)
+        runtime = await slow.runtimes.get(resolved)
+        get_or_create = runtime.pool.get_or_create
+
+        async def start_slowly(**kwargs: Any) -> Any:
+            engine = await get_or_create(**kwargs)
+            await _lease_taken_by_another(world, session.session_id, clock)
+            return engine
+
+        monkeypatch.setattr(runtime.pool, "get_or_create", start_slowly)
+        with pytest.raises(SessionBusyError) as caught:
+            await slow.sessions.send_message(world.member, session.session_id, "你好")
+        assert caught.value.owner == "inst-other"
+        await _assert_not_held(world, slow, session.session_id)
+        assert runtime.pool.introspect() == {}  # 建好的引擎已经关掉
+    finally:
+        await slow.close()

@@ -4,6 +4,19 @@
 持有者定期续期；持有者崩溃后租约到期，别的实例才能接手，并从会话存储里续接。
 会话存储放在哪里由状态面决定：postgres 状态面下在库里，各实例各用各的数据目录；
 local 状态面下是数据目录里的本机文件，跨实例接手就得共用数据目录。
+
+准备引擎（解包、组装运行时、续接历史）期间没人续期，所以续接之前、放进本实例之前
+各确认一次持有权；确认失败就丢掉刚建的引擎并上抛，不在别人的租约下写。
+
+已知限制：
+
+- 续期间隔受维护耗时影响。续期与释放空闲会话、回收空闲运行时在同一个维护循环里
+  串行执行，实际间隔是「租约时长的三分之一 + 一次维护的耗时」；维护卡住（关闭运行时
+  很慢、控制面调用迟迟不返回）超过「期限减续期间隔」时，租约可能在持有者还在写时到期。
+- 租约期限按各实例自己的墙钟判断（写入与比较用的都是调用方给的时间），依赖 NTP：
+  两个实例的时钟偏差超过「期限减续期间隔」时，后来者可能在原持有者还在续期时拿到租约，
+  直到原持有者下一次续期失败放手为止，两边可能短暂同时写。
+- 存储层没有 fencing：会话存储不核对租约，单写者完全靠持有者及时察觉、及时停写。
 """
 
 from __future__ import annotations
@@ -29,7 +42,7 @@ from xuanpu_server.ids import new_id
 from xuanpu_server.runtime.events import EngineEventHub, SubmissionIndex, TurnStream
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable
 
     from xuanpu_server.audit import AuditLog
     from xuanpu_server.controlplane.store import ControlPlaneStore
@@ -252,13 +265,7 @@ class SessionManager:
             live = self._live.get(key)
             if live is not None:
                 return live
-            await self._store.acquire_lease(
-                record.tenant_id,
-                record.session_id,
-                owner=self._instance,
-                now=self._now(),
-                ttl_seconds=self._lease_seconds,
-            )
+            await self._hold(record)
             try:
                 live = await self._start_engine(record)
             except BaseException:
@@ -266,13 +273,64 @@ class SessionManager:
                     record.tenant_id, record.session_id, owner=self._instance
                 )
                 raise
+            try:
+                # 准备引擎期间没人续期，租约可能已经过期、被别人拿走：放进来之前再确认一次
+                await self._hold(record)
+                live.record = await self._bind_thread(live)
+            except BaseException:
+                await self._discard(live)
+                raise
             self._live[key] = live
             return live
 
+    async def _hold(self, record: SessionRecord) -> None:
+        """取得或续上本实例对会话的租约；被别的实例持有时抛 ``SessionBusyError``。"""
+        await self._store.acquire_lease(
+            record.tenant_id,
+            record.session_id,
+            owner=self._instance,
+            now=self._now(),
+            ttl_seconds=self._lease_seconds,
+        )
+
+    async def _bind_thread(self, live: _LiveSession) -> SessionRecord:
+        """确认持有之后，才把引擎的线程登记到会话上（避免拿过期租约改写别人的线程）。"""
+        record, thread_id = live.record, live.engine.thread_id
+        self._submissions.register_thread(thread_id, record.session_id)
+        if record.thread_id == thread_id:
+            return record
+        return await self._store.update_session(
+            record.tenant_id, record.session_id, at=self._now(), thread_id=thread_id
+        )
+
+    async def _discard(self, live: _LiveSession) -> None:
+        """丢掉刚准备好、还没放进本实例的会话：关引擎与事件枢纽，放弃租约（若还在手里）。
+
+        按续期失败处理。收尾某一步失败只记日志、继续后面的，不盖住让它被丢掉的那个异常。
+        """
+        record = live.record
+        steps: list[tuple[str, Callable[[], Awaitable[object]]]] = [
+            ("引擎", lambda: live.runtime.pool.release(record.session_id, force=True)),
+            ("事件枢纽", live.hub.close),
+            (
+                "租约",
+                lambda: self._store.release_lease(
+                    record.tenant_id, record.session_id, owner=self._instance
+                ),
+            ),
+        ]
+        for name, step in steps:
+            try:
+                await step()
+            except Exception:
+                logger.exception("丢弃会话 %s 时收尾%s失败", record.session_id, name)
+
     async def _start_engine(self, record: SessionRecord) -> _LiveSession:
-        """创建（或从存储里续接）引擎，并接上事件枢纽。"""
+        """创建（或从存储里续接）引擎，并接上事件枢纽。线程在确认持有之后才登记到会话上。"""
         package = await self._packages.resolve(record.tenant_id, record.package, record.version)
         runtime = await self._runtimes.get(package)
+        # 组装运行时可能比租约还久：续接（可能回填悬空的工具调用、写进存储）之前先确认持有
+        await self._hold(record)
         engine = await runtime.pool.get_or_create(
             session_id=record.session_id,
             entry_skill_id=record.entry,
@@ -296,11 +354,6 @@ class SessionManager:
             on_turn_end=turn_ended,
         )
         await hub.start()
-        self._submissions.register_thread(engine.thread_id, record.session_id)
-        if record.thread_id != engine.thread_id:
-            record = await self._store.update_session(
-                record.tenant_id, record.session_id, at=self._now(), thread_id=engine.thread_id
-            )
         return _LiveSession(
             record=record, runtime=runtime, engine=engine, hub=hub, last_used=self._now()
         )
