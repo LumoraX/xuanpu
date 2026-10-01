@@ -105,6 +105,15 @@ class RuntimeUnavailableError(PlatformError):
     status = 503
 
 
+class LeaseInterruptedError(RuntimeUnavailableError):
+    """本实例对会话的持有中断过：上一次确认的租约到期之后才再次确认，或会话在此期间被改过。
+
+    中间可能有别的实例接手、写过、又放了手，本实例刚准备的引擎里的历史不可信，这次请求
+    作废。直接重试即可（重试时从存储重新续接），所以对外与运行时暂不可用相同：503
+    ``runtime_unavailable``。
+    """
+
+
 class SchemaError(RuntimeError):
     """控制面表结构的迁移失败，或表结构落后于代码要求。"""
 
@@ -113,6 +122,7 @@ __all__ = [
     "AuthenticationError",
     "ConflictError",
     "InvalidRequestError",
+    "LeaseInterruptedError",
     "NotFoundError",
     "PackageInvalidError",
     "PermissionDeniedError",

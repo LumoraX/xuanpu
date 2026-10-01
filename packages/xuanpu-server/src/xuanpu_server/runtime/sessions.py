@@ -6,7 +6,9 @@
 local 状态面下是数据目录里的本机文件，跨实例接手就得共用数据目录。
 
 准备引擎（解包、组装运行时、续接历史）期间没人续期，所以续接之前、放进本实例之前
-各确认一次持有权；确认失败就丢掉刚建的引擎并上抛，不在别人的租约下写。
+各确认一次持有权，并改用确认时拿到的最新会话记录：这期间别的实例可能接手过（建了线程、
+写过几轮）或关闭了会话。确认失败就丢掉刚建的引擎并上抛，不在别人的租约下写，也不拿
+过时的记录续接。租约中途到期过（哪怕又续上了）同样算失败，见 ``leases`` 模块。
 
 已知限制：
 
@@ -34,6 +36,7 @@ from xuanpu_server.controlplane.models import SessionRecord
 from xuanpu_server.errors import (
     ConflictError,
     InvalidRequestError,
+    LeaseInterruptedError,
     NotFoundError,
     QuotaExceededError,
     RuntimeUnavailableError,
@@ -89,6 +92,12 @@ class _LiveSession:
     def idle(self) -> bool:
         """是否没有进行中的对话。"""
         return not self.in_flight
+
+
+def _require_active(record: SessionRecord) -> None:
+    """会话已关闭就不能再开引擎、再对话。"""
+    if record.status != "active":
+        raise ConflictError(f"会话 {record.session_id!r} 已关闭")
 
 
 @dataclass(frozen=True)
@@ -226,31 +235,38 @@ class SessionManager:
             live = self._live.get(key)
             if live is not None:
                 return live
-            await self._leases.hold(record)
+            held = await self._leases.hold(record)
             try:
-                live = await self._start_engine(record)
+                live = await self._start_engine(held)
             except BaseException:
-                await self._leases.release(record)
+                await self._leases.release(held)
                 raise
             try:
                 # 准备引擎期间没人续期，租约可能已经过期、被别人拿走：放进来之前再确认一次
-                await self._leases.confirm(record)
-                live.record = await self._bind_thread(live)
+                live.record = await self._bind_thread(live, await self._leases.confirm(live.record))
             except BaseException:
                 await self._discard(live)
                 raise
             self._live[key] = live
             return live
 
-    async def _bind_thread(self, live: _LiveSession) -> SessionRecord:
-        """确认持有之后，才把引擎的线程登记到会话上（避免拿过期租约改写别人的线程）。"""
-        record, thread_id = live.record, live.engine.thread_id
-        self._submissions.register_thread(thread_id, record.session_id)
-        if record.thread_id == thread_id:
-            return record
-        return await self._store.update_session(
-            record.tenant_id, record.session_id, at=self._now(), thread_id=thread_id
-        )
+    async def _bind_thread(self, live: _LiveSession, fresh: SessionRecord) -> SessionRecord:
+        """确认持有之后，才把引擎的线程登记到会话上（避免拿过期租约改写别人的线程）。
+
+        Args:
+            live: 刚准备好的会话。
+            fresh: 刚才确认持有时拿到的最新会话记录。
+        """
+        _require_active(fresh)
+        thread_id = live.engine.thread_id
+        if fresh.thread_id not in (None, thread_id):
+            raise LeaseInterruptedError(f"会话 {fresh.session_id!r} 在准备期间换了线程，请重试")
+        if fresh.thread_id is None:
+            fresh = await self._store.update_session(
+                fresh.tenant_id, fresh.session_id, at=self._now(), thread_id=thread_id
+            )
+        self._submissions.register_thread(thread_id, fresh.session_id)
+        return fresh
 
     async def _discard(self, live: _LiveSession) -> None:
         """丢掉刚准备好、还没放进本实例的会话：关引擎与事件枢纽，放弃租约（若还在手里）。
@@ -269,12 +285,18 @@ class SessionManager:
             except Exception:
                 logger.exception("丢弃会话 %s 时收尾%s失败", record.session_id, name)
 
-    async def _start_engine(self, record: SessionRecord) -> _LiveSession:
-        """创建（或从存储里续接）引擎，并接上事件枢纽。线程在确认持有之后才登记到会话上。"""
-        package = await self._packages.resolve(record.tenant_id, record.package, record.version)
+    async def _start_engine(self, held: SessionRecord) -> _LiveSession:
+        """创建（或从存储里续接）引擎，并接上事件枢纽。线程在确认持有之后才登记到会话上。
+
+        Args:
+            held: 取得持有权时拿到的会话记录。
+        """
+        package = await self._packages.resolve(held.tenant_id, held.package, held.version)
         runtime = await self._runtimes.get(package)
-        # 组装运行时可能比租约还久：续接（可能回填悬空的工具调用、写进存储）之前先确认持有
-        await self._leases.confirm(record)
+        # 组装运行时可能比租约还久：续接（可能回填悬空的工具调用、写进存储）之前先确认持有，
+        # 并改用最新记录——这期间别的实例可能接手过（建了线程）或关闭了会话
+        record = await self._leases.confirm(held)
+        _require_active(record)
         engine = await runtime.pool.get_or_create(
             session_id=record.session_id,
             entry_skill_id=record.entry,
@@ -305,8 +327,7 @@ class SessionManager:
     async def _active(self, principal: Principal, session_id: str) -> _LiveSession:
         """取一个可以继续对话的会话。"""
         record = await self.get(principal, session_id)
-        if record.status != "active":
-            raise ConflictError(f"会话 {session_id!r} 已关闭")
+        _require_active(record)
         return await self._open(record)
 
     def in_flight_turns(self, tenant_id: str) -> int:

@@ -1,4 +1,4 @@
-"""治理面：认证、租户隔离、业务包版本、密钥、配额、会话持有权。"""
+"""治理面：认证、租户隔离、业务包版本、密钥、配额。会话持有权见 test_session_leases.py。"""
 
 from __future__ import annotations
 
@@ -18,7 +18,6 @@ from xuanpu_server.errors import (
     PermissionDeniedError,
     QuotaExceededError,
     SecretMissingError,
-    SessionBusyError,
 )
 from xuanpu_server.platform import ROOT_PRINCIPAL
 from xuanpu_server.secrets import (
@@ -29,7 +28,6 @@ from xuanpu_server.secrets import (
 from xuanpu_server.tenancy import QuotaLimits
 
 if TYPE_CHECKING:
-    from xuanpu_server.platform import Platform
     from xuanpu_server.tenancy import Principal
 
 
@@ -488,164 +486,3 @@ async def test_concurrent_sessions_do_not_mix(world: Any, step: Any, read_turn: 
     assert sorted(record.session_id for record in completed) == sorted(
         item.session_id for item in sessions
     )
-
-
-def _another_instance(world: Any, instance_id: str, **kwargs: Any) -> Platform:
-    """同一份存储、对象存储与数据目录上的另一个平台实例。"""
-    # world 用 local 状态面，会话主存在数据目录里，跨实例接手会话只能共用数据目录——这违反
-    # 「数据目录归一个进程独占」的前提，但这里测的是会话的持有与接手，与该前提无关。
-    # postgres 状态面下主存在库里，各实例各用各的数据目录，见 test_multi_instance.py。
-    return world.sibling(instance_id, data_dir=world.data_dir, **kwargs)
-
-
-async def test_session_has_a_single_holder(world: Any, step: Any, read_turn: Any) -> None:
-    """一个实例持有会话时，另一个实例不能同时对它写；提示里带上持有者。"""
-    await world.publish()
-    session = await world.platform.sessions.create(world.member, package="support-desk")
-    world.models.script(step(text="hi"))
-    await read_turn(
-        await world.platform.sessions.send_message(world.member, session.session_id, "你好")
-    )
-    other = _another_instance(world, "inst-other")
-    try:
-        with pytest.raises(SessionBusyError) as caught:
-            await other.sessions.send_message(world.member, session.session_id, "抢")
-        assert caught.value.owner == "inst-test"
-    finally:
-        await other.close()
-
-
-async def test_another_instance_takes_over_after_release(
-    world: Any, step: Any, read_turn: Any
-) -> None:
-    """实例退出后，另一个实例从共用的会话存储里续接：上下文还在，审计接得上。"""
-    await world.publish()
-    session = await world.platform.sessions.create(world.member, package="support-desk")
-    world.models.script(step(text="订单号是 A-1024"), step(text="是 A-1024"))
-    await read_turn(
-        await world.platform.sessions.send_message(world.member, session.session_id, "查订单")
-    )
-    thread_id = (await world.platform.sessions.get(world.member, session.session_id)).thread_id
-    await world.platform.close()
-
-    released = await world.platform.store.get_session("acme", session.session_id)
-    assert released is not None
-    assert (released.status, released.owner) == ("active", None)
-
-    other = _another_instance(world, "inst-other")
-    try:
-        events = await read_turn(
-            await other.sessions.send_message(world.member, session.session_id, "刚才的订单号？")
-        )
-        assert events[-1].msg.kind == "turn_completed"
-        assert "订单号是 A-1024" in world.models.last_prompt()
-        taken = await other.sessions.get(world.member, session.session_id)
-        assert (taken.owner, taken.thread_id) == ("inst-other", thread_id)
-    finally:
-        await other.close()
-
-    completed = await world.platform.store.query_audit(
-        "acme", AuditQuery(kind="turn_completed", session_id=session.session_id)
-    )
-    assert len(completed) == 2
-    # 两个实例各是一条事件流，序号各自从头计，互不去重
-    assert len({record.stream for record in completed}) == 2
-
-
-async def test_expired_lease_can_be_taken_over(world: Any, step: Any) -> None:
-    """持有者没来得及放手就没了（崩溃）：租约到期后别的实例可以接手，到期前不行。"""
-    await world.publish()
-    session = await world.platform.sessions.create(world.member, package="support-desk")
-    clock = {"now": 1_000.0}
-    crashed = _another_instance(world, "inst-crashed", now=lambda: clock["now"], lease_seconds=60)
-    world.models.script(step(text="一"), step(text="二"))
-    await crashed.sessions.send_message(world.member, session.session_id, "1")
-
-    survivor = _another_instance(world, "inst-survivor", now=lambda: clock["now"], lease_seconds=60)
-    try:
-        clock["now"] = 1_059.0
-        with pytest.raises(SessionBusyError):
-            await survivor.sessions.send_message(world.member, session.session_id, "2")
-        clock["now"] = 1_061.0
-        await survivor.sessions.send_message(world.member, session.session_id, "2")
-        taken = await survivor.sessions.get(world.member, session.session_id)
-        assert taken.owner == "inst-survivor"
-    finally:
-        await survivor.close()
-        await crashed.close()
-
-
-async def _lease_taken_by_another(world: Any, session_id: str, clock: dict[str, float]) -> None:
-    """时钟拨过租约期限，另一个实例趁机拿走会话的租约。"""
-    clock["now"] = 1_061.0
-    await world.platform.store.acquire_lease(
-        "acme", session_id, owner="inst-other", now=clock["now"], ttl_seconds=60
-    )
-
-
-async def _assert_not_held(world: Any, holder: Platform, session_id: str) -> None:
-    """``holder`` 没有持有这个会话：不在本实例的会话里，没有采样，线程也没有记到会话上。"""
-    assert holder.sessions._live == {}  # noqa: SLF001
-    assert world.models.requests == []
-    record = await world.platform.store.get_session("acme", session_id)
-    assert record is not None
-    assert (record.owner, record.thread_id) == ("inst-other", None)
-    sent = await world.platform.store.query_audit(
-        "acme", AuditQuery(kind="message_sent", session_id=session_id)
-    )
-    assert sent == []
-
-
-async def test_lease_lost_while_assembling_is_not_used(
-    world: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """组装运行时比租约还久、期间别的实例拿走了租约：这次请求失败，不续接、不提交任何一轮。"""
-    await world.publish()
-    session = await world.platform.sessions.create(world.member, package="support-desk")
-    clock = {"now": 1_000.0}
-    slow = _another_instance(world, "inst-slow", now=lambda: clock["now"], lease_seconds=60)
-    create_client = world.models.create
-
-    async def assemble_slowly(tenant_id: str, tier: str) -> Any:
-        # 组装运行时要取模型客户端：在这里耗掉整个租约期限
-        await _lease_taken_by_another(world, session.session_id, clock)
-        return await create_client(tenant_id, tier)
-
-    monkeypatch.setattr(world.models, "create", assemble_slowly)
-    try:
-        with pytest.raises(SessionBusyError) as caught:
-            await slow.sessions.send_message(world.member, session.session_id, "你好")
-        assert caught.value.owner == "inst-other"
-        await _assert_not_held(world, slow, session.session_id)
-        runtime = next(iter(slow.runtimes._runtimes.values()))  # noqa: SLF001
-        assert runtime.pool.introspect() == {}  # 没有为它建引擎
-    finally:
-        await slow.close()
-
-
-async def test_lease_lost_while_starting_the_engine_is_not_used(
-    world: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """建引擎（续接历史）期间租约被拿走：刚建的引擎被关掉，不放进本实例持有的会话里。"""
-    await world.publish()
-    session = await world.platform.sessions.create(world.member, package="support-desk")
-    clock = {"now": 1_000.0}
-    slow = _another_instance(world, "inst-slow", now=lambda: clock["now"], lease_seconds=60)
-    try:
-        resolved = await slow.packages.resolve("acme", "support-desk", None)
-        runtime = await slow.runtimes.get(resolved)
-        get_or_create = runtime.pool.get_or_create
-
-        async def start_slowly(**kwargs: Any) -> Any:
-            engine = await get_or_create(**kwargs)
-            await _lease_taken_by_another(world, session.session_id, clock)
-            return engine
-
-        monkeypatch.setattr(runtime.pool, "get_or_create", start_slowly)
-        with pytest.raises(SessionBusyError) as caught:
-            await slow.sessions.send_message(world.member, session.session_id, "你好")
-        assert caught.value.owner == "inst-other"
-        await _assert_not_held(world, slow, session.session_id)
-        assert runtime.pool.introspect() == {}  # 建好的引擎已经关掉
-    finally:
-        await slow.close()
