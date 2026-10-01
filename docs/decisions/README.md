@@ -14,3 +14,4 @@
 | [0008](0008-declarative-http-connectors.md) | 声明式 HTTP 连接器 —— 用 OpenAPI 文档把外部接口接成工具（修订 0002） | Accepted |
 | [0009](0009-small-core-connect-everything.md) | 平台保持小核 —— 企业数据一律接入、自有文件走对象存储、垂直业务各自独立（修订 0007） | Accepted |
 | [0010](0010-user-identity-feishu-login.md) | 用户身份 —— 飞书登录、服务端登录会话、离职事件走回调 | Accepted |
+| [0011](0011-system-design-decisions.md) | 整体设计定下的九件事 —— 底座先无状态、员工内容管理员默认不可见、新增触发与个人 skill | Accepted |
