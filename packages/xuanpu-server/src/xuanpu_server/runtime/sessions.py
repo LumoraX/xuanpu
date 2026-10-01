@@ -42,6 +42,7 @@ from xuanpu_server.errors import (
     RuntimeUnavailableError,
 )
 from xuanpu_server.ids import new_id
+from xuanpu_server.runtime.cancellation import cancel_in_flight, pick_targets
 from xuanpu_server.runtime.events import EngineEventHub, SubmissionIndex, TurnStream
 from xuanpu_server.runtime.leases import SessionKey, SessionLeases
 from xuanpu_server.runtime.session_history import pending_requests, replay_turn
@@ -421,6 +422,36 @@ class SessionManager:
             session_id=session_id,
         )
         return turn
+
+    async def cancel(
+        self, principal: Principal, session_id: str, submission_id: str | None = None
+    ) -> list[str]:
+        """停止生成：取消会话里在途的对话，返回停了哪些 submission。
+
+        只管在途的对话（内核怎么收尾见 ``cancellation`` 模块）。挂起等审批的那一轮已不在途，
+        不归这里管，拒绝仍走 ``resume``。本实例没持有会话时不为了取消去打开引擎：别的实例
+        持有着就抛 ``SessionBusyError``（带持有者），否则这里没有在途对话。
+
+        Args:
+            submission_id: 只停这一轮；省略则停全部在途的。给了但不在途抛
+                ``InvalidRequestError``。
+        """
+        record = await self.get(principal, session_id)
+        live = self._live.get((record.tenant_id, session_id))
+        if live is None:
+            self._leases.ensure_not_held_elsewhere(record)
+            # 没有在途对话：没指定就是空列表，指定了就是它不在途
+            return pick_targets((), submission_id)
+        targets = await cancel_in_flight(live.engine, live.in_flight, submission_id)
+        if targets:
+            await self._audit.control(
+                principal,
+                record.tenant_id,
+                "turn_cancel_requested",
+                {"submission_ids": targets},
+                session_id=session_id,
+            )
+        return targets
 
     async def pending(self, principal: Principal, session_id: str) -> list[dict[str, Any]]:
         """会话当前等待处理的审批或表单请求。

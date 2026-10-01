@@ -58,6 +58,7 @@
 | `session_closed` | 关闭会话 | — |
 | `message_sent` | 用户发出一条消息 | `submission_id`、`text` |
 | `suspension_resolved_by` | 送回审批决定 | `submission_id`、`decisions`（待办标识 → 批准与否） |
+| `turn_cancel_requested` | 停止生成（确有在途对话被停时才记） | `submission_ids`：停了哪些 |
 
 ### `gate`：连接器被调用了
 

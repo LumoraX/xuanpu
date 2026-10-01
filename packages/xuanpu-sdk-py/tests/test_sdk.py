@@ -154,6 +154,25 @@ async def test_truncated_stream_is_reported() -> None:
             await client.sessions.ask("s1", "hi")
 
 
+async def test_cancel_posts_to_the_session() -> None:
+    """停止生成：不指定时请求体为空对象，指定时带上 submission；返回停了哪些。"""
+    seen: list[tuple[str, str, dict[str, Any]]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        seen.append((request.method, request.url.path, body))
+        cancelled = [body["submission_id"]] if "submission_id" in body else ["sub_a", "sub_b"]
+        return httpx.Response(200, json={"cancelled": cancelled})
+
+    async with XuanpuClient("http://x", "k", transport=_stub(handler)) as client:
+        assert await client.sessions.cancel("s1") == ["sub_a", "sub_b"]
+        assert await client.sessions.cancel("s1", submission_id="sub_a") == ["sub_a"]
+    assert seen == [
+        ("POST", "/v1/sessions/s1/cancel", {}),
+        ("POST", "/v1/sessions/s1/cancel", {"submission_id": "sub_a"}),
+    ]
+
+
 async def test_audit_pagination() -> None:
     """审计查询自动翻页。"""
     pages = {

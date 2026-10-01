@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from xuanpu_server.errors import LeaseInterruptedError
+from xuanpu_server.errors import LeaseInterruptedError, SessionBusyError
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -91,6 +91,12 @@ class SessionLeases:
                 f"会话 {previous.session_id!r} 的持有在准备期间中断过，请重试"
             )
         return fresh
+
+    def ensure_not_held_elsewhere(self, record: SessionRecord) -> None:
+        """只看记录、不碰租约：会话正由别的实例持有（租约未到期）时抛 ``SessionBusyError``。"""
+        owner = record.owner
+        if owner is not None and owner != self._owner and record.lease_expires_at > self._now():
+            raise SessionBusyError(f"会话 {record.session_id!r} 正由另一个实例持有", owner=owner)
 
     async def release(self, record: SessionRecord) -> bool:
         """放弃持有权；本来就不归本实例时什么也不改，返回 False。"""

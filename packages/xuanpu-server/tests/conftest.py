@@ -148,13 +148,18 @@ def _completed(usage: TokenUsage, *, end_turn: bool) -> ResponseEvent:
 
 @dataclass
 class Step:
-    """模型的一次采样：一段文本，外加若干工具调用。"""
+    """模型的一次采样：一段文本，外加若干工具调用。
+
+    ``wait`` 只为测试「停止生成」：给了就在产出文本之后、结束之前等它被置位，让这次采样
+    卡在半路；取消时等待处收到 ``CancelledError``，照常上抛。
+    """
 
     text: str = ""
     calls: list[tuple[str, str, dict[str, Any]]] = field(default_factory=list)
     usage: TokenUsage = field(
         default_factory=lambda: TokenUsage(input_tokens=100, output_tokens=20, total_tokens=120)
     )
+    wait: asyncio.Event | None = None
 
 
 class _ScriptedSession:
@@ -170,6 +175,9 @@ class _ScriptedSession:
         yield ResponseEvent(kind="created")
         if step.text:
             yield ResponseEvent(kind="text_delta", data={"text": step.text})
+        if step.wait is not None:
+            # 卡在半路，直到测试放行或这一轮被取消（CancelledError 不在这里吞掉）
+            await step.wait.wait()
         for call_id, name, arguments in step.calls:
             yield ResponseEvent(
                 kind="tool_call_done",

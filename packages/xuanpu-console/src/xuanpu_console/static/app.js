@@ -96,7 +96,8 @@ $("tabs").addEventListener("click", (event) => {
 
 // ---------- 会话 ----------
 
-const chat = { sessionId: null, status: null };
+// streaming：正在流式输出的那个会话（停止按钮停的是它）；没有在输出时为 null
+const chat = { sessionId: null, status: null, streaming: null };
 
 async function loadSessions() {
   const status = $("show-closed").checked ? "" : "&status=active";
@@ -217,7 +218,8 @@ async function resolve(requestId, granted) {
 $("send").addEventListener("submit", async (event) => {
   event.preventDefault();
   const text = $("message").value.trim();
-  if (!text || !chat.sessionId) return;
+  // 流式输出期间不发新消息（Enter 也走这里），要先停止或等这一轮结束
+  if (!text || !chat.sessionId || chat.streaming) return;
   $("message").value = "";
   append("user", text);
   await streamTurn(`/v1/sessions/${chat.sessionId}/messages`, { text });
@@ -230,8 +232,29 @@ $("message").addEventListener("keydown", (event) => {
   }
 });
 
+// 流式输出时把「发送」换成「停止」，流结束后换回来
+function setStreaming(sessionId) {
+  chat.streaming = sessionId;
+  $("send-btn").classList.toggle("hidden", sessionId !== null);
+  $("stop-btn").classList.toggle("hidden", sessionId === null);
+  $("stop-btn").disabled = sessionId === null;
+  $("send-btn").disabled = sessionId !== null || chat.status !== "active";
+}
+
+$("stop-btn").addEventListener("click", async () => {
+  if (!chat.streaming) return;
+  $("stop-btn").disabled = true;
+  try {
+    // 停掉这个会话里在途的对话；被停的那一轮照常从事件流收尾
+    await api("POST", `/v1/sessions/${chat.streaming}/cancel`, { json: {} });
+  } catch (error) {
+    $("stop-btn").disabled = false;
+    fail(error);
+  }
+});
+
 async function streamTurn(path, json) {
-  $("send-btn").disabled = true;
+  setStreaming(chat.sessionId);
   $("pending").classList.add("hidden");
   let bubble = null;
   try {
@@ -256,6 +279,10 @@ async function streamTurn(path, json) {
         append("event", `工具 ${data.data.name}${data.data.is_error ? " ✗" : " ✓"} ${data.data.duration_ms ?? ""}ms`);
       } else if (name === "turn_suspended") {
         append("event", "等待审批");
+      } else if (name === "turn_completed" && data.data.end_reason === "cancelled") {
+        append("event", "已停止");
+      } else if (name === "turn_failed" && data.data.kind === "cancelled") {
+        append("event", "已停止（还在排队，没有开始）");
       } else if (name === "turn_failed") {
         append("error", "本轮失败：" + (data.data.error || ""));
       }
@@ -263,7 +290,7 @@ async function streamTurn(path, json) {
   } catch (error) {
     fail(error);
   } finally {
-    $("send-btn").disabled = chat.status !== "active";
+    setStreaming(null);
     await loadPending().catch(fail);
     await loadSessions().catch(fail);
   }

@@ -337,6 +337,14 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
         """送回审批结果或表单答案，响应是续跑部分的事件流。"""
         return _turn_response(await platform.sessions.resume(who, session_id, body.resolutions))
 
+    @app.post("/v1/sessions/{session_id}/cancel")
+    async def cancel_turns(
+        session_id: str, who: Caller, body: schemas.CancelBody | None = None
+    ) -> dict[str, Any]:
+        """停止生成：取消会话里在途的对话（请求体可省略），返回停了哪些 submission。"""
+        submission_id = body.submission_id if body is not None else None
+        return {"cancelled": await platform.sessions.cancel(who, session_id, submission_id)}
+
     # --- 审计与用量 ---
 
     @app.get("/v1/audit")

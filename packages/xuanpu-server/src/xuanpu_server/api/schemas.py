@@ -91,6 +91,12 @@ class ResumeBody(_Request):
     resolutions: dict[str, Any]
 
 
+class CancelBody(_Request):
+    """停止生成。``submission_id`` 省略时停掉会话里全部在途的对话。"""
+
+    submission_id: str | None = None
+
+
 def tenant_view(tenant: Tenant) -> dict[str, Any]:
     """租户的对外表示。"""
     return {
@@ -174,6 +180,7 @@ def audit_view(record: AuditRecord) -> dict[str, Any]:
 
 __all__ = [
     "ActivateBody",
+    "CancelBody",
     "CreateSessionBody",
     "CreateTenantBody",
     "EvalBody",

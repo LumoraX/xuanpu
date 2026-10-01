@@ -66,6 +66,7 @@
 | `GET /v1/sessions/{id}/events?submission_id=&after_seq=` | 租户成员 | 回放一轮对话已记入审计的事件 |
 | `POST /v1/sessions/{id}/messages` | 租户成员 | 发消息；响应是事件流 |
 | `POST /v1/sessions/{id}/resume` | 租户成员 | 送回审批结果；响应是事件流 |
+| `POST /v1/sessions/{id}/cancel` | 租户成员 | 停止生成：取消会话里在途的对话 |
 | `GET /v1/audit` | 租户管理员 | 查询审计 |
 | `GET /v1/usage?since=&until=` | 租户管理员 | 查询用量 |
 
@@ -206,7 +207,7 @@ POST /v1/sessions
 
 `GET /v1/sessions` 返回 `{"sessions": [ … ]}`，最近活动的在前。`status=active|closed` 过滤状态，`mine=true` 只看本凭据创建的，`limit` 默认 50、最大 200。
 
-`DELETE /v1/sessions/{id}` 关闭会话，返回会话对象。进行中的对话会被取消。重复关闭不报错。
+`DELETE /v1/sessions/{id}` 关闭会话，返回会话对象。进行中的对话会被取消。重复关闭不报错。只想停掉进行中的那一轮、会话接着用，见[停止生成](#停止生成)。
 
 ### 发消息
 
@@ -249,7 +250,7 @@ data: {"submission_id": "sub_…", "overflowed": false}
 - 含完整提示词的事件不外发。
 - `end` 里的 `overflowed` 为真，表示调用方读得太慢、这条流被平台放弃（缓冲 8192 条）；对话本身不受影响。
 
-调用方在本轮结束前断开，对话会继续跑完。
+调用方在本轮结束前断开，对话会继续跑完；要让它停下，用[停止生成](#停止生成)。
 
 ### 审批
 
@@ -275,6 +276,32 @@ POST /v1/sessions/{id}/resume
 ```
 
 拒绝是 `{"granted": false, "reason": "…"}`。批准后被挂起的那次调用才真正执行；拒绝则不执行，模型收到被拒的结果后继续。`resolutions` 不能为空。
+
+### 停止生成
+
+```
+POST /v1/sessions/{id}/cancel
+{"submission_id": "sub_…"}        # 可省略（整个请求体也可省略）：停掉会话里全部在途的对话
+→ {"cancelled": ["sub_…"]}
+```
+
+`cancelled` 是这次停下的那几轮的 `submission_id`。接口只是提交取消，不等那一轮收尾；被停的那一轮的事件流照常结束：
+
+| 被停时 | 事件流的最后一条 |
+| --- | --- |
+| 正在跑 | `turn_completed`，`data.end_reason` 为 `cancelled`、`data.success` 为 `false`、`data.cancel_reason` 为 `requested` |
+| 还在排队（前一轮没结束） | `turn_failed`，`data.kind` 为 `cancelled` |
+
+会话保持活动，可以接着发消息。被停的那一轮照样记一轮用量；卡在半路的那次采样没有收尾，它的 token 报不出来，不计。
+
+| 情况 | 响应 |
+| --- | --- |
+| 没有在途的对话 | `200`，`cancelled` 为空列表 |
+| 给了 `submission_id`，但它不在途（已经结束或不存在） | `400 invalid_request` |
+| 会话正由另一个实例持有 | `409 session_busy`，带 `owner` |
+| 会话不存在或属于别的租户 | `404 not_found` |
+
+挂起等审批的那一轮已经不在途，不归这个接口管：要放弃就把审批拒绝送回（见[审批](#审批)）。
 
 ### 回放
 

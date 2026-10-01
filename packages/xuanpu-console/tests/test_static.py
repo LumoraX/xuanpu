@@ -27,3 +27,12 @@ def test_console_only_talks_to_documented_endpoints() -> None:
     )  # fmt: skip
     assert paths
     assert all(path.startswith(allowed_prefixes) for path in paths), paths
+
+
+def test_console_can_stop_a_streaming_turn() -> None:
+    """对话框有「停止」按钮，点了调停止生成的接口。"""
+    html = (static_dir() / "index.html").read_text(encoding="utf-8")
+    script = (static_dir() / "app.js").read_text(encoding="utf-8")
+    assert re.search(r'<button[^>]*id="stop-btn"[^>]*>停止</button>', html)
+    assert "/v1/sessions/${chat.streaming}/cancel`" in script
+    assert '$("stop-btn")' in script

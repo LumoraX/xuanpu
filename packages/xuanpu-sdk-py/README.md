@@ -34,6 +34,7 @@ async with XuanpuClient("http://localhost:8420", api_key) as client:
 | `send(session_id, text)` | `AsyncIterator[Event]` | 发消息，逐条产出这一轮的事件 |
 | `await ask(session_id, text)` | `(str, Event)` | 发消息并等到这一轮结束，返回拼好的回复与终结事件 |
 | `resume(session_id, resolutions)` | `AsyncIterator[Event]` | 送回审批决定，逐条产出续跑部分的事件 |
+| `await cancel(session_id, *, submission_id=None)` | `list[str]` | 停止生成：取消在途的对话，返回停了哪些 submission |
 | `await pending(session_id)` | `list[dict]` | 当前等待处理的审批请求 |
 | `await replay(session_id, submission_id, *, after_seq=-1)` | `list[dict]` | 回放一轮对话已记入审计的事件 |
 

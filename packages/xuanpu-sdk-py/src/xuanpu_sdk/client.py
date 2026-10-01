@@ -153,6 +153,20 @@ class Sessions:
         """送回审批结果或表单答案，逐条产出续跑部分的事件。"""
         return self._http.stream(f"/v1/sessions/{session_id}/resume", {"resolutions": resolutions})
 
+    async def cancel(self, session_id: str, *, submission_id: str | None = None) -> Sequence[str]:
+        """停止生成：取消会话里在途的对话，返回停了哪些 submission。
+
+        ``submission_id`` 省略时停掉全部在途的；给了但它不在途是 400 ``invalid_request``。
+        被停的那一轮的事件流照常收尾：``turn_completed`` 的 ``end_reason`` 是 ``cancelled``。
+        """
+        body: dict[str, Any] = {}
+        if submission_id is not None:
+            body["submission_id"] = submission_id
+        response = await self._http.request(
+            "POST", f"/v1/sessions/{session_id}/cancel", json=body
+        )
+        return [str(item) for item in response["cancelled"]]
+
     async def ask(self, session_id: str, text: str) -> tuple[str, Event]:
         """发一条消息并等到本轮结束，返回 ``(拼好的回复文本, 终结事件)``。
 
