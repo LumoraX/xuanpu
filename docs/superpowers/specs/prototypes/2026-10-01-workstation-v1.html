@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>玄圃工作站</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600&display=swap">
+<style>
+/* 一台云端的机器：整屏是桌面，底部是跟它说话的地方，窗口由对话打开。数据全是编的。 */
+:root {
+  --bg: #e9ece8; --bg-2: #d7ddd6;
+  --panel: rgba(255,255,255,.86); --panel-solid: #ffffff; --panel-2: #eef1ee; --line: #cfd6cf;
+  --fg: #1d2420; --muted: #5f6a64;
+  --accent: #2f7d6d; --accent-ink: #fff; --accent-soft: #dcebe6;
+  --warn: #b9731a; --warn-soft: #fbefdc; --danger: #b4423a; --danger-soft: #f9e4e2; --ok: #2f7d6d;
+  --shadow: 0 12px 40px rgba(20,30,26,.18);
+  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --serif: "Noto Serif SC", "Songti SC", serif;
+  --mono: "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15191a; --bg-2: #0f1213; --panel: rgba(29,34,36,.92); --panel-solid: #1d2224; --panel-2: #262c2e; --line: #343c3e;
+    --fg: #e6e9e6; --muted: #9aa5a0; --accent: #5fb49f; --accent-ink: #0f1a17; --accent-soft: #1f3330;
+    --warn: #e0a24a; --warn-soft: #3a2d18; --danger: #e0756c; --danger-soft: #3d2322; --ok: #5fb49f;
+    --shadow: 0 12px 40px rgba(0,0,0,.5); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15191a; --bg-2: #0f1213; --panel: rgba(29,34,36,.92); --panel-solid: #1d2224; --panel-2: #262c2e; --line: #343c3e;
+  --fg: #e6e9e6; --muted: #9aa5a0; --accent: #5fb49f; --accent-ink: #0f1a17; --accent-soft: #1f3330;
+  --warn: #e0a24a; --warn-soft: #3a2d18; --danger: #e0756c; --danger-soft: #3d2322; --ok: #5fb49f;
+  --shadow: 0 12px 40px rgba(0,0,0,.5); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { font-family: var(--sans); font-size: 14px; line-height: 1.5; color: var(--fg); background: var(--bg); overflow: hidden; }
+button { font: inherit; color: inherit; }
+h1, h2, h3 { margin: 0; font-weight: 600; }
+.muted { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* 桌面 */
+#desktop { position: fixed; inset: 0; background:
+  radial-gradient(1200px 700px at 80% -10%, color-mix(in oklab, var(--accent) 18%, transparent), transparent 60%),
+  radial-gradient(900px 600px at -10% 110%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 60%),
+  linear-gradient(180deg, var(--bg), var(--bg-2)); }
+#topbar { position: fixed; top: 0; left: 0; right: 0; height: 34px; padding: 0 14px; padding-top: env(safe-area-inset-top, 0px);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px;
+  background: var(--panel); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); z-index: 50; }
+#topbar .brand { font-family: var(--serif); font-size: 15px; }
+#topbar .status { display: flex; gap: 14px; align-items: center; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--line); vertical-align: middle; margin-right: 4px; }
+.dot.ok { background: var(--ok); } .dot.off { background: var(--danger); }
+
+/* 桌面图标 */
+#icons { position: fixed; top: 54px; left: 18px; display: grid; grid-template-columns: repeat(2, 84px); gap: 6px 10px; z-index: 1; }
+.icon { width: 84px; padding: 8px 4px; border-radius: 8px; border: 0; background: none; display: grid; justify-items: center; gap: 4px; cursor: pointer; font-size: 12px; text-align: center; position: relative; }
+.icon:hover { background: color-mix(in oklab, var(--panel-solid) 60%, transparent); }
+.icon:focus-visible { outline: 2px solid var(--accent); }
+.icon .g { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-family: var(--serif); font-size: 20px; background: var(--panel-solid); border: 1px solid var(--line); color: var(--accent); }
+.icon .g.folder { background: var(--accent-soft); border-color: transparent; }
+.icon .badge { position: absolute; top: 2px; right: 8px; background: var(--warn); color: #fff; font-size: 11px; line-height: 18px; min-width: 18px; border-radius: 9px; padding: 0 5px; }
+
+/* 窗口 */
+.win { position: fixed; min-width: 320px; min-height: 180px; background: var(--panel-solid); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); display: grid; grid-template-rows: auto 1fr; overflow: hidden; z-index: 10; max-width: calc(100vw - 24px); max-height: calc(100vh - 250px); }
+.win.focus { z-index: 20; border-color: color-mix(in oklab, var(--accent) 50%, var(--line)); }
+.win .bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); background: var(--panel-2); cursor: grab; user-select: none; }
+.win .bar .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.win .bar .s { font-size: 11px; color: var(--muted); }
+.win .bar button { width: 22px; height: 22px; border-radius: 6px; border: 0; background: none; cursor: pointer; color: var(--muted); }
+.win .bar button:hover { background: var(--line); color: var(--fg); }
+.win .body { overflow: auto; min-height: 0; }
+.pad { padding: 12px 14px; }
+.row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sp { justify-content: space-between; }
+.btn { border: 1px solid var(--line); background: var(--panel-solid); border-radius: 6px; padding: 5px 11px; cursor: pointer; }
+.btn:hover { background: var(--panel-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.btn.sm { padding: 3px 9px; font-size: 12px; }
+.btn[disabled] { opacity: .5; cursor: default; }
+.pill { display: inline-block; font-size: 11px; line-height: 18px; padding: 0 8px; border-radius: 9px; background: var(--panel-2); color: var(--muted); white-space: nowrap; }
+.pill.read { background: var(--accent-soft); color: var(--accent); }
+.pill.write { background: var(--warn-soft); color: var(--warn); }
+.pill.external { background: var(--danger-soft); color: var(--danger); }
+.pill.ok { background: var(--accent-soft); color: var(--ok); }
+
+/* 文件夹窗口 */
+.files { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; padding: 12px; }
+.file { border: 0; background: none; border-radius: 8px; padding: 8px 4px; display: grid; justify-items: center; gap: 4px; font-size: 12px; cursor: pointer; text-align: center; }
+.file:hover { background: var(--panel-2); }
+.file .fi { width: 40px; height: 48px; border: 1.5px solid var(--muted); border-radius: 4px; display: grid; place-items: end center; font-size: 9px; color: var(--muted); padding-bottom: 3px; }
+.file .fi.dir { width: 48px; height: 40px; border: 0; background: var(--accent-soft); border-radius: 6px 6px 4px 4px; }
+.file .n { max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crumbs { padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+
+/* 应用窗口 = 一条会话 */
+.app { display: grid; grid-template-rows: 1fr auto; height: 100%; }
+.msgs { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; overflow: auto; }
+.m { max-width: 60ch; }
+.m.user { align-self: flex-end; background: var(--accent-soft); border-radius: 12px 12px 2px 12px; padding: 7px 11px; }
+.m.assistant { align-self: flex-start; }
+.m.event { align-self: flex-start; font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.m.event::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--line); flex: none; }
+.m.event.ok::before { background: var(--ok); } .m.event.warn::before { background: var(--warn); }
+.card { border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; background: var(--panel-2); display: grid; gap: 7px; max-width: 60ch; }
+.card.approval { border-color: var(--warn); }
+.card.file { grid-template-columns: auto 1fr auto; align-items: center; cursor: pointer; }
+.args { font-family: var(--mono); font-size: 12px; background: var(--panel-solid); border-radius: 6px; padding: 7px 9px; white-space: pre-wrap; word-break: break-word; }
+.composer { border-top: 1px solid var(--line); padding: 8px 10px; display: flex; gap: 8px; }
+.composer input { flex: 1; }
+input[type=text], textarea { width: 100%; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-solid); color: var(--fg); padding: 7px 10px; font: inherit; }
+input:focus-visible, textarea:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cursor::after { content: "▍"; color: var(--accent); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cursor::after { animation: none; } }
+
+/* 待办 / 动态 / 连接 / skill 列表 */
+.list { list-style: none; margin: 0; padding: 0; }
+.list li { padding: 10px 14px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; }
+.list li:last-child { border-bottom: 0; }
+.feed li { grid-template-columns: 64px 1fr; gap: 10px; }
+.feed time { font-size: 12px; color: var(--muted); }
+.feed .who { font-weight: 500; }
+.feed .lk { color: var(--accent); cursor: pointer; text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--accent) 40%, transparent); }
+.task.done { opacity: .55; }
+.conn li { grid-template-columns: 1fr auto; align-items: start; }
+.conn ul { margin: 4px 0 0; padding-left: 18px; font-size: 12px; color: var(--muted); }
+pre.skill { margin: 0; font-family: var(--mono); font-size: 12px; background: var(--panel-2); border-radius: 6px; padding: 10px 12px; white-space: pre-wrap; word-break: break-word; }
+.preview { padding: 14px 18px; font-family: var(--serif); line-height: 1.8; max-width: 62ch; }
+.preview h3 { font-size: 15px; margin: 10px 0 4px; }
+.preview ul { margin: 0; padding-left: 20px; }
+.vers { font-size: 12px; }
+
+/* 底部：程序坞 + 对话 */
+#bottom { position: fixed; left: 0; right: 0; bottom: 0; padding: 0 14px calc(10px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: grid; gap: 8px; justify-items: center; pointer-events: none; }
+#shell { width: min(820px, 100%); pointer-events: auto; background: var(--panel); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); display: grid; grid-template-rows: auto auto; overflow: hidden; }
+#log { max-height: 22vh; overflow: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--line); }
+#log:empty { display: none; }
+#log.compact .m:not(.recent) { display: none; }
+#logbar { display: flex; justify-content: flex-end; padding: 0 12px; }
+#logbar button { border: 0; background: none; color: var(--muted); font-size: 11px; cursor: pointer; padding: 2px 6px; }
+#logbar button:hover { color: var(--fg); }
+#log .m.assistant { background: transparent; }
+#log .m.user { align-self: flex-end; }
+#shellform { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 8px 10px; }
+#shellform .pfx { font-family: var(--serif); color: var(--accent); font-size: 16px; padding-left: 4px; }
+#shellform input { border: 0; background: transparent; font-size: 15px; padding: 8px 4px; }
+#shellform input:focus-visible { outline: none; }
+#hints { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 12px 10px; }
+#hints button { border: 1px solid var(--line); background: transparent; border-radius: 12px; font-size: 12px; padding: 2px 10px; color: var(--muted); cursor: pointer; }
+#hints button:hover { color: var(--fg); background: var(--panel-2); }
+#dock { pointer-events: auto; display: flex; gap: 6px; padding: 6px 8px; background: var(--panel); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 12px; }
+#dock button { border: 0; background: none; border-radius: 8px; padding: 4px 10px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; color: var(--muted); }
+#dock button .g { width: 20px; height: 20px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-family: var(--serif); font-size: 11px; }
+#dock button.open { color: var(--fg); }
+#dock button.open::after { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+#dock button:hover { background: var(--panel-2); }
+.toast { position: fixed; top: calc(44px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 7px 14px; border-radius: 6px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 99; }
+.toast.show { opacity: 1; }
+@media (max-width: 720px) {
+  #icons { grid-template-columns: repeat(4, 76px); left: 10px; }
+  .icon { width: 76px; }
+  .win { left: 8px !important; top: 42px !important; width: calc(100vw - 16px) !important; height: calc(100vh - 230px) !important; }
+  #dock { display: none; }
+}
+</style>
+</head>
+<body>
+<div id="desktop" aria-hidden="true"></div>
+<header id="topbar">
+  <div class="row"><span class="brand">玄圃</span><span class="muted">Acme · 张伟</span><span class="muted">示意稿 v1</span></div>
+  <div class="status">
+    <span><i class="dot ok"></i>飞书</span><span id="st-gmail"><i class="dot off"></i>Gmail 未授权</span>
+    <span id="st-pending"><i class="dot"></i>待办 2</span>
+    <span class="num" id="clock">09:41</span>
+  </div>
+</header>
+
+<div id="icons" role="group" aria-label="桌面">
+  <button class="icon" data-open="folder:/"><div class="g folder">▭</div><span>我的空间</span></button>
+  <button class="icon" data-open="inbox"><div class="g">!</div><span>待我处理</span><span class="badge" id="badge-inbox">2</span></button>
+  <button class="icon" data-open="activity"><div class="g">◔</div><span>动态</span></button>
+  <button class="icon" data-open="app:weekly"><div class="g">周</div><span>周报助手</span></button>
+  <button class="icon" data-open="app:tickets"><div class="g">单</div><span>工单助手</span></button>
+  <button class="icon" data-open="app:mail"><div class="g">邮</div><span>邮件分诊</span></button>
+  <button class="icon" data-open="app:general"><div class="g">助</div><span>通用助手</span></button>
+  <button class="icon" data-open="conn"><div class="g">⇄</div><span>连接</span></button>
+  <button class="icon" data-open="skills"><div class="g">我</div><span>我的 skill</span></button>
+</div>
+
+<div id="bottom">
+  <div id="dock"></div>
+  <div id="shell">
+    <div id="log" class="compact"></div>
+    <div id="logbar"><button type="button" id="logtoggle">展开记录</button></div>
+    <form id="shellform">
+      <span class="pfx">›</span>
+      <input type="text" id="shellin" placeholder="跟玄圃说点什么：打开周报文件夹 / 让周报助手整理本周周报 / 把周报发给李总" autocomplete="off">
+      <button class="btn primary sm" type="submit">发送</button>
+    </form>
+    <div id="hints">
+      <button data-say="今天有什么要我处理的">今天有什么要我处理的</button>
+      <button data-say="打开周报文件夹">打开周报文件夹</button>
+      <button data-say="让周报助手整理本周周报">让周报助手整理本周周报</button>
+      <button data-say="把周报发给李总">把周报发给李总</button>
+      <button data-say="打开我的 skill">打开我的 skill</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  function esc(s) { return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  let toastTimer; function toast(t) { const e = $("toast"); e.textContent = t; e.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => e.classList.remove("show"), 1800); }
+  (function clock() { const d = new Date(); $("clock").textContent = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); setTimeout(clock, 30000); })();
+
+  // ---------- 数据（编的） ----------
+  const apps = {
+    weekly: { name: "周报助手", g: "周", pkg: "weekly-report 1.3.0", hello: "我可以按你的格式整理周报。数据从飞书「项目看板」取。", personal: true },
+    tickets: { name: "工单助手", g: "单", pkg: "support-desk 1.0.0", hello: "可以查工单、看处理时限、改优先级（改派要你确认）。", personal: false },
+    mail: { name: "邮件分诊", g: "邮", pkg: "mail-triage 0.9.2", hello: "需要你先授权 Gmail。授权后我每天早上把要回的邮件标出来。", personal: true, needs: "gmail" },
+    general: { name: "通用助手", g: "助", pkg: "assistant 1.0.0", hello: "没有预设业务。你的个人 skill 在这里都能用。", personal: true },
+  };
+  const fs = {
+    "/": [{ n: "周报", dir: true }, { n: "模板", dir: true }, { n: "邮件草稿", dir: true }, { n: "skills", dir: true }, { n: "客户分级.xlsx", t: "xlsx" }, { n: "发票_0928.jpg", t: "jpg" }],
+    "/周报": [{ n: "周报_第40周.docx", t: "docx" }, { n: "周报_第39周.docx", t: "docx" }, { n: "周报_第38周.docx", t: "docx" }],
+    "/模板": [{ n: "周报模板.docx", t: "docx" }, { n: "客户分级模板.xlsx", t: "xlsx" }],
+    "/邮件草稿": [{ n: "回复_王总_报价.eml", t: "eml" }, { n: "回复_采购部.eml", t: "eml" }, { n: "回复_HR_入职.eml", t: "eml" }],
+    "/skills": [{ n: "weekly-report", dir: true }, { n: "customer-tiering", dir: true }, { n: "expense-notes", dir: true }],
+  };
+  const tasks = [
+    { id: "req_7fcb", app: "weekly", preview: "把周报发给李总（飞书消息）", effect: "external", args: { to: "李总", text: "本周周报（节选）…" }, why: "会话里有你的文件和以你身份读到的文档，对外发送要你确认" },
+    { id: "req_31a0", app: "tickets", preview: "把工单 T-1001 调成高优先级", effect: "write", args: { id: "T-1001", body: { priority: "high" } }, why: "审批强度 standard：写操作要确认" },
+  ];
+  const feed = [
+    { t: "08:12", app: "mail", text: "读了 14 封新邮件，3 封要回，草稿放在", link: "folder:/邮件草稿", ltext: "邮件草稿" },
+    { t: "07:30", app: "weekly", text: "按定时任务生成了周报草稿，等你确认后发送：", link: "file:/周报/周报_第40周.docx", ltext: "周报_第40周.docx" },
+    { t: "昨天 22:05", app: "tickets", text: "工单 T-1001 有新回复，已汇总；改优先级等你确认。", link: "inbox", ltext: "去处理" },
+    { t: "昨天 18:40", app: "general", text: "《客户分级》更新到第 4 版：", link: "file:/客户分级.xlsx", ltext: "客户分级.xlsx" },
+  ];
+  const conns = [
+    { id: "feishu", name: "飞书", mode: "员工授权", scopes: ["云文档：读", "日历：读", "消息：发送（需确认）"], granted: true },
+    { id: "gmail", name: "Gmail", mode: "员工授权", scopes: ["邮件：读", "草稿：写"], granted: false },
+    { id: "tickets", name: "工单系统", mode: "企业凭据", scopes: ["管理员配置，不需要你授权"], granted: null },
+  ];
+
+  // ---------- 窗口管理 ----------
+  const wins = new Map(); let z = 10; let cascade = 0;
+  function focus(w) { document.querySelectorAll(".win").forEach(x => x.classList.remove("focus")); w.classList.add("focus"); w.style.zIndex = ++z; }
+  function openWin(key, title, sub, w, h, render) {
+    if (wins.has(key)) { const e = wins.get(key); e.hidden = false; focus(e); renderDock(); return e; }
+    const el = document.createElement("section"); el.className = "win"; el.dataset.key = key;
+    const left = 232 + (cascade % 6) * 28, top = 56 + (cascade % 6) * 24; cascade++;
+    el.style.cssText = `left:${left}px; top:${top}px; width:${w}px; height:${h}px;`;
+    el.innerHTML = `<div class="bar"><span class="t">${esc(title)}</span><span class="s">${esc(sub || "")}</span><button data-w="min" title="收起">–</button><button data-w="close" title="关闭">×</button></div><div class="body"></div>`;
+    document.body.appendChild(el); wins.set(key, el); focus(el);
+    el.addEventListener("pointerdown", () => focus(el));
+    el.querySelector('[data-w="close"]').addEventListener("click", () => { el.remove(); wins.delete(key); renderDock(); });
+    el.querySelector('[data-w="min"]').addEventListener("click", () => { el.hidden = true; renderDock(); });
+    const bar = el.querySelector(".bar"); let drag = null;
+    bar.addEventListener("pointerdown", (e) => { if (e.target.tagName === "BUTTON") return; drag = { x: e.clientX - el.offsetLeft, y: e.clientY - el.offsetTop }; bar.setPointerCapture(e.pointerId); });
+    bar.addEventListener("pointermove", (e) => { if (!drag) return; el.style.left = Math.max(0, e.clientX - drag.x) + "px"; el.style.top = Math.max(36, e.clientY - drag.y) + "px"; });
+    bar.addEventListener("pointerup", () => { drag = null; });
+    render(el.querySelector(".body"), el);
+    renderDock(); return el;
+  }
+  function renderDock() {
+    const d = $("dock");
+    const pinned = ["folder:/", "inbox", "activity", "app:weekly", "app:tickets", "app:mail", "app:general", "conn", "skills"];
+    const labels = { "folder:/": ["▭", "我的空间"], inbox: ["!", "待我处理"], activity: ["◔", "动态"], conn: ["⇄", "连接"], skills: ["我", "我的 skill"] };
+    const keys = [...new Set([...pinned, ...wins.keys()])];
+    d.innerHTML = keys.map(k => {
+      const lab = labels[k] || (k.startsWith("app:") ? [apps[k.slice(4)].g, apps[k.slice(4)].name] : k.startsWith("folder:") ? ["▭", k.slice(8) || "我的空间"] : ["◻", k.slice(5)]);
+      const open = wins.has(k) && !wins.get(k).hidden;
+      return `<button class="${wins.has(k) ? "open" : ""}" data-open="${esc(k)}"><span class="g">${esc(lab[0])}</span>${esc(lab[1])}${open ? "" : ""}</button>`;
+    }).join("");
+    d.querySelectorAll("button").forEach(b => b.addEventListener("click", () => open(b.dataset.open)));
+  }
+
+  // ---------- 各类窗口 ----------
+  function open(target) {
+    if (target.startsWith("folder:")) return openFolder(target.slice(7) || "/");
+    if (target.startsWith("file:")) return openFile(target.slice(5));
+    if (target.startsWith("app:")) return openApp(target.slice(4));
+    if (target === "inbox") return openInbox();
+    if (target === "activity") return openActivity();
+    if (target === "conn") return openConn();
+    if (target === "skills") return openSkills();
+  }
+  document.querySelectorAll("#icons .icon").forEach(b => b.addEventListener("click", () => open(b.dataset.open)));
+
+  function openFolder(path) {
+    const key = "folder:" + path;
+    openWin(key, path === "/" ? "我的空间" : path.split("/").pop(), path, 560, 380, (body) => {
+      const items = fs[path] || [];
+      const crumbs = path === "/" ? ["我的空间"] : ["我的空间", ...path.split("/").filter(Boolean)];
+      body.innerHTML = `<div class="crumbs">${crumbs.map(c => esc(c)).join(" › ")}<span style="margin-left:auto" class="muted">配额 2.3 / 10 GB</span></div>
+        <div class="files">${items.map(f => `<button class="file" data-n="${esc(f.n)}" data-dir="${f.dir ? 1 : 0}"><div class="fi ${f.dir ? "dir" : ""}">${f.dir ? "" : esc(f.t)}</div><span class="n">${esc(f.n)}</span></button>`).join("")}</div>
+        <div class="pad muted" style="font-size:12px">双击打开；把文件拖到应用窗口就是交给它处理（示意）。</div>`;
+      body.querySelectorAll(".file").forEach(f => f.addEventListener("dblclick", () => {
+        const p = (path === "/" ? "" : path) + "/" + f.dataset.n;
+        if (f.dataset.dir === "1") openFolder(p); else openFile(p);
+      }));
+    });
+  }
+  function openFile(path) {
+    const name = path.split("/").pop();
+    openWin("file:" + path, name, path, 520, 420, (body) => {
+      const isDoc = name.endsWith(".docx");
+      body.innerHTML = `<div class="pad row sp"><div class="row"><button class="btn sm">下载</button><button class="btn sm" data-a="toapp">交给应用处理</button><button class="btn sm">历史版本（3）</button></div><span class="pill ok">v3 · 周报助手 08:03</span></div>
+        <div class="preview">${isDoc ? `<h2 style="font-size:17px">第 40 周周报</h2><h3>本周完成</h3><ul><li>工单系统接口联调完成，上线日期定在 10 月 9 日。</li><li>客户 C-42 的问题闭环，处理时长 4 小时。</li><li>报销流程改为由助手代填，试用两周。</li></ul><h3>下周计划</h3><ul><li>周报自动汇总扩展到全部门。</li><li>整理客户分级规则，发给销售。</li></ul><h3>风险</h3><ul><li>飞书事件回调需要公网地址，待运维开通。</li></ul>` : `<p class="muted">（${esc(name)} 的预览，示意）</p>`}</div>
+        <div class="pad vers muted">每个版本是对象存储里的一个对象；改名不换标识。管理员看不到内容。</div>`;
+      body.querySelector('[data-a="toapp"]').addEventListener("click", () => { const w = openApp("weekly"); appSay("weekly", `<div class="card file"><div class="fi" style="width:30px;height:36px;border:1.5px solid var(--muted);border-radius:3px;font-size:9px;display:grid;place-items:end center;color:var(--muted)">docx</div><div>${esc(name)}<div class="muted" style="font-size:12px">已拷进应用目录</div></div><span class="pill read">读</span></div>`); });
+    });
+  }
+
+  // 应用窗口 = 一条会话
+  const threads = {};
+  function openApp(id) {
+    const a = apps[id];
+    return openWin("app:" + id, a.name, a.pkg, 520, 440, (body) => {
+      body.innerHTML = `<div class="app"><div class="msgs"></div><form class="composer"><input type="text" placeholder="跟${esc(a.name)}说…" autocomplete="off"><button class="btn primary sm" type="submit">发送</button><button class="btn sm" type="button" data-stop disabled>停止</button></form></div>`;
+      threads[id] = { msgs: body.querySelector(".msgs"), stop: body.querySelector("[data-stop]"), streaming: false };
+      appSay(id, `<div class="m assistant">${esc(a.hello)}${a.personal ? '<span class="pill ok" style="margin-left:6px">可用你的个人 skill</span>' : ""}</div>`);
+      if (a.needs === "gmail" && !conns[1].granted) appSay(id, `<div class="card"><div>还没有授权 Gmail。</div><div class="row"><button class="btn primary sm" data-grant="gmail">去授权</button></div></div>`);
+      body.querySelector(".composer").addEventListener("submit", (e) => { e.preventDefault(); const inp = e.target.querySelector("input"); const t = inp.value.trim(); if (!t) return; inp.value = ""; appHandle(id, t); });
+      threads[id].stop.addEventListener("click", () => { threads[id].streaming = false; });
+    });
+  }
+  function appSay(id, html) { const th = threads[id]; if (!th) return; const d = document.createElement("div"); d.innerHTML = html; const el = d.firstElementChild; th.msgs.appendChild(el); th.msgs.scrollTop = th.msgs.scrollHeight;
+    el.querySelectorAll("[data-grant]").forEach(b => b.addEventListener("click", () => grant("gmail")));
+    el.querySelectorAll("[data-openfile]").forEach(b => b.addEventListener("click", () => openFile(b.dataset.openfile)));
+    return el; }
+  async function appStream(id, text) {
+    const th = threads[id]; const el = appSay(id, `<div class="m assistant cursor"></div>`);
+    th.streaming = true; th.stop.disabled = false;
+    for (let i = 0; i < text.length && th.streaming; i += 2) { el.textContent = text.slice(0, i + 2); th.msgs.scrollTop = th.msgs.scrollHeight; await sleep(26); }
+    if (!th.streaming) el.textContent += "（已停止）";
+    el.classList.remove("cursor"); th.streaming = false; th.stop.disabled = true;
+  }
+  async function appHandle(id, text) {
+    appSay(id, `<div class="m user">${esc(text)}</div>`);
+    await sleep(300);
+    if (id === "weekly" && /周报|整理/.test(text) && !/发/.test(text)) {
+      appSay(id, `<div class="m event ok">调用 me.weekly-report（你的个人 skill）</div>`); await sleep(400);
+      appSay(id, `<div class="m event ok">飞书 · 搜索文档「项目看板」 · 以你的身份 · 读，放行</div>`); await sleep(400);
+      appSay(id, `<div class="m event ok">飞书 · 读取文档 · 以你的身份 · 读，放行</div>`); await sleep(400);
+      appSay(id, `<div class="m event ok">沙盒脚本 render_docx · 13 ms</div>`); await sleep(300);
+      await appStream(id, "周报草稿好了：本周完成 4 条、下周计划 3 条、风险 1 条。已写回你的空间。");
+      appSay(id, `<div class="card file" data-openfile="/周报/周报_第40周.docx"><div class="fi" style="width:30px;height:36px;border:1.5px solid var(--muted);border-radius:3px;font-size:9px;display:grid;place-items:end center;color:var(--muted)">docx</div><div>周报_第40周.docx<div class="muted" style="font-size:12px">新版本 v3 · 点开查看</div></div><span class="pill ok">已写回</span></div>`);
+      return;
+    }
+    if (/发给|发送/.test(text)) { approvalFlow(id, text); return; }
+    if (id === "tickets" && /T-\d+/.test(text)) {
+      appSay(id, `<div class="m event ok">工单系统 · getTicket · 企业凭据 · 读，放行</div>`); await sleep(300);
+      appSay(id, `<div class="m event ok">沙盒脚本 sla · 13 ms</div>`); await sleep(300);
+      await appStream(id, "工单 T-1001（无法登录）当前优先级 normal，处理时限 24 小时。"); return;
+    }
+    await appStream(id, "收到。这是示意稿，真实的回复由模型生成。");
+  }
+  async function approvalFlow(id, text) {
+    appSay(id, `<div class="m event warn">飞书 · 发送消息 · 对外操作，会话里有外部内容 → 需要你确认</div>`); await sleep(300);
+    const t = tasks.find(x => x.id === "req_7fcb");
+    const card = appSay(id, `<div class="card approval"><div class="row sp"><strong>需要你确认</strong><span class="pill external">对外</span></div><div>把周报发给李总（飞书消息）</div><div class="args">${esc(JSON.stringify(t.args))}</div><div class="muted" style="font-size:12px">用你对飞书的授权。也在「待我处理」里。</div><div class="row"><button class="btn primary sm" data-a="ok">批准</button><button class="btn sm" data-a="no">拒绝</button></div></div>`);
+    card.querySelectorAll("button").forEach(b => b.addEventListener("click", () => decide("req_7fcb", b.dataset.a === "ok")));
+    t.card = card; t.done = null; renderInbox();
+  }
+  function decide(reqId, ok) {
+    const t = tasks.find(x => x.id === reqId); if (!t || t.done) return;
+    t.done = ok ? "ok" : "no"; renderInbox(); renderPendingStatus();
+    if (t.card) { t.card.querySelector(".row:last-child").innerHTML = `<span class="muted" style="font-size:12px">你已${ok ? "批准" : "拒绝"}</span>`; }
+    if (!threads[t.app]) openApp(t.app);
+    if (ok) { appSay(t.app, `<div class="m event ok">${esc(t.preview)} · 已执行 · 审计 #51</div>`); appStream(t.app, reqId === "req_7fcb" ? "已经发给李总了。审计记了：用你的授权、发给了谁、谁批准的。" : "已把 T-1001 调成高优先级，处理时限缩短为 4 小时。"); }
+    else { appSay(t.app, `<div class="m event warn">${esc(t.preview)} · 已拒绝，未执行</div>`); appStream(t.app, "好，这次不做。"); }
+    toast(ok ? "已批准，对话继续" : "已拒绝，操作不会执行");
+  }
+  function renderPendingStatus() { const n = tasks.filter(t => !t.done).length; $("st-pending").innerHTML = `<i class="dot ${n ? "" : "ok"}"></i>待办 ${n}`; const b = $("badge-inbox"); b.textContent = n; b.hidden = n === 0; }
+  function renderInbox() {
+    const w = wins.get("inbox"); if (!w) return;
+    const body = w.querySelector(".body");
+    body.innerHTML = `<ul class="list">${tasks.map(t => `<li class="task ${t.done ? "done" : ""}"><div class="row sp"><span class="muted">${esc(apps[t.app].name)}</span><span class="pill ${t.effect}">${t.effect === "external" ? "对外" : "写"}</span></div><div><strong>${esc(t.preview)}</strong></div><div class="args">${esc(JSON.stringify(t.args))}</div><div class="muted" style="font-size:12px">${esc(t.why)}</div>${t.done ? `<div class="muted" style="font-size:12px">你已${t.done === "ok" ? "批准" : "拒绝"}</div>` : `<div class="row"><button class="btn primary sm" data-id="${t.id}" data-a="ok">批准</button><button class="btn sm" data-id="${t.id}" data-a="no">拒绝</button><button class="btn sm" data-id="${t.id}" data-a="open">看对话</button></div>`}</li>`).join("")}</ul>`;
+    body.querySelectorAll("button").forEach(b => b.addEventListener("click", () => { if (b.dataset.a === "open") openApp(tasks.find(x => x.id === b.dataset.id).app); else decide(b.dataset.id, b.dataset.a === "ok"); }));
+  }
+  function openInbox() { openWin("inbox", "待我处理", "停在审批点的操作", 460, 380, () => renderInbox()); renderInbox(); }
+  function openActivity() {
+    openWin("activity", "动态", "你不在的时候", 520, 360, (body) => {
+      body.innerHTML = `<ul class="list feed">${feed.map(f => `<li><time>${esc(f.t)}</time><div><span class="who">${esc(apps[f.app].name)}</span> ${esc(f.text)} <span class="lk" data-open="${esc(f.link)}">${esc(f.ltext)}</span></div></li>`).join("")}</ul><div class="pad muted" style="font-size:12px">来自定时与事件触发（P9）。点链接直接打开对应的文件夹、文件或对话。</div>`;
+      body.querySelectorAll(".lk").forEach(l => l.addEventListener("click", () => open(l.dataset.open)));
+    });
+  }
+  function grant(id) { const c = conns.find(x => x.id === id); c.granted = true; toast("示意：跳到 " + c.name + " 授权页，回来后平台保管你的令牌"); if (id === "gmail") $("st-gmail").innerHTML = '<i class="dot ok"></i>Gmail'; renderConn(); }
+  function renderConn() {
+    const w = wins.get("conn"); if (!w) return;
+    const body = w.querySelector(".body");
+    body.innerHTML = `<ul class="list conn">${conns.map(c => `<li><div><div class="row"><strong>${esc(c.name)}</strong><span class="pill">${esc(c.mode)}</span>${c.granted === true ? '<span class="pill ok">已授权</span>' : c.granted === false ? '<span class="pill">未授权</span>' : ""}</div><ul>${c.scopes.map(s => `<li>${esc(s)}</li>`).join("")}</ul></div><div>${c.granted === true ? `<button class="btn sm danger" data-id="${c.id}" data-a="revoke">撤销</button>` : c.granted === false ? `<button class="btn primary sm" data-id="${c.id}" data-a="grant">授权</button>` : ""}</div></li>`).join("")}</ul>
+      <div class="pad"><div class="muted" style="font-size:12px;margin-bottom:6px">agent 用我的授权做过什么（最近）</div><ul class="list" style="font-size:12px"><li>今天 08:03 · 周报助手 · 飞书 · 搜索并读取「项目看板」 · 读，自动放行</li><li>周一 10:21 · 周报助手 · 飞书 · 发送消息给李总 · 你批准了</li><li>上周五 · 报销填单 · 报销系统 · 提交单据 BX-2209 · 你批准了</li></ul></div>`;
+    body.querySelectorAll("button").forEach(b => b.addEventListener("click", () => { if (b.dataset.a === "grant") grant(b.dataset.id); else { const c = conns.find(x => x.id === b.dataset.id); c.granted = false; if (c.id === "gmail") $("st-gmail").innerHTML = '<i class="dot off"></i>Gmail 未授权'; toast("已撤销，立即生效"); renderConn(); } }));
+  }
+  function openConn() { openWin("conn", "连接", "以你的身份访问外部系统", 500, 420, () => renderConn()); renderConn(); }
+  function openSkills() {
+    openWin("skills", "我的 skill", "存在我的空间 /skills/", 640, 460, (body) => {
+      body.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" class="pad">
+        <form id="skf"><label style="display:block;margin-bottom:8px"><span class="muted" style="font-size:12px">名字（标识是 me.&lt;名字&gt;）</span><input type="text" id="sk-name" value="weekly-report"></label>
+          <label style="display:block;margin-bottom:8px"><span class="muted" style="font-size:12px">一句话说明</span><input type="text" id="sk-desc" value="按我们组的格式写周报：本周完成、下周计划、风险"></label>
+          <label style="display:block;margin-bottom:8px"><span class="muted" style="font-size:12px">指令</span><textarea id="sk-body" rows="7">周报分三段：本周完成、下周计划、风险与需要的支持。
+每段不超过五条，每条一句话，先写结果再写过程。
+数据从飞书文档「项目看板」里取，不要编造。
+写完先给我看，我确认后再发给李总。</textarea></label>
+          <div class="row"><button class="btn primary sm" type="submit">保存</button><span class="muted" style="font-size:12px">保存时校验，并让内核试加载</span></div></form>
+        <div><div class="muted" style="font-size:12px;margin-bottom:4px">生成的 SKILL.md</div><pre class="skill" id="sk-preview"></pre><div class="muted" style="font-size:12px;margin-top:8px">已有：me.weekly-report、me.customer-tiering、me.expense-notes。只对你生效；应用允许个人 skill 时自动装进会话。</div></div></div>`;
+      const pv = () => { $("sk-preview").textContent = `---\nname: me.${$("sk-name").value.trim() || "unnamed"}\ndescription: ${$("sk-desc").value.trim()}\nversion: 1.0.0\ntype: composite\n---\n${$("sk-body").value.trim()}\n`; };
+      ["sk-name", "sk-desc", "sk-body"].forEach(i => $(i).addEventListener("input", pv)); pv();
+      body.querySelector("#skf").addEventListener("submit", (e) => { e.preventDefault(); toast("已保存到我的空间 /skills/，校验通过"); });
+    });
+  }
+
+  // ---------- 底部对话：机器的入口 ----------
+  const log = $("log");
+  function shellSay(html) { const d = document.createElement("div"); d.innerHTML = html; const el = d.firstElementChild; log.querySelectorAll(".recent").forEach(x => x.classList.remove("recent")); el.classList.add("recent"); const prev = log.lastElementChild; if (prev && prev.classList.contains("user")) prev.classList.add("recent"); log.appendChild(el); log.scrollTop = log.scrollHeight; el.querySelectorAll("[data-open]").forEach(b => b.addEventListener("click", () => open(b.dataset.open))); return el; }
+  async function shellStream(text) { const el = shellSay(`<div class="m assistant cursor"></div>`); for (let i = 0; i < text.length; i += 2) { el.textContent = text.slice(0, i + 2); await sleep(22); } el.classList.remove("cursor"); }
+  async function shellHandle(text) {
+    shellSay(`<div class="m user">${esc(text)}</div>`); await sleep(250);
+    const t = text.replace(/\s+/g, "");
+    if (/处理|待办|要我/.test(t)) { openInbox(); await shellStream("有 " + tasks.filter(x => !x.done).length + " 件事等你确认，已打开「待我处理」。"); return; }
+    if (/动态|做了什么|不在/.test(t)) { openActivity(); await shellStream("打开了「动态」：邮件分诊整理了 3 封要回的，周报草稿生成好了。"); return; }
+    if (/skill/i.test(t)) { openSkills(); await shellStream("打开了「我的 skill」。"); return; }
+    if (/连接|授权/.test(t)) { openConn(); await shellStream("打开了「连接」。Gmail 还没授权。"); return; }
+    const folder = Object.keys(fs).find(p => p !== "/" && t.includes(p.slice(1)));
+    if (/打开|看看/.test(t) && folder) { openFolder(folder); await shellStream(`打开了文件夹 ${folder}。`); return; }
+    if (/打开|看看/.test(t) && /空间|文件/.test(t)) { openFolder("/"); await shellStream("打开了我的空间。"); return; }
+    const appId = Object.keys(apps).find(k => t.includes(apps[k].name.replace("助手", "")) || t.includes(apps[k].name));
+    if (appId && /让|用|叫|打开/.test(t)) {
+      openApp(appId);
+      const task = t.replace(/^(让|用|叫|打开)?/, "").replace(apps[appId].name, "").replace(/^[，,：:]?/, "");
+      if (task && !/^打开/.test(text)) { await shellStream(`交给${apps[appId].name}了，在它的窗口里看进度。`); appHandle(appId, task); }
+      else await shellStream(`打开了${apps[appId].name}。`);
+      return;
+    }
+    if (/发给|发送/.test(t)) { openApp("weekly"); await shellStream("这是对外操作，周报助手会先请你确认。"); approvalFlow("weekly", text); return; }
+    openApp("general"); await shellStream("交给通用助手了，你的个人 skill 在它里面都能用。"); appHandle("general", text);
+  }
+  $("shellform").addEventListener("submit", (e) => { e.preventDefault(); const v = $("shellin").value.trim(); if (!v) return; $("shellin").value = ""; shellHandle(v); });
+  $("hints").querySelectorAll("button").forEach(b => b.addEventListener("click", () => { $("shellin").value = b.dataset.say; $("shellform").requestSubmit(); }));
+  document.addEventListener("keydown", (e) => { if (e.key === "/" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") { e.preventDefault(); $("shellin").focus(); } });
+
+  $("logtoggle").addEventListener("click", () => { const c = log.classList.toggle("compact"); $("logtoggle").textContent = c ? "展开记录" : "只看最近"; log.scrollTop = log.scrollHeight; });
+  renderDock(); renderPendingStatus();
+  shellSay(`<div class="m assistant">早上好，张伟。你不在的时候：邮件分诊整理了 3 封要回的，周报草稿已经生成；有 2 件事等你确认。<div class="row" style="margin-top:6px"><button class="btn sm" data-open="inbox">看待办</button><button class="btn sm" data-open="activity">看动态</button><button class="btn sm" data-open="file:/周报/周报_第40周.docx">看周报草稿</button></div></div>`);
+  $("shellin").focus();
+})();
+</script>
+</body>
+</html>
