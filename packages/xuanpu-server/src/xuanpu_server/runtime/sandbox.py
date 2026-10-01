@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -27,6 +28,11 @@ if TYPE_CHECKING:
     import taifeng
 
     from xuanpu_server.packages import ResolvedPackage
+
+logger = logging.getLogger(__name__)
+
+# 关沙盒时强杀进程之后，等每个进程退出的时限
+_KILL_WAIT_SECONDS = 5.0
 
 # 沙盒里进程的最小环境：只够找到解释器。宿主自己的环境变量一概不带进去
 DEFAULT_BASE_ENV: Mapping[str, str] = {
@@ -101,6 +107,56 @@ class SandboxProvider(Protocol):
         ...
 
 
+class ProcessTrackingExecutor:
+    """包住一个执行器：记下经它起过的全部进程，``close`` 时逐个强杀。
+
+    本机连接器沙盒用它兜底。内核的 ``McpStdioClient.spawn`` 在启动被取消（例如外层的启动
+    时限到了）时不会关掉已经起来的进程；本机沙盒又不像容器那样有一个能整个销毁的边界，
+    不兜底的话每次组装重试都会漏一个连接器进程。
+
+    强杀按 ``CommandProcess.kill`` 的契约进行：本机后端按进程组杀（连同它派生的进程），已经
+    结束的进程上调用不报错。
+
+    Attributes:
+        inner: 真正起进程的执行器。
+    """
+
+    def __init__(self, inner: taifeng.CommandExecutor) -> None:
+        """包住 ``inner``。"""
+        self.inner = inner
+        self._processes: list[taifeng.CommandProcess] = []
+        self._closed = False
+
+    @property
+    def processes(self) -> tuple[taifeng.CommandProcess, ...]:
+        """起过、还没随 ``close`` 收走的进程。"""
+        return tuple(self._processes)
+
+    async def start(self, spec: taifeng.CommandSpec) -> taifeng.CommandProcess:
+        """经 ``inner`` 起进程并记下。
+
+        Raises:
+            OSError: 已经关闭（执行器契约：启动失败抛 ``OSError``）。
+        """
+        if self._closed:
+            raise OSError("沙盒已关闭，不能再起进程")
+        process = await self.inner.start(spec)
+        self._processes.append(process)
+        return process
+
+    async def close(self) -> None:
+        """强杀起过的全部进程，并等它们退出。之后不能再起进程。"""
+        self._closed = True
+        processes, self._processes = self._processes, []
+        for process in processes:
+            process.kill()
+        for process in processes:
+            try:
+                await asyncio.wait_for(process.wait(), timeout=_KILL_WAIT_SECONDS)
+            except TimeoutError:
+                logger.error("沙盒里的进程强杀后 %s 秒仍未退出", _KILL_WAIT_SECONDS)
+
+
 class LocalSandboxProvider:
     """本机 OS 级隔离（macOS seatbelt / Linux bubblewrap）。"""
 
@@ -122,10 +178,17 @@ class LocalSandboxProvider:
         )
 
     async def open_connectors(self, package: ResolvedPackage, workspace: Path) -> SandboxHandle:
-        """用受限读策略建连接器沙盒：可读业务包目录与配置放开的目录，可出网。"""
-        return await self._open(
+        """用受限读策略建连接器沙盒：可读业务包目录与配置放开的目录，可出网。
+
+        执行器记下起过的进程，沙盒关闭时全部强杀（见 ``ProcessTrackingExecutor``）。
+        """
+        handle = await self._open(
             workspace, readable_roots=(package.root, *self._connector_roots), network=True
         )
+        tracking = ProcessTrackingExecutor(handle.executor)
+        handle.executor = tracking
+        handle.closer = tracking.close
+        return handle
 
     @staticmethod
     async def _open(
@@ -241,6 +304,7 @@ __all__ = [
     "DEFAULT_BASE_ENV",
     "DockerSandboxProvider",
     "LocalSandboxProvider",
+    "ProcessTrackingExecutor",
     "SandboxHandle",
     "SandboxProvider",
 ]

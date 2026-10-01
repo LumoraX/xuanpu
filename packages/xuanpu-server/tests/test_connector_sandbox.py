@@ -9,9 +9,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import shutil
 import subprocess
 import sys
+import time
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -207,7 +210,8 @@ async def test_connector_may_reach_network_while_scripts_follow_manifest(
 
     runtime = only_runtime(world)
     assert runtime.connector_sandbox is not None
-    assert runtime.connector_sandbox.executor.policy.network is True  # type: ignore[attr-defined]
+    # 连接器沙盒的执行器外面包了一层记录进程的执行器
+    assert runtime.connector_sandbox.executor.inner.policy.network is True  # type: ignore[attr-defined]
     assert runtime.package.manifest.spec.policy.sandbox.network is False
     assert runtime.sandbox.executor.policy.network is False  # type: ignore[attr-defined]
 
@@ -413,3 +417,64 @@ async def test_loader_variables_never_reach_the_launcher(tmp_path: Path, name: s
         await connectors.start(spec, package_root=tmp_path)
     assert name in str(caught.value)
     assert executor.started == []
+
+
+HANGING_SERVER = """\
+import os, time
+with open(os.path.join(os.environ["HOME"], "pid.txt"), "w") as handle:
+    handle.write(str(os.getpid()))
+time.sleep(600)
+"""
+
+
+def group_alive(pgid: int) -> bool:
+    """进程组里是否还有进程。"""
+    try:
+        os.killpg(pgid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+async def test_startup_timeout_does_not_leak_the_connector_process(
+    tmp_path: Path, local_sandboxes: Any
+) -> None:
+    """连接器启动卡住、超过启动时限：内核不收回已经起来的进程，关连接器沙盒时把它强杀。
+
+    连接器集合与连接器沙盒依次关闭之后，进程（连同它的进程组）确实没了。
+    """
+    package_root = tmp_path / "pkg"
+    package_root.mkdir()
+    (package_root / "hang.py").write_text(HANGING_SERVER)
+    handle = await local_sandboxes().open_connectors(
+        SimpleNamespace(root=package_root), tmp_path / "work"
+    )
+    spec = ConnectorSpec.model_validate({"name": "crm", "command": [sys.executable, "hang.py"]})
+    connectors = ConnectorSet(
+        tenant_id="acme",
+        vault=None,
+        audit=None,
+        submissions=None,
+        executor=handle.executor,
+        base_env=handle.process_env(),
+        startup_timeout_seconds=1.0,
+    )
+    with pytest.raises(RuntimeUnavailableError, match="启动失败"):
+        await connectors.start(spec, package_root=package_root)
+    assert (tmp_path / "work" / "pid.txt").is_file()
+    [process] = handle.executor.processes
+    # 内核没有收回它：这正是要兜底的情形
+    assert process.returncode is None
+
+    await connectors.close()
+    await handle.close()
+    assert process.returncode is not None
+    deadline = time.monotonic() + 5
+    while group_alive(process.pid) and time.monotonic() < deadline:
+        await asyncio.sleep(0.05)
+    assert not group_alive(process.pid)
+    assert handle.executor.processes == ()
+    with pytest.raises(OSError, match="已关闭"):
+        await handle.executor.start(None)
