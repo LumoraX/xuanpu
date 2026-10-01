@@ -78,6 +78,30 @@ def test_postgres_sections() -> None:
     assert (config.state.postgres.schema_name, config.state.postgres.pool_max) == ("public", 20)
 
 
+def test_postgres_timeouts() -> None:
+    """连接与语句的时限：缺省保守但有限，可以改；必须是正数。"""
+    config = parse_config(
+        edited(
+            control_plane={"backend": "postgres", "postgres": {"dsn": "${PG}"}},
+            state={
+                "backend": "postgres",
+                "postgres": {
+                    "dsn": "${PG}",
+                    "connect_timeout_seconds": 3,
+                    "command_timeout_seconds": 15.5,
+                },
+            },
+        ),
+        variables=VARIABLES,
+    )
+    assert config.control_plane.postgres is not None
+    defaults = config.control_plane.postgres
+    assert (defaults.connect_timeout_seconds, defaults.command_timeout_seconds) == (10.0, 60.0)
+    assert config.state.postgres is not None
+    tuned = config.state.postgres
+    assert (tuned.connect_timeout_seconds, tuned.command_timeout_seconds) == (3.0, 15.5)
+
+
 def test_expand() -> None:
     """变量在字符串、映射、列表里都展开；非字符串原样保留。"""
     value = {"a": "${X}-${Y}", "b": ["${X}", 1, None, True], "c": {"d": "plain"}}
@@ -112,6 +136,24 @@ def test_undefined_variable_is_an_error() -> None:
         ({"control_plane": {"backend": "postgres"}}, "postgres 段"),
         ({"control_plane": {"backend": "sqlite"}}, "backend"),
         ({"state": {"backend": "postgres"}}, "postgres 段"),
+        (
+            {
+                "state": {
+                    "backend": "postgres",
+                    "postgres": {"dsn": "x", "command_timeout_seconds": 0},
+                }
+            },
+            "command_timeout_seconds",
+        ),
+        (
+            {
+                "state": {
+                    "backend": "postgres",
+                    "postgres": {"dsn": "x", "connect_timeout_seconds": -1},
+                }
+            },
+            "connect_timeout_seconds",
+        ),
         ({"sandbox": {"backend": "none"}}, "backend"),
         ({"sandbox": {"memory_mb": 1}}, "memory_mb"),
         ({"limits": {"max_iterations": 0}}, "max_iterations"),

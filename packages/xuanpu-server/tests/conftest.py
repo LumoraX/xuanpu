@@ -17,6 +17,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import asyncpg
@@ -35,7 +36,6 @@ from xuanpu_spec import archive_digest, pack_package
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Iterator
-    from pathlib import Path
 
     import taifeng
     from xuanpu_server.controlplane import ControlPlaneStore
@@ -126,129 +126,10 @@ async def store(request: pytest.FixtureRequest) -> AsyncIterator[ControlPlaneSto
 # 平台级夹具：脚本化的模型、假的 MCP server、样例业务包
 # ---------------------------------------------------------------------------
 
-FAKE_MCP_SERVER = r'''
-"""测试用的最小 MCP server：两个工具，回显调用参数与注入的环境变量。"""
-import json
-import os
-import sys
-
-TOOLS = [
-    {
-        "name": "search_customer",
-        "description": "按名字查客户",
-        "inputSchema": {"type": "object", "properties": {"name": {"type": "string"}}},
-    },
-    {
-        "name": "update_ticket",
-        "description": "更新工单",
-        "inputSchema": {"type": "object", "properties": {"id": {"type": "string"}}},
-    },
-    {
-        "name": "hidden_tool",
-        "description": "清单白名单之外的工具",
-        "inputSchema": {"type": "object"},
-    },
-]
-
-
-def reply(message_id, result):
-    sys.stdout.write(json.dumps({"jsonrpc": "2.0", "id": message_id, "result": result}) + "\n")
-    sys.stdout.flush()
-
-
-for line in sys.stdin:
-    message = json.loads(line)
-    method = message.get("method")
-    if "id" not in message:
-        continue
-    if method == "initialize":
-        reply(message["id"], {
-            "protocolVersion": message["params"]["protocolVersion"],
-            "capabilities": {"tools": {}},
-            "serverInfo": {"name": "fake-crm", "version": "1.0"},
-        })
-    elif method == "tools/list":
-        reply(message["id"], {"tools": TOOLS})
-    elif method == "tools/call":
-        params = message["params"]
-        log = os.environ.get("CALL_LOG")
-        if log:
-            with open(log, "a", encoding="utf-8") as handle:
-                handle.write(json.dumps(params, ensure_ascii=False) + "\n")
-        text = json.dumps({
-            "tool": params["name"],
-            "arguments": params["arguments"],
-            "region": os.environ.get("CRM_REGION"),
-            "token_length": len(os.environ.get("CRM_TOKEN", "")),
-            "inherited": sorted(k for k in os.environ if k.startswith("HOST_ONLY")),
-        }, ensure_ascii=False)
-        reply(message["id"], {"content": [{"type": "text", "text": text}]})
-    else:
-        reply(message["id"], {})
-'''
-
-MANIFEST = """\
-apiVersion: xuanpu/v1
-metadata:
-  name: support-desk
-  version: {version}
-  description: 客服工单助手
-spec:
-  skills:
-    entries: [triage]
-  policy:
-    approval: {approval}
-    budget:
-      maxIterations: 12
-    sandbox:
-      network: false
-      shell: {shell}
-  connectors:
-    - name: crm
-      command: [{python}, {server}]
-      env:
-        CRM_TOKEN: {{secret: crm-token}}
-        CRM_REGION: {{value: cn}}
-        CALL_LOG: {{value: {call_log}}}
-      tools:
-        - {{name: search_customer, effect: read}}
-        - {{name: update_ticket, effect: write}}
-"""
-
-TRIAGE = """\
----
-name: triage
-description: 工单分诊
-version: 1.0.0
-type: composite
-entry: true
-child_skills: [faq]
-tool_names: [mcp__crm__search_customer, mcp__crm__update_ticket, run_script{extra_tools}]
-scripts:
-  - name: stamp
-    path: scripts/stamp.sh
-    language: shell
-    description: 在工作区留一个标记文件
-    timeout_seconds: 20
-    args_schema:
-      type: object
-      properties:
-        label: {{type: string}}
----
-# 工单分诊
-先查客户信息，再决定怎么处理。
-"""
-
-FAQ = """\
----
-name: faq
-description: 常见问题
-version: 1.0.0
-type: atomic
----
-# 常见问题
-退款在 7 个工作日内到账。
-"""
+DATA = Path(__file__).parent / "data"
+"""测试数据：假的 MCP server（两个工具，回显参数与注入的环境变量）、样例业务包的模板。"""
+MANIFEST = (DATA / "support-desk.xuanpu.yaml.tmpl").read_text(encoding="utf-8")
+TRIAGE = (DATA / "triage.SKILL.md.tmpl").read_text(encoding="utf-8")
 
 
 def _completed(usage: TokenUsage, *, end_turn: bool) -> ResponseEvent:
@@ -404,8 +285,7 @@ class World:
         if not root.exists():
             (root / "skills" / "triage" / "scripts").mkdir(parents=True)
             (root / "skills" / "faq").mkdir(parents=True)
-            server = root / "fake_mcp.py"
-            server.write_text(FAKE_MCP_SERVER, encoding="utf-8")
+            shutil.copyfile(DATA / "fake_mcp_server.py", root / "fake_mcp.py")
             (root / "xuanpu.yaml").write_text(
                 MANIFEST.format(
                     version=version,
@@ -421,7 +301,7 @@ class World:
             (root / "skills" / "triage" / "SKILL.md").write_text(
                 TRIAGE.format(extra_tools=extra), encoding="utf-8"
             )
-            (root / "skills" / "faq" / "SKILL.md").write_text(FAQ, encoding="utf-8")
+            shutil.copyfile(DATA / "faq.SKILL.md", root / "skills" / "faq" / "SKILL.md")
             script = root / "skills" / "triage" / "scripts" / "stamp.sh"
             script.write_text('echo "stamp:$1" > "$WORKSPACE/stamp.txt"\necho "stamped $1"\n')
         return pack_package(root)
@@ -497,7 +377,8 @@ async def open_world(
 ) -> World:
     """在 ``tmp_path`` 下装配并启动一个平台，开通一个租户、两把凭据、一条密钥。
 
-    对象存储放在数据目录之外（``tmp_path/objects``），几个实例可以共用。平台由调用方关闭。
+    对象存储放在数据目录之外（``tmp_path/objects``），几个实例可以共用。返回之后平台由
+    调用方关闭；开通到一半失败时这里先关掉它。
     """
     data_dir = (tmp_path / data_dir_name).resolve()
     data_dir.mkdir()
@@ -517,32 +398,37 @@ async def open_world(
         states=states,
     )
     await platform.start()
-    await platform.create_tenant(ROOT_PRINCIPAL, tenant_id="acme", name="Acme")
-    admin = await platform.issue_key(
-        ROOT_PRINCIPAL, tenant_id="acme", name="admin", role="tenant_admin"
-    )
-    member = await platform.issue_key(
-        ROOT_PRINCIPAL, tenant_id="acme", name="app", role="tenant_member"
-    )
-    admin_principal = await platform.authenticate(admin.key)
-    await platform.put_secret(admin_principal, "crm-token", "s3cret-token-value")
-    package_dir = tmp_path / "packages-src"
-    package_dir.mkdir()
-    return World(
-        platform=platform,
-        models=models,
-        data_dir=data_dir,
-        objects=objects,
-        objects_dir=objects_dir,
-        root_key=root_key,
-        call_log=tmp_path / "mcp-calls.jsonl",
-        package_dir=package_dir,
-        admin=admin_principal,
-        member=await platform.authenticate(member.key),
-        admin_key=admin.key,
-        member_key=member.key,
-        states=states,
-    )
+    try:
+        await platform.create_tenant(ROOT_PRINCIPAL, tenant_id="acme", name="Acme")
+        admin = await platform.issue_key(
+            ROOT_PRINCIPAL, tenant_id="acme", name="admin", role="tenant_admin"
+        )
+        member = await platform.issue_key(
+            ROOT_PRINCIPAL, tenant_id="acme", name="app", role="tenant_member"
+        )
+        admin_principal = await platform.authenticate(admin.key)
+        await platform.put_secret(admin_principal, "crm-token", "s3cret-token-value")
+        package_dir = tmp_path / "packages-src"
+        package_dir.mkdir()
+        return World(
+            platform=platform,
+            models=models,
+            data_dir=data_dir,
+            objects=objects,
+            objects_dir=objects_dir,
+            root_key=root_key,
+            call_log=tmp_path / "mcp-calls.jsonl",
+            package_dir=package_dir,
+            admin=admin_principal,
+            member=await platform.authenticate(member.key),
+            admin_key=admin.key,
+            member_key=member.key,
+            states=states,
+        )
+    except BaseException:
+        # 开通到一半失败：平台已经启动（有后台续期任务），关掉再上抛
+        await platform.close()
+        raise
 
 
 @pytest.fixture
@@ -550,6 +436,7 @@ def world_opener(tmp_path: Path) -> Any:
     """返回 ``open_world`` 绑定好本用例临时目录的版本，给需要换后端的用例自己装配平台。"""
 
     async def opener(**kwargs: Any) -> World:
+        """装配一个平台，参数同 ``open_world``（临时目录已绑定）。"""
         return await open_world(tmp_path, **kwargs)
 
     return opener
@@ -579,41 +466,10 @@ def object_gets(world: World, monkeypatch: pytest.MonkeyPatch) -> list[str]:
     original = world.objects.get
 
     async def counting(key: str) -> bytes:
+        """记下键、让出一次事件循环，再照常读取。"""
         seen.append(key)
         await asyncio.sleep(0)
         return await original(key)
 
     monkeypatch.setattr(world.objects, "get", counting)
     return seen
-
-
-@pytest.fixture
-async def serve() -> AsyncIterator[Any]:
-    """返回一个函数：把一个 ASGI 应用真的跑在本机端口上，返回它的地址。用例结束时全部停掉。"""
-    import socket
-
-    import uvicorn
-
-    running: list[tuple[uvicorn.Server, asyncio.Task[None]]] = []
-
-    async def start(app: Any) -> str:
-        with socket.socket() as probe:
-            probe.bind(("127.0.0.1", 0))
-            port = int(probe.getsockname()[1])
-        server = uvicorn.Server(
-            uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
-        )
-        task = asyncio.ensure_future(server.serve())
-        running.append((server, task))
-        for _ in range(200):
-            if server.started:
-                return f"http://127.0.0.1:{port}"
-            await asyncio.sleep(0.02)
-        raise RuntimeError("HTTP 服务没有启动")
-
-    try:
-        yield start
-    finally:
-        for server, task in running:
-            server.should_exit = True
-            await asyncio.wait_for(task, timeout=10)

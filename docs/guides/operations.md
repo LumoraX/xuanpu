@@ -90,6 +90,8 @@ uv run xuanpu --help
 | `postgres.dsn` | 连接串 |
 | `postgres.schema` | 表所在的 schema，默认 `public`。表名都带 `xp_` 前缀 |
 | `postgres.pool_min` / `pool_max` | 连接池大小，默认 1 / 10 |
+| `postgres.connect_timeout_seconds` | 新建一条连接的时限（秒），默认 10 |
+| `postgres.command_timeout_seconds` | 单条语句的时限（秒），默认 60。库卡住时请求与会话续期会报错，而不是一直挂着。连接池满时取连接没有时限、会排队，所以 `pool_max` 要按并发留足 |
 
 ### `state`
 

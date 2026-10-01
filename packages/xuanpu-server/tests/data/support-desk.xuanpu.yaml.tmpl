@@ -1,0 +1,25 @@
+apiVersion: xuanpu/v1
+metadata:
+  name: support-desk
+  version: {version}
+  description: 客服工单助手
+spec:
+  skills:
+    entries: [triage]
+  policy:
+    approval: {approval}
+    budget:
+      maxIterations: 12
+    sandbox:
+      network: false
+      shell: {shell}
+  connectors:
+    - name: crm
+      command: [{python}, {server}]
+      env:
+        CRM_TOKEN: {{secret: crm-token}}
+        CRM_REGION: {{value: cn}}
+        CALL_LOG: {{value: {call_log}}}
+      tools:
+        - {{name: search_customer, effect: read}}
+        - {{name: update_ticket, effect: write}}

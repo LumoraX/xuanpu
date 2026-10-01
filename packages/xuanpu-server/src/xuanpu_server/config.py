@@ -40,12 +40,29 @@ class ListenConfig(_Section):
 
 
 class PostgresConfig(_Section):
-    """一个 Postgres 连接。"""
+    """一个 Postgres 连接（连接池）。
+
+    Attributes:
+        dsn: 连接串。
+        schema_name: 表所在的 schema（配置里写 ``schema``）。
+        pool_min: 连接池最少保持的连接数。
+        pool_max: 连接池最多的连接数。
+        connect_timeout_seconds: 新建一条连接的时限，交给 asyncpg 的 ``timeout``。
+        command_timeout_seconds: 单条语句的时限，交给 asyncpg 的 ``command_timeout``。
+            平台日常的语句都是短查询，60 秒足够宽松，又能让卡住的库表现为报错。注意状态面
+            的表是租户第一次使用时在运行中迁移的（``xuanpu migrate`` 只管控制面），以后若有
+            大表上的迁移，要临时调大状态面这一项。
+
+    asyncpg 没有连接池级别的「等空闲连接」时限：池满时取连接会一直排队，所以 ``pool_max``
+    要按并发量留足。
+    """
 
     dsn: str
     schema_name: str = Field(default="public", alias="schema")
     pool_min: int = Field(default=1, ge=1)
     pool_max: int = Field(default=10, ge=1)
+    connect_timeout_seconds: float = Field(default=10.0, gt=0)
+    command_timeout_seconds: float = Field(default=60.0, gt=0)
 
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
 
@@ -70,8 +87,9 @@ class StateConfig(_Section):
         backend: ``local`` 用内核的本机默认实现，会话主存与线程目录都在数据目录下，
             只适合单实例（多实例跨实例接手会话就得共用数据目录）；``postgres`` 把线程
             目录与会话主存都放进库里，每个租户一组带专属前缀的表，多实例不需要共享
-            数据目录。早先版本的 ``postgres`` 只是把消息镜像进库，镜像与主存是同一张表，
-            升级后直接从库里续接。
+            数据目录。早先版本的 ``postgres`` 只是把消息镜像进库：镜像是尽力写入，可能
+            不完整。升级前若有活动会话，以节点本地的 JSONL 为准，升级后这些会话可能无法
+            续接。
         postgres: ``backend`` 为 ``postgres`` 时的连接。
     """
 

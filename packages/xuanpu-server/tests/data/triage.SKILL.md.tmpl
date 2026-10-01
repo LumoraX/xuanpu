@@ -1,0 +1,21 @@
+---
+name: triage
+description: 工单分诊
+version: 1.0.0
+type: composite
+entry: true
+child_skills: [faq]
+tool_names: [mcp__crm__search_customer, mcp__crm__update_ticket, run_script{extra_tools}]
+scripts:
+  - name: stamp
+    path: scripts/stamp.sh
+    language: shell
+    description: 在工作区留一个标记文件
+    timeout_seconds: 20
+    args_schema:
+      type: object
+      properties:
+        label: {{type: string}}
+---
+# 工单分诊
+先查客户信息，再决定怎么处理。

@@ -48,8 +48,9 @@ class PostgresStateBackends:
     自己的 ``PostgresMessageStore``，全部共用同一个连接池；引擎池关闭时会调用存储的
     ``close()``，那不会关闭连接池（连接池归 ``open_platform`` 管）。
 
-    不挂 ``PostgresMessageMirror``：它与主存写的是同一张消息表。也因此，状态面原先镜像
-    进库的历史，切到主存之后可以直接续接。单写者由会话租约保证（见 ``SessionManager``）。
+    不挂 ``PostgresMessageMirror``：它与主存写的是同一张消息表。早先版本把消息镜像进库，
+    镜像是尽力写入，可能不完整；升级前若有活动会话，以节点本地的 JSONL 为准，升级后这些
+    会话可能无法续接。单写者由会话租约保证（见 ``SessionManager``）。
     """
 
     def __init__(self, pool: asyncpg.Pool, *, schema: str) -> None:
@@ -61,10 +62,25 @@ class PostgresStateBackends:
         self._pool = pool
         self._schema = schema
         self._ready: dict[str, StateBackends] = {}
-        self._lock = asyncio.Lock()
+        self._locks: dict[str, asyncio.Lock] = {}
 
     async def for_tenant(self, tenant_id: str) -> StateBackends:
-        """返回租户的后端；首次使用时为它建表（开通租户的一部分，不是运行时的隐式行为）。"""
+        """返回租户的后端；首次使用时为它建表（开通租户的一部分，不是运行时的隐式行为）。
+
+        每个租户一把锁：同一租户的并发首次使用只建一次表，某个租户建表慢不拖住别的租户。
+        """
+        ready = self._ready.get(tenant_id)
+        if ready is not None:
+            return ready
+        async with self._locks.setdefault(tenant_id, asyncio.Lock()):
+            ready = self._ready.get(tenant_id)
+            if ready is None:
+                ready = await self._prepare(tenant_id)
+                self._ready[tenant_id] = ready
+            return ready
+
+    async def _prepare(self, tenant_id: str) -> StateBackends:
+        """为租户建表（已建过的迁移会跳过），返回它的线程目录与会话主存工厂。"""
         from taifeng_stores import SqlNamespace
         from taifeng_stores.postgres import (
             PostgresMessageStore,
@@ -72,30 +88,32 @@ class PostgresStateBackends:
             apply_migrations,
         )
 
-        async with self._lock:
-            ready = self._ready.get(tenant_id)
-            if ready is None:
-                namespace = SqlNamespace(schema=self._schema, prefix=tenant_table_prefix(tenant_id))
-                await apply_migrations(self._pool, namespace)
-                pool = self._pool
+        namespace = SqlNamespace(schema=self._schema, prefix=tenant_table_prefix(tenant_id))
+        await apply_migrations(self._pool, namespace)
+        pool = self._pool
 
-                def message_store() -> PostgresMessageStore:
-                    """给一个运行时造它专用的会话主存（与线程目录同库、同命名空间）。"""
-                    return PostgresMessageStore(pool, namespace=namespace)
+        def message_store() -> PostgresMessageStore:
+            """给一个运行时造它专用的会话主存（与线程目录同库、同命名空间）。"""
+            return PostgresMessageStore(pool, namespace=namespace)
 
-                ready = StateBackends(
-                    thread_directory=PostgresThreadDirectory(pool, namespace=namespace),
-                    message_store=message_store,
-                )
-                self._ready[tenant_id] = ready
-            return ready
+        return StateBackends(
+            thread_directory=PostgresThreadDirectory(pool, namespace=namespace),
+            message_store=message_store,
+        )
 
 
 async def _open_pool(stack: AsyncExitStack, config: PostgresConfig) -> asyncpg.Pool:
     """建连接池，并登记到退出栈里。"""
     import asyncpg
 
-    pool = await asyncpg.create_pool(config.dsn, min_size=config.pool_min, max_size=config.pool_max)
+    pool = await asyncpg.create_pool(
+        config.dsn,
+        min_size=config.pool_min,
+        max_size=config.pool_max,
+        # 新建连接与单条语句都有时限：库卡住时报错，而不是让请求和续期一直挂着
+        timeout=config.connect_timeout_seconds,
+        command_timeout=config.command_timeout_seconds,
+    )
     stack.push_async_callback(pool.close)
     return pool
 

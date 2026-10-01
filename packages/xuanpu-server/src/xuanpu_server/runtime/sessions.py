@@ -316,6 +316,7 @@ class SessionManager:
         key = (record.tenant_id, record.session_id)
 
         def turn_ended(submission_id: str) -> None:
+            """一轮结束：不再算在途，并把这一刻记为最近活动。"""
             live = self._live.get(key)
             if live is not None:
                 live.in_flight.discard(submission_id)

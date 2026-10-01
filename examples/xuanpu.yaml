@@ -38,6 +38,8 @@ control_plane:
     schema: xuanpu
     pool_min: 1
     pool_max: 10
+    # connect_timeout_seconds: 10   # 新建一条连接的时限
+    # command_timeout_seconds: 60   # 单条语句的时限
 
 # 状态面。local：线程目录与消息只在节点本地；postgres：另外镜像进库，供多实例与审计查询。
 state:

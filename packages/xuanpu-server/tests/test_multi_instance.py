@@ -69,6 +69,7 @@ class Cluster:
         self.started.append(platform)
 
         async def publish() -> None:
+            """经这个实例发布样例业务包并设为生效版本。"""
             await platform.packages.publish(self.world.admin, self.world.archive(), activate=True)
 
         return Instance(
@@ -207,6 +208,7 @@ async def test_crashed_holder_is_taken_over_after_lease_expiry(
     clock = {"now": 1_000.0}
 
     def now() -> float:
+        """两个实例共用的可拨动时钟。"""
         return clock["now"]
 
     crashed = await cluster.spawn("inst-crashed", "data-c", now=now, lease_seconds=60)
@@ -246,8 +248,10 @@ async def test_crashed_holder_is_taken_over_after_lease_expiry(
 async def test_postgres_state_uses_the_store_as_primary_without_a_mirror(
     cluster: Cluster, step: Any, read_turn: Any
 ) -> None:
-    """postgres 状态面给的是会话主存与配套的线程目录，不挂消息镜像；每条消息在库里只有一份。"""
+    """postgres 状态面给的是会话主存与配套的线程目录，不挂消息镜像；一轮的消息同步落库。"""
     backends = await cluster.states.for_tenant("acme")
+    # 把住配置的是这一条：主存与镜像写同一张表，双挂会让镜像用未经回放校准的位置抢写、
+    # 写入量翻倍（表上有唯一约束，重复的行会被丢掉，所以下面数行数看不出双挂）
     assert backends.index_hook is None
     assert isinstance(backends.thread_directory, PostgresThreadDirectory)
     assert backends.message_store is not None
@@ -262,7 +266,7 @@ async def test_postgres_state_uses_the_store_as_primary_without_a_mirror(
     await read_turn(await a.platform.sessions.send_message(a.member, session.session_id, "记住 42"))
     record = await a.platform.sessions.get(a.member, session.session_id)
     assert record.thread_id is not None
-    # 主存与镜像写的是同一张表：要是两个都挂上，这里每条会出现两遍
+    # 一轮结束时消息已经在库里（主存同步写，不像镜像那样事后补写）
     assert await cluster.stored_messages(record.thread_id) == [
         ("user_message", "记住 42"),
         ("assistant_message", "第一轮"),

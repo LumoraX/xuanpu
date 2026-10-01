@@ -333,7 +333,7 @@ async def _check_database(pool: asyncpg.Pool, schema: str, session_id: str) -> N
         # 实例退出时放弃了持有权，会话保持活动
         assert (session["owner"], session["status"]) == (None, "active")
 
-        # 主存是同步写的：一轮结束时消息已经在库里，每条只有一份
+        # 主存是同步写的：一轮结束时消息已经在库里，不用像镜像那样轮询等它补写
         stored = await conn.fetch(
             f'SELECT kind, payload->>\'text\' AS text FROM "{schema}"."{prefix}message" '
             "WHERE thread_id = $1 ORDER BY position, seq",
