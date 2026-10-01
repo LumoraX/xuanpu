@@ -28,7 +28,8 @@ from xuanpu_server.runtime.http_api import ConnectorCallError, auth_header
 from xuanpu_server.runtime.mcp_connectors import (
     MAX_ERROR_CHARS,
     described,
-    render_result,
+    render_text,
+    truncate,
     unexpected_failure,
 )
 
@@ -123,7 +124,9 @@ class RemoteRun:
         tenant_id: 所属租户。
         vault: 密钥保管库。
         client: 握手成功后的客户端；没连上时为 None。
-        transport: 给客户端用的凭据传输（客户端关闭时一并关闭；没连上时由 ``close`` 关）。
+        inner_transport: 真正发请求的传输，测试时注入；None 时用不读环境配置的
+            ``httpx.AsyncHTTPTransport``。
+        transport: 给客户端用的凭据传输（包住 ``inner_transport``），由 ``close`` 关掉。
     """
 
     name: str
@@ -132,13 +135,17 @@ class RemoteRun:
     tenant_id: str
     vault: SecretVault
     client: taifeng.McpHttpClient | None = None
+    inner_transport: httpx.AsyncBaseTransport | None = None
     transport: VaultAuthTransport = field(init=False)
 
     def __post_init__(self) -> None:
         """备好凭据传输。"""
+        # 不读环境里的代理与证书配置（与 HTTP 连接器一致）：出口走哪里由部署决定
+        inner = self.inner_transport
+        if inner is None:
+            inner = httpx.AsyncHTTPTransport(trust_env=False)
         self.transport = VaultAuthTransport(
-            # 不读环境里的代理与证书配置（与 HTTP 连接器一致）：出口走哪里由部署决定
-            httpx.AsyncHTTPTransport(trust_env=False),
+            inner,
             url=self.url,
             auth=self.auth,
             tenant_id=self.tenant_id,
@@ -171,7 +178,10 @@ class RemoteRun:
             return text
         try:
             secret = await self.vault.get(self.tenant_id, self.auth.secret)
-        except PlatformError:
+        except PlatformError as exc:
+            logger.warning(
+                "连接器 %s 要按值脱敏时密钥已取不到（%s）：这段文本整段不记", self.name, exc.code
+            )
             return UNREDACTABLE
         return redact(text, (secret,))
 
@@ -207,8 +217,9 @@ class RemoteRun:
                 # 内核客户端的失败不止 McpToolError：远端回的响应形状不对时，解析途中也会冒出
                 # ValueError、TypeError、UnicodeDecodeError 之类，文本里可能就是远端回显的凭据
                 raise await self._call_failed(tool, exc) from None
-            rendered, is_error = render_result(result)
-            return await self.redact(rendered), is_error
+            # 先拿全文脱敏再截断：先截的话，截断处正好切开密钥时前半截就认不出来了
+            rendered, is_error = render_text(result)
+            return truncate(await self.redact(rendered)), is_error
 
         return invoke
 
@@ -225,10 +236,18 @@ class RemoteRun:
         return ConnectorCallError(unexpected_failure(exc))
 
     async def close(self) -> None:
-        """关闭客户端（它会 DELETE 结束会话）；没连上、或关客户端失败，也关掉传输的连接池。"""
+        """关闭客户端（它会 DELETE 结束会话），再关掉凭据传输与它的连接池。
+
+        关闭前密钥被删掉时，DELETE 经凭据传输取不到凭据、抛 ``SecretMissingError``。内核
+        ``McpHttpClient.close()`` 只接 ``httpx.HTTPError``，遇到它会跳过关闭自己的 httpx 客户端
+        （内核侧的问题，由缺口清单跟进）。所以这里接住平台侧的失败记一条告警，并且无论如何
+        都关掉我们自己建的传输——连接池在传输里，随之关闭。
+        """
         try:
             if self.client is not None:
                 await self.client.close()
+        except PlatformError as exc:
+            logger.warning("连接器 %s 关闭时没能结束远端会话（%s）", self.name, exc.code)
         finally:
             await self.transport.aclose()
 

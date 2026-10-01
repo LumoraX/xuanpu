@@ -36,7 +36,7 @@ SESSION = "sess-1"
 
 # 清单白名单里的工具与副作用分类。search 回显参数；update_doc 是写操作；fail 回 isError 并回显
 # 凭据；slow 等到放行才返回；bad_code / null_code / not_utf8 回内核解析不了的响应（见 _malformed）；
-# sse_noise 回 SSE 流，先夹一条回显凭据、解析不了的 data
+# sse_noise 回 SSE 流，先夹一条回显凭据、解析不了的 data；whoami 成功返回、结果里回显凭据
 WHITELIST: dict[str, str] = {
     "search": "read",
     "update_doc": "write",
@@ -46,6 +46,7 @@ WHITELIST: dict[str, str] = {
     "null_code": "read",
     "not_utf8": "read",
     "sse_noise": "read",
+    "whoami": "read",
 }
 
 # 远端提供的工具：白名单里的全部，外加不在白名单里的 admin_purge
@@ -80,10 +81,15 @@ class RemoteState:
 
 
 class FakeRemoteMcp:
-    """最小的 MCP Streamable HTTP 服务。本身就是 ASGI 应用。"""
+    """最小的 MCP Streamable HTTP 服务。本身就是 ASGI 应用。
 
-    def __init__(self) -> None:
+    ``sse=True`` 时 JSON-RPC 响应都以 SSE 流（``text/event-stream``，一个 ``event: message``
+    事件）回，官方 SDK 的服务端默认就是这样；否则回 ``application/json``。
+    """
+
+    def __init__(self, *, sse: bool = False) -> None:
         self.state = RemoteState()
+        self.sse = sse
         self.app = FastAPI()
         app = self.app
 
@@ -133,21 +139,30 @@ class FakeRemoteMcp:
                 "capabilities": {"tools": {}},
                 "serverInfo": {"name": "fake-docs", "version": "1"},
             }
-            return JSONResponse(
+            return self._reply(
                 {"jsonrpc": "2.0", "id": message["id"], "result": result},
                 headers={"Mcp-Session-Id": SESSION},
             )
         if request.headers.get("mcp-session-id") != SESSION:
             return JSONResponse({"error": "unknown session"}, status_code=404)
         if method == "tools/list":
-            return _result(message, {"tools": TOOLS})
+            return self._reply({"jsonrpc": "2.0", "id": message["id"], "result": {"tools": TOOLS}})
         if method == "tools/call":
             malformed = _malformed(request, message)
             if malformed is not None:
                 return malformed
-            return _result(message, await self._call(request, message["params"]))
+            result = await self._call(request, message["params"])
+            return self._reply({"jsonrpc": "2.0", "id": message["id"], "result": result})
         error = {"code": -32601, "message": f"method not found: {method}"}
-        return JSONResponse({"jsonrpc": "2.0", "id": message["id"], "error": error})
+        return self._reply({"jsonrpc": "2.0", "id": message["id"], "error": error})
+
+    def _reply(self, payload: dict[str, Any], headers: dict[str, str] | None = None) -> Response:
+        """一条 JSON-RPC 响应：按模式回 JSON 或 SSE。"""
+        if self.sse:
+            response = _sse(json.dumps(payload, ensure_ascii=False))
+            response.headers.update(headers or {})
+            return response
+        return JSONResponse(payload, headers=headers)
 
     async def _call(self, request: Request, params: dict[str, Any]) -> dict[str, Any]:
         """执行一个工具。``fail`` 回 isError 并回显凭据；``slow`` 等到放行。"""
@@ -158,13 +173,11 @@ class FakeRemoteMcp:
         if name == "fail":
             text = f"后端拒绝了 {request.headers.get('authorization')}"
             return {"isError": True, "content": [{"type": "text", "text": text}]}
+        if name == "whoami":
+            text = f"你用的凭据是 {request.headers.get('authorization')}"
+            return {"content": [{"type": "text", "text": text}]}
         text = f"{name}: {json.dumps(arguments, ensure_ascii=False)}"
         return {"content": [{"type": "text", "text": text}]}
-
-
-def _result(message: dict[str, Any], result: dict[str, Any]) -> JSONResponse:
-    """JSON-RPC 成功响应。"""
-    return JSONResponse({"jsonrpc": "2.0", "id": message["id"], "result": result})
 
 
 def _malformed(request: Request, message: dict[str, Any]) -> Response | None:
@@ -349,10 +362,15 @@ def only_runtime(world: Any) -> TenantRuntime:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.parametrize("sse", [False, True], ids=["json", "sse"])
 async def test_remote_mcp_tools_go_through_the_gate(
-    world: Any, serve: Any, step: Any, read_turn: Any, fake_remote_mcp: FakeRemoteMcp
+    world: Any, serve: Any, step: Any, read_turn: Any, sse: bool
 ) -> None:
-    """远端 MCP 的工具与 stdio 一样过闸：读操作放行并留过闸记录；凭据按名字注入。"""
+    """远端 MCP 的工具与 stdio 一样过闸：读操作放行并留过闸记录；凭据按名字注入。
+
+    远端回 JSON 与回 SSE 流（官方 SDK 服务端的默认做法）两种各走一遍。
+    """
+    fake_remote_mcp = FakeRemoteMcp(sse=sse)
     base = await serve(fake_remote_mcp)
     await publish_remote_package(world, url=f"{base}/mcp")
     await world.platform.put_secret(world.admin, "docs-token", TOKEN)
@@ -617,6 +635,17 @@ async def test_remote_tool_error_is_redacted(
     ]
     assert TOKEN not in await everything(world)
     assert TOKEN not in caplog.text
+
+
+async def test_successful_result_echoing_the_secret_is_redacted(
+    world: Any, serve: Any, step: Any, read_turn: Any, fake_remote_mcp: FakeRemoteMcp
+) -> None:
+    """远端成功返回、结果里却回显了凭据：交给模型的结果同样按值脱敏，调用不算出错。"""
+    session_id = await ready(world, serve, fake_remote_mcp)
+    events = await ask(world, step, read_turn, session_id, [("c1", "mcp__docs__whoami", {})])
+    result = output_of(events)
+    assert (result["is_error"], result["output"]) == (False, "你用的凭据是 Bearer ***")
+    assert TOKEN not in world.models.last_prompt()
 
 
 async def test_slow_remote_tool_times_out(

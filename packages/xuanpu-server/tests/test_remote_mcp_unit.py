@@ -6,11 +6,22 @@
 
 from __future__ import annotations
 
+import json
+import logging
+from typing import TYPE_CHECKING, Any
+
 import httpx
 import pytest
 from xuanpu_server.errors import SecretMissingError
-from xuanpu_server.runtime.remote_mcp import VaultAuthTransport
+from xuanpu_server.runtime.remote_mcp import UNREDACTABLE, RemoteRun, VaultAuthTransport
 from xuanpu_spec.manifest import HttpAuth
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+URL = "https://mcp.example.com/mcp"
+SECRET = "secret-value-0123"
 
 
 class FakeVault:
@@ -115,3 +126,149 @@ async def test_vault_transport_missing_secret_and_close() -> None:
             await client.get("https://mcp.example.com/mcp")
     await transport.aclose()
     assert closed == ["inner"]
+
+
+# ---------------------------------------------------------------------------
+# RemoteRun：脱敏、截断与收尾
+# ---------------------------------------------------------------------------
+
+
+def mcp_handler(
+    call: Callable[[httpx.Request, dict[str, Any]], dict[str, Any]], seen: list[str]
+) -> Callable[[httpx.Request], httpx.Response]:
+    """一个最小的 MCP 端点（给 MockTransport 用）：握手与列工具照常，``tools/call`` 交给 ``call``。
+
+    ``seen`` 记下每次请求的 HTTP 方法与 JSON-RPC 方法。
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "DELETE":
+            seen.append("DELETE")
+            return httpx.Response(204)
+        message = json.loads(request.content)
+        seen.append(message["method"])
+        if "id" not in message:
+            return httpx.Response(202)
+        if message["method"] == "initialize":
+            result: dict[str, Any] = {
+                "protocolVersion": message["params"]["protocolVersion"],
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": "unit"},
+            }
+            headers = {"Mcp-Session-Id": "s1"}
+        elif message["method"] == "tools/list":
+            result, headers = {"tools": [{"name": "t"}]}, {}
+        else:
+            result, headers = call(request, message["params"]), {}
+        payload = {"jsonrpc": "2.0", "id": message["id"], "result": result}
+        return httpx.Response(200, json=payload, headers=headers)
+
+    return handler
+
+
+class ClosingInner(httpx.AsyncBaseTransport):
+    """记下被关闭了几次的内层传输，请求交给 MockTransport。"""
+
+    def __init__(self, handler: Callable[[httpx.Request], httpx.Response]) -> None:
+        self._mock = httpx.MockTransport(handler)
+        self.closed = 0
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        """交给 MockTransport。"""
+        return await self._mock.handle_async_request(request)
+
+    async def aclose(self) -> None:
+        """记下关闭。"""
+        self.closed += 1
+
+
+def text_result(text: str) -> dict[str, Any]:
+    """只有一段文本的工具结果。"""
+    return {"content": [{"type": "text", "text": text}]}
+
+
+def remote_run(vault: FakeVault, inner: httpx.AsyncBaseTransport | None = None) -> RemoteRun:
+    """指向 ``URL``、bearer 凭据取 ``docs-token`` 的运行实例。"""
+    return RemoteRun(
+        name="docs",
+        url=URL,
+        auth=HttpAuth(type="bearer", secret="docs-token"),
+        tenant_id="acme",
+        vault=vault,  # type: ignore[arg-type]
+        inner_transport=inner,
+    )
+
+
+async def test_result_is_redacted_before_it_is_truncated() -> None:
+    """结果超长、密钥正好跨在 64 KiB 的截断处：先脱敏再截，截断处不留半截密钥。"""
+    seen: list[str] = []
+    text = "a" * (64 * 1024 - 5) + SECRET + "b" * 100
+    inner = ClosingInner(mcp_handler(lambda request, params: text_result(text), seen))
+    run = remote_run(FakeVault({"docs-token": SECRET}), inner)
+    await run.connect(request_timeout=5)
+    try:
+        output, is_error = await run.invoker("t")({})
+    finally:
+        await run.close()
+    assert is_error is False
+    assert SECRET[:5] not in output
+    assert output[64 * 1024 - 5 : 64 * 1024] == "***bb"
+    assert "已截断" in output
+
+
+async def test_unredactable_text_is_withheld_and_logged(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """要脱敏时密钥已取不到（调用途中被删）：整段换成 UNREDACTABLE，并记一条告警。"""
+    caplog.set_level(logging.DEBUG)
+    seen: list[str] = []
+    vault = FakeVault({"docs-token": SECRET})
+
+    def call(request: httpx.Request, params: dict[str, Any]) -> dict[str, Any]:
+        """回显凭据，同时把密钥删掉。"""
+        vault.values.clear()
+        return text_result(f"收到 {request.headers['authorization']}")
+
+    run = remote_run(vault, ClosingInner(mcp_handler(call, seen)))
+    await run.connect(request_timeout=5)
+    try:
+        assert await run.invoker("t")({}) == (UNREDACTABLE, False)
+    finally:
+        await run.close()
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert any("密钥已取不到" in message for message in warnings)
+    assert SECRET not in caplog.text
+
+
+async def test_default_transport_ignores_environment_settings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """默认的内层传输不读环境里的证书与代理配置：环境里指了一个不存在的证书文件也不受影响。"""
+    monkeypatch.setenv("SSL_CERT_FILE", str(tmp_path / "missing.pem"))
+    run = remote_run(FakeVault({}))
+    await run.close()
+
+
+async def test_close_closes_the_transport_even_if_never_connected() -> None:
+    """没连上（或根本没开始连）就关闭：传输照样关掉，连接池不泄漏。"""
+    seen: list[str] = []
+    inner = ClosingInner(mcp_handler(lambda request, params: text_result(""), seen))
+    run = remote_run(FakeVault({"docs-token": SECRET}), inner)
+    await run.close()
+    assert (inner.closed, seen) == (1, [])
+
+
+async def test_close_after_the_secret_was_deleted(caplog: pytest.LogCaptureFixture) -> None:
+    """关闭前密钥被删：结束会话的 DELETE 发不出去，记一条告警，传输照样关掉。"""
+    caplog.set_level(logging.DEBUG)
+    seen: list[str] = []
+    vault = FakeVault({"docs-token": SECRET})
+    inner = ClosingInner(mcp_handler(lambda request, params: text_result(""), seen))
+    run = remote_run(vault, inner)
+    await run.connect(request_timeout=5)
+    vault.values.clear()
+    await run.close()
+    assert inner.closed == 1
+    assert "DELETE" not in seen
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert any("没能结束远端会话（secret_missing）" in message for message in warnings)

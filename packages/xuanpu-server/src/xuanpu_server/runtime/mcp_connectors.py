@@ -79,8 +79,12 @@ def unexpected_failure(exc: BaseException) -> str:
     return f"连接器的响应无法处理：{type(exc).__name__}"
 
 
-def render_result(result: Mapping[str, Any]) -> tuple[str, bool]:
-    """把 MCP 调用结果整理成给模型看的文本。非文本内容给出占位，不静默丢弃。"""
+def render_text(result: Mapping[str, Any]) -> tuple[str, bool]:
+    """把 MCP 调用结果拼成文本（不截断），返回 ``(文本, 是否出错)``。
+
+    非文本内容给出占位，不静默丢弃。要脱敏的调用方先拿全文脱敏，再 ``truncate``：先截再换，
+    截断处正好切开一个密钥时，前半截就认不出来了。
+    """
     parts: list[str] = []
     content = result.get("content")
     for block in content if isinstance(content, list) else []:
@@ -94,7 +98,13 @@ def render_result(result: Mapping[str, Any]) -> tuple[str, bool]:
     structured = result.get("structuredContent")
     if structured is not None and not parts:
         parts.append(json.dumps(structured, ensure_ascii=False))
-    return truncate("\n".join(parts)), bool(result.get("isError"))
+    return "\n".join(parts), bool(result.get("isError"))
+
+
+def render_result(result: Mapping[str, Any]) -> tuple[str, bool]:
+    """把 MCP 调用结果整理成给模型看的文本（拼好再截到上限）。"""
+    text, is_error = render_text(result)
+    return truncate(text), is_error
 
 
 @dataclass(frozen=True)
@@ -331,6 +341,7 @@ __all__ = [
     "described",
     "open_mcp",
     "render_result",
+    "render_text",
     "stdio_environment",
     "truncate",
     "unexpected_failure",
