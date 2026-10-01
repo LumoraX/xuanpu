@@ -72,4 +72,11 @@ def tail(text: str, limit: int) -> str:
     return f"…[前面 {len(text) - limit} 字符略]" + text[-limit:]
 
 
-__all__ = ["MASK", "MIN_REDACTABLE_LENGTH", "WITHHELD", "redact", "tail"]
+def head(text: str, limit: int) -> str:
+    """文本的开头至多 ``limit`` 个字符；截掉了后面的话加一句说明。须在脱敏之后调用。"""
+    if len(text) <= limit:
+        return text
+    return text[:limit] + f"…[后面 {len(text) - limit} 字符略]"
+
+
+__all__ = ["MASK", "MIN_REDACTABLE_LENGTH", "WITHHELD", "head", "redact", "tail"]

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 import pytest
-from xuanpu_server.redaction import MASK, WITHHELD, redact, tail
+from xuanpu_server.redaction import MASK, WITHHELD, head, redact, tail
 from xuanpu_server.runtime.connector_process import (
     KernelMcpLogGuard,
     install_kernel_mcp_log_guard,
@@ -58,6 +58,12 @@ def test_tail_marks_what_was_cut() -> None:
     """只留末尾时注明截掉了多少；没超长原样返回。"""
     assert tail("abcdef", 10) == "abcdef"
     assert tail("abcdef", 2) == "…[前面 4 字符略]ef"
+
+
+def test_head_marks_what_was_cut() -> None:
+    """只留开头时注明截掉了多少；没超长原样返回。"""
+    assert head("abcdef", 10) == "abcdef"
+    assert head("abcdef", 2) == "ab…[后面 4 字符略]"
 
 
 def test_cut_after_redacting_never_leaves_half_a_secret() -> None:

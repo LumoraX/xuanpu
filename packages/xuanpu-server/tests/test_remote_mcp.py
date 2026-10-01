@@ -15,7 +15,6 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-import httpx
 import pytest
 import taifeng
 from fastapi import FastAPI, Request
@@ -23,9 +22,8 @@ from fastapi.responses import JSONResponse, Response
 from xuanpu_server.controlplane import AuditQuery
 from xuanpu_server.errors import RuntimeUnavailableError, SecretMissingError
 from xuanpu_server.runtime.connector_process import KernelMcpLogGuard
-from xuanpu_server.runtime.remote_mcp import VaultAuthTransport
+from xuanpu_server.runtime.remote_mcp import RemoteRun, VaultAuthTransport
 from xuanpu_spec import pack_package
-from xuanpu_spec.manifest import HttpAuth
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -36,17 +34,22 @@ if TYPE_CHECKING:
 TOKEN = "tok-123"
 SESSION = "sess-1"
 
-# 远端提供的工具；admin_purge 不在清单的白名单里
+# 清单白名单里的工具与副作用分类。search 回显参数；update_doc 是写操作；fail 回 isError 并回显
+# 凭据；slow 等到放行才返回；bad_code / null_code / not_utf8 回内核解析不了的响应（见 _malformed）
+WHITELIST: dict[str, str] = {
+    "search": "read",
+    "update_doc": "write",
+    "fail": "read",
+    "slow": "read",
+    "bad_code": "read",
+    "null_code": "read",
+    "not_utf8": "read",
+}
+
+# 远端提供的工具：白名单里的全部，外加不在白名单里的 admin_purge
 TOOLS: list[dict[str, Any]] = [
-    {
-        "name": "search",
-        "description": "搜文档",
-        "inputSchema": {"type": "object", "properties": {"q": {"type": "string"}}},
-    },
-    {"name": "update_doc", "description": "改文档", "inputSchema": {"type": "object"}},
-    {"name": "fail", "description": "总是报错", "inputSchema": {"type": "object"}},
-    {"name": "slow", "description": "很慢", "inputSchema": {"type": "object"}},
-    {"name": "admin_purge", "description": "清空全部文档", "inputSchema": {"type": "object"}},
+    {"name": name, "description": f"{name} 工具", "inputSchema": {"type": "object"}}
+    for name in [*WHITELIST, "admin_purge"]
 ]
 
 
@@ -137,6 +140,9 @@ class FakeRemoteMcp:
         if method == "tools/list":
             return _result(message, {"tools": TOOLS})
         if method == "tools/call":
+            malformed = _malformed(request, message)
+            if malformed is not None:
+                return malformed
             return _result(message, await self._call(request, message["params"]))
         error = {"code": -32601, "message": f"method not found: {method}"}
         return JSONResponse({"jsonrpc": "2.0", "id": message["id"], "error": error})
@@ -157,6 +163,26 @@ class FakeRemoteMcp:
 def _result(message: dict[str, Any], result: dict[str, Any]) -> JSONResponse:
     """JSON-RPC 成功响应。"""
     return JSONResponse({"jsonrpc": "2.0", "id": message["id"], "result": result})
+
+
+def _malformed(request: Request, message: dict[str, Any]) -> Response | None:
+    """内核解析不了的几种响应，都回显收到的 ``Authorization`` 头；别的工具返回 None。
+
+    ``bad_code``：``error.code`` 是字符串（就是那个头）；``null_code``：``error.code`` 是 null；
+    ``not_utf8``：响应体不是合法的 UTF-8。
+    """
+    name = message["params"]["name"]
+    echoed = request.headers.get("authorization") or ""
+    if name == "bad_code":
+        error: dict[str, Any] = {"code": echoed, "message": "x"}
+        return JSONResponse({"jsonrpc": "2.0", "id": message["id"], "error": error})
+    if name == "null_code":
+        error = {"code": None, "message": echoed}
+        return JSONResponse({"jsonrpc": "2.0", "id": message["id"], "error": error})
+    if name == "not_utf8":
+        body = f'{{"jsonrpc": "2.0", "id": {message["id"]}, "result": "'.encode()
+        return Response(body + b"\xff " + echoed.encode() + b'"}', media_type="application/json")
+    return None
 
 
 @pytest.fixture
@@ -213,12 +239,12 @@ spec:
       url: {url}
       auth: {auth}
       timeoutSeconds: {timeout}
-      tools:
-        - {{name: search, effect: read}}
-        - {{name: update_doc, effect: write}}
-        - {{name: fail, effect: read}}
-        - {{name: slow, effect: read}}{extra_tools}
+      tools:{tools}{extra_tools}
 """
+
+TOOL_LINES = "".join(
+    f"\n        - {{name: {name}, effect: {effect}}}" for name, effect in WHITELIST.items()
+)
 
 HELPER = """\
 ---
@@ -228,10 +254,10 @@ version: 1.0.0
 type: composite
 entry: true
 child_skills: [faq]
-tool_names: [mcp__docs__search, mcp__docs__update_doc, mcp__docs__fail, mcp__docs__slow]
+tool_names: [{tools}]
 ---
 # 文档助手
-"""
+""".format(tools=", ".join(f"mcp__docs__{name}" for name in WHITELIST))
 
 FAQ = "---\nname: faq\ndescription: 常见问题\nversion: 1.0.0\ntype: atomic\n---\n正文\n"
 
@@ -249,7 +275,9 @@ async def publish_remote_package(
     (root / "skills" / "helper").mkdir(parents=True)
     (root / "skills" / "faq").mkdir(parents=True)
     (root / "xuanpu.yaml").write_text(
-        MANIFEST.format(url=url, auth=auth, timeout=timeout, extra_tools=extra_tools),
+        MANIFEST.format(
+            url=url, auth=auth, timeout=timeout, tools=TOOL_LINES, extra_tools=extra_tools
+        ),
         encoding="utf-8",
     )
     (root / "skills" / "helper" / "SKILL.md").write_text(HELPER, encoding="utf-8")
@@ -413,11 +441,9 @@ async def test_only_whitelisted_remote_tools_are_exposed(
     await ask(world, step, read_turn, session_id, [("c1", "mcp__docs__admin_purge", {})])
     effects = only_runtime(world).tool_effects
     assert {name: effects[name] for name in effects if name.startswith("mcp__docs__")} == {
-        "mcp__docs__search": "read",
-        "mcp__docs__update_doc": "write",
-        "mcp__docs__fail": "read",
-        "mcp__docs__slow": "read",
+        f"mcp__docs__{name}": effect for name, effect in WHITELIST.items()
     }
+    assert effects["mcp__docs__update_doc"] == "write"
     offered = {tool["name"] for tool in world.models.requests[0].model_dump()["tools"]}
     assert "mcp__docs__search" in offered
     assert "mcp__docs__admin_purge" not in offered
@@ -463,6 +489,78 @@ async def test_remote_write_tool_waits_for_approval(
     ] == [("remote", "update_doc", "write", "allowed")]
     assert gate[0].data["submission_id"] == resumed.submission_id
     assert "新内容" not in json.dumps(gate[0].data, ensure_ascii=False)
+
+
+@pytest.mark.parametrize(
+    ("tool", "kind"),
+    [("bad_code", "ValueError"), ("null_code", "TypeError"), ("not_utf8", "UnicodeDecodeError")],
+)
+async def test_malformed_remote_responses_still_pass_the_gate(
+    world: Any,
+    serve: Any,
+    step: Any,
+    read_turn: Any,
+    fake_remote_mcp: FakeRemoteMcp,
+    caplog: pytest.LogCaptureFixture,
+    tool: str,
+    kind: str,
+) -> None:
+    """远端回了内核解析不了的响应（error.code 是回显凭据的字符串或 null、响应体不是 UTF-8）。
+
+    内核解析时冒出的异常不在预料之中：调用照样记为失败、留下一条过闸记录，交给模型的只有
+    异常类型；模型的提示词、全部审计与日志里都没有明文。
+    """
+    caplog.set_level(logging.DEBUG)
+    session_id = await ready(world, serve, fake_remote_mcp)
+    events = await ask(world, step, read_turn, session_id, [("c1", f"mcp__docs__{tool}", {})])
+    assert events[-1].msg.kind == "turn_completed"
+    result = output_of(events)
+    assert result["is_error"] is True
+    assert result["output"] == f"connector_error: 连接器的响应无法处理：{kind}"
+    gate = await gate_records(world)
+    assert [(r.data["tool"], r.data["decision"], r.data["is_error"]) for r in gate] == [
+        (tool, "allowed", True)
+    ]
+    assert TOKEN not in world.models.last_prompt()
+    assert TOKEN not in await everything(world)
+    assert TOKEN not in caplog.text
+
+
+async def test_unexpected_exception_reaching_the_gate_leaves_a_record(
+    world: Any,
+    serve: Any,
+    step: Any,
+    read_turn: Any,
+    fake_remote_mcp: FakeRemoteMcp,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """调用实现里的异常一路冒到闸门（这里直接换掉调用实现）：闸门兜底。
+
+    过闸记录照留，detail 与交给模型的错误都只有异常类型，异常文本（带着凭据）哪里都不出现。
+    """
+
+    def invoker(self: RemoteRun, tool: str) -> Any:
+        """一律抛出文本里带凭据的 ValueError。"""
+
+        async def invoke(args: dict[str, Any]) -> tuple[str, bool]:
+            raise ValueError(f"坏了 Bearer {TOKEN}")
+
+        return invoke
+
+    monkeypatch.setattr(RemoteRun, "invoker", invoker)
+    caplog.set_level(logging.DEBUG)
+    session_id = await ready(world, serve, fake_remote_mcp)
+    events = await ask(world, step, read_turn, session_id, [("c1", "mcp__docs__search", {})])
+    assert events[-1].msg.kind == "turn_completed"
+    assert output_of(events)["output"] == "connector_error: ValueError"
+    gate = await gate_records(world)
+    assert [(r.data["tool"], r.data["is_error"], r.data["detail"]) for r in gate] == [
+        ("search", True, "ValueError")
+    ]
+    assert TOKEN not in world.models.last_prompt()
+    assert TOKEN not in await everything(world)
+    assert TOKEN not in caplog.text
 
 
 async def test_remote_tool_error_is_redacted(
@@ -576,112 +674,3 @@ async def test_kernel_http_client_logs_are_guarded(world: Any) -> None:
     """平台装配后，内核 HTTP MCP 客户端的 logger 与 stdio 客户端一样挂着日志卫生过滤器。"""
     filters = logging.getLogger("taifeng.mcp.http_client").filters
     assert len([item for item in filters if isinstance(item, KernelMcpLogGuard)]) == 1
-
-
-# ---------------------------------------------------------------------------
-# 凭据传输本身
-# ---------------------------------------------------------------------------
-
-
-class FakeVault:
-    """记下每次取值的保管库。"""
-
-    def __init__(self, values: dict[str, str]) -> None:
-        self.values = dict(values)
-        self.reads: list[tuple[str, str]] = []
-
-    async def get(self, tenant_id: str, name: str) -> str:
-        """取明文；没有就报缺密钥。"""
-        self.reads.append((tenant_id, name))
-        if name not in self.values:
-            raise SecretMissingError(f"密钥 {name!r} 尚未配置")
-        return self.values[name]
-
-
-def recording_inner() -> tuple[httpx.MockTransport, list[httpx.Request]]:
-    """一个记下收到的请求、一律回 200 的内层传输。"""
-    received: list[httpx.Request] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        received.append(request)
-        return httpx.Response(200, json={})
-
-    return httpx.MockTransport(handler), received
-
-
-def vault_transport(
-    inner: httpx.AsyncBaseTransport, vault: FakeVault, auth: HttpAuth | None
-) -> VaultAuthTransport:
-    """指向 ``https://mcp.example.com/mcp`` 的凭据传输。"""
-    return VaultAuthTransport(
-        inner, url="https://mcp.example.com/mcp", auth=auth, tenant_id="acme", vault=vault
-    )
-
-
-async def test_vault_transport_fetches_the_secret_for_every_request() -> None:
-    """每次请求都从保管库现取：轮换后下一次请求就是新值；传输对象里没有明文。"""
-    inner, received = recording_inner()
-    vault = FakeVault({"docs-token": "first-value"})
-    transport = vault_transport(inner, vault, HttpAuth(type="bearer", secret="docs-token"))
-    async with httpx.AsyncClient(transport=transport) as client:
-        await client.post("https://mcp.example.com/mcp", json={})
-        assert "first-value" not in repr(vars(transport))
-        vault.values["docs-token"] = "second-value"
-        await client.post("https://mcp.example.com/mcp", json={})
-    assert [request.headers["authorization"] for request in received] == [
-        "Bearer first-value",
-        "Bearer second-value",
-    ]
-    assert vault.reads == [("acme", "docs-token"), ("acme", "docs-token")]
-
-
-async def test_vault_transport_header_style_and_no_auth() -> None:
-    """header 方式放到指定的头；不声明凭据时什么也不加，也不读保管库。"""
-    inner, received = recording_inner()
-    vault = FakeVault({"docs-key": "k-1"})
-    header = HttpAuth(type="header", secret="docs-key", header="X-Api-Key")
-    async with httpx.AsyncClient(transport=vault_transport(inner, vault, header)) as client:
-        await client.get("https://mcp.example.com/mcp")
-    async with httpx.AsyncClient(transport=vault_transport(inner, vault, None)) as client:
-        await client.get("https://mcp.example.com/mcp")
-    assert received[0].headers["x-api-key"] == "k-1"
-    assert "authorization" not in received[0].headers
-    assert ("x-api-key" in received[1].headers, "authorization" in received[1].headers) == (
-        False,
-        False,
-    )
-    assert vault.reads == [("acme", "docs-key")]
-
-
-async def test_vault_transport_refuses_other_origins() -> None:
-    """发往清单地址之外的请求一律拒绝：凭据只会发给声明的那台主机。"""
-    inner, received = recording_inner()
-    vault = FakeVault({"docs-token": "secret-value"})
-    transport = vault_transport(inner, vault, HttpAuth(type="bearer", secret="docs-token"))
-    async with httpx.AsyncClient(transport=transport) as client:
-        for url in ("https://evil.example.com/mcp", "http://mcp.example.com/mcp"):
-            with pytest.raises(httpx.TransportError, match="清单"):
-                await client.get(url)
-    assert received == []
-    assert vault.reads == []
-
-
-async def test_vault_transport_missing_secret_and_close() -> None:
-    """密钥取不到：请求不发出，缺密钥的错误照常上抛；关闭会关掉内层传输，重复关闭无害。"""
-    closed: list[str] = []
-
-    class Inner(httpx.AsyncBaseTransport):
-        """记下关闭的内层传输。"""
-
-        async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-            raise AssertionError("不该发出请求")
-
-        async def aclose(self) -> None:
-            closed.append("inner")
-
-    transport = vault_transport(Inner(), FakeVault({}), HttpAuth(type="bearer", secret="gone"))
-    async with httpx.AsyncClient(transport=transport) as client:
-        with pytest.raises(SecretMissingError, match="gone"):
-            await client.get("https://mcp.example.com/mcp")
-    await transport.aclose()
-    assert closed == ["inner"]

@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 import taifeng
 
 from xuanpu_server.errors import PackageInvalidError, PlatformError, RuntimeUnavailableError
-from xuanpu_server.redaction import redact, tail
+from xuanpu_server.redaction import head, redact, tail
 from xuanpu_server.runtime.http_api import ConnectorCallError
 
 if TYPE_CHECKING:
@@ -46,6 +46,10 @@ _MAX_OUTPUT_CHARS = 64 * 1024
 
 # 排障日志里记连接器 stderr 的末尾多少字符（脱敏之后再截）
 _LOGGED_STDERR_CHARS = 2048
+# 排障日志里记异常文本的开头多少字符（脱敏之后再截）
+_LOGGED_ERROR_CHARS = 2048
+# 交给模型与审计的错误文本上限（脱敏之后再截）
+MAX_ERROR_CHARS = 4096
 # 启动失败时等进程退出片刻，让退出码与最后的 stderr 落定
 _SETTLE_SECONDS = 1.0
 
@@ -54,10 +58,25 @@ Invoke = Callable[[dict[str, Any]], Awaitable[tuple[str, bool]]]
 
 
 def truncate(text: str) -> str:
-    """给模型看的文本有上限，超出部分截掉并说明。"""
+    """给模型看的文本有上限，超出部分截掉并说明。要脱敏的文本须先脱敏再截。"""
     if len(text) > _MAX_OUTPUT_CHARS:
         return text[:_MAX_OUTPUT_CHARS] + f"\n…[共 {len(text)} 字符，已截断]"
     return text
+
+
+def described(exc: BaseException, text: str) -> str:
+    """一段排障线索：异常类型加（已脱敏的）文本的 repr，文本截到前约 2 KiB。
+
+    用 repr 写出，外部输出里的换行不会在日志里伪造出新的一行；截取在脱敏之后。
+    """
+    if not text:
+        return type(exc).__name__
+    return f"{type(exc).__name__}: {head(text, _LOGGED_ERROR_CHARS)!r}"
+
+
+def unexpected_failure(exc: BaseException) -> str:
+    """没预料到的调用失败交给模型与审计的文本：只有异常类型，异常文本里是什么说不准。"""
+    return f"连接器的响应无法处理：{type(exc).__name__}"
 
 
 def render_result(result: Mapping[str, Any]) -> tuple[str, bool]:
@@ -246,8 +265,7 @@ class StdioRun:
         """
         parts: list[str] = []
         if exc is not None:
-            text = self.redact(str(exc))
-            parts.append(f"{type(exc).__name__}: {text!r}" if text else type(exc).__name__)
+            parts.append(described(exc, self.redact(str(exc))))
         process = self.observer.process
         if process is None:
             return "；".join([*parts, "进程没有起来"])
@@ -265,7 +283,8 @@ class StdioRun:
         """调用这个连接器的某个工具。须在握手成功之后调用。
 
         调用失败（工具报错、请求超时、进程退出断开……）时，日志记脱敏后的排障线索；交给
-        模型与审计的文本同样按值脱敏（``ConnectorCallError``）。
+        模型与审计的文本同样按值脱敏（``ConnectorCallError``）。没预料到的异常（内核解析
+        响应时冒出的 ValueError 之类）也在这里接住，交出去的只有异常类型。
         """
         client = self.client
         assert client is not None
@@ -282,7 +301,12 @@ class StdioRun:
                     tool,
                     await self.diagnostics(exc, settle=settle),
                 )
-                raise ConnectorCallError(self.redact(str(exc))) from None
+                raise ConnectorCallError(head(self.redact(str(exc)), MAX_ERROR_CHARS)) from None
+            except Exception as exc:
+                logger.warning(
+                    "连接器 %s 的工具 %s 调用失败：%s", self.name, tool, await self.diagnostics(exc)
+                )
+                raise ConnectorCallError(unexpected_failure(exc)) from None
             return render_result(result)
 
         return invoke
@@ -299,12 +323,15 @@ class StdioRun:
 
 
 __all__ = [
+    "MAX_ERROR_CHARS",
     "Invoke",
     "McpRun",
     "McpTool",
     "StdioRun",
+    "described",
     "open_mcp",
     "render_result",
     "stdio_environment",
     "truncate",
+    "unexpected_failure",
 ]

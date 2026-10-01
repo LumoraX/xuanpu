@@ -23,6 +23,8 @@ from xuanpu_server.controlplane import AuditQuery, InMemoryControlPlane
 from xuanpu_server.errors import PackageInvalidError, RuntimeUnavailableError
 from xuanpu_server.runtime import RuntimeDefaults
 from xuanpu_server.runtime.connectors import ConnectorSet
+from xuanpu_server.runtime.http_api import ConnectorCallError
+from xuanpu_server.runtime.mcp_connectors import StdioRun
 from xuanpu_server.tenancy import tenant_directory
 from xuanpu_spec import pack_package
 from xuanpu_spec.manifest import ConnectorSpec, EnvValue
@@ -652,3 +654,27 @@ async def test_startup_limit_comes_from_the_platform_defaults(world: Any, tmp_pa
         assert time.monotonic() - started < 10
     finally:
         await platform.close()
+
+
+async def test_unexpected_stdio_failure_reports_type_only(caplog: pytest.LogCaptureFixture) -> None:
+    """stdio 连接器调用时冒出没预料到的异常：交出去的只有异常类型，日志里的凭据按值换成 ***。"""
+
+    class Client:
+        """解析响应时出错的内核客户端。"""
+
+        async def call_tool(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+            raise ValueError(f"解析失败 token={CREDENTIAL}")
+
+    caplog.set_level(logging.DEBUG)
+    run = StdioRun(
+        name="crm",
+        secrets=(CREDENTIAL,),
+        observer=SimpleNamespace(process=None),  # type: ignore[arg-type]
+        client=Client(),  # type: ignore[arg-type]
+    )
+    with pytest.raises(ConnectorCallError) as caught:
+        await run.invoker("search_customer")({})
+    assert str(caught.value) == "连接器的响应无法处理：ValueError"
+    assert caught.value.__cause__ is None
+    assert "token=***" in caplog.text
+    assert CREDENTIAL not in caplog.text

@@ -23,9 +23,14 @@ import httpx
 import taifeng
 
 from xuanpu_server.errors import PlatformError
-from xuanpu_server.redaction import redact
+from xuanpu_server.redaction import head, redact
 from xuanpu_server.runtime.http_api import ConnectorCallError, auth_header
-from xuanpu_server.runtime.mcp_connectors import render_result
+from xuanpu_server.runtime.mcp_connectors import (
+    MAX_ERROR_CHARS,
+    described,
+    render_result,
+    unexpected_failure,
+)
 
 if TYPE_CHECKING:
     from xuanpu_spec.manifest import HttpAuth
@@ -35,6 +40,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# 预料之中的调用失败：文本有用，脱敏后交给模型与审计
+_EXPECTED_FAILURES = (taifeng.McpToolError, httpx.HTTPError, RuntimeError, OSError)
 UNREDACTABLE = "[已隐去：密钥这时已取不到，无法按值脱敏]"
 """要脱敏时密钥已经取不到（例如刚被删掉）：无从按值替换，整段换成这句，不冒险原样写出。"""
 
@@ -176,7 +183,7 @@ class RemoteRun:
         """
         parts: list[str] = []
         if exc is not None:
-            parts.append(_described(exc, await self.redact(str(exc))))
+            parts.append(described(exc, await self.redact(str(exc))))
         if self.client is not None:
             info = await self.redact(json.dumps(self.client.server_info, ensure_ascii=False))
             parts.append(f"serverInfo {info!r}")
@@ -185,9 +192,8 @@ class RemoteRun:
     def invoker(self, tool: str) -> Invoke:
         """调用这个连接器的某个工具。须在握手成功之后调用。
 
-        结果与错误文本都按值脱敏后才交给模型与审计。调用失败（工具报错、请求超时、连接
-        断开……）时日志记脱敏后的排障线索，转成 ``ConnectorCallError``；平台侧的失败（例如
-        密钥刚被删掉，请求没有发出）原样上抛，由闸门按错误码记下。
+        结果与错误文本都按值脱敏后才交给模型与审计。平台侧的失败（例如密钥刚被删掉，请求
+        没有发出）原样上抛，由闸门按错误码记下；其余失败一律在这里接住（见 ``_call_failed``）。
         """
         client = self.client
         assert client is not None
@@ -197,16 +203,26 @@ class RemoteRun:
                 result = await client.call_tool(tool, args)
             except PlatformError:
                 raise
-            except (taifeng.McpToolError, httpx.HTTPError, RuntimeError, OSError) as exc:
-                text = await self.redact(str(exc))
-                logger.warning(
-                    "连接器 %s 的工具 %s 调用失败：%s", self.name, tool, _described(exc, text)
-                )
-                raise ConnectorCallError(text) from None
+            except Exception as exc:
+                # 内核客户端的失败不止 McpToolError：远端回的响应形状不对时，解析途中也会冒出
+                # ValueError、TypeError、UnicodeDecodeError 之类，文本里可能就是远端回显的凭据
+                raise await self._call_failed(tool, exc) from None
             rendered, is_error = render_result(result)
             return await self.redact(rendered), is_error
 
         return invoke
+
+    async def _call_failed(self, tool: str, exc: Exception) -> ConnectorCallError:
+        """记下一次调用失败（日志按值脱敏），返回交给闸门的错误。
+
+        预料之中的失败（内核的 ``McpToolError``、传输与连接错误）交出脱敏后的文本，对模型
+        有用；没预料到的异常只交出异常类型——它们的文本里是什么说不准。
+        """
+        text = await self.redact(str(exc))
+        logger.warning("连接器 %s 的工具 %s 调用失败：%s", self.name, tool, described(exc, text))
+        if isinstance(exc, _EXPECTED_FAILURES):
+            return ConnectorCallError(head(text, MAX_ERROR_CHARS))
+        return ConnectorCallError(unexpected_failure(exc))
 
     async def close(self) -> None:
         """关闭客户端（它会 DELETE 结束会话）；没连上、或关客户端失败，也关掉传输的连接池。"""
@@ -215,11 +231,6 @@ class RemoteRun:
                 await self.client.close()
         finally:
             await self.transport.aclose()
-
-
-def _described(exc: BaseException, text: str) -> str:
-    """一段排障线索：异常类型加（已脱敏的）文本的 repr。"""
-    return f"{type(exc).__name__}: {text!r}" if text else type(exc).__name__
 
 
 __all__ = ["UNREDACTABLE", "CredentialScopeError", "RemoteRun", "VaultAuthTransport"]

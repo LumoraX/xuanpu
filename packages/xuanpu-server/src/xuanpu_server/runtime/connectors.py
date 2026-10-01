@@ -201,6 +201,21 @@ class ConnectorGate:
                 ctx, args, decision="allowed", started=started, is_error=True, detail=exc.code
             )
             return taifeng.ToolResult.error(f"{exc.code}: {exc.message}", reason=exc.code)
+        except taifeng.SuspendSignal:
+            # 挂起信号不是失败：照常穿透，由内核停下本轮
+            raise
+        except Exception as exc:
+            # 最后一道：调用里冒出了没预料到的异常。无论如何都要留下过闸记录（规则 1），
+            # 而异常文本里是什么说不准（可能带着凭据或远端回的任意内容），所以过闸记录、
+            # 日志与交给模型的错误都只写异常类型，不带原文
+            kind = type(exc).__name__
+            logger.error(
+                "连接器 %s 的工具 %s 调用时出了意外：%s", self._connector, self._tool, kind
+            )
+            await self._record(
+                ctx, args, decision="allowed", started=started, is_error=True, detail=kind
+            )
+            return taifeng.ToolResult.error(f"connector_error: {kind}", reason="connector_error")
         await self._record(ctx, args, decision="allowed", started=started, is_error=is_error)
         if is_error:
             return taifeng.ToolResult.error(text or "connector_error", reason="tool_error")
