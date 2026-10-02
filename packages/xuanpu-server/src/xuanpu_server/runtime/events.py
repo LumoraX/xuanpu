@@ -182,7 +182,7 @@ class EngineEventHub:
             session_id: 所属会话。
             audit: 审计写入口。
             store: 控制面存储，用量入账用。
-            metrics: 平台指标：一轮结束记结局，按估算入账记一次。
+            metrics: 平台指标：一轮结束记结局，按估算入账记一次，用量入账失败记一次。
             capture_requests: 是否把含完整提示词的事件写进审计。
             on_turn_end: 一轮对话结束时的回调，参数是 submission 标识。
         """
@@ -286,8 +286,10 @@ class EngineEventHub:
         """一轮（或送回审批的那一次）结束：移出在途、落回复全文、入账，并写出审计。"""
         if self._on_turn_end is not None:
             self._on_turn_end(event.submission_id)
-        self._resolutions.ended(event.submission_id)
-        self._metrics.turn_ended(turn_outcome(event))
+        outcome = turn_outcome(event)
+        # 以取消结束、又没有结论的送回（排队中被停）内核没处理，不算等不到结论
+        self._resolutions.ended(event.submission_id, cancelled=outcome == "cancelled")
+        self._metrics.turn_ended(outcome)
         text = "".join(self._texts.pop(event.submission_id, []))
         # 送回审批被拒或只核销了一部分：没有采样，不落回复全文、不计一轮
         if event.msg.kind not in RESUME_ENDING_KINDS:
@@ -333,6 +335,8 @@ class EngineEventHub:
                 turns=1,
             )
         except Exception:
+            # 不让一轮对话因为入账失败而失败；这一轮的用量不再补记，记日志并计入指标
+            self._metrics.usage_write_failed()
             logger.exception("会话 %s 的用量入账失败", self._session_id)
 
     def _interrupted_input_estimate(self, event: taifeng.EventMsg) -> int:

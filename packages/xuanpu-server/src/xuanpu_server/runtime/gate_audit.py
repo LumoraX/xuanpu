@@ -12,13 +12,15 @@
    （``session_history.refuse_settled``：内核会受理并重做一遍，批准过的工具会再执行一次）；否则
    取出这次被拒的那些，连同详情（工具全名、call_id、线程、参数摘要）与挂起的那一轮的提交
    标识——补的记录归到被拒的那一轮。这一次读审计也是这道核对要的，所以每次送回都读。
-2. ``watch``：按运行时的连接器登记（``ConnectorSet.describe``）挑出连接器工具（连接器、工具、
-   传输、副作用分类）。stdio 与 remote 的工具名前缀都是 ``mcp__``，传输只能从登记里查；查不到
-   的不是连接器工具（脚本、命令、表单等），不补。提交之后连同这次送回的提交标识登记到事件
-   枢纽（``EngineEventHub.watch_resolution``）。
+2. ``watch``：内核受理了这次送回（提交成功）之后，按运行时的连接器登记
+   （``ConnectorSet.describe``）挑出连接器工具（连接器、工具、传输、副作用分类），连同这次送回的
+   提交标识登记到事件枢纽（``EngineEventHub.watch_resolution``）。stdio 与 remote 的工具名前缀
+   都是 ``mcp__``，传输只能从登记里查；查不到的不是连接器工具（脚本、命令、表单等），不补。
+   缺调用信息、补不上的也在这时才记 error 日志、计 ``incomplete``——提交失败时什么都不计。
 3. 等内核的结论（``resolutions`` 模块）：这次送回核销了待办，只为「被拒、且这一次确实核销了」
    的写记录；被内核整次拒绝（答复不合格、有不认识的待办等）就不写；等不到结论（事件枢纽关闭，
-   或这次送回没有结论事件就结束了）记 error 日志。
+   或这次送回没有结论事件就结束了）记 error 日志。在内核里排队时就被停下的送回（以取消结束、
+   没有结论）不算等不到：内核没处理它，待办还在，丢掉登记、记 info 日志。
 
 读不到审计时整次送回失败（异常照常上抛）：既核对不了重复送回，补记也没有依据；什么都还没有
 提交给内核。提交之后的补记失败不让送回本身失败——审批结果已经交给内核了：记 error 日志并计入
@@ -331,7 +333,11 @@ class RejectionAudit:
     def watch(
         self, pending: PendingRejections, describe: Callable[[str], ConnectorToolInfo | None]
     ) -> ResolutionWatch | None:
-        """为被拒的连接器调用造一个等内核结论的登记，交给事件枢纽；没有要补的返回 None。"""
+        """为被拒的连接器调用造一个等内核结论的登记，交给事件枢纽；没有要补的返回 None。
+
+        在提交成功之后（内核受理了这次送回）、登记到事件枢纽之前调用：缺调用信息的待办此时
+        才计 ``incomplete``（见 ``calls``），提交失败的送回什么都不计。
+        """
         calls = self.calls(pending, describe)
         return _RejectionWatch(self, tuple(calls)) if calls else None
 

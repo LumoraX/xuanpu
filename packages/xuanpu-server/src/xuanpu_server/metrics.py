@@ -49,7 +49,8 @@ CONNECTOR_TRANSPORTS: tuple[str, ...] = get_args(Transport)
 
 BACKFILL_STAGES: tuple[str, ...] = ("incomplete", "write", "unconfirmed")
 """``xuanpu_gate_backfill_failures_total`` 的 ``stage``：待办缺调用信息、写不进记录、等不到内核
-对那次送回的结论。读不到待办时整次送回失败、没有提交给内核，不算补记失败。"""
+对那次送回的结论。读不到待办时整次送回失败、没有提交给内核，不算补记失败；送回在内核里排队时
+被停下（内核没处理它，待办还在）也不算。"""
 
 
 class PlatformMetrics:
@@ -88,6 +89,7 @@ class PlatformMetrics:
         self._backfill_failures = dict.fromkeys(BACKFILL_STAGES, 0)
         self._audit_write_failures = 0
         self._usage_estimated = 0
+        self._usage_write_failures = 0
         self.registry = CollectorRegistry()
         self.registry.register(_PlatformCollector(self))
 
@@ -111,6 +113,10 @@ class PlatformMetrics:
     def usage_estimated(self) -> None:
         """被停下的一轮按上下文估算入账了一次（审计里的 ``usage_estimated``）。"""
         self._usage_estimated += 1
+
+    def usage_write_failed(self) -> None:
+        """一轮对话结束时用量没有入账（写控制面失败；这一轮的用量不再补记）。"""
+        self._usage_write_failures += 1
 
     def render(self) -> bytes:
         """Prometheus 文本格式（0.0.4）。"""
@@ -139,6 +145,10 @@ class PlatformMetrics:
         yield _counter(
             "xuanpu_usage_estimated", "被停下的一轮按上下文估算入账的次数", [],
             {(): self._usage_estimated},
+        )  # fmt: skip
+        yield _counter(
+            "xuanpu_usage_write_failures", "一轮对话结束时用量入账失败的次数", [],
+            {(): self._usage_write_failures},
         )  # fmt: skip
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -19,6 +20,8 @@ from xuanpu_server.runtime.resolutions import ResolutionLedger
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+
+    import pytest
 
 
 @dataclass
@@ -97,13 +100,31 @@ async def test_refused_ended_and_closed() -> None:
     await ledger.settle(
         event("sub_a", "suspension_resolve_rejected", reason="no_active_suspension")
     )
-    ledger.ended("sub_b")
+    ledger.ended("sub_b", cancelled=False)
     await ledger.settle(event("sub_d", "suspension_resolved"))
     await ledger.settle(event("sub_x", "suspension_resolved", request_ids=["r1"]))
     ledger.close()
     assert refused.refusals == ["no_active_suspension"]
     assert (ended.abandons, closed.abandons, broken.abandons) == (1, 1, 1)
     assert refused.abandons == 0
+
+
+async def test_cancelled_without_a_conclusion_is_dropped_not_abandoned(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """这次送回以取消结束、又没有结论（排队中被停，内核没处理它）：丢掉登记、记 info 日志，
+    不告诉等待方「等不到」（那会算一次补记失败）；之后的结论也找不到它。"""
+    caplog.set_level(logging.INFO, logger="xuanpu_server.runtime.resolutions")
+    ledger = ResolutionLedger("ses_1")
+    queued = Recorder()
+    ledger.watch("sub_q", queued)
+    ledger.ended("sub_q", cancelled=True)
+    await ledger.settle(event("sub_q", "suspension_resolved", request_ids=["r1"]))
+    ledger.close()
+    assert (queued.abandons, queued.resolved_ids, queued.refusals) == (0, [], [])
+    [record] = caplog.records
+    assert record.levelno == logging.INFO
+    assert "sub_q" in record.getMessage()
 
 
 class SilentEngine:

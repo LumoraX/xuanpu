@@ -444,6 +444,48 @@ async def test_cancel_gives_up_when_the_kernel_never_admits(
     await approve_and_finish(world, session.session_id, read_turn)
 
 
+async def test_cancelling_a_queued_resume_is_not_a_backfill_failure(
+    world: Any, step: Any, read_turn: Any, monkeypatch: Any, caplog: Any
+) -> None:
+    """同一个拒绝紧跟着送了两次，第二次在内核里排在第一次续跑的后面时被停下（``turn_failed``
+    kind=cancelled，内核没处理它）：丢掉它的补记登记、记 info 日志，不算补记失败；第一次照常补一条。
+    """
+    # 审计不定时写出：第二次送回读审计时，第一次的核销一定还没进审计，平台照常提交
+    monkeypatch.setattr("xuanpu_server.runtime.events._FLUSH_INTERVAL_SECONDS", 60.0)
+    caplog.set_level("INFO", logger="xuanpu_server")
+    await world.publish()
+    sessions, gate = world.platform.sessions, asyncio.Event()
+    session = await sessions.create(world.member, package="support-desk")
+    world.models.script(
+        step(calls=[("c1", "mcp__crm__update_ticket", {"id": "T-1"})]),
+        step(text="续跑到一半", wait=gate),
+    )
+    await read_turn(await sessions.send_message(world.member, session.session_id, "改"))
+    [item] = await sessions.pending(world.member, session.session_id)
+    rejected = {item["request_id"]: {"granted": False}}
+    first = await sessions.resume(world.member, session.session_id, rejected)
+    second = await sessions.resume(world.member, session.session_id, rejected)
+    first_events: list[Any] = []
+    first_task = reader(first, first_events)
+    await wait_until(lambda: any(e.msg.kind == "assistant_text" for e in first_events))
+
+    cancelled = await sessions.cancel(
+        world.member, session.session_id, submission_id=second.submission_id
+    )
+    assert cancelled == [second.submission_id]
+    events = await read_turn(second, timeout=10)
+    assert [(e.msg.kind, e.msg.data.get("kind")) for e in events] == [("turn_failed", "cancelled")]
+    gate.set()
+    await asyncio.wait_for(first_task, 10)
+
+    metrics = world.platform.metrics.render().decode("utf-8")
+    assert 'xuanpu_gate_backfill_failures_total{stage="unconfirmed"} 0.0' in metrics
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+    assert any(second.submission_id in r.getMessage() for r in caplog.records)
+    records = await world.platform.store.query_audit("acme", AuditQuery(source="gate"))
+    assert [(r.data["call_id"], r.data["decision"]) for r in records] == [("c1", "rejected")]
+
+
 async def hang_in_connector_call(world: Any, step: Any) -> tuple[Any, Any, Any, list[Any]]:
     """开一个会话，让模型调一个写工具（宽松审批下直接放行），假 MCP server 收到调用后一直不回。
 

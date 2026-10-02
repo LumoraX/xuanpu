@@ -32,6 +32,7 @@ FAMILIES = {
     "xuanpu_audit_write_failures": "counter",
     "xuanpu_gate_backfill_failures": "counter",
     "xuanpu_usage_estimated": "counter",
+    "xuanpu_usage_write_failures": "counter",
 }
 
 
@@ -156,6 +157,7 @@ async def test_known_label_values_start_at_zero(scrape: Callable[[], Awaitable[s
         assert value(text, "xuanpu_gate_backfill_failures_total", stage=stage) == 0
     assert value(text, "xuanpu_audit_write_failures_total") == 0
     assert value(text, "xuanpu_usage_estimated_total") == 0
+    assert value(text, "xuanpu_usage_write_failures_total") == 0
 
 
 # --- 计数 ---
@@ -266,6 +268,33 @@ async def test_cancelled_turn_and_the_in_flight_gauge(
     assert value(text, "xuanpu_turns_total", outcome="cancelled") == 1
     assert value(text, "xuanpu_turns_total", outcome="completed") == 0
     assert value(text, "xuanpu_usage_estimated_total") == 1
+
+
+async def test_usage_write_failures_are_counted(
+    metered: tuple[Any, str],
+    step: Any,
+    read_turn: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """一轮结束时用量写不进去：这一轮照常收尾，记 error 日志，计一次用量入账失败。"""
+    world, _ = metered
+    sessions = world.platform.sessions
+    await world.publish()
+    session = await sessions.create(world.member, package="support-desk")
+
+    async def broken(*args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("控制面写不进去")
+
+    monkeypatch.setattr(world.platform.store, "add_usage", broken)
+    world.models.script(step(text="您好"))
+    with caplog.at_level("ERROR", logger="xuanpu_server.runtime.events"):
+        events = await read_turn(await sessions.send_message(world.member, session.session_id, "1"))
+    assert events[-1].msg.kind == "turn_completed"
+    assert "用量入账失败" in caplog.text
+    text = rendered(world.platform.metrics)
+    assert value(text, "xuanpu_usage_write_failures_total") == 1
+    assert value(text, "xuanpu_turns_total", outcome="completed") == 1
 
 
 async def test_gauges_follow_sessions_and_runtimes(

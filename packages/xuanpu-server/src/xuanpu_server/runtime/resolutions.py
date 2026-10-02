@@ -44,7 +44,8 @@ class ResolutionWatch(Protocol):
         ...
 
     def abandoned(self) -> None:
-        """等不到结论了：事件枢纽关闭，或这次送回没有结论事件就结束了。"""
+        """等不到结论了：事件枢纽关闭，或这次送回没有结论事件就结束了（以取消结束的不算，
+        见 ``ResolutionLedger.ended``）。"""
         ...
 
 
@@ -109,11 +110,24 @@ class ResolutionLedger:
         seen.update(newly)
         return newly
 
-    def ended(self, submission_id: str) -> None:
-        """一次提交结束了。它若还在等结论（没有结论事件就结束了），就告诉等待方等不到了。"""
+    def ended(self, submission_id: str, *, cancelled: bool) -> None:
+        """一次提交结束了。它若还在等结论（没有结论事件就结束了）：
+
+        - 以取消结束（``cancelled``，如在内核里排队时被停下）：内核没处理这次送回，什么都没
+          核销，待办还在、可以再送。丢掉登记、记 info 日志，不算等不到；
+        - 否则告诉等待方等不到了。
+        """
         watch = self._watches.pop(submission_id, None)
-        if watch is not None:
-            watch.abandoned()
+        if watch is None:
+            return
+        if cancelled:
+            logger.info(
+                "会话 %s 的送回 %s 没有结论就被停下（内核没有处理它），不再等它的结论",
+                self._session_id,
+                submission_id,
+            )
+            return
+        watch.abandoned()
 
     def close(self) -> None:
         """事件枢纽关闭：还在等的都等不到了。"""

@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import json
 import logging
 from typing import Any
@@ -18,7 +19,12 @@ from xuanpu_server.controlplane import AuditQuery, AuditRecord, InMemoryControlP
 from xuanpu_server.errors import InvalidRequestError
 from xuanpu_server.runtime.connectors import ConnectorGate
 from xuanpu_server.runtime.events import SubmissionIndex
-from xuanpu_server.runtime.gate_audit import ConnectorToolInfo, RejectedCall, RejectionAudit
+from xuanpu_server.runtime.gate_audit import (
+    ConnectorToolInfo,
+    PendingRejections,
+    RejectedCall,
+    RejectionAudit,
+)
 
 
 async def gate_records(world: Any) -> list[Any]:
@@ -410,6 +416,48 @@ async def test_backfill_write_failure_does_not_fail_the_resume(
     assert resolved_by.data["decisions"] == {request_id: False}
     metrics = world.platform.metrics.render().decode("utf-8")
     assert 'xuanpu_gate_backfill_failures_total{stage="write"} 1.0' in metrics
+
+
+async def test_incomplete_is_counted_only_after_the_resume_is_submitted(
+    world: Any, step: Any, read_turn: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """待办缺调用信息、补不上：送回提交给内核失败时不计（什么都没提交）；提交成功之后才计一次
+    incomplete。"""
+    session, _, pending = await suspend(
+        world, step, read_turn, [("c1", "mcp__crm__update_ticket", {"id": "T-1"})]
+    )
+    sessions = world.platform.sessions
+    rejections = sessions._rejections  # noqa: SLF001
+    original = rejections.prepare
+
+    async def without_call_id(*args: Any, **kwargs: Any) -> PendingRejections:
+        """照常取待办，再去掉其中的 call_id（审计里的待办记录不完整）。"""
+        prepared = await original(*args, **kwargs)
+        broken = tuple(
+            {**item, "detail": {k: v for k, v in item["detail"].items() if k != "call_id"}}
+            for item in prepared.requests
+        )
+        return dataclasses.replace(prepared, requests=broken)
+
+    monkeypatch.setattr(rejections, "prepare", without_call_id)
+    live = sessions._live[("acme", session.session_id)]  # noqa: SLF001
+
+    async def refuse(op: Any) -> str:
+        """内核不收这次提交。"""
+        raise RuntimeError("内核不收")
+
+    monkeypatch.setattr(live.engine, "submit", refuse)
+    resolutions = {pending[0]["request_id"]: {"granted": False}}
+    with pytest.raises(RuntimeError, match="内核不收"):
+        await sessions.resume(world.member, session.session_id, resolutions)
+    stage = 'xuanpu_gate_backfill_failures_total{stage="incomplete"}'
+    assert f"{stage} 0.0" in world.platform.metrics.render().decode("utf-8")
+
+    monkeypatch.delattr(live.engine, "submit")
+    resumed = await sessions.resume(world.member, session.session_id, resolutions)
+    assert (await read_turn(resumed))[-1].msg.kind == "turn_completed"
+    assert f"{stage} 1.0" in world.platform.metrics.render().decode("utf-8")
+    assert await gate_records(world) == []
 
 
 # ---------------------------------------------------------------------------

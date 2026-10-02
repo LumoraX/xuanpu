@@ -430,8 +430,9 @@ xuanpu_usage_estimated_total 1.0
 | `xuanpu_turns_total` | counter | `outcome` | 结束的对话轮数：`completed`、`failed`、`suspended`、`cancelled`，以及送回审批被内核拒绝的 `resume_rejected`、只核销了一部分的 `resume_partial` |
 | `xuanpu_connector_calls_total` | counter | `transport`、`decision` | 过闸记录数：`allowed`、`denied`（策略拒绝）、`rejected`（人工拒绝） |
 | `xuanpu_audit_write_failures_total` | counter | — | 审计写入失败的次数。大于 0 说明审计不完整，查数据库 |
-| `xuanpu_gate_backfill_failures_total` | counter | `stage` | 人工拒绝的过闸记录没补上的次数（`incomplete` 待办缺字段、`write` 写库失败、`unconfirmed` 等不到内核对那次送回的结论） |
+| `xuanpu_gate_backfill_failures_total` | counter | `stage` | 人工拒绝的过闸记录没补上的次数（`incomplete` 待办缺字段、`write` 写库失败、`unconfirmed` 等不到内核对那次送回的结论）。送回在内核里排队时就被停下的不算：内核没处理它，待办还在，可以再送 |
 | `xuanpu_usage_estimated_total` | counter | — | 被停下的一轮按上下文估算入账的次数 |
+| `xuanpu_usage_write_failures_total` | counter | — | 一轮对话结束时用量写库失败的次数。这一轮照常结束，但它的用量没有入账、不再补记：`/v1/usage` 与当天的 token 配额都会少算，查数据库 |
 
 指标不带租户标签（避免标签基数随租户数膨胀）；按租户看用量用 `GET /v1/usage`。
 

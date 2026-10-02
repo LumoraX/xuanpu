@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import functools
 import logging
 import time
 from dataclasses import dataclass, field
@@ -367,12 +368,21 @@ class SessionManager:
             raise QuotaExceededError(f"进行中的对话数已达上限 {limit}，请稍后再试")
 
     async def _submit(
-        self, live: _LiveSession, op: Any, *, watch: ResolutionWatch | None = None
+        self,
+        live: _LiveSession,
+        op: Any,
+        *,
+        make_watch: Callable[[], ResolutionWatch | None] | None = None,
     ) -> Turn:
-        """提交一个操作并登记它的事件流（送回审批时连同等内核结论的一方）。"""
+        """提交一个操作并登记它的事件流（送回审批时连同等内核结论的一方）。
+
+        ``make_watch`` 在提交成功之后才调用（同步、不让出）：等结论的一方只为内核受理了的送回
+        而造，提交失败时它什么都不做（不计补记失败）。返回 None 表示没有要等的。
+        """
         submission_id = await live.engine.submit(op)
         # 提交与登记之间不能有让出点，否则内核先发出的事件会漏掉
         stream = live.hub.open_stream(submission_id)
+        watch = make_watch() if make_watch is not None else None
         if watch is not None:
             live.hub.watch_resolution(submission_id, watch)
         live.in_flight.add(submission_id)
@@ -421,7 +431,9 @@ class SessionManager:
         turn = await self._submit(
             live,
             taifeng.Resume(thread_id=live.engine.thread_id, resolutions=resolutions),
-            watch=self._rejections.watch(rejected, live.runtime.connectors.describe),
+            make_watch=functools.partial(
+                self._rejections.watch, rejected, live.runtime.connectors.describe
+            ),
         )
         await self._audit.control(
             principal,
