@@ -47,13 +47,11 @@
 
 | 记录 | `user_id` |
 | --- | --- |
-| 控制面操作（`source=control`），停止生成除外 | 调用者代表的员工：浏览器登录的员工，或代员工调用时被代的员工；用 API key、根凭据直接调的为空 |
-| 内核事件（`source=engine`，含平台补的 `turn_text`、`usage_estimated`、`audit_gap`） | 会话的主人 |
-| 过闸记录（`source=gate`，含人工拒绝的补记） | 会话的主人 |
-| 停止生成的 `turn_cancel_requested` | 会话的主人，不论是谁停的（是谁停的看 `actor`） |
+| 会话里的一切记录：会话上的控制面操作（`session_created`、`message_sent`、`suspension_resolved_by`、`turn_cancel_requested`、`session_closed`）、内核事件（`source=engine`，含平台补的 `turn_text`、`usage_estimated`、`audit_gap`）、过闸记录（`source=gate`，含人工拒绝的补记） | 会话的主人，不论是谁触发的（是谁触发的看 `actor`） |
+| 与会话无关的控制面操作（签发 key、写密钥、发布业务包、退出登录等） | 调用者代表的员工：浏览器登录的员工，或代员工调用时被代的员工；用 API key、根凭据直接调的为空 |
 | 飞书登录的几种记录 | 认出的员工，见下文 |
 
-会话的主人是建会话时调用者代表的员工；API key 直接建的会话没有主人，会话里的记录 `user_id` 都为空。比如管理员用自己的 API key 批准了员工张三会话里的一次写操作：`suspension_resolved_by` 的 `actor` 是那把 key、`user_id` 为空（控制面操作，取调用者）；随后执行的那次调用的过闸记录 `actor` 是 `engine`、`user_id` 是张三（会话里的记录，取主人）。
+会话的主人是建会话时调用者代表的员工；API key 直接建的会话没有主人，会话里的记录 `user_id` 都为空。比如管理员用自己的 API key 批准了员工张三会话里的一次写操作：`suspension_resolved_by` 的 `actor` 是那把 key、`user_id` 是张三；随后执行的那次调用的过闸记录 `actor` 是 `engine`、`user_id` 也是张三——两条都是张三会话里的记录。所以按 `user_id=张三` 能看到他会话里的全部经过（包括别人在里面做的事）；要查「这个管理员在别人的会话里做了什么」，按 `actor` 查（见下文「查询」）。
 
 ## 三个来源
 
@@ -77,7 +75,7 @@
 | `session_closed` | 关闭会话 | — |
 | `message_sent` | 用户发出一条消息 | `submission_id`、`text` |
 | `suspension_resolved_by` | 送回审批决定 | `submission_id`、`decisions`（待办标识 → 批准与否） |
-| `turn_cancel_requested` | 停止生成（确有在途对话被停时才记）。`user_id` 是会话的主人，不是调用者 | `submission_ids`：停了哪些 |
+| `turn_cancel_requested` | 停止生成（确有在途对话被停时才记）。与会话上的其他操作一样，`user_id` 是会话的主人，是谁停的看 `actor` | `submission_ids`：停了哪些 |
 | `user_created` | 员工首次[飞书登录](../architecture/http-api.md#飞书登录)，平台自动给他建账号 | `provider`（`feishu`）、`display_name`、`role`（总是 `tenant_member`） |
 | `login_succeeded` | 飞书登录成功 | `provider` |
 | `login_failed` | 飞书登录失败，而且飞书确实认出了一个人：`not_in_app_scope`（不在应用的可用范围内）、`tenant_mismatch`（飞书企业不符）、`user_disabled`（员工已停用）。别的失败原因（员工拒绝授权、登录链接失效、租户不可用、调飞书失败）只计指标 `xuanpu_logins_total`、记平台日志，不写审计——登录接口不需要凭据，否则谁都能往审计里灌记录 | `reason`：失败原因，含义见[接口文档的 `login_error` 表](../architecture/http-api.md#飞书登录) |
@@ -148,7 +146,7 @@ taifeng 内核的事件，成批写入（最迟半秒或攒够 64 条）。一�
 
 | 记录 | 说明 |
 | --- | --- |
-| `turn_cancel_requested` | 谁停的（`actor`）、停了哪几轮；`user_id` 是会话的主人。只在确有在途的对话被提交了取消时记 |
+| `turn_cancel_requested` | 谁停的（`actor`）、停了哪几轮；`user_id` 与会话里别的记录一样是会话的主人。只在确有在途的对话被提交了取消时记 |
 | `engine_log` | 内核受理取消时发的日志。它挂在取消请求**自己的**提交上（平台不对外给出这个标识），被停的那一轮写在 `message` 里 |
 | `turn_completed` | 被停的那一轮的结束：`end_reason` 为 `cancelled`、`success` 为 `false`、`cancel_reason` 为 `requested`；还在排队时被停的是 `turn_failed`，`data.kind` 为 `cancelled`。`usage` 不含被打断的那次采样 |
 | `usage_estimated` | 平台补的估算，见下文「用量」 |
@@ -197,7 +195,8 @@ curl "https://xuanpu.internal/v1/audit?session_id=ses_…&limit=200" -H "Authori
 | `kind` | 只看某种事件 |
 | `source` | `control` / `gate` / `engine` |
 | `since`、`until` | 时间范围，Unix 秒；`since` 含，`until` 不含 |
-| `user_id` | 只看归到某名员工名下的（他做的控制面操作、他名下会话里的记录） |
+| `user_id` | 只看归到某名员工名下的：他名下会话里的一切记录（不论是谁触发的），以及他做的与会话无关的控制面操作 |
+| `actor` | 只看某个触发者的，精确匹配：`key:<API key 标识>`、`user:<员工标识>`、`key:<API key 标识>/user:<员工标识>`（代员工调用，与那把 key 自己的是两个值）、`engine`。低频的排查查询，审计表上没有为它建索引，记录多时会慢 |
 | `after_id` | 只看编号大于它的，翻页用 |
 | `limit` | 每页条数，默认 100，最大 1000 |
 
@@ -231,12 +230,13 @@ async for record in client.admin.audit(session_id=session_id, source="gate"):
 | 某个会话从头到尾发生了什么 | `session_id=…`，按 `at` 排序 |
 | 用户问了什么、模型答了什么 | `kind=message_sent` 与 `kind=turn_text`，用 `data.submission_id` 配对 |
 | 调过哪些外部接口 | `source=gate` 里 `decision=allowed` 的（`rejected` 的没有调用） |
-| 某次写操作是谁批准的 | `kind=suspension_resolved_by`：`actor` 是送回决定的 API key，`data.decisions` 是每个待办的结论。再用 `kind=turn_suspended` 里同一个待办标识找到当时要批的操作与参数 |
+| 某次写操作是谁批准的 | `kind=suspension_resolved_by`：`actor` 是送回决定的调用者（API key、员工或代员工调用），`data.decisions` 是每个待办的结论。再用 `kind=turn_suspended` 里同一个待办标识找到当时要批的操作与参数 |
 | 被拒绝的操作 | 同上，`decisions` 里取值不为 `true` 的。其中连接器工具另有一条 `decision=rejected` 的 `connector_call`（调用没有执行） |
 | 谁在什么时候发布、切换了业务包 | `kind=package_published`、`kind=package_activated` |
 | 谁改过密钥 | `kind=secret_written`、`kind=secret_deleted` |
 | 某一轮用了多少 token | `kind=turn_completed` 的 `data.subtree_usage`（含子 skill）；没有这个字段时看 `data.usage` |
-| 某名员工做了什么、他的会话里发生了什么 | `user_id=usr_…`；员工查看自己的记录以后再开放，现在只有租户管理员能查 |
+| 某名员工的会话里发生了什么、他做了什么 | `user_id=usr_…`；员工查看自己的记录以后再开放，现在只有租户管理员能查 |
+| 某个管理员或某把 key 在别人的会话里做了什么 | `actor=user:usr_…`（浏览器登录的管理员）或 `actor=key:…`，再加 `user_id=` 只看某名员工会话里的 |
 
 一轮对话的所有记录靠 `data.submission_id` 串起来。送回审批决定后的续跑是一个新的 `submission_id`；要把「挂起的那一轮」和「续跑的那一轮」对上，用待办标识或 `call_id`。
 
@@ -318,9 +318,9 @@ curl "https://xuanpu.internal/v1/usage/users?since=2026-10-01&until=2026-10-31" 
 
 | 规则 | 说明 |
 | --- | --- |
-| 粒度 | 每天每名员工一条，按日期、员工排序；参数与上面相同 |
+| 粒度 | 每天每名员工一条，按日期、员工排序；`since`、`until` 与上面相同，`user_id` 可选，只看这名员工的 |
 | 算谁的 | 会话的主人（建会话时调用者代表的员工），不论这一轮是谁发起的。API key 直接建的会话没有主人，只算进租户总量，所以各员工之和不大于租户总量 |
-| 什么时候入账 | 与租户总量同一时刻、同样的数（含被停下的一轮按估算计入的输入）。两笔各自写：按员工的那一笔写库失败时，租户总量照记，这一笔不再补记，同样记错误日志、`xuanpu_usage_write_failures_total` 计一次 |
+| 什么时候入账 | 与租户总量同一时刻、同样的数（含被停下的一轮按估算计入的输入）。先记租户总量，记成了才记按员工的：租户那笔写库失败时员工那笔也不记；员工那笔失败时租户总量照记。失败的那一笔不再补记，同样记错误日志、`xuanpu_usage_write_failures_total` 计一次 |
 | 谁能查 | 租户管理员 |
 
 `max_daily_tokens` 只对照租户总量，按员工的用量不设配额。

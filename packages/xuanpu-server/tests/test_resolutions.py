@@ -176,7 +176,7 @@ async def test_hub_closing_before_the_kernel_answers_counts_as_unconfirmed() -> 
         },
     }
     pending = PendingRejections(
-        tenant_id="acme", session_id="ses_1", submission_id="sub_s", requests=(item,)
+        tenant_id="acme", session_id="ses_1", submission_id="sub_s", requests=(item,), user_id=None
     )
     info = ConnectorToolInfo(
         connector="crm", transport="stdio", tool="update_ticket", effect="write"

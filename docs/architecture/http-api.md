@@ -29,14 +29,14 @@
 
 调用者在审计记录里的 `actor`：
 
-| 调用者 | `actor` | 审计的 `user_id` |
+| 调用者 | `actor` | 审计的 `user_id`（与会话无关的操作） |
 | --- | --- | --- |
 | 根凭据 | `key:root` | 空 |
 | API key | `key:<key_id>` | 空 |
 | 浏览器登录 | `user:<员工标识>` | 这名员工 |
 | 系统代员工 | `key:<key_id>/user:<员工标识>` | 这名员工 |
 
-`user_id` 一栏说的是控制面操作；会话里的记录（内核事件、过闸记录、停止生成）不论是谁触发的，`user_id` 都是会话的主人，见[审计](#审计)。
+`user_id` 一栏只说与会话无关的控制面操作。会话里的一切记录——内核事件、过闸记录，以及建会话、发消息、送审批结果、停止生成、关闭会话这些会话上的操作——不论是谁触发的，`user_id` 都是会话的主人，`actor` 仍是触发者，见[审计](#审计)。
 
 ### 浏览器登录
 
@@ -75,7 +75,7 @@ X-Xuanpu-Act-As: usr_5f0c1b2e7d9a4c3b8e6f1a20
 
 - 只有签发时带 `"act_as_users": true` 的 API key 能这么用（见 [API key](#api-key)）。
 - **生效角色取 key 的角色与员工角色中较低的那个**：管理员的 key 代普通成员调用，只有成员的权限；成员的 key 代管理员调用，也只有成员的权限。
-- 审计里 `actor` 同时写出 key 和员工，`user_id` 是这名员工。
+- 审计里 `actor` 同时写出 key 和员工；与会话无关的操作 `user_id` 是这名员工，会话里的记录 `user_id` 是会话的主人（见[审计](#审计)）。
 
 | 情况 | 响应 |
 | --- | --- |
@@ -137,9 +137,9 @@ X-Xuanpu-Act-As: usr_5f0c1b2e7d9a4c3b8e6f1a20
 | `POST /v1/sessions/{id}/messages` | 租户成员 | 发消息；响应是事件流 |
 | `POST /v1/sessions/{id}/resume` | 租户成员 | 送回审批结果；响应是事件流 |
 | `POST /v1/sessions/{id}/cancel` | 租户成员 | 停止生成：取消会话里在途的对话 |
-| `GET /v1/audit?session_id=&kind=&source=&since=&until=&user_id=&after_id=&limit=` | 租户管理员 | 查询审计 |
+| `GET /v1/audit?session_id=&kind=&source=&since=&until=&user_id=&actor=&after_id=&limit=` | 租户管理员 | 查询审计 |
 | `GET /v1/usage?since=&until=` | 租户管理员 | 查询用量 |
-| `GET /v1/usage/users?since=&until=` | 租户管理员 | 按天、按员工查询用量 |
+| `GET /v1/usage/users?since=&until=&user_id=` | 租户管理员 | 按天、按员工查询用量 |
 | `GET /metrics` | 抓取令牌 | Prometheus 指标；配置了 `metrics.token_hash` 才开 |
 
 ## 存活探测
@@ -568,7 +568,7 @@ POST /v1/sessions/{id}/cancel
 
 会话保持活动，可以接着发消息。被停的那一轮照样记一轮用量，排队中被停、没开始跑的那一轮也计一轮（token 为 0）；卡在半路的那次采样没有收尾，网关报不出它的 token，平台按上下文估算计入输入（审计里记一条 `usage_estimated`，见[审计与用量](../guides/audit-and-usage.md)）。
 
-看得见这个会话的调用者（见[可见范围](#可见范围)）都能停里面的对话，与 `resume` 一样不区分对话是谁发起的；审计里的 `turn_cancel_requested` 的 `actor` 记下是谁停的，`user_id` 是会话的主人。只想停自己发起的那一轮，就带上它的 `submission_id`。会话的主人已停用也能停。
+看得见这个会话的调用者（见[可见范围](#可见范围)）都能停里面的对话，与 `resume` 一样不区分对话是谁发起的；审计里的 `turn_cancel_requested` 的 `actor` 记下是谁停的，`user_id` 与会话里别的记录一样是会话的主人。只想停自己发起的那一轮，就带上它的 `submission_id`。会话的主人已停用也能停。
 
 | 情况 | 响应 |
 | --- | --- |
@@ -596,7 +596,7 @@ GET /v1/sessions/{id}/events?submission_id=sub_…&after_seq=13
 ## 审计
 
 ```
-GET /v1/audit?session_id=&kind=&source=&since=&until=&user_id=&after_id=&limit=
+GET /v1/audit?session_id=&kind=&source=&since=&until=&user_id=&actor=&after_id=&limit=
 
 → {"records": [{"audit_id": 51, "source": "gate", "kind": "connector_call", "at": 1790753335.73,
                 "actor": "engine", "session_id": "ses_…", "stream": null, "seq": null, "data": {…},
@@ -609,11 +609,12 @@ GET /v1/audit?session_id=&kind=&source=&since=&until=&user_id=&after_id=&limit=
 | `session_id`、`kind` | 精确匹配 |
 | `source` | `engine`、`gate`、`control` |
 | `since`、`until` | Unix 秒；`since` 含，`until` 不含 |
-| `user_id` | 只看与这名员工有关的：他做的控制面操作，以及他名下会话里的记录 |
+| `user_id` | 只看归到这名员工名下的：他名下会话里的一切记录（不论是谁触发的），以及他做的与会话无关的控制面操作 |
+| `actor` | 只看某个触发者的，精确匹配（如 `key:7a1c03d2e9f4`、`user:usr_…`；代员工调用是 `key:<key_id>/user:<员工标识>`，与那把 key 自己的 `key:<key_id>` 是两个值）。用来查「某个管理员或某把 key 在别人的会话里做了什么」，可以与 `user_id` 组合。这是低频的排查查询，审计表上没有为它建索引，记录多时会慢 |
 | `after_id` | 只返回编号更大的记录，默认 0 |
 | `limit` | 默认 100，最大 1000 |
 
-记录按 `audit_id` 升序。`next_after_id` 不为 `null` 表示可能还有下一页。记录的 `user_id` 是它归到哪名员工名下：控制面操作是调用者代表的员工，会话里的记录（内核事件、过闸记录、停止生成）是会话的主人，与员工无关的为 `null`。员工查看自己的记录以后再开放，现在仍只有租户管理员能查。各字段与各种事件的含义见[审计与用量](../guides/audit-and-usage.md)。
+记录按 `audit_id` 升序。`next_after_id` 不为 `null` 表示可能还有下一页。记录的 `user_id` 是它归到哪名员工名下，`actor` 是谁触发的：会话里的一切记录（内核事件、过闸记录、会话上的控制面操作）是会话的主人，不论是谁触发的；与会话无关的控制面操作是调用者代表的员工；与员工无关的为 `null`。员工查看自己的记录以后再开放，现在仍只有租户管理员能查。各字段与各种事件的含义见[审计与用量](../guides/audit-and-usage.md)。
 
 ## 用量
 
@@ -635,7 +636,7 @@ GET /v1/usage/users?since=2026-10-01&until=2026-10-31
               "output_tokens": 20, "total_tokens": 120, "turns": 1}]}
 ```
 
-每天每名员工一条，按日期、员工排序；参数同上。只含有主人的会话（API key 直接建的会话只算进上面的租户总量），所以各员工之和不大于租户总量。
+每天每名员工一条，按日期、员工排序；`since`、`until` 同上，`user_id` 可选，只看这名员工的。只含有主人的会话（API key 直接建的会话只算进上面的租户总量），所以各员工之和不大于租户总量。
 
 ## 指标
 

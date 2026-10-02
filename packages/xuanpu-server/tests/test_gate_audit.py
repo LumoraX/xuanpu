@@ -528,7 +528,7 @@ async def test_only_connector_tools_are_picked_and_transport_comes_from_the_regi
         "r4": {"granted": False},
         "r5": {"granted": True},
     }
-    pending = await rejections.prepare("acme", "ses_1", resolutions)
+    pending = await rejections.prepare("acme", "ses_1", resolutions, user_id="usr_1")
     assert [item["request_id"] for item in pending.requests] == ["r1", "r2", "r3", "r4"]
     calls = rejections.calls(pending, REGISTRY.get)
     assert [(c.call_id, c.info.transport, c.submission_id) for c in calls] == [
@@ -539,6 +539,7 @@ async def test_only_connector_tools_are_picked_and_transport_comes_from_the_regi
     assert (record.session_id, record.data["transport"], record.data["decision"]) == (
         "ses_1", "remote", "rejected",
     )  # fmt: skip
+    assert record.user_id == "usr_1"
     assert stages == []
 
 
@@ -573,7 +574,7 @@ async def test_failures_are_logged_and_counted_not_raised(
     )
     rejected = {"granted": False}
     pending = await rejections.prepare(
-        "acme", "ses_1", {"r1": rejected, "r2": rejected, "r3": rejected}
+        "acme", "ses_1", {"r1": rejected, "r2": rejected, "r3": rejected}, user_id=None
     )
     # r2 缺参数补不上；内核确认之后 r1 写失败，r3 照常写进去
     watch = rejections.watch(pending, REGISTRY.get)
@@ -592,7 +593,7 @@ async def test_failures_are_logged_and_counted_not_raised(
 
     store.query_audit = broken  # type: ignore[method-assign]
     with pytest.raises(RuntimeError, match="读不出来"):
-        await rejections.prepare("acme", "ses_1", {"r1": rejected})
+        await rejections.prepare("acme", "ses_1", {"r1": rejected}, user_id=None)
     assert len(stages) == 5
     errors = [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR]
     assert len(errors) == 4
@@ -606,7 +607,9 @@ async def test_watch_only_records_what_the_kernel_settled_this_time() -> None:
     stages: list[str] = []
     rejections = RejectionAudit(store=store, audit=AuditLog(store), on_failure=stages.append)
     rejected = {"granted": False}
-    pending = await rejections.prepare("acme", "ses_1", {"r1": rejected, "r2": rejected})
+    pending = await rejections.prepare(
+        "acme", "ses_1", {"r1": rejected, "r2": rejected}, user_id=None
+    )
     refused = rejections.watch(pending, REGISTRY.get)
     assert refused is not None
     refused.refused("invalid_payload_shape")
@@ -677,6 +680,7 @@ async def test_call_cut_off_by_cancellation_leaves_a_gate_record() -> None:
         thread_id="thr_1",
         arguments_digest="sha256:0",
         submission_id=None,
+        user_id=None,
     )
     assert set(data) == set(backfilled.gate_data())
 
@@ -735,7 +739,7 @@ async def test_pending_from_before_the_upgrade_falls_back_to_the_audited_args(
     store = await suspended_store(permission("r1", "mcp__docs__update_doc", arguments_digest=None))
     stages: list[str] = []
     rejections = RejectionAudit(store=store, audit=AuditLog(store), on_failure=stages.append)
-    pending = await rejections.prepare("acme", "ses_1", {"r1": {"granted": False}})
+    pending = await rejections.prepare("acme", "ses_1", {"r1": {"granted": False}}, user_id=None)
     [call] = rejections.calls(pending, REGISTRY.get)
     assert call.arguments_digest == digest_arguments({"id": "r1"})
     assert any("没有参数摘要" in r.getMessage() for r in caplog.records)

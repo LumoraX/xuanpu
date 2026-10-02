@@ -1,8 +1,9 @@
-"""审计记录带上员工（设计 8.2）：会话内的记录归会话主人，控制面操作归调用者；``GET /v1/audit``
-按 ``user_id`` 过滤。
+"""审计记录带上员工：会话里的一切记录归会话主人，与会话无关的控制面操作归调用者；``GET /v1/audit``
+按 ``user_id``、``actor`` 过滤。
 
-内核事件（含平台补的 ``turn_text``、``usage_estimated``）、过闸记录（闸门写的与人工拒绝的补记）、
-停止生成的 ``turn_cancel_requested`` 都取会话主人，不论是谁触发的；其余控制面操作取调用者。
+会话里的记录——内核事件（含平台补的 ``turn_text``、``usage_estimated``）、过闸记录（闸门写的、经
+线程兜底归属的，以及人工拒绝的补记）、会话上的控制面操作（建会话、发消息、送审批结果、停止生成、
+关闭会话）——``user_id`` 都是会话主人，不论是谁触发的；``actor`` 仍是触发者。
 """
 
 from __future__ import annotations
@@ -11,8 +12,11 @@ import asyncio
 from typing import TYPE_CHECKING, Any
 
 import pytest
+import taifeng
 from xuanpu_server.controlplane.models import AuditQuery
+from xuanpu_server.runtime.connectors import ConnectorGate
 from xuanpu_server.runtime.events import SessionRef, SubmissionIndex
+from xuanpu_server.runtime.gate_audit import ConnectorToolInfo
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable
@@ -61,9 +65,11 @@ async def wait_until(condition: Callable[[], bool], *, seconds: float = 10.0) ->
 
 
 async def test_session_records_belong_to_the_owner(ident: Any, step: Any, read_turn: Any) -> None:
-    """员工的会话里：内核事件、闸门放行的与人工拒绝补记的过闸记录都归这名员工，哪怕审批是管理员的
-    key 送回的；控制面操作归调用者——管理员的 key 送回的 ``suspension_resolved_by`` 没有员工。"""
+    """员工的会话里，不论是谁触发的，记录都归这名员工：内核事件、闸门放行的与人工拒绝补记的过闸
+    记录，以及会话上的控制面操作。管理员的 key 在这个会话里批准、拒绝、发消息、关闭，``actor`` 是
+    这把 key，``user_id`` 仍是会话主人。"""
     alice, who = await employee(ident, name="爱丽丝")
+    admin = ident.world.admin
     sessions = ident.world.platform.sessions
     session = await sessions.create(who, package="support-desk")
     ident.world.models.script(
@@ -71,15 +77,19 @@ async def test_session_records_belong_to_the_owner(ident: Any, step: Any, read_t
         step(text="改好了"),
         step(calls=[("c2", "mcp__crm__update_ticket", {"id": "T-2"})]),
         step(text="不改了"),
+        step(text="管理员来过"),
     )
     await read_turn(await sessions.send_message(who, session.session_id, "改 T-1"))
     [first] = await sessions.pending(who, session.session_id)
     approve = {first["request_id"]: {"granted": True}}
-    await read_turn(await sessions.resume(ident.world.admin, session.session_id, approve))
+    await read_turn(await sessions.resume(admin, session.session_id, approve))
     await read_turn(await sessions.send_message(who, session.session_id, "改 T-2"))
     [second] = await sessions.pending(who, session.session_id)
+    # 管理员的 key 来拒绝：补记若取调用者，这里就会是空
     reject = {second["request_id"]: {"granted": False}}
-    await read_turn(await sessions.resume(who, session.session_id, reject))
+    await read_turn(await sessions.resume(admin, session.session_id, reject))
+    await read_turn(await sessions.send_message(admin, session.session_id, "管理员说一句"))
+    await sessions.close(admin, session.session_id)
 
     records = await session_records(ident, session.session_id)
     engine = [record for record in records if record.source == "engine"]
@@ -91,12 +101,59 @@ async def test_session_records_belong_to_the_owner(ident: Any, step: Any, read_t
         if record.source == "gate"
     ]
     assert gate == [("allowed", "", alice.user_id), ("rejected", "rejected_by_user", alice.user_id)]
-    control = [(record.kind, record.actor, record.user_id) for record in records]
-    admin = ident.world.admin.actor
-    assert ("session_created", who.actor, alice.user_id) in control
-    assert ("message_sent", who.actor, alice.user_id) in control
-    assert ("suspension_resolved_by", admin, None) in control
-    assert ("suspension_resolved_by", who.actor, alice.user_id) in control
+    control = [
+        (record.kind, record.actor, record.user_id)
+        for record in records
+        if record.source == "control"
+    ]
+    assert control == [
+        ("session_created", who.actor, alice.user_id),
+        ("message_sent", who.actor, alice.user_id),
+        ("suspension_resolved_by", admin.actor, alice.user_id),
+        ("message_sent", who.actor, alice.user_id),
+        ("suspension_resolved_by", admin.actor, alice.user_id),
+        ("message_sent", admin.actor, alice.user_id),
+        ("session_closed", admin.actor, alice.user_id),
+    ]
+
+
+async def test_gate_record_found_by_thread_belongs_to_the_owner(
+    ident: Any, step: Any, read_turn: Any
+) -> None:
+    """内核自己发起的重跑（如到期裁决）不带 submission 标识，闸门按线程找会话：打开会话时登记线程的
+    同时登记了主人，这样的过闸记录也归会话主人。"""
+    alice, who = await employee(ident, name="爱丽丝")
+    sessions = ident.world.platform.sessions
+    session = await sessions.create(who, package="support-desk")
+    ident.world.models.script(step(text="你好"))
+    await read_turn(await sessions.send_message(who, session.session_id, "你好"))
+    thread_id = sessions._live[("acme", session.session_id)].engine.thread_id  # noqa: SLF001
+
+    async def invoke(args: dict[str, Any]) -> tuple[str, bool]:
+        """连接器照常返回。"""
+        return "ok", False
+
+    gate = ConnectorGate(
+        invoke=invoke,
+        info=ConnectorToolInfo(
+            connector="crm", transport="stdio", tool="search_customer", effect="read"
+        ),
+        full_name="mcp__crm__search_customer",
+        tenant_id="acme",
+        policy=taifeng.PermissionPolicy(default_mode="allow"),
+        audit=ident.world.platform.audit,
+        submissions=sessions._submissions,  # noqa: SLF001 —— 用平台自己的对照表
+        timeout_seconds=5,
+    )
+    context = taifeng.ToolContext(
+        call_id="c-rerun", cancel=taifeng.CancellationToken(), thread_id=thread_id, extras={}
+    )
+    await gate({"name": "张三"}, context)
+    [record] = await ident.world.platform.store.query_audit(
+        "acme", AuditQuery(source="gate", session_id=session.session_id)
+    )
+    assert (record.data["call_id"], record.data["submission_id"]) == ("c-rerun", None)
+    assert record.user_id == alice.user_id
 
 
 async def test_stop_and_estimate_belong_to_the_owner(ident: Any, step: Any) -> None:
@@ -166,6 +223,30 @@ async def test_audit_query_filters_by_user(ident: Any, step: Any, read_turn: Any
     for headers in (member_cookie, bearer(ident.world.member_key)):
         denied = await ident.http.get("/v1/audit", headers=headers, params=params)
         assert (denied.status_code, denied.json()["error"]["code"]) == (403, "permission_denied")
+
+
+async def test_audit_query_filters_by_actor(ident: Any, step: Any, read_turn: Any) -> None:
+    """``GET /v1/audit?actor=``：查某个管理员在别人会话里做了什么——记录归会话主人，``actor``
+    是他。"""
+    alice, alice_who = await employee(ident, name="爱丽丝")
+    sessions = ident.world.platform.sessions
+    session = await sessions.create(alice_who, package="support-desk")
+    ident.world.models.script(step(text="爱丽丝的"), step(text="管理员的"))
+    await read_turn(await sessions.send_message(alice_who, session.session_id, "你好"))
+    await read_turn(await sessions.send_message(ident.world.admin, session.session_id, "我来"))
+    await sessions.close(ident.world.admin, session.session_id)
+
+    params = {"actor": ident.world.admin.actor, "user_id": alice.user_id}
+    response = await ident.http.get(
+        "/v1/audit", headers=bearer(ident.world.admin_key), params=params
+    )
+    assert response.status_code == 200, response.text
+    records = response.json()["records"]
+    assert [record["kind"] for record in records] == ["message_sent", "session_closed"]
+    assert {(record["actor"], record["user_id"]) for record in records} == {
+        (ident.world.admin.actor, alice.user_id)
+    }
+    assert records[0]["data"]["text"] == "我来"
 
 
 def test_submission_index_remembers_the_owner() -> None:

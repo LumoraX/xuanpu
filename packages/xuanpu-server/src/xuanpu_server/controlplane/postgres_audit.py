@@ -141,7 +141,8 @@ class PostgresAuditStore:
         return written
 
     async def query_audit(self, tenant_id: str, query: AuditQuery) -> list[AuditRecord]:
-        """查询审计记录。"""
+        """查询审计记录。``actor`` 条件有意不建索引：管理员排查用的低频查询（见
+        ``AuditQuery``）。"""
         rows = await self._fetch(
             f"SELECT {_AUDIT_COLUMNS} FROM {self._audit_table} "
             "WHERE tenant_id = $1 AND audit_id > $2 "
@@ -152,6 +153,7 @@ class PostgresAuditStore:
             "AND ($7::float8 IS NULL OR at < $7) "
             "AND ($9::text IS NULL OR data->>'submission_id' = $9) "
             "AND ($10::text IS NULL OR user_id = $10) "
+            "AND ($11::text IS NULL OR actor = $11) "
             "ORDER BY audit_id LIMIT $8",
             tenant_id,
             query.after_id,
@@ -163,6 +165,7 @@ class PostgresAuditStore:
             query.limit,
             query.submission_id,
             query.user_id,
+            query.actor,
         )
         return [_audit(row) for row in rows]
 

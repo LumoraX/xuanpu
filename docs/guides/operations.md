@@ -465,7 +465,7 @@ xuanpu_usage_estimated_total 1.0
 | `xuanpu_audit_write_failures_total` | counter | — | 审计写入失败的次数。大于 0 说明审计不完整，查数据库 |
 | `xuanpu_gate_backfill_failures_total` | counter | `stage` | 人工拒绝的过闸记录没补上的次数（`incomplete` 待办缺字段、`write` 写库失败、`unconfirmed` 等不到内核对那次送回的结论）。送回在内核里排队时就被停下的不算：内核没处理它，待办还在，可以再送 |
 | `xuanpu_usage_estimated_total` | counter | — | 被停下的一轮按上下文估算入账的次数 |
-| `xuanpu_usage_write_failures_total` | counter | — | 一轮对话结束时用量写库失败的次数（租户总量与按员工的用量各写一笔，哪笔失败都计一次）。这一轮照常结束，但失败的那一笔没有入账、不再补记：`/v1/usage` 与当天的 token 配额、或 `/v1/usage/users` 会少算，查数据库 |
+| `xuanpu_usage_write_failures_total` | counter | — | 一轮对话结束时用量写库失败的次数（先写租户总量，成了再写按员工的；哪笔失败都计一次，租户那笔失败时员工那笔不写）。这一轮照常结束，但没写成的不再补记：`/v1/usage` 与当天的 token 配额、`/v1/usage/users` 会少算，查数据库 |
 | `xuanpu_logins_total` | counter | `result` | 飞书登录的结果：`succeeded`，或失败原因（`feishu_denied`、`not_in_app_scope`、`state_invalid`、`tenant_mismatch`、`tenant_unavailable`、`user_disabled`、`identity_unavailable`，含义见[接口文档](../architecture/http-api.md#飞书登录)）。`identity_unavailable` 持续上涨说明平台连不上飞书或应用凭据不对，看平台日志里「飞书登录失败」的告警 |
 
 指标不带租户标签（避免标签基数随租户数膨胀）；按租户看用量用 `GET /v1/usage`。

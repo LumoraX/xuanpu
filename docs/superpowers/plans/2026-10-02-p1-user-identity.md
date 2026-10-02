@@ -59,6 +59,7 @@
 | 指标的结果取值 | `metrics.py` 自己写一份 `LoginResult`（`Literal`），运行时不依赖身份域；测试守着它与 `LoginFailureReason` 一致（Task 4 审查修正） |
 | `identity_config_updated` 只记名字与 `app_id` | 审计按键名脱敏，会把 `app_secret_ref`、`verification_token_ref` 的取值（这里只是名字）抹掉，`data` 改为 `app_id`、`session_ttl_seconds`、`refs: {app, encrypt, verification}`（Task 4） |
 | 飞书客户端的装配 | `Platform` 用 `identity_settings` 的两个基地址建 `FeishuClient`（`feishu_transport` 可注入，`close()` 时关闭），交给 `IdentityService`，登录流程放 `identity/login.py` 的 `FeishuLogin`（`IdentityService.login`）。测试夹具在平台装配后替换 `IdentityService.login.feishu` 接模拟飞书（根 `tests/conftest.py` 不加参数）（Task 4） |
+| 8.2「控制面操作取调用者；内核事件与过闸记录取会话上的 `user_id`」 | **改口径**（Task 5 审查拍板）：会话里的一切记录 `user_id` 都取会话主人，包括会话上的控制面操作——`session_created`、`message_sent`、`suspension_resolved_by`、`turn_cancel_requested`、`session_closed`（`AuditLog.control(..., session=record)`，`session_id` 与 `user_id` 都由它定）；`actor` 仍是调用者。与会话无关的控制面操作照旧取调用者。为此 `GET /v1/audit` 另加 `actor=` 条件（精确匹配，审计表不为它建索引：管理员排查用的低频查询），用来查「某个管理员在别人会话里做了什么」（Task 5） |
 
 ---
 

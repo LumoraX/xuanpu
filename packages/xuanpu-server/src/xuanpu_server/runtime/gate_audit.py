@@ -42,7 +42,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from xuanpu_server.audit import digest_arguments
@@ -138,7 +138,8 @@ class RejectedCall:
         thread_id: 发起调用的线程。
         arguments_digest: 调用参数的摘要。
         submission_id: 挂起的那一轮（被拒的那一轮）的提交标识。
-        user_id: 会话主人，写进过闸记录的 ``user_id``；API key 直接建的会话没有主人。
+        user_id: 会话主人，写进过闸记录的 ``user_id``；API key 直接建的会话没有主人，为 None。
+            必须显式给出（关键字参数），免得漏传时补记悄悄归到没有人名下。
     """
 
     tenant_id: str
@@ -149,7 +150,7 @@ class RejectedCall:
     thread_id: str
     arguments_digest: str
     submission_id: str | None
-    user_id: str | None = None
+    user_id: str | None = field(kw_only=True)
 
     def gate_data(self) -> dict[str, Any]:
         """这次拒绝的过闸记录 ``data``：没有调用，不算出错，耗时为 0。"""
@@ -242,14 +243,14 @@ class PendingRejections:
         session_id: 所属会话。
         submission_id: 挂起的那一轮的提交标识。
         requests: 被拒绝的待办（还没区分是不是连接器工具）。
-        user_id: 会话主人；API key 直接建的会话没有主人。
+        user_id: 会话主人；API key 直接建的会话没有主人，为 None。必须显式给出（关键字参数）。
     """
 
     tenant_id: str
     session_id: str
     submission_id: str | None = None
     requests: tuple[Mapping[str, Any], ...] = ()
-    user_id: str | None = None
+    user_id: str | None = field(kw_only=True)
 
 
 class RejectionAudit:
@@ -284,7 +285,7 @@ class RejectionAudit:
         session_id: str,
         resolutions: Mapping[str, Any],
         *,
-        user_id: str | None = None,
+        user_id: str | None,
     ) -> PendingRejections:
         """送回之前（内核核销之前）读一次审计里的待办：拦下重复送回，取出这次被拒的待办。
 

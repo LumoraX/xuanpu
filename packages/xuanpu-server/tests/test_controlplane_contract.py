@@ -556,6 +556,41 @@ async def test_audit_user_id_round_trip_and_filter(store: ControlPlaneStore) -> 
     assert await store.query_audit("acme", AuditQuery(user_id="usr_missing")) == []
 
 
+async def test_audit_query_by_actor(store: ControlPlaneStore) -> None:
+    """按触发者过滤：精确匹配（代员工调用的 ``key:<id>/user:<id>`` 不算 ``key:<id>`` 的），可与员工
+    条件组合，且只在本租户内。"""
+    await _tenants(store, "acme", "other")
+
+    def control(tenant: str, actor: str, user_id: str | None) -> AuditRecord:
+        return AuditRecord(
+            tenant_id=tenant, source="control", kind="message_sent", at=1.0, actor=actor,
+            user_id=user_id,
+        )  # fmt: skip
+
+    await store.append_audit(
+        [
+            control("acme", "key:k1", "usr_a"),
+            control("acme", "key:k1/user:usr_b", "usr_b"),
+            control("acme", "user:usr_a", "usr_a"),
+            control("acme", "key:k1", None),
+            control("other", "key:k1", "usr_a"),
+            _engine_event("acme", 0),
+        ]
+    )
+    by_key = await store.query_audit("acme", AuditQuery(actor="key:k1"))
+    assert [(r.actor, r.user_id) for r in by_key] == [("key:k1", "usr_a"), ("key:k1", None)]
+    in_alice = await store.query_audit("acme", AuditQuery(actor="key:k1", user_id="usr_a"))
+    assert [(r.actor, r.user_id) for r in in_alice] == [("key:k1", "usr_a")]
+    acting = await store.query_audit("acme", AuditQuery(actor="key:k1/user:usr_b"))
+    assert [r.user_id for r in acting] == ["usr_b"]
+    assert [r.kind for r in await store.query_audit("acme", AuditQuery(actor="engine"))] == [
+        _engine_event("acme", 0).kind
+    ]
+    theirs = await store.query_audit("other", AuditQuery(actor="key:k1"))
+    assert [r.tenant_id for r in theirs] == ["other"]
+    assert await store.query_audit("acme", AuditQuery(actor="key:nobody")) == []
+
+
 @pytest.mark.parametrize("limit", [0, 1001])
 def test_audit_query_limit_bounds(limit: int) -> None:
     """单页条数有上下限。"""

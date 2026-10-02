@@ -197,7 +197,7 @@ class SessionManager:
                 "entry": record.entry,
                 "metadata": labels,
             },
-            session_id=record.session_id,
+            session=record,
         )
         return record
 
@@ -400,7 +400,7 @@ class SessionManager:
             live.record.tenant_id,
             "message_sent",
             {"submission_id": turn.submission_id, "text": text},
-            session_id=session_id,
+            session=live.record,
         )
         return turn
 
@@ -438,7 +438,7 @@ class SessionManager:
                     for request_id, value in resolutions.items()
                 },
             },
-            session_id=session_id,
+            session=live.record,
         )
         return turn
 
@@ -540,9 +540,7 @@ class SessionManager:
         closed = await self._store.update_session(
             record.tenant_id, session_id, at=self._now(), status="closed"
         )
-        await self._audit.control(
-            principal, record.tenant_id, "session_closed", session_id=session_id
-        )
+        await self._audit.control(principal, record.tenant_id, "session_closed", session=closed)
         return closed
 
     async def _renew_leases_once(self) -> None:

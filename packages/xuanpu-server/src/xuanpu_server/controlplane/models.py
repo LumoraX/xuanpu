@@ -120,8 +120,9 @@ class AuditRecord:
         stream: 引擎事件所属的事件流。引擎每次被创建是一条新的事件流，序号从头计。
         seq: 引擎事件在事件流里的序号。``(stream, seq)`` 唯一，重复写入去重。
         data: 事件内容。不含密钥明文。
-        user_id: 关联的员工（平台用户标识）：控制面操作取调用者，引擎事件与过闸记录取会话的
-            主人；与员工无关的为空。
+        user_id: 归到哪名员工名下（平台用户标识）：会话里的一切记录（引擎事件、过闸记录、会话
+            上的控制面操作）取会话主人，与会话无关的控制面操作取调用者代表的员工；与员工无关的
+            为空。谁触发的看 ``actor``。
         audit_id: 存储分配的标识，同时是查询的翻页位置。
     """
 
@@ -149,7 +150,10 @@ class AuditQuery:
         source: 只看某个来源。
         since: 只看这个时刻（含）之后的。
         until: 只看这个时刻（不含）之前的。
-        user_id: 只看与某名员工有关的。
+        user_id: 只看归到某名员工名下的。
+        actor: 只看某个触发者的（精确匹配，如 ``key:<key_id>``、``user:<user_id>``）。管理员排查
+            「某人在别人的会话里做了什么」用的低频查询：审计表上没有为它建索引，按租户的索引顺序
+            扫到凑够一页为止。
         after_id: 翻页位置：只看标识大于它的记录。
         limit: 最多返回多少条。
     """
@@ -161,6 +165,7 @@ class AuditQuery:
     since: float | None = None
     until: float | None = None
     user_id: str | None = None
+    actor: str | None = None
     after_id: int = 0
     limit: int = 100
 
@@ -179,6 +184,7 @@ class AuditQuery:
             self.since is None or record.at >= self.since,
             self.until is None or record.at < self.until,
             self.user_id is None or record.user_id == self.user_id,
+            self.actor is None or record.actor == self.actor,
         )
         return all(checks)
 

@@ -122,26 +122,36 @@ async def test_user_usage_adds_up_to_the_tenant_total(
     ]
 
 
-async def test_usage_by_user_over_http(ident: Any, step: Any) -> None:
-    """``GET /v1/usage/users``：按天、按员工；租户管理员（API key、浏览器登录）可查，成员与代成员
-    调用的不行；两个日期都必填。"""
-    alice = await ident.user(name="爱丽丝")
-    admin = await ident.user(role="tenant_admin")
-    alice_cookie = {**ident.cookie(await ident.login(alice)), **WRITE}
+async def chat(ident: Any, headers: dict[str, str]) -> None:
+    """以给定身份（浏览器登录）开一个会话、说一句话（要先给模型排好一步）。"""
     created = await ident.http.post(
-        "/v1/sessions", headers=alice_cookie, json={"package": "support-desk"}
+        "/v1/sessions", headers=headers, json={"package": "support-desk"}
     )
     session_id = created.json()["session_id"]
-    ident.world.models.script(step(text="你好"))
     sent = await ident.http.post(
-        f"/v1/sessions/{session_id}/messages", headers=alice_cookie, json={"text": "你好"}
+        f"/v1/sessions/{session_id}/messages", headers=headers, json={"text": "你好"}
     )
     assert sent.status_code == 200
 
-    admin_cookie = ident.cookie(await ident.login(admin))
+
+async def test_usage_by_user_over_http(ident: Any, step: Any) -> None:
+    """``GET /v1/usage/users``：按天、按员工，``user_id`` 只看某人的；租户管理员（API key、浏览器
+    登录）可查，成员与代成员调用的不行；两个日期都必填。"""
+    alice = await ident.user(name="爱丽丝")
+    admin = await ident.user(role="tenant_admin")
+    alice_cookie = {**ident.cookie(await ident.login(alice)), **WRITE}
+    admin_cookie = {**ident.cookie(await ident.login(admin)), **WRITE}
+    ident.world.models.script(step(text="你好"), step(text="你好"))
+    await chat(ident, alice_cookie)
+    await chat(ident, admin_cookie)
+
     for headers in (bearer(ident.world.admin_key), admin_cookie):
-        response = await ident.http.get("/v1/usage/users", headers=headers, params=EVER)
-        assert response.status_code == 200, response.text
+        everyone = await ident.http.get("/v1/usage/users", headers=headers, params=EVER)
+        assert everyone.status_code == 200, everyone.text
+        owners = {row["user_id"] for row in everyone.json()["usage"]}
+        assert owners == {alice.user_id, admin.user_id}
+        params = {**EVER, "user_id": alice.user_id}
+        response = await ident.http.get("/v1/usage/users", headers=headers, params=params)
         [row] = response.json()["usage"]
         assert set(row) == {
             "day", "user_id", "input_tokens", "output_tokens", "total_tokens", "turns",
@@ -150,6 +160,10 @@ async def test_usage_by_user_over_http(ident: Any, step: Any) -> None:
             alice.user_id, 100, 20,
         )  # fmt: skip
         assert (row["total_tokens"], row["turns"]) == (120, 1)
+
+    nobody = {**EVER, "user_id": "usr_nobody"}
+    response = await ident.http.get("/v1/usage/users", headers=admin_cookie, params=nobody)
+    assert response.json() == {"usage": []}
 
     system = await ident.system_key(role="tenant_admin")
     as_alice = {**bearer(system), "X-Xuanpu-Act-As": alice.user_id}
@@ -197,6 +211,29 @@ async def test_user_usage_write_failure_is_logged_and_counted(
     assert await ident.store.list_user_usage("acme", **EVER) == []
     assert usage_write_failures(ident) == 1
     assert "按员工的用量入账失败" in caplog.text
+
+
+async def test_tenant_usage_failure_skips_the_user_usage(
+    ident: Any, step: Any, read_turn: Any, monkeypatch: Any, caplog: Any
+) -> None:
+    """租户那笔写不进去：员工那笔也不记，各员工之和不大于租户总量；失败照常记日志、计一次。"""
+
+    async def broken(*args: Any, **kwargs: Any) -> Any:
+        """模拟控制面写不进去。"""
+        raise RuntimeError("控制面不可用")
+
+    monkeypatch.setattr(ident.world.platform.store, "add_usage", broken)
+    _, who = await employee(ident, name="爱丽丝")
+    sessions = ident.world.platform.sessions
+    session = await sessions.create(who, package="support-desk")
+    ident.world.models.script(step(text="你好"))
+    with caplog.at_level(logging.ERROR, logger="xuanpu_server.runtime.events"):
+        events = await read_turn(await sessions.send_message(who, session.session_id, "你好"))
+    assert events[-1].msg.kind == "turn_completed"
+    assert await ident.store.list_user_usage("acme", **EVER) == []
+    assert usage_write_failures(ident) == 1
+    assert "的用量入账失败" in caplog.text
+    assert "按员工的用量入账失败" not in caplog.text
 
 
 def test_hub_with_an_owner_needs_the_identity_store() -> None:

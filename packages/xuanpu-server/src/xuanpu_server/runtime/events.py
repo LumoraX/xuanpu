@@ -343,7 +343,10 @@ class EngineEventHub:
 
     async def _account(self, event: taifeng.EventMsg) -> None:
         """一轮对话结束时把用量入账：租户总量，会话有主人的再记一笔按员工的（数额相同，含被停下
-        的一轮的估算）。优先用含子 skill 在内的整棵树的用量。"""
+        的一轮的估算）。优先用含子 skill 在内的整棵树的用量。
+
+        先记租户总量，记成了才记按员工的：租户那笔失败时员工那笔也不记，保证各员工之和不大于
+        租户总量（员工那笔失败只让按员工的少算）。"""
         data = event.msg.data
         usage = data.get("subtree_usage") or data.get("usage") or {}
         if not isinstance(usage, dict):
@@ -359,16 +362,18 @@ class EngineEventHub:
             "turns": 1,
         }
         day = usage_day(event.timestamp.timestamp())
-        await self._charge("", lambda: self._store.add_usage(self._tenant_id, day, **amounts))
+        charged = await self._charge(
+            "", lambda: self._store.add_usage(self._tenant_id, day, **amounts)
+        )
         user_id, users = self._user_id, self._users
-        if user_id is not None:
+        if charged and user_id is not None:
             assert users is not None  # 构造时已校验
             await self._charge(
                 "按员工的", lambda: users.add_user_usage(self._tenant_id, day, user_id, **amounts)
             )
 
-    async def _charge(self, what: str, write: Callable[[], Awaitable[object]]) -> None:
-        """入一笔账。两笔各自独立：一笔失败不影响另一笔。
+    async def _charge(self, what: str, write: Callable[[], Awaitable[object]]) -> bool:
+        """入一笔账，返回是否记成了。
 
         不让一轮对话因为入账失败而失败；这一笔不再补记，记错误日志并计入指标
         ``xuanpu_usage_write_failures_total``。
@@ -378,6 +383,8 @@ class EngineEventHub:
         except Exception:
             self._metrics.usage_write_failed()
             logger.exception("会话 %s 的%s用量入账失败", self._session_id, what)
+            return False
+        return True
 
     def _interrupted_input_estimate(self, event: taifeng.EventMsg) -> int:
         """被停下的那一轮里被打断的那次采样，估算它的输入 token；不是被停下的一轮返回 0。
