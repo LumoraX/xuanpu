@@ -60,6 +60,10 @@ logger = logging.getLogger(__name__)
 REJECTED_BY_USER = "rejected_by_user"
 """人工拒绝的补记里 ``detail`` 的取值。"""
 
+CANCELLED = "cancelled"
+"""调用已经发出、结果回来之前整个任务被取消（关闭会话、强制收尾、停机）时，闸门写的过闸记录里
+``detail`` 的取值（``decision="allowed"``、``is_error=True``）。"""
+
 
 @dataclass(frozen=True)
 class ConnectorToolInfo:
@@ -96,7 +100,7 @@ def gate_call_data(
         info: 被调用的连接器工具。
         decision: ``allowed`` / ``denied`` / ``rejected``。
         is_error: 调用是否出错。
-        detail: 简述（出错原因、拒绝缘由）。
+        detail: 简述（出错原因、拒绝缘由；调用途中被取消是 ``CANCELLED``）。
         call_id: 内核的工具调用标识。
         thread_id: 发起调用的线程。
         arguments_digest: 调用参数的摘要。
@@ -399,6 +403,7 @@ class _RejectionWatch:
 
 
 __all__ = [
+    "CANCELLED",
     "REJECTED_BY_USER",
     "ConnectorToolInfo",
     "PendingRejections",

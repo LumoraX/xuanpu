@@ -12,10 +12,13 @@ import logging
 from typing import Any
 
 import pytest
+import taifeng
 from xuanpu_server.audit import AuditLog, digest_arguments
 from xuanpu_server.controlplane import AuditQuery, AuditRecord, InMemoryControlPlane
 from xuanpu_server.errors import InvalidRequestError
-from xuanpu_server.runtime.gate_audit import ConnectorToolInfo, RejectionAudit
+from xuanpu_server.runtime.connectors import ConnectorGate
+from xuanpu_server.runtime.events import SubmissionIndex
+from xuanpu_server.runtime.gate_audit import ConnectorToolInfo, RejectedCall, RejectionAudit
 
 
 async def gate_records(world: Any) -> list[Any]:
@@ -564,6 +567,115 @@ async def test_watch_only_records_what_the_kernel_settled_this_time() -> None:
     records = await store.query_audit("acme", AuditQuery(source="gate"))
     assert [r.data["call_id"] for r in records] == ["call-r2"]
     assert rejections.failures == 0
+
+
+def hanging_gate(audit: Any) -> tuple[ConnectorGate, asyncio.Event]:
+    """一个直接放行、调用一发出就卡住不回的闸门；返回闸门与「调用已经发出」的信号。"""
+    sent = asyncio.Event()
+
+    async def invoke(args: dict[str, Any]) -> tuple[str, bool]:
+        """调用发出后一直等，直到被取消。"""
+        sent.set()
+        await asyncio.Event().wait()
+        raise AssertionError("不该走到这里")
+
+    gate = ConnectorGate(
+        invoke=invoke,
+        info=REGISTRY["mcp__crm__update_ticket"],
+        full_name="mcp__crm__update_ticket",
+        tenant_id="acme",
+        policy=taifeng.PermissionPolicy(default_mode="allow"),
+        audit=audit,
+        submissions=SubmissionIndex(),
+        timeout_seconds=30,
+    )
+    return gate, sent
+
+
+def tool_context() -> taifeng.ToolContext:
+    """一次工具调用的上下文：归属 ``sub_1`` 那一轮。"""
+    return taifeng.ToolContext(
+        call_id="c1",
+        cancel=taifeng.CancellationToken(),
+        thread_id="thr_1",
+        extras={"submission_id": "sub_1"},
+    )
+
+
+async def test_call_cut_off_by_cancellation_leaves_a_gate_record() -> None:
+    """调用发出之后、结果回来之前整个任务被取消（关闭会话、停机）：写一条 ``detail=cancelled``
+    的过闸记录，取消照常往上传；字段集合与别的过闸记录一致。"""
+    store = InMemoryControlPlane()
+    gate, sent = hanging_gate(AuditLog(store))
+    task = asyncio.ensure_future(gate({"id": "T-1"}, tool_context()))
+    await asyncio.wait_for(sent.wait(), 5)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    [record] = await store.query_audit("acme", AuditQuery(source="gate"))
+    data = record.data
+    assert (record.kind, data["decision"], data["is_error"], data["detail"]) == (
+        "connector_call", "allowed", True, "cancelled",
+    )  # fmt: skip
+    assert (data["call_id"], data["submission_id"]) == ("c1", "sub_1")
+    assert data["arguments_digest"] == digest_arguments({"id": "T-1"})
+    backfilled = RejectedCall(
+        tenant_id="acme",
+        session_id="ses_1",
+        request_id="r1",
+        info=REGISTRY["mcp__crm__update_ticket"],
+        call_id="c1",
+        thread_id="thr_1",
+        arguments_digest="sha256:0",
+        submission_id=None,
+    )
+    assert set(data) == set(backfilled.gate_data())
+
+
+async def test_cut_off_call_record_survives_a_second_cancel_and_write_failures(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """写过闸记录时又被取消一次：写入不被打断，取消照常往上传。写不进去：只记 error 日志，
+    往上传的仍是取消，不是写入的错误。"""
+    store = InMemoryControlPlane()
+    release = asyncio.Event()
+    audit = AuditLog(store)
+    original = audit.gate
+
+    async def slow(tenant_id: str, kind: str, data: Any, **kwargs: Any) -> None:
+        """等放行之后才照常写。"""
+        await release.wait()
+        await original(tenant_id, kind, data, **kwargs)
+
+    audit.gate = slow  # type: ignore[method-assign]
+    gate, sent = hanging_gate(audit)
+    task = asyncio.ensure_future(gate({"id": "T-1"}, tool_context()))
+    await asyncio.wait_for(sent.wait(), 5)
+    task.cancel()
+    await asyncio.sleep(0.01)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    release.set()
+    for _ in range(100):
+        if await store.query_audit("acme", AuditQuery(source="gate")):
+            break
+        await asyncio.sleep(0.01)
+    [record] = await store.query_audit("acme", AuditQuery(source="gate"))
+    assert record.data["detail"] == "cancelled"
+
+    async def broken(*args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("控制面写不进去")
+
+    audit.gate = broken  # type: ignore[method-assign]
+    gate, sent = hanging_gate(audit)
+    task = asyncio.ensure_future(gate({"id": "T-2"}, tool_context()))
+    await asyncio.wait_for(sent.wait(), 5)
+    caplog.set_level(logging.ERROR)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert any("被取消" in r.getMessage() for r in caplog.records if r.levelno == logging.ERROR)
 
 
 async def test_pending_from_before_the_upgrade_falls_back_to_the_audited_args(

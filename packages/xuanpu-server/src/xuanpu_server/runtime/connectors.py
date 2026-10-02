@@ -30,7 +30,7 @@ from xuanpu_spec import OpenApiError, load_openapi
 from xuanpu_server.audit import digest_arguments
 from xuanpu_server.errors import PackageInvalidError, PlatformError, RuntimeUnavailableError
 from xuanpu_server.runtime.connector_process import ObservingExecutor
-from xuanpu_server.runtime.gate_audit import ConnectorToolInfo, gate_call_data
+from xuanpu_server.runtime.gate_audit import CANCELLED, ConnectorToolInfo, gate_call_data
 from xuanpu_server.runtime.http_api import ConnectorCallError, HttpApiClient, resolve_base_url
 from xuanpu_server.runtime.mcp_connectors import (
     StdioRun,
@@ -141,6 +141,8 @@ class ConnectorGate:
         self._submissions = submissions
         self._timeout = timeout_seconds
         self.full_name = full_name
+        # 调用途中被取消时在后台写的过闸记录：持有引用，写完之前不被回收
+        self._cancel_writes: set[asyncio.Task[None]] = set()
 
     async def _record(
         self,
@@ -176,6 +178,39 @@ class ConnectorGate:
             ),
             session_id=self._submissions.session_of(submission_id, ctx.thread_id),
         )
+
+    async def _record_cancelled(
+        self, ctx: taifeng.ToolContext, arguments_digest: str, started: float
+    ) -> None:
+        """调用途中被取消时的过闸记录（``detail="cancelled"``）：尽力写，写不进去只记日志。
+
+        写入放在单独的任务里、经 ``asyncio.shield`` 等它：等的时候再被取消一次，这里照样以
+        取消结束，写入不被打断，在后台写完。任务登记在 ``_cancel_writes`` 里，写完之前不会被
+        回收。
+        """
+
+        async def write() -> None:
+            """写记录；失败只记日志（这时正在传取消，不能换成写入的错误）。"""
+            try:
+                await self._record(
+                    ctx,
+                    arguments_digest,
+                    decision="allowed",
+                    started=started,
+                    is_error=True,
+                    detail=CANCELLED,
+                )
+            except Exception:
+                logger.exception(
+                    "连接器 %s 的工具 %s 调用途中被取消，过闸记录没有写进去",
+                    self._info.connector,
+                    self._info.tool,
+                )
+
+        task = asyncio.ensure_future(write())
+        self._cancel_writes.add(task)
+        task.add_done_callback(self._cancel_writes.discard)
+        await asyncio.shield(task)
 
     async def __call__(self, args: dict[str, Any], ctx: taifeng.ToolContext) -> taifeng.ToolResult:
         """工具处理函数。"""
@@ -231,6 +266,11 @@ class ConnectorGate:
             return taifeng.ToolResult.error(f"{exc.code}: {exc.message}", reason=exc.code)
         except taifeng.SuspendSignal:
             # 挂起信号不是失败：照常穿透，由内核停下本轮
+            raise
+        except asyncio.CancelledError:
+            # 调用已经发出、结果还没回来时整个任务被取消（关闭会话、租约丢失后强制收尾、停机
+            # 等到期）：外部系统可能已经执行了，同样要留过闸记录（规则 1）。取消必须照常往上传
+            await self._record_cancelled(ctx, digest, started)
             raise
         except Exception as exc:
             # 最后一道：调用里冒出了没预料到的异常。无论如何都要留下过闸记录（规则 1），

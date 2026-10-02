@@ -444,6 +444,59 @@ async def test_cancel_gives_up_when_the_kernel_never_admits(
     await approve_and_finish(world, session.session_id, read_turn)
 
 
+async def hang_in_connector_call(world: Any, step: Any) -> tuple[Any, Any, Any, list[Any]]:
+    """开一个会话，让模型调一个写工具（宽松审批下直接放行），假 MCP server 收到调用后一直不回。
+
+    返回 ``(会话, 这一轮, 读事件的任务, 这一轮的事件)``；返回时调用已经发到了 server。
+    """
+    await world.publish(approval="relaxed")
+    session = await world.platform.sessions.create(world.member, package="support-desk")
+    world.models.script(
+        step(calls=[("c1", "mcp__crm__update_ticket", {"id": "T-1", "hang": 60})]),
+        step(text="不该出现"),
+    )
+    turn = await world.platform.sessions.send_message(world.member, session.session_id, "改")
+    events: list[Any] = []
+    task = reader(turn, events)
+    await wait_until(lambda: len(world.calls()) == 1)
+    return session, turn, task, events
+
+
+async def assert_cut_off_call_recorded(world: Any, turn: Any) -> None:
+    """被强行取消的那次调用恰有一条过闸记录：放行过、记为出错、``detail`` 为 cancelled；
+    取消照常往上传，这一轮没有拿着工具结果再去采样。"""
+    gate = await world.platform.store.query_audit("acme", AuditQuery(source="gate", limit=100))
+    assert [
+        (r.data["call_id"], r.data["decision"], r.data["is_error"], r.data["detail"]) for r in gate
+    ] == [("c1", "allowed", True, "cancelled")]
+    assert (gate[0].session_id, gate[0].data["submission_id"]) == (
+        turn.session_id, turn.submission_id,
+    )  # fmt: skip
+    assert (gate[0].data["transport"], gate[0].data["effect"]) == ("stdio", "write")
+    assert len(world.models.requests) == 1
+
+
+async def test_closing_the_session_mid_call_leaves_a_gate_record(world: Any, step: Any) -> None:
+    """关闭会话时连接器调用还没回来：内核强行取消这一轮，调用照样留一条过闸记录，会话照常关闭。"""
+    session, turn, task, _ = await hang_in_connector_call(world, step)
+    closed = await world.platform.sessions.close(world.member, session.session_id)
+    assert closed.status == "closed"
+    await asyncio.wait_for(task, 10)
+    await assert_cut_off_call_recorded(world, turn)
+    assert "session_closed" in await audit_kinds(world, session.session_id)
+
+
+async def test_shutdown_mid_call_leaves_a_gate_record(world: Any, step: Any) -> None:
+    """停机（不等在途对话）时连接器调用还没回来：同样留一条过闸记录；会话保持活动。"""
+    session, turn, task, _ = await hang_in_connector_call(world, step)
+    await world.platform.close()
+    await asyncio.wait_for(task, 10)
+    await assert_cut_off_call_recorded(world, turn)
+    record = await world.platform.store.get_session("acme", session.session_id)
+    assert record is not None
+    assert record.status == "active"
+
+
 async def test_cancel_over_http_rejects_busy_and_bad_requests(world: Any) -> None:
     """经 HTTP：别的实例持有是 409 session_busy（带 owner）；submission 标识为空或超长是 400，
     超长输入不回显。"""

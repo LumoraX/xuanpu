@@ -72,7 +72,7 @@
 | `connector`、`transport`、`tool` | 哪个连接器的哪个工具，走的什么传输（`stdio`、`remote`、`http`） |
 | `effect` | 副作用分类：`read` / `write` / `external` |
 | `decision` | `allowed`：放行并已调用。`denied` 留给策略直接拒绝的情况。`rejected`：人工拒绝（送回审批时 `granted` 不为真），调用没有发出——这条由平台在内核确认核销了这次拒绝之后补记，只对连接器工具补（脚本、命令被拒绝没有过闸记录） |
-| `is_error`、`detail` | 调用是否出错；出错时的简述（超时是 `timeout`）。人工拒绝的 `detail` 是 `rejected_by_user`，`is_error` 为 `false` |
+| `is_error`、`detail` | 调用是否出错；出错时的简述（超时是 `timeout`）。调用已经发出、结果回来之前这一轮被强行中止（关闭会话、持有权丢了之后强制收尾、停机时等不到在途对话跑完）的，`detail` 是 `cancelled`、`is_error` 为 `true`：外部系统可能已经执行了，结果平台不知道。人工拒绝的 `detail` 是 `rejected_by_user`，`is_error` 为 `false` |
 | `duration_ms` | 耗时；人工拒绝的为 0 |
 | `arguments_digest` | 调用参数的 SHA-256 摘要。闸门发起审批时就算好、放进待办的 `detail.arguments_digest`，人工拒绝的补记用的是同一个值 |
 | `call_id`、`thread_id`、`submission_id` | 用来和内核事件对上。`submission_id` 是调用归属的那一轮：审批通过后才执行的调用，是送回审批的那一轮（同 `suspension_resolved_by` 的 `submission_id`）；人工拒绝的，是挂起的那一轮；内核自己发起的重跑没有，为空 |

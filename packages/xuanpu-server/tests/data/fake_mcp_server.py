@@ -8,6 +8,8 @@
 为了检查平台的日志与错误文本不漏凭据，几个参数让它故意「说漏嘴」：``noise`` 先往 stdout
 写一行带凭据的非 JSON 文本；``fail`` 回一个消息里带凭据的 JSON-RPC 错误；``exit`` 往 stderr
 写带凭据的遗言后按给定的退出码退出。
+
+``hang``（秒数）让它记下调用日志之后卡这么久再回包：模拟调用已经发往外部系统、还没有结果。
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 
 TOOLS = [
     {
@@ -123,6 +126,9 @@ for line in sys.stdin:
             log.write(json.dumps(params, ensure_ascii=False) + "\n")
         if leak(message["id"], params["arguments"]):
             continue
+        hang = params["arguments"].get("hang")
+        if isinstance(hang, int | float):
+            time.sleep(hang)
         probes = probe(params["arguments"])
         if probes:
             probe_path = os.path.join(os.environ["HOME"], "probe.json")
