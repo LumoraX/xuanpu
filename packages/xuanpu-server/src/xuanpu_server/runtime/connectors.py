@@ -35,7 +35,6 @@ from xuanpu_server.runtime.http_api import ConnectorCallError, HttpApiClient, re
 from xuanpu_server.runtime.mcp_connectors import (
     StdioRun,
     open_mcp,
-    render_result,
     stdio_environment,
     truncate,
 )
@@ -442,9 +441,11 @@ class ConnectorSet:
         self._http_clients.append(client)
 
         def invoker(operation_id: str) -> Invoke:
+            """一个 operation 的调用函数。"""
             operation = document.operations[operation_id]
 
             async def invoke(args: dict[str, Any]) -> tuple[str, bool]:
+                """发一次请求，返回截断后的文本与是否出错。"""
                 text, is_error = await client.call(operation, args)
                 return truncate(text), is_error
 
@@ -518,6 +519,5 @@ __all__ = [
     "ConnectorGate",
     "ConnectorSet",
     "ConnectorTool",
-    "render_result",
     "truncate",
 ]

@@ -21,13 +21,13 @@ from typing import TYPE_CHECKING, Any
 
 import taifeng
 
+from xuanpu_server.runtime.sandbox import KILL_WAIT_SECONDS
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
 # 每个连接器进程的 stderr 在这里留多少字节（脱敏之后再截到要记的长度）
 _STDERR_KEEP_BYTES = 8 * 1024
-# 强杀之后等进程退出的时限
-_KILL_WAIT_SECONDS = 5.0
 
 _KERNEL_MCP_LOGGERS = (
     "taifeng.mcp.stdio_client",
@@ -152,21 +152,24 @@ class ObservingExecutor:
             return
         self.process.kill()
         try:
-            await asyncio.wait_for(self.process.wait(), timeout=_KILL_WAIT_SECONDS)
+            await asyncio.wait_for(self.process.wait(), timeout=KILL_WAIT_SECONDS)
         except TimeoutError:
-            logger.error("连接器进程强杀后 %s 秒仍未退出", _KILL_WAIT_SECONDS)
+            logger.error("连接器进程强杀后 %s 秒仍未退出", KILL_WAIT_SECONDS)
 
 
 class _Clipped:
     """日志参数的替身：``%s`` 与 ``%r`` 都输出给定的文本。"""
 
     def __init__(self, text: str) -> None:
+        """记下要输出的文本。"""
         self._text = text
 
     def __str__(self) -> str:
+        """``%s`` 输出的文本。"""
         return self._text
 
     def __repr__(self) -> str:
+        """``%r`` 输出的文本（与 ``%s`` 相同，不加引号）。"""
         return self._text
 
 

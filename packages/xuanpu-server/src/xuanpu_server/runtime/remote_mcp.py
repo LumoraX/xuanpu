@@ -218,6 +218,12 @@ class RemoteRun:
         assert client is not None
 
         async def invoke(args: dict[str, Any]) -> tuple[str, bool]:
+            """调一次工具，返回脱敏、截断后的文本与是否出错。
+
+            Raises:
+                PlatformError: 平台侧的失败（如密钥刚被删掉），原样上抛。
+                ConnectorCallError: 其余调用失败（文本已脱敏，没预料到的只有异常类型）。
+            """
             try:
                 result = await client.call_tool(tool, args)
             except PlatformError:

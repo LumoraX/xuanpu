@@ -82,6 +82,7 @@ class ControlPlaneConfig(_Section):
 
     @model_validator(mode="after")
     def _postgres_needs_connection(self) -> ControlPlaneConfig:
+        """``postgres`` 后端必须给出连接段。"""
         if self.backend == "postgres" and self.postgres is None:
             raise ValueError("backend 为 postgres 时必须给出 postgres 段")
         return self
@@ -92,11 +93,10 @@ class StateConfig(_Section):
 
     Attributes:
         backend: ``local`` 用内核的本机默认实现，会话主存与线程目录都在数据目录下，
-            只适合单实例（多实例跨实例接手会话就得共用数据目录）；``postgres`` 把线程
-            目录与会话主存都放进库里，每个租户一组带专属前缀的表，多实例不需要共享
-            数据目录。早先版本的 ``postgres`` 只是把消息镜像进库：镜像是尽力写入，可能
-            不完整。升级前若有活动会话，以节点本地的 JSONL 为准，升级后这些会话可能无法
-            续接。
+            只适合单实例；多实例用 ``postgres``：线程目录与会话主存都放进库里，每个租户
+            一组带专属前缀的表，各实例各用各的数据目录。早先版本的 ``postgres`` 只是把
+            消息镜像进库：镜像是尽力写入，可能不完整。升级前若有活动会话，以节点本地的
+            JSONL 为准，升级后这些会话可能无法续接。
         postgres: ``backend`` 为 ``postgres`` 时的连接。
     """
 
@@ -105,6 +105,7 @@ class StateConfig(_Section):
 
     @model_validator(mode="after")
     def _postgres_needs_connection(self) -> StateConfig:
+        """``postgres`` 后端必须给出连接段。"""
         if self.backend == "postgres" and self.postgres is None:
             raise ValueError("backend 为 postgres 时必须给出 postgres 段")
         return self
@@ -127,6 +128,7 @@ class ModelsConfig(_Section):
 
     @model_validator(mode="after")
     def _complete(self) -> ModelsConfig:
+        """三个档位都要配；``api_key`` 与 ``api_key_secret`` 必须且只能给一个。"""
         missing = [tier for tier in ("fast", "balanced", "deep") if tier not in self.tiers]
         if missing:
             raise ValueError(f"tiers 缺少档位：{', '.join(missing)}")
@@ -200,6 +202,7 @@ class LocalObjectStoreConfig(_Section):
 
     @model_validator(mode="after")
     def _absolute(self) -> LocalObjectStoreConfig:
+        """给了 ``root`` 就必须是绝对路径。"""
         if self.root is not None and not self.root.is_absolute():
             raise ValueError("root 必须是绝对路径")
         return self
@@ -219,6 +222,7 @@ class S3ObjectStoreConfig(_Section):
 
     @model_validator(mode="after")
     def _prefix_shape(self) -> S3ObjectStoreConfig:
+        """``prefix`` 要么为空，要么不以 ``/`` 开头、以 ``/`` 结尾。"""
         if self.prefix and (self.prefix.startswith("/") or not self.prefix.endswith("/")):
             raise ValueError("prefix 要么为空，要么不以 / 开头、以 / 结尾")
         return self
@@ -233,6 +237,7 @@ class ObjectStoreConfig(_Section):
 
     @model_validator(mode="after")
     def _s3_needs_section(self) -> ObjectStoreConfig:
+        """``s3`` 后端必须给出 ``s3`` 段。"""
         if self.backend == "s3" and self.s3 is None:
             raise ValueError("backend 为 s3 时必须给出 s3 段")
         return self
@@ -286,6 +291,7 @@ class ServerConfig(_Section):
 
     @model_validator(mode="after")
     def _check(self) -> ServerConfig:
+        """数据目录是绝对路径；主用主密钥在 ``master_keys`` 里；主密钥都能解码成 32 字节。"""
         if not self.data_dir.is_absolute():
             raise ValueError("data_dir 必须是绝对路径")
         if self.primary_master_key not in self.master_keys:

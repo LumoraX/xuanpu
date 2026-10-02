@@ -325,7 +325,11 @@ async def test_gauges_follow_sessions_and_runtimes(
     await platform.sessions.close(world.member, first.session_id)
     await platform.sessions.close(world.member, second.session_id)
     assert gauges() == (0, 1, 0)
-    assert await platform.runtimes.evict(("acme", "support-desk", "1.0.0"))
+    # 运行时空闲超过 runtime_idle_seconds 才回收：把它最近一次被使用的时刻往回拨
+    key = ("acme", "support-desk", "1.0.0")
+    runtime = platform.runtimes._runtimes[key]  # noqa: SLF001
+    runtime.last_used -= platform.runtimes.defaults.runtime_idle_seconds
+    assert await platform.runtimes.evict_idle() == [key]
     assert gauges() == (0, 0, 0)
 
 

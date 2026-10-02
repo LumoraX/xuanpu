@@ -519,7 +519,8 @@ async def test_only_connector_tools_are_picked_and_transport_comes_from_the_regi
         permission("r5", "mcp__crm__update_ticket"),
     )
     audit = AuditLog(store)
-    rejections = RejectionAudit(store=store, audit=audit)
+    stages: list[str] = []
+    rejections = RejectionAudit(store=store, audit=audit, on_failure=stages.append)
     resolutions = {
         "r1": {"granted": False},
         "r2": {"answer": "表单答案"},
@@ -538,7 +539,7 @@ async def test_only_connector_tools_are_picked_and_transport_comes_from_the_regi
     assert (record.session_id, record.data["transport"], record.data["decision"]) == (
         "ses_1", "remote", "rejected",
     )  # fmt: skip
-    assert rejections.failures == 0
+    assert stages == []
 
 
 async def test_failures_are_logged_and_counted_not_raised(
@@ -579,7 +580,6 @@ async def test_failures_are_logged_and_counted_not_raised(
     assert watch is not None
     await watch.resolved(frozenset({"r1", "r2", "r3"}))
     assert written == ["failed", "call-r3"]
-    assert rejections.failures == 2
     assert stages == ["incomplete", "write"]
     # 另一次送回等不到结论：它要补的每一条计一次
     other = rejections.watch(pending, REGISTRY.get)
@@ -593,7 +593,7 @@ async def test_failures_are_logged_and_counted_not_raised(
     store.query_audit = broken  # type: ignore[method-assign]
     with pytest.raises(RuntimeError, match="读不出来"):
         await rejections.prepare("acme", "ses_1", {"r1": rejected})
-    assert rejections.failures == 5
+    assert len(stages) == 5
     errors = [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR]
     assert len(errors) == 4
 
@@ -603,7 +603,8 @@ async def test_watch_only_records_what_the_kernel_settled_this_time() -> None:
     store = await suspended_store(
         permission("r1", "mcp__docs__update_doc"), permission("r2", "mcp__crm__update_ticket")
     )
-    rejections = RejectionAudit(store=store, audit=AuditLog(store))
+    stages: list[str] = []
+    rejections = RejectionAudit(store=store, audit=AuditLog(store), on_failure=stages.append)
     rejected = {"granted": False}
     pending = await rejections.prepare("acme", "ses_1", {"r1": rejected, "r2": rejected})
     refused = rejections.watch(pending, REGISTRY.get)
@@ -614,7 +615,7 @@ async def test_watch_only_records_what_the_kernel_settled_this_time() -> None:
     await watch.resolved(frozenset({"r2"}))
     records = await store.query_audit("acme", AuditQuery(source="gate"))
     assert [r.data["call_id"] for r in records] == ["call-r2"]
-    assert rejections.failures == 0
+    assert stages == []
 
 
 def hanging_gate(audit: Any) -> tuple[ConnectorGate, asyncio.Event]:
@@ -732,9 +733,10 @@ async def test_pending_from_before_the_upgrade_falls_back_to_the_audited_args(
     """升级前就已挂起的待办没有参数摘要：按待办里记下的参数算，并记 warning。"""
     caplog.set_level(logging.WARNING)
     store = await suspended_store(permission("r1", "mcp__docs__update_doc", arguments_digest=None))
-    rejections = RejectionAudit(store=store, audit=AuditLog(store))
+    stages: list[str] = []
+    rejections = RejectionAudit(store=store, audit=AuditLog(store), on_failure=stages.append)
     pending = await rejections.prepare("acme", "ses_1", {"r1": {"granted": False}})
     [call] = rejections.calls(pending, REGISTRY.get)
     assert call.arguments_digest == digest_arguments({"id": "r1"})
     assert any("没有参数摘要" in r.getMessage() for r in caplog.records)
-    assert rejections.failures == 0
+    assert stages == []

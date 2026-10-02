@@ -713,7 +713,10 @@ async def test_runtime_eviction_closes_the_remote_session(
     await ask(world, step, read_turn, session_id, [("c1", "mcp__docs__search", {"q": "x"})])
     assert [item for item in fake_remote_mcp.state.requests if item["http"] == "DELETE"] == []
     runtime = only_runtime(world)
-    assert await world.platform.runtimes.evict(runtime.key) is True
+    # 空闲回收只收没有会话在用、且空闲到期的运行时：关掉会话，把最近一次使用的时刻往回拨
+    await world.platform.sessions.close(world.member, session_id)
+    runtime.last_used -= world.platform.runtimes.defaults.runtime_idle_seconds
+    assert await world.platform.runtimes.evict_idle() == [runtime.key]
     deletes = [item for item in fake_remote_mcp.state.requests if item["http"] == "DELETE"]
     assert [(item["session"], item["authorization"]) for item in deletes] == [
         (SESSION, f"Bearer {TOKEN}")

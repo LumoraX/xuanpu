@@ -306,7 +306,11 @@ async def test_connector_sandbox_closes_with_its_runtime(
 
     runtime.connectors.close = close_connectors  # type: ignore[method-assign]
 
-    assert await world.platform.runtimes.evict(runtime.key) is True
+    # 空闲回收只收没有会话在用、且空闲到期的运行时：关掉会话，把最近一次使用的时刻往回拨
+    for record in await world.platform.sessions.list_sessions(world.member):
+        await world.platform.sessions.close(world.member, record.session_id)
+    runtime.last_used -= world.platform.runtimes.defaults.runtime_idle_seconds
+    assert await world.platform.runtimes.evict_idle() == [runtime.key]
     assert sandboxes.closed == ["connector-processes", "connectors", "scripts"]
     assert sandboxes.alive_at_close == [False]
 
@@ -427,7 +431,7 @@ class RefusingExecutor:
 async def test_loader_variables_never_reach_the_launcher(tmp_path: Path, name: str) -> None:
     """清单里的动态链接器变量（绕过规范校验构造的也一样）在起进程之前就被拒绝。
 
-    本机沙盒的启动器在沙盒之外拿到连接器的整份环境，这类变量能让它在沙盒外执行代码。
+    纵深防御：这类变量可能影响沙盒外的启动程序（视后端而定），一律拒绝。
     """
     spec = ConnectorSpec.model_construct(
         name="crm",

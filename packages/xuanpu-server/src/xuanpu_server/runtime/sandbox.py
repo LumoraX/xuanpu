@@ -31,8 +31,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# 关沙盒时强杀进程之后，等每个进程退出的时限
-_KILL_WAIT_SECONDS = 5.0
+KILL_WAIT_SECONDS = 5.0
+"""强杀进程之后等它退出的时限：关沙盒时的每个进程、收拾起不来的连接器进程都用它。"""
 
 # 沙盒里进程的最小环境：只够找到解释器。宿主自己的环境变量一概不带进去
 DEFAULT_BASE_ENV: Mapping[str, str] = {
@@ -152,9 +152,9 @@ class ProcessTrackingExecutor:
             process.kill()
         for process in processes:
             try:
-                await asyncio.wait_for(process.wait(), timeout=_KILL_WAIT_SECONDS)
+                await asyncio.wait_for(process.wait(), timeout=KILL_WAIT_SECONDS)
             except TimeoutError:
-                logger.error("沙盒里的进程强杀后 %s 秒仍未退出", _KILL_WAIT_SECONDS)
+                logger.error("沙盒里的进程强杀后 %s 秒仍未退出", KILL_WAIT_SECONDS)
 
 
 class LocalSandboxProvider:
@@ -312,6 +312,7 @@ class DockerSandboxProvider:
 
 __all__ = [
     "DEFAULT_BASE_ENV",
+    "KILL_WAIT_SECONDS",
     "DockerSandboxProvider",
     "LocalSandboxProvider",
     "ProcessTrackingExecutor",

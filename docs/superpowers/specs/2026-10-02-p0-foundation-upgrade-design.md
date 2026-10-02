@@ -21,7 +21,7 @@
 
 ## 2. 依赖与分支
 
-- 内核不改。三个仓的依赖下限改为 `taifeng>=2026.10.1.10`；内核发到 PyPI 之前，三个仓都在 `[tool.uv.sources]` 里从同级目录 `../taifeng` 取源码（xuanpu 已经这样取另两个包）。发版是用户点头后的操作，不在 P0 里做。
+- 内核不改。三个仓的依赖下限改为 `taifeng>=2026.10.1.10`。内核 `2026.10.1.10` 已在 PyPI（2026-10-01 发布），三个仓都从 PyPI 取；两个适配包（taifeng-stores、taifeng-sandbox）对 xuanpu 仍是 `[tool.uv.sources]` 里的同级目录源。
 - 三个仓各开 `feat/p0-base`，从 `feat/v1-foundation` 分出。合入顺序：stores、sandbox 先，xuanpu 后。
 
 ## 3. 各仓要做的事

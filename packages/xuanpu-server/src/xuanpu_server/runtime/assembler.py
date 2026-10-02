@@ -419,14 +419,6 @@ class RuntimeAssembler:
                         evicted.append(key)
         return evicted
 
-    async def evict(self, key: RuntimeKey) -> bool:
-        """关闭并移除一个运行时；返回是否确实有这个运行时。"""
-        runtime = self._runtimes.pop(key, None)
-        if runtime is None:
-            return False
-        await runtime.close()
-        return True
-
     async def close(self) -> None:
         """关闭全部运行时。"""
         runtimes, self._runtimes = list(self._runtimes.values()), {}

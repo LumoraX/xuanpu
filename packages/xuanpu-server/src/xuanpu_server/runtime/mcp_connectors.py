@@ -37,9 +37,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# 动态链接器读取的变量前缀，不分大小写。本机沙盒的启动器（bwrap 等）在沙盒之外拿到连接器的
-# 整份环境，这类变量能让它在沙盒外加载任意代码。规范校验里有同一道检查；这里再拦一次，
-# 挡住规范加上这道检查之前发布的包，以及绕过规范构造出来的清单
+# 动态链接器读取的变量前缀，不分大小写。纵深防御：这类变量可能影响沙盒外的启动程序（视后端
+# 而定），一律拒绝。规范校验里有同一道检查；这里再拦一次，挡住规范加上这道检查之前发布的包，
+# 以及绕过规范构造出来的清单
 _LOADER_ENV_PREFIXES = ("LD_", "DYLD_")
 
 _MAX_OUTPUT_CHARS = 64 * 1024
@@ -216,8 +216,7 @@ async def stdio_environment(
     if blocked:
         raise PackageInvalidError(
             f"连接器 {spec.name!r} 的 env 不能设置动态链接器变量（LD_*、DYLD_*）："
-            f"{', '.join(blocked)}；连接器进程由沙盒外的启动器拉起，这类变量会让它在沙盒之外"
-            "加载任意代码"
+            f"{', '.join(blocked)}；这类变量可能影响沙盒外的启动程序（视后端而定），一律拒绝"
         )
     env = dict(base_env)
     secrets: list[str] = []

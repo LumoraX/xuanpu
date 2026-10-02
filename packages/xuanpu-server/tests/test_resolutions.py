@@ -156,7 +156,14 @@ async def test_hub_closing_before_the_kernel_answers_counts_as_unconfirmed() -> 
         metrics=metrics,
     )
     await hub.start()
-    rejections = RejectionAudit(store=store, audit=audit, on_failure=metrics.backfill_failed)
+    stages: list[str] = []
+
+    def failed(stage: str) -> None:
+        """记下环节，再照常计入指标。"""
+        stages.append(stage)
+        metrics.backfill_failed(stage)
+
+    rejections = RejectionAudit(store=store, audit=audit, on_failure=failed)
     item = {
         "request_id": "r1",
         "reason": "permission",
@@ -178,6 +185,6 @@ async def test_hub_closing_before_the_kernel_answers_counts_as_unconfirmed() -> 
     assert watch is not None
     hub.watch_resolution("sub_r", watch)
     await hub.close()
-    assert rejections.failures == 1
+    assert stages == ["unconfirmed"]
     text = metrics.render().decode("utf-8")
     assert 'xuanpu_gate_backfill_failures_total{stage="unconfirmed"} 1.0' in text

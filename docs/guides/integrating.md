@@ -179,6 +179,8 @@ print(last.kind, last.terminal, last.data["end_reason"], last.data["cancel_reaso
 
 还在排队、没开始跑的那一轮则以 `turn_failed`（`data.kind` 为 `cancelled`）结束。`event.terminal` 两种都算好了。已经输出的那部分文本照样记进审计（回放里的 `turn_text`）。被停的一轮照样计一轮用量；被打断的那次采样网关报不出用量，平台按上下文估算计入输入（见[审计与用量](audit-and-usage.md#用量)）。
 
+停止生成不打断正在进行的连接器调用：模型已经发起的调用要等它跑完（最长到连接器超时）这一轮才结束，调用结果照常记进审计，之后不再采样。
+
 和关闭会话的区别：
 
 | | 停止生成 | 关闭会话 |

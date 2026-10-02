@@ -23,9 +23,9 @@
    没有结论）不算等不到：内核没处理它，待办还在，丢掉登记、记 info 日志。
 
 读不到审计时整次送回失败（异常照常上抛）：既核对不了重复送回，补记也没有依据；什么都还没有
-提交给内核。提交之后的补记失败不让送回本身失败——审批结果已经交给内核了：记 error 日志并计入
-``failures``，同时经 ``on_failure`` 报出是哪个环节（``incomplete`` 待办缺调用信息、``write``
-写不进记录、``unconfirmed`` 等不到内核的结论；接到平台指标）。
+提交给内核。提交之后的补记失败不让送回本身失败——审批结果已经交给内核了：记 error 日志，并经
+``on_failure`` 报出是哪个环节（``incomplete`` 待办缺调用信息、``write`` 写不进记录、
+``unconfirmed`` 等不到内核的结论；接到平台指标）。
 
 参数摘要由闸门在发起审批时算好、放进审批请求（待办的 ``detail.arguments_digest``），补的记录
 用的就是这个值，与闸门放行时记的一致。升级前就已挂起的待办没有这个字段，退回按待办里记下的
@@ -266,12 +266,9 @@ class RejectionAudit:
         self._store = store
         self._audit = audit
         self._on_failure = on_failure
-        self.failures = 0
-        """补记失败的累计次数（各环节合计）。"""
 
     def _failed(self, stage: str) -> None:
-        """计一次补记失败，并报给回调。"""
-        self.failures += 1
+        """把一次补记失败报给回调（没有回调时只有调用方记的日志）。"""
         if self._on_failure is not None:
             self._on_failure(stage)
 
