@@ -1,7 +1,7 @@
 # P0 底座升级 —— 详细设计
 
 - 日期：2026-10-02
-- 状态：用户说「开始按照这个规划实施」后直接进入实现；本文新增的几处判断（第 3 节标 ★ 的）在实现完成时一并请用户过目
+- 状态：已实现（`feat/p0-base`）；本文新增的几处判断（第 3 节标 ★ 的）请用户过目。实现与本文不同的地方：归档键带上指纹；线程目录用按租户共享的 `PostgresThreadDirectory`；会话租约在组装后与放入前各确认一次，持有中断过按 503 可重试处理，并新增 Postgres 的连接与语句时限；停止生成先确认内核已受理再提交，被停的一轮按上下文估算入账；人工拒绝的补记等内核确认核销之后才写，参数摘要放进审批请求，重复送回已核销的待办按不合法拒绝；连接器 `env` 拒绝 `LD_*`/`DYLD_*`，启动时限做成配置 `limits.connector_startup_seconds`；远端 MCP 的凭据只发往同源地址、只开放 `bearer`/`header`、不开推送流、成功结果也按值脱敏；指标多了 `xuanpu_gate_backfill_failures_total`、`xuanpu_usage_estimated_total` 与 `resume_rejected`、`resume_partial` 两种结局。现状以 [架构总览](../../architecture/README.md) 与 [ADR 0013](../../decisions/0013-connector-sandbox-and-remote-mcp.md) 为准
 - 上游：[平台整体设计](2026-09-30-system-design.md) 第 8 节、[ADR 0011](../../decisions/0011-system-design-decisions.md) 决策 1、8
 - 依据：taifeng `main`（`2026.10.1.10`，ADR 0109–0116）；taifeng-sandbox、taifeng-stores、xuanpu 的 `feat/v1-foundation`
 - 读者：实现 P0 的工程师与 agent
@@ -60,7 +60,7 @@
 
 ### 3.4 xuanpu：会话主存进 Postgres
 
-- `state.backend: postgres` 时，每个运行时的引擎池用一个新的 `PostgresMessageStore`（租户专属前缀），`thread_directory` 用它自带的目录，不再给 `storage_dir`、不再挂消息镜像。
+- `state.backend: postgres` 时，每个运行时的引擎池用一个新的 `PostgresMessageStore`（租户专属前缀），`thread_directory` 用按租户共享的 `PostgresThreadDirectory`（与主存同库、同命名空间，与 `store.directory` 等价），不再给 `storage_dir`、不再挂消息镜像。
 - `state.backend: local` 保持现状（试用与单机）。
 - `StateBackends` 增加 `message_store: Callable[[], MessageStore] | None`。
 - 效果：别的实例接手会话时从库里续接，`data_dir/threads` 不再使用。
