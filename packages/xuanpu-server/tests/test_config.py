@@ -208,11 +208,18 @@ def test_example_config_is_valid() -> None:
             "MODEL_GATEWAY_KEY": "sk-x",
             "XUANPU_PG_DSN": "postgresql://u:p@db/x",
             "XUANPU_METRICS_TOKEN_HASH": "b" * 64,
+            "XUANPU_OSS_KEY_ID": "oss-id",
+            "XUANPU_OSS_KEY_SECRET": "oss-secret",
         },
     )
     assert config.metrics.token_hash == "b" * 64
+    # 正式部署的形态：控制面与状态面在库里、归档在 S3 兼容存储、沙盒用容器
     assert config.control_plane.backend == "postgres"
     assert config.state.backend == "postgres"
+    assert config.object_store.backend == "s3"
+    assert config.object_store.s3 is not None
+    assert config.object_store.s3.secret_access_key == "oss-secret"
+    assert config.sandbox.backend == "docker"
     assert set(config.models.tiers) == {"fast", "balanced", "deep"}
 
 

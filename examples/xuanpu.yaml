@@ -1,9 +1,13 @@
-# xuanpu 平台服务的配置示例（正式部署）。各项含义见 docs/guides/operations.md。
+# xuanpu 平台服务的配置示例（正式部署，可以多实例）。各项含义见 docs/guides/operations.md。
 # 单机试用的最小配置见 xuanpu.trial.yaml。
+#
+# 多实例：所有实例共用同一个 Postgres 与同一个对象存储桶，各用各的 data_dir（本机盘即可）。
+# 这个文件与 data_dir 不要放在沙盒可读的系统目录（/etc、/usr、/opt 等）下，见运维手册「安全须知」。
 #
 # ${NAME} 由 `xuanpu` 命令在启动时用进程的环境变量展开；引用了没有设置的变量会报错。
 # 凭据不要直接写在这个文件里。
 
+# 本实例自己的数据目录：只放业务包解包缓存与工作目录，丢了可以重建；不能被多个进程共用
 data_dir: /var/lib/xuanpu
 
 # `xuanpu keygen root` 生成根凭据与这个摘要。根凭据本身由平台管理员保管。
@@ -37,54 +41,63 @@ control_plane:
     dsn: ${XUANPU_PG_DSN}
     schema: xuanpu
     pool_min: 1
-    pool_max: 10
+    pool_max: 10                    # 按每个实例的并发对话数定；池满时取连接会一直排队
     # connect_timeout_seconds: 10   # 新建一条连接的时限
     # command_timeout_seconds: 60   # 单条语句的时限
 
-# 状态面。local：线程目录与消息只在节点本地；postgres：另外镜像进库，供多实例与审计查询。
+# 状态面：会话主存与线程目录。postgres：都在库里（每个租户一组表），各实例从库里续接会话；
+# local：数据目录 threads/ 下的本机文件，只适合单实例。
+# 状态面另开一个连接池：库的 max_connections 至少要「实例数 ×（两个 pool_max 之和）」。
 state:
   backend: postgres
   postgres:
     dsn: ${XUANPU_PG_DSN}
     schema: xuanpu
 
-# 沙盒。local：macOS seatbelt / Linux bubblewrap；docker：每个运行时一个容器。
+# 沙盒：业务包的脚本与 stdio 连接器都在里面跑。生产用 Linux，推荐 docker：
+# docker：每个运行时一个脚本容器，有 stdio 连接器时再加一个连接器容器（只读业务包、只写自己的
+#   工作目录、可出网）；资源上限对两个容器各算一份。
+# local：macOS seatbelt / Linux bubblewrap。macOS 本机后端只用于开发试用。
 sandbox:
-  backend: local
-  # backend: docker
-  # image: python:3.12-slim      # 镜像里要有 python3；业务包脚本能用什么命令取决于它
-  # memory_mb: 1024
-  # cpus: 1.0
+  backend: docker
+  image: python:3.12-slim        # 脚本容器的镜像，要有 python3；业务包脚本能用什么命令取决于它
+  memory_mb: 1024
+  cpus: 1.0
   # docker_binary: docker
   # 平台不把自己的环境传给子进程：docker 客户端要靠这里给的变量找到守护进程
-  # docker_env: {PATH: /usr/local/bin:/usr/bin:/bin, HOME: /var/lib/xuanpu}
-  # stdio 连接器跑在单独的连接器沙盒里（只读业务包、只写自己的工作目录、可出网）。
-  # local 后端：连接器的解释器与依赖装在系统目录之外时，把它们所在的目录列在这里（绝对路径）
-  # connector_readable_roots: [/srv/xuanpu/connectors/.venv, /home/xuanpu/.local/share/uv/python]
-  # docker 后端：连接器容器的镜像，缺省同 image；镜像里要装好连接器需要的运行时（如 node）
+  docker_env: {PATH: /usr/local/bin:/usr/bin:/bin, HOME: /var/lib/xuanpu}
+  # 连接器容器的镜像，缺省同 image；要装好业务包里 stdio 连接器需要的运行时（如 node）
   # connector_image: registry.example.com/xuanpu-connectors:1
+  #
+  # 改用 local 后端时（docker 的几项都去掉）：连接器的解释器与依赖装在系统目录之外，就把它们
+  # 所在的目录列在这里（绝对路径；Python 虚拟环境要 sys.prefix 与 sys.base_prefix 两个）。
+  # 这些目录对所有租户的连接器都可读，只放解释器与依赖。
+  # backend: local
+  # connector_readable_roots: [/srv/xuanpu/connectors/.venv, /home/xuanpu/.local/share/uv/python]
 
-# 对象存储：业务包归档与员工文件。local 只用于试用与单机；多实例用 s3（阿里云 OSS 等）。
+# 对象存储：业务包归档的正本（以后还有员工文件）。多实例用 s3（阿里云 OSS 等 S3 兼容服务），
+# 需要安装 xuanpu-server[s3]；local 只用于试用与单机。
 object_store:
-  backend: local
+  backend: s3
+  s3:
+    endpoint: https://s3.oss-cn-hangzhou.aliyuncs.com   # OSS 的 S3 兼容 endpoint
+    bucket: xuanpu-prod
+    region: cn-hangzhou
+    prefix: xuanpu/                     # 可省；不以 / 开头、以 / 结尾
+    access_key_id: ${XUANPU_OSS_KEY_ID}
+    secret_access_key: ${XUANPU_OSS_KEY_SECRET}
+    addressing_style: virtual           # OSS 只接受 virtual；本机 moto / MinIO 用 path
+  # 单机时可以改用本机目录：
+  # backend: local
   # local:
-  #   root: /var/lib/xuanpu/objects     # 缺省为 <data_dir>/objects；给了必须是绝对路径
-  # backend: s3                         # 需要安装 xuanpu-server[s3]
-  # s3:
-  #   endpoint: https://s3.oss-cn-hangzhou.aliyuncs.com
-  #   bucket: xuanpu-prod
-  #   region: cn-hangzhou
-  #   prefix: xuanpu/
-  #   access_key_id: ${XUANPU_OSS_KEY_ID}
-  #   secret_access_key: ${XUANPU_OSS_KEY_SECRET}
-  #   addressing_style: virtual         # OSS 只接受 virtual；本机 moto / MinIO 用 path
+  #   root: /var/lib/xuanpu/objects     # 缺省为 <data_dir>/objects；给了必须是绝对路径。不能丢，要备份
 
 # 平台给每个会话的上限。业务包可以调低，不能调高。
 limits:
   max_session_tokens: 2000000
   max_iterations: 60
   connector_timeout_seconds: 60
-  connector_startup_seconds: 30 # 启动一个 stdio 连接器（起进程、握手、列出工具）的时限
+  connector_startup_seconds: 30 # 启动 stdio 连接器或连上远端 MCP server（握手、列出工具）的时限
   session_idle_seconds: 300     # 会话多久没对话就释放它的引擎（下次对话从存储续接）
   runtime_idle_seconds: 900     # 运行时多久没会话使用就回收连接器、沙盒与引擎池
 
@@ -97,5 +110,5 @@ metrics:
   token_hash: ${XUANPU_METRICS_TOKEN_HASH}
 
 lease_seconds: 60
-# instance_id: xuanpu-1     # 本实例的标识，写进会话租约与 /healthz；不给则每次启动随机生成
+# instance_id: xuanpu-1     # 本实例的标识，写进会话租约与 /healthz；不给则每次启动随机生成。多实例时各设一个稳定的值
 shutdown_drain_seconds: 30   # 停机时给在途对话多少秒跑完，到期仍未结束的会被取消

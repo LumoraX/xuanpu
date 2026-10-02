@@ -25,7 +25,7 @@ async with open_platform(config) as platform:
 
 `create_app(platform, console_dir=…)` 给了 `console_dir` 就把控制台挂在 `/console/`。
 
-多实例部署装 `postgres` extra：`xuanpu-server[postgres]`。
+多实例部署装 `postgres` 与 `s3` 两个 extra：`xuanpu-server[postgres,s3]`（控制面、状态面进 Postgres，业务包归档进 S3 兼容的对象存储）。
 
 ## 不经 HTTP，直接调用
 
@@ -53,9 +53,11 @@ async for event in turn.stream.events():              # taifeng.EventMsg
 | `platform.create_tenant` / `set_tenant_status` / `set_tenant_quota` / `issue_key` / `revoke_key` | 租户与凭据 |
 | `platform.put_secret` / `delete_secret`，`platform.vault` | 密钥 |
 | `platform.packages` | 业务包：`publish`、`activate`、`list_versions`、`active_version`、`resolve` |
-| `platform.sessions` | 会话：`create`、`get`、`list_sessions`、`send_message`、`resume`、`pending`、`replay`、`close` |
+| `platform.sessions` | 会话：`create`、`get`、`list_sessions`、`send_message`、`resume`、`cancel`（停止生成）、`pending`、`replay`、`close` |
 | `platform.evals` | 评测：`run` |
 | `platform.store` | 控制面存储，审计与用量的查询在这里：`query_audit`、`list_usage` |
+| `platform.objects` | 对象存储（业务包归档的正本） |
+| `platform.metrics` | 指标：`render()` 出 Prometheus 文本格式。指标总在计；构造时给了 `metrics_token_hash` 才经 `GET /metrics` 对外（`platform.metrics_enabled`、`platform.verify_metrics_token`） |
 | `platform.start()` / `platform.close()` | 启动后台维护 / 停机（等在途对话、释放会话、关闭运行时） |
 
 出错统一抛 `xuanpu_server.errors.PlatformError` 的子类，每个都带稳定的 `code` 与 HTTP `status`。
@@ -70,9 +72,21 @@ async for event in turn.stream.events():              # taifeng.EventMsg
 | `vault` | `secrets.SecretVault` | `EncryptedVault`（密文存在控制面里） | 接 HashiCorp Vault、云 KMS |
 | `models` | `runtime.ModelClientFactory` | `GatewayModelClientFactory`（OpenAI Chat 兼容网关） | 模型接入方式不同，或测试时用脚本化的模型 |
 | `sandboxes` | `runtime.SandboxProvider` | `LocalSandboxProvider`、`DockerSandboxProvider` | 接别的隔离后端（K8s、云沙盒） |
-| `states` | `runtime.StateBackendFactory` | `LocalStateBackends`、`bootstrap.PostgresStateBackends` | 线程目录、消息镜像、长期记忆放到别处 |
+| `states` | `runtime.StateBackendFactory` | `LocalStateBackends`、`bootstrap.PostgresStateBackends` | 会话主存、线程目录、长期记忆放到别处 |
+| `objects` | `objectstore.ObjectStore`（`put`、`get`、`exists`、`delete`） | `objectstore.LocalObjectStore`、`objectstore.S3ObjectStore`（`bootstrap.object_store(config)` 按配置建） | 业务包归档放到别的存储。不给就用 `<data_dir>/objects` 下的本机目录，只适合单机：**多实例必须注入同一个共享的对象存储** |
 
-`StateBackendFactory.for_tenant(tenant_id)` 返回的 `StateBackends` 有三个槽：`thread_directory`、`index_hook`、`memory_store`，都是 taifeng 的稳定协议。默认的 Postgres 实现只填了前两个。**长期记忆（`memory_store`）目前没有接进配置文件**——要用的话，实现自己的工厂，把 taifeng-stores 的 `PgvectorMemoryStore`（需要你提供嵌入实现）填进去。
+`StateBackendFactory.for_tenant(tenant_id)` 返回的 `StateBackends` 有四个槽，都是 taifeng 的稳定协议：
+
+| 槽 | 是什么 |
+| --- | --- |
+| `message_store` | 会话主存的**工厂**（`Callable[[], MessageStore]`）：每个运行时调用一次，得到这个运行时引擎池专用的存储实例，池关闭时关闭它。给了它，会话主存就在外部存储里，不再用数据目录，多实例接手会话不需要共享数据目录 |
+| `thread_directory` | 线程目录。给了 `message_store` 时要与它配套（同一个库、同一个命名空间），否则线程列表与实际存的消息对不上；这时不给，内核用空目录。两者都不给时用数据目录下的本机索引 |
+| `index_hook` | 线程生命周期的订阅方（例如把消息镜像到别处）。**不能与 `message_store` 同时给**：构造时直接报错——外部主存与消息镜像同时挂上，多半是两者写同一张表、每条消息写两遍。这是有意的取舍：用外部主存时就不能再挂别的镜像 |
+| `memory_store` | 长期记忆 |
+
+默认的 Postgres 实现（`PostgresStateBackends`）填 `message_store`（每个运行时一个 taifeng-stores 的 `PostgresMessageStore`，共用一个连接池）与 `thread_directory`（按租户共享的 `PostgresThreadDirectory`），每个租户一组带专属前缀的表，首次使用时建表。外部主存只支持 Chat 协议的模型客户端（内核在建池时拒绝 Responses 协议）。**长期记忆（`memory_store`）目前没有接进配置文件**——要用的话，实现自己的工厂，把 taifeng-stores 的 `PgvectorMemoryStore`（需要你提供嵌入实现）填进去。
+
+`data_dir` 只能归一个进程：业务包缓存的锁只在进程内，`platform.start()` 会清掉暂存目录的残留。同一台机器上起几个 `Platform`，就给几个不同的数据目录。
 
 两条约束对自己的实现同样适用：
 

@@ -1,6 +1,8 @@
 # 试用配置：单机、不依赖 Postgres 与 Docker。配套步骤见 docs/guides/quickstart.md。
 #
 # 控制面在内存里：租户、凭据、密钥、业务包登记、会话、审计都在进程退出时丢失。
+# 状态面、对象存储、沙盒都用缺省的 local：业务包归档（objects/）、会话主存（threads/）、
+# 解包缓存与沙盒工作区落在 data_dir 下，进程退出后还在；从头再来就把整个目录删掉。
 # 正式部署用 examples/xuanpu.yaml。
 
 data_dir: /tmp/xuanpu-trial

@@ -53,6 +53,27 @@ async for event in client.sessions.send(session.session_id, "把它调成高优�
 
 `ask` 遇到审批时不会卡住：它返回挂起前的文本，终结事件是 `turn_suspended`。
 
+停止生成：在另一个协程里（比如用户点了「停止」）调 `cancel`，被停的那一轮从它自己的事件流照常收尾。下面是一次实际运行：
+
+```python
+events = []
+
+async def stream():
+    async for event in client.sessions.send(session.session_id, "写一篇长文"):
+        events.append(event)
+
+task = asyncio.create_task(stream())
+# ……用户点了「停止」
+print(await client.sessions.cancel(session.session_id, submission_id=events[0].submission_id))
+# ['sub_9d2b8c768998']
+await task
+last = events[-1]
+print(last.kind, last.terminal, last.data["end_reason"])
+# turn_completed True cancelled
+```
+
+不给 `submission_id` 就停掉这个会话里全部在途的对话。那一轮已经结束时，不给返回 `[]`，给了抛 `XuanpuError`（`400 invalid_request`）。竞态与注意事项见[应用接入](../../docs/guides/integrating.md#停止生成)。
+
 ## `client.packages`
 
 | 方法 | 返回 | 说明 |
@@ -90,6 +111,15 @@ await client.packages.publish(pack_package(Path("./support-desk")), activate=Tru
 | `await usage(since, until)` | 租户管理员 | `list[Usage]` | 一段日期内的用量，日期写 `YYYY-MM-DD` |
 
 `IssuedKey.key` 是完整的 API key，只在签发时出现一次。
+
+`set_quota` 是整体替换，没给的项恢复为不限：
+
+```python
+async with XuanpuClient("http://localhost:8420", root_key) as root:
+    tenant = await root.admin.set_quota("acme", max_active_sessions=200, max_daily_tokens=10_000_000)
+    print(tenant["quota"])
+# {'max_active_sessions': 200, 'max_daily_tokens': 10000000, 'max_concurrent_turns': None}
+```
 
 ## 数据类型
 

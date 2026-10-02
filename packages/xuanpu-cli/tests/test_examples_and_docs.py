@@ -32,6 +32,8 @@ _VARIABLES = {
     "XUANPU_METRICS_TOKEN_HASH": "1" * 64,
     "XUANPU_MASTER_KEY": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
     "XUANPU_PG_DSN": "postgresql://xuanpu@localhost/xuanpu",
+    "XUANPU_OSS_KEY_ID": "oss-key-id",
+    "XUANPU_OSS_KEY_SECRET": "oss-key-secret",
     "MODEL_GATEWAY_URL": "http://localhost:4000/v1",
     "MODEL_GATEWAY_KEY": "sk-test",
     "MODEL_NAME": "some-model",

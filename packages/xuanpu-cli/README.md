@@ -12,7 +12,7 @@
 | `xuanpu pack <目录> -o <文件>` | 业务方 | 校验并打包业务包 |
 | `xuanpu schema` | 业务方 | 打印业务包清单的 JSON Schema |
 | `xuanpu eval --package <名>` | 业务方 | 在平台上运行业务包的评测用例 |
-| `xuanpu keygen root\|master` | 平台管理员 | 生成根凭据或主密钥 |
+| `xuanpu keygen root\|master\|metrics` | 平台管理员 | 生成根凭据、主密钥或指标抓取令牌 |
 | `xuanpu migrate --config <文件>` | 平台管理员 | 迁移控制面的表结构 |
 | `xuanpu serve --config <文件>` | 平台管理员 | 启动平台服务 |
 
@@ -34,7 +34,7 @@ xuanpu validate ./support-desk
 ```bash
 xuanpu pack ./support-desk -o support-desk.zip
 # support-desk 1.0.0：校验通过
-# 已写入 support-desk.zip（3259 字节，sha256:53ad4612…）
+# 已写入 support-desk.zip（3254 字节，sha256:71887b9e…）
 ```
 
 `-o` / `--output` 是输出文件，必填。先校验，通过了才打包。打包是确定性的：内容相同，归档逐字节相同，打印出来的 SHA-256 就是发布后的版本指纹。
@@ -71,6 +71,15 @@ xuanpu eval --key $KEY --package support-desk
 ```bash
 xuanpu keygen root      # 根凭据（只显示一次）与它的摘要；摘要写进配置的 root_key_hash
 xuanpu keygen master    # 一把主密钥（base64）；写进配置的 master_keys
+xuanpu keygen metrics   # 指标抓取令牌（只显示一次，交给 Prometheus）与它的摘要；摘要写进配置的 metrics.token_hash
+```
+
+```bash
+xuanpu keygen metrics
+# 指标抓取令牌（只显示这一次，交给 Prometheus）：
+#   <令牌>
+# 写进配置文件的 metrics.token_hash：
+#   <摘要>
 ```
 
 ### `migrate`
