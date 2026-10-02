@@ -7,7 +7,8 @@ from typing import Any
 import httpx
 from xuanpu_sdk import XuanpuClient
 from xuanpu_server.api import create_app
-from xuanpu_server.controlplane import AuditQuery
+from xuanpu_server.controlplane import AuditQuery, AuditRecord, InMemoryControlPlane
+from xuanpu_server.runtime.session_history import pending_suspension
 
 
 async def test_pending_follows_suspend_and_resume(world: Any, step: Any, read_turn: Any) -> None:
@@ -166,3 +167,48 @@ async def test_pending_and_replay_over_http(world: Any, step: Any) -> None:
         assert replayed[-1] == {
             "kind": "turn_text", "seq": None, "at": replayed[-1]["at"], "data": {"text": "要更新"},
         }  # fmt: skip
+
+
+def engine_record(seq: int, kind: str, **data: Any) -> AuditRecord:
+    """一条引擎事件的审计记录。"""
+    return AuditRecord(
+        tenant_id="acme",
+        source="engine",
+        kind=kind,
+        at=float(seq),
+        actor="engine",
+        session_id="ses_1",
+        stream="st_1",
+        seq=seq,
+        data=data,
+    )
+
+
+async def test_pending_reads_from_the_last_suspension_only() -> None:
+    """待办只从最近一次挂起往后读：先按种类找到最后一次挂起，不再把更早的引擎事件整段翻一遍。"""
+    store = InMemoryControlPlane()
+    await store.append_audit(
+        [
+            engine_record(0, "turn_suspended", submission_id="sub_1", record_id="sr_1",
+                          pending=[{"request_id": "r_old"}]),
+            *[engine_record(seq, "tool_call_completed", submission_id="sub_1") for seq in range(1, 6)],
+            engine_record(6, "turn_suspended", submission_id="sub_2", record_id="sr_2",
+                          pending=[{"request_id": "r1"}, {"request_id": "r2"}]),
+            engine_record(7, "suspension_partially_resolved", submission_id="sub_3",
+                          record_id="sr_2", resolved_request_ids=["r1"]),
+        ]
+    )  # fmt: skip
+    queries: list[AuditQuery] = []
+    original = store.query_audit
+
+    async def spy(tenant_id: str, query: AuditQuery) -> list[AuditRecord]:
+        """记下每次查询的条件。"""
+        queries.append(query)
+        return await original(tenant_id, query)
+
+    store.query_audit = spy  # type: ignore[method-assign]
+    snapshot = await pending_suspension(store, "acme", "ses_1")
+    assert [item["request_id"] for item in snapshot.requests] == ["r2"]
+    assert (snapshot.submission_id, snapshot.settled) == ("sub_2", frozenset({"r1"}))
+    # 第二次挂起是第 7 条记录：不按种类过滤的那次查询从它开始
+    assert [q.after_id for q in queries if q.kind is None] == [6]

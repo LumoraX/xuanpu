@@ -47,23 +47,23 @@ class _PendingTracker:
         else:
             self._settled.update(str(value) for value in resolved)
 
-    def remaining(self) -> list[dict[str, Any]]:
+    def remaining(self) -> tuple[dict[str, Any], ...]:
         """还没处理的请求。"""
         if self._suspended is None:
-            return []
+            return ()
         pending = self._suspended.data.get("pending")
         if not isinstance(pending, list):
-            return []
-        return [
+            return ()
+        return tuple(
             dict(item)
             for item in pending
             if isinstance(item, dict) and str(item.get("request_id")) not in self._settled
-        ]
+        )
 
     def snapshot(self) -> PendingSuspension:
         """还没处理的请求，连同挂起的那一轮的提交标识与已经核销的请求。"""
         if self._suspended is None:
-            return PendingSuspension(submission_id=None, requests=[])
+            return PendingSuspension(submission_id=None, requests=())
         # 引擎事件的审计记录都带 submission_id（见 events 模块的 _record）
         submission_id = self._suspended.data.get("submission_id")
         return PendingSuspension(
@@ -84,7 +84,7 @@ class PendingSuspension:
     """
 
     submission_id: str | None
-    requests: list[dict[str, Any]]
+    requests: tuple[dict[str, Any], ...]
     settled: frozenset[str] = frozenset()
 
 
@@ -103,12 +103,42 @@ def refuse_settled(suspension: PendingSuspension, request_ids: Iterable[str]) ->
         raise InvalidRequestError(f"待办 {', '.join(again)} 已经处理过，不能再送回")
 
 
+async def _last_suspension(
+    store: ControlPlaneStore, tenant_id: str, session_id: str
+) -> AuditRecord | None:
+    """会话最近一次挂起（``turn_suspended``）的审计记录；从没挂起过返回 None。"""
+    last: AuditRecord | None = None
+    after = 0
+    while True:
+        query = AuditQuery(
+            session_id=session_id,
+            source="engine",
+            kind="turn_suspended",
+            limit=_PAGE,
+            after_id=after,
+        )
+        page = await store.query_audit(tenant_id, query)
+        if page:
+            last = page[-1]
+        if len(page) < query.limit:
+            return last
+        after = page[-1].audit_id
+
+
 async def pending_suspension(
     store: ControlPlaneStore, tenant_id: str, session_id: str
 ) -> PendingSuspension:
-    """会话当前等待处理的请求及挂起的那一轮：最近一次挂起里的请求，减去之后已经核销或到期的。"""
+    """会话当前等待处理的请求及挂起的那一轮：最近一次挂起里的请求，减去之后已经核销或到期的。
+
+    只从最近一次挂起往后读：更早的事件不影响结果（每次挂起都从头算）。审计查询只能按编号
+    升序翻页、取不到「最后一条」，所以先按事件种类翻一遍这个会话的挂起记录（库里按会话索引
+    过滤，只回挂起记录）找到最后一次，再读它之后的引擎事件。每次送回审批都要读一次。
+    """
     tracker = _PendingTracker()
-    after = 0
+    last = await _last_suspension(store, tenant_id, session_id)
+    if last is None:
+        return tracker.snapshot()
+    after = last.audit_id - 1
     while True:
         query = AuditQuery(session_id=session_id, source="engine", limit=_PAGE, after_id=after)
         page = await store.query_audit(tenant_id, query)
@@ -123,7 +153,7 @@ async def pending_requests(
     store: ControlPlaneStore, tenant_id: str, session_id: str
 ) -> list[dict[str, Any]]:
     """会话当前等待处理的审批或表单请求：最近一次挂起里的请求，减去之后已经核销或到期的。"""
-    return (await pending_suspension(store, tenant_id, session_id)).requests
+    return list((await pending_suspension(store, tenant_id, session_id)).requests)
 
 
 async def replay_turn(

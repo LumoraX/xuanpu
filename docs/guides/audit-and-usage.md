@@ -6,23 +6,25 @@
 
 ```json
 {
-  "audit_id": 51,
+  "audit_id": 18,
   "source": "gate",
   "kind": "connector_call",
-  "at": 1790753335.737737,
+  "at": 1790910685.734703,
   "actor": "engine",
-  "session_id": "ses_1197ee27deb1aa819440d23c",
+  "session_id": "ses_2846973c9d4bdf55f28591d9",
   "stream": null,
   "seq": null,
   "data": {
     "connector": "tickets", "transport": "http", "tool": "updateTicket", "effect": "write",
     "decision": "allowed", "is_error": false, "detail": "", "call_id": "call_3",
-    "thread_id": "thr_d1f6536f31f00400",
+    "thread_id": "thr_96548b0d001a65d6",
     "arguments_digest": "sha256:ab129ec1c7282db457ccb63ffaa5de0ae0929b62aba56e9f0a3fe52d84f7929f",
-    "submission_id": null, "duration_ms": 1
+    "submission_id": "sub_6adfb91f890e", "duration_ms": 1
   }
 }
 ```
+
+这是一次批准后才执行的写操作（样例包改工单）：`submission_id` 是送回批准的那一轮。
 
 | 字段 | 含义 |
 | --- | --- |
@@ -169,7 +171,7 @@ async for record in client.admin.audit(session_id=session_id, source="gate"):
 | 用户问了什么、模型答了什么 | `kind=message_sent` 与 `kind=turn_text`，用 `data.submission_id` 配对 |
 | 调过哪些外部接口 | `source=gate` 里 `decision=allowed` 的（`rejected` 的没有调用） |
 | 某次写操作是谁批准的 | `kind=suspension_resolved_by`：`actor` 是送回决定的 API key，`data.decisions` 是每个待办的结论。再用 `kind=turn_suspended` 里同一个待办标识找到当时要批的操作与参数 |
-| 被拒绝的操作 | 同上，`decisions` 里取值为 `false` 的。其中连接器工具另有一条 `decision=rejected` 的 `connector_call`（调用没有执行） |
+| 被拒绝的操作 | 同上，`decisions` 里取值不为 `true` 的。其中连接器工具另有一条 `decision=rejected` 的 `connector_call`（调用没有执行） |
 | 谁在什么时候发布、切换了业务包 | `kind=package_published`、`kind=package_activated` |
 | 谁改过密钥 | `kind=secret_written`、`kind=secret_deleted` |
 | 某一轮用了多少 token | `kind=turn_completed` 的 `data.subtree_usage`（含子 skill）；没有这个字段时看 `data.usage` |
@@ -183,7 +185,7 @@ async for record in client.admin.audit(session_id=session_id, source="gate"):
 | 同一条内核事件被写了两次 | 按 `(stream, seq)` 去重，只留一条 |
 | 内核因队列满丢了事件 | 记一条 `audit_gap`，审计不完整不会悄悄发生 |
 | 内核事件写库失败 | 记错误日志，留在内存里等下一次重试 |
-| 控制面操作或过闸记录写库失败 | 该操作本身报错 |
+| 控制面操作或过闸记录写库失败 | 该操作本身报错。例外是人工拒绝的补记：它在内核确认核销之后才写，那时送回已经交给内核，写不进去只记错误日志并计入指标 `xuanpu_gate_backfill_failures_total`，送回照常续跑 |
 | 实例崩溃 | 还没写出去的那一批内核事件（最多半秒或 64 条）会丢。`control` 与 `gate` 的记录是同步写的，不受影响 |
 
 ## 导出
