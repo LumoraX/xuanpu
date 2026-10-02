@@ -157,10 +157,11 @@ class ConnectorGate:
 
         归属的那一轮取 ``ctx.extras["submission_id"]``：审批通过后的重跑里，内核放的是触发
         重跑的那次送回的提交标识；内核自己发起的重跑（如到期裁决）没有这个键，记为 None，
-        会话按线程归属。
+        会话按线程归属。``user_id`` 是会话主人，与会话一起从对照表里查到。
         """
         extra = ctx.extras.get("submission_id")
         submission_id = extra if isinstance(extra, str) else None
+        session = self._submissions.session_of(submission_id, ctx.thread_id)
         await self._audit.gate(
             self._tenant_id,
             "connector_call",
@@ -175,7 +176,8 @@ class ConnectorGate:
                 submission_id=submission_id,
                 duration_ms=int((time.monotonic() - started) * 1000),
             ),
-            session_id=self._submissions.session_of(submission_id, ctx.thread_id),
+            session_id=session.session_id,
+            user_id=session.user_id,
         )
 
     async def _record_cancelled(
@@ -307,7 +309,7 @@ class ConnectorSet:
             tenant_id: 所属租户。
             vault: 密钥保管库。
             audit: 审计写入口。
-            submissions: submission → 会话的对照表，过闸记录据此归到会话名下。
+            submissions: submission → 会话与主人的对照表，过闸记录据此归到会话与主人名下。
             executor: 在连接器沙盒里起 stdio 连接器进程的执行器；None 表示没有连接器沙盒，
                 这时遇到 stdio 连接器直接报错，不在平台节点上起进程。
             base_env: 连接器进程的基础环境（由组装方给出，含指向连接器工作目录的

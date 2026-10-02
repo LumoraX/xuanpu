@@ -18,10 +18,10 @@ from prometheus_client import CONTENT_TYPE_PLAIN_0_0_4
 
 from xuanpu_server import __version__
 from xuanpu_server.api import schemas
+from xuanpu_server.api.audit_usage import audit_usage_router
 from xuanpu_server.api.auth import Caller, bearer
 from xuanpu_server.api.identity import identity_router
 from xuanpu_server.api.sse import stream_turn
-from xuanpu_server.controlplane.models import AuditQuery
 from xuanpu_server.errors import (
     AuthenticationError,
     InvalidRequestError,
@@ -132,6 +132,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.state.platform = platform
     _install_error_handlers(app)
     app.include_router(identity_router(platform))
+    app.include_router(audit_usage_router(platform))
 
     @app.get("/healthz")
     async def healthz() -> dict[str, Any]:
@@ -310,7 +311,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
         mine: Annotated[bool, Query()] = False,
         limit: Annotated[int, Query(ge=1, le=200)] = 50,
     ) -> dict[str, Any]:
-        """列出本租户的会话；``mine=true`` 只看本凭据创建的。"""
+        """列出调用者看得见的会话；``mine=true`` 只看自己的（普通成员总是只看自己的）。"""
         records = await platform.sessions.list_sessions(who, status=status, mine=mine, limit=limit)
         return {"sessions": [schemas.session_view(record) for record in records]}
 
@@ -361,49 +362,6 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
         """停止生成：取消会话里在途的对话（请求体可省略），返回停了哪些 submission。"""
         submission_id = body.submission_id if body is not None else None
         return {"cancelled": await platform.sessions.cancel(who, session_id, submission_id)}
-
-    # --- 审计与用量 ---
-
-    @app.get("/v1/audit")
-    async def query_audit(  # noqa: PLR0913 —— 查询条件逐项对应查询参数
-        who: Caller,
-        session_id: Annotated[str | None, Query()] = None,
-        kind: Annotated[str | None, Query()] = None,
-        source: Annotated[str | None, Query(pattern="^(engine|gate|control)$")] = None,
-        since: Annotated[float | None, Query()] = None,
-        until: Annotated[float | None, Query()] = None,
-        after_id: Annotated[int, Query(ge=0)] = 0,
-        limit: Annotated[int, Query(ge=1, le=1000)] = 100,
-    ) -> dict[str, Any]:
-        """查询本租户的审计记录。用响应里的 ``next_after_id`` 翻页。"""
-        records = await platform.store.query_audit(
-            who.require_tenant_admin(),
-            AuditQuery(
-                session_id=session_id,
-                kind=kind,
-                source=source,  # type: ignore[arg-type]
-                since=since,
-                until=until,
-                after_id=after_id,
-                limit=limit,
-            ),
-        )
-        return {
-            "records": [schemas.audit_view(record) for record in records],
-            "next_after_id": records[-1].audit_id if len(records) == limit else None,
-        }
-
-    @app.get("/v1/usage")
-    async def query_usage(
-        who: Caller,
-        since: Annotated[str, Query(pattern=r"^\d{4}-\d{2}-\d{2}$")],
-        until: Annotated[str, Query(pattern=r"^\d{4}-\d{2}-\d{2}$")],
-    ) -> dict[str, Any]:
-        """查询本租户一段日期内的用量。"""
-        records = await platform.store.list_usage(
-            who.require_tenant_admin(), since=since, until=until
-        )
-        return {"usage": [schemas.usage_view(record) for record in records]}
 
     if console_dir is not None:
         app.mount("/console", StaticFiles(directory=str(console_dir), html=True), name="console")

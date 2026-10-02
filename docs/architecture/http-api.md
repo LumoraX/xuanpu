@@ -1,6 +1,6 @@
 # HTTP 接口（活文档）
 
-> 第一版接口，加上 P0 新增的停止生成、修改配额与指标端点，以及 P1 的调用者身份（浏览器登录 cookie、系统代员工调用、`GET /v1/me`）、飞书登录与租户的飞书配置。实现在 `packages/xuanpu-server/src/xuanpu_server/api/`。
+> 第一版接口，加上 P0 新增的停止生成、修改配额与指标端点，以及 P1 的调用者身份（浏览器登录 cookie、系统代员工调用、`GET /v1/me`）、飞书登录与租户的飞书配置、会话的归属与[可见范围](#可见范围)、审计与用量带上员工（`GET /v1/audit?user_id=`、`GET /v1/usage/users`）。实现在 `packages/xuanpu-server/src/xuanpu_server/api/`。
 > 用法与注意事项见[应用接入](../guides/integrating.md)；本文是逐个接口的参考。
 
 ## 约定
@@ -35,6 +35,8 @@
 | API key | `key:<key_id>` | 空 |
 | 浏览器登录 | `user:<员工标识>` | 这名员工 |
 | 系统代员工 | `key:<key_id>/user:<员工标识>` | 这名员工 |
+
+`user_id` 一栏说的是控制面操作；会话里的记录（内核事件、过闸记录、停止生成）不论是谁触发的，`user_id` 都是会话的主人，见[审计](#审计)。
 
 ### 浏览器登录
 
@@ -96,7 +98,8 @@ X-Xuanpu-Act-As: usr_5f0c1b2e7d9a4c3b8e6f1a20
 | 401 | `unauthenticated` | 没有凭据或凭据无效 | |
 | 403 | `permission_denied` | 凭据有效但无权操作（包括不允许的[代员工调用](#系统代员工调用)） | |
 | 403 | `csrf_rejected` | 用登录 cookie 的写请求缺 `X-Requested-By: xuanpu` 头，或 `Origin` 与 `public_url` 不符（见[浏览器登录](#浏览器登录)） | |
-| 404 | `not_found` | 资源不存在，或属于别的租户 | |
+| 403 | `session_owner_disabled` | 会话的主人（员工）已停用：任何调用者都不能再往这个会话发消息、送审批结果（见[主人停用之后](#主人停用之后)）；换一把凭据也没用 | |
+| 404 | `not_found` | 资源不存在，或属于别的租户；普通成员访问别人的会话也是它（见[可见范围](#可见范围)） | |
 | 409 | `conflict` | 与现有状态冲突（版本已发布、会话已关闭等） | |
 | 409 | `session_busy` | 会话正由另一个实例持有 | `owner`：持有者的实例标识 |
 | 429 | `quota_exceeded` | 超出租户配额 | |
@@ -127,15 +130,16 @@ X-Xuanpu-Act-As: usr_5f0c1b2e7d9a4c3b8e6f1a20
 | `GET /v1/packages?name=` | 租户成员 | 列出已发布版本 |
 | `POST /v1/packages/{name}/activate` | 租户管理员 | 切换生效版本（前进或回滚） |
 | `POST /v1/packages/{name}/evals` | 租户管理员 | 运行评测用例，返回报告 |
-| `POST /v1/sessions` · `GET /v1/sessions?status=&mine=&limit=` | 租户成员 | 新建、列出会话 |
+| `POST /v1/sessions` · `GET /v1/sessions?status=&mine=&limit=` | 租户成员 | 新建、列出会话（只列[看得见的](#可见范围)） |
 | `GET /v1/sessions/{id}` · `DELETE /v1/sessions/{id}` | 租户成员 | 取会话、关闭会话 |
 | `GET /v1/sessions/{id}/pending` | 租户成员 | 会话当前等待处理的审批请求 |
 | `GET /v1/sessions/{id}/events?submission_id=&after_seq=` | 租户成员 | 回放一轮对话已记入审计的事件 |
 | `POST /v1/sessions/{id}/messages` | 租户成员 | 发消息；响应是事件流 |
 | `POST /v1/sessions/{id}/resume` | 租户成员 | 送回审批结果；响应是事件流 |
 | `POST /v1/sessions/{id}/cancel` | 租户成员 | 停止生成：取消会话里在途的对话 |
-| `GET /v1/audit` | 租户管理员 | 查询审计 |
+| `GET /v1/audit?session_id=&kind=&source=&since=&until=&user_id=&after_id=&limit=` | 租户管理员 | 查询审计 |
 | `GET /v1/usage?since=&until=` | 租户管理员 | 查询用量 |
+| `GET /v1/usage/users?since=&until=` | 租户管理员 | 按天、按员工查询用量 |
 | `GET /metrics` | 抓取令牌 | Prometheus 指标；配置了 `metrics.token_hash` 才开 |
 
 ## 存活探测
@@ -417,7 +421,7 @@ POST /v1/sessions
 {"session_id": "ses_1197ee27deb1aa819440d23c", "package": "support-desk", "version": "1.0.0",
  "entry": "triage", "status": "active", "owner": null,
  "created_at": 1790753324.73, "updated_at": 1790753324.73,
- "created_by": "key:be139be29730", "metadata": {"customer": "C-42"}}
+ "created_by": "key:be139be29730", "metadata": {"customer": "C-42"}, "user_id": null}
 ```
 
 | 字段 | 说明 |
@@ -427,11 +431,40 @@ POST /v1/sessions
 | `entry` | 省略用清单 `entries` 的第一个；不在 `entries` 里是 `400` |
 | `metadata` | 业务方自己的关联标识：最多 16 项，键值都是字符串、各 1–256 个字符。原样返回并进审计 |
 
-响应里的 `status` 是 `active` 或 `closed`；`owner` 是当前持有会话的实例，无人持有为 `null`。
+响应里的 `status` 是 `active` 或 `closed`；`owner` 是当前持有会话的实例，无人持有为 `null`；`user_id` 是会话的主人：建会话的调用者代表的员工（浏览器登录或[代员工调用](#系统代员工调用)），API key 直接建的为 `null`。
 
-`GET /v1/sessions` 返回 `{"sessions": [ … ]}`，最近活动的在前。`status=active|closed` 过滤状态，`mine=true` 只看本凭据创建的，`limit` 默认 50、最大 200。
+`GET /v1/sessions` 返回 `{"sessions": [ … ]}`，只列调用者[看得见的](#可见范围)，最近活动的在前。`status=active|closed` 过滤状态，`limit` 默认 50、最大 200。`mine=true` 只看自己的：代表员工的调用者（浏览器登录、代员工调用）按员工过滤，同一名员工经浏览器、经代调用建的会话都算；不代表员工的 API key 按创建者（`created_by`）过滤。普通成员总是只列自己的，`mine` 对他不起作用（`mine=false` 也只列自己的，不报错）。
 
 `DELETE /v1/sessions/{id}` 关闭会话，返回会话对象。进行中的对话会被取消。重复关闭不报错。只想停掉进行中的那一轮、会话接着用，见[停止生成](#停止生成)。
+
+### 可见范围
+
+| 调用者 | 能看见的会话 |
+| --- | --- |
+| 普通成员：浏览器登录或被代调用，且生效角色是 `tenant_member` | 只有自己的（会话的 `user_id` 是他） |
+| 管理员：浏览器登录或被代调用，且生效角色是 `tenant_admin` | 本租户全部 |
+| 不带 `X-Xuanpu-Act-As` 的 API key（不论角色） | 本租户全部 |
+
+- 会话的每个接口——取、关、发消息、送审批、停止、回放、待办——都按这张表检查。看不见的会话与不存在的是同一个 `404 not_found`（同一句提示），不透露它是否存在。
+- 代员工调用按员工的可见范围生效，角色取 key 与员工中较低的那个：管理员的 key 代成员调用只看见这名成员的会话；成员的 key 代管理员调用，生效角色是成员，也只看见这名管理员自己的。
+- 不代表员工的 API key 看得见全部，是给后台系统用的；把成员的 key 交给员工本人用，他就能看见全租户的会话——员工请用浏览器登录，或由系统代他调用。
+
+### 主人停用之后
+
+会话的主人已停用时，**任何调用者**（包括管理员与系统 key）往这个会话发消息、送审批结果都是 `403 session_owner_disabled`，什么也不提交。这是兜底：员工停用之后，他名下的会话哪怕还开着，也不会再往下跑。
+
+```
+POST /v1/sessions/ses_c79729649fb194db4eee9ff4/messages
+{"text": "继续"}
+
+→ 403
+{"error": {"code": "session_owner_disabled",
+           "message": "会话 'ses_c79729649fb194db4eee9ff4' 的主人已停用：不能再发消息或送审批结果（停止生成、关闭会话不受影响）"}}
+```
+
+- 停止生成、关闭会话照常可用（它们只会让会话更快停下）；取会话、回放、待办这些只读的接口也照常。
+- 平台每个请求都查一次主人的状态，不缓存：停用立即生效，重新启用也立即恢复。
+- API key 直接建的会话没有主人，不受这一条约束。
 
 ### 发消息
 
@@ -441,7 +474,7 @@ POST /v1/sessions/{id}/messages
 → 事件流
 ```
 
-`text` 不能为空，最长 200 000 个字符。会话已关闭是 `409 conflict`。
+`text` 不能为空，最长 200 000 个字符。会话已关闭是 `409 conflict`；会话的主人已停用是 `403 session_owner_disabled`（见[主人停用之后](#主人停用之后)）。
 
 ### 事件流
 
@@ -504,7 +537,7 @@ POST /v1/sessions/{id}/resume
 → 事件流
 ```
 
-拒绝是 `{"granted": false, "reason": "…"}`。批准后被挂起的那次调用才真正执行；拒绝则不执行，模型收到被拒的结果后继续。`resolutions` 不能为空。
+拒绝是 `{"granted": false, "reason": "…"}`。批准后被挂起的那次调用才真正执行；拒绝则不执行，模型收到被拒的结果后继续。`resolutions` 不能为空。会话的主人已停用时是 `403 session_owner_disabled`，什么也不提交（见[主人停用之后](#主人停用之后)）。
 
 `resolutions` 里有这次挂起中已经处理过的待办（之前送回过、已核销的）时，整次送回 `400 invalid_request`，消息里列出是哪几个，什么也不提交：只送回了一部分待办之后，内核会照样受理已经处理过的那几个、再做一遍，批准过的调用会再执行一次。平台按审计判断是否处理过，审计略有滞后，刚送回就紧跟着再送同一个时可能拦不住。提交之前读不到审计（库不可用）时，整次送回以 `500 internal_error` 失败，什么也没有提交给内核，可以原样重试。
 
@@ -535,7 +568,7 @@ POST /v1/sessions/{id}/cancel
 
 会话保持活动，可以接着发消息。被停的那一轮照样记一轮用量，排队中被停、没开始跑的那一轮也计一轮（token 为 0）；卡在半路的那次采样没有收尾，网关报不出它的 token，平台按上下文估算计入输入（审计里记一条 `usage_estimated`，见[审计与用量](../guides/audit-and-usage.md)）。
 
-本租户任何一把 API key 都能停任何会话里的对话，与 `resume` 一样不区分对话是谁发起的；审计里的 `turn_cancel_requested` 记下是哪把 key 停的。只想停自己发起的那一轮，就带上它的 `submission_id`。
+看得见这个会话的调用者（见[可见范围](#可见范围)）都能停里面的对话，与 `resume` 一样不区分对话是谁发起的；审计里的 `turn_cancel_requested` 的 `actor` 记下是谁停的，`user_id` 是会话的主人。只想停自己发起的那一轮，就带上它的 `submission_id`。会话的主人已停用也能停。
 
 | 情况 | 响应 |
 | --- | --- |
@@ -544,7 +577,7 @@ POST /v1/sessions/{id}/cancel
 | 给了 `submission_id`，但它不在途（已经结束或不存在） | `400 invalid_request` |
 | `submission_id` 为空串或超过 64 个字符 | `400 invalid_request` |
 | 会话正由另一个实例持有 | `409 session_busy`，带 `owner` |
-| 会话不存在或属于别的租户 | `404 not_found` |
+| 会话不存在、属于别的租户，或调用者看不见它 | `404 not_found` |
 
 挂起等审批的那一轮已经不在途，不归这个接口管：要放弃就把审批拒绝送回（见[审批](#审批)）。送回批准之后停掉续跑的那一轮，被批准的那次调用照样执行（它在续跑之前执行），停下的只是之后的采样。
 
@@ -563,10 +596,11 @@ GET /v1/sessions/{id}/events?submission_id=sub_…&after_seq=13
 ## 审计
 
 ```
-GET /v1/audit?session_id=&kind=&source=&since=&until=&after_id=&limit=
+GET /v1/audit?session_id=&kind=&source=&since=&until=&user_id=&after_id=&limit=
 
 → {"records": [{"audit_id": 51, "source": "gate", "kind": "connector_call", "at": 1790753335.73,
-                "actor": "engine", "session_id": "ses_…", "stream": null, "seq": null, "data": {…}}],
+                "actor": "engine", "session_id": "ses_…", "stream": null, "seq": null, "data": {…},
+                "user_id": "usr_5f0c1b2e7d9a4c3b8e6f1a20"}],
    "next_after_id": null}
 ```
 
@@ -575,10 +609,11 @@ GET /v1/audit?session_id=&kind=&source=&since=&until=&after_id=&limit=
 | `session_id`、`kind` | 精确匹配 |
 | `source` | `engine`、`gate`、`control` |
 | `since`、`until` | Unix 秒；`since` 含，`until` 不含 |
+| `user_id` | 只看与这名员工有关的：他做的控制面操作，以及他名下会话里的记录 |
 | `after_id` | 只返回编号更大的记录，默认 0 |
 | `limit` | 默认 100，最大 1000 |
 
-记录按 `audit_id` 升序。`next_after_id` 不为 `null` 表示可能还有下一页。各字段与各种事件的含义见[审计与用量](../guides/audit-and-usage.md)。
+记录按 `audit_id` 升序。`next_after_id` 不为 `null` 表示可能还有下一页。记录的 `user_id` 是它归到哪名员工名下：控制面操作是调用者代表的员工，会话里的记录（内核事件、过闸记录、停止生成）是会话的主人，与员工无关的为 `null`。员工查看自己的记录以后再开放，现在仍只有租户管理员能查。各字段与各种事件的含义见[审计与用量](../guides/audit-and-usage.md)。
 
 ## 用量
 
@@ -590,6 +625,17 @@ GET /v1/usage?since=2026-09-01&until=2026-09-30
 ```
 
 两个参数都必填，两端都含。没有用量的日子不出现。
+
+按员工：
+
+```
+GET /v1/usage/users?since=2026-10-01&until=2026-10-31
+
+→ {"usage": [{"day": "2026-10-02", "user_id": "usr_364b889313336be0226bae9e", "input_tokens": 100,
+              "output_tokens": 20, "total_tokens": 120, "turns": 1}]}
+```
+
+每天每名员工一条，按日期、员工排序；参数同上。只含有主人的会话（API key 直接建的会话只算进上面的租户总量），所以各员工之和不大于租户总量。
 
 ## 指标
 

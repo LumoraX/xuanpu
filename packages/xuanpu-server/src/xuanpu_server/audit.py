@@ -4,6 +4,11 @@
 ``AuditLog`` 落到控制面存储；记录只追加。飞书登录流程的记录也算控制面操作，因为那时调用者还没有
 身份，单独经 ``login`` 写入。
 
+记录的 ``user_id`` 是它归到哪名员工名下（设计 8.2）：控制面操作取调用者代表的员工；会话内由平台
+写的记录取会话主人，不论是谁触发的——内核事件（事件枢纽按会话记录填）、过闸记录（闸门经
+``SubmissionIndex`` 查到，人工拒绝的补记取自会话记录），以及停止生成的 ``turn_cancel_requested``
+（``control`` 给 ``session``）。
+
 写审计不允许悄悄失败：闸门与控制面的记录同步写入，写不进去则操作本身失败；引擎事件
 在后台成批写入，写不进去时记错误日志并保留在缓冲里等下一次重试。例外是人工拒绝的补记
 （``runtime.gate_audit``）：它在内核确认核销之后才写，那时送回已经交给内核，写不进去记错误
@@ -28,6 +33,7 @@ from xuanpu_server.controlplane.models import AuditRecord
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from xuanpu_server.controlplane.models import SessionRecord
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.metrics import PlatformMetrics
     from xuanpu_server.tenancy import Principal
@@ -141,8 +147,19 @@ class AuditLog:
         data: dict[str, Any] | None = None,
         *,
         session_id: str | None = None,
+        session: SessionRecord | None = None,
     ) -> None:
-        """记一条控制面操作。``user_id`` 取调用者代表的员工（浏览器登录或代员工调用）。"""
+        """记一条控制面操作。``actor`` 是调用者；``user_id`` 取调用者代表的员工（浏览器登录或代员工
+        调用），给了 ``session`` 的取会话主人。
+
+        Args:
+            session_id: 关联的会话。
+            session: 给了就是一条归到会话主人名下的会话内记录（停止生成）：``session_id`` 取它，
+                ``user_id`` 取它的主人（API key 直接建的会话没有主人，为空），不论是谁触发的。
+                与 ``session_id`` 二选一。
+        """
+        if session is not None and session_id is not None:
+            raise ValueError("session 与 session_id 只能给一个")
         await self._append(
             [
                 AuditRecord(
@@ -151,9 +168,9 @@ class AuditLog:
                     kind=kind,
                     at=self._now(),
                     actor=principal.actor,
-                    session_id=session_id,
+                    session_id=session.session_id if session is not None else session_id,
                     data=sanitize(data or {}),
-                    user_id=principal.user_id,
+                    user_id=session.user_id if session is not None else principal.user_id,
                 )
             ]
         )
@@ -188,8 +205,14 @@ class AuditLog:
         data: dict[str, Any],
         *,
         session_id: str | None = None,
+        user_id: str | None = None,
     ) -> None:
-        """记一次过闸。``connector_call`` 先按 ``data`` 里的传输与决定计一次调用，再写。"""
+        """记一次过闸。``connector_call`` 先按 ``data`` 里的传输与决定计一次调用，再写。
+
+        Args:
+            session_id: 调用归属的会话；闸门查不到时为空。
+            user_id: 会话主人（闸门经 ``SubmissionIndex``、人工拒绝的补记经会话记录拿到）。
+        """
         if kind == "connector_call" and self._metrics is not None:
             self._metrics.connector_call(str(data["transport"]), str(data["decision"]))
         await self._append(
@@ -202,6 +225,7 @@ class AuditLog:
                     actor="engine",
                     session_id=session_id,
                     data=sanitize(data),
+                    user_id=user_id,
                 )
             ]
         )

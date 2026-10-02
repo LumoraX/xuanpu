@@ -37,10 +37,8 @@ import taifeng
 
 from xuanpu_server.controlplane.models import SessionRecord
 from xuanpu_server.errors import (
-    ConflictError,
     InvalidRequestError,
     LeaseInterruptedError,
-    NotFoundError,
     QuotaExceededError,
     RuntimeUnavailableError,
 )
@@ -49,6 +47,7 @@ from xuanpu_server.runtime.cancellation import cancel_in_flight, pick_targets
 from xuanpu_server.runtime.events import EngineEventHub, SubmissionIndex, TurnStream
 from xuanpu_server.runtime.gate_audit import RejectionAudit
 from xuanpu_server.runtime.leases import SessionKey, SessionLeases
+from xuanpu_server.runtime.ownership import SessionOwnership, require_active
 from xuanpu_server.runtime.session_history import pending_requests, replay_turn
 from xuanpu_server.runtime.session_metadata import validate_metadata
 
@@ -57,6 +56,7 @@ if TYPE_CHECKING:
 
     from xuanpu_server.audit import AuditLog
     from xuanpu_server.controlplane.store import ControlPlaneStore
+    from xuanpu_server.identity.store import IdentityStore
     from xuanpu_server.metrics import PlatformMetrics
     from xuanpu_server.packages import PackageRegistry
     from xuanpu_server.quota import QuotaGuard
@@ -86,12 +86,6 @@ class _LiveSession:
         return not self.in_flight
 
 
-def _require_active(record: SessionRecord) -> None:
-    """会话已关闭就不能再开引擎、再对话。"""
-    if record.status != "active":
-        raise ConflictError(f"会话 {record.session_id!r} 已关闭")
-
-
 @dataclass(frozen=True)
 class Turn:
     """已提交的一轮对话。"""
@@ -108,6 +102,7 @@ class SessionManager:
         self,
         *,
         store: ControlPlaneStore,
+        users: IdentityStore,
         packages: PackageRegistry,
         runtimes: RuntimeAssembler,
         quota: QuotaGuard,
@@ -121,6 +116,7 @@ class SessionManager:
         """
         Args:
             store: 控制面存储。
+            users: 身份存储：会话主人的状态（可见性与主人停用见 ``ownership``），按员工的用量。
             packages: 业务包登记处。
             runtimes: 运行时组装器。
             quota: 配额检查。
@@ -132,6 +128,8 @@ class SessionManager:
             now: 取当前时间的函数，测试时可替换。
         """
         self._store = store
+        self._users = users
+        self._ownership = SessionOwnership(store, users)
         self._packages = packages
         self._runtimes = runtimes
         self._quota = quota
@@ -186,6 +184,7 @@ class SessionManager:
             updated_at=now,
             created_by=principal.actor,
             metadata=labels,
+            user_id=principal.user_id,
         )
         await self._store.create_session(record)
         await self._audit.control(
@@ -203,11 +202,8 @@ class SessionManager:
         return record
 
     async def get(self, principal: Principal, session_id: str) -> SessionRecord:
-        """取会话。别的租户的会话按不存在处理。"""
-        record = await self._store.get_session(principal.require_tenant(), session_id)
-        if record is None:
-            raise NotFoundError(f"会话 {session_id!r} 不存在")
-        return record
+        """取会话。别的租户的、调用者看不见的（见 ``ownership``），都按不存在处理。"""
+        return await self._ownership.visible(principal, session_id)
 
     async def list_sessions(
         self,
@@ -217,13 +213,8 @@ class SessionManager:
         mine: bool = False,
         limit: int = 50,
     ) -> list[SessionRecord]:
-        """列出本租户的会话；``mine`` 只看本凭据创建的。"""
-        return await self._store.list_sessions(
-            principal.require_tenant(),
-            status=status,
-            created_by=principal.actor if mine else None,
-            limit=limit,
-        )
+        """列出调用者看得见的会话；``mine`` 只看自己的（含义见 ``ownership``）。"""
+        return await self._ownership.list_sessions(principal, status=status, mine=mine, limit=limit)
 
     async def _open(self, record: SessionRecord) -> _LiveSession:
         """取得会话的持有权并准备好引擎。同一个会话的并发请求只准备一次。"""
@@ -258,7 +249,7 @@ class SessionManager:
             live: 刚准备好的会话。
             fresh: 刚才确认持有时拿到的最新会话记录。
         """
-        _require_active(fresh)
+        require_active(fresh)
         thread_id = live.engine.thread_id
         if fresh.thread_id not in (None, thread_id):
             raise LeaseInterruptedError(f"会话 {fresh.session_id!r} 在准备期间换了线程，请重试")
@@ -266,7 +257,7 @@ class SessionManager:
             fresh = await self._store.update_session(
                 fresh.tenant_id, fresh.session_id, at=self._now(), thread_id=thread_id
             )
-        self._submissions.register_thread(thread_id, fresh.session_id)
+        self._submissions.register_thread(thread_id, fresh.session_id, fresh.user_id)
         return fresh
 
     async def _retire(self, live: _LiveSession) -> None:
@@ -305,7 +296,7 @@ class SessionManager:
         # 组装运行时可能比租约还久：续接（可能回填悬空的工具调用、写进存储）之前先确认持有，
         # 并改用最新记录——这期间别的实例可能接手过（建了线程）或关闭了会话
         record = await self._leases.confirm(held)
-        _require_active(record)
+        require_active(record)
         engine = await runtime.pool.get_or_create(
             session_id=record.session_id,
             entry_skill_id=record.entry,
@@ -330,6 +321,8 @@ class SessionManager:
                 metrics=self._metrics,
                 capture_requests=self._runtimes.defaults.capture_requests,
                 on_turn_end=turn_ended,
+                user_id=record.user_id,
+                users=self._users,
             )
             await hub.start()
         except BaseException:
@@ -344,10 +337,8 @@ class SessionManager:
         )
 
     async def _active(self, principal: Principal, session_id: str) -> _LiveSession:
-        """取一个可以继续对话的会话。"""
-        record = await self.get(principal, session_id)
-        _require_active(record)
-        return await self._open(record)
+        """取一个可以继续对话的会话（看得见、没关闭、主人没停用）并打开它。"""
+        return await self._open(await self._ownership.writable(principal, session_id))
 
     def in_flight_turns(self, tenant_id: str | None = None) -> int:
         """本实例上进行中的对话数；给了租户只算该租户的。"""
@@ -387,7 +378,7 @@ class SessionManager:
             live.hub.watch_resolution(submission_id, watch)
         live.in_flight.add(submission_id)
         live.last_used = self._now()
-        self._submissions.register(submission_id, live.record.session_id)
+        self._submissions.register(submission_id, live.record.session_id, live.record.user_id)
         await self._store.update_session(
             live.record.tenant_id, live.record.session_id, at=self._now()
         )
@@ -423,10 +414,11 @@ class SessionManager:
         if not resolutions:
             raise InvalidRequestError("resolutions 不能为空")
         await self._admit_turn(principal.require_tenant())
-        record = await self.get(principal, session_id)
-        _require_active(record)
+        record = await self._ownership.writable(principal, session_id)
         # 打开引擎之前就读：取到会话之后、提交之前不能有让出点，否则可能被当作空闲释放
-        rejected = await self._rejections.prepare(record.tenant_id, session_id, resolutions)
+        rejected = await self._rejections.prepare(
+            record.tenant_id, session_id, resolutions, user_id=record.user_id
+        )
         live = await self._open(record)
         turn = await self._submit(
             live,
@@ -476,7 +468,7 @@ class SessionManager:
                 record.tenant_id,
                 "turn_cancel_requested",
                 {"submission_ids": targets},
-                session_id=session_id,
+                session=record,
             )
         return targets
 

@@ -14,7 +14,7 @@ import asyncio
 import contextlib
 import logging
 import secrets
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from xuanpu_server.audit import SENSITIVE_KINDS, STREAMING_KINDS, sanitize
 from xuanpu_server.controlplane.models import AuditRecord
@@ -22,12 +22,13 @@ from xuanpu_server.quota import usage_day
 from xuanpu_server.runtime.resolutions import RESOLUTION_KINDS, ResolutionLedger
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Callable
+    from collections.abc import AsyncIterator, Awaitable, Callable
 
     import taifeng
 
     from xuanpu_server.audit import AuditLog
     from xuanpu_server.controlplane.store import ControlPlaneStore
+    from xuanpu_server.identity.store import IdentityStore
     from xuanpu_server.metrics import PlatformMetrics
     from xuanpu_server.runtime.resolutions import ResolutionWatch
 
@@ -46,13 +47,27 @@ _FLUSH_INTERVAL_SECONDS = 0.5
 _STREAM_BUFFER = 8192
 
 
+class SessionRef(NamedTuple):
+    """过闸记录要归到的会话与会话主人；查不到时两项都为 None。"""
+
+    session_id: str | None
+    user_id: str | None
+
+
+_UNKNOWN = SessionRef(None, None)
+
+
 class SubmissionIndex:
-    """submission / 线程标识 → 会话标识。
+    """submission / 线程标识 → 会话标识与会话主人（``user_id``）。
 
     闸门在工具上下文里拿不到会话标识，只拿得到 submission 标识与线程标识；要把过闸记录
-    归到会话名下，得靠这张表。先按 submission 查：审批通过后内核重跑工具时，带的是触发
-    重跑的那次送回的 submission 标识。线程标识只作兜底：内核自己发起的重跑（如到期裁决）
+    归到会话与会话主人名下，得靠这张表。先按 submission 查：审批通过后内核重跑工具时，带的是
+    触发重跑的那次送回的 submission 标识。线程标识只作兜底：内核自己发起的重跑（如到期裁决）
     不带 submission 标识。
+
+    主人与会话一并登记，而不是写过闸记录时再按会话标识去控制面查：会话的主人建会话时就定了、
+    之后不变，登记时手里就有会话记录；闸门每次调用工具都要写记录，同步再查一次库既多一次往返，
+    库慢的时候还拖住工具调用。
 
     表有上限，超出时淘汰最早登记的：一轮对话结束很久之后不会再有工具调用找它。
     """
@@ -60,32 +75,32 @@ class SubmissionIndex:
     def __init__(self, capacity: int = 100_000) -> None:
         """``capacity`` 是每种标识最多记多少条。"""
         self._capacity = capacity
-        self._by_submission: dict[str, str] = {}
-        self._by_thread: dict[str, str] = {}
+        self._by_submission: dict[str, SessionRef] = {}
+        self._by_thread: dict[str, SessionRef] = {}
 
-    def _put(self, table: dict[str, str], key: str, session_id: str) -> None:
+    def _put(self, table: dict[str, SessionRef], key: str, ref: SessionRef) -> None:
         """登记一条，超出上限时淘汰最早的。"""
         table.pop(key, None)
-        table[key] = session_id
+        table[key] = ref
         while len(table) > self._capacity:
             # 字典保持插入顺序，第一个键就是最早登记的
             del table[next(iter(table))]
 
-    def register(self, submission_id: str, session_id: str) -> None:
-        """登记一轮对话属于哪个会话。"""
-        self._put(self._by_submission, submission_id, session_id)
+    def register(self, submission_id: str, session_id: str, user_id: str | None) -> None:
+        """登记一轮对话属于哪个会话；``user_id`` 是会话主人（没有主人为 None）。"""
+        self._put(self._by_submission, submission_id, SessionRef(session_id, user_id))
 
-    def register_thread(self, thread_id: str, session_id: str) -> None:
-        """登记一个线程属于哪个会话。"""
-        self._put(self._by_thread, thread_id, session_id)
+    def register_thread(self, thread_id: str, session_id: str, user_id: str | None) -> None:
+        """登记一个线程属于哪个会话；``user_id`` 是会话主人（没有主人为 None）。"""
+        self._put(self._by_thread, thread_id, SessionRef(session_id, user_id))
 
-    def session_of(self, submission_id: object, thread_id: object = None) -> str | None:
-        """查属于哪个会话：先按 submission，再按线程；都查不到返回 None。"""
+    def session_of(self, submission_id: object, thread_id: object = None) -> SessionRef:
+        """查属于哪个会话、主人是谁：先按 submission，再按线程；都查不到两项都为 None。"""
         if isinstance(submission_id, str) and submission_id in self._by_submission:
             return self._by_submission[submission_id]
         if isinstance(thread_id, str):
-            return self._by_thread.get(thread_id)
-        return None
+            return self._by_thread.get(thread_id, _UNKNOWN)
+        return _UNKNOWN
 
 
 def is_terminal(event: taifeng.EventMsg) -> bool:
@@ -174,6 +189,8 @@ class EngineEventHub:
         metrics: PlatformMetrics,
         capture_requests: bool = False,
         on_turn_end: Callable[[str], None] | None = None,
+        user_id: str | None = None,
+        users: IdentityStore | None = None,
     ) -> None:
         """
         Args:
@@ -185,12 +202,22 @@ class EngineEventHub:
             metrics: 平台指标：一轮结束记结局，按估算入账记一次，用量入账失败记一次。
             capture_requests: 是否把含完整提示词的事件写进审计。
             on_turn_end: 一轮对话结束时的回调，参数是 submission 标识。
+            user_id: 会话主人（``SessionRecord.user_id``）：写进每条引擎事件审计的 ``user_id``，
+                一轮结束时同时记进按员工的用量。没有主人为 None。
+            users: 身份存储，按员工的用量记在这里；会话有主人时必须给。
+
+        Raises:
+            ValueError: 有主人却没给身份存储（按员工的用量无处可记，不悄悄跳过）。
         """
+        if user_id is not None and users is None:
+            raise ValueError("会话有主人时要给身份存储，按员工的用量记在那里")
         self._on_turn_end = on_turn_end
         self._metrics = metrics
         self._engine = engine
         self._tenant_id = tenant_id
         self._session_id = session_id
+        self._user_id = user_id
+        self._users = users
         self._audit = audit
         self._store = store
         self._capture_requests = capture_requests
@@ -311,10 +338,12 @@ class EngineEventHub:
             stream=self._stream_id if seq is not None else None,
             seq=seq,
             data={"submission_id": event.submission_id, **sanitize(data)},
+            user_id=self._user_id,
         )
 
     async def _account(self, event: taifeng.EventMsg) -> None:
-        """一轮对话结束时把用量入账。优先用含子 skill 在内的整棵树的用量。"""
+        """一轮对话结束时把用量入账：租户总量，会话有主人的再记一笔按员工的（数额相同，含被停下
+        的一轮的估算）。优先用含子 skill 在内的整棵树的用量。"""
         data = event.msg.data
         usage = data.get("subtree_usage") or data.get("usage") or {}
         if not isinstance(usage, dict):
@@ -323,21 +352,32 @@ class EngineEventHub:
         output_tokens = int(usage.get("output_tokens") or 0)
         total = int(usage.get("total_tokens") or 0) or input_tokens + output_tokens
         estimated = self._interrupted_input_estimate(event)
-        input_tokens += estimated
-        total += estimated
-        try:
-            await self._store.add_usage(
-                self._tenant_id,
-                usage_day(event.timestamp.timestamp()),
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
-                total_tokens=total,
-                turns=1,
+        amounts = {
+            "input_tokens": input_tokens + estimated,
+            "output_tokens": output_tokens,
+            "total_tokens": total + estimated,
+            "turns": 1,
+        }
+        day = usage_day(event.timestamp.timestamp())
+        await self._charge("", lambda: self._store.add_usage(self._tenant_id, day, **amounts))
+        user_id, users = self._user_id, self._users
+        if user_id is not None:
+            assert users is not None  # 构造时已校验
+            await self._charge(
+                "按员工的", lambda: users.add_user_usage(self._tenant_id, day, user_id, **amounts)
             )
+
+    async def _charge(self, what: str, write: Callable[[], Awaitable[object]]) -> None:
+        """入一笔账。两笔各自独立：一笔失败不影响另一笔。
+
+        不让一轮对话因为入账失败而失败；这一笔不再补记，记错误日志并计入指标
+        ``xuanpu_usage_write_failures_total``。
+        """
+        try:
+            await write()
         except Exception:
-            # 不让一轮对话因为入账失败而失败；这一轮的用量不再补记，记日志并计入指标
             self._metrics.usage_write_failed()
-            logger.exception("会话 %s 的用量入账失败", self._session_id)
+            logger.exception("会话 %s 的%s用量入账失败", self._session_id, what)
 
     def _interrupted_input_estimate(self, event: taifeng.EventMsg) -> int:
         """被停下的那一轮里被打断的那次采样，估算它的输入 token；不是被停下的一轮返回 0。
@@ -402,6 +442,7 @@ __all__ = [
     "RESUME_ENDING_KINDS",
     "TERMINAL_KINDS",
     "EngineEventHub",
+    "SessionRef",
     "SubmissionIndex",
     "TurnStream",
     "is_terminal",

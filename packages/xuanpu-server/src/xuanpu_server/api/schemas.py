@@ -16,6 +16,7 @@ if TYPE_CHECKING:
         SessionRecord,
         UsageRecord,
     )
+    from xuanpu_server.identity.models import UserUsageRecord
     from xuanpu_server.tenancy import ApiKeyRecord, Tenant
 
 
@@ -182,6 +183,7 @@ def session_view(record: SessionRecord) -> dict[str, Any]:
         "updated_at": record.updated_at,
         "created_by": record.created_by,
         "metadata": dict(record.metadata),
+        "user_id": record.user_id,
     }
 
 
@@ -189,6 +191,18 @@ def usage_view(record: UsageRecord) -> dict[str, Any]:
     """用量的对外表示。"""
     return {
         "day": record.day,
+        "input_tokens": record.input_tokens,
+        "output_tokens": record.output_tokens,
+        "total_tokens": record.total_tokens,
+        "turns": record.turns,
+    }
+
+
+def user_usage_view(record: UserUsageRecord) -> dict[str, Any]:
+    """按员工的用量的对外表示：比租户用量多一个 ``user_id``。"""
+    return {
+        "day": record.day,
+        "user_id": record.user_id,
         "input_tokens": record.input_tokens,
         "output_tokens": record.output_tokens,
         "total_tokens": record.total_tokens,
@@ -208,6 +222,7 @@ def audit_view(record: AuditRecord) -> dict[str, Any]:
         "stream": record.stream,
         "seq": record.seq,
         "data": record.data,
+        "user_id": record.user_id,
     }
 
 
@@ -229,4 +244,5 @@ __all__ = [
     "session_view",
     "tenant_view",
     "usage_view",
+    "user_usage_view",
 ]

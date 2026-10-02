@@ -138,6 +138,7 @@ class RejectedCall:
         thread_id: 发起调用的线程。
         arguments_digest: 调用参数的摘要。
         submission_id: 挂起的那一轮（被拒的那一轮）的提交标识。
+        user_id: 会话主人，写进过闸记录的 ``user_id``；API key 直接建的会话没有主人。
     """
 
     tenant_id: str
@@ -148,6 +149,7 @@ class RejectedCall:
     thread_id: str
     arguments_digest: str
     submission_id: str | None
+    user_id: str | None = None
 
     def gate_data(self) -> dict[str, Any]:
         """这次拒绝的过闸记录 ``data``：没有调用，不算出错，耗时为 0。"""
@@ -176,6 +178,7 @@ def _rejected_call(
     tenant_id: str,
     session_id: str,
     submission_id: str | None,
+    user_id: str | None,
 ) -> RejectedCall | None:
     """一条被拒绝的待办 → 要补记的连接器调用；不是连接器工具的审批返回 None。
 
@@ -204,6 +207,7 @@ def _rejected_call(
         thread_id=thread_id,
         arguments_digest=_digest_of(item, detail),
         submission_id=submission_id,
+        user_id=user_id,
     )
 
 
@@ -238,12 +242,14 @@ class PendingRejections:
         session_id: 所属会话。
         submission_id: 挂起的那一轮的提交标识。
         requests: 被拒绝的待办（还没区分是不是连接器工具）。
+        user_id: 会话主人；API key 直接建的会话没有主人。
     """
 
     tenant_id: str
     session_id: str
     submission_id: str | None = None
     requests: tuple[Mapping[str, Any], ...] = ()
+    user_id: str | None = None
 
 
 class RejectionAudit:
@@ -273,7 +279,12 @@ class RejectionAudit:
             self._on_failure(stage)
 
     async def prepare(
-        self, tenant_id: str, session_id: str, resolutions: Mapping[str, Any]
+        self,
+        tenant_id: str,
+        session_id: str,
+        resolutions: Mapping[str, Any],
+        *,
+        user_id: str | None = None,
     ) -> PendingRejections:
         """送回之前（内核核销之前）读一次审计里的待办：拦下重复送回，取出这次被拒的待办。
 
@@ -285,6 +296,7 @@ class RejectionAudit:
             tenant_id: 所属租户。
             session_id: 所属会话。
             resolutions: 这次送回的审批结果（待办标识 → 结果）。
+            user_id: 会话主人，补的过闸记录归到他名下；没有主人为 None。
 
         Raises:
             InvalidRequestError: 送回里有已经核销过的待办。
@@ -298,6 +310,7 @@ class RejectionAudit:
             session_id=session_id,
             submission_id=suspension.submission_id,
             requests=tuple(by_id[request_id] for request_id in rejected if request_id in by_id),
+            user_id=user_id,
         )
 
     def calls(
@@ -318,6 +331,7 @@ class RejectionAudit:
                     tenant_id=pending.tenant_id,
                     session_id=pending.session_id,
                     submission_id=pending.submission_id,
+                    user_id=pending.user_id,
                 )
             except ValueError:
                 self._failed("incomplete")
@@ -347,7 +361,11 @@ class RejectionAudit:
         for call in calls:
             try:
                 await self._audit.gate(
-                    call.tenant_id, "connector_call", call.gate_data(), session_id=call.session_id
+                    call.tenant_id,
+                    "connector_call",
+                    call.gate_data(),
+                    session_id=call.session_id,
+                    user_id=call.user_id,
                 )
             except Exception:
                 self._failed("write")

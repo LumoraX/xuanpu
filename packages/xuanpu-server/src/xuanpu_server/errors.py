@@ -59,6 +59,16 @@ class CsrfRejectedError(PermissionDeniedError):
     code = "csrf_rejected"
 
 
+class SessionOwnerDisabledError(PermissionDeniedError):
+    """会话的主人（员工）已停用：任何调用者都不能再往这个会话发消息、送审批结果。
+
+    单独一个错误码，让调用方分清「这个会话不能再继续」与「我没有权限」——换一把凭据也没用。
+    停止生成、关闭会话不受影响（见 ``runtime.ownership``）。
+    """
+
+    code = "session_owner_disabled"
+
+
 class NotFoundError(PlatformError):
     """资源不存在。访问其他租户的资源同样报这个错，不泄露其存在与否。"""
 
@@ -152,4 +162,5 @@ __all__ = [
     "SchemaError",
     "SecretMissingError",
     "SessionBusyError",
+    "SessionOwnerDisabledError",
 ]

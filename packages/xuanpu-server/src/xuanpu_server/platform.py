@@ -182,9 +182,10 @@ class Platform:
     def _session_manager(
         self, submissions: SubmissionIndex, lease_seconds: float
     ) -> SessionManager:
-        """会话管理：用上已经建好的控制面部件、运行时组装器与指标。"""
+        """会话管理：用上已经建好的控制面部件、身份存储、运行时组装器与指标。"""
         return SessionManager(
             store=self.store,
+            users=self.identity.store,
             packages=self.packages,
             runtimes=self.runtimes,
             quota=self.quota,
