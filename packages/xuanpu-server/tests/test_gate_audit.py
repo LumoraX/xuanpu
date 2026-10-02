@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import TYPE_CHECKING, Any
@@ -26,14 +27,20 @@ async def gate_records(world: Any) -> list[Any]:
 
 
 async def suspend(
-    world: Any, step: Any, read_turn: Any, calls: list[tuple[str, str, dict[str, Any]]]
+    world: Any,
+    step: Any,
+    read_turn: Any,
+    calls: list[tuple[str, str, dict[str, Any]]],
+    *,
+    publish: bool = True,
 ) -> tuple[Any, Any, list[dict[str, Any]]]:
-    """发布样例业务包、开会话，让模型发起给定的调用并停在审批点。
+    """发布样例业务包（``publish`` 为假时用已发布的）、开会话，让模型发起给定的调用并停在审批点。
 
     Returns:
         会话、挂起的那一轮、当前待办。
     """
-    await world.publish()
+    if publish:
+        await world.publish()
     session = await world.platform.sessions.create(world.member, package="support-desk")
     world.models.script(step(calls=calls), step(text="好了"))
     turn = await world.platform.sessions.send_message(world.member, session.session_id, "改")
@@ -184,39 +191,181 @@ async def test_repeated_rejection_is_recorded_once(world: Any, step: Any, read_t
     assert [r.data["decision"] for r in await gate_records(world)] == ["rejected"]
 
 
+async def test_quick_or_concurrent_repeats_are_recorded_once(
+    world: Any, step: Any, read_turn: Any
+) -> None:
+    """同一个拒绝紧跟着再送一次（第一次的结论还没进审计），或两次同时送：都只记一条。
+
+    两次都读到待办还在、都登记了；只有内核确认核销的那一次补记录，另一次被内核拒绝。
+    """
+    session, _, pending = await suspend(
+        world, step, read_turn, [("c1", "mcp__crm__update_ticket", {"id": "T-1"})]
+    )
+    sessions, sid = world.platform.sessions, session.session_id
+    resolutions = {pending[0]["request_id"]: {"granted": False}}
+    first = await sessions.resume(world.member, sid, resolutions)
+    second = await sessions.resume(world.member, sid, resolutions)
+    kinds = [[e.msg.kind for e in await read_turn(t, timeout=10)] for t in (first, second)]
+    assert kinds[0][-1] == "turn_completed"
+    assert kinds[1] == ["suspension_resolve_rejected"]
+    assert [r.data["call_id"] for r in await gate_records(world)] == ["c1"]
+
+    session, _, pending = await suspend(
+        world, step, read_turn, [("c2", "mcp__crm__update_ticket", {"id": "T-2"})], publish=False
+    )
+    resolutions = {pending[0]["request_id"]: {"granted": False}}
+    turns = await asyncio.gather(
+        sessions.resume(world.member, session.session_id, resolutions),
+        sessions.resume(world.member, session.session_id, resolutions),
+    )
+    for turn in turns:
+        await read_turn(turn, timeout=10)
+    assert [r.data["call_id"] for r in await gate_records(world)] == ["c1", "c2"]
+
+
+async def test_concurrent_repeats_during_partial_resolution_are_recorded_once(
+    world: Any, step: Any, read_turn: Any
+) -> None:
+    """两个待办、同时送两次「拒绝 c1」：内核两次都受理（部分核销期间已核销的再送也受理），
+    只按第一次新核销的补一条。"""
+    session, suspended, pending = await suspend(
+        world, step, read_turn,
+        [
+            ("c1", "mcp__crm__update_ticket", {"id": "T-1"}),
+            ("c2", "mcp__crm__update_ticket", {"id": "T-2"}),
+        ],
+    )  # fmt: skip
+    by_call = {item["detail"]["call_id"]: item["request_id"] for item in pending}
+    resolutions = {by_call["c1"]: {"granted": False}}
+    turns = await asyncio.gather(
+        world.platform.sessions.resume(world.member, session.session_id, resolutions),
+        world.platform.sessions.resume(world.member, session.session_id, resolutions),
+    )
+    for turn in turns:
+        await read_turn(turn, timeout=10)
+    [record] = await gate_records(world)
+    assert (record.data["call_id"], record.data["submission_id"]) == (
+        "c1", suspended.submission_id,
+    )  # fmt: skip
+
+
 async def test_resume_the_kernel_refuses_leaves_no_gate_record(
     world: Any, step: Any, read_turn: Any
 ) -> None:
-    """送回里夹了一个不存在的待办：内核整次拒绝、什么都没核销，被拒的那条也不补记录。
-
-    之后照常送回拒绝，才补上一条。
-    """
+    """内核整次拒绝的送回（夹了不存在的待办、另一项答复形状不对）：什么都没核销，被拒的那条
+    也不补记录；之后批准它，只有一条 allowed，没有 rejected。"""
     session, suspended, pending = await suspend(
-        world, step, read_turn, [("c1", "mcp__crm__update_ticket", {"id": "T-1"})]
-    )
-    request_id = pending[0]["request_id"]
-    refused = await read_turn(
-        await world.platform.sessions.resume(
-            world.member,
-            session.session_id,
-            {request_id: {"granted": False}, "req_nope": {"granted": True}},
-        ),
-        timeout=10,
-    )
-    assert [event.msg.kind for event in refused] == ["suspension_resolve_rejected"]
+        world, step, read_turn,
+        [
+            ("c1", "mcp__crm__update_ticket", {"id": "T-1"}),
+            ("c2", "mcp__crm__update_ticket", {"id": "T-2"}),
+        ],
+    )  # fmt: skip
+    by_call = {item["detail"]["call_id"]: item["request_id"] for item in pending}
+    for resolutions in (
+        {by_call["c1"]: {"granted": False}, "req_nope": {"granted": True}},
+        {by_call["c1"]: {"granted": False}, by_call["c2"]: True},
+    ):
+        refused = await read_turn(
+            await world.platform.sessions.resume(world.member, session.session_id, resolutions),
+            timeout=10,
+        )
+        assert [event.msg.kind for event in refused] == ["suspension_resolve_rejected"]
     assert await gate_records(world) == []
     still = await world.platform.sessions.pending(world.member, session.session_id)
-    assert [item["request_id"] for item in still] == [request_id]
+    assert len(still) == 2
 
     await read_turn(
         await world.platform.sessions.resume(
-            world.member, session.session_id, {request_id: {"granted": False}}
+            world.member,
+            session.session_id,
+            {by_call["c1"]: {"granted": True}, by_call["c2"]: {"granted": False}},
         )
     )
-    [record] = await gate_records(world)
-    assert (record.data["decision"], record.data["submission_id"]) == (
+    gate = await gate_records(world)
+    assert sorted((r.data["call_id"], r.data["decision"]) for r in gate) == [
+        ("c1", "allowed"), ("c2", "rejected"),
+    ]  # fmt: skip
+
+
+async def test_partial_then_repeat_plus_new_rejection(
+    world: Any, step: Any, read_turn: Any
+) -> None:
+    """先单独拒 c1（部分核销），再送 {c1 重复, c2 拒绝}：内核受理，c2 补上，c1 不补第二条。"""
+    session, suspended, pending = await suspend(
+        world, step, read_turn,
+        [
+            ("c1", "mcp__crm__update_ticket", {"id": "T-1"}),
+            ("c2", "mcp__crm__update_ticket", {"id": "T-2"}),
+        ],
+    )  # fmt: skip
+    by_call = {item["detail"]["call_id"]: item["request_id"] for item in pending}
+    sessions, sid = world.platform.sessions, session.session_id
+    partial = await read_turn(
+        await sessions.resume(world.member, sid, {by_call["c1"]: {"granted": False}}), timeout=10
+    )
+    assert partial[-1].msg.kind == "suspension_partially_resolved"
+    both = {by_call["c1"]: {"granted": False}, by_call["c2"]: {"granted": False}}
+    done = await read_turn(await sessions.resume(world.member, sid, both), timeout=10)
+    assert done[-1].msg.kind == "turn_completed"
+    gate = await gate_records(world)
+    assert [(r.data["call_id"], r.data["submission_id"]) for r in gate] == [
+        ("c1", suspended.submission_id), ("c2", suspended.submission_id),
+    ]  # fmt: skip
+
+
+async def test_approve_one_then_reject_the_other(world: Any, step: Any, read_turn: Any) -> None:
+    """先批 c1（部分核销、c1 执行），再单独拒 c2：c2 补上，归到挂起的那一轮。"""
+    session, suspended, pending = await suspend(
+        world, step, read_turn,
+        [
+            ("c1", "mcp__crm__update_ticket", {"id": "T-1"}),
+            ("c2", "mcp__crm__update_ticket", {"id": "T-2"}),
+        ],
+    )  # fmt: skip
+    by_call = {item["detail"]["call_id"]: item["request_id"] for item in pending}
+    sessions, sid = world.platform.sessions, session.session_id
+    first = await sessions.resume(world.member, sid, {by_call["c1"]: {"granted": True}})
+    await read_turn(first, timeout=10)
+    await read_turn(await sessions.resume(world.member, sid, {by_call["c2"]: {"granted": False}}))
+    gate = {r.data["call_id"]: r.data for r in await gate_records(world)}
+    assert (gate["c1"]["decision"], gate["c1"]["submission_id"]) == (
+        "allowed", first.submission_id,
+    )  # fmt: skip
+    assert (gate["c2"]["decision"], gate["c2"]["submission_id"]) == (
         "rejected", suspended.submission_id,
     )  # fmt: skip
+    assert world.calls() == [{"name": "update_ticket", "arguments": {"id": "T-1"}}]
+
+
+async def test_backfill_write_failure_does_not_fail_the_resume(
+    world: Any, step: Any, read_turn: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """补记写库失败：送回照常续跑，控制面的 suspension_resolved_by 照写，指标计一次 write。"""
+    session, _, pending = await suspend(
+        world, step, read_turn, [("c1", "mcp__crm__update_ticket", {"id": "T-1"})]
+    )
+    original = world.platform.audit.gate
+
+    async def failing(tenant_id: str, kind: str, data: Any, **kwargs: Any) -> None:
+        """人工拒绝的补记写不进去，别的照常。"""
+        if data.get("decision") == "rejected":
+            raise RuntimeError("控制面写不进去")
+        await original(tenant_id, kind, data, **kwargs)
+
+    monkeypatch.setattr(world.platform.audit, "gate", failing)
+    request_id = pending[0]["request_id"]
+    resumed = await world.platform.sessions.resume(
+        world.member, session.session_id, {request_id: {"granted": False}}
+    )
+    assert (await read_turn(resumed))[-1].msg.kind == "turn_completed"
+    assert await gate_records(world) == []
+    [resolved_by] = await world.platform.store.query_audit(
+        "acme", AuditQuery(kind="suspension_resolved_by")
+    )
+    assert resolved_by.data["decisions"] == {request_id: False}
+    metrics = world.platform.metrics.render().decode("utf-8")
+    assert 'xuanpu_gate_backfill_failures_total{stage="write"} 1.0' in metrics
 
 
 # ---------------------------------------------------------------------------
@@ -286,7 +435,7 @@ async def test_only_connector_tools_are_picked_and_transport_comes_from_the_regi
     assert [(c.call_id, c.info.transport, c.submission_id) for c in calls] == [
         ("call-r1", "remote", "sub_suspended")
     ]
-    assert await rejections.record(pending, REGISTRY.get) == 1
+    assert await rejections.record(calls) == 1
     [record] = await store.query_audit("acme", AuditQuery(source="gate"))
     assert (record.session_id, record.data["transport"], record.data["decision"]) == (
         "ses_1", "remote", "rejected",
@@ -311,8 +460,8 @@ async def test_approvals_alone_do_not_read_the_audit() -> None:
 async def test_failures_are_logged_and_counted_not_raised(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """读不到待办、待办缺调用信息、写不进过闸记录：都记 error 日志并计数（经 ``on_failure``
-    报出是哪个环节），不抛给送回的一方；一条写失败不影响其余的。"""
+    """读不到待办、待办缺调用信息、写不进过闸记录、等不到内核的结论：都记 error 日志并计数
+    （经 ``on_failure`` 报出是哪个环节），不往上抛；一条写失败不影响其余的。"""
     caplog.set_level(logging.INFO)
     store = await suspended_store(
         permission("r1", "mcp__docs__update_doc"),
@@ -340,18 +489,44 @@ async def test_failures_are_logged_and_counted_not_raised(
     pending = await rejections.prepare(
         "acme", "ses_1", {"r1": rejected, "r2": rejected, "r3": rejected}
     )
-    # r2 缺参数补不上；r1 写失败；r3 照常写进去
-    assert await rejections.record(pending, REGISTRY.get) == 1
+    # r2 缺参数补不上；内核确认之后 r1 写失败，r3 照常写进去
+    watch = rejections.watch(pending, REGISTRY.get)
+    assert watch is not None
+    await watch.resolved(frozenset({"r1", "r2", "r3"}))
     assert written == ["failed", "call-r3"]
     assert rejections.failures == 2
     assert stages == ["incomplete", "write"]
+    # 另一次送回等不到结论：它要补的每一条计一次
+    other = rejections.watch(pending, REGISTRY.get)
+    assert other is not None
+    other.abandoned()
+    assert stages == ["incomplete", "write", "incomplete", "unconfirmed", "unconfirmed"]
 
     async def broken(*args: Any, **kwargs: Any) -> Any:
         raise RuntimeError("控制面读不出来")
 
     store.query_audit = broken  # type: ignore[method-assign]
     assert (await rejections.prepare("acme", "ses_1", {"r1": rejected})).requests == ()
-    assert rejections.failures == 3
-    assert stages == ["incomplete", "write", "read"]
+    assert rejections.failures == 6
+    assert stages[-1] == "read"
     errors = [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR]
-    assert len(errors) == 3
+    assert len(errors) == 5
+
+
+async def test_watch_only_records_what_the_kernel_settled_this_time() -> None:
+    """内核确认核销的待办里没有的（之前已经核销过）不补；被内核整次拒绝的什么都不补。"""
+    store = await suspended_store(
+        permission("r1", "mcp__docs__update_doc"), permission("r2", "mcp__crm__update_ticket")
+    )
+    rejections = RejectionAudit(store=store, audit=AuditLog(store))
+    rejected = {"granted": False}
+    pending = await rejections.prepare("acme", "ses_1", {"r1": rejected, "r2": rejected})
+    refused = rejections.watch(pending, REGISTRY.get)
+    assert refused is not None
+    refused.refused("invalid_payload_shape")
+    watch = rejections.watch(pending, REGISTRY.get)
+    assert watch is not None
+    await watch.resolved(frozenset({"r2"}))
+    records = await store.query_audit("acme", AuditQuery(source="gate"))
+    assert [r.data["call_id"] for r in records] == ["call-r2"]
+    assert rejections.failures == 0

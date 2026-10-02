@@ -2,29 +2,29 @@
 
 闸门（``ConnectorGate``）每次调用连接器工具写一条过闸记录。需要审批的调用被人工拒绝时，
 内核直接把「被拒」交给模型、不再调用工具，闸门见不到这次调用；所以由送回审批结果的一方
-（``SessionManager.resume``）补一条 ``decision="rejected"``、``detail="rejected_by_user"``
-的记录。两处共用 ``gate_call_data``，字段集合只在这里定义。
+补一条 ``decision="rejected"``、``detail="rejected_by_user"`` 的记录。两处共用
+``gate_call_data``，字段集合只在这里定义。
 
-补记的依据：
+补记分三步，由 ``SessionManager.resume`` 驱动：
 
-- 审计里最近一次挂起还没处理的待办（``session_history.pending_suspension``），在送回之前取
-  （送回之后内核就核销了）：工具全名、call_id、线程、参数，以及挂起的那一轮的提交标识——
-  补的记录归到被拒的那一轮；
-- 运行时的连接器登记（``ConnectorSet.describe``）：连接器、工具、传输、副作用分类。stdio 与
-  remote 的工具名前缀都是 ``mcp__``，传输只能从登记里查。查不到的不是连接器工具（脚本、
-  命令、表单等），不补。
+1. ``prepare``：送回之前（内核核销之前）读审计里最近一次挂起还没处理的待办
+   （``session_history.pending_suspension``），取出这次被拒的那些，连同详情（工具全名、
+   call_id、线程、参数）与挂起的那一轮的提交标识——补的记录归到被拒的那一轮。已经核销过的
+   待办不在其中，不再补：它的记录在第一次核销时补过了。
+2. ``watch``：按运行时的连接器登记（``ConnectorSet.describe``）挑出连接器工具（连接器、工具、
+   传输、副作用分类）。stdio 与 remote 的工具名前缀都是 ``mcp__``，传输只能从登记里查；查不到
+   的不是连接器工具（脚本、命令、表单等），不补。提交之后连同这次送回的提交标识登记到事件
+   枢纽（``EngineEventHub.watch_resolution``）。
+3. 等内核的结论（``resolutions`` 模块）：这次送回核销了待办，只为「被拒、且这一次确实核销了」
+   的写记录；被内核整次拒绝（答复不合格、有不认识的待办等）就不写；等不到结论（事件枢纽关闭，
+   或这次送回没有结论事件就结束了）记 error 日志。
 
-写入在提交送回之后、且只在提交成功之后；补记失败（读不到待办、待办缺调用信息、写不进记录）
-记 error 日志并计入 ``RejectionAudit.failures``，同时经 ``on_failure`` 报出是哪个环节
-（``read`` / ``incomplete`` / ``write``，接到平台指标），不让送回本身失败——审批结果已经交给
-内核了。
+补记失败不让送回本身失败——审批结果已经交给内核了：记 error 日志并计入 ``failures``，同时经
+``on_failure`` 报出是哪个环节（``read`` 读不到待办、``incomplete`` 待办缺调用信息、``write``
+写不进记录、``unconfirmed`` 等不到内核的结论；接到平台指标）。
 
 已知限制：
 
-- 是否算拒绝按内核的口径（送回的是字典、``granted`` 不为真），但内核在提交之后才校验整次
-  送回。这里只照着做了一条：送回里有不在当前待办里的标识（含重复送回已处理的待办）时内核
-  会整次拒绝，这时不补。别的整次拒绝（同一次送回里另一项的取值形状不对等）、以及两次送回
-  同时提交同一个拒绝，仍可能多出一条「已拒绝」的记录。
 - 参数摘要按审计里待办记下的参数算：那份参数经过脱敏与截断（键名像凭据的字符串、超过
   8000 字符的字符串），碰上这两种情况，与闸门按原始参数算的摘要不同。
 - 待办以审计为准（与 ``SessionManager.pending`` 同一口径）：事件枢纽先把挂起事件推给调用方、
@@ -42,12 +42,13 @@ from xuanpu_server.audit import digest_arguments
 from xuanpu_server.runtime.session_history import pending_suspension
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Callable, Mapping, Sequence
 
     from xuanpu_spec.manifest import Effect, Transport
 
     from xuanpu_server.audit import AuditLog
     from xuanpu_server.controlplane.store import ControlPlaneStore
+    from xuanpu_server.runtime.resolutions import ResolutionWatch
     from xuanpu_server.runtime.session_history import PendingSuspension
 
 logger = logging.getLogger(__name__)
@@ -121,6 +122,7 @@ class RejectedCall:
     Attributes:
         tenant_id: 所属租户。
         session_id: 所属会话。
+        request_id: 被拒的待办。
         info: 被拒的连接器工具。
         call_id: 内核的工具调用标识。
         thread_id: 发起调用的线程。
@@ -130,6 +132,7 @@ class RejectedCall:
 
     tenant_id: str
     session_id: str
+    request_id: str
     info: ConnectorToolInfo
     call_id: str
     thread_id: str
@@ -187,6 +190,7 @@ def _rejected_call(
     return RejectedCall(
         tenant_id=tenant_id,
         session_id=session_id,
+        request_id=str(item.get("request_id")),
         info=info,
         call_id=call_id,
         thread_id=thread_id,
@@ -213,7 +217,7 @@ class PendingRejections:
 
 
 class RejectionAudit:
-    """人工拒绝的连接器调用的补记：送回之前取出被拒的待办，提交成功之后写过闸记录。"""
+    """人工拒绝的连接器调用的补记：送回之前取出被拒的待办，内核确认核销之后写过闸记录。"""
 
     def __init__(
         self,
@@ -227,13 +231,14 @@ class RejectionAudit:
             store: 控制面存储，读待办用。
             audit: 审计写入口。
             on_failure: 补记失败时的回调，参数是环节：``read``（读不到待办）、
-                ``incomplete``（待办缺调用信息）、``write``（写不进记录）。
+                ``incomplete``（待办缺调用信息）、``write``（写不进记录）、``unconfirmed``
+                （等不到内核的结论）。
         """
         self._store = store
         self._audit = audit
         self._on_failure = on_failure
         self.failures = 0
-        """补记失败（读不到待办、待办缺调用信息、写不进记录）的累计次数。"""
+        """补记失败的累计次数（各环节合计）。"""
 
     def _failed(self, stage: str) -> None:
         """计一次补记失败，并报给回调。"""
@@ -253,7 +258,10 @@ class RejectionAudit:
     async def prepare(
         self, tenant_id: str, session_id: str, resolutions: Mapping[str, Any]
     ) -> PendingRejections:
-        """送回之前（内核核销之前）：取出这次送回拒绝的待办。送回里没有拒绝就不读审计。
+        """送回之前（内核核销之前）：取出这次送回拒绝的、还没核销的待办。
+
+        送回里没有一项按内核口径算拒绝（表单答案这类不带 ``granted`` 的字典也算，由
+        ``watch`` 再按待办的种类排除）时不读审计。
 
         Args:
             tenant_id: 所属租户。
@@ -268,17 +276,12 @@ class RejectionAudit:
         if suspension is None:
             return nothing
         by_id = {str(item.get("request_id")): item for item in suspension.requests}
-        unknown = sorted(set(resolutions) - set(by_id))
-        if unknown:
-            # 内核只接受当前待办的子集，否则整次送回被拒、什么都不核销（重复送回已处理的
-            # 待办也在这里）：这次没有拒绝真正发生
-            logger.info("会话 %s 送回了不在当前待办里的 %s，不补过闸记录", session_id, unknown)
-            return nothing
         return PendingRejections(
             tenant_id=tenant_id,
             session_id=session_id,
             submission_id=suspension.submission_id,
-            requests=tuple(by_id[request_id] for request_id in rejected),
+            # 不在还没处理的待办里的（已经核销过的、不存在的）不补
+            requests=tuple(by_id[request_id] for request_id in rejected if request_id in by_id),
         )
 
     def calls(
@@ -308,15 +311,20 @@ class RejectionAudit:
                 calls.append(call)
         return calls
 
-    async def record(
+    def watch(
         self, pending: PendingRejections, describe: Callable[[str], ConnectorToolInfo | None]
-    ) -> int:
-        """提交成功之后：为被拒的连接器调用逐条写过闸记录，返回写成了几条。
+    ) -> ResolutionWatch | None:
+        """为被拒的连接器调用造一个等内核结论的登记，交给事件枢纽；没有要补的返回 None。"""
+        calls = self.calls(pending, describe)
+        return _RejectionWatch(self, tuple(calls)) if calls else None
 
-        某条写失败记 error 日志、计一次失败，不影响其余的，也不抛给送回的一方。
+    async def record(self, calls: Sequence[RejectedCall]) -> int:
+        """内核确认核销之后：逐条写过闸记录，返回写成了几条。
+
+        某条写失败记 error 日志、计一次失败，不影响其余的，也不往上抛。
         """
         written = 0
-        for call in self.calls(pending, describe):
+        for call in calls:
             try:
                 await self._audit.gate(
                     call.tenant_id, "connector_call", call.gate_data(), session_id=call.session_id
@@ -329,6 +337,52 @@ class RejectionAudit:
                 continue
             written += 1
         return written
+
+    def unconfirmed(self, calls: Sequence[RejectedCall]) -> None:
+        """等不到内核的结论：这些拒绝补不上记录，记 error 日志，每条计一次失败。"""
+        if not calls:
+            return
+        for _ in calls:
+            self._failed("unconfirmed")
+        logger.error(
+            "会话 %s 等不到内核对这次送回的结论，被拒的调用 %s 没有补过闸记录",
+            calls[0].session_id,
+            [call.call_id for call in calls],
+        )
+
+
+class _RejectionWatch:
+    """一次送回里被拒的连接器调用，等内核的结论再补过闸记录（``ResolutionWatch``）。"""
+
+    def __init__(self, owner: RejectionAudit, calls: tuple[RejectedCall, ...]) -> None:
+        """绑定补记方与要补的调用（至少一条）。"""
+        self._owner = owner
+        self._calls = calls
+
+    async def resolved(self, request_ids: frozenset[str]) -> None:
+        """内核核销了这些待办：其中被拒的连接器调用补记录；别的这一次没有核销，不补。"""
+        confirmed = [call for call in self._calls if call.request_id in request_ids]
+        skipped = [call.call_id for call in self._calls if call.request_id not in request_ids]
+        if skipped:
+            logger.info(
+                "会话 %s 的拒绝 %s 这一次没有被核销（之前已经核销过），不再补过闸记录",
+                self._calls[0].session_id,
+                skipped,
+            )
+        await self._owner.record(confirmed)
+
+    def refused(self, reason: str) -> None:
+        """内核整次拒绝了这次送回：什么都没核销，不补。"""
+        logger.info(
+            "会话 %s 的送回被内核拒绝（%s），被拒的调用 %s 不补过闸记录",
+            self._calls[0].session_id,
+            reason,
+            [call.call_id for call in self._calls],
+        )
+
+    def abandoned(self) -> None:
+        """等不到结论了。"""
+        self._owner.unconfirmed(self._calls)
 
 
 __all__ = [

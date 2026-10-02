@@ -3,6 +3,9 @@
 为什么不按 submission 各自订阅内核：订阅要等拿到 submission 标识之后才能建立，而内核在
 提交之后随时可能开始发事件，先发出的那几条就丢了。这里在引擎创建时就建立全量订阅，
 提交返回后**同步**登记该轮对话的接收队列——提交与登记之间没有让出点，内核来不及发事件。
+
+送回审批的结论（核销了哪些待办、或被内核整次拒绝）也在这里对到在等它的那次送回上
+（``resolutions`` 模块）：先交给等待方处理，再把事件推给调用方。
 """
 
 from __future__ import annotations
@@ -16,6 +19,7 @@ from typing import TYPE_CHECKING, Any
 from xuanpu_server.audit import SENSITIVE_KINDS, STREAMING_KINDS, sanitize
 from xuanpu_server.controlplane.models import AuditRecord
 from xuanpu_server.quota import usage_day
+from xuanpu_server.runtime.resolutions import RESOLUTION_KINDS, ResolutionLedger
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable
@@ -25,6 +29,7 @@ if TYPE_CHECKING:
     from xuanpu_server.audit import AuditLog
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.metrics import PlatformMetrics
+    from xuanpu_server.runtime.resolutions import ResolutionWatch
 
 logger = logging.getLogger(__name__)
 
@@ -192,6 +197,7 @@ class EngineEventHub:
         # 引擎每次被创建是一条新的事件流，序号从头计
         self._stream_id = "st_" + secrets.token_hex(8)
         self._streams: dict[str, TurnStream] = {}
+        self._resolutions = ResolutionLedger(session_id)
         # 每轮对话的流式文本：增量本身不进审计，结束时落一条拼好的全文供回放
         self._texts: dict[str, list[str]] = {}
         self._buffer: list[AuditRecord] = []
@@ -214,6 +220,11 @@ class EngineEventHub:
         self._streams[submission_id] = stream
         return stream
 
+    def watch_resolution(self, submission_id: str, watch: ResolutionWatch) -> None:
+        """登记一次送回审批在等内核的结论。与 ``open_stream`` 一样，必须在提交返回之后、
+        任何让出点之前调用。"""
+        self._resolutions.watch(submission_id, watch)
+
     async def _consume(
         self,
         source: AsyncIterator[taifeng.DeliveredEvent],
@@ -229,6 +240,7 @@ class EngineEventHub:
             async for envelope in source:
                 await self._handle(envelope)
         finally:
+            self._resolutions.close()
             for stream in self._streams.values():
                 stream.close()
             self._streams.clear()
@@ -249,13 +261,16 @@ class EngineEventHub:
             )
         self._expected_delivery = envelope.delivery_seq + 1
 
+        kind = event.msg.kind
+        if kind in RESOLUTION_KINDS:
+            # 先让等这次送回结论的一方做完（例如补过闸记录），调用方看到结论时审计已经齐了
+            await self._resolutions.settle(event)
         stream = self._streams.get(event.submission_id)
         if stream is not None:
             stream.push(event)
             if is_terminal(event) or stream.overflowed:
                 self._streams.pop(event.submission_id, None)
 
-        kind = event.msg.kind
         if kind == "assistant_text":
             self._texts.setdefault(event.submission_id, []).append(
                 str(event.msg.data.get("delta", ""))
@@ -271,6 +286,7 @@ class EngineEventHub:
         """一轮（或送回审批的那一次）结束：移出在途、落回复全文、入账，并写出审计。"""
         if self._on_turn_end is not None:
             self._on_turn_end(event.submission_id)
+        self._resolutions.ended(event.submission_id)
         self._metrics.turn_ended(turn_outcome(event))
         text = "".join(self._texts.pop(event.submission_id, []))
         # 送回审批被拒或只核销了一部分：没有采样，不落回复全文、不计一轮

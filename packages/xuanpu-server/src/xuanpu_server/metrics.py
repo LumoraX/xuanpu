@@ -47,8 +47,9 @@ GATE_DECISIONS: tuple[str, ...] = ("allowed", "denied", "rejected")
 CONNECTOR_TRANSPORTS: tuple[str, ...] = get_args(Transport)
 """``xuanpu_connector_calls_total`` 的 ``transport``：业务包规范里的三种传输。"""
 
-BACKFILL_STAGES: tuple[str, ...] = ("read", "incomplete", "write")
-"""``xuanpu_gate_backfill_failures_total`` 的 ``stage``：读不到待办、待办缺调用信息、写不进记录。"""
+BACKFILL_STAGES: tuple[str, ...] = ("read", "incomplete", "write", "unconfirmed")
+"""``xuanpu_gate_backfill_failures_total`` 的 ``stage``：读不到待办、待办缺调用信息、写不进记录、
+等不到内核对那次送回的结论。"""
 
 
 class PlatformMetrics:

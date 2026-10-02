@@ -152,7 +152,7 @@ async def test_known_label_values_start_at_zero(scrape: Callable[[], Awaitable[s
         for decision in ("allowed", "denied", "rejected"):
             labels = {"transport": transport, "decision": decision}
             assert value(text, "xuanpu_connector_calls_total", **labels) == 0
-    for stage in ("read", "incomplete", "write"):
+    for stage in ("read", "incomplete", "write", "unconfirmed"):
         assert value(text, "xuanpu_gate_backfill_failures_total", stage=stage) == 0
     assert value(text, "xuanpu_audit_write_failures_total") == 0
     assert value(text, "xuanpu_usage_estimated_total") == 0

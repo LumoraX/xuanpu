@@ -69,7 +69,7 @@
 | --- | --- |
 | `connector`、`transport`、`tool` | 哪个连接器的哪个工具，走的什么传输 |
 | `effect` | 副作用分类：`read` / `write` / `external` |
-| `decision` | `allowed`：放行并已调用。`denied` 留给策略直接拒绝的情况。`rejected`：人工拒绝（送回审批时 `granted` 不为真），调用没有发出——这条由平台在送回审批结果时补记，只对连接器工具补（脚本、命令被拒绝没有过闸记录） |
+| `decision` | `allowed`：放行并已调用。`denied` 留给策略直接拒绝的情况。`rejected`：人工拒绝（送回审批时 `granted` 不为真），调用没有发出——这条由平台在内核确认核销了这次拒绝之后补记，只对连接器工具补（脚本、命令被拒绝没有过闸记录） |
 | `is_error`、`detail` | 调用是否出错；出错时的简述（超时是 `timeout`）。人工拒绝的 `detail` 是 `rejected_by_user`，`is_error` 为 `false` |
 | `duration_ms` | 耗时；人工拒绝的为 0 |
 | `arguments_digest` | 调用参数的 SHA-256 摘要。人工拒绝的按待办里记下的参数算（那份参数经过脱敏与截断） |

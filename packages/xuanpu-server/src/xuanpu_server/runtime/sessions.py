@@ -60,6 +60,7 @@ if TYPE_CHECKING:
     from xuanpu_server.packages import PackageRegistry
     from xuanpu_server.quota import QuotaGuard
     from xuanpu_server.runtime.assembler import RuntimeAssembler, TenantRuntime
+    from xuanpu_server.runtime.resolutions import ResolutionWatch
     from xuanpu_server.tenancy import Principal
 
 logger = logging.getLogger(__name__)
@@ -365,11 +366,15 @@ class SessionManager:
         if limit is not None and self.in_flight_turns(tenant_id) >= limit:
             raise QuotaExceededError(f"进行中的对话数已达上限 {limit}，请稍后再试")
 
-    async def _submit(self, live: _LiveSession, op: Any) -> Turn:
-        """提交一个操作并登记它的事件流。"""
+    async def _submit(
+        self, live: _LiveSession, op: Any, *, watch: ResolutionWatch | None = None
+    ) -> Turn:
+        """提交一个操作并登记它的事件流（送回审批时连同等内核结论的一方）。"""
         submission_id = await live.engine.submit(op)
         # 提交与登记之间不能有让出点，否则内核先发出的事件会漏掉
         stream = live.hub.open_stream(submission_id)
+        if watch is not None:
+            live.hub.watch_resolution(submission_id, watch)
         live.in_flight.add(submission_id)
         live.last_used = self._now()
         self._submissions.register(submission_id, live.record.session_id)
@@ -407,15 +412,17 @@ class SessionManager:
         """
         if not resolutions:
             raise InvalidRequestError("resolutions 不能为空")
-        tenant_id = principal.require_tenant()
-        await self._admit_turn(tenant_id)
+        await self._admit_turn(principal.require_tenant())
+        record = await self.get(principal, session_id)
+        _require_active(record)
         # 打开引擎之前就读：取到会话之后、提交之前不能有让出点，否则可能被当作空闲释放
-        rejected = await self._rejections.prepare(tenant_id, session_id, resolutions)
-        live = await self._active(principal, session_id)
+        rejected = await self._rejections.prepare(record.tenant_id, session_id, resolutions)
+        live = await self._open(record)
         turn = await self._submit(
-            live, taifeng.Resume(thread_id=live.engine.thread_id, resolutions=resolutions)
+            live,
+            taifeng.Resume(thread_id=live.engine.thread_id, resolutions=resolutions),
+            watch=self._rejections.watch(rejected, live.runtime.connectors.describe),
         )
-        await self._rejections.record(rejected, live.runtime.connectors.describe)
         await self._audit.control(
             principal,
             live.record.tenant_id,
