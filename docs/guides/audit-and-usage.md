@@ -32,7 +32,7 @@
 | `source` | 来源，三种之一：`control`、`gate`、`engine` |
 | `kind` | 事件类型 |
 | `at` | 发生时间，Unix 秒 |
-| `actor` | 谁触发的。人或系统的操作是 `key:<API key 标识>`（根凭据是 `key:root`）；模型驱动的是 `engine` |
+| `actor` | 谁触发的。用 API key 的是 `key:<API key 标识>`（根凭据是 `key:root`）；浏览器登录的员工是 `user:<员工标识>`；代员工调用是 `key:<API key 标识>/user:<员工标识>`（见[认证](../architecture/http-api.md#认证)）；模型驱动的是 `engine` |
 | `session_id` | 关联的会话；与会话无关的操作为空 |
 | `stream`、`seq` | 只有内核事件有：事件流的标识与流内序号 |
 | `data` | 事件内容 |
@@ -50,7 +50,7 @@
 | `tenant_created` | 新建租户 | `name` |
 | `tenant_status_changed` | 停用或启用租户 | `status` |
 | `tenant_quota_changed` | 修改租户配额（平台管理员） | `before`、`after`：改之前与改之后的 `max_active_sessions`、`max_daily_tokens`、`max_concurrent_turns`（`null` 是不限） |
-| `api_key_issued` | 签发 API key | `key_id`、`name`、`role` |
+| `api_key_issued` | 签发 API key | `key_id`、`name`、`role`、`act_as_users`（是否授予代员工调用的能力） |
 | `api_key_revoked` | 吊销 API key | `key_id` |
 | `secret_written` | 写入或覆盖密钥 | `name`（只有名字） |
 | `secret_deleted` | 删除密钥 | `name` |

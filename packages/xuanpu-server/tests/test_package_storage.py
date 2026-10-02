@@ -29,6 +29,7 @@ def _other_instance(world: Any, data_dir: Path) -> Platform:
     """另一个实例：数据目录不同，控制面、密钥保管库与对象存储和 ``world`` 共用。"""
     return Platform(
         store=world.platform.store,
+        identity_store=world.platform.identity.store,
         vault=world.platform.vault,
         models=world.models,
         sandboxes=LocalSandboxProvider(),

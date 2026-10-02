@@ -179,10 +179,13 @@ def _missing(names: set[str], document: str) -> list[str]:
 
 
 def test_every_route_is_documented() -> None:
-    """HTTP 接口文档覆盖全部路由。"""
-    source = (SERVER_SRC / "api" / "app.py").read_text(encoding="utf-8")
-    routes = re.findall(r'@app\.(get|post|put|delete)\("([^"]+)"', source)
-    assert len(routes) >= 25
+    """HTTP 接口文档覆盖全部路由：``api/app.py`` 里的，以及挂上去的各个路由模块里的。"""
+    source = "\n".join(
+        path.read_text(encoding="utf-8") for path in sorted((SERVER_SRC / "api").glob("*.py"))
+    )
+    routes = re.findall(r'@(?:app|router)\.(get|post|put|delete)\("([^"]+)"', source)
+    assert len(routes) >= 26
+    assert ("get", "/v1/me") in routes
     document = re.sub(r"\{[a-z_]+\}", "{}", _read("docs/architecture/http-api.md"))
     missing = [
         f"{method.upper()} {path}"

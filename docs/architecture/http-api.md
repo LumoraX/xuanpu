@@ -1,6 +1,6 @@
 # HTTP 接口（活文档）
 
-> 第一版接口，加上 P0 新增的停止生成、修改配额与指标端点。实现在 `packages/xuanpu-server/src/xuanpu_server/api/`。
+> 第一版接口，加上 P0 新增的停止生成、修改配额与指标端点，以及 P1 的调用者身份（浏览器登录 cookie、系统代员工调用、`GET /v1/me`）。实现在 `packages/xuanpu-server/src/xuanpu_server/api/`。
 > 用法与注意事项见[应用接入](../guides/integrating.md)；本文是逐个接口的参考。
 
 ## 约定
@@ -11,16 +11,67 @@
 
 ## 认证
 
-每个请求带 `Authorization: Bearer <凭据>`。凭据有两种：
+平台按下面的顺序认出调用者：
+
+1. 请求带 `Authorization: Bearer <凭据>`：按凭据认证（下表前两种）。另带 `X-Xuanpu-Act-As: <员工标识>` 的，是[系统代员工调用](#系统代员工调用)。
+2. 没有 `Authorization`、带登录 cookie `xuanpu_session`：[浏览器登录](#浏览器登录)的员工。带了 `Authorization` 就只按它认证，它无效时也不再看 cookie。
+3. 两样都没有：`401`。
 
 | 凭据 | 来源 | 身份 |
 | --- | --- | --- |
 | 根凭据 `xproot_…` | `xuanpu keygen root` 生成，摘要写进配置 | 平台管理员，不属于任何租户 |
 | API key `xp_<标识>_<密钥>` | 签发时返回一次，平台只存摘要 | 租户管理员（`tenant_admin`）或租户成员（`tenant_member`） |
+| 登录 cookie `xuanpu_session` | 员工登录后平台写入浏览器（飞书登录的接口随后提供），平台只存令牌的摘要 | 员工，角色是他在平台里的角色（`tenant_admin` 或 `tenant_member`） |
 
-下文「需要的身份」一栏里，「租户成员」指任何一把本租户的 API key（管理员也算）。平台管理员不属于任何租户，不能调用租户内的接口。
+下文「需要的身份」一栏里，「租户成员」指本租户的任何调用者：任何一把 API key、浏览器登录的员工、代员工调用（管理员也算）；「租户管理员」指生效角色为 `tenant_admin` 的调用者。平台管理员不属于任何租户，不能调用租户内的接口。
 
-各种认证失败（格式不对、不存在、已吊销、租户被停用）对外是同一个 `401`，不透露凭据或租户是否存在。
+各种认证失败（格式不对、不存在、已吊销、租户被停用；登录会话不存在或过期、员工被停用）对外是同一个 `401`（`{"error": {"code": "unauthenticated", "message": "凭据无效"}}`），不透露凭据、员工或租户是否存在。
+
+调用者在审计记录里的 `actor`：
+
+| 调用者 | `actor` | 审计的 `user_id` |
+| --- | --- | --- |
+| 根凭据 | `key:root` | 空 |
+| API key | `key:<key_id>` | 空 |
+| 浏览器登录 | `user:<员工标识>` | 这名员工 |
+| 系统代员工 | `key:<key_id>/user:<员工标识>` | 这名员工 |
+
+### 浏览器登录
+
+- cookie `xuanpu_session` 的值是 32 字节随机数；`HttpOnly`、`SameSite=Lax`、`Path=/`，默认 `Secure`（本地用 HTTP 开发时可以用配置 `identity.cookie_secure` 关掉）。平台只存它的 SHA-256 摘要。
+- **每个请求都查库**：登录会话存在且没过期、员工为启用、租户为启用，三者任一不满足就是 `401`，响应同时清掉 cookie（`Set-Cookie: xuanpu_session=""; …; Max-Age=0`）。不做缓存，员工或租户一停用，下一个请求就被拒。
+- 登录会话有效期从登录时刻算起，不随使用延长。
+- 用 cookie 时不能带 `X-Xuanpu-Act-As`（`403 permission_denied`）：代员工调用只给 API key。
+
+**防跨站请求伪造**：用 cookie 认证的写请求（`GET`、`HEAD`、`OPTIONS` 以外的方法）必须同时满足：
+
+| 要求 | 不满足时 |
+| --- | --- |
+| 带 `X-Requested-By: xuanpu` 头 | `403 csrf_rejected` |
+| 请求带了 `Origin` 头的，它必须等于配置 `public_url` 的源（如 `https://xuanpu.example.com`）。没配置 `public_url` 时没有可比的源，不查这一条，只靠上一条；启用飞书登录必须配置 `public_url` | `403 csrf_rejected` |
+
+平台不开放带凭据的跨域（不发 CORS 头），跨站页面的脚本发不出带自定义头的请求，表单与页面跳转又带不了自定义头，所以第一条本身就挡住了跨站请求伪造，`Origin` 是第二道防线。用 API key 的请求不受这些限制（浏览器不会自动带上 `Authorization`）。
+
+### 系统代员工调用
+
+后台系统（如工作流）以某名员工的身份调平台，请求带 API key 与 `X-Xuanpu-Act-As: <员工标识>`：
+
+```
+GET /v1/me
+Authorization: Bearer xp_7a1c03d2e9f4_…
+X-Xuanpu-Act-As: usr_5f0c1b2e7d9a4c3b8e6f1a20
+```
+
+- 只有签发时带 `"act_as_users": true` 的 API key 能这么用（见 [API key](#api-key)）。
+- **生效角色取 key 的角色与员工角色中较低的那个**：管理员的 key 代普通成员调用，只有成员的权限；成员的 key 代管理员调用，也只有成员的权限。
+- 审计里 `actor` 同时写出 key 和员工，`user_id` 是这名员工。
+
+| 情况 | 响应 |
+| --- | --- |
+| key 无效 | `401 unauthenticated`（先认 key，再看代调用） |
+| key 签发时没有授予这项能力 | `403 permission_denied` |
+| 员工不存在、属于别的租户、已停用（同一句提示） | `403 permission_denied` |
+| 用根凭据代员工调用 | `403 permission_denied` |
 
 ## 错误
 
@@ -34,7 +85,8 @@
 | 400 | `package_invalid` | 业务包不符合规范 | `problems`：逐条的问题 |
 | 400 | `secret_missing` | 业务包引用的密钥尚未配置 | |
 | 401 | `unauthenticated` | 没有凭据或凭据无效 | |
-| 403 | `permission_denied` | 凭据有效但无权操作 | |
+| 403 | `permission_denied` | 凭据有效但无权操作（包括不允许的[代员工调用](#系统代员工调用)） | |
+| 403 | `csrf_rejected` | 用登录 cookie 的写请求缺 `X-Requested-By: xuanpu` 头，或 `Origin` 与 `public_url` 不符（见[浏览器登录](#浏览器登录)） | |
 | 404 | `not_found` | 资源不存在，或属于别的租户 | |
 | 409 | `conflict` | 与现有状态冲突（版本已发布、会话已关闭等） | |
 | 409 | `session_busy` | 会话正由另一个实例持有 | `owner`：持有者的实例标识 |
@@ -50,6 +102,7 @@
 | 方法与路径 | 需要的身份 | 说明 |
 | --- | --- | --- |
 | `GET /healthz` | 无 | 存活探测 |
+| `GET /v1/me` | 任意 | 当前调用者 |
 | `POST /v1/admin/tenants` | 平台管理员 | 新建租户 |
 | `GET /v1/admin/tenants` | 平台管理员 | 列出租户 |
 | `PUT /v1/admin/tenants/{id}/status` | 平台管理员 | 启用或停用租户 |
@@ -78,6 +131,26 @@
 GET /healthz
 → {"status": "ok", "version": "2026.9.30.1", "instance": "inst_9c7a5cea5506bdae0d89e8da"}
 ```
+
+## 当前调用者
+
+```
+GET /v1/me
+
+→ {"actor": "user:usr_5f0c1b2e7d9a4c3b8e6f1a20", "role": "tenant_member", "tenant_id": "acme",
+   "key_id": null, "user_id": "usr_5f0c1b2e7d9a4c3b8e6f1a20", "display_name": "张三"}
+```
+
+任何调用者都能调，四种调用者同一个形状，用不上的字段为 `null`：
+
+| 调用者 | `role` | `tenant_id` | `key_id` | `user_id`、`display_name` |
+| --- | --- | --- | --- | --- |
+| 浏览器登录 | 员工的角色 | 员工的租户 | `null` | 这名员工 |
+| API key | key 的角色 | key 的租户 | key 的标识 | `null` |
+| 系统代员工 | 生效角色（key 与员工中较低的） | key 的租户 | key 的标识 | 被代的员工 |
+| 根凭据 | `platform_admin` | `null` | `root` | `null` |
+
+`actor` 与审计记录里的写法相同（见[认证](#认证)）。
 
 ## 租户
 
@@ -147,10 +220,13 @@ POST /v1/keys                           # 租户管理员，给本租户签发
 
 → 201
 {"key": "xp_be139be29730_…", "key_id": "be139be29730", "tenant_id": "acme",
- "name": "backend", "role": "tenant_member", "created_at": 1790753313.91, "revoked_at": null}
+ "name": "backend", "role": "tenant_member", "act_as_users": false,
+ "created_at": 1790753313.91, "revoked_at": null}
 ```
 
 `key` 只在这次响应里出现。`role` 只能是 `tenant_admin` 或 `tenant_member`。
+
+`act_as_users` 省略时为 `false`；为 `true` 时这把 key 能[代员工调用](#系统代员工调用)。签发本身只有平台管理员与租户管理员能做，所以这项能力也只有他们能授予：成员（包括被代调用的成员）签发是 `403 permission_denied`。审计 `api_key_issued` 里记下 `act_as_users`。
 
 `GET /v1/keys` 返回 `{"keys": [ … ]}`（不含 `key`）。`DELETE /v1/keys/{key_id}` 吊销，返回 `{"revoked": true}`；已吊销或不存在是 `404`。
 

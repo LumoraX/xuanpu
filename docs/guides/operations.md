@@ -69,6 +69,8 @@ uv run xuanpu --help
 | `limits` | 否 | 见下 | 每个会话的上限与回收时间 |
 | `audit.capture_requests` | 否 | `false` | 是否把每次发给模型的完整请求写进审计。内容敏感、体量大，排查问题时才开 |
 | `metrics.token_hash` | 否 | 不开 | 指标抓取令牌的摘要，`xuanpu keygen metrics` 生成。给了才开 `GET /metrics`（见[监控与排查](#监控与排查)） |
+| `public_url` | 否（启用飞书登录时必填） | 无 | 平台对外的地址，即浏览器与飞书访问平台用的那个，见下 |
+| `identity` | 否 | 见下 | 员工身份（飞书登录）的平台级设置 |
 | `lease_seconds` | 否 | `60` | 会话租约时长，最小 5。实例崩溃后，别的实例最多等这么久才能接手它的会话 |
 | `shutdown_drain_seconds` | 否 | `30` | 停机时给在途对话多少秒跑完；HTTP 服务器等已打开的事件流发完的时限是它再加 5 秒（见[停机与滚动升级](#停机与滚动升级)） |
 | `instance_id` | 否 | 随机 | 本实例的标识，写进会话租约与 `/healthz`。多实例时建议显式设置成稳定且互不相同的值，方便按它做路由和排查 |
@@ -165,6 +167,23 @@ uv run xuanpu --help
 | `runtime_idle_seconds` | `900` | 运行时（一个租户的一个业务包版本）多久没有会话使用就回收：关掉引擎池、连接器（进程与远端连接）、连接器沙盒、脚本沙盒 |
 
 后两项是内存与承载量之间的旋钮：调小，常驻内存少，但续接更频繁、每次续接都要重新加载会话；调大则相反。
+
+### `public_url` 与 `identity`
+
+`public_url` 只写源——协议、主机与端口，如 `https://xuanpu.example.com`，不带路径、查询串或用户名密码。平台的接口与控制台都挂在根路径下（`/v1/…`、`/console/`），飞书的回调地址就是 `<public_url>/v1/auth/feishu/callback`；平台不支持挂在反向代理的子路径下。加载时规整成浏览器 `Origin` 头的写法：协议与主机名转小写，去掉默认端口（http 的 80、https 的 443）与末尾的 `/`；主机名要写 ASCII，国际化域名写成 punycode。
+
+它还用来校验员工浏览器发来的写请求确实来自平台自己的页面（`Origin` 必须等于它，见[接口文档的浏览器登录一节](../architecture/http-api.md#浏览器登录)）。没配置时不查 `Origin`，只要求写请求带 `X-Requested-By: xuanpu` 头；启用飞书登录必须配置。
+
+| 键 | 默认 | 说明 |
+| --- | --- | --- |
+| `identity.session_ttl_seconds` | `604800`（7 天） | 登录会话的默认有效期，最小 60。从登录时刻算起，不随使用延长；租户的飞书配置可以覆盖 |
+| `identity.cookie_secure` | `true` | 登录 cookie 是否只走 HTTPS。本地用 HTTP 开发时设为 `false`，否则浏览器不会带上它 |
+| `identity.reconcile_interval_seconds` | `86400` | 按飞书通讯录对账的周期，最小 60 |
+| `identity.default_tenant` | 无 | 登录链接省略 `tenant` 时用的租户，只有一家企业的部署用得上 |
+| `identity.login_landing_path` | `/console/` | 登录完成或失败后的默认落地页。必须是站内路径：以 `/` 开头，不以 `//` 或 `/\` 开头，不含反斜杠与空白 |
+| `identity.feishu_open_base`、`identity.feishu_accounts_base` | `https://open.feishu.cn`、`https://accounts.feishu.cn` | 飞书开放接口与授权页的基地址，与 `public_url` 一样只写源。接 Lark 国际版，或测试时指向模拟服务端才需要改 |
+
+飞书登录、对账的流程随飞书登录一起提供；在那之前，这一段只有 `public_url` 与 `cookie_secure` 影响认证。
 
 ## 初次部署
 

@@ -11,6 +11,7 @@ import binascii
 import re
 from pathlib import Path  # noqa: TC003 —— pydantic 在运行时解析字段类型
 from typing import TYPE_CHECKING, Any, Literal
+from urllib.parse import urlsplit
 
 import yaml
 from pydantic import (
@@ -22,11 +23,17 @@ from pydantic import (
     model_validator,
 )
 
+from xuanpu_server.tenancy import validate_tenant_id
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from pydantic import ValidationInfo
+
 _VARIABLE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 _SHA256_HEX = r"^[0-9a-f]{64}$"
+# 站内路径：以 / 开头，第二个字符不是 / 或 \（否则浏览器会当成别的站点），全程不含 \ 与空白
+_SITE_PATH = r"^/([^/\\\s][^\\\s]*)?$"
 
 
 class ConfigError(ValueError):
@@ -269,8 +276,84 @@ class MetricsConfig(_Section):
     """抓取令牌的摘要，``xuanpu keygen metrics`` 生成。不给就不开指标端点（404）。"""
 
 
+def normalize_origin(value: str, *, name: str) -> str:
+    """把只写了源的地址规整成浏览器 ``Origin`` 头的写法：``scheme://host[:port]``。
+
+    协议与主机名转小写、去掉默认端口（http 的 80、https 的 443）与末尾的 ``/``。只收
+    ``http://`` 或 ``https://``，不能带用户名密码、路径、查询串或片段；主机名要写 ASCII（国际化
+    域名写成 punycode，与浏览器发出的一致）。
+
+    Raises:
+        ValueError: 不合要求；``name`` 用在提示里。
+    """
+    parts = urlsplit(value)
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        raise ValueError(f"{name} 必须是 http:// 或 https:// 开头的地址，得到 {value!r}")
+    if parts.username is not None or parts.password is not None:
+        raise ValueError(f"{name} 不能带用户名或密码")
+    if parts.path not in ("", "/") or parts.query or parts.fragment:
+        raise ValueError(
+            f"{name} 只写协议、主机与端口（如 https://xuanpu.example.com），不带路径、查询串或"
+            f"片段，得到 {value!r}"
+        )
+    host = parts.hostname
+    if not host.isascii():
+        raise ValueError(f"{name} 的主机名要写 ASCII（国际化域名写成 punycode），得到 {value!r}")
+    port = parts.port  # 端口不是合法数字时这里报 ValueError
+    if ":" in host:
+        host = f"[{host}]"
+    default_port = 80 if parts.scheme == "http" else 443
+    suffix = f":{port}" if port is not None and port != default_port else ""
+    return f"{parts.scheme}://{host}{suffix}"
+
+
+class IdentityConfig(_Section):
+    """员工身份（飞书登录）的平台级设置。租户自己的飞书应用经接口配置，不在这里。
+
+    Attributes:
+        session_ttl_seconds: 登录会话的默认有效期（秒）；租户的飞书配置可以覆盖。
+        cookie_secure: 登录 cookie 是否只走 HTTPS；本地用 HTTP 开发时设为 false。
+        reconcile_interval_seconds: 按飞书通讯录对账的周期（秒）。
+        default_tenant: 登录链接省略 ``tenant`` 时用的租户。
+        login_landing_path: 登录完成或失败后的默认落地页，站内路径：以 ``/`` 开头、不以
+            ``//`` 或 ``/\\`` 开头，不含反斜杠与空白（否则可能被浏览器当成别的站点）。
+        feishu_open_base: 飞书开放接口的基地址；测试时指向模拟服务端，也可用于接 Lark 国际版。
+            与 ``public_url`` 一样只写源。
+        feishu_accounts_base: 飞书授权页的基地址，同上。
+    """
+
+    session_ttl_seconds: int = Field(default=604800, ge=60)
+    cookie_secure: bool = True
+    reconcile_interval_seconds: float = Field(default=86400.0, ge=60)
+    default_tenant: str | None = None
+    login_landing_path: str = Field(default="/console/", pattern=_SITE_PATH)
+    feishu_open_base: str = "https://open.feishu.cn"
+    feishu_accounts_base: str = "https://accounts.feishu.cn"
+
+    @field_validator("default_tenant")
+    @classmethod
+    def _tenant_id_shape(cls, value: str | None) -> str | None:
+        """租户标识的字符集与平台其余各处一致。"""
+        return validate_tenant_id(value) if value is not None else None
+
+    @field_validator("feishu_open_base", "feishu_accounts_base")
+    @classmethod
+    def _origin_only(cls, value: str, info: ValidationInfo) -> str:
+        """飞书的两个基地址只写源，规整后保存（拼接口路径时不会多出或少了 ``/``）。"""
+        return normalize_origin(value, name=str(info.field_name))
+
+
 class ServerConfig(_Section):
-    """平台服务的完整配置。"""
+    """平台服务的完整配置。
+
+    ``public_url`` 是平台对外的地址（浏览器与飞书访问平台用的那个），只写源：
+    ``https://xuanpu.example.com`` 或带端口的 ``http://127.0.0.1:8420``，不带路径——平台的
+    接口与控制台都挂在根路径下（``/v1/…``、``/console/``），飞书的回调地址就是
+    ``<public_url>/v1/auth/feishu/callback``。加载时规整为浏览器 ``Origin`` 头的写法（见
+    ``normalize_origin``），用来校验 cookie 认证的写请求来自平台自己的页面。没有配置时，cookie
+    认证的写请求只查 ``X-Requested-By`` 头、不查 ``Origin``（见 ``identity.cookies``）；启用
+    飞书登录时必须配置。
+    """
 
     data_dir: Path
     root_key_hash: str = Field(pattern=_SHA256_HEX)
@@ -285,9 +368,17 @@ class ServerConfig(_Section):
     limits: LimitsConfig = LimitsConfig()
     audit: AuditConfig = AuditConfig()
     metrics: MetricsConfig = MetricsConfig()
+    public_url: str | None = None
+    identity: IdentityConfig = IdentityConfig()
     lease_seconds: float = Field(default=60.0, ge=5)
     shutdown_drain_seconds: float = Field(default=30.0, ge=0)
     instance_id: str | None = None
+
+    @field_validator("public_url")
+    @classmethod
+    def _public_origin(cls, value: str | None) -> str | None:
+        """对外地址只写源，规整后保存（规则见类说明）。"""
+        return normalize_origin(value, name="public_url") if value is not None else None
 
     @model_validator(mode="after")
     def _check(self) -> ServerConfig:
@@ -366,6 +457,7 @@ __all__ = [
     "AuditConfig",
     "ConfigError",
     "ControlPlaneConfig",
+    "IdentityConfig",
     "LimitsConfig",
     "ListenConfig",
     "LocalObjectStoreConfig",
@@ -380,5 +472,6 @@ __all__ = [
     "TierConfig",
     "expand",
     "load_config",
+    "normalize_origin",
     "parse_config",
 ]

@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING
 
 from xuanpu_server.config import ConfigError
 from xuanpu_server.controlplane import InMemoryControlPlane
+from xuanpu_server.identity import InMemoryIdentityStore
+from xuanpu_server.identity.service import IdentitySettings
 from xuanpu_server.objectstore import LocalObjectStore, S3ObjectStore, S3Settings
 from xuanpu_server.platform import Platform
 from xuanpu_server.runtime import (
@@ -31,6 +33,7 @@ if TYPE_CHECKING:
 
     from xuanpu_server.config import PostgresConfig, ServerConfig
     from xuanpu_server.controlplane.store import ControlPlaneStore
+    from xuanpu_server.identity import IdentityStore
     from xuanpu_server.objectstore import ObjectStore
     from xuanpu_server.runtime import SandboxProvider, StateBackendFactory
 
@@ -120,22 +123,43 @@ async def _open_pool(stack: AsyncExitStack, config: PostgresConfig) -> asyncpg.P
     return pool
 
 
-async def _control_plane(stack: AsyncExitStack, config: ServerConfig) -> ControlPlaneStore:
-    """控制面存储。表结构落后时在这里就报错，而不是等到第一个请求。"""
+async def _stores(
+    stack: AsyncExitStack, config: ServerConfig
+) -> tuple[ControlPlaneStore, IdentityStore]:
+    """控制面存储与身份存储，两者同一后端。表结构落后时在这里就报错，而不是等到第一个请求。
+
+    ``memory``：身份存储以内存控制面为准判断租户是否存在。``postgres``：身份存储与控制面共用
+    同一个连接池与命名空间，表由控制面的迁移建出（``0004_identity``）。
+    """
     if config.control_plane.backend == "memory":
-        return InMemoryControlPlane()
+        control = InMemoryControlPlane()
+        return control, InMemoryIdentityStore(control)
     from taifeng_stores import SqlNamespace
 
     from xuanpu_server.controlplane.postgres import PostgresControlPlane
+    from xuanpu_server.identity.postgres import PostgresIdentityStore
 
     assert config.control_plane.postgres is not None
     pool = await _open_pool(stack, config.control_plane.postgres)
-    store = PostgresControlPlane(
-        pool,
-        namespace=SqlNamespace(schema=config.control_plane.postgres.schema_name, prefix="xp_"),
-    )
+    namespace = SqlNamespace(schema=config.control_plane.postgres.schema_name, prefix="xp_")
+    store = PostgresControlPlane(pool, namespace=namespace)
     await store.check_schema()
-    return store
+    return store, PostgresIdentityStore(pool, namespace=namespace)
+
+
+def _identity_settings(config: ServerConfig) -> IdentitySettings:
+    """身份域的平台级设置：``public_url``（加载时已规整为源）与 ``identity`` 段。"""
+    section = config.identity
+    return IdentitySettings(
+        public_url=config.public_url,
+        session_ttl_seconds=section.session_ttl_seconds,
+        cookie_secure=section.cookie_secure,
+        reconcile_interval_seconds=section.reconcile_interval_seconds,
+        default_tenant=section.default_tenant,
+        login_landing_path=section.login_landing_path,
+        feishu_open_base=section.feishu_open_base,
+        feishu_accounts_base=section.feishu_accounts_base,
+    )
 
 
 async def _states(stack: AsyncExitStack, config: ServerConfig) -> StateBackendFactory:
@@ -224,7 +248,7 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
         await asyncio.to_thread(config.data_dir.mkdir, parents=True, exist_ok=True)
         # 沙盒配置先查：配错了在连库之前就报出来
         sandboxes = await asyncio.to_thread(_sandboxes, config)
-        store = await _control_plane(stack, config)
+        store, identity_store = await _stores(stack, config)
         vault = EncryptedVault(
             store, keys=config.decoded_master_keys(), primary=config.primary_master_key
         )
@@ -239,6 +263,8 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
         )
         platform = Platform(
             store=store,
+            identity_store=identity_store,
+            identity_settings=_identity_settings(config),
             vault=vault,
             models=GatewayModelClientFactory(gateway, vault),
             sandboxes=sandboxes,

@@ -138,7 +138,7 @@ class AuditLog:
         *,
         session_id: str | None = None,
     ) -> None:
-        """记一条控制面操作。"""
+        """记一条控制面操作。``user_id`` 取调用者代表的员工（浏览器登录或代员工调用）。"""
         await self._append(
             [
                 AuditRecord(
@@ -149,6 +149,7 @@ class AuditLog:
                     actor=principal.actor,
                     session_id=session_id,
                     data=sanitize(data or {}),
+                    user_id=principal.user_id,
                 )
             ]
         )

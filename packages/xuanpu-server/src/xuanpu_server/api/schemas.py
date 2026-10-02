@@ -55,10 +55,11 @@ class TenantStatusBody(_Request):
 
 
 class IssueKeyBody(_Request):
-    """签发 API key。"""
+    """签发 API key。``act_as_users`` 为真时授予代员工调用的能力（只有管理员能授予）。"""
 
     name: str = Field(min_length=1, max_length=200)
     role: Literal["tenant_admin", "tenant_member"] = "tenant_member"
+    act_as_users: bool = False
 
 
 class SecretBody(_Request):
@@ -133,6 +134,7 @@ def key_view(record: ApiKeyRecord) -> dict[str, Any]:
         "tenant_id": record.tenant_id,
         "name": record.name,
         "role": record.role,
+        "act_as_users": record.can_act_as_user,
         "created_at": record.created_at,
         "revoked_at": record.revoked_at,
     }

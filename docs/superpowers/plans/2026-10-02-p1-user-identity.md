@@ -37,6 +37,11 @@
 | `user_id` 为 `usr_` 加 12 位十六进制 | 沿用 `ids.new_id("usr")`（`identity.new_user_id`）：`usr_` 加 24 位十六进制，与 `ses_` 等标识同一格式（Task 2） |
 | 登录尝试只有 `created_at`，「10 分钟有效」 | 记录加 `expires_at`，有效期由服务层建记录时算好；存储不读时钟，按调用方给的 `now` 判断过期：`take_login_attempt`、`get_login_session` 对过期的返回空（Task 2） |
 | 身份存储全部按租户隔离 | 四个方法发生在知道租户之前或本来就跨租户，不带租户（同 `get_api_key`）：`get_login_session(token_hash)`（请求只带 cookie）、`take_login_attempt(state)`（回调只带 state）、`list_identity_configs(provider)`（对账遍历租户）、`purge_expired_logins(now)`（维护任务清理过期的登录会话与尝试）；其余一律带租户。调用方拿到记录后一律从记录里取租户（Task 2） |
+| `public_url` 是「平台对外地址」 | 只写源（`scheme://host[:port]`，不带路径），加载时规整成浏览器 `Origin` 的写法；回调地址 `<public_url>/v1/auth/feishu/callback`，不支持挂在反向代理的子路径下（Task 3） |
+| cookie 写请求「带了 `Origin` 的必须等于 `public_url` 的源」 | 没配 `public_url` 时不查 `Origin`、只要求 `X-Requested-By: xuanpu`；Task 4 启用飞书登录时强制要求配置 `public_url`。不满足返回新错误码 `403 csrf_rejected`（Task 3） |
+| 代员工调用只说「带 `Authorization` 时」 | 用登录 cookie 带 `X-Xuanpu-Act-As` 返回 `403 permission_denied`，不悄悄忽略；根凭据代调用同样 403（Task 3） |
+| 「只有租户管理员或平台管理员能签发带 `can_act_as_user` 的 key」 | 现有规则里签发本身就只有这两种调用者能做（成员、被代调用的成员一律 403），不另设规则；有测试守着（Task 3） |
+| `GET /v1/me` 按调用者返回不同内容 | 四种调用者同一个形状：`actor`、`role`（生效角色）、`tenant_id`、`key_id`、`user_id`、`display_name`，用不上的为 `null`（Task 3） |
 
 ---
 

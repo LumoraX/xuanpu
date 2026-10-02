@@ -12,8 +12,14 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from xuanpu_server.audit import AuditLog
-from xuanpu_server.errors import AuthenticationError, ConflictError, NotFoundError
+from xuanpu_server.errors import (
+    AuthenticationError,
+    ConflictError,
+    NotFoundError,
+    PermissionDeniedError,
+)
 from xuanpu_server.evals import EvalRunner
+from xuanpu_server.identity.service import IdentityService, IdentitySettings
 from xuanpu_server.ids import new_id
 from xuanpu_server.metrics import PlatformMetrics
 from xuanpu_server.objectstore import LocalObjectStore
@@ -47,6 +53,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from xuanpu_server.controlplane.store import ControlPlaneStore
+    from xuanpu_server.identity.store import IdentityStore
     from xuanpu_server.objectstore import ObjectStore
     from xuanpu_server.runtime.models import ModelClientFactory
     from xuanpu_server.runtime.sandbox import SandboxProvider
@@ -70,11 +77,13 @@ class Platform:
         self,
         *,
         store: ControlPlaneStore,
+        identity_store: IdentityStore,
         vault: SecretVault,
         models: ModelClientFactory,
         sandboxes: SandboxProvider,
         data_dir: Path,
         root_key_hash: str,
+        identity_settings: IdentitySettings | None = None,
         metrics_token_hash: str | None = None,
         objects: ObjectStore | None = None,
         states: StateBackendFactory | None = None,
@@ -87,6 +96,7 @@ class Platform:
         """
         Args:
             store: 控制面存储。
+            identity_store: 身份存储（员工、登录会话等），与控制面同一后端。
             vault: 密钥保管库。
             models: 模型客户端工厂。
             sandboxes: 沙盒供给方。
@@ -94,6 +104,8 @@ class Platform:
                 存储）。只能归一个进程独占，不能被多个进程共用：业务包缓存的锁只在进程内，
                 启动时还会清掉暂存目录的残留。
             root_key_hash: 平台根凭据的摘要。
+            identity_settings: 身份域的平台级设置（``public_url`` 与 ``identity`` 配置段）；
+                None 用各项的默认值（没有 ``public_url``）。
             metrics_token_hash: 指标抓取令牌的摘要；None 不开指标端点。指标本身总在计，
                 只是不对外。
             objects: 对象存储，业务包归档的正本放在这里；None 用 ``<data_dir>/objects``
@@ -126,6 +138,12 @@ class Platform:
             runtimes_live=lambda: self.runtimes.live_runtimes(),
         )
         self.audit = AuditLog(store, now=now, metrics=self.metrics)
+        self.identity = IdentityService(
+            store=identity_store,
+            control_plane=store,
+            settings=identity_settings if identity_settings is not None else IdentitySettings(),
+            now=now,
+        )
         self.quota = QuotaGuard(store, now=now)
         self.packages = PackageRegistry(
             store, self.audit, data_dir=data_dir, objects=self.objects, now=now
@@ -185,14 +203,37 @@ class Platform:
             return False
         return verify_metrics_token(presented, self._metrics_token_hash)
 
-    async def authenticate(self, presented: str) -> Principal:
-        """由调用方出示的凭据得到调用者身份。
+    async def authenticate(self, presented: str, *, act_as: str | None = None) -> Principal:
+        """由调用方出示的凭据（根凭据或 API key）得到调用者身份。
 
         各种失败（格式不对、不存在、已吊销、密钥不符、租户停用）对外是同一个提示，
-        不让调用方据此探测凭据或租户是否存在。
+        不让调用方据此探测凭据或租户是否存在。浏览器登录（cookie）不走这里，见
+        ``IdentityService.authenticate_login``。
+
+        Args:
+            presented: 出示的凭据。
+            act_as: 代哪名员工调用（请求头 ``X-Xuanpu-Act-As``）；None 不代。规则见
+                ``IdentityService.act_as``；根凭据不能代员工调用。
+
+        Raises:
+            AuthenticationError: 凭据无效。
+            PermissionDeniedError: 凭据有效，但不允许这次代员工调用。
         """
         if verify_root_key(presented, self._root_key_hash):
+            if act_as is not None:
+                raise PermissionDeniedError("根凭据不能代员工调用")
             return ROOT_PRINCIPAL
+        record = await self._verify_api_key(presented)
+        if act_as is not None:
+            return await self.identity.act_as(record, act_as)
+        return Principal(role=record.role, tenant_id=record.tenant_id, key_id=record.key_id)
+
+    async def _verify_api_key(self, presented: str) -> ApiKeyRecord:
+        """校验 API key，返回它的记录；key 所在的租户必须启用。
+
+        Raises:
+            AuthenticationError: 格式不对、不存在、已吊销、密钥不符、租户停用，同一句提示。
+        """
         key_id, secret = parse_api_key(presented)
         record = await self.store.get_api_key(key_id)
         # 记录不存在时也做一次比较，让两种情况耗时相近
@@ -202,7 +243,7 @@ class Platform:
         tenant = await self.store.get_tenant(record.tenant_id)
         if tenant is None or tenant.status != "active":
             raise AuthenticationError("凭据无效")
-        return Principal(role=record.role, tenant_id=record.tenant_id, key_id=record.key_id)
+        return record
 
     # --- 租户与凭据 ---
 
@@ -267,11 +308,20 @@ class Platform:
         return updated
 
     async def issue_key(
-        self, principal: Principal, *, tenant_id: str | None, name: str, role: Role
+        self,
+        principal: Principal,
+        *,
+        tenant_id: str | None,
+        name: str,
+        role: Role,
+        act_as_users: bool = False,
     ) -> IssuedKey:
         """签发 API key。
 
-        平台管理员可以给任何租户签发；租户管理员只能给自己的租户签发。
+        平台管理员可以给任何租户签发；租户管理员只能给自己的租户签发；租户成员不能签发（包括
+        代员工调用的成员，其生效角色是成员）。``act_as_users`` 为真时授予代员工调用的能力
+        （设计 6.3）。设计要求只有平台管理员与租户管理员能授予它，而签发本身已经只有这两种
+        调用者能做，所以不另设规则；以后若放开成员签发，这里要单独拦住这项能力（有测试守着）。
         """
         if principal.role == "platform_admin":
             if tenant_id is None:
@@ -293,10 +343,14 @@ class Platform:
             role=role,
             secret_hash=secret_hash,
             created_at=self._now(),
+            can_act_as_user=act_as_users,
         )
         await self.store.create_api_key(record)
         await self.audit.control(
-            principal, target, "api_key_issued", {"key_id": key_id, "name": name, "role": role}
+            principal,
+            target,
+            "api_key_issued",
+            {"key_id": key_id, "name": name, "role": role, "act_as_users": act_as_users},
         )
         return IssuedKey(key=key, record=record)
 

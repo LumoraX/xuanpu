@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     import taifeng
     from xuanpu_server.controlplane import ControlPlaneStore
     from xuanpu_server.identity import IdentityStore
+    from xuanpu_server.identity.service import IdentitySettings
     from xuanpu_server.runtime import SandboxProvider, StateBackendFactory
     from xuanpu_server.tenancy import Principal
 
@@ -305,6 +306,7 @@ class World:
         """
         return Platform(
             store=self.platform.store,
+            identity_store=self.platform.identity.store,
             vault=self.platform.vault,
             models=self.models,
             sandboxes=local_sandboxes(),
@@ -458,10 +460,13 @@ async def open_world(
     instance_id: str = "inst-test",
     data_dir_name: str = "data",
     metrics_token_hash: str | None = None,
+    identity_store: IdentityStore | None = None,
+    identity_settings: IdentitySettings | None = None,
 ) -> World:
     """在 ``tmp_path`` 下装配并启动一个平台，开通一个租户、两把凭据、一条密钥。
 
-    ``metrics_token_hash`` 给了就开指标端点（抓取令牌的摘要）。
+    ``metrics_token_hash`` 给了就开指标端点（抓取令牌的摘要）。``identity_store`` 必须与
+    ``store`` 同一后端：内存控制面可以省略（用以它为准的内存身份存储），其余必须显式给出。
 
     对象存储放在数据目录之外（``tmp_path/objects``），几个实例可以共用。返回之后平台由
     调用方关闭；开通到一半失败时这里先关掉它。
@@ -472,8 +477,14 @@ async def open_world(
     objects = LocalObjectStore(objects_dir)
     models = ScriptedModels()
     root_key, root_hash = generate_root_key()
+    if identity_store is None:
+        if not isinstance(store, InMemoryControlPlane):
+            raise TypeError("非内存的控制面要显式给出同一后端的 identity_store")
+        identity_store = InMemoryIdentityStore(store)
     platform = Platform(
         store=store,
+        identity_store=identity_store,
+        identity_settings=identity_settings,
         vault=EncryptedVault(store, keys={"k1": generate_master_key()}, primary="k1"),
         models=models,
         sandboxes=sandboxes,

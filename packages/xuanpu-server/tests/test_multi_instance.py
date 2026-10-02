@@ -20,6 +20,7 @@ from xuanpu_server.bootstrap import PostgresStateBackends, tenant_table_prefix
 from xuanpu_server.controlplane.postgres import PostgresControlPlane
 from xuanpu_server.controlplane.schema import apply_migrations
 from xuanpu_server.errors import SessionBusyError
+from xuanpu_server.identity.postgres import PostgresIdentityStore
 from xuanpu_server.runtime import StateBackends
 
 if TYPE_CHECKING:
@@ -107,6 +108,7 @@ async def cluster(
         states = PostgresStateBackends(pool, schema=schema)
         world = await world_opener(
             store=PostgresControlPlane(pool, namespace=namespace),
+            identity_store=PostgresIdentityStore(pool, namespace=namespace),
             sandboxes=local_sandboxes(),
             states=states,
             instance_id="inst-a",

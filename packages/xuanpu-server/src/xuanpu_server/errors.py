@@ -34,11 +34,29 @@ class AuthenticationError(PlatformError):
     status = 401
 
 
+class LoginSessionInvalidError(AuthenticationError):
+    """登录 cookie 认不出调用者：会话不存在或已过期、员工已停用、租户已停用。
+
+    对外与 ``AuthenticationError`` 完全相同（同一个 401、同一句提示，不透露是哪一步没过）；
+    接入层见到它时另外清掉浏览器里的登录 cookie。
+    """
+
+
 class PermissionDeniedError(PlatformError):
     """凭据有效，但无权做这个操作。"""
 
     code = "permission_denied"
     status = 403
+
+
+class CsrfRejectedError(PermissionDeniedError):
+    """用登录 cookie 认证的写请求没过防跨站请求伪造的检查（见 ``identity.cookies``）。
+
+    单独一个错误码，让控制台能分清「没权限」与「请求的形状不对」（缺 ``X-Requested-By``
+    头，或 ``Origin`` 与平台对外地址不符）。
+    """
+
+    code = "csrf_rejected"
 
 
 class NotFoundError(PlatformError):
@@ -121,8 +139,10 @@ class SchemaError(RuntimeError):
 __all__ = [
     "AuthenticationError",
     "ConflictError",
+    "CsrfRejectedError",
     "InvalidRequestError",
     "LeaseInterruptedError",
+    "LoginSessionInvalidError",
     "NotFoundError",
     "PackageInvalidError",
     "PermissionDeniedError",

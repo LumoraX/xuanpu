@@ -85,24 +85,58 @@ class ApiKeyRecord:
         return self.revoked_at is None
 
 
+_ROLE_RANK: dict[str, int] = {"tenant_member": 0, "tenant_admin": 1, "platform_admin": 2}
+
+
+def lower_role(first: Role, second: Role) -> Role:
+    """两个角色中权限较低的那个：``tenant_member`` < ``tenant_admin`` < ``platform_admin``。
+
+    代员工调用时，生效角色取 key 的角色与员工角色中较低的那个，防止普通成员的 key 借管理员
+    身份越权（反过来，管理员的 key 代普通成员调用，也只有成员的权限）。
+    """
+    return first if _ROLE_RANK[first] <= _ROLE_RANK[second] else second
+
+
 @dataclass(frozen=True)
 class Principal:
     """一次调用的调用者。
 
+    调用者有四种，``key_id`` 与 ``user_id`` 至少有一个：
+
+    | 调用者 | ``key_id`` | ``user_id`` | ``actor`` |
+    | --- | --- | --- | --- |
+    | 根凭据 | ``"root"`` | 空 | ``key:root`` |
+    | API key | key 的标识 | 空 | ``key:<key_id>`` |
+    | 浏览器登录（cookie） | 空 | 员工 | ``user:<user_id>`` |
+    | 系统代员工（带 ``X-Xuanpu-Act-As``） | key 的标识 | 员工 | ``key:<key_id>/user:<user_id>`` |
+
     Attributes:
-        role: 角色。
+        role: 生效的角色。代员工调用时是 key 与员工两者中较低的那个（``lower_role``）。
         tenant_id: 所属租户；平台管理员不属于任何租户，为 None。
-        key_id: 所用 API key 的标识；根凭据为 ``"root"``。
+        key_id: 所用 API key 的标识；根凭据为 ``"root"``；浏览器登录没有 key，为 None。
+        user_id: 代表的员工（平台用户标识）；不代表任何员工的 API key 与根凭据为 None。
     """
 
     role: Role
     tenant_id: str | None
-    key_id: str
+    key_id: str | None
+    user_id: str | None = None
+
+    def __post_init__(self) -> None:
+        """调用者总要落到一把 key 或一名员工上；员工总属于某个租户。"""
+        if self.key_id is None and self.user_id is None:
+            raise ValueError("调用者必须有 key_id 或 user_id")
+        if self.user_id is not None and self.tenant_id is None:
+            raise ValueError("代表员工的调用者必须属于某个租户")
 
     @property
     def actor(self) -> str:
-        """写进审计记录的调用者标识。"""
-        return f"key:{self.key_id}"
+        """写进审计记录的调用者标识（取值见类说明里的表）。"""
+        if self.key_id is None:
+            return f"user:{self.user_id}"
+        if self.user_id is None:
+            return f"key:{self.key_id}"
+        return f"key:{self.key_id}/user:{self.user_id}"
 
     def require_tenant(self) -> str:
         """取调用者的租户；平台管理员没有租户上下文，不能做租户内的操作。"""
@@ -223,6 +257,7 @@ __all__ = [
     "generate_metrics_token",
     "generate_root_key",
     "hash_secret",
+    "lower_role",
     "parse_api_key",
     "tenant_directory",
     "validate_tenant_id",

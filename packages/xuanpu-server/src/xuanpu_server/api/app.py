@@ -10,7 +10,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Annotated, Any
 
-from fastapi import Depends, FastAPI, Header, Query, Request
+from fastapi import FastAPI, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,17 +18,20 @@ from prometheus_client import CONTENT_TYPE_PLAIN_0_0_4
 
 from xuanpu_server import __version__
 from xuanpu_server.api import schemas
+from xuanpu_server.api.auth import Caller, bearer
+from xuanpu_server.api.identity import identity_router
 from xuanpu_server.api.sse import stream_turn
 from xuanpu_server.controlplane.models import AuditQuery
 from xuanpu_server.errors import (
     AuthenticationError,
     InvalidRequestError,
+    LoginSessionInvalidError,
     NotFoundError,
     PackageInvalidError,
     PlatformError,
     SessionBusyError,
 )
-from xuanpu_server.tenancy import Principal
+from xuanpu_server.identity.cookies import clear_login_cookie
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -40,26 +43,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 MAX_ARCHIVE_BYTES = 64 * 1024 * 1024
-_BEARER = "bearer "
-
-
-def _bearer(authorization: str | None) -> str:
-    """取 ``Authorization: Bearer <凭据>`` 里的凭据；没有或不是 Bearer 一律按凭据无效。"""
-    if authorization is None or not authorization.lower().startswith(_BEARER):
-        raise AuthenticationError("凭据无效")
-    return authorization[len(_BEARER) :].strip()
-
-
-async def caller(
-    request: Request, authorization: Annotated[str | None, Header()] = None
-) -> Principal:
-    """从 ``Authorization: Bearer <凭据>`` 得到调用者。"""
-    platform: Platform = request.app.state.platform
-    return await platform.authenticate(_bearer(authorization))
-
-
-# 路由函数的参数标注要在模块作用域里解析得到，所以依赖项定义在模块层
-Caller = Annotated[Principal, Depends(caller)]
 
 
 def _error(status: int, code: str, message: str, **extra: Any) -> JSONResponse:
@@ -86,7 +69,7 @@ def _install_error_handlers(app: FastAPI) -> None:
     """把平台异常翻译成响应。"""
 
     @app.exception_handler(PlatformError)
-    async def _platform_error(_: Request, exc: PlatformError) -> JSONResponse:
+    async def _platform_error(request: Request, exc: PlatformError) -> JSONResponse:
         extra: dict[str, Any] = {}
         if isinstance(exc, PackageInvalidError):
             extra["problems"] = list(exc.problems)
@@ -94,7 +77,12 @@ def _install_error_handlers(app: FastAPI) -> None:
             extra["owner"] = exc.owner
         if exc.status >= 500:
             logger.error("请求失败：%s（%s）", exc.message, exc.code)
-        return _error(exc.status, exc.code, exc.message, **extra)
+        response = _error(exc.status, exc.code, exc.message, **extra)
+        if isinstance(exc, LoginSessionInvalidError):
+            # 登录会话已失效（过期、员工或租户停用）：让浏览器丢掉这个 cookie
+            platform: Platform = request.app.state.platform
+            clear_login_cookie(response, secure=platform.identity.settings.cookie_secure)
+        return response
 
     @app.exception_handler(RequestValidationError)
     async def _validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
@@ -143,6 +131,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     )
     app.state.platform = platform
     _install_error_handlers(app)
+    app.include_router(identity_router(platform))
 
     @app.get("/healthz")
     async def healthz() -> dict[str, Any]:
@@ -157,7 +146,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
         """
         if not platform.metrics_enabled:
             raise NotFoundError("指标端点没有开启（没有配置 metrics.token_hash）")
-        if not platform.verify_metrics_token(_bearer(authorization)):
+        if not platform.verify_metrics_token(bearer(authorization)):
             raise AuthenticationError("凭据无效")
         return Response(platform.metrics.render(), media_type=CONTENT_TYPE_PLAIN_0_0_4)
 
@@ -198,7 +187,13 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     ) -> dict[str, Any]:
         """给某个租户签发 API key。完整的 key 只在这次响应里出现。"""
         who.require_platform_admin()
-        issued = await platform.issue_key(who, tenant_id=tenant_id, name=body.name, role=body.role)
+        issued = await platform.issue_key(
+            who,
+            tenant_id=tenant_id,
+            name=body.name,
+            role=body.role,
+            act_as_users=body.act_as_users,
+        )
         return {"key": issued.key, **schemas.key_view(issued.record)}
 
     # --- 凭据 ---
@@ -206,7 +201,9 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     @app.post("/v1/keys", status_code=201)
     async def issue_key(body: schemas.IssueKeyBody, who: Caller) -> dict[str, Any]:
         """给本租户签发 API key。"""
-        issued = await platform.issue_key(who, tenant_id=None, name=body.name, role=body.role)
+        issued = await platform.issue_key(
+            who, tenant_id=None, name=body.name, role=body.role, act_as_users=body.act_as_users
+        )
         return {"key": issued.key, **schemas.key_view(issued.record)}
 
     @app.get("/v1/keys")
