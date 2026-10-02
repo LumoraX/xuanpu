@@ -4,10 +4,9 @@
 [tool.uv.workspace]
 members = ["packages/*"]
 
-# 内核 2026.10.1.10 与两个适配包尚未发布到 PyPI，开发期从同级目录取源码。
-# 发布后删掉这一段，改由版本号约束。
+# 两个适配包尚未发布到 PyPI，开发期从同级目录取源码；发布后删掉这两行，改由版本号约束。
+# 内核 taifeng 从 PyPI 取（xuanpu-server 声明了版本下限）。
 [tool.uv.sources]
-taifeng = { path = "../taifeng", editable = true }
 taifeng-sandbox = { path = "../taifeng-sandbox", editable = true }
 taifeng-stores = { path = "../taifeng-stores", editable = true }
 xuanpu-spec = { workspace = true }

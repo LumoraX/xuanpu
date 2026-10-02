@@ -33,7 +33,7 @@ Postgres    对象存储       模型网关       沙盒后端      外部系统
 
 ## 安装
 
-内核 `taifeng`（≥ 2026.10.1.10）与 `taifeng-sandbox`、`taifeng-stores` 尚未发布到 PyPI，目前从源码安装：四个仓库（`taifeng`、`taifeng-sandbox`、`taifeng-stores`、`xuanpu`）检出在同一个父目录下。
+内核 `taifeng`（≥ 2026.10.1.10）从 PyPI 安装。`taifeng-sandbox`、`taifeng-stores` 尚未发布到 PyPI，目前从源码安装：这两个仓库与 `xuanpu` 检出在同一个父目录下。
 
 ```bash
 cd xuanpu

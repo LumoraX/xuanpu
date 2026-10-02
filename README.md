@@ -79,7 +79,7 @@ uv run ruff check --select F,S108,I,TC packages
 uv run mypy packages/*/src
 ```
 
-内核 `taifeng`（2026.10.1.10）与 `taifeng-sandbox`、`taifeng-stores` 尚未发布到 PyPI，开发期从同级目录取源码：四个仓库要检出在同一个父目录下。
+内核 `taifeng`（≥ 2026.10.1.10）从 PyPI 安装。`taifeng-sandbox`、`taifeng-stores` 尚未发布到 PyPI，开发期从同级目录取源码：这两个仓库与 `xuanpu` 要检出在同一个父目录下。
 
 测试的前提：
 

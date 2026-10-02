@@ -34,7 +34,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# 多实例部署：控制面、审计、线程目录与消息镜像落 Postgres
+# 多实例部署：控制面、审计、线程目录与会话主存落 Postgres
 postgres = [
     "asyncpg>=0.29",
     "taifeng-stores[postgres]",
