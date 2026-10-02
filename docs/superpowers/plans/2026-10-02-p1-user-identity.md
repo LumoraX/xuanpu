@@ -32,7 +32,7 @@
 | 「停用时关闭会话」由 bootstrap 注册监听者 | 监听者调 `SessionManager.close`（走 P0 的 `_retire` 收尾）；`sessions.py` 不加新逻辑，监听者放 `identity/listeners.py` |
 | 内核事件与过闸记录的 `user_id` 由事件枢纽填 | 事件枢纽按会话记录填；过闸记录（闸门与人工拒绝补记）经 `SubmissionIndex` 从会话标识查到 `user_id`（登记会话时一并登记主人） |
 | 用量入账 | 事件枢纽 `_account` 同时写按用户的表；P0 的估算入账（`usage_estimated`）同样计入按用户的表 |
-| 维护循环 | 对账放在 `identity/reconcile.py` 的独立周期任务，由 `Platform.start()` 启动、`close()` 停止；不塞进 `SessionManager.maintain` |
+| 维护循环 | 对账逻辑放 `identity/reconcile.py`，**挂进** Task 4 修正时新建的 `identity/maintenance.py` 周期任务（`IdentityMaintenance`，已每 5 分钟清一次过期登录记录），不另起循环；不塞进 `SessionManager.maintain` |
 | 指标 | 新增 `xuanpu_logins_total{result}`（`succeeded` 或失败原因）与 `xuanpu_users_disabled_total{reason}`；不带租户标签。另加 `xuanpu_feishu_events_total{result}`（Task 6）：`url_verification`、`accepted`、`ignored`、`bad_signature`、`rejected`、`bad_request`、`unknown_tenant`、`internal_error`，取值固定，签名不符等不写审计的情况靠它看 |
 | `user_id` 为 `usr_` 加 12 位十六进制 | 沿用 `ids.new_id("usr")`（`identity.new_user_id`）：`usr_` 加 24 位十六进制，与 `ses_` 等标识同一格式（Task 2） |
 | 登录尝试只有 `created_at`，「10 分钟有效」 | 记录加 `expires_at`，有效期由服务层建记录时算好；存储不读时钟，按调用方给的 `now` 判断过期：`take_login_attempt`、`get_login_session` 对过期的返回空（Task 2） |
