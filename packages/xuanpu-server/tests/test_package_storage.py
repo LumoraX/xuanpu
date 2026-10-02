@@ -30,6 +30,7 @@ def _other_instance(world: Any, data_dir: Path) -> Platform:
     return Platform(
         store=world.platform.store,
         identity_store=world.platform.identity.store,
+        identity_settings=world.platform.identity.settings,
         vault=world.platform.vault,
         models=world.models,
         sandboxes=LocalSandboxProvider(),

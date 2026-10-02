@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from xuanpu_server.errors import LoginSessionInvalidError, PermissionDeniedError
+from xuanpu_server.identity.config import normalize_origin
 from xuanpu_server.identity.cookies import login_token_hash
 from xuanpu_server.tenancy import Principal, lower_role
 
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from xuanpu_server.controlplane.store import ControlPlaneStore
+    from xuanpu_server.identity.config import IdentityConfig
     from xuanpu_server.identity.models import UserRecord
     from xuanpu_server.identity.store import IdentityStore
     from xuanpu_server.tenancy import ApiKeyRecord
@@ -39,10 +41,13 @@ LAST_SEEN_INTERVAL_SECONDS = 300.0
 class IdentitySettings:
     """身份域的平台级设置，来自服务配置的 ``public_url`` 与 ``identity`` 段（设计第 11 节）。
 
+    各项没有默认值：默认值只在 ``IdentityConfig`` 里写一份，这里一律经 ``from_config`` 构造。
+
     Attributes:
-        public_url: 平台对外地址，配置加载时已规整为源（``scheme://host[:port]``，不带路径）；
-            None 表示没有配置。用来校验 cookie 认证请求的 ``Origin``（见 ``identity.cookies``），
-            以后也用来拼飞书的回调地址与事件地址（``<public_url>/v1/auth/feishu/callback`` 等）。
+        public_url: 平台对外地址，已规整为源（``scheme://host[:port]``，不带路径）；None 表示
+            没有配置，这时平台不认登录 cookie（见 ``identity.cookies``）。配置了就用来校验
+            cookie 认证请求的 ``Origin``，以后也用来拼飞书的回调地址与事件地址
+            （``<public_url>/v1/auth/feishu/callback`` 等）。
         session_ttl_seconds: 登录会话的默认有效期；租户的身份配置可以覆盖。
         cookie_secure: 登录 cookie 是否只走 HTTPS。
         reconcile_interval_seconds: 对账周期。
@@ -52,14 +57,32 @@ class IdentitySettings:
         feishu_accounts_base: 飞书授权页的基地址。
     """
 
-    public_url: str | None = None
-    session_ttl_seconds: int = 604800
-    cookie_secure: bool = True
-    reconcile_interval_seconds: float = 86400.0
-    default_tenant: str | None = None
-    login_landing_path: str = "/console/"
-    feishu_open_base: str = "https://open.feishu.cn"
-    feishu_accounts_base: str = "https://accounts.feishu.cn"
+    public_url: str | None
+    session_ttl_seconds: int
+    cookie_secure: bool
+    reconcile_interval_seconds: float
+    default_tenant: str | None
+    login_landing_path: str
+    feishu_open_base: str
+    feishu_accounts_base: str
+
+    @classmethod
+    def from_config(cls, public_url: str | None, section: IdentityConfig) -> IdentitySettings:
+        """由服务配置的 ``public_url`` 与 ``identity`` 段构造。
+
+        ``public_url`` 再规整一次（幂等）：不经服务配置直接构造时（测试）也是规整后的源。
+        """
+        origin = None if public_url is None else normalize_origin(public_url, name="public_url")
+        return cls(
+            public_url=origin,
+            session_ttl_seconds=section.session_ttl_seconds,
+            cookie_secure=section.cookie_secure,
+            reconcile_interval_seconds=section.reconcile_interval_seconds,
+            default_tenant=section.default_tenant,
+            login_landing_path=section.login_landing_path,
+            feishu_open_base=section.feishu_open_base,
+            feishu_accounts_base=section.feishu_accounts_base,
+        )
 
 
 class IdentityService:

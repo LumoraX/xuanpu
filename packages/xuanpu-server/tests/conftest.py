@@ -29,7 +29,9 @@ from xuanpu_server.controlplane import InMemoryControlPlane
 from xuanpu_server.controlplane.postgres import PostgresControlPlane
 from xuanpu_server.controlplane.schema import apply_migrations
 from xuanpu_server.identity import InMemoryIdentityStore
+from xuanpu_server.identity.config import IdentityConfig
 from xuanpu_server.identity.postgres import PostgresIdentityStore
+from xuanpu_server.identity.service import IdentitySettings
 from xuanpu_server.objectstore import LocalObjectStore
 from xuanpu_server.platform import ROOT_PRINCIPAL, Platform
 from xuanpu_server.runtime import DockerSandboxProvider, LocalSandboxProvider
@@ -43,7 +45,6 @@ if TYPE_CHECKING:
     import taifeng
     from xuanpu_server.controlplane import ControlPlaneStore
     from xuanpu_server.identity import IdentityStore
-    from xuanpu_server.identity.service import IdentitySettings
     from xuanpu_server.runtime import SandboxProvider, StateBackendFactory
     from xuanpu_server.tenancy import Principal
 
@@ -307,6 +308,7 @@ class World:
         return Platform(
             store=self.platform.store,
             identity_store=self.platform.identity.store,
+            identity_settings=self.platform.identity.settings,
             vault=self.platform.vault,
             models=self.models,
             sandboxes=local_sandboxes(),
@@ -467,6 +469,7 @@ async def open_world(
 
     ``metrics_token_hash`` 给了就开指标端点（抓取令牌的摘要）。``identity_store`` 必须与
     ``store`` 同一后端：内存控制面可以省略（用以它为准的内存身份存储），其余必须显式给出。
+    ``identity_settings`` 省略时按默认配置构造（没有 ``public_url``，平台不认登录 cookie）。
 
     对象存储放在数据目录之外（``tmp_path/objects``），几个实例可以共用。返回之后平台由
     调用方关闭；开通到一半失败时这里先关掉它。
@@ -481,6 +484,8 @@ async def open_world(
         if not isinstance(store, InMemoryControlPlane):
             raise TypeError("非内存的控制面要显式给出同一后端的 identity_store")
         identity_store = InMemoryIdentityStore(store)
+    if identity_settings is None:
+        identity_settings = IdentitySettings.from_config(None, IdentityConfig())
     platform = Platform(
         store=store,
         identity_store=identity_store,

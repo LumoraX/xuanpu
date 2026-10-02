@@ -170,18 +170,24 @@ uv run xuanpu --help
 
 ### `public_url` 与 `identity`
 
-`public_url` 只写源——协议、主机与端口，如 `https://xuanpu.example.com`，不带路径、查询串或用户名密码。平台的接口与控制台都挂在根路径下（`/v1/…`、`/console/`），飞书的回调地址就是 `<public_url>/v1/auth/feishu/callback`；平台不支持挂在反向代理的子路径下。加载时规整成浏览器 `Origin` 头的写法：协议与主机名转小写，去掉默认端口（http 的 80、https 的 443）与末尾的 `/`；主机名要写 ASCII，国际化域名写成 punycode。
+`public_url` 只写源——协议、主机与端口，如 `https://xuanpu.example.com`，不带路径、查询串或用户名密码。平台的接口与控制台都挂在根路径下（`/v1/…`、`/console/`），飞书的回调地址就是 `<public_url>/v1/auth/feishu/callback`；平台不支持挂在反向代理的子路径下。加载时规整成浏览器 `Origin` 头的写法：协议与主机名转小写，去掉默认端口（http 的 80、https 的 443）与末尾的 `/`。主机名只能含字母、数字、点与连字符（国际化域名写成 punycode），或是 IP 地址（IPv6 写在方括号里）；端口 1–65535；空白、`%` 编码一律拒绝。
 
-它还用来校验员工浏览器发来的写请求确实来自平台自己的页面（`Origin` 必须等于它，见[接口文档的浏览器登录一节](../architecture/http-api.md#浏览器登录)）。没配置时不查 `Origin`，只要求写请求带 `X-Requested-By: xuanpu` 头；启用飞书登录必须配置。
+它还用来校验员工浏览器发来的写请求确实来自平台自己的页面（`Origin` 必须等于它，见[接口文档的浏览器登录一节](../architecture/http-api.md#浏览器登录)）。**没配置 `public_url` 时平台不认登录 cookie**（员工无法用浏览器登录，API key 不受影响）；启用飞书登录必须配置。本地用 HTTP 开发时配：
+
+```yaml
+public_url: http://127.0.0.1:8420
+identity:
+  cookie_secure: false     # 登录 cookie 名变成 xuanpu_session，不带 Secure
+```
 
 | 键 | 默认 | 说明 |
 | --- | --- | --- |
 | `identity.session_ttl_seconds` | `604800`（7 天） | 登录会话的默认有效期，最小 60。从登录时刻算起，不随使用延长；租户的飞书配置可以覆盖 |
-| `identity.cookie_secure` | `true` | 登录 cookie 是否只走 HTTPS。本地用 HTTP 开发时设为 `false`，否则浏览器不会带上它 |
+| `identity.cookie_secure` | `true` | 登录 cookie 是否只走 HTTPS。为 `true` 时 cookie 名是 `__Host-xuanpu_session`（带 `Secure`，浏览器拒收别的子域写来的同名 cookie）；本地用 HTTP 开发时设为 `false`，cookie 名是 `xuanpu_session`、不带 `Secure`，否则浏览器不会带上它 |
 | `identity.reconcile_interval_seconds` | `86400` | 按飞书通讯录对账的周期，最小 60 |
 | `identity.default_tenant` | 无 | 登录链接省略 `tenant` 时用的租户，只有一家企业的部署用得上 |
 | `identity.login_landing_path` | `/console/` | 登录完成或失败后的默认落地页。必须是站内路径：以 `/` 开头，不以 `//` 或 `/\` 开头，不含反斜杠与空白 |
-| `identity.feishu_open_base`、`identity.feishu_accounts_base` | `https://open.feishu.cn`、`https://accounts.feishu.cn` | 飞书开放接口与授权页的基地址，与 `public_url` 一样只写源。接 Lark 国际版，或测试时指向模拟服务端才需要改 |
+| `identity.feishu_open_base`、`identity.feishu_accounts_base` | `https://open.feishu.cn`、`https://accounts.feishu.cn` | 飞书开放接口与授权页的基地址，与 `public_url` 一样只写源、同样规整。接 Lark 国际版，或测试时指向模拟服务端才需要改 |
 
 飞书登录、对账的流程随飞书登录一起提供；在那之前，这一段只有 `public_url` 与 `cookie_secure` 影响认证。
 

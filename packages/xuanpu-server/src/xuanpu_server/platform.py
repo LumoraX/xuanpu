@@ -19,7 +19,7 @@ from xuanpu_server.errors import (
     PermissionDeniedError,
 )
 from xuanpu_server.evals import EvalRunner
-from xuanpu_server.identity.service import IdentityService, IdentitySettings
+from xuanpu_server.identity.service import IdentityService
 from xuanpu_server.ids import new_id
 from xuanpu_server.metrics import PlatformMetrics
 from xuanpu_server.objectstore import LocalObjectStore
@@ -53,6 +53,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from xuanpu_server.controlplane.store import ControlPlaneStore
+    from xuanpu_server.identity.service import IdentitySettings
     from xuanpu_server.identity.store import IdentityStore
     from xuanpu_server.objectstore import ObjectStore
     from xuanpu_server.runtime.models import ModelClientFactory
@@ -78,12 +79,12 @@ class Platform:
         *,
         store: ControlPlaneStore,
         identity_store: IdentityStore,
+        identity_settings: IdentitySettings,
         vault: SecretVault,
         models: ModelClientFactory,
         sandboxes: SandboxProvider,
         data_dir: Path,
         root_key_hash: str,
-        identity_settings: IdentitySettings | None = None,
         metrics_token_hash: str | None = None,
         objects: ObjectStore | None = None,
         states: StateBackendFactory | None = None,
@@ -97,6 +98,8 @@ class Platform:
         Args:
             store: 控制面存储。
             identity_store: 身份存储（员工、登录会话等），与控制面同一后端。
+            identity_settings: 身份域的平台级设置（``public_url`` 与 ``identity`` 配置段，
+                经 ``IdentitySettings.from_config`` 构造）。
             vault: 密钥保管库。
             models: 模型客户端工厂。
             sandboxes: 沙盒供给方。
@@ -104,8 +107,6 @@ class Platform:
                 存储）。只能归一个进程独占，不能被多个进程共用：业务包缓存的锁只在进程内，
                 启动时还会清掉暂存目录的残留。
             root_key_hash: 平台根凭据的摘要。
-            identity_settings: 身份域的平台级设置（``public_url`` 与 ``identity`` 配置段）；
-                None 用各项的默认值（没有 ``public_url``）。
             metrics_token_hash: 指标抓取令牌的摘要；None 不开指标端点。指标本身总在计，
                 只是不对外。
             objects: 对象存储，业务包归档的正本放在这里；None 用 ``<data_dir>/objects``
@@ -141,7 +142,7 @@ class Platform:
         self.identity = IdentityService(
             store=identity_store,
             control_plane=store,
-            settings=identity_settings if identity_settings is not None else IdentitySettings(),
+            settings=identity_settings,
             now=now,
         )
         self.quota = QuotaGuard(store, now=now)

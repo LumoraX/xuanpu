@@ -147,21 +147,6 @@ async def _stores(
     return store, PostgresIdentityStore(pool, namespace=namespace)
 
 
-def _identity_settings(config: ServerConfig) -> IdentitySettings:
-    """身份域的平台级设置：``public_url``（加载时已规整为源）与 ``identity`` 段。"""
-    section = config.identity
-    return IdentitySettings(
-        public_url=config.public_url,
-        session_ttl_seconds=section.session_ttl_seconds,
-        cookie_secure=section.cookie_secure,
-        reconcile_interval_seconds=section.reconcile_interval_seconds,
-        default_tenant=section.default_tenant,
-        login_landing_path=section.login_landing_path,
-        feishu_open_base=section.feishu_open_base,
-        feishu_accounts_base=section.feishu_accounts_base,
-    )
-
-
 async def _states(stack: AsyncExitStack, config: ServerConfig) -> StateBackendFactory:
     """状态面后端。"""
     if config.state.backend == "local":
@@ -264,7 +249,7 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
         platform = Platform(
             store=store,
             identity_store=identity_store,
-            identity_settings=_identity_settings(config),
+            identity_settings=IdentitySettings.from_config(config.public_url, config.identity),
             vault=vault,
             models=GatewayModelClientFactory(gateway, vault),
             sandboxes=sandboxes,

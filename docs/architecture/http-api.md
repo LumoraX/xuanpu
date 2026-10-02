@@ -14,14 +14,14 @@
 平台按下面的顺序认出调用者：
 
 1. 请求带 `Authorization: Bearer <凭据>`：按凭据认证（下表前两种）。另带 `X-Xuanpu-Act-As: <员工标识>` 的，是[系统代员工调用](#系统代员工调用)。
-2. 没有 `Authorization`、带登录 cookie `xuanpu_session`：[浏览器登录](#浏览器登录)的员工。带了 `Authorization` 就只按它认证，它无效时也不再看 cookie。
+2. 没有 `Authorization`、带登录 cookie：[浏览器登录](#浏览器登录)的员工。带了 `Authorization` 就只按它认证，它无效时也不再看 cookie。**没有配置 `public_url` 时平台不认登录 cookie**，按没有凭据处理。
 3. 两样都没有：`401`。
 
 | 凭据 | 来源 | 身份 |
 | --- | --- | --- |
 | 根凭据 `xproot_…` | `xuanpu keygen root` 生成，摘要写进配置 | 平台管理员，不属于任何租户 |
 | API key `xp_<标识>_<密钥>` | 签发时返回一次，平台只存摘要 | 租户管理员（`tenant_admin`）或租户成员（`tenant_member`） |
-| 登录 cookie `xuanpu_session` | 员工登录后平台写入浏览器（飞书登录的接口随后提供），平台只存令牌的摘要 | 员工，角色是他在平台里的角色（`tenant_admin` 或 `tenant_member`） |
+| 登录 cookie `__Host-xuanpu_session`（本地 HTTP 开发时是 `xuanpu_session`） | 员工登录后平台写入浏览器（飞书登录的接口随后提供），平台只存令牌的摘要 | 员工，角色是他在平台里的角色（`tenant_admin` 或 `tenant_member`） |
 
 下文「需要的身份」一栏里，「租户成员」指本租户的任何调用者：任何一把 API key、浏览器登录的员工、代员工调用（管理员也算）；「租户管理员」指生效角色为 `tenant_admin` 的调用者。平台管理员不属于任何租户，不能调用租户内的接口。
 
@@ -38,19 +38,28 @@
 
 ### 浏览器登录
 
-- cookie `xuanpu_session` 的值是 32 字节随机数；`HttpOnly`、`SameSite=Lax`、`Path=/`，默认 `Secure`（本地用 HTTP 开发时可以用配置 `identity.cookie_secure` 关掉）。平台只存它的 SHA-256 摘要。
-- **每个请求都查库**：登录会话存在且没过期、员工为启用、租户为启用，三者任一不满足就是 `401`，响应同时清掉 cookie（`Set-Cookie: xuanpu_session=""; …; Max-Age=0`）。不做缓存，员工或租户一停用，下一个请求就被拒。
-- 登录会话有效期从登录时刻算起，不随使用延长。
-- 用 cookie 时不能带 `X-Xuanpu-Act-As`（`403 permission_denied`）：代员工调用只给 API key。
+- cookie 的值是 32 字节随机数；`HttpOnly`、`SameSite=Lax`、`Path=/`，不带 `Domain`。平台只存它的 SHA-256 摘要。名字随配置 `identity.cookie_secure`：
 
-**防跨站请求伪造**：用 cookie 认证的写请求（`GET`、`HEAD`、`OPTIONS` 以外的方法）必须同时满足：
+  | `identity.cookie_secure` | cookie 名 | `Secure` |
+  | --- | --- | --- |
+  | `true`（默认） | `__Host-xuanpu_session` | 带。`__Host-` 前缀要求 `Secure`、`Path=/`、不带 `Domain`，浏览器因此拒收兄弟子域或父域写来的同名 cookie |
+  | `false`（本地用 HTTP 开发） | `xuanpu_session` | 不带 |
+
+  平台只认当前配置的那个名字。
+- **没有配置 `public_url` 时不认登录 cookie**：带 cookie 的请求按没有凭据处理（`401`，不清 cookie）。飞书登录要求 `public_url`，没有它就不会签发 cookie；这样认 cookie 时，下面防跨站请求伪造的两条检查总是都生效。本地开发配 `public_url: http://127.0.0.1:8420` 与 `identity.cookie_secure: false`。
+- **同名 cookie 不止一个**（可能是别的子域往父域塞了一个）：`401`，**不清 cookie**——清掉会让塞 cookie 的人能持续把员工踢下线；也不挑一个用，免得会话被调包。
+- **每个请求都查库**：登录会话存在且没过期、员工为启用、租户为启用，三者任一不满足就是 `401`，响应同时清掉 cookie（`Set-Cookie: __Host-xuanpu_session=""; …; Max-Age=0`，名字与属性和写入时相同）。不做缓存，员工或租户一停用，下一个请求就被拒。
+- 登录会话有效期从登录时刻算起，不随使用延长。
+
+**先检查请求的形状，再验会话**。下面几项只看请求本身、不查库，在验会话之前做：形状不对的请求（包括伪造的跨站请求）不必走到查库那一步。所以带着失效 cookie、又缺 `X-Requested-By` 的写请求，得到的是 `403 csrf_rejected` 而不是 `401`——这是有意的。
 
 | 要求 | 不满足时 |
 | --- | --- |
-| 带 `X-Requested-By: xuanpu` 头 | `403 csrf_rejected` |
-| 请求带了 `Origin` 头的，它必须等于配置 `public_url` 的源（如 `https://xuanpu.example.com`）。没配置 `public_url` 时没有可比的源，不查这一条，只靠上一条；启用飞书登录必须配置 `public_url` | `403 csrf_rejected` |
+| 不带 `X-Xuanpu-Act-As`：代员工调用只给 API key | `400 invalid_request` |
+| 写请求（`GET`、`HEAD`、`OPTIONS` 以外的方法）带 `X-Requested-By: xuanpu` 头 | `403 csrf_rejected` |
+| 写请求带了 `Origin` 头的，它必须等于配置 `public_url` 的源（如 `https://xuanpu.example.com`） | `403 csrf_rejected` |
 
-平台不开放带凭据的跨域（不发 CORS 头），跨站页面的脚本发不出带自定义头的请求，表单与页面跳转又带不了自定义头，所以第一条本身就挡住了跨站请求伪造，`Origin` 是第二道防线。用 API key 的请求不受这些限制（浏览器不会自动带上 `Authorization`）。
+后两条是防跨站请求伪造。平台不开放跨域（不发任何 `Access-Control-Allow-*` 头），跨站页面的脚本发不出带自定义头的请求，表单与页面跳转又带不了自定义头，所以自定义头本身就挡住了跨站请求伪造，`Origin` 是第二道防线。用 API key 的请求不受这些限制（浏览器不会自动带上 `Authorization`）。
 
 ### 系统代员工调用
 
@@ -81,7 +90,7 @@ X-Xuanpu-Act-As: usr_5f0c1b2e7d9a4c3b8e6f1a20
 
 | 状态码 | `code` | 含义 | 附带字段 |
 | --- | --- | --- | --- |
-| 400 | `invalid_request` | 请求不合法 | 字段校验不过时有 `problems` |
+| 400 | `invalid_request` | 请求不合法（包括用登录 cookie 时带 `X-Xuanpu-Act-As`） | 字段校验不过时有 `problems` |
 | 400 | `package_invalid` | 业务包不符合规范 | `problems`：逐条的问题 |
 | 400 | `secret_missing` | 业务包引用的密钥尚未配置 | |
 | 401 | `unauthenticated` | 没有凭据或凭据无效 | |

@@ -19,3 +19,9 @@ models:
     fast: {model: "${MODEL_NAME}"}
     balanced: {model: "${MODEL_NAME}"}
     deep: {model: "${MODEL_NAME}"}
+
+# 员工用浏览器登录（飞书登录）时才需要：本机用 HTTP 访问，对外地址写本机地址，cookie 不要求 HTTPS。
+# 不配 public_url 时平台不认登录 cookie，API key 照常可用。
+# public_url: http://127.0.0.1:8420
+# identity:
+#   cookie_secure: false

@@ -3,7 +3,8 @@
 依赖方向：本包只依赖 ``ids``、``errors``、``tenancy`` 与控制面（内存实现按控制面判断租户是否
 存在；Postgres 实现共用其命名空间与迁移），不依赖 ``runtime``。用户的角色沿用
 ``tenancy.TenantRole``。Postgres 实现在 ``identity.postgres``，需要 ``postgres`` 可选依赖，
-这里不导出。
+这里不导出。``identity.config`` 是服务配置的 ``identity`` 段，由 ``xuanpu_server.config`` 引用
+（不反过来引用服务配置）。
 """
 
 from __future__ import annotations

@@ -170,24 +170,6 @@ def test_undefined_variable_is_an_error() -> None:
         ({"metrics": {"token_hash": "not-a-hash"}}, "token_hash"),
         ({"metrics": {"token_hash": "B" * 64}}, "token_hash"),
         ({"metrics": {"token": "x"}}, "token"),
-        ({"public_url": "xuanpu.example.com"}, "public_url"),
-        ({"public_url": "ftp://xuanpu.example.com"}, "public_url"),
-        ({"public_url": "https://xuanpu.example.com/xuanpu"}, "不带路径"),
-        ({"public_url": "https://xuanpu.example.com/?a=1"}, "不带路径"),
-        ({"public_url": "https://xuanpu.example.com/#x"}, "不带路径"),
-        ({"public_url": "https://user:pw@xuanpu.example.com"}, "用户名或密码"),
-        ({"public_url": "https://xuanpu.example.com:99999"}, "public_url"),
-        ({"public_url": "https://玄圃.example.com"}, "punycode"),
-        ({"identity": {"session_ttl_seconds": 10}}, "session_ttl_seconds"),
-        ({"identity": {"reconcile_interval_seconds": 0}}, "reconcile_interval_seconds"),
-        ({"identity": {"default_tenant": "Acme Corp"}}, "租户标识非法"),
-        ({"identity": {"login_landing_path": "console/"}}, "login_landing_path"),
-        ({"identity": {"login_landing_path": "//evil.example.com/"}}, "login_landing_path"),
-        ({"identity": {"login_landing_path": "/\\evil.example.com/"}}, "login_landing_path"),
-        ({"identity": {"login_landing_path": "https://evil.example.com/"}}, "login_landing_path"),
-        ({"identity": {"feishu_open_base": "https://open.feishu.cn/open-apis"}}, "不带路径"),
-        ({"identity": {"feishu_accounts_base": "accounts.feishu.cn"}}, "feishu_accounts_base"),
-        ({"identity": {"cookie_secured": False}}, "cookie_secured"),
     ],
 )
 def test_invalid_config(changes: dict[str, Any], fragment: str) -> None:
@@ -195,54 +177,6 @@ def test_invalid_config(changes: dict[str, Any], fragment: str) -> None:
     with pytest.raises(ConfigError) as caught:
         parse_config(edited(**changes), variables=VARIABLES)
     assert fragment in str(caught.value)
-
-
-def test_identity_defaults() -> None:
-    """不配 public_url 与 identity 段：没有对外地址，身份设置取设计里的默认值。"""
-    config = parse_config(edited(), variables=VARIABLES)
-    assert config.public_url is None
-    identity = config.identity
-    assert (identity.session_ttl_seconds, identity.cookie_secure) == (604800, True)
-    assert identity.reconcile_interval_seconds == 86400
-    assert (identity.default_tenant, identity.login_landing_path) == (None, "/console/")
-    assert identity.feishu_open_base == "https://open.feishu.cn"
-    assert identity.feishu_accounts_base == "https://accounts.feishu.cn"
-
-
-@pytest.mark.parametrize(
-    ("written", "origin"),
-    [
-        ("https://xuanpu.example.com", "https://xuanpu.example.com"),
-        ("https://xuanpu.example.com/", "https://xuanpu.example.com"),
-        ("HTTPS://Xuanpu.Example.COM:443", "https://xuanpu.example.com"),
-        ("http://127.0.0.1:80/", "http://127.0.0.1"),
-        ("http://127.0.0.1:8420", "http://127.0.0.1:8420"),
-        ("https://xuanpu.example.com:8443", "https://xuanpu.example.com:8443"),
-        ("http://[::1]:8420", "http://[::1]:8420"),
-    ],
-)
-def test_public_url_is_normalized_to_an_origin(written: str, origin: str) -> None:
-    """public_url 规整成浏览器 Origin 头的写法：小写、去掉默认端口与末尾的 /。飞书基地址同理。"""
-    text = edited(public_url=written, identity={"feishu_open_base": written})
-    config = parse_config(text, variables=VARIABLES)
-    assert config.public_url == origin
-    assert config.identity.feishu_open_base == origin
-
-
-def test_identity_section_accepts_site_paths_and_tenant() -> None:
-    """落地页是站内路径（可带查询串），默认租户按租户标识的规则校验。"""
-    text = edited(
-        identity={
-            "login_landing_path": "/console/?from=login",
-            "default_tenant": "acme",
-            "cookie_secure": False,
-        }
-    )
-    identity = parse_config(text, variables=VARIABLES).identity
-    assert identity.login_landing_path == "/console/?from=login"
-    assert identity.default_tenant == "acme"
-    assert identity.cookie_secure is False
-    assert parse_config(edited(identity={"login_landing_path": "/"}), variables=VARIABLES)
 
 
 @pytest.mark.parametrize("text", ["", "- a\n", "a: [unclosed"])

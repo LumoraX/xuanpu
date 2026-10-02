@@ -111,13 +111,14 @@ metrics:
 
 # 平台对外的地址：浏览器与飞书访问平台用的那个。只写协议、主机与端口，不带路径。
 # 飞书的回调地址是 <public_url>/v1/auth/feishu/callback；员工浏览器发来的写请求的 Origin 必须等于它。
-# 启用飞书登录时必填。
+# 不配就不认登录 cookie（员工无法用浏览器登录，API key 不受影响）；启用飞书登录时必填。
 public_url: https://xuanpu.example.com
 
 # 员工身份（飞书登录）的平台级设置；各租户自己的飞书应用经接口配置，不在这里。
 identity:
   session_ttl_seconds: 604800        # 登录会话的默认有效期（7 天），从登录时刻算起
-  cookie_secure: true                # 登录 cookie 只走 HTTPS；本地用 HTTP 开发时设为 false
+  cookie_secure: true                # 登录 cookie 只走 HTTPS（名为 __Host-xuanpu_session）；
+                                     # 本地用 HTTP 开发时设为 false（名为 xuanpu_session）
   reconcile_interval_seconds: 86400  # 按飞书通讯录对账的周期
   # default_tenant: acme             # 登录链接省略 tenant 时用的租户（只有一家企业时方便）
   login_landing_path: /console/      # 登录完成或失败后的默认落地页（站内路径）
