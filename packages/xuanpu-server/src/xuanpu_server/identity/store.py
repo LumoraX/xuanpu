@@ -3,20 +3,27 @@
 身份域的持久状态都经这个协议读写：用户、外部身份、租户身份配置、登录会话、登录尝试、按用户
 用量、对账状态。
 
-**租户隔离**（红线 5）：除下面三个方法外，每个方法的第一个参数都是 ``tenant_id``，存储按它
-过滤，别的租户的数据按不存在处理（取不到、改不了、删不掉）。三个例外都发生在知道租户之前，
-与 ``ControlPlaneStore.get_api_key`` 同理：
+**租户隔离**（红线 5）：除下面四个方法外，每个方法的第一个参数都是 ``tenant_id``，存储按它
+过滤，别的租户的数据按不存在处理（取不到、改不了、删不掉）。四个例外都发生在知道租户之前，
+或本来就跨租户，与 ``ControlPlaneStore.get_api_key``、``list_tenants`` 同理；拿到记录后，
+调用方一律从记录里取租户：
 
 - ``get_login_session``：请求只带登录 cookie，按令牌摘要才能找到会话与它的租户；
 - ``take_login_attempt``：身份源的回调只带 ``state``，按它才能找回这次登录；
-- ``list_identity_configs``：对账要遍历配置了某身份源的全部租户。
+- ``list_identity_configs``：对账要遍历配置了某身份源的全部租户；
+- ``purge_expired_logins``：维护任务清理全部租户过期的登录会话与登录尝试。
+
+**租户必须存在**：建记录的方法（``create_user``、``put_identity_config``、
+``create_login_attempt``、``add_user_usage``、``claim_reconcile``）在租户不存在时报
+``NotFoundError``。租户以控制面为准：Postgres 实现靠外键，内存实现构造时拿到控制面存储去查。
 
 **时间**：存储不读时钟。凡与时间有关的判断（登录会话、登录尝试是否过期，对账租约），都按调用方
 给的 ``now`` 做；有效期多长是服务层的规则，服务层建记录时把它算进 ``expires_at``。
 
-**不放业务规则**：比如「停用用户时删掉他的登录会话」「最后一个管理员不能降级」，都由服务层
-编排；这里只提供原子的读写，以及让这些编排在并发下仍然正确所需的原子条件更新（状态是否真的
-变了、只绑定一次、取出即删、租约认领）。
+**不放业务规则**：比如「停用用户时删掉他的登录会话」「哪些操作要保住最后一名管理员」，都由
+服务层决定与编排；这里只提供原子的读写，以及让这些编排在并发下仍然正确所需的原子条件更新：
+状态是否真的变了、企业标识只绑定一次、取出即删、租约认领，以及改角色与状态时可选的「至少留一名
+启用的管理员」（``keep_an_admin``）。
 
 两个实现：``InMemoryIdentityStore`` 用于测试与单机试用，``PostgresIdentityStore`` 用于多实例
 部署。二者对同一套契约测试负责。
@@ -37,10 +44,10 @@ if TYPE_CHECKING:
         TenantIdentityConfig,
         UserQuery,
         UserRecord,
-        UserRole,
         UserStatus,
         UserUsageRecord,
     )
+    from xuanpu_server.tenancy import TenantRole
 
 
 @runtime_checkable
@@ -59,6 +66,7 @@ class IdentityStore(Protocol):
 
         Raises:
             ValueError: ``identity`` 的租户或用户与 ``user`` 不一致。
+            NotFoundError: 租户不存在。
             ConflictError: 用户标识已存在，或外部身份 ``(tenant_id, provider, subject)`` 已存在。
         """
         ...
@@ -77,11 +85,18 @@ class IdentityStore(Protocol):
         """按条件列出用户，按 ``user_id`` 升序；用 ``query.after`` 翻页。"""
         ...
 
-    async def set_user_role(self, tenant_id: str, user_id: str, role: UserRole) -> UserRecord:
+    async def set_user_role(
+        self, tenant_id: str, user_id: str, role: TenantRole, *, keep_an_admin: bool = False
+    ) -> UserRecord:
         """改角色，返回改后的记录。
+
+        ``keep_an_admin`` 为真时，若这次改动会让租户里不剩任何启用的 ``tenant_admin``（即把
+        唯一一名启用的管理员降为成员），原子地拒绝：判断与写入之间别的改动插不进来，两名管理员
+        同时互相降级，至多一个成功。
 
         Raises:
             NotFoundError: 用户不存在。
+            ConflictError: ``keep_an_admin`` 为真且这是最后一名启用的管理员。
         """
         ...
 
@@ -93,16 +108,18 @@ class IdentityStore(Protocol):
         *,
         reason: DisabledReason | None = None,
         at: float,
+        keep_an_admin: bool = False,
     ) -> bool:
         """改状态，返回状态是否真的变了。判断与写入是原子的，并发停用同一人只有一次返回 True。
 
         停用（``disabled``）必须给 ``reason``，``at`` 记为停用时间；已经是停用的不改，原因与
         时间保持第一次的。启用（``active``）不能给 ``reason``，并清掉停用原因与时间；``at``
-        不落库。
+        不落库。``keep_an_admin`` 与 ``set_user_role`` 相同：为真时不停用最后一名启用的管理员。
 
         Raises:
             ValueError: ``status`` 与 ``reason`` 不自洽。
             NotFoundError: 用户不存在。
+            ConflictError: ``keep_an_admin`` 为真且这是最后一名启用的管理员。
         """
         ...
 
@@ -143,10 +160,11 @@ class IdentityStore(Protocol):
     # --- 外部身份 ---
 
     async def create_external_identity(self, identity: ExternalIdentity) -> None:
-        """给已有用户登记一个外部身份。
+        """给已有用户登记一个外部身份。一名用户在一个身份源里只有一个外部身份。
 
         Raises:
-            ConflictError: ``(tenant_id, provider, subject)`` 已存在。
+            ConflictError: ``(tenant_id, provider, subject)`` 已存在，或这名用户在该身份源里
+                已有外部身份。
             NotFoundError: 本租户里没有这名用户。
         """
         ...
@@ -189,9 +207,14 @@ class IdentityStore(Protocol):
         ...
 
     async def put_identity_config(self, config: TenantIdentityConfig) -> None:
-        """写入或整条替换配置（含 ``feishu_tenant_key``）。
+        """写入配置，或替换已有配置里除企业标识之外的各项。
 
-        已绑定的企业标识要不要沿用由调用方决定：沿用就把读到的值带进 ``config``。
+        已绑定的 ``feishu_tenant_key`` 原样保留：绑定只能经 ``bind_tenant_key``，否则重写一次
+        配置就能把绑定清掉、再绑到别的企业上。
+
+        Raises:
+            ValueError: ``config.feishu_tenant_key`` 不为空。
+            NotFoundError: 租户不存在。
         """
         ...
 
@@ -225,7 +248,7 @@ class IdentityStore(Protocol):
     async def get_login_session(self, token_hash: str, *, now: float) -> LoginSession | None:
         """按令牌摘要取登录会话；不存在或 ``expires_at <= now`` 时返回 None。不带租户：见模块说明。
 
-        只读：过期的不在这里删。
+        只读：过期的不在这里删，由 ``purge_expired_logins`` 清理。
         """
         ...
 
@@ -248,6 +271,7 @@ class IdentityStore(Protocol):
 
         Raises:
             ConflictError: ``state`` 已存在。
+            NotFoundError: 租户不存在。
         """
         ...
 
@@ -256,6 +280,14 @@ class IdentityStore(Protocol):
 
         取出与删除是原子的：并发取同一个 ``state``，只有一个拿到。``expires_at <= now`` 的
         同样删除，但返回 None。
+        """
+        ...
+
+    async def purge_expired_logins(self, now: float) -> int:
+        """删除全部租户里 ``expires_at <= now`` 的登录会话与登录尝试，返回删掉的总条数。
+
+        不带租户的维护操作（见模块说明），由周期任务调用：没走完的登录、过期没登出的会话都在
+        这里清掉。
         """
         ...
 
@@ -272,7 +304,11 @@ class IdentityStore(Protocol):
         total_tokens: int,
         turns: int,
     ) -> UserUsageRecord:
-        """把一笔用量累加到某人某一天，返回累加后的结果。累加是原子的。"""
+        """把一笔用量累加到某人某一天，返回累加后的结果。累加是原子的。
+
+        Raises:
+            NotFoundError: 租户不存在。
+        """
         ...
 
     async def list_user_usage(
@@ -290,6 +326,10 @@ class IdentityStore(Protocol):
 
         条件见 ``ReconcileState.claimable``：没有未到期的持有者（持有者自己也不行），且距上次
         完成已满 ``interval`` 秒（手工触发传 0）。成功后持有到 ``now + lease_seconds``。
+
+        Raises:
+            ValueError: ``interval`` 为负，或 ``lease_seconds`` 不为正。
+            NotFoundError: 租户不存在。
         """
         ...
 

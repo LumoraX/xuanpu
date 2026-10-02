@@ -12,10 +12,12 @@ from xuanpu_server.identity.models import (
     UserUsageRecord,
     require_identity_of,
     require_page_size,
+    require_reconcile_window,
     require_status_change,
 )
 
 if TYPE_CHECKING:
+    from xuanpu_server.controlplane import ControlPlaneStore
     from xuanpu_server.identity.models import (
         DisabledReason,
         ExternalIdentity,
@@ -25,20 +27,27 @@ if TYPE_CHECKING:
         TenantIdentityConfig,
         UserQuery,
         UserRecord,
-        UserRole,
         UserStatus,
     )
+    from xuanpu_server.tenancy import TenantRole
 
 
 class InMemoryIdentityStore:
     """内存里的身份存储。
 
-    所有写操作在一把锁里完成；方法内部没有让出点，所以读操作不需要加锁，判断与写入也天然
-    原子（取出即删、租约认领、条件更新）。
+    所有写操作在一把锁里完成；锁内没有让出点，所以读操作不需要加锁，判断与写入也天然原子
+    （取出即删、租约认领、条件更新、保住最后一名管理员）。
+
+    租户是否存在以控制面为准（与 Postgres 实现的外键一致）：建记录前先向控制面查一次。租户只会
+    停用、不会删除，所以查完再进锁不会误判。
     """
 
-    def __init__(self) -> None:
-        """从空状态开始。"""
+    def __init__(self, control_plane: ControlPlaneStore) -> None:
+        """
+        Args:
+            control_plane: 同一部署的控制面存储，用来判断租户是否存在。
+        """
+        self._control_plane = control_plane
         self._lock = asyncio.Lock()
         self._users: dict[tuple[str, str], UserRecord] = {}
         self._identities: dict[tuple[str, str, str], ExternalIdentity] = {}
@@ -47,6 +56,11 @@ class InMemoryIdentityStore:
         self._attempts: dict[str, LoginAttempt] = {}
         self._usage: dict[tuple[str, str, str], UserUsageRecord] = {}
         self._reconcile: dict[str, ReconcileState] = {}
+
+    async def _require_tenant(self, tenant_id: str) -> None:
+        """租户不存在则报错。"""
+        if await self._control_plane.get_tenant(tenant_id) is None:
+            raise NotFoundError(f"租户 {tenant_id!r} 不存在")
 
     # --- 用户 ---
 
@@ -57,9 +71,32 @@ class InMemoryIdentityStore:
             raise NotFoundError(f"用户 {user_id!r} 不存在")
         return user
 
-    def _identity_key(self, identity: ExternalIdentity) -> tuple[str, str, str]:
-        """外部身份的唯一键。"""
-        return (identity.tenant_id, identity.provider, identity.subject)
+    def _require_another_admin(self, tenant_id: str, user_id: str) -> None:
+        """``user_id`` 是租户里唯一一名启用的管理员时报冲突。调用方须持有锁。"""
+        admins = {
+            user.user_id
+            for (owner, _), user in self._users.items()
+            if owner == tenant_id and user.role == "tenant_admin" and user.status == "active"
+        }
+        if admins == {user_id}:
+            raise ConflictError("这是租户里最后一名启用的管理员，不能降级或停用")
+
+    def _store_identity(self, identity: ExternalIdentity) -> None:
+        """登记外部身份：两个唯一约束都要满足。属性复制一份，调用方之后改它不影响存储。
+
+        调用方须持有锁。
+        """
+        key = (identity.tenant_id, identity.provider, identity.subject)
+        if key in self._identities:
+            raise ConflictError("外部身份已登记")
+        for existing in self._identities.values():
+            if (existing.tenant_id, existing.provider, existing.user_id) == (
+                identity.tenant_id,
+                identity.provider,
+                identity.user_id,
+            ):
+                raise ConflictError(f"用户在 {identity.provider} 里已有外部身份")
+        self._identities[key] = replace(identity, attributes=dict(identity.attributes))
 
     async def create_user(
         self, user: UserRecord, *, identity: ExternalIdentity | None = None
@@ -67,13 +104,12 @@ class InMemoryIdentityStore:
         """新建用户，可一并建外部身份。"""
         if identity is not None:
             require_identity_of(user, identity)
+        await self._require_tenant(user.tenant_id)
         async with self._lock:
             if (user.tenant_id, user.user_id) in self._users:
                 raise ConflictError(f"用户 {user.user_id!r} 已存在")
             if identity is not None:
-                if self._identity_key(identity) in self._identities:
-                    raise ConflictError("外部身份已登记")
-                self._identities[self._identity_key(identity)] = identity
+                self._store_identity(identity)
             self._users[(user.tenant_id, user.user_id)] = user
 
     async def get_user(self, tenant_id: str, user_id: str) -> UserRecord | None:
@@ -99,10 +135,15 @@ class InMemoryIdentityStore:
         found.sort(key=lambda user: user.user_id)
         return found[: query.limit]
 
-    async def set_user_role(self, tenant_id: str, user_id: str, role: UserRole) -> UserRecord:
-        """改角色。"""
+    async def set_user_role(
+        self, tenant_id: str, user_id: str, role: TenantRole, *, keep_an_admin: bool = False
+    ) -> UserRecord:
+        """改角色；可选地保住最后一名启用的管理员。"""
         async with self._lock:
-            updated = replace(self._require_user(tenant_id, user_id), role=role)
+            user = self._require_user(tenant_id, user_id)
+            if keep_an_admin and role != "tenant_admin":
+                self._require_another_admin(tenant_id, user_id)
+            updated = replace(user, role=role)
             self._users[(tenant_id, user_id)] = updated
             return updated
 
@@ -114,11 +155,14 @@ class InMemoryIdentityStore:
         *,
         reason: DisabledReason | None = None,
         at: float,
+        keep_an_admin: bool = False,
     ) -> bool:
-        """改状态，返回是否真的变了。"""
+        """改状态，返回是否真的变了；可选地保住最后一名启用的管理员。"""
         require_status_change(status, reason)
         async with self._lock:
             user = self._require_user(tenant_id, user_id)
+            if keep_an_admin and status == "disabled":
+                self._require_another_admin(tenant_id, user_id)
             if user.status == status:
                 return False
             disabled = status == "disabled"
@@ -174,10 +218,10 @@ class InMemoryIdentityStore:
     async def create_external_identity(self, identity: ExternalIdentity) -> None:
         """给已有用户登记外部身份。"""
         async with self._lock:
-            if self._identity_key(identity) in self._identities:
+            if (identity.tenant_id, identity.provider, identity.subject) in self._identities:
                 raise ConflictError("外部身份已登记")
             self._require_user(identity.tenant_id, identity.user_id)
-            self._identities[self._identity_key(identity)] = identity
+            self._store_identity(identity)
 
     async def list_external_identities(
         self,
@@ -229,9 +273,15 @@ class InMemoryIdentityStore:
         return self._configs.get((tenant_id, provider))
 
     async def put_identity_config(self, config: TenantIdentityConfig) -> None:
-        """写入或整条替换配置。"""
+        """写入或替换配置；已绑定的企业标识保留。"""
+        if config.feishu_tenant_key is not None:
+            raise ValueError("feishu_tenant_key 只能经 bind_tenant_key 绑定，写配置时须为空")
+        await self._require_tenant(config.tenant_id)
+        key = (config.tenant_id, config.provider)
         async with self._lock:
-            self._configs[(config.tenant_id, config.provider)] = config
+            existing = self._configs.get(key)
+            bound = existing.feishu_tenant_key if existing is not None else None
+            self._configs[key] = replace(config, feishu_tenant_key=bound)
 
     async def bind_tenant_key(
         self, tenant_id: str, provider: IdentityProvider, tenant_key: str
@@ -306,6 +356,7 @@ class InMemoryIdentityStore:
 
     async def create_login_attempt(self, attempt: LoginAttempt) -> None:
         """登记登录尝试。"""
+        await self._require_tenant(attempt.tenant_id)
         async with self._lock:
             if attempt.state in self._attempts:
                 raise ConflictError("登录尝试的 state 冲突")
@@ -318,6 +369,17 @@ class InMemoryIdentityStore:
         if attempt is None or attempt.expires_at <= now:
             return None
         return attempt
+
+    async def purge_expired_logins(self, now: float) -> int:
+        """删除全部租户里过期的登录会话与登录尝试。"""
+        async with self._lock:
+            sessions = [key for key, item in self._logins.items() if item.expires_at <= now]
+            attempts = [key for key, item in self._attempts.items() if item.expires_at <= now]
+            for token_hash in sessions:
+                del self._logins[token_hash]
+            for state in attempts:
+                del self._attempts[state]
+            return len(sessions) + len(attempts)
 
     # --- 按用户用量 ---
 
@@ -333,6 +395,7 @@ class InMemoryIdentityStore:
         turns: int,
     ) -> UserUsageRecord:
         """累加某人某天的用量。"""
+        await self._require_tenant(tenant_id)
         key = (tenant_id, day, user_id)
         async with self._lock:
             current = self._usage.get(key, UserUsageRecord(tenant_id, day, user_id))
@@ -365,6 +428,8 @@ class InMemoryIdentityStore:
         self, tenant_id: str, *, owner: str, now: float, interval: float, lease_seconds: float
     ) -> bool:
         """认领对账。"""
+        require_reconcile_window(interval, lease_seconds)
+        await self._require_tenant(tenant_id)
         async with self._lock:
             state = self._reconcile.get(tenant_id, ReconcileState(tenant_id))
             if not state.claimable(now, interval):

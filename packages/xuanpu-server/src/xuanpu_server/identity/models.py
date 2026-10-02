@@ -10,8 +10,8 @@ from dataclasses import dataclass, field
 from typing import Literal, get_args
 
 from xuanpu_server.ids import new_id
+from xuanpu_server.tenancy import TenantRole
 
-UserRole = Literal["tenant_admin", "tenant_member"]
 UserStatus = Literal["active", "disabled"]
 DisabledReason = Literal["feishu_resigned", "feishu_frozen", "feishu_exited", "admin"]
 IdentityProvider = Literal["feishu"]
@@ -48,6 +48,14 @@ def require_status_change(status: UserStatus, reason: DisabledReason | None) -> 
         raise ValueError("启用时不能给 reason")
 
 
+def require_reconcile_window(interval: float, lease_seconds: float) -> None:
+    """对账认领的参数：周期不能为负（手工触发传 0），租约时长必须为正。"""
+    if interval < 0:
+        raise ValueError(f"interval 不能为负，得到 {interval}")
+    if lease_seconds <= 0:
+        raise ValueError(f"lease_seconds 必须为正数，得到 {lease_seconds}")
+
+
 @dataclass(frozen=True)
 class UserRecord:
     """一名平台用户（员工）。
@@ -56,7 +64,7 @@ class UserRecord:
         tenant_id: 所属租户。
         user_id: 平台分配的标识（``new_user_id``）。平台内部各处一律用它，飞书的标识只作外部映射。
         display_name: 显示名；每次登录按身份源返回的刷新。
-        role: ``tenant_admin`` 或 ``tenant_member``（``tenancy.Role`` 里租户内的两种）。
+        role: ``tenant_admin`` 或 ``tenant_member``（``tenancy.TenantRole``）。
         created_at: 建账号的时间。
         avatar_url: 头像地址；每次登录刷新。
         status: ``active`` 或 ``disabled``。
@@ -71,7 +79,7 @@ class UserRecord:
     user_id: str
     display_name: str
     created_at: float
-    role: UserRole = "tenant_member"
+    role: TenantRole = "tenant_member"
     avatar_url: str | None = None
     status: UserStatus = "active"
     disabled_reason: DisabledReason | None = None
@@ -81,7 +89,7 @@ class UserRecord:
 
     def __post_init__(self) -> None:
         """角色、状态取值受限；停用原因与时间和状态一致。"""
-        require_choice("role", self.role, get_args(UserRole))
+        require_choice("role", self.role, get_args(TenantRole))
         require_choice("status", self.status, get_args(UserStatus))
         if self.status == "active":
             if self.disabled_reason is not None or self.disabled_at is not None:
@@ -135,6 +143,7 @@ class TenantIdentityConfig:
         encrypt_key_ref: Encrypt Key 在保管库里的名字。
         verification_token_ref: Verification Token 在保管库里的名字。
         feishu_tenant_key: 首次成功登录时绑定的飞书企业标识；之后的登录与事件都必须一致。
+            只经 ``IdentityStore.bind_tenant_key`` 写入，``put_identity_config`` 不改它。
         session_ttl_seconds: 登录会话有效期；为空时用平台默认值。
     """
 
@@ -251,7 +260,7 @@ class UserQuery:
     """
 
     status: UserStatus | None = None
-    role: UserRole | None = None
+    role: TenantRole | None = None
     unverified: bool | None = None
     after: str | None = None
     limit: int = 100
@@ -283,12 +292,12 @@ __all__ = [
     "TenantIdentityConfig",
     "UserQuery",
     "UserRecord",
-    "UserRole",
     "UserStatus",
     "UserUsageRecord",
     "new_user_id",
     "require_choice",
     "require_identity_of",
     "require_page_size",
+    "require_reconcile_window",
     "require_status_change",
 ]

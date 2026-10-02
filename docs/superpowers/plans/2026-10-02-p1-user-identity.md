@@ -36,7 +36,7 @@
 | 指标 | 新增 `xuanpu_logins_total{result}`（`succeeded` 或失败原因）与 `xuanpu_users_disabled_total{reason}`；不带租户标签 |
 | `user_id` 为 `usr_` 加 12 位十六进制 | 沿用 `ids.new_id("usr")`（`identity.new_user_id`）：`usr_` 加 24 位十六进制，与 `ses_` 等标识同一格式（Task 2） |
 | 登录尝试只有 `created_at`，「10 分钟有效」 | 记录加 `expires_at`，有效期由服务层建记录时算好；存储不读时钟，按调用方给的 `now` 判断过期：`take_login_attempt`、`get_login_session` 对过期的返回空（Task 2） |
-| 身份存储全部按租户隔离 | 三个方法发生在知道租户之前，不带租户（同 `get_api_key`）：`get_login_session(token_hash)`（请求只带 cookie）、`take_login_attempt(state)`（回调只带 state）、`list_identity_configs(provider)`（对账遍历租户）；其余一律带租户（Task 2） |
+| 身份存储全部按租户隔离 | 四个方法发生在知道租户之前或本来就跨租户，不带租户（同 `get_api_key`）：`get_login_session(token_hash)`（请求只带 cookie）、`take_login_attempt(state)`（回调只带 state）、`list_identity_configs(provider)`（对账遍历租户）、`purge_expired_logins(now)`（维护任务清理过期的登录会话与尝试）；其余一律带租户。调用方拿到记录后一律从记录里取租户（Task 2） |
 
 ---
 

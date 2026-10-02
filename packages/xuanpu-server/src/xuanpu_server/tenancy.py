@@ -15,7 +15,10 @@ from typing import Literal
 
 from xuanpu_server.errors import AuthenticationError, PermissionDeniedError
 
-Role = Literal["platform_admin", "tenant_admin", "tenant_member"]
+TenantRole = Literal["tenant_admin", "tenant_member"]
+"""租户内的角色：API key 与平台用户（员工）都只能是这两种之一。"""
+Role = Literal["platform_admin", TenantRole]
+"""调用者的角色：租户内的两种，加上只来自根凭据的平台管理员。"""
 TenantStatus = Literal["active", "suspended"]
 
 API_KEY_PREFIX = "xp"
@@ -214,6 +217,7 @@ __all__ = [
     "QuotaLimits",
     "Role",
     "Tenant",
+    "TenantRole",
     "TenantStatus",
     "generate_api_key",
     "generate_metrics_token",

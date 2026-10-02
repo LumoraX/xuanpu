@@ -214,6 +214,23 @@ async def test_list_users_filters_and_pages(identity: IdentityStore) -> None:
     assert seen == [f"usr_{i}" for i in range(5)]
 
 
+async def test_listing_order_is_by_code_point(identity: IdentityStore) -> None:
+    """用户与外部身份按码点排序翻页（大小写、标点不按语言规则重排），两个实现一致。"""
+    keys = ["usr_b", "usr-a", "usr_A", "usrz", "usr_a", "USR_c", "usr.a"]
+    for index, key in enumerate(keys):
+        await identity.create_user(
+            _user("acme", key), identity=_identity("acme", f"on{key}", key, n=str(index))
+        )
+    users = await identity.list_users("acme", UserQuery())
+    assert [user.user_id for user in users] == sorted(keys)
+    page = await identity.list_users("acme", UserQuery(after="usr_", limit=3))
+    assert [user.user_id for user in page] == [key for key in sorted(keys) if key > "usr_"][:3]
+    subjects = await identity.list_external_identities("acme", "feishu", after_subject="onusr-a")
+    assert [item.subject for item in subjects] == sorted(
+        f"on{key}" for key in keys if f"on{key}" > "onusr-a"
+    )
+
+
 async def test_set_user_role(identity: IdentityStore) -> None:
     """改角色返回改后的记录；用户不存在或属于别的租户报不存在。"""
     await identity.create_user(_user("acme", "usr_a"))
@@ -267,6 +284,94 @@ async def test_concurrent_disable_changes_once(identity: IdentityStore) -> None:
     assert results.count(True) == 1
 
 
+async def test_keep_an_admin_refuses_removing_the_last_one(identity: IdentityStore) -> None:
+    """要求保住管理员时，不能降级或停用最后一名启用的管理员；还有别的启用管理员就可以。"""
+    await identity.create_user(_user("acme", "usr_a", role="tenant_admin"))
+    await identity.create_user(_user("acme", "usr_b", role="tenant_admin"))
+    await identity.create_user(_user("acme", "usr_m"))
+    await identity.create_user(_user("other", "usr_o", role="tenant_admin"))
+    await identity.set_user_status("acme", "usr_b", "disabled", reason="admin", at=1.0)
+
+    # 启用的管理员只剩 usr_a（usr_b 已停用；别的租户的管理员不算）
+    with pytest.raises(ConflictError):
+        await identity.set_user_role("acme", "usr_a", "tenant_member", keep_an_admin=True)
+    with pytest.raises(ConflictError):
+        await identity.set_user_status(
+            "acme", "usr_a", "disabled", reason="admin", at=2.0, keep_an_admin=True
+        )
+    unchanged = await identity.get_user("acme", "usr_a")
+    assert unchanged is not None
+    assert (unchanged.role, unchanged.status) == ("tenant_admin", "active")
+
+    # 不涉及最后一名管理员的改动照常：改成员、给管理员再设一次管理员、停用已停用的
+    member = await identity.set_user_role("acme", "usr_m", "tenant_member", keep_an_admin=True)
+    assert member.role == "tenant_member"
+    again = await identity.set_user_role("acme", "usr_a", "tenant_admin", keep_an_admin=True)
+    assert again.role == "tenant_admin"
+    assert not await identity.set_user_status(
+        "acme", "usr_b", "disabled", reason="admin", at=3.0, keep_an_admin=True
+    )
+    with pytest.raises(NotFoundError):
+        await identity.set_user_role("acme", "usr_missing", "tenant_member", keep_an_admin=True)
+
+    # 再有一名启用的管理员，就可以降级 usr_a
+    await identity.set_user_status("acme", "usr_b", "active", at=4.0)
+    demoted = await identity.set_user_role("acme", "usr_a", "tenant_member", keep_an_admin=True)
+    assert demoted.role == "tenant_member"
+    # 不要求保住时，存储不拦（由服务层决定什么时候要求）
+    assert await identity.set_user_status("acme", "usr_b", "disabled", reason="admin", at=5.0)
+
+
+@pytest.mark.parametrize("change", ["role", "status", "mixed"])
+async def test_mutual_demotion_keeps_one_admin(identity: IdentityStore, change: str) -> None:
+    """两名管理员同时互相降级或停用：至多一个成功，租户里总留着一名启用的管理员。"""
+    await identity.create_user(_user("acme", "usr_a", role="tenant_admin"))
+    await identity.create_user(_user("acme", "usr_b", role="tenant_admin"))
+
+    async def demote(user_id: str, by_status: bool) -> object:
+        if by_status:
+            return await identity.set_user_status(
+                "acme", user_id, "disabled", reason="admin", at=1.0, keep_an_admin=True
+            )
+        return await identity.set_user_role("acme", user_id, "tenant_member", keep_an_admin=True)
+
+    by_status = {"role": (False, False), "status": (True, True), "mixed": (False, True)}[change]
+    results = await asyncio.gather(
+        demote("usr_a", by_status[0]), demote("usr_b", by_status[1]), return_exceptions=True
+    )
+    assert sum(isinstance(result, ConflictError) for result in results) == 1
+    assert not any(
+        isinstance(r, BaseException) and not isinstance(r, ConflictError) for r in results
+    )
+    admins = await identity.list_users("acme", UserQuery(role="tenant_admin", status="active"))
+    assert len(admins) == 1
+
+
+async def test_records_of_a_missing_tenant_are_refused(identity: IdentityStore) -> None:
+    """租户不存在时，建记录的方法一律报不存在（租户以控制面为准）。"""
+    with pytest.raises(NotFoundError):
+        await identity.create_user(_user("ghost", "usr_g"))
+    with pytest.raises(NotFoundError):
+        await identity.create_user(
+            _user("ghost", "usr_g"), identity=_identity("ghost", "on_g", "usr_g")
+        )
+    with pytest.raises(NotFoundError):
+        await identity.put_identity_config(_config("ghost"))
+    with pytest.raises(NotFoundError):
+        await identity.create_login_attempt(_attempt("st_g", "ghost"))
+    with pytest.raises(NotFoundError):
+        await identity.add_user_usage(
+            "ghost", "2026-10-01", "usr_g", input_tokens=1, output_tokens=1, total_tokens=2, turns=1
+        )
+    with pytest.raises(NotFoundError):
+        await identity.claim_reconcile(
+            "ghost", owner="w1", now=1.0, interval=0.0, lease_seconds=60.0
+        )
+    assert await identity.get_user("ghost", "usr_g") is None
+    assert await identity.get_identity_config("ghost", "feishu") is None
+    assert await identity.take_login_attempt("st_g", now=0.0) is None
+
+
 async def test_update_user_profile(identity: IdentityStore) -> None:
     """刷新显示名与头像；给了登录时间才改登录时间。"""
     await identity.create_user(_user("acme", "usr_a", avatar_url="https://example.test/old.png"))
@@ -308,11 +413,23 @@ async def test_unverified_mark_and_clear(identity: IdentityStore) -> None:
 
 
 async def test_external_identity_create_and_attributes(identity: IdentityStore) -> None:
-    """单独建外部身份：重复报冲突、用户不存在报不存在；改属性限定在租户内。"""
+    """单独建外部身份：重复报冲突、一人在同一身份源只能有一个、用户不存在报不存在；改属性限定
+    在租户内；存进去的属性与调用方手里的字典互不牵连。"""
     await identity.create_user(_user("acme", "usr_a"))
-    await identity.create_external_identity(_identity("acme", "on_a", "usr_a", open_id="ou_1"))
+    await identity.create_user(_user("acme", "usr_b"))
+    attributes = {"open_id": "ou_1"}
+    await identity.create_external_identity(
+        ExternalIdentity("acme", "feishu", "on_a", "usr_a", attributes)
+    )
+    attributes["open_id"] = "被调用方改掉"
+    [stored] = await identity.list_external_identities("acme", "feishu", user_id="usr_a")
+    assert stored.attributes == {"open_id": "ou_1"}
+
     with pytest.raises(ConflictError):
-        await identity.create_external_identity(_identity("acme", "on_a", "usr_a"))
+        await identity.create_external_identity(_identity("acme", "on_a", "usr_b"))
+    with pytest.raises(ConflictError):
+        await identity.create_external_identity(_identity("acme", "on_a2", "usr_a"))
+    assert await identity.get_user_by_identity("acme", "feishu", "on_a2") is None
     with pytest.raises(NotFoundError):
         await identity.create_external_identity(_identity("acme", "on_b", "usr_missing"))
     with pytest.raises(NotFoundError):
@@ -373,7 +490,8 @@ async def test_list_external_identities_for_reconcile(identity: IdentityStore) -
 
 
 async def test_identity_config_put_get_list(identity: IdentityStore) -> None:
-    """写入即整条替换；按租户取，别的租户取不到；能列出配置了飞书的全部租户。"""
+    """写入或替换配置（企业标识的绑定除外，见下一个用例）；按租户取，别的租户取不到；能列出
+    配置了飞书的全部租户。"""
     assert await identity.get_identity_config("acme", "feishu") is None
     assert await identity.list_identity_configs("feishu") == []
 
@@ -410,6 +528,26 @@ async def test_bind_tenant_key_only_once(identity: IdentityStore) -> None:
 
     with pytest.raises(NotFoundError):
         await identity.bind_tenant_key("nobody", "feishu", "tk")
+
+
+async def test_put_config_keeps_the_bound_tenant_key(identity: IdentityStore) -> None:
+    """绑定之后再写配置，绑定仍在，也不能借机重绑；写配置时不能带企业标识。"""
+    await identity.put_identity_config(_config("acme"))
+    assert await identity.bind_tenant_key("acme", "feishu", "tk_real") == "tk_real"
+
+    await identity.put_identity_config(_config("acme", app_id="cli_new", session_ttl_seconds=60))
+    config = await identity.get_identity_config("acme", "feishu")
+    assert config is not None
+    assert (config.app_id, config.session_ttl_seconds, config.feishu_tenant_key) == (
+        "cli_new", 60, "tk_real",
+    )  # fmt: skip
+    assert await identity.bind_tenant_key("acme", "feishu", "tk_attacker") == "tk_real"
+
+    with pytest.raises(ValueError, match="bind_tenant_key"):
+        await identity.put_identity_config(_config("acme", feishu_tenant_key="tk_attacker"))
+    with pytest.raises(ValueError, match="bind_tenant_key"):
+        await identity.put_identity_config(_config("other", feishu_tenant_key="tk_x"))
+    assert await identity.get_identity_config("other", "feishu") is None
 
 
 # --- 登录会话 ---
@@ -478,11 +616,10 @@ async def test_login_attempt_is_taken_once(identity: IdentityStore) -> None:
 
 
 async def test_login_attempt_concurrent_take_has_one_winner(identity: IdentityStore) -> None:
-    """同一个 state 被并发取两次（回调被重放）：只有一个拿到。"""
+    """同一个 state 被并发取多次（回调被重放）：只有一个拿到。"""
     await identity.create_login_attempt(_attempt("st_race"))
     taken = await asyncio.gather(
-        identity.take_login_attempt("st_race", now=200.0),
-        identity.take_login_attempt("st_race", now=200.0),
+        *(identity.take_login_attempt("st_race", now=200.0) for _ in range(8))
     )
     assert sum(item is not None for item in taken) == 1
 
@@ -492,6 +629,31 @@ async def test_expired_login_attempt_is_not_returned(identity: IdentityStore) ->
     await identity.create_login_attempt(_attempt("st_old", at=100.0))
     assert await identity.take_login_attempt("st_old", now=700.0) is None
     assert await identity.take_login_attempt("st_old", now=200.0) is None
+
+
+async def test_purge_expired_logins_across_tenants(identity: IdentityStore) -> None:
+    """维护任务清掉全部租户里过期的登录会话与登录尝试（到期时刻等于 now 也算过期），别的不动。"""
+    await identity.create_user(_user("acme", "usr_a"))
+    await identity.create_user(_user("other", "usr_o"))
+    # 登录会话有效 1000 秒：h_old、h_other 在 1100 到期，h_new 在 1900 到期
+    await identity.create_login_session(_login("acme", "h_old", "usr_a", at=100.0))
+    await identity.create_login_session(_login("other", "h_other", "usr_o", at=100.0))
+    await identity.create_login_session(_login("acme", "h_new", "usr_a", at=900.0))
+    # 登录尝试有效 600 秒：st_old、st_other 在 700 到期，st_new 在 1700 到期
+    await identity.create_login_attempt(_attempt("st_old", "acme", at=100.0))
+    await identity.create_login_attempt(_attempt("st_other", "other", at=100.0))
+    await identity.create_login_attempt(_attempt("st_new", "acme", at=1100.0))
+
+    assert await identity.purge_expired_logins(now=50.0) == 0
+    assert await identity.purge_expired_logins(now=1100.0) == 4
+    assert await identity.purge_expired_logins(now=1100.0) == 0
+
+    # 清掉的就不在了：拿更早的 now 去取也取不到
+    assert await identity.get_login_session("h_old", now=500.0) is None
+    assert await identity.get_login_session("h_other", now=500.0) is None
+    assert await identity.take_login_attempt("st_other", now=200.0) is None
+    assert await identity.get_login_session("h_new", now=1100.0) is not None
+    assert await identity.take_login_attempt("st_new", now=1200.0) is not None
 
 
 # --- 按用户用量 ---
@@ -611,3 +773,15 @@ async def test_reconcile_claim_race_has_one_winner(identity: IdentityStore) -> N
         *(identity.claim_reconcile("acme", owner=f"v{i}", **later) for i in range(8))
     )
     assert again.count(True) == 1
+
+
+@pytest.mark.parametrize(("interval", "lease_seconds"), [(-1.0, 60.0), (0.0, 0.0), (0.0, -5.0)])
+async def test_reconcile_claim_rejects_bad_window(
+    identity: IdentityStore, interval: float, lease_seconds: float
+) -> None:
+    """周期不能为负，租约时长必须为正；参数不对时什么都不写。"""
+    with pytest.raises(ValueError, match="interval|lease_seconds"):
+        await identity.claim_reconcile(
+            "acme", owner="w1", now=100.0, interval=interval, lease_seconds=lease_seconds
+        )
+    assert await identity.get_reconcile_state("acme") is None

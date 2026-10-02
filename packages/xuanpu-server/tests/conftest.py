@@ -138,11 +138,12 @@ async def identity_stores(
 ) -> AsyncIterator[tuple[ControlPlaneStore, IdentityStore]]:
     """同一后端上的控制面存储与身份存储：身份域的契约用例对两个实现各跑一遍。
 
-    身份表的租户列引用控制面的租户表，所以 Postgres 变体里两者共用一个 schema，用例先经
-    控制面开通租户。
+    身份存储以控制面为准判断租户是否存在（Postgres 靠外键，内存实现构造时拿到控制面），所以
+    两者共用同一后端，用例先经控制面开通租户。
     """
     if request.param == "memory":
-        yield InMemoryControlPlane(), InMemoryIdentityStore()
+        control = InMemoryControlPlane()
+        yield control, InMemoryIdentityStore(control)
         return
     async with _migrated_schema(request.getfixturevalue("postgres_dsn")) as (pool, namespace):
         yield (

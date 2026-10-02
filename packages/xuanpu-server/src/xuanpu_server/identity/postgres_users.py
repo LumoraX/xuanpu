@@ -2,8 +2,8 @@
 
 由 ``identity.postgres.PostgresIdentityStore`` 继承，补上其余几张表，合成完整的
 ``IdentityStore``。拆开只为控制单个文件的行数；约定与 ``identity.postgres`` 的模块说明相同：
-每条语句都带 ``tenant_id`` 条件，表名来自命名空间（字符集已校验），取值一律走参数绑定，按标识
-排序与翻页用 ``COLLATE "C"``（按码点比较，与内存实现一致）。
+每条语句都带 ``tenant_id`` 条件，表名来自命名空间（字符集已校验），取值一律走参数绑定；读取
+一律写明列名（见 ``identity.postgres``）。
 """
 
 from __future__ import annotations
@@ -31,9 +31,11 @@ if TYPE_CHECKING:
         DisabledReason,
         IdentityProvider,
         UserQuery,
-        UserRole,
         UserStatus,
     )
+    from xuanpu_server.tenancy import TenantRole
+
+    Connection = asyncpg.Connection | PoolConnectionProxy
 
 _TABLES = (
     "user",
@@ -44,11 +46,25 @@ _TABLES = (
     "user_usage",
     "identity_reconcile",
 )
-_USER_INSERT_COLUMNS = (
-    "tenant_id, user_id, display_name, created_at, role, avatar_url, status, disabled_reason, "
-    "last_login_at, disabled_at, unverified_since"
+_USER_FIELDS = (
+    "tenant_id",
+    "user_id",
+    "display_name",
+    "created_at",
+    "role",
+    "avatar_url",
+    "status",
+    "disabled_reason",
+    "last_login_at",
+    "disabled_at",
+    "unverified_since",
 )
+_USER_COLUMNS = ", ".join(_USER_FIELDS)
+_USER_COLUMNS_OF_U = ", ".join(f"u.{name}" for name in _USER_FIELDS)
 _IDENTITY_COLUMNS = "tenant_id, provider, subject, user_id, attributes::text AS attributes"
+_IDENTITY_COLUMNS_OF_E = (
+    "e.tenant_id, e.provider, e.subject, e.user_id, e.attributes::text AS attributes"
+)
 
 
 def _user(row: asyncpg.Record) -> UserRecord:
@@ -61,6 +77,11 @@ def _identity(row: asyncpg.Record) -> ExternalIdentity:
     fields = dict(row)
     fields["attributes"] = json.loads(fields["attributes"])
     return ExternalIdentity(**fields)
+
+
+def affected(status: str) -> int:
+    """命令状态（如 ``UPDATE 1``）里的受影响行数。"""
+    return int(status.rsplit(" ", 1)[-1])
 
 
 class PostgresUserTables:
@@ -86,10 +107,9 @@ class PostgresUserTables:
             return await conn.fetchrow(sql, *args)
 
     async def _execute(self, sql: str, *args: Any) -> int:
-        """执行并返回受影响的行数（取自命令状态，如 ``UPDATE 1``）。"""
+        """执行并返回受影响的行数。"""
         async with self._pool.acquire() as conn:
-            status = await conn.execute(sql, *args)
-        return int(status.rsplit(" ", 1)[-1])
+            return affected(await conn.execute(sql, *args))
 
     # --- 用户 ---
 
@@ -102,7 +122,7 @@ class PostgresUserTables:
         try:
             async with self._pool.acquire() as conn, conn.transaction():
                 await conn.execute(
-                    f"INSERT INTO {self._t['user']} ({_USER_INSERT_COLUMNS}) "
+                    f"INSERT INTO {self._t['user']} ({_USER_COLUMNS}) "
                     "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
                     user.tenant_id,
                     user.user_id,
@@ -120,10 +140,11 @@ class PostgresUserTables:
                     await self._insert_identity(conn, identity)
         except asyncpg.UniqueViolationError as exc:
             raise ConflictError("用户或外部身份已存在") from exc
+        except asyncpg.ForeignKeyViolationError as exc:
+            # 用户行只引用租户；外部身份引用的用户刚在同一事务里插入，不会违反
+            raise NotFoundError(f"租户 {user.tenant_id!r} 不存在") from exc
 
-    async def _insert_identity(
-        self, conn: asyncpg.Connection | PoolConnectionProxy, identity: ExternalIdentity
-    ) -> None:
+    async def _insert_identity(self, conn: Connection, identity: ExternalIdentity) -> None:
         """插入一条外部身份（约束冲突由调用方转换）。"""
         await conn.execute(
             f"INSERT INTO {self._t['external_identity']} "
@@ -139,7 +160,7 @@ class PostgresUserTables:
     async def get_user(self, tenant_id: str, user_id: str) -> UserRecord | None:
         """按标识取用户。"""
         row = await self._fetchrow(
-            f"SELECT * FROM {self._t['user']} WHERE tenant_id = $1 AND user_id = $2",
+            f"SELECT {_USER_COLUMNS} FROM {self._t['user']} WHERE tenant_id = $1 AND user_id = $2",
             tenant_id,
             user_id,
         )
@@ -150,7 +171,8 @@ class PostgresUserTables:
     ) -> UserRecord | None:
         """按外部身份取用户。"""
         row = await self._fetchrow(
-            f"SELECT u.* FROM {self._t['user']} u JOIN {self._t['external_identity']} e "
+            f"SELECT {_USER_COLUMNS_OF_U} FROM {self._t['user']} u "
+            f"JOIN {self._t['external_identity']} e "
             "ON e.tenant_id = u.tenant_id AND e.user_id = u.user_id "
             "WHERE e.tenant_id = $1 AND e.provider = $2 AND e.subject = $3",
             tenant_id,
@@ -160,14 +182,14 @@ class PostgresUserTables:
         return _user(row) if row is not None else None
 
     async def list_users(self, tenant_id: str, query: UserQuery) -> list[UserRecord]:
-        """按条件列出用户。"""
+        """按条件列出用户；``user_id`` 列是 ``COLLATE "C"``，排序与翻页直接走主键索引。"""
         rows = await self._fetch(
-            f"SELECT * FROM {self._t['user']} WHERE tenant_id = $1 "
+            f"SELECT {_USER_COLUMNS} FROM {self._t['user']} WHERE tenant_id = $1 "
             "AND ($2::text IS NULL OR status = $2) "
             "AND ($3::text IS NULL OR role = $3) "
             "AND ($4::boolean IS NULL OR (unverified_since IS NOT NULL) = $4) "
-            'AND ($5::text IS NULL OR user_id COLLATE "C" > $5) '
-            'ORDER BY user_id COLLATE "C" LIMIT $6',
+            "AND ($5::text IS NULL OR user_id > $5) "
+            "ORDER BY user_id LIMIT $6",
             tenant_id,
             query.status,
             query.role,
@@ -177,32 +199,38 @@ class PostgresUserTables:
         )
         return [_user(row) for row in rows]
 
-    async def _require_user_exists(self, tenant_id: str, user_id: str) -> None:
-        """用户不存在则报错。用户不会被删，所以「先改、没改到再查」不会误判。"""
-        if await self.get_user(tenant_id, user_id) is None:
-            raise NotFoundError(f"用户 {user_id!r} 不存在")
+    async def _require_another_admin(self, conn: Connection, tenant_id: str, user_id: str) -> None:
+        """锁住租户里全部启用的管理员行；``user_id`` 是其中唯一一个时报冲突。须在事务里调用。
 
-    async def _update_user(
-        self, assignments: str, tenant_id: str, user_id: str, *args: Any
-    ) -> UserRecord:
-        """按 ``assignments``（``$3`` 起依次是 ``args``）改一个用户，返回改后的记录。
-
-        ``assignments`` 只来自本类里写死的字面量，不含外部输入。
+        要降级或停用管理员、又要保住最后一名的改动，都先拿这些行锁（按标识排序加锁，不会互相
+        死锁）。并发时后到的等先到的提交，再按改动后的行重新判断：两名管理员同时互相降级，后到
+        的那次只剩自己，被拒绝。
         """
-        row = await self._fetchrow(
-            f"UPDATE {self._t['user']} SET {assignments} "
-            "WHERE tenant_id = $1 AND user_id = $2 RETURNING *",
+        rows = await conn.fetch(
+            f"SELECT user_id FROM {self._t['user']} WHERE tenant_id = $1 "
+            "AND role = 'tenant_admin' AND status = 'active' ORDER BY user_id FOR UPDATE",
             tenant_id,
-            user_id,
-            *args,
         )
+        if {row["user_id"] for row in rows} == {user_id}:
+            raise ConflictError("这是租户里最后一名启用的管理员，不能降级或停用")
+
+    async def set_user_role(
+        self, tenant_id: str, user_id: str, role: TenantRole, *, keep_an_admin: bool = False
+    ) -> UserRecord:
+        """改角色；可选地保住最后一名启用的管理员（判断与写入在同一事务里）。"""
+        async with self._pool.acquire() as conn, conn.transaction():
+            if keep_an_admin and role != "tenant_admin":
+                await self._require_another_admin(conn, tenant_id, user_id)
+            row = await conn.fetchrow(
+                f"UPDATE {self._t['user']} SET role = $3 "
+                f"WHERE tenant_id = $1 AND user_id = $2 RETURNING {_USER_COLUMNS}",
+                tenant_id,
+                user_id,
+                role,
+            )
         if row is None:
             raise NotFoundError(f"用户 {user_id!r} 不存在")
         return _user(row)
-
-    async def set_user_role(self, tenant_id: str, user_id: str, role: UserRole) -> UserRecord:
-        """改角色。"""
-        return await self._update_user("role = $3", tenant_id, user_id, role)
 
     async def set_user_status(
         self,
@@ -212,21 +240,33 @@ class PostgresUserTables:
         *,
         reason: DisabledReason | None = None,
         at: float,
+        keep_an_admin: bool = False,
     ) -> bool:
         """改状态；``status <> $3`` 的条件让并发的同向修改只有一个生效。"""
         require_status_change(status, reason)
-        changed = await self._execute(
-            f"UPDATE {self._t['user']} SET status = $3, disabled_reason = $4, disabled_at = $5 "
-            "WHERE tenant_id = $1 AND user_id = $2 AND status <> $3",
-            tenant_id,
-            user_id,
-            status,
-            reason,
-            at if status == "disabled" else None,
-        )
+        async with self._pool.acquire() as conn, conn.transaction():
+            if keep_an_admin and status == "disabled":
+                await self._require_another_admin(conn, tenant_id, user_id)
+            changed = affected(
+                await conn.execute(
+                    f"UPDATE {self._t['user']} "
+                    "SET status = $3, disabled_reason = $4, disabled_at = $5 "
+                    "WHERE tenant_id = $1 AND user_id = $2 AND status <> $3",
+                    tenant_id,
+                    user_id,
+                    status,
+                    reason,
+                    at if status == "disabled" else None,
+                )
+            )
         if not changed:
             await self._require_user_exists(tenant_id, user_id)
         return bool(changed)
+
+    async def _require_user_exists(self, tenant_id: str, user_id: str) -> None:
+        """用户不存在则报错。用户不会被删，所以「先改、没改到再查」不会误判。"""
+        if await self.get_user(tenant_id, user_id) is None:
+            raise NotFoundError(f"用户 {user_id!r} 不存在")
 
     async def update_user_profile(
         self,
@@ -238,15 +278,19 @@ class PostgresUserTables:
         last_login_at: float | None = None,
     ) -> UserRecord:
         """刷新显示名与头像，可选地更新登录时间。"""
-        return await self._update_user(
-            "display_name = $3, avatar_url = $4, "
-            "last_login_at = COALESCE($5::float8, last_login_at)",
+        row = await self._fetchrow(
+            f"UPDATE {self._t['user']} SET display_name = $3, avatar_url = $4, "
+            "last_login_at = COALESCE($5::float8, last_login_at) "
+            f"WHERE tenant_id = $1 AND user_id = $2 RETURNING {_USER_COLUMNS}",
             tenant_id,
             user_id,
             display_name,
             avatar_url,
             last_login_at,
         )
+        if row is None:
+            raise NotFoundError(f"用户 {user_id!r} 不存在")
+        return _user(row)
 
     async def mark_user_unverified(self, tenant_id: str, user_id: str, *, at: float) -> bool:
         """标记查不到；已有起始时间的不动。"""
@@ -281,7 +325,7 @@ class PostgresUserTables:
             async with self._pool.acquire() as conn:
                 await self._insert_identity(conn, identity)
         except asyncpg.UniqueViolationError as exc:
-            raise ConflictError("外部身份已登记") from exc
+            raise ConflictError("外部身份已登记，或这名用户在该身份源里已有外部身份") from exc
         except asyncpg.ForeignKeyViolationError as exc:
             raise NotFoundError(f"用户 {identity.user_id!r} 不存在") from exc
 
@@ -295,18 +339,17 @@ class PostgresUserTables:
         after_subject: str | None = None,
         limit: int = 100,
     ) -> list[ExternalIdentity]:
-        """列出某身份源下的外部身份。"""
+        """列出某身份源下的外部身份；``subject`` 列是 ``COLLATE "C"``，翻页走主键索引。"""
         require_page_size(limit)
         rows = await self._fetch(
-            "SELECT e.tenant_id, e.provider, e.subject, e.user_id, "
-            "e.attributes::text AS attributes "
+            f"SELECT {_IDENTITY_COLUMNS_OF_E} "
             f"FROM {self._t['external_identity']} e JOIN {self._t['user']} u "
             "ON u.tenant_id = e.tenant_id AND u.user_id = e.user_id "
             "WHERE e.tenant_id = $1 AND e.provider = $2 "
             "AND ($3::text IS NULL OR e.user_id = $3) "
             "AND ($4::text IS NULL OR u.status = $4) "
-            'AND ($5::text IS NULL OR e.subject COLLATE "C" > $5) '
-            'ORDER BY e.subject COLLATE "C" LIMIT $6',
+            "AND ($5::text IS NULL OR e.subject > $5) "
+            "ORDER BY e.subject LIMIT $6",
             tenant_id,
             provider,
             user_id,
@@ -334,4 +377,4 @@ class PostgresUserTables:
         return _identity(row)
 
 
-__all__ = ["PostgresUserTables"]
+__all__ = ["PostgresUserTables", "affected"]
