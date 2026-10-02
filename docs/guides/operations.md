@@ -368,7 +368,7 @@ xuanpu_usage_estimated_total 0.0
 | `xuanpu_turns_total` | counter | `outcome` | 结束的对话轮数：`completed`、`failed`、`suspended`、`cancelled`，以及送回审批被内核拒绝的 `resume_rejected`、只核销了一部分的 `resume_partial` |
 | `xuanpu_connector_calls_total` | counter | `transport`、`decision` | 过闸记录数：`allowed`、`denied`（策略拒绝）、`rejected`（人工拒绝） |
 | `xuanpu_audit_write_failures_total` | counter | — | 审计写入失败的次数。大于 0 说明审计不完整，查数据库 |
-| `xuanpu_gate_backfill_failures_total` | counter | `stage` | 人工拒绝的过闸记录没补上的次数（`read` 读不到待办、`incomplete` 待办缺字段、`write` 写库失败、`unconfirmed` 等不到内核对那次送回的结论） |
+| `xuanpu_gate_backfill_failures_total` | counter | `stage` | 人工拒绝的过闸记录没补上的次数（`incomplete` 待办缺字段、`write` 写库失败、`unconfirmed` 等不到内核对那次送回的结论） |
 | `xuanpu_usage_estimated_total` | counter | — | 被停下的一轮按上下文估算入账的次数 |
 
 指标不带租户标签（避免标签基数随租户数膨胀）；按租户看用量用 `GET /v1/usage`。

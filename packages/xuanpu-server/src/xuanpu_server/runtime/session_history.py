@@ -9,8 +9,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from xuanpu_server.controlplane.models import AuditQuery
+from xuanpu_server.errors import InvalidRequestError
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from xuanpu_server.controlplane.models import AuditRecord
     from xuanpu_server.controlplane.store import ControlPlaneStore
 
@@ -58,7 +61,7 @@ class _PendingTracker:
         ]
 
     def snapshot(self) -> PendingSuspension:
-        """还没处理的请求，连同挂起的那一轮的提交标识。"""
+        """还没处理的请求，连同挂起的那一轮的提交标识与已经核销的请求。"""
         if self._suspended is None:
             return PendingSuspension(submission_id=None, requests=[])
         # 引擎事件的审计记录都带 submission_id（见 events 模块的 _record）
@@ -66,6 +69,7 @@ class _PendingTracker:
         return PendingSuspension(
             submission_id=submission_id if isinstance(submission_id, str) else None,
             requests=self.remaining(),
+            settled=frozenset(self._settled),
         )
 
 
@@ -76,10 +80,27 @@ class PendingSuspension:
     Attributes:
         submission_id: 挂起的那一轮的提交标识；没有挂起时为 None。
         requests: 还没处理的请求（内核 ``turn_suspended`` 事件里 ``pending`` 的项）。
+        settled: 这次挂起里已经核销的请求。
     """
 
     submission_id: str | None
     requests: list[dict[str, Any]]
+    settled: frozenset[str] = frozenset()
+
+
+def refuse_settled(suspension: PendingSuspension, request_ids: Iterable[str]) -> None:
+    """送回里有这次挂起已经核销过的请求，就拒绝整次送回。
+
+    内核按这次挂起的全部请求校验送回：部分核销期间，已经核销过的请求再被送回，内核照样受理、
+    再做一遍——批准过的工具会再执行一次。所以在提交之前按审计拦下。审计只会滞后（少显示
+    已核销），不会多显示，所以不会误拒；滞后的那一小段里的重复送回拦不住。
+
+    Raises:
+        InvalidRequestError: 有已经核销过的请求。
+    """
+    again = sorted(set(request_ids) & suspension.settled)
+    if again:
+        raise InvalidRequestError(f"待办 {', '.join(again)} 已经处理过，不能再送回")
 
 
 async def pending_suspension(
@@ -137,4 +158,10 @@ async def replay_turn(
         after = page[-1].audit_id
 
 
-__all__ = ["PendingSuspension", "pending_requests", "pending_suspension", "replay_turn"]
+__all__ = [
+    "PendingSuspension",
+    "pending_requests",
+    "pending_suspension",
+    "refuse_settled",
+    "replay_turn",
+]

@@ -7,10 +7,11 @@
 
 补记分三步，由 ``SessionManager.resume`` 驱动：
 
-1. ``prepare``：送回之前（内核核销之前）读审计里最近一次挂起还没处理的待办
-   （``session_history.pending_suspension``），取出这次被拒的那些，连同详情（工具全名、
-   call_id、线程、参数摘要）与挂起的那一轮的提交标识——补的记录归到被拒的那一轮。已经核销过的
-   待办不在其中，不再补：它的记录在第一次核销时补过了。
+1. ``prepare``：送回之前（内核核销之前）读审计里最近一次挂起的待办
+   （``session_history.pending_suspension``）。送回里有已经核销过的待办，整次送回按不合法拒绝
+   （``session_history.refuse_settled``：内核会受理并重做一遍，批准过的工具会再执行一次）；否则
+   取出这次被拒的那些，连同详情（工具全名、call_id、线程、参数摘要）与挂起的那一轮的提交
+   标识——补的记录归到被拒的那一轮。这一次读审计也是这道核对要的，所以每次送回都读。
 2. ``watch``：按运行时的连接器登记（``ConnectorSet.describe``）挑出连接器工具（连接器、工具、
    传输、副作用分类）。stdio 与 remote 的工具名前缀都是 ``mcp__``，传输只能从登记里查；查不到
    的不是连接器工具（脚本、命令、表单等），不补。提交之后连同这次送回的提交标识登记到事件
@@ -19,8 +20,9 @@
    的写记录；被内核整次拒绝（答复不合格、有不认识的待办等）就不写；等不到结论（事件枢纽关闭，
    或这次送回没有结论事件就结束了）记 error 日志。
 
-补记失败不让送回本身失败——审批结果已经交给内核了：记 error 日志并计入 ``failures``，同时经
-``on_failure`` 报出是哪个环节（``read`` 读不到待办、``incomplete`` 待办缺调用信息、``write``
+读不到审计时整次送回失败（异常照常上抛）：既核对不了重复送回，补记也没有依据；什么都还没有
+提交给内核。提交之后的补记失败不让送回本身失败——审批结果已经交给内核了：记 error 日志并计入
+``failures``，同时经 ``on_failure`` 报出是哪个环节（``incomplete`` 待办缺调用信息、``write``
 写不进记录、``unconfirmed`` 等不到内核的结论；接到平台指标）。
 
 参数摘要由闸门在发起审批时算好、放进审批请求（待办的 ``detail.arguments_digest``），补的记录
@@ -42,7 +44,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from xuanpu_server.audit import digest_arguments
-from xuanpu_server.runtime.session_history import pending_suspension
+from xuanpu_server.runtime.session_history import pending_suspension, refuse_settled
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
@@ -52,7 +54,6 @@ if TYPE_CHECKING:
     from xuanpu_server.audit import AuditLog
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.runtime.resolutions import ResolutionWatch
-    from xuanpu_server.runtime.session_history import PendingSuspension
 
 logger = logging.getLogger(__name__)
 
@@ -253,9 +254,8 @@ class RejectionAudit:
         Args:
             store: 控制面存储，读待办用。
             audit: 审计写入口。
-            on_failure: 补记失败时的回调，参数是环节：``read``（读不到待办）、
-                ``incomplete``（待办缺调用信息）、``write``（写不进记录）、``unconfirmed``
-                （等不到内核的结论）。
+            on_failure: 补记失败时的回调，参数是环节：``incomplete``（待办缺调用信息）、
+                ``write``（写不进记录）、``unconfirmed``（等不到内核的结论）。
         """
         self._store = store
         self._audit = audit
@@ -269,41 +269,31 @@ class RejectionAudit:
         if self._on_failure is not None:
             self._on_failure(stage)
 
-    async def _pending(self, tenant_id: str, session_id: str) -> PendingSuspension | None:
-        """读当前待办；读不到记 error 日志、计一次失败，返回 None。"""
-        try:
-            return await pending_suspension(self._store, tenant_id, session_id)
-        except Exception:
-            self._failed("read")
-            logger.exception("会话 %s 读不到待办，这次拒绝补不上过闸记录", session_id)
-            return None
-
     async def prepare(
         self, tenant_id: str, session_id: str, resolutions: Mapping[str, Any]
     ) -> PendingRejections:
-        """送回之前（内核核销之前）：取出这次送回拒绝的、还没核销的待办。
+        """送回之前（内核核销之前）读一次审计里的待办：拦下重复送回，取出这次被拒的待办。
 
-        送回里没有一项按内核口径算拒绝（表单答案这类不带 ``granted`` 的字典也算，由
-        ``watch`` 再按待办的种类排除）时不读审计。
+        按内核口径算拒绝的（送回的是字典、``granted`` 不为真）都取出来——表单答案这类不带
+        ``granted`` 的字典也在内，由 ``watch`` 再按待办的种类排除。不存在的待办不取：内核会
+        整次拒绝这次送回。
 
         Args:
             tenant_id: 所属租户。
             session_id: 所属会话。
             resolutions: 这次送回的审批结果（待办标识 → 结果）。
+
+        Raises:
+            InvalidRequestError: 送回里有已经核销过的待办。
         """
-        nothing = PendingRejections(tenant_id=tenant_id, session_id=session_id)
-        rejected = [request_id for request_id, value in resolutions.items() if _is_rejection(value)]
-        if not rejected:
-            return nothing
-        suspension = await self._pending(tenant_id, session_id)
-        if suspension is None:
-            return nothing
+        suspension = await pending_suspension(self._store, tenant_id, session_id)
+        refuse_settled(suspension, resolutions)
         by_id = {str(item.get("request_id")): item for item in suspension.requests}
+        rejected = [request_id for request_id, value in resolutions.items() if _is_rejection(value)]
         return PendingRejections(
             tenant_id=tenant_id,
             session_id=session_id,
             submission_id=suspension.submission_id,
-            # 不在还没处理的待办里的（已经核销过的、不存在的）不补
             requests=tuple(by_id[request_id] for request_id in rejected if request_id in by_id),
         )
 

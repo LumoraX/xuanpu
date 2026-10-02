@@ -152,7 +152,7 @@ async def test_known_label_values_start_at_zero(scrape: Callable[[], Awaitable[s
         for decision in ("allowed", "denied", "rejected"):
             labels = {"transport": transport, "decision": decision}
             assert value(text, "xuanpu_connector_calls_total", **labels) == 0
-    for stage in ("read", "incomplete", "write", "unconfirmed"):
+    for stage in ("incomplete", "write", "unconfirmed"):
         assert value(text, "xuanpu_gate_backfill_failures_total", stage=stage) == 0
     assert value(text, "xuanpu_audit_write_failures_total") == 0
     assert value(text, "xuanpu_usage_estimated_total") == 0
@@ -200,8 +200,9 @@ async def test_turns_and_connector_calls_are_counted(
     assert value(text, "xuanpu_connector_calls_total", transport="stdio", decision="rejected") == 1
     assert value(text, "xuanpu_connector_calls_total", transport="stdio", decision="allowed") == 1
 
-    # 同一个拒绝再送一次：内核整次拒绝，记 resume_rejected，不再多一条 rejected
-    again = await read_turn(await sessions.resume(world.member, sid, resolutions), timeout=10)
+    # 送回一个不存在的待办：内核整次拒绝，记 resume_rejected，不再多一条 rejected
+    nope = {"req_nope": {"granted": False}}
+    again = await read_turn(await sessions.resume(world.member, sid, nope), timeout=10)
     assert again[-1].msg.kind == "suspension_resolve_rejected"
     text = await scrape()
     assert value(text, "xuanpu_turns_total", outcome="resume_rejected") == 1
