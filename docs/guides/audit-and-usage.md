@@ -257,6 +257,7 @@ async for record in client.admin.audit(session_id=session_id, source="gate"):
 | 内核因队列满丢了事件 | 记一条 `audit_gap`，审计不完整不会悄悄发生 |
 | 内核事件写库失败 | 记错误日志，留在内存里等下一次重试 |
 | 控制面操作或过闸记录写库失败 | 该操作本身报错。例外是人工拒绝的补记：它在内核确认核销之后才写，那时送回已经交给内核，写不进去只记错误日志并计入指标 `xuanpu_gate_backfill_failures_total`，送回照常续跑 |
+| `user_disabled` 写库失败 | 这次停用报错，但员工已经停用、登录会话已经删掉（审计排在这两步之后）。重试时状态已是停用，**这条记录不会补写**：平台日志里有错误、`xuanpu_audit_write_failures_total` 计一次，按日志补查。停用之后的收尾照样可以再停用一次重跑 |
 | 实例崩溃 | 还没写出去的那一批内核事件（最多半秒或 64 条）会丢。`control` 与 `gate` 的记录是同步写的，不受影响 |
 
 ## 导出

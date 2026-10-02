@@ -8,9 +8,9 @@
    保管库里 → ``404``（后一种另记告警：配置坏了）；
 3. **没有签名头**：只认加密的 URL 验证——能用 Encrypt Key 解开、``type`` 是
    ``url_verification``、``token`` 等于 Verification Token，就原样回 ``{"challenge": …}``。别的
-   一概 ``401``，而且不论哪一步没过都是**同一个响应**：没有签名的请求谁都能发，各步的错误要是
-   分得清，就成了能逐字节猜明文的 CBC 填充预言机。没加密的 URL 验证同样 401（平台要求 Encrypt
-   Key），日志里提示去飞书后台配置；
+   一概 ``401``，而且不论哪一步没过（包括没料到的异常）都是**同一个响应**：没有签名的请求谁都能
+   发，各步的错误要是分得清，就成了能逐字节猜明文的 CBC 填充预言机。没加密的 URL 验证同样 401
+   （平台要求 Encrypt Key），日志里提示去飞书后台配置；
 4. **有签名头**：按设计第 3 节验签（常数时间比较），不符或缺时间戳、随机数 → ``401``；然后解密，
    内容不合预期 → ``400``（签名对了说明是飞书发的，内容不对是配置或飞书的问题，不必再藏）；
 5. URL 验证（带了签名也认）：同 3；
@@ -35,7 +35,8 @@
 再停用他。
 
 **签名不符、来源核对不过一律不写审计**（防止被刷），只记日志、计 ``xuanpu_feishu_events_total``。
-停用本身照常记审计。
+停用本身照常记审计。存储报错、保管库里的密文解不开这类意外照常上抛（接入层回 500），计
+``internal_error``。
 """
 
 from __future__ import annotations
@@ -161,6 +162,8 @@ class FeishuEventCallback:
             InvalidRequestError: 请求体过大，或签名对了而内容不合预期（400）。
             AuthenticationError: 签名或来源不对（401）。
             NotFoundError: 租户没有可用的飞书配置（404）。
+            Exception: 别的异常（存储报错、保管库里的密文解不开等）原样上抛，由接入层按 500 处理；
+                计 ``internal_error``。
         """
         try:
             result, reply = await self._handle(tenant_id, body, signature, timestamp, nonce)
@@ -171,6 +174,9 @@ class FeishuEventCallback:
                 rejected.level, "飞书事件回调（租户 %r）被拒：%s", tenant_id, rejected.detail
             )
             raise rejected.error from None
+        except Exception:
+            self._count("internal_error")
+            raise
         self._count(result)
         return reply
 
@@ -233,17 +239,30 @@ class FeishuEventCallback:
             ) from exc
 
     def _unsigned(self, secrets: _Secrets, body: bytes) -> dict[str, Any]:
-        """没有签名头：只认加密的 URL 验证；不论哪一步没过都是同一个 401（模块说明第 3 步）。"""
+        """没有签名头：只认加密的 URL 验证；不论哪一步没过都是同一个 401（模块说明第 3 步）。
+
+        不只接 ``EventFormatError``：这条路谁都能走，任何异常（哪怕是没料到的）都转成同一个 401，
+        细节（``EventFormatError`` 的说明，或别的异常的类型名）只进日志。
+        """
         try:
-            payload = self._decrypt(secrets, body)
-        except EventFormatError as exc:
-            if events.is_plain_url_verification(body):
-                raise _unauthenticated(
-                    "bad_signature",
-                    "收到没有加密的 URL 验证：飞书后台没有配置 Encrypt Key（平台要求配置，"
-                    "否则之后的事件都验不了签）",
-                ) from exc
-            raise _unauthenticated("bad_signature", f"没有签名，也解不开：{exc}") from exc
+            return self._answer_unsigned(secrets, body)
+        except CallbackRejectedError:
+            raise
+        except Exception as exc:
+            detail = str(exc) if isinstance(exc, EventFormatError) else type(exc).__name__
+            raise _unauthenticated("bad_signature", f"没有签名，也解不开：{detail}") from exc
+
+    @staticmethod
+    def _answer_unsigned(secrets: _Secrets, body: bytes) -> dict[str, Any]:
+        """``_unsigned`` 的各步。外层请求体只解析一次，没加密的 URL 验证在同一个对象上认出来。"""
+        outer = events.outer_object(body)
+        if events.is_plain_url_verification(outer):
+            raise _unauthenticated(
+                "bad_signature",
+                "收到没有加密的 URL 验证：飞书后台没有配置 Encrypt Key（平台要求配置，"
+                "否则之后的事件都验不了签）",
+            )
+        payload = FeishuEventCallback._decrypt(secrets, outer)
         if not isinstance(payload, UrlVerification):
             raise _unauthenticated("bad_signature", "没有签名，而且不是 URL 验证")
         if not secrets.token_matches(payload.token):
@@ -253,14 +272,14 @@ class FeishuEventCallback:
     def _open(self, secrets: _Secrets, body: bytes) -> events.Payload:
         """解开已验过签的请求体；内容不合预期是 400。"""
         try:
-            return self._decrypt(secrets, body)
+            return self._decrypt(secrets, events.outer_object(body))
         except EventFormatError as exc:
             raise _bad_request(str(exc)) from exc
 
     @staticmethod
-    def _decrypt(secrets: _Secrets, body: bytes) -> events.Payload:
-        """取 ``encrypt``、解密、认出内容。"""
-        plaintext = events.decrypt(secrets.encrypt_key, events.encrypted_field(body))
+    def _decrypt(secrets: _Secrets, outer: dict[str, Any]) -> events.Payload:
+        """取外层对象里的 ``encrypt``、解密、认出内容。"""
+        plaintext = events.decrypt(secrets.encrypt_key, events.encrypted_field(outer))
         return events.parse_payload(plaintext)
 
     @staticmethod

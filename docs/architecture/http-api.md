@@ -309,15 +309,16 @@ X-Lark-Signature: 3f9a0c…（64 位十六进制）
 | 请求体超过 1 MiB | `400 invalid_request`（不读完、不验签） |
 | 租户不存在、标识不合法、没有配置飞书，或配置引用的 Encrypt Key、Verification Token 不在保管库里 | `404 not_found` |
 | 没有签名头：加密的 URL 验证，Verification Token 对得上 | `200`，`{"challenge": "…"}` |
-| 没有签名头的其余一切：不是 URL 验证、Token 不对、没加密、解不开 | `401 unauthenticated`，**不论哪一步没过都是同一个响应**（否则会成为能逐字节猜出明文的填充预言机） |
+| 没有签名头的其余一切：不是 URL 验证、Token 不对、没加密、解不开、字段里有编码不成 UTF-8 的字符、`challenge` 过长 | `401 unauthenticated`，**不论哪一步没过都是同一个响应**（否则会成为能逐字节猜出明文的填充预言机） |
 | 带签名头：签名不符，或缺 `X-Lark-Request-Timestamp`、`X-Lark-Request-Nonce` | `401 unauthenticated` |
-| 签名对，但请求体不是 `{"encrypt": …}`、解不开（base64 非法、长度不是 16 的倍数、填充错误）或解出来的内容不合预期 | `400 invalid_request` |
+| 签名对，但请求体不是 `{"encrypt": …}`、解不开（base64 非法、长度不是 16 的倍数、填充不合 PKCS7）或解出来的内容不合预期（缺字段；字段里有编码不成 UTF-8 的字符，如 JSON 转义出的孤立代理项 `"\ud800"`；`challenge` 超过 256 个字符） | `400 invalid_request` |
 | 签名对，`header` 里的 Verification Token、App ID 或飞书企业对不上 | `401 unauthenticated` |
 | 租户还没绑定飞书企业（还没有员工登录过） | `200`，不处理：核对不了 `tenant_key`，也不拿事件去绑定——绑定只能由真实的登录建立；这时租户里也还没有有飞书身份的员工 |
 | `contact.user.deleted_v3`（员工离职），平台里有这名员工 | `200`，停用他（见下） |
 | 平台里没有这名员工；别的事件类型；1.0 版事件 | `200`，忽略 |
+| 平台内部出错（存储报错、保管库里的密文解不开） | `500`（飞书会重推） |
 
-**员工离职**：按 `event.object.union_id` 找到员工，同步做[停用](#员工)的前两步（标停用、删掉他的登录会话：浏览器里的 cookie 立即失效），关闭他名下的会话放到后台（不让响应等它），回 `200`。停用原因按 `event.object.status`：`is_resigned` 为真是 `feishu_resigned`，否则 `is_exited` 为真是 `feishu_exited`，否则 `is_frozen` 为真是 `feishu_frozen`，都不为真也按 `feishu_resigned`（这个事件本身就是离职）。审计 `user_disabled` 的 `actor` 是 `system:feishu-event`，`data` 是 `reason` 与 `event_id`。**离职的管理员也会被停用**，哪怕他是最后一名管理员（兜底见[运维手册](../guides/operations.md#员工停用与离职)）。
+**员工离职**：按 `event.object.union_id` 找到员工，同步做[停用](#员工)的前两步（标停用、删掉他的登录会话：浏览器里的 cookie 立即失效），关闭他名下的会话放到后台（不让响应等它；每个实例同时最多 8 个后台收尾，同一名员工的合并成一个），回 `200`。停用原因按 `event.object.status`：`is_resigned` 为真是 `feishu_resigned`，否则 `is_exited` 为真是 `feishu_exited`，否则 `is_frozen` 为真是 `feishu_frozen`，都不为真也按 `feishu_resigned`（这个事件本身就是离职）。审计 `user_disabled` 的 `actor` 是 `system:feishu-event`，`data` 是 `reason` 与 `event_id`。**离职的管理员也会被停用**，哪怕他是最后一名管理员（兜底见[运维手册](../guides/operations.md#员工停用与离职)）。
 
 - 签名不符、来源对不上的请求**只写平台日志、不写审计**（防止被刷），计指标 `xuanpu_feishu_events_total{result}`（取值见运维手册）。
 - **不去重、不设时间窗**：停用可以重复执行，飞书重推、有人重放，都只会重复一次无害的停用（状态不变、不再记 `user_disabled`，后台的收尾重跑一遍）。
@@ -368,7 +369,7 @@ PUT /v1/users/{user_id}/status
 → 员工对象，另带 "cleanup_failed": []
 ```
 
-- **停用**走停用流水线（原因 `admin`）：标停用并记 `user_disabled`；删掉他的全部登录会话（cookie 立即 `401`，代他调用 `403`）；关闭他名下的全部活动会话。三步都做完才返回；`cleanup_failed` 列出失败的收尾（现在只有 `close_sessions` 一项），失败的另记 `user_cleanup_failed`。对已停用的员工再停用一次：状态不变、不再记 `user_disabled`，收尾重跑一遍——看到 `cleanup_failed` 不为空时这样重试。停用之后他名下会话的去向见[主人停用之后](#主人停用之后)。
+- **停用**走停用流水线（原因 `admin`）：标停用；删掉他的全部登录会话（cookie 立即 `401`，代他调用 `403`），之后记 `user_disabled`；关闭他名下的全部活动会话。三步都做完才返回；`cleanup_failed` 列出失败的收尾（现在只有 `close_sessions` 一项），失败的另记 `user_cleanup_failed`。对已停用的员工再停用一次：状态不变、不再记 `user_disabled`，收尾重跑一遍——看到 `cleanup_failed` 不为空时这样重试。停用之后他名下会话的去向见[主人停用之后](#主人停用之后)。
 - **启用**只改状态、记 `user_enabled`：已关闭的会话不恢复，删掉的登录会话也不恢复（员工重新登录即可）。`cleanup_failed` 总是空列表。
 - **改角色**：角色真的变了才记 `user_role_changed`（`data` 是 `before`、`after`）。成员升为管理员，下一个请求就有管理员权限。
 - **保住最后一名管理员**：降级或停用会让租户里一名启用的管理员都不剩时，`409 conflict`，`message` 说明原因（「这是租户里最后一名启用的管理员，不能降级或停用」），什么也不改；两名管理员同时互相降级，至多一个成功。飞书离职事件不受这一条限制（见[飞书事件回调](#飞书事件回调)）。

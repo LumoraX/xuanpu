@@ -344,12 +344,12 @@ curl -X PUT localhost:8420/v1/admin/tenants/acme/quota \
 
 员工有三种途径被停用：租户管理员调 `PUT /v1/users/{id}/status`（原因 `admin`）、飞书推来的离职事件（原因 `feishu_resigned`、`feishu_frozen` 或 `feishu_exited`，见[接口文档的飞书事件回调一节](../architecture/http-api.md#飞书事件回调)），以及按飞书通讯录的每日对账（随后提供）。三种都走同一条停用流水线：
 
-1. 把员工标为停用，记下原因与时间。状态真的变了才记一条审计 `user_disabled`，指标 `xuanpu_users_disabled_total{reason}` 计一次；
-2. 删掉他的全部登录会话：浏览器里的 cookie 下一个请求就是 `401`，代他调用是 `403`；
+1. 把员工标为停用，记下原因与时间；
+2. 删掉他的全部登录会话：浏览器里的 cookie 下一个请求就是 `401`，代他调用是 `403`。然后，状态真的变了的，才记一条审计 `user_disabled`、指标 `xuanpu_users_disabled_total{reason}` 计一次。审计排在最后，是为了它写不进去时（这次停用照样报错）停用与删登录会话都已经落下；代价是重试时状态已是停用，这条 `user_disabled` 不会补写——平台日志里有错误、`xuanpu_audit_write_failures_total` 会计一次；
 3. 依次执行停用之后的收尾。现在只有一项：关闭他名下全部活动会话（审计 `session_closed`，`actor` 是 `system:user-disabled`），正在进行的对话随之取消。某项收尾失败时记一条 `user_cleanup_failed`（哪一项、什么异常类型；细节在平台日志「停用后的收尾」里），不影响其余的。
 
 - **重跑收尾**：对已经停用的员工再停用一次（`PUT /v1/users/{id}/status`，`{"status": "disabled"}`），状态不变、不再记 `user_disabled`，但第 3 步全部重跑。看到 `user_cleanup_failed` 时这样重试；响应里的 `cleanup_failed` 列出这一次仍然失败的收尾。
-- **离职事件的收尾在后台跑**：飞书要求 3 秒内响应，事件回调同步做完前两步就回 `200`，关会话放在后台。实例停机时最多再等 5 秒，没跑完的取消、记一条告警；实例崩溃时没跑完的直接丢了。两种情况都有兜底：主人已停用的会话，任何人都不能再发消息、送审批结果（`403 session_owner_disabled`），空闲会话照常回收；要彻底关掉，再停用他一次。
+- **离职事件的收尾在后台跑**：飞书要求 3 秒内响应，事件回调同步做完前两步就回 `200`，关会话放在后台。每个实例同时在跑的后台收尾最多 8 个，多出来的排队，一阵批量离职不会占满连接池、拖慢正常请求；同一名员工已有后台收尾在跑时不另开，只在它跑完之后再跑一轮（期间来的重推不论几次都并成这一轮），所以不会有两个收尾同时关他的同一个会话。实例停机时最多再等 5 秒，没跑完的取消、记一条告警；实例崩溃时没跑完的直接丢了。两种情况都有兜底：主人已停用的会话，任何人都不能再发消息、送审批结果（`403 session_owner_disabled`），空闲会话照常回收；要彻底关掉，再停用他一次。
 - **会话在别的实例上**：关闭以控制面里的记录为准，立即生效，之后任何实例都不再接受这个会话的消息与审批结果。持有它的那个实例不会收到通知：正在跑的那一轮跑完为止（要审批的写操作停在审批点），引擎按空闲回收（`limits.session_idle_seconds`）或停机时释放。与在别的实例上调 `DELETE /v1/sessions/{id}` 是同样的行为。
 - **离职的管理员也会被停用**：管理员经接口降级、停用别人时，平台不让租户里一名启用的管理员都不剩（`409 conflict`）；但离职事件与对账不受这一条限制——离职的人必须停用，哪怕他是最后一名管理员。这时由平台管理员兜底：用根凭据给这个租户签发一把租户管理员的 API key，再用它把某名员工设为管理员：
 
@@ -511,7 +511,7 @@ xuanpu_usage_estimated_total 1.0
 | `xuanpu_usage_write_failures_total` | counter | — | 一轮对话结束时用量写库失败的次数（先写租户总量，成了再写按员工的；哪笔失败都计一次，租户那笔失败时员工那笔不写）。这一轮照常结束，但没写成的不再补记：`/v1/usage` 与当天的 token 配额、`/v1/usage/users` 会少算，查数据库 |
 | `xuanpu_logins_total` | counter | `result` | 飞书登录的结果：`succeeded`，或失败原因（`feishu_denied`、`not_in_app_scope`、`state_invalid`、`tenant_mismatch`、`tenant_unavailable`、`user_disabled`、`identity_unavailable`，含义见[接口文档](../architecture/http-api.md#飞书登录)）。`identity_unavailable` 持续上涨说明平台连不上飞书或应用凭据不对，看平台日志里「飞书登录失败」的告警 |
 | `xuanpu_users_disabled_total` | counter | `reason` | 被停用的员工数，按原因：`admin`（管理员停用）、`feishu_resigned`、`feishu_frozen`、`feishu_exited`（飞书离职事件或对账）。只在状态确实从启用变成停用时计，重复停用不计 |
-| `xuanpu_feishu_events_total` | counter | `result` | 飞书事件回调的请求数：`url_verification`（回了 URL 验证）、`accepted`（处理了离职事件）、`ignored`（合法但无事可做：别的事件类型、平台里没有这名员工、租户还没绑定飞书企业）、`bad_signature`（签名不符，或没有签名又不是 URL 验证）、`rejected`（签名对了，Verification Token、App ID 或飞书企业对不上）、`bad_request`（请求体超过 1 MiB，或签名对了而内容解不开）、`unknown_tenant`（租户没有可用的飞书配置）。`bad_signature`、`rejected` 持续出现说明飞书后台的 Encrypt Key、Verification Token 与平台保管库里的不一致，或有人在刷这个地址；看平台日志里「飞书事件回调…被拒」的告警 |
+| `xuanpu_feishu_events_total` | counter | `result` | 飞书事件回调的请求数：`url_verification`（回了 URL 验证）、`accepted`（处理了离职事件）、`ignored`（合法但无事可做：别的事件类型、平台里没有这名员工、租户还没绑定飞书企业）、`bad_signature`（签名不符，或没有签名又不是 URL 验证）、`rejected`（签名对了，Verification Token、App ID 或飞书企业对不上）、`bad_request`（请求体超过 1 MiB，或签名对了而内容解不开）、`unknown_tenant`（租户没有可用的飞书配置）、`internal_error`（平台内部出错，回了 `500`：存储报错、保管库里的密文解不开等，看平台日志）。`bad_signature`、`rejected` 持续出现说明飞书后台的 Encrypt Key、Verification Token 与平台保管库里的不一致，或有人在刷这个地址；看平台日志里「飞书事件回调…被拒」的告警 |
 
 指标不带租户标签（避免标签基数随租户数膨胀）；按租户看用量用 `GET /v1/usage`。
 

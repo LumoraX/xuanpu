@@ -83,10 +83,11 @@ FeishuEventResult = Literal[
     "rejected",
     "bad_request",
     "unknown_tenant",
+    "internal_error",
 ]
 """``xuanpu_feishu_events_total`` 的 ``result``（含义见 ``identity.callback``）：回了 URL 验证、
 处理了离职事件、合法但无事可做而忽略、签名不符（含没有签名又不是 URL 验证）、签名对而来源核对不过、
-请求体不合预期、租户没有可用的飞书配置。"""
+请求体不合预期、租户没有可用的飞书配置、平台内部出错（存储报错、密钥的密文解不开等，回 500）。"""
 FEISHU_EVENT_RESULTS: tuple[str, ...] = get_args(FeishuEventResult)
 
 

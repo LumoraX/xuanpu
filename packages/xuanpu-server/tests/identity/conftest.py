@@ -1,4 +1,5 @@
-"""员工身份用例的公共夹具：带 HTTP 客户端的平台、模拟的飞书，外加建员工与登录会话的把手。
+"""员工身份用例的公共夹具：带 HTTP 客户端的平台、模拟的飞书、飞书应用的几个取值，外加建员工与登录
+会话的把手。
 
 上一级 ``conftest.py`` 的夹具（``world_opener`` 等）在这里照样可用。测试模块之间不能互相 import，
 共用的东西都经夹具提供。
@@ -367,6 +368,23 @@ class IdentityWorld:
             "acme", AuditQuery(kind=kind)
         )
         return records
+
+
+@dataclass(frozen=True)
+class FeishuApp:
+    """租户 acme 的飞书应用：``IdentityWorld.configure_feishu`` 写进保管库与飞书配置的取值，外加
+    模拟飞书里员工默认所在的飞书企业。事件回调的用例（``feishu_events/``）经它拿到这些值。"""
+
+    app_id: str = APP_ID
+    encrypt_key: str = ENCRYPT_KEY
+    verification_token: str = VERIFICATION_TOKEN
+    tenant_key: str = "tk_acme"
+
+
+@pytest.fixture
+def feishu_app() -> FeishuApp:
+    """租户 acme 的飞书应用的几个取值（见 ``FeishuApp``）。"""
+    return FeishuApp()
 
 
 @pytest.fixture

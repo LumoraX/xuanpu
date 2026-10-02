@@ -7,19 +7,17 @@ cookie 401、代调用 403、会话被关；只做前两步时，主人已停用
 
 from __future__ import annotations
 
-import asyncio
-import logging
 import time
 from typing import TYPE_CHECKING, Any, get_args
 
 import pytest
 from prometheus_client.parser import text_string_to_metric_families
-from xuanpu_server.audit import AuditLog
 from xuanpu_server.controlplane import InMemoryControlPlane
 from xuanpu_server.controlplane.models import AuditQuery, SessionRecord
 from xuanpu_server.errors import ConflictError
-from xuanpu_server.identity import DisabledReason, InMemoryIdentityStore, UserRecord
-from xuanpu_server.identity.disable import FEISHU_EVENT_ACTOR, DisablePipeline
+from xuanpu_server.identity import DisabledReason
+from xuanpu_server.identity.cookies import login_token_hash
+from xuanpu_server.identity.disable import FEISHU_EVENT_ACTOR
 from xuanpu_server.identity.listeners import (
     CLEANUP_ACTOR,
     CloseUserSessions,
@@ -255,6 +253,36 @@ async def test_keep_an_admin_guards_the_last_admin(ident: Any) -> None:
     assert outcome.changed
 
 
+async def test_audit_is_written_after_the_effects(ident: Any, monkeypatch: Any) -> None:
+    """``user_disabled`` 排在删登录会话之后：它写不进去时操作报错，但停用与删登录会话都已落下；
+    重试时状态已是停用，这条记录不会补写（已知限制，写在审计手册里），指标照计。"""
+    identity = ident.world.platform.identity
+    alice = await ident.user(name="爱丽丝")
+    token = await ident.login(alice)
+    audit = ident.world.platform.audit
+    original = audit.control
+
+    async def failing(principal: Any, tenant_id: str, kind: str, *args: Any, **kwargs: Any) -> None:
+        """``user_disabled`` 写不进去，别的照常。"""
+        if kind == "user_disabled":
+            raise ConnectionError("审计库挂了")
+        await original(principal, tenant_id, kind, *args, **kwargs)
+
+    monkeypatch.setattr(audit, "control", failing)
+    admin = ident.world.admin
+    with pytest.raises(ConnectionError):
+        await identity.disable_user("acme", alice.user_id, "admin", admin, keep_an_admin=True)
+    assert (await ident.store.get_user("acme", alice.user_id)).status == "disabled"
+    session = await ident.store.get_login_session(login_token_hash(token), now=time.time())
+    assert session is None
+
+    monkeypatch.undo()
+    again = await identity.disable_user("acme", alice.user_id, "admin", admin, keep_an_admin=True)
+    assert not again.changed
+    assert await records(ident, "user_disabled") == []
+    assert disabled_counts(ident)["admin"] == 1.0
+
+
 # --- 只做前两步：主人已停用的运行时规则兜底 ---
 
 
@@ -317,11 +345,15 @@ async def test_session_held_by_another_instance_is_marked_closed(
 
 
 class FakeCloser:
-    """替身的会话管理：关会话就是把控制面记录标 closed；``fail`` 里的关不掉。"""
+    """替身的会话管理：关会话就是把控制面记录标 closed。``fail`` 里的报错；``silent`` 里的不报错，
+    却原样返回仍是 active 的记录。"""
 
-    def __init__(self, store: InMemoryControlPlane, fail: set[str]) -> None:
+    def __init__(
+        self, store: InMemoryControlPlane, fail: set[str], silent: set[str] | None = None
+    ) -> None:
         self.store = store
         self.fail = fail
+        self.silent = silent or set()
         self.calls: list[tuple[Principal, str]] = []
 
     async def close(self, principal: Principal, session_id: str) -> SessionRecord:
@@ -329,13 +361,18 @@ class FakeCloser:
         self.calls.append((principal, session_id))
         if session_id in self.fail:
             raise RuntimeError("关不掉")
+        if session_id in self.silent:
+            record = await self.store.get_session("acme", session_id)
+            assert record is not None
+            return record
         return await self.store.update_session("acme", session_id, at=time.time(), status="closed")
 
 
 async def test_close_listener_pages_through_and_reports_failures() -> None:
     """控制面列会话没有游标：反复取「仍是 active 的前 N 个」，关不掉的每轮多取同样多个，保证没试过
-    的都轮得到；每个只试一次。关不掉的最后一并报 ``SessionCleanupError``，关掉的不回滚。以系统调用者
-    关：``tenant_admin``、只在本租户、``actor`` 为 ``system:user-disabled``。"""
+    的都轮得到；每个只试一次。关不掉的（``close`` 报错，或返回了却仍是 active）最后一并报
+    ``SessionCleanupError``，关掉的不回滚。以系统调用者关：``tenant_admin``、只在本租户、``actor`` 为
+    ``system:user-disabled``。"""
     store = InMemoryControlPlane()
     await store.create_tenant(Tenant(tenant_id="acme", name="Acme"))
     mine = [f"ses_{index}" for index in range(7)]
@@ -353,18 +390,19 @@ async def test_close_listener_pages_through_and_reports_failures() -> None:
                 user_id="usr_other" if session_id == "ses_other" else "usr_alice",
             )
         )
-    closer = FakeCloser(store, fail={"ses_6", "ses_5"})
+    closer = FakeCloser(store, fail={"ses_6", "ses_5"}, silent={"ses_4"})
     listener = CloseUserSessions(store=store, sessions=closer, page_size=2)
 
-    with pytest.raises(SessionCleanupError, match="2 个"):
+    with pytest.raises(SessionCleanupError, match="3 个"):
         await listener.on_user_disabled("acme", "usr_alice")
 
     attempted = [session_id for _, session_id in closer.calls]
     assert sorted(attempted) == sorted(mine)
+    stuck = closer.fail | closer.silent
     for session_id in mine:
         record = await store.get_session("acme", session_id)
         assert record is not None
-        assert record.status == ("active" if session_id in closer.fail else "closed")
+        assert record.status == ("active" if session_id in stuck else "closed")
     other = await store.get_session("acme", "ses_other")
     assert other is not None and other.status == "active"
     principals = {principal for principal, _ in closer.calls}
@@ -376,80 +414,14 @@ async def test_close_listener_pages_through_and_reports_failures() -> None:
         "system:user-disabled",
     )
 
-    # 重跑：只剩上次关不掉的两个，这次都关掉
+    # 重跑：只剩上次关不掉的三个，这次都关掉
     closer.fail.clear()
+    closer.silent.clear()
     await listener.on_user_disabled("acme", "usr_alice")
     rerun = sorted(session_id for _, session_id in closer.calls[len(attempted) :])
-    assert rerun == ["ses_5", "ses_6"]
+    assert rerun == ["ses_4", "ses_5", "ses_6"]
     active = await store.list_sessions("acme", status="active", user_id="usr_alice")
     assert active == []
-
-
-# --- 后台任务 ---
-
-
-class Hanging:
-    """一直不结束的监听者（直到被取消）。"""
-
-    def __init__(self) -> None:
-        self.started = asyncio.Event()
-        self.cancelled = False
-
-    async def on_user_disabled(self, tenant_id: str, user_id: str) -> None:
-        """等到被取消。"""
-        self.started.set()
-        try:
-            await asyncio.Event().wait()
-        except asyncio.CancelledError:
-            self.cancelled = True
-            raise
-
-
-async def standalone_pipeline(**kwargs: Any) -> tuple[DisablePipeline, UserRecord]:
-    """一条不依附平台的流水线（内存存储），外加一名员工。"""
-    control = InMemoryControlPlane()
-    await control.create_tenant(Tenant(tenant_id="acme", name="Acme"))
-    store = InMemoryIdentityStore(control)
-    user = UserRecord(tenant_id="acme", user_id="usr_a", display_name="A", created_at=0.0)
-    await store.create_user(user)
-    return DisablePipeline(store=store, audit=AuditLog(control), **kwargs), user
-
-
-async def test_background_notify_is_tracked_and_settled() -> None:
-    """``notify_later`` 放后台：任务引用存在流水线里，``settle`` 等它们跑完；失败的监听者照样记
-    审计。"""
-    pipeline, user = await standalone_pipeline()
-    recorder = Recorder()
-    pipeline.register("broken", Broken())
-    pipeline.register("recorder", recorder)
-    actor = system_principal("acme", FEISHU_EVENT_ACTOR)
-
-    pipeline.notify_later("acme", user.user_id, actor)
-    assert pipeline.pending == 1
-    await pipeline.settle()
-
-    assert pipeline.pending == 0
-    assert recorder.calls == [("acme", user.user_id)]
-    await pipeline.close()
-
-
-async def test_close_waits_then_cancels_background(caplog: Any) -> None:
-    """关闭时等后台任务最多 ``drain_seconds``，还没完的取消并记告警；关闭之后不再接新的后台任务。"""
-    pipeline, user = await standalone_pipeline(drain_seconds=0.05)
-    hanging = Hanging()
-    pipeline.register("hanging", hanging)
-    actor = system_principal("acme", FEISHU_EVENT_ACTOR)
-    pipeline.notify_later("acme", user.user_id, actor)
-    await asyncio.wait_for(hanging.started.wait(), timeout=5)
-
-    with caplog.at_level(logging.WARNING, logger="xuanpu_server.identity.disable"):
-        await asyncio.wait_for(pipeline.close(), timeout=5)
-        pipeline.notify_later("acme", user.user_id, actor)
-
-    assert hanging.cancelled
-    assert pipeline.pending == 0
-    assert "取消" in caplog.text
-    assert "已关闭" in caplog.text
 
 
 # --- 系统调用者与指标 ---

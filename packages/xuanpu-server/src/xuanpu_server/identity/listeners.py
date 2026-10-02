@@ -18,7 +18,8 @@
 
 **翻页**：控制面的 ``list_sessions`` 没有游标（也不为此改它）。关掉的会话不再是 active，所以反复取
 「仍是 active 的前 N 个」，直到取不出没试过的为止；关不掉的仍是 active，每轮多取同样多个，保证没试过
-的总有 N 个名额。每个会话只试一次；全部试过之后有关不掉的，抛 ``SessionCleanupError``（流水线据此记
+的总有 N 个名额（``close`` 报错、或返回了但会话仍不是 ``closed`` 的都算关不掉）。每个会话只试一次；
+全部试过之后有关不掉的，抛 ``SessionCleanupError``（流水线据此记
 ``user_cleanup_failed``），已关掉的不回滚，重跑时只剩没关掉的。员工已停用，不会再有他的新会话（代他
 调用、浏览器登录都被拒），所以循环会结束。
 """
@@ -91,15 +92,33 @@ class CloseUserSessions:
                 break
             for session_id in todo:
                 tried.add(session_id)
-                try:
-                    await self._sessions.close(principal, session_id)
-                except Exception:
-                    logger.exception("员工 %s 停用后关会话 %s 失败", user_id, session_id)
+                if not await self._close_one(principal, user_id, session_id):
                     failed.append(session_id)
         if failed:
             raise SessionCleanupError(f"{len(failed)} 个会话没有关掉：{', '.join(sorted(failed))}")
         if tried:
             logger.info("员工 %s（租户 %s）停用后关掉了 %d 个会话", user_id, tenant_id, len(tried))
+
+    async def _close_one(self, principal: Principal, user_id: str, session_id: str) -> bool:
+        """关一个会话，返回是否确实关掉了。
+
+        ``close`` 报错算没关掉；返回了、但记录仍不是 ``closed`` 的也算没关掉（不靠「关不掉就会报错」
+        这个前提：它仍是 active，下一轮列会话还会取到它，翻页靠的正是把它记进失败的个数）。
+        """
+        try:
+            record = await self._sessions.close(principal, session_id)
+        except Exception:
+            logger.exception("员工 %s 停用后关会话 %s 失败", user_id, session_id)
+            return False
+        if record.status != "closed":
+            logger.warning(
+                "员工 %s 停用后关会话 %s：关闭返回了，会话却仍是 %s",
+                user_id,
+                session_id,
+                record.status,
+            )
+            return False
+        return True
 
 
 __all__ = [

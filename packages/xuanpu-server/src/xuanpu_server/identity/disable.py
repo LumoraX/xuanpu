@@ -3,11 +3,13 @@
 管理员接口（``IdentityService.disable_user``，经 ``identity.users``）、飞书离职事件
 （``identity.callback``）以及以后的对账，都经 ``DisablePipeline`` 停用员工：
 
-1. 标停用，记下原因与时间（``keep_an_admin`` 为真时不停用最后一名启用的管理员）。状态真的变了才记
-   一条 ``user_disabled``、计一次 ``xuanpu_users_disabled_total{reason}``；已是停用的不改（原因与
-   时间保持第一次的），也不再记；
+1. 标停用，记下原因与时间（``keep_an_admin`` 为真时不停用最后一名启用的管理员）。已是停用的不改
+   （原因与时间保持第一次的）；
 2. 删他的全部登录会话（认证每个请求都查员工状态，停用后 cookie 本来就是 401；这一步把库里的记录
-   清掉）；
+   清掉）。然后，第 1 步状态真的变了的，才记一条 ``user_disabled``、计一次
+   ``xuanpu_users_disabled_total{reason}``——审计排在删登录会话之后：它写不进去时（操作照样报错），
+   停用的效果已经全部落下。**已知限制**：这时状态已是停用，重试只会走「已是停用」，这条
+   ``user_disabled`` 不会补写（错误日志与 ``xuanpu_audit_write_failures_total`` 有记录）；
 3. 依次通知登记的监听者（``on_user_disabled(tenant_id, user_id)``，必须能重复执行）。某个失败时记
    ``user_cleanup_failed``（监听者名与异常类型，不带异常文本：它可能带着内部地址之类的东西，细节只进
    日志），接着通知其余的。
@@ -21,11 +23,21 @@ Task 7）取 ``system:reconcile``。``user_disabled``、``user_cleanup_failed`` 
 的员工。
 
 **同步与后台**：管理员接口三步都做完再返回（``disable``）。飞书要 3 秒内回 200，所以事件回调同步做第
-1、2 步（``mark_disabled``），第 3 步交给 ``notify_later`` 放后台：任务引用存在本对象里（asyncio 只
-弱引用任务，不存可能被回收），结束时取走异常记日志；``close`` 时等它们最多 ``drain_seconds`` 秒，
-还没完的取消并记告警，之后不再接新的后台任务。被取消的、进程崩溃时丢了的，有会话主人停用的运行时
-规则兜底（``runtime.ownership``：主人停用的会话不能再发消息、送审批），空闲会话照常回收；管理员再
-停用一次就会重跑。
+1、2 步（``mark_disabled``），第 3 步交给 ``notify_later`` 放后台：
+
+- 任务引用存在本对象里（asyncio 只弱引用任务，不存可能被回收），监听者的失败在 ``notify`` 里记审计，
+  别的异常取走记日志；
+- **并发上限**：同时在跑第 3 步的最多 ``BACKGROUND_CONCURRENCY`` 个，别的排队，免得一阵离职事件同时
+  打开一堆任务、和请求处理抢连接池；
+- **按员工合并**：同一名员工已有后台任务时不再新建，只记下「跑完再来一轮」：正在跑的那一轮可能在这次
+  请求之前就读过他的会话列表，所以不能算已覆盖；跑完之后再从头跑一轮，这期间来的请求不论几个都并成
+  这一轮（监听者能重复执行，后开始的一轮覆盖它之前的全部请求）。同一名员工的两个后台任务也就不会
+  同时关同一个会话、记两条 ``session_closed``；
+- ``close`` 时等它们最多 ``drain_seconds`` 秒，还没完的取消并记告警，之后不再接新的后台任务。被
+  取消的、进程崩溃时丢了的，有会话主人停用的运行时规则兜底（``runtime.ownership``：主人停用的会话
+  不能再发消息、送审批），空闲会话照常回收；管理员再停用一次就会重跑。
+
+管理员接口同步做的第 3 步不经并发上限与合并（它本来就一次一个请求，调用方在等结果）。
 """
 
 from __future__ import annotations
@@ -54,6 +66,12 @@ FEISHU_EVENT_ACTOR = "feishu-event"
 """飞书离职事件停用员工时，系统调用者的名字（审计里 ``actor`` 是 ``system:feishu-event``）。"""
 DRAIN_SECONDS = 5.0
 """平台关闭时最多等后台的收尾这么久（秒），还没完的取消。"""
+BACKGROUND_CONCURRENCY = 8
+"""后台同时在跑第 3 步的上限。每一轮要列会话、逐个关会话（每个都写库、写审计），太多同时跑会占满
+连接池，拖慢正常请求；8 个足够消化一阵批量离职，多出来的排队等。"""
+
+_UserKey = tuple[str, str]
+"""``(租户, 员工)``：后台任务按它合并。"""
 
 
 class UserDisabledListener(Protocol):
@@ -108,7 +126,11 @@ class DisablePipeline:
         self._now = now
         self._drain_seconds = drain_seconds
         self._listeners: list[tuple[str, UserDisabledListener]] = []
-        self._tasks: set[asyncio.Task[tuple[str, ...]]] = set()
+        self._tasks: set[asyncio.Task[None]] = set()
+        # 每名员工至多一个后台任务；它跑着的时候又来了请求，记下最新的 actor，跑完再来一轮
+        self._running: dict[_UserKey, asyncio.Task[None]] = {}
+        self._again: dict[_UserKey, Principal] = {}
+        self._slots = asyncio.Semaphore(BACKGROUND_CONCURRENCY)
         self._closed = False
 
     def register(self, name: str, listener: UserDisabledListener) -> None:
@@ -153,7 +175,9 @@ class DisablePipeline:
         keep_an_admin: bool,
         detail: dict[str, Any] | None = None,
     ) -> DisableOutcome:
-        """第 1、2 步：标停用（真的变了才记审计、计数），删他的全部登录会话。
+        """第 1、2 步：标停用，删他的全部登录会话，然后（状态真的变了才）记审计、计数。
+
+        审计排在最后：写不进去时停用的效果已经全部落下，而这条记录重试也不会补写（模块说明）。
 
         Args:
             reason: 停用原因。
@@ -173,12 +197,12 @@ class DisablePipeline:
             at=self._now(),
             keep_an_admin=keep_an_admin,
         )
+        removed = await self._store.delete_user_login_sessions(tenant_id, user_id)
         if changed:
-            data = {"reason": reason, **(detail or {})}
-            await self._audit.control(actor, tenant_id, "user_disabled", data, user_id=user_id)
             if self._metrics is not None:
                 self._metrics.user_disabled(reason)
-        removed = await self._store.delete_user_login_sessions(tenant_id, user_id)
+            data = {"reason": reason, **(detail or {})}
+            await self._audit.control(actor, tenant_id, "user_disabled", data, user_id=user_id)
         user = await self._store.get_user(tenant_id, user_id)
         if user is None:
             # 刚改过状态就查不到（员工记录不会删除）：存储出了问题，按内部错误处理
@@ -223,7 +247,10 @@ class DisablePipeline:
         return tuple(failed)
 
     def notify_later(self, tenant_id: str, user_id: str, actor: Principal) -> None:
-        """把第 3 步放进后台（飞书事件回调用：响应不等它）。关闭之后不再接，记告警。"""
+        """把第 3 步放进后台（飞书事件回调用：响应不等它）。关闭之后不再接，记告警。
+
+        这名员工已有后台任务时不新建，只记下跑完再来一轮（合并的理由见模块说明）。
+        """
         if self._closed:
             logger.warning(
                 "停用流水线已关闭：员工 %s（租户 %s）停用后的收尾没有放进后台，"
@@ -232,14 +259,43 @@ class DisablePipeline:
                 tenant_id,
             )
             return
+        key = (tenant_id, user_id)
+        if key in self._running:
+            logger.debug("员工 %s（租户 %s）的收尾正在后台跑，跑完再来一轮", user_id, tenant_id)
+            self._again[key] = actor
+            return
         task = asyncio.create_task(
-            self.notify(tenant_id, user_id, actor), name=f"user-disabled:{tenant_id}:{user_id}"
+            self._background(key, actor), name=f"user-disabled:{tenant_id}:{user_id}"
         )
+        self._running[key] = task
         self._tasks.add(task)
         task.add_done_callback(self._finished)
 
-    def _finished(self, task: asyncio.Task[tuple[str, ...]]) -> None:
-        """后台任务结束：放掉引用，取走异常记日志（监听者的失败已在 ``notify`` 里记过审计）。"""
+    async def _background(self, key: _UserKey, actor: Principal) -> None:
+        """一名员工的后台收尾：占一个并发名额跑第 3 步；跑着的时候又来了请求，就再跑一轮。
+
+        一轮出错（写 ``user_cleanup_failed`` 失败之类）记日志、照样看要不要再来一轮。退出前（包括
+        被取消）同步地把自己从 ``_running`` 里拿掉：判断「没有下一轮」与拿掉之间没有让出点，新来的
+        请求不会挂在一个已经不再循环的任务上。
+        """
+        tenant_id, user_id = key
+        try:
+            while True:
+                try:
+                    async with self._slots:
+                        await self.notify(tenant_id, user_id, actor)
+                except Exception:
+                    logger.exception("员工 %s（租户 %s）停用后的收尾出错", user_id, tenant_id)
+                following = self._again.pop(key, None)
+                if following is None:
+                    return
+                actor = following
+        finally:
+            self._running.pop(key, None)
+            self._again.pop(key, None)
+
+    def _finished(self, task: asyncio.Task[None]) -> None:
+        """后台任务结束：放掉引用；被取消的记告警，意外的异常取走记日志。"""
         self._tasks.discard(task)
         if task.cancelled():
             logger.warning("员工停用后的收尾（%s）被取消，没有跑完", task.get_name())
@@ -273,6 +329,7 @@ class DisablePipeline:
 
 
 __all__ = [
+    "BACKGROUND_CONCURRENCY",
     "DRAIN_SECONDS",
     "FEISHU_EVENT_ACTOR",
     "DisableOutcome",

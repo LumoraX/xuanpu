@@ -21,7 +21,8 @@
   ``is_activated``、``is_exited``、``is_unjoin``）。
 
 **错误**：请求体或解出来的内容不合预期一律报 ``EventFormatError``，异常文本只说哪一步、不带请求里的
-内容。JSON 嵌套过深（``RecursionError``）、明文不是 UTF-8 也算在内，不会变成 500。
+内容。JSON 嵌套过深（``RecursionError``）、明文不是 UTF-8、字段里有编码不了的字符（JSON 转义出的孤立
+代理项，如 ``"\\ud800"``）也算在内，不会变成 500，也不会在别处变成别的错误。
 """
 
 from __future__ import annotations
@@ -48,6 +49,8 @@ USER_DELETED = "contact.user.deleted_v3"
 """员工离职事件的类型。"""
 MAX_EVENT_BODY_BYTES = 1024 * 1024
 """事件回调请求体的上限：飞书的事件只有几 KB，超过 1 MiB 不读完、不验签，直接拒绝。"""
+MAX_CHALLENGE_LENGTH = 256
+"""URL 验证里 ``challenge`` 的最大长度：它要原样回出去，飞书给的只有十几个字符。"""
 _BLOCK = 16
 
 
@@ -126,24 +129,28 @@ def _json_object(raw: bytes, what: str) -> dict[str, Any]:
     return value
 
 
-def encrypted_field(body: bytes) -> str:
-    """请求体里的 ``encrypt``。平台要求加密：没有它（明文事件）同样报错。"""
-    outer = _json_object(body, "请求体")
+def outer_object(body: bytes) -> dict[str, Any]:
+    """解析原始请求体（外层的 JSON 对象）。每个请求只解析这一次，之后的判断都在它上面做。
+
+    Raises:
+        EventFormatError: 不是 UTF-8、不是 JSON、嵌套过深或不是对象。
+    """
+    return _json_object(body, "请求体")
+
+
+def encrypted_field(outer: dict[str, Any]) -> str:
+    """外层对象里的 ``encrypt``。平台要求加密：没有它（明文事件）同样报错。"""
     encrypted = outer.get("encrypt")
     if not isinstance(encrypted, str):
         raise EventFormatError("请求体里没有字符串的 encrypt 字段（平台要求事件加密）")
     return encrypted
 
 
-def is_plain_url_verification(body: bytes) -> bool:
-    """请求体是不是一个没加密的 URL 验证（飞书后台没配 Encrypt Key 时才这样发）。
+def is_plain_url_verification(outer: dict[str, Any]) -> bool:
+    """外层对象是不是一个没加密的 URL 验证（飞书后台没配 Encrypt Key 时才这样发）。
 
-    只用来写排障日志。
+    只用来写排障日志，提示去飞书后台配置 Encrypt Key。
     """
-    try:
-        outer = _json_object(body, "请求体")
-    except EventFormatError:
-        return False
     return outer.get("type") == URL_VERIFICATION and "encrypt" not in outer
 
 
@@ -171,25 +178,49 @@ def decrypt(encrypt_key: str, encrypted: str) -> bytes:
         raise EventFormatError("填充不对：Encrypt Key 与飞书后台的不一致，或密文被改过") from exc
 
 
-def _required_str(body: dict[str, Any], key: str, what: str) -> str:
-    """必须有的非空字符串字段。"""
+def _encodable(value: str) -> bool:
+    """能不能编码成 UTF-8。JSON 里的 ``"\\ud800"`` 这类转义会解出孤立的代理项，它编码不了：放过去
+    的话，之后的比较、写库、写审计都会在别处报错。"""
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+def _required_str(
+    body: dict[str, Any], key: str, what: str, *, max_length: int | None = None
+) -> str:
+    """必须有的非空字符串字段：能编码成 UTF-8，给了 ``max_length`` 时不超过它。"""
     value = body.get(key)
     if not isinstance(value, str) or not value:
         raise EventFormatError(f"{what}缺少 {key}")
+    if not _encodable(value):
+        raise EventFormatError(f"{what}的 {key} 含编码不了的字符")
+    if max_length is not None and len(value) > max_length:
+        raise EventFormatError(f"{what}的 {key} 超过 {max_length} 个字符")
     return value
+
+
+def _optional_str(body: dict[str, Any], key: str, what: str) -> str | None:
+    """可有可无的字符串字段：没给或为空是 None；给了就必须是能编码成 UTF-8 的字符串。"""
+    if body.get(key) in (None, ""):
+        return None
+    return _required_str(body, key, what)
 
 
 def parse_payload(plaintext: bytes) -> Payload:
     """认出解密后的内容：URL 验证、2.0 版事件，或平台不处理的格式。
 
     Raises:
-        EventFormatError: 不是 JSON 对象；URL 验证缺 ``challenge``、``token``；2.0 版事件缺
-            ``header`` 或其中核对来源要用的几项，``event`` 不是对象。
+        EventFormatError: 不是 JSON 对象；URL 验证缺 ``challenge``、``token``，或 ``challenge`` 超过
+            ``MAX_CHALLENGE_LENGTH``；2.0 版事件缺 ``header`` 或其中核对来源要用的几项，``event``
+            不是对象。这些字段（以及 ``event_id``）含编码不了的字符（孤立的代理项）也是它。
     """
     body = _json_object(plaintext, "解密后的内容")
     if body.get("type") == URL_VERIFICATION:
         return UrlVerification(
-            challenge=_required_str(body, "challenge", "URL 验证"),
+            challenge=_required_str(body, "challenge", "URL 验证", max_length=MAX_CHALLENGE_LENGTH),
             token=_required_str(body, "token", "URL 验证"),
         )
     if body.get("schema") != "2.0":
@@ -198,13 +229,13 @@ def parse_payload(plaintext: bytes) -> Payload:
     event = body.get("event", {})
     if not isinstance(header, dict) or not isinstance(event, dict):
         raise EventFormatError("2.0 版事件缺少 header，或 event 不是对象")
-    event_id = header.get("event_id")
+    what = "事件的 header "
     return EventEnvelope(
-        event_type=_required_str(header, "event_type", "事件的 header "),
-        token=_required_str(header, "token", "事件的 header "),
-        app_id=_required_str(header, "app_id", "事件的 header "),
-        tenant_key=_required_str(header, "tenant_key", "事件的 header "),
-        event_id=event_id if isinstance(event_id, str) and event_id else None,
+        event_type=_required_str(header, "event_type", what),
+        token=_required_str(header, "token", what),
+        app_id=_required_str(header, "app_id", what),
+        tenant_key=_required_str(header, "tenant_key", what),
+        event_id=_optional_str(header, "event_id", what),
         event=event,
     )
 
@@ -258,6 +289,7 @@ def user_deleted(envelope: EventEnvelope) -> UserDeleted:
 
 
 __all__ = [
+    "MAX_CHALLENGE_LENGTH",
     "MAX_EVENT_BODY_BYTES",
     "NONCE_HEADER",
     "SIGNATURE_HEADER",
@@ -274,6 +306,7 @@ __all__ = [
     "encrypted_field",
     "expected_signature",
     "is_plain_url_verification",
+    "outer_object",
     "parse_payload",
     "reason_from_status",
     "signature_matches",
