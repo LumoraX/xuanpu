@@ -36,11 +36,11 @@ if TYPE_CHECKING:
 
 _SESSION_COLUMNS = (
     "tenant_id, session_id, package, version, entry, thread_id, status, owner, "
-    "lease_expires_at, created_at, updated_at, created_by, metadata::text AS metadata"
+    "lease_expires_at, created_at, updated_at, created_by, metadata::text AS metadata, user_id"
 )
 _SESSION_INSERT_COLUMNS = (
     "tenant_id, session_id, package, version, entry, thread_id, status, owner, "
-    "lease_expires_at, created_at, updated_at, created_by, metadata"
+    "lease_expires_at, created_at, updated_at, created_by, metadata, user_id"
 )
 
 
@@ -69,6 +69,7 @@ def _api_key(row: asyncpg.Record) -> ApiKeyRecord:
         secret_hash=row["secret_hash"],
         created_at=row["created_at"],
         revoked_at=row["revoked_at"],
+        can_act_as_user=row["can_act_as_user"],
     )
 
 
@@ -169,7 +170,8 @@ class PostgresControlPlane:
         try:
             await self._execute(
                 f"INSERT INTO {self._t['api_key']} (key_id, tenant_id, name, role, "
-                "secret_hash, created_at, revoked_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+                "secret_hash, created_at, revoked_at, can_act_as_user) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
                 record.key_id,
                 record.tenant_id,
                 record.name,
@@ -177,6 +179,7 @@ class PostgresControlPlane:
                 record.secret_hash,
                 record.created_at,
                 record.revoked_at,
+                record.can_act_as_user,
             )
         except asyncpg.UniqueViolationError as exc:
             raise ConflictError("API key 标识冲突") from exc
@@ -330,7 +333,7 @@ class PostgresControlPlane:
         try:
             await self._execute(
                 f"INSERT INTO {self._t['session']} ({_SESSION_INSERT_COLUMNS}) "
-                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::text::jsonb)",
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::text::jsonb, $14)",
                 record.tenant_id,
                 record.session_id,
                 record.package,
@@ -344,6 +347,7 @@ class PostgresControlPlane:
                 record.updated_at,
                 record.created_by,
                 json.dumps(record.metadata, ensure_ascii=False),
+                record.user_id,
             )
         except asyncpg.UniqueViolationError as exc:
             raise ConflictError("会话标识冲突") from exc
@@ -365,17 +369,20 @@ class PostgresControlPlane:
         status: str | None = None,
         created_by: str | None = None,
         limit: int = 50,
+        user_id: str | None = None,
     ) -> list[SessionRecord]:
         """列出会话。"""
         rows = await self._fetch(
             f"SELECT {_SESSION_COLUMNS} FROM {self._t['session']} "
             "WHERE tenant_id = $1 AND ($2::text IS NULL OR status = $2) "
             "AND ($4::text IS NULL OR created_by = $4) "
+            "AND ($5::text IS NULL OR user_id = $5) "
             "ORDER BY updated_at DESC, session_id DESC LIMIT $3",
             tenant_id,
             status,
             limit,
             created_by,
+            user_id,
         )
         return [_session(row) for row in rows]
 

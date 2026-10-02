@@ -64,6 +64,7 @@ class SessionRecord:
         created_by: 创建者。
         metadata: 业务方附加的关联标识（客户号、工单号等），原样返回并写进审计；
             平台不解释它的含义。
+        user_id: 会话属于哪名员工（平台用户标识）。API key 直接建的会话为空。
     """
 
     session_id: str
@@ -79,6 +80,7 @@ class SessionRecord:
     owner: str | None = None
     lease_expires_at: float = 0.0
     metadata: dict[str, str] = field(default_factory=dict)
+    user_id: str | None = None
 
     def held_elsewhere(self, instance_id: str, now: float) -> bool:
         """在 ``now`` 这一刻是否由 ``instance_id`` 之外的实例持有（租约未到期）。
@@ -118,6 +120,8 @@ class AuditRecord:
         stream: 引擎事件所属的事件流。引擎每次被创建是一条新的事件流，序号从头计。
         seq: 引擎事件在事件流里的序号。``(stream, seq)`` 唯一，重复写入去重。
         data: 事件内容。不含密钥明文。
+        user_id: 关联的员工（平台用户标识）：控制面操作取调用者，引擎事件与过闸记录取会话的
+            主人；与员工无关的为空。
         audit_id: 存储分配的标识，同时是查询的翻页位置。
     """
 
@@ -130,6 +134,7 @@ class AuditRecord:
     stream: str | None = None
     seq: int | None = None
     data: dict[str, Any] = field(default_factory=dict)
+    user_id: str | None = None
     audit_id: int = 0
 
 
@@ -144,6 +149,7 @@ class AuditQuery:
         source: 只看某个来源。
         since: 只看这个时刻（含）之后的。
         until: 只看这个时刻（不含）之前的。
+        user_id: 只看与某名员工有关的。
         after_id: 翻页位置：只看标识大于它的记录。
         limit: 最多返回多少条。
     """
@@ -154,6 +160,7 @@ class AuditQuery:
     source: AuditSource | None = None
     since: float | None = None
     until: float | None = None
+    user_id: str | None = None
     after_id: int = 0
     limit: int = 100
 
@@ -171,6 +178,7 @@ class AuditQuery:
             self.source is None or record.source == self.source,
             self.since is None or record.at >= self.since,
             self.until is None or record.at < self.until,
+            self.user_id is None or record.user_id == self.user_id,
         )
         return all(checks)
 

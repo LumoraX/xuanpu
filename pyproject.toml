@@ -48,6 +48,9 @@ ignore = ["S101"]
 "packages/xuanpu-server/src/xuanpu_server/controlplane/postgres.py" = ["S608"]
 "packages/xuanpu-server/src/xuanpu_server/controlplane/postgres_audit.py" = ["S608"]
 "packages/xuanpu-server/src/xuanpu_server/controlplane/schema.py" = ["S608"]
+# 身份存储与控制面共用命名空间，同一理由；另有 SET 子句片段，只来自模块内写死的字面量
+"packages/xuanpu-server/src/xuanpu_server/identity/postgres.py" = ["S608"]
+"packages/xuanpu-server/src/xuanpu_server/identity/postgres_users.py" = ["S608"]
 # S108(硬编码 /tmp)：tests/ 里只允许作占位字符串，真落盘必须用 tmp_path fixture
 "packages/*/tests/**" = ["S108"]
 

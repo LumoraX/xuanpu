@@ -171,6 +171,7 @@ class InMemoryControlPlane:
         status: str | None = None,
         created_by: str | None = None,
         limit: int = 50,
+        user_id: str | None = None,
     ) -> list[SessionRecord]:
         """列出会话。"""
         found = [
@@ -179,6 +180,7 @@ class InMemoryControlPlane:
             if record.tenant_id == tenant_id
             and (status is None or record.status == status)
             and (created_by is None or record.created_by == created_by)
+            and (user_id is None or record.user_id == user_id)
         ]
         found.sort(key=lambda record: (record.updated_at, record.session_id), reverse=True)
         return found[:limit]

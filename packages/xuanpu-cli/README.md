@@ -89,6 +89,7 @@ xuanpu migrate --config xuanpu.yaml
 # 已执行 0001_control_plane
 # 已执行 0002_tenant_concurrent_turns
 # 已执行 0003_session_metadata
+# 已执行 0004_identity
 ```
 
 把控制面的表结构迁到最新。可以重复运行，已是最新时什么都不做。每次升级平台版本前先跑它。控制面用内存存储时没有表可迁。

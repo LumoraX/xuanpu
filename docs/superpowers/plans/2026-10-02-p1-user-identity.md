@@ -34,6 +34,9 @@
 | 用量入账 | 事件枢纽 `_account` 同时写按用户的表；P0 的估算入账（`usage_estimated`）同样计入按用户的表 |
 | 维护循环 | 对账放在 `identity/reconcile.py` 的独立周期任务，由 `Platform.start()` 启动、`close()` 停止；不塞进 `SessionManager.maintain` |
 | 指标 | 新增 `xuanpu_logins_total{result}`（`succeeded` 或失败原因）与 `xuanpu_users_disabled_total{reason}`；不带租户标签 |
+| `user_id` 为 `usr_` 加 12 位十六进制 | 沿用 `ids.new_id("usr")`（`identity.new_user_id`）：`usr_` 加 24 位十六进制，与 `ses_` 等标识同一格式（Task 2） |
+| 登录尝试只有 `created_at`，「10 分钟有效」 | 记录加 `expires_at`，有效期由服务层建记录时算好；存储不读时钟，按调用方给的 `now` 判断过期：`take_login_attempt`、`get_login_session` 对过期的返回空（Task 2） |
+| 身份存储全部按租户隔离 | 三个方法发生在知道租户之前，不带租户（同 `get_api_key`）：`get_login_session(token_hash)`（请求只带 cookie）、`take_login_attempt(state)`（回调只带 state）、`list_identity_configs(provider)`（对账遍历租户）；其余一律带租户（Task 2） |
 
 ---
 

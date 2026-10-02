@@ -130,6 +130,21 @@ async def test_api_keys(store: ControlPlaneStore) -> None:
     assert (revoked.active, revoked.revoked_at) == (False, 9.0)
 
 
+async def test_api_key_can_act_as_user(store: ControlPlaneStore) -> None:
+    """代员工调用的能力原样存取；不给就是没有。"""
+    await _tenants(store, "acme")
+    plain = ApiKeyRecord("aaaaaaaaaaaa", "acme", "app", "tenant_member", "h1", 1.0)
+    acting = ApiKeyRecord(
+        "bbbbbbbbbbbb", "acme", "bot", "tenant_admin", "h2", 2.0, can_act_as_user=True
+    )
+    await store.create_api_key(plain)
+    await store.create_api_key(acting)
+    assert plain.can_act_as_user is False
+    assert await store.get_api_key("aaaaaaaaaaaa") == plain
+    assert await store.get_api_key("bbbbbbbbbbbb") == acting
+    assert [key.can_act_as_user for key in await store.list_api_keys("acme")] == [False, True]
+
+
 # --- 业务包 ---
 
 
@@ -243,6 +258,33 @@ async def test_session_lifecycle(store: ControlPlaneStore) -> None:
     assert await store.count_active_sessions("acme") == 2
     assert await store.count_active_sessions("other") == 1
     assert await store.count_active_sessions("nobody") == 0
+
+
+async def test_session_owner_user(store: ControlPlaneStore) -> None:
+    """会话记下属于哪名员工（API key 直接建的为空），可按员工列出；更新不丢这个字段。"""
+    await _tenants(store, "acme", "other")
+    await store.create_session(_session("acme", "s1", at=1.0, user_id="usr_a"))
+    await store.create_session(_session("acme", "s2", at=2.0, user_id="usr_b"))
+    await store.create_session(_session("acme", "s3", at=3.0, user_id="usr_a"))
+    await store.create_session(_session("acme", "s4", at=4.0))
+    await store.create_session(_session("other", "s5", at=5.0, user_id="usr_a"))
+
+    assert await store.get_session("acme", "s1") == _session("acme", "s1", at=1.0, user_id="usr_a")
+    keyed = await store.get_session("acme", "s4")
+    assert keyed is not None
+    assert keyed.user_id is None
+
+    mine = await store.list_sessions("acme", user_id="usr_a")
+    assert [s.session_id for s in mine] == ["s3", "s1"]
+    combined = await store.list_sessions("acme", user_id="usr_a", created_by="key:abc", limit=1)
+    assert [s.session_id for s in combined] == ["s3"]
+    assert [s.session_id for s in await store.list_sessions("other", user_id="usr_a")] == ["s5"]
+    assert await store.list_sessions("acme", user_id="usr_missing") == []
+
+    closed = await store.update_session("acme", "s1", at=9.0, status="closed")
+    assert closed.user_id == "usr_a"
+    leased = await store.acquire_lease("acme", "s3", owner="w1", now=10.0, ttl_seconds=30)
+    assert leased.user_id == "usr_a"
 
 
 async def test_session_of_another_tenant_is_invisible(store: ControlPlaneStore) -> None:
@@ -481,6 +523,37 @@ async def test_audit_query_by_submission(store: ControlPlaneStore) -> None:
     )
     by_submission = await store.query_audit("acme", AuditQuery(submission_id="sub_x"))
     assert [r.data["text"] for r in by_submission] == ["全文"]
+
+
+async def test_audit_user_id_round_trip_and_filter(store: ControlPlaneStore) -> None:
+    """审计记录带上员工：原样存取，没有时为空；可按员工过滤，且只在本租户内。"""
+    await _tenants(store, "acme", "other")
+
+    def control(tenant: str, kind: str, user_id: str | None) -> AuditRecord:
+        return AuditRecord(
+            tenant_id=tenant, source="control", kind=kind, at=1.0, actor="key:a", user_id=user_id
+        )
+
+    await store.append_audit(
+        [
+            control("acme", "login_succeeded", "usr_a"),
+            control("acme", "package_published", None),
+            control("acme", "logout", "usr_a"),
+            control("acme", "login_succeeded", "usr_b"),
+            control("other", "login_succeeded", "usr_a"),
+            _engine_event("acme", 0),
+        ]
+    )
+    everything = await store.query_audit("acme", AuditQuery())
+    assert [r.user_id for r in everything] == ["usr_a", None, "usr_a", "usr_b", None]
+
+    alice = await store.query_audit("acme", AuditQuery(user_id="usr_a"))
+    assert [r.kind for r in alice] == ["login_succeeded", "logout"]
+    both = await store.query_audit("acme", AuditQuery(user_id="usr_a", kind="logout"))
+    assert [r.kind for r in both] == ["logout"]
+    theirs = await store.query_audit("other", AuditQuery(user_id="usr_a"))
+    assert [r.tenant_id for r in theirs] == ["other"]
+    assert await store.query_audit("acme", AuditQuery(user_id="usr_missing")) == []
 
 
 @pytest.mark.parametrize("limit", [0, 1001])

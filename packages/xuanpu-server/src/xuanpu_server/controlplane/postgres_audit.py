@@ -18,7 +18,8 @@ if TYPE_CHECKING:
     import asyncpg
 
 _AUDIT_COLUMNS = (
-    "audit_id, tenant_id, source, kind, at, actor, session_id, stream, seq, data::text AS data"
+    "audit_id, tenant_id, source, kind, at, actor, session_id, stream, seq, "
+    "data::text AS data, user_id"
 )
 
 
@@ -116,7 +117,8 @@ class PostgresAuditStore:
             return 0
         statement = (
             f"INSERT INTO {self._audit_table} (tenant_id, source, kind, at, actor, session_id, "
-            "stream, seq, data) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::text::jsonb) "
+            "stream, seq, data, user_id) "
+            "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::text::jsonb, $10) "
             "ON CONFLICT (tenant_id, stream, seq) DO NOTHING"
         )
         written = 0
@@ -133,6 +135,7 @@ class PostgresAuditStore:
                     record.stream,
                     record.seq,
                     json.dumps(record.data, ensure_ascii=False, default=str),
+                    record.user_id,
                 )
                 written += int(status.rsplit(" ", 1)[-1])
         return written
@@ -148,6 +151,7 @@ class PostgresAuditStore:
             "AND ($6::float8 IS NULL OR at >= $6) "
             "AND ($7::float8 IS NULL OR at < $7) "
             "AND ($9::text IS NULL OR data->>'submission_id' = $9) "
+            "AND ($10::text IS NULL OR user_id = $10) "
             "ORDER BY audit_id LIMIT $8",
             tenant_id,
             query.after_id,
@@ -158,6 +162,7 @@ class PostgresAuditStore:
             query.until,
             query.limit,
             query.submission_id,
+            query.user_id,
         )
         return [_audit(row) for row in rows]
 

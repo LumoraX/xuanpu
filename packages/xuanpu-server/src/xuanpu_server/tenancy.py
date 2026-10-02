@@ -61,7 +61,11 @@ class Tenant:
 
 @dataclass(frozen=True)
 class ApiKeyRecord:
-    """一把 API key 的存档。只存密钥的摘要，不存明文。"""
+    """一把 API key 的存档。只存密钥的摘要，不存明文。
+
+    Attributes:
+        can_act_as_user: 能否代员工调用（请求带 ``X-Xuanpu-Act-As``）。要在签发时显式授予。
+    """
 
     key_id: str
     tenant_id: str
@@ -70,6 +74,7 @@ class ApiKeyRecord:
     secret_hash: str
     created_at: float
     revoked_at: float | None = None
+    can_act_as_user: bool = False
 
     @property
     def active(self) -> bool:

@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import time
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -27,6 +28,8 @@ from taifeng_stores import SqlNamespace
 from xuanpu_server.controlplane import InMemoryControlPlane
 from xuanpu_server.controlplane.postgres import PostgresControlPlane
 from xuanpu_server.controlplane.schema import apply_migrations
+from xuanpu_server.identity import InMemoryIdentityStore
+from xuanpu_server.identity.postgres import PostgresIdentityStore
 from xuanpu_server.objectstore import LocalObjectStore
 from xuanpu_server.platform import ROOT_PRINCIPAL, Platform
 from xuanpu_server.runtime import DockerSandboxProvider, LocalSandboxProvider
@@ -39,6 +42,7 @@ if TYPE_CHECKING:
 
     import taifeng
     from xuanpu_server.controlplane import ControlPlaneStore
+    from xuanpu_server.identity import IdentityStore
     from xuanpu_server.runtime import SandboxProvider, StateBackendFactory
     from xuanpu_server.tenancy import Principal
 
@@ -104,22 +108,47 @@ def postgres_dsn() -> Iterator[str]:
             _docker("rm", "--force", "--volumes", container, check=False)
 
 
+@asynccontextmanager
+async def _migrated_schema(dsn: str) -> AsyncIterator[tuple[asyncpg.Pool, SqlNamespace]]:
+    """一个独占的、已迁移到最新的 schema；用完连同里面的表一起删掉。"""
+    pool = await asyncpg.create_pool(dsn, min_size=1, max_size=8)
+    namespace = SqlNamespace(schema="t_" + secrets.token_hex(6), prefix="xp_")
+    try:
+        await apply_migrations(pool, namespace)
+        yield pool, namespace
+    finally:
+        async with pool.acquire() as conn:
+            await conn.execute(f'DROP SCHEMA IF EXISTS "{namespace.schema}" CASCADE')
+        await pool.close()
+
+
 @pytest.fixture(params=["memory", "postgres"])
 async def store(request: pytest.FixtureRequest) -> AsyncIterator[ControlPlaneStore]:
     """控制面存储：同一套用例对两个实现各跑一遍。"""
     if request.param == "memory":
         yield InMemoryControlPlane()
         return
-    dsn = request.getfixturevalue("postgres_dsn")
-    pool = await asyncpg.create_pool(dsn, min_size=1, max_size=8)
-    namespace = SqlNamespace(schema="t_" + secrets.token_hex(6), prefix="xp_")
-    try:
-        await apply_migrations(pool, namespace)
+    async with _migrated_schema(request.getfixturevalue("postgres_dsn")) as (pool, namespace):
         yield PostgresControlPlane(pool, namespace=namespace)
-    finally:
-        async with pool.acquire() as conn:
-            await conn.execute(f'DROP SCHEMA IF EXISTS "{namespace.schema}" CASCADE')
-        await pool.close()
+
+
+@pytest.fixture(params=["memory", "postgres"])
+async def identity_stores(
+    request: pytest.FixtureRequest,
+) -> AsyncIterator[tuple[ControlPlaneStore, IdentityStore]]:
+    """同一后端上的控制面存储与身份存储：身份域的契约用例对两个实现各跑一遍。
+
+    身份表的租户列引用控制面的租户表，所以 Postgres 变体里两者共用一个 schema，用例先经
+    控制面开通租户。
+    """
+    if request.param == "memory":
+        yield InMemoryControlPlane(), InMemoryIdentityStore()
+        return
+    async with _migrated_schema(request.getfixturevalue("postgres_dsn")) as (pool, namespace):
+        yield (
+            PostgresControlPlane(pool, namespace=namespace),
+            PostgresIdentityStore(pool, namespace=namespace),
+        )
 
 
 # ---------------------------------------------------------------------------
