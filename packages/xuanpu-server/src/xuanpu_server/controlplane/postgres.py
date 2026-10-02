@@ -19,6 +19,7 @@ from xuanpu_server.controlplane.models import (
     SessionRecord,
     UsageRecord,
 )
+from xuanpu_server.controlplane.postgres_audit import PostgresAuditStore
 from xuanpu_server.controlplane.schema import DEFAULT_NAMESPACE, ensure_current
 from xuanpu_server.errors import (
     ConflictError,
@@ -40,9 +41,6 @@ _SESSION_COLUMNS = (
 _SESSION_INSERT_COLUMNS = (
     "tenant_id, session_id, package, version, entry, thread_id, status, owner, "
     "lease_expires_at, created_at, updated_at, created_by, metadata"
-)
-_AUDIT_COLUMNS = (
-    "audit_id, tenant_id, source, kind, at, actor, session_id, stream, seq, data::text AS data"
 )
 
 
@@ -74,28 +72,11 @@ def _api_key(row: asyncpg.Record) -> ApiKeyRecord:
     )
 
 
-def _package(row: asyncpg.Record) -> PackageVersionRecord:
-    """行 → 业务包版本。"""
-    return PackageVersionRecord(**dict(row))
-
-
 def _session(row: asyncpg.Record) -> SessionRecord:
     """行 → 会话。"""
     fields = dict(row)
     fields["metadata"] = json.loads(fields["metadata"])
     return SessionRecord(**fields)
-
-
-def _usage(row: asyncpg.Record) -> UsageRecord:
-    """行 → 用量。"""
-    return UsageRecord(**dict(row))
-
-
-def _audit(row: asyncpg.Record) -> AuditRecord:
-    """行 → 审计记录。"""
-    fields = dict(row)
-    fields["data"] = json.loads(fields["data"])
-    return AuditRecord(**fields)
 
 
 class PostgresControlPlane:
@@ -109,19 +90,11 @@ class PostgresControlPlane:
         """
         self._pool = pool
         self._namespace = namespace
-        self._t = {
-            name: namespace.table(name)
-            for name in (
-                "tenant",
-                "api_key",
-                "package_version",
-                "package_active",
-                "secret",
-                "session",
-                "usage",
-                "audit",
-            )
-        }
+        names = ("tenant", "api_key", "package_version", "package_active", "secret", "session")
+        self._t = {name: namespace.table(name) for name in (*names, "usage", "audit")}
+        self._audit_store = PostgresAuditStore(
+            pool, usage_table=str(self._t["usage"]), audit_table=str(self._t["audit"])
+        )
 
     async def check_schema(self) -> None:
         """核对表结构版本；落后时报错。"""
@@ -264,7 +237,7 @@ class PostgresControlPlane:
             name,
             version,
         )
-        return _package(row) if row is not None else None
+        return PackageVersionRecord(**dict(row)) if row is not None else None
 
     async def list_package_versions(
         self, tenant_id: str, name: str | None = None
@@ -277,7 +250,7 @@ class PostgresControlPlane:
             tenant_id,
             name,
         )
-        return [_package(row) for row in rows]
+        return [PackageVersionRecord(**dict(row)) for row in rows]
 
     async def set_active_version(
         self, tenant_id: str, name: str, version: str, *, at: float
@@ -484,7 +457,7 @@ class PostgresControlPlane:
         )
         return bool(changed)
 
-    # --- 用量 ---
+    # --- 用量与审计（委托给 PostgresAuditStore） ---
 
     async def add_usage(
         self,
@@ -497,95 +470,30 @@ class PostgresControlPlane:
         turns: int,
     ) -> UsageRecord:
         """累加用量。"""
-        table = self._t["usage"]
-        row = await self._fetchrow(
-            f"INSERT INTO {table} AS u (tenant_id, day, input_tokens, output_tokens, "
-            "total_tokens, turns) VALUES ($1, $2, $3, $4, $5, $6) "
-            "ON CONFLICT (tenant_id, day) DO UPDATE SET "
-            "input_tokens = u.input_tokens + EXCLUDED.input_tokens, "
-            "output_tokens = u.output_tokens + EXCLUDED.output_tokens, "
-            "total_tokens = u.total_tokens + EXCLUDED.total_tokens, "
-            "turns = u.turns + EXCLUDED.turns RETURNING *",
+        return await self._audit_store.add_usage(
             tenant_id,
             day,
-            input_tokens,
-            output_tokens,
-            total_tokens,
-            turns,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=total_tokens,
+            turns=turns,
         )
-        assert row is not None
-        return _usage(row)
 
     async def get_usage(self, tenant_id: str, day: str) -> UsageRecord:
         """取某一天的用量。"""
-        row = await self._fetchrow(
-            f"SELECT * FROM {self._t['usage']} WHERE tenant_id = $1 AND day = $2", tenant_id, day
-        )
-        return _usage(row) if row is not None else UsageRecord(tenant_id, day)
+        return await self._audit_store.get_usage(tenant_id, day)
 
     async def list_usage(self, tenant_id: str, *, since: str, until: str) -> list[UsageRecord]:
         """列出一段日期内的用量。"""
-        rows = await self._fetch(
-            f"SELECT * FROM {self._t['usage']} WHERE tenant_id = $1 AND day >= $2 AND day <= $3 "
-            "ORDER BY day",
-            tenant_id,
-            since,
-            until,
-        )
-        return [_usage(row) for row in rows]
-
-    # --- 审计 ---
+        return await self._audit_store.list_usage(tenant_id, since=since, until=until)
 
     async def append_audit(self, records: Sequence[AuditRecord]) -> int:
         """追加审计记录。"""
-        if not records:
-            return 0
-        statement = (
-            f"INSERT INTO {self._t['audit']} (tenant_id, source, kind, at, actor, session_id, "
-            "stream, seq, data) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::text::jsonb) "
-            "ON CONFLICT (tenant_id, stream, seq) DO NOTHING"
-        )
-        written = 0
-        async with self._pool.acquire() as conn, conn.transaction():
-            for record in records:
-                status = await conn.execute(
-                    statement,
-                    record.tenant_id,
-                    record.source,
-                    record.kind,
-                    record.at,
-                    record.actor,
-                    record.session_id,
-                    record.stream,
-                    record.seq,
-                    json.dumps(record.data, ensure_ascii=False, default=str),
-                )
-                written += int(status.rsplit(" ", 1)[-1])
-        return written
+        return await self._audit_store.append_audit(records)
 
     async def query_audit(self, tenant_id: str, query: AuditQuery) -> list[AuditRecord]:
         """查询审计记录。"""
-        rows = await self._fetch(
-            f"SELECT {_AUDIT_COLUMNS} FROM {self._t['audit']} "
-            "WHERE tenant_id = $1 AND audit_id > $2 "
-            "AND ($3::text IS NULL OR session_id = $3) "
-            "AND ($4::text IS NULL OR kind = $4) "
-            "AND ($5::text IS NULL OR source = $5) "
-            "AND ($6::float8 IS NULL OR at >= $6) "
-            "AND ($7::float8 IS NULL OR at < $7) "
-            "AND ($9::text IS NULL OR data->>'submission_id' = $9) "
-            "ORDER BY audit_id LIMIT $8",
-            tenant_id,
-            query.after_id,
-            query.session_id,
-            query.kind,
-            query.source,
-            query.since,
-            query.until,
-            query.limit,
-            query.submission_id,
-        )
-        return [_audit(row) for row in rows]
+        return await self._audit_store.query_audit(tenant_id, query)
 
 
 __all__ = ["PostgresControlPlane"]

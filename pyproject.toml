@@ -46,6 +46,7 @@ ignore = ["S101"]
 # S608(拼接 SQL)：拼进 SQL 的只有表名，来自 SqlNamespace——其字符集在构造时校验为
 # [a-z0-9_]；所有取值一律走参数绑定
 "packages/xuanpu-server/src/xuanpu_server/controlplane/postgres.py" = ["S608"]
+"packages/xuanpu-server/src/xuanpu_server/controlplane/postgres_audit.py" = ["S608"]
 "packages/xuanpu-server/src/xuanpu_server/controlplane/schema.py" = ["S608"]
 # S108(硬编码 /tmp)：tests/ 里只允许作占位字符串，真落盘必须用 tmp_path fixture
 "packages/*/tests/**" = ["S108"]
