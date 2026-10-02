@@ -67,6 +67,7 @@ uv run xuanpu --help
 | `object_store` | 否 | `local` | 对象存储，见下 |
 | `limits` | 否 | 见下 | 每个会话的上限与回收时间 |
 | `audit.capture_requests` | 否 | `false` | 是否把每次发给模型的完整请求写进审计。内容敏感、体量大，排查问题时才开 |
+| `metrics.token_hash` | 否 | 不开 | 指标抓取令牌的摘要，`xuanpu keygen metrics` 生成。给了才开 `GET /metrics`（见[监控与排查](#监控与排查)） |
 | `lease_seconds` | 否 | `60` | 会话租约时长，最小 5。实例崩溃后，别的实例最多等这么久才能接手它的会话 |
 | `shutdown_drain_seconds` | 否 | `30` | 停机时给在途对话多少秒跑完；HTTP 服务器等已打开的事件流发完的时限是它再加 5 秒（见[停机与滚动升级](#停机与滚动升级)） |
 | `instance_id` | 否 | 随机 | 本实例的标识，写进会话租约与 `/healthz`。多实例时建议显式设置成稳定且互不相同的值，方便按它做路由和排查 |
@@ -321,8 +322,56 @@ xuanpu migrate --config /etc/xuanpu/xuanpu.yaml     # 先迁移表结构
 | 平台的告警与错误 | 标准错误。连接器启动失败、审计写入失败、会话续期失败、停机时被取消的对话数都在这里 |
 | 某个会话发生了什么 | 审计：`GET /v1/audit?session_id=…`（见[审计与用量](audit-and-usage.md)） |
 | 用量 | `GET /v1/usage` |
+| 指标 | `GET /metrics`，Prometheus 文本格式，见下 |
 
-目前没有指标端点（Prometheus 之类）。需要的话先从访问日志与审计表里取。
+### 指标
+
+```bash
+uv run xuanpu keygen metrics
+# 指标抓取令牌（只显示这一次，交给 Prometheus）：
+#   <令牌>
+# 写进配置文件的 metrics.token_hash：
+#   <摘要>
+```
+
+摘要写进配置 `metrics.token_hash`（经环境变量展开），令牌交给 Prometheus：
+
+```yaml
+scrape_configs:
+  - job_name: xuanpu
+    authorization:
+      credentials_file: /etc/prometheus/xuanpu-metrics-token
+    static_configs:
+      - targets: ["10.0.0.11:8420", "10.0.0.12:8420"]
+```
+
+每个实例只报自己的数，按实例抓。没配 `metrics.token_hash` 时 `/metrics` 是 404，令牌不对是 401。一台试用实例跑过两轮对话、调过一次 HTTP 连接器之后的实际输出（节选）：
+
+```
+xuanpu_sessions_live 0.0
+xuanpu_turns_in_flight 0.0
+xuanpu_runtimes_live 0.0
+xuanpu_turns_total{outcome="completed"} 2.0
+xuanpu_turns_total{outcome="cancelled"} 0.0
+xuanpu_connector_calls_total{decision="allowed",transport="http"} 1.0
+xuanpu_connector_calls_total{decision="rejected",transport="http"} 0.0
+xuanpu_audit_write_failures_total 0.0
+xuanpu_gate_backfill_failures_total{stage="write"} 0.0
+xuanpu_usage_estimated_total 0.0
+```
+
+| 指标 | 类型 | 标签 | 含义 |
+| --- | --- | --- | --- |
+| `xuanpu_sessions_live` | gauge | — | 本实例当前持有引擎的会话数 |
+| `xuanpu_turns_in_flight` | gauge | — | 本实例当前进行中的对话数 |
+| `xuanpu_runtimes_live` | gauge | — | 本实例当前组装着的运行时数 |
+| `xuanpu_turns_total` | counter | `outcome` | 结束的对话轮数：`completed`、`failed`、`suspended`、`cancelled`，以及送回审批被内核拒绝的 `resume_rejected`、只核销了一部分的 `resume_partial` |
+| `xuanpu_connector_calls_total` | counter | `transport`、`decision` | 过闸记录数：`allowed`、`denied`（策略拒绝）、`rejected`（人工拒绝） |
+| `xuanpu_audit_write_failures_total` | counter | — | 审计写入失败的次数。大于 0 说明审计不完整，查数据库 |
+| `xuanpu_gate_backfill_failures_total` | counter | `stage` | 人工拒绝的过闸记录没补上的次数（`read` 读不到待办、`incomplete` 待办缺字段、`write` 写库失败） |
+| `xuanpu_usage_estimated_total` | counter | — | 被停下的一轮按上下文估算入账的次数 |
+
+指标不带租户标签（避免标签基数随租户数膨胀）；按租户看用量用 `GET /v1/usage`。
 
 常见问题：
 

@@ -70,6 +70,7 @@
 | `POST /v1/sessions/{id}/cancel` | 租户成员 | 停止生成：取消会话里在途的对话 |
 | `GET /v1/audit` | 租户管理员 | 查询审计 |
 | `GET /v1/usage?since=&until=` | 租户管理员 | 查询用量 |
+| `GET /metrics` | 抓取令牌 | Prometheus 指标；配置了 `metrics.token_hash` 才开 |
 
 ## 存活探测
 
@@ -382,3 +383,24 @@ GET /v1/usage?since=2026-09-01&until=2026-09-30
 ```
 
 两个参数都必填，两端都含。没有用量的日子不出现。
+
+## 指标
+
+```
+GET /metrics
+Authorization: Bearer <抓取令牌>
+
+→ 200，Content-Type: text/plain; version=0.0.4; charset=utf-8
+# HELP xuanpu_turns_total 结束的对话轮数，按结局分
+# TYPE xuanpu_turns_total counter
+xuanpu_turns_total{outcome="completed"} 2.0
+xuanpu_turns_total{outcome="cancelled"} 0.0
+…
+xuanpu_connector_calls_total{decision="allowed",transport="http"} 1.0
+…
+```
+
+- 只有配置了 `metrics.token_hash` 才开；没配时是 404。
+- 凭据是单独的抓取令牌（不是 API key，也不是根凭据）；不带或不对都是 401，错误体与其他接口一样。
+- 每个实例只报自己的数；指标不带租户标签，按租户看用量用上面的 `/v1/usage`。
+- 指标的含义见[运维手册的监控一节](../guides/operations.md#监控与排查)。

@@ -51,7 +51,7 @@ def edited(**changes: Any) -> str:
 
 
 def test_minimal_config_and_defaults() -> None:
-    """最小配置可用；缺省值偏保守：只监听本机、内存控制面、本机沙盒、不留提示词。"""
+    """最小配置可用；缺省值偏保守：只监听本机、内存控制面、本机沙盒、不留提示词、不开指标端点。"""
     config = parse_config(edited(), variables=VARIABLES)
     assert config.models.api_key == "sk-gateway"
     assert config.models.tiers["deep"].timeout_seconds == 600
@@ -60,6 +60,7 @@ def test_minimal_config_and_defaults() -> None:
     assert config.state.backend == "local"
     assert config.sandbox.backend == "local"
     assert config.audit.capture_requests is False
+    assert config.metrics.token_hash is None
     assert config.decoded_master_keys() == {"k1": b"k" * 32}
 
 
@@ -166,6 +167,9 @@ def test_undefined_variable_is_an_error() -> None:
         ({"lease_seconds": 1}, "lease_seconds"),
         ({"unknown_section": {}}, "unknown_section"),
         ({"audit": {"capture_request": True}}, "capture_request"),
+        ({"metrics": {"token_hash": "not-a-hash"}}, "token_hash"),
+        ({"metrics": {"token_hash": "B" * 64}}, "token_hash"),
+        ({"metrics": {"token": "x"}}, "token"),
     ],
 )
 def test_invalid_config(changes: dict[str, Any], fragment: str) -> None:
@@ -203,8 +207,10 @@ def test_example_config_is_valid() -> None:
             "XUANPU_MASTER_KEY": KEY,
             "MODEL_GATEWAY_KEY": "sk-x",
             "XUANPU_PG_DSN": "postgresql://u:p@db/x",
+            "XUANPU_METRICS_TOKEN_HASH": "b" * 64,
         },
     )
+    assert config.metrics.token_hash == "b" * 64
     assert config.control_plane.backend == "postgres"
     assert config.state.backend == "postgres"
     assert set(config.models.tiers) == {"fast", "balanced", "deep"}
@@ -356,3 +362,19 @@ async def test_connector_startup_limit_reaches_the_runtime(tmp_path: Path) -> No
         assert platform.runtimes.defaults.connector_startup_seconds == 7.5
     with pytest.raises(ConfigError, match="connector_startup_seconds"):
         parse_config(edited(limits={"connector_startup_seconds": 0}), variables=VARIABLES)
+
+
+async def test_metrics_token_reaches_the_platform(tmp_path: Path) -> None:
+    """metrics.token_hash：缺省不开指标端点；给了就由平台按它校验抓取令牌。"""
+    from xuanpu_server.tenancy import generate_metrics_token
+
+    token, digest = generate_metrics_token()
+    plain = edited(data_dir=str(tmp_path / "plain"))
+    async with open_platform(parse_config(plain, variables=VARIABLES)) as platform:
+        assert not platform.metrics_enabled
+        assert not platform.verify_metrics_token(token)
+    text = edited(data_dir=str(tmp_path / "data"), metrics={"token_hash": digest})
+    async with open_platform(parse_config(text, variables=VARIABLES)) as platform:
+        assert platform.metrics_enabled
+        assert platform.verify_metrics_token(token)
+        assert not platform.verify_metrics_token(token + "x")

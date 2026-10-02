@@ -15,6 +15,7 @@ from xuanpu_server.audit import AuditLog
 from xuanpu_server.errors import AuthenticationError, ConflictError, NotFoundError
 from xuanpu_server.evals import EvalRunner
 from xuanpu_server.ids import new_id
+from xuanpu_server.metrics import PlatformMetrics
 from xuanpu_server.objectstore import LocalObjectStore
 from xuanpu_server.packages import PackageRegistry
 from xuanpu_server.quota import QuotaGuard
@@ -36,6 +37,7 @@ from xuanpu_server.tenancy import (
     generate_api_key,
     parse_api_key,
     validate_tenant_id,
+    verify_metrics_token,
     verify_root_key,
     verify_secret,
 )
@@ -73,6 +75,7 @@ class Platform:
         sandboxes: SandboxProvider,
         data_dir: Path,
         root_key_hash: str,
+        metrics_token_hash: str | None = None,
         objects: ObjectStore | None = None,
         states: StateBackendFactory | None = None,
         defaults: RuntimeDefaults | None = None,
@@ -91,6 +94,8 @@ class Platform:
                 存储）。只能归一个进程独占，不能被多个进程共用：业务包缓存的锁只在进程内，
                 启动时还会清掉暂存目录的残留。
             root_key_hash: 平台根凭据的摘要。
+            metrics_token_hash: 指标抓取令牌的摘要；None 不开指标端点。指标本身总在计，
+                只是不对外。
             objects: 对象存储，业务包归档的正本放在这里；None 用 ``<data_dir>/objects``
                 下的本机目录（只适合单机试用，多实例必须注入共用的对象存储）。
             states: 状态面后端工厂；None 用内核的本机默认实现。
@@ -111,9 +116,16 @@ class Platform:
         )
         self.instance_id = instance_id or new_id("inst")
         self._root_key_hash = root_key_hash
+        self._metrics_token_hash = metrics_token_hash
         self._drain_seconds = shutdown_drain_seconds
         self._now = now
-        self.audit = AuditLog(store, now=now)
+        # 三个 gauge 的回调在抓取时才调用：会话管理与运行时组装器在下面才建好
+        self.metrics = PlatformMetrics(
+            sessions_live=lambda: self.sessions.held_sessions(),
+            turns_in_flight=lambda: self.sessions.in_flight_turns(),
+            runtimes_live=lambda: self.runtimes.live_runtimes(),
+        )
+        self.audit = AuditLog(store, now=now, metrics=self.metrics)
         self.quota = QuotaGuard(store, now=now)
         self.packages = PackageRegistry(
             store, self.audit, data_dir=data_dir, objects=self.objects, now=now
@@ -130,18 +142,25 @@ class Platform:
             defaults=defaults,
             now=now,
         )
-        self.sessions = SessionManager(
-            store=store,
+        self.sessions = self._session_manager(submissions, lease_seconds)
+        self.evals = EvalRunner(self.sessions, self.packages, self.audit)
+
+    def _session_manager(
+        self, submissions: SubmissionIndex, lease_seconds: float
+    ) -> SessionManager:
+        """会话管理：用上已经建好的控制面部件、运行时组装器与指标。"""
+        return SessionManager(
+            store=self.store,
             packages=self.packages,
             runtimes=self.runtimes,
             quota=self.quota,
             audit=self.audit,
             submissions=submissions,
+            metrics=self.metrics,
             instance_id=self.instance_id,
             lease_seconds=lease_seconds,
-            now=now,
+            now=self._now,
         )
-        self.evals = EvalRunner(self.sessions, self.packages, self.audit)
 
     async def start(self) -> None:
         """清掉上次进程留下的暂存残留，再启动后台任务。"""
@@ -154,6 +173,17 @@ class Platform:
         await self.runtimes.close()
 
     # --- 认证 ---
+
+    @property
+    def metrics_enabled(self) -> bool:
+        """是否开了指标端点（配了抓取令牌的摘要）。"""
+        return self._metrics_token_hash is not None
+
+    def verify_metrics_token(self, presented: str) -> bool:
+        """校验指标抓取令牌；没开指标端点时总是 False。抓取令牌不是调用者身份。"""
+        if self._metrics_token_hash is None:
+            return False
+        return verify_metrics_token(presented, self._metrics_token_hash)
 
     async def authenticate(self, presented: str) -> Principal:
         """由调用方出示的凭据得到调用者身份。

@@ -12,8 +12,9 @@ from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import Depends, FastAPI, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from prometheus_client import CONTENT_TYPE_PLAIN_0_0_4
 
 from xuanpu_server import __version__
 from xuanpu_server.api import schemas
@@ -42,14 +43,19 @@ MAX_ARCHIVE_BYTES = 64 * 1024 * 1024
 _BEARER = "bearer "
 
 
+def _bearer(authorization: str | None) -> str:
+    """取 ``Authorization: Bearer <凭据>`` 里的凭据；没有或不是 Bearer 一律按凭据无效。"""
+    if authorization is None or not authorization.lower().startswith(_BEARER):
+        raise AuthenticationError("凭据无效")
+    return authorization[len(_BEARER) :].strip()
+
+
 async def caller(
     request: Request, authorization: Annotated[str | None, Header()] = None
 ) -> Principal:
     """从 ``Authorization: Bearer <凭据>`` 得到调用者。"""
-    if authorization is None or not authorization.lower().startswith(_BEARER):
-        raise AuthenticationError("凭据无效")
     platform: Platform = request.app.state.platform
-    return await platform.authenticate(authorization[len(_BEARER) :].strip())
+    return await platform.authenticate(_bearer(authorization))
 
 
 # 路由函数的参数标注要在模块作用域里解析得到，所以依赖项定义在模块层
@@ -142,6 +148,18 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     async def healthz() -> dict[str, Any]:
         """存活探测。不需要凭据，也不透露租户信息。"""
         return {"status": "ok", "version": __version__, "instance": platform.instance_id}
+
+    @app.get("/metrics")
+    async def metrics(authorization: Annotated[str | None, Header()] = None) -> Response:
+        """Prometheus 抓取。凭据是单独的抓取令牌，不是根凭据或 API key；没配抓取令牌就不开。
+
+        内容类型用文本格式 0.0.4：Prometheus 2.x、3.x 与常见的抓取代理都认。
+        """
+        if not platform.metrics_enabled:
+            raise NotFoundError("指标端点没有开启（没有配置 metrics.token_hash）")
+        if not platform.verify_metrics_token(_bearer(authorization)):
+            raise AuthenticationError("凭据无效")
+        return Response(platform.metrics.render(), media_type=CONTENT_TYPE_PLAIN_0_0_4)
 
     # --- 平台管理 ---
 

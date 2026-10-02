@@ -29,6 +29,7 @@ SUPPORT_DESK = EXAMPLES / "support-desk"
 # 配置示例里引用到的变量；取值只要形状合法
 _VARIABLES = {
     "XUANPU_ROOT_KEY_HASH": "0" * 64,
+    "XUANPU_METRICS_TOKEN_HASH": "1" * 64,
     "XUANPU_MASTER_KEY": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
     "XUANPU_PG_DSN": "postgresql://xuanpu@localhost/xuanpu",
     "MODEL_GATEWAY_URL": "http://localhost:4000/v1",

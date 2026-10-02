@@ -245,6 +245,7 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
             states=await _states(stack, config),
             data_dir=config.data_dir,
             root_key_hash=config.root_key_hash,
+            metrics_token_hash=config.metrics.token_hash,
             objects=object_store(config),
             defaults=RuntimeDefaults(
                 max_session_tokens=config.limits.max_session_tokens,

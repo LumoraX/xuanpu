@@ -257,6 +257,13 @@ class AuditConfig(_Section):
     """是否把每次发给模型的完整请求写进审计。内容敏感，默认关闭。"""
 
 
+class MetricsConfig(_Section):
+    """指标端点（``GET /metrics``）。"""
+
+    token_hash: str | None = Field(default=None, pattern=_SHA256_HEX)
+    """抓取令牌的摘要，``xuanpu keygen metrics`` 生成。不给就不开指标端点（404）。"""
+
+
 class ServerConfig(_Section):
     """平台服务的完整配置。"""
 
@@ -272,6 +279,7 @@ class ServerConfig(_Section):
     object_store: ObjectStoreConfig = ObjectStoreConfig()
     limits: LimitsConfig = LimitsConfig()
     audit: AuditConfig = AuditConfig()
+    metrics: MetricsConfig = MetricsConfig()
     lease_seconds: float = Field(default=60.0, ge=5)
     shutdown_drain_seconds: float = Field(default=30.0, ge=0)
     instance_id: str | None = None
@@ -355,6 +363,7 @@ __all__ = [
     "LimitsConfig",
     "ListenConfig",
     "LocalObjectStoreConfig",
+    "MetricsConfig",
     "ModelsConfig",
     "ObjectStoreConfig",
     "PostgresConfig",

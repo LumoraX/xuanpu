@@ -109,6 +109,19 @@ def test_keygen_root_matches_platform_verification(capsys: pytest.CaptureFixture
     assert not verify_root_key(key + "x", digest)
 
 
+def test_keygen_metrics_matches_platform_verification(capsys: pytest.CaptureFixture[str]) -> None:
+    """生成的抓取令牌与摘要能对上；它不是根凭据。"""
+    from xuanpu_server.tenancy import verify_metrics_token, verify_root_key
+
+    assert main(["keygen", "metrics"]) == 0
+    lines = [line.strip() for line in capsys.readouterr().out.splitlines()]
+    token = next(line for line in lines if line.startswith("xpmetrics_"))
+    digest = lines[-1]
+    assert verify_metrics_token(token, digest)
+    assert not verify_metrics_token(token + "x", digest)
+    assert not verify_root_key(token, digest)
+
+
 def test_keygen_master(capsys: pytest.CaptureFixture[str]) -> None:
     """生成的主密钥是 32 字节。"""
     assert main(["keygen", "master"]) == 0

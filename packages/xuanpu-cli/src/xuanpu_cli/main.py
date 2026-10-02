@@ -76,15 +76,21 @@ def cmd_schema(_: argparse.Namespace) -> int:
 
 
 def cmd_keygen(args: argparse.Namespace) -> int:
-    """生成平台根凭据或主密钥。"""
+    """生成平台根凭据、指标抓取令牌或主密钥。"""
     from xuanpu_server.secrets import generate_master_key
-    from xuanpu_server.tenancy import generate_root_key
+    from xuanpu_server.tenancy import generate_metrics_token, generate_root_key
 
     if args.kind == "root":
         key, digest = generate_root_key()
         print("根凭据（只显示这一次，请妥善保存）：")
         print(f"  {key}")
         print("写进配置文件的 root_key_hash：")
+        print(f"  {digest}")
+    elif args.kind == "metrics":
+        token, digest = generate_metrics_token()
+        print("指标抓取令牌（只显示这一次，交给 Prometheus）：")
+        print(f"  {token}")
+        print("写进配置文件的 metrics.token_hash：")
         print(f"  {digest}")
     else:
         print("写进配置文件 master_keys 的取值（base64）：")
@@ -238,8 +244,8 @@ def build_parser() -> argparse.ArgumentParser:
     schema = commands.add_parser("schema", help="打印业务包清单的 JSON Schema")
     schema.set_defaults(handler=cmd_schema)
 
-    keygen = commands.add_parser("keygen", help="生成平台根凭据或主密钥")
-    keygen.add_argument("kind", choices=["root", "master"])
+    keygen = commands.add_parser("keygen", help="生成平台根凭据、指标抓取令牌或主密钥")
+    keygen.add_argument("kind", choices=["root", "metrics", "master"])
     keygen.set_defaults(handler=cmd_keygen)
 
     migrate = commands.add_parser("migrate", help="迁移控制面的表结构")

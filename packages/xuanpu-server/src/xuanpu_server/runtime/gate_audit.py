@@ -15,7 +15,9 @@
   命令、表单等），不补。
 
 写入在提交送回之后、且只在提交成功之后；补记失败（读不到待办、待办缺调用信息、写不进记录）
-记 error 日志并计入 ``RejectionAudit.failures``，不让送回本身失败——审批结果已经交给内核了。
+记 error 日志并计入 ``RejectionAudit.failures``，同时经 ``on_failure`` 报出是哪个环节
+（``read`` / ``incomplete`` / ``write``，接到平台指标），不让送回本身失败——审批结果已经交给
+内核了。
 
 已知限制：
 
@@ -213,24 +215,38 @@ class PendingRejections:
 class RejectionAudit:
     """人工拒绝的连接器调用的补记：送回之前取出被拒的待办，提交成功之后写过闸记录。"""
 
-    def __init__(self, *, store: ControlPlaneStore, audit: AuditLog) -> None:
+    def __init__(
+        self,
+        *,
+        store: ControlPlaneStore,
+        audit: AuditLog,
+        on_failure: Callable[[str], None] | None = None,
+    ) -> None:
         """
         Args:
             store: 控制面存储，读待办用。
             audit: 审计写入口。
+            on_failure: 补记失败时的回调，参数是环节：``read``（读不到待办）、
+                ``incomplete``（待办缺调用信息）、``write``（写不进记录）。
         """
         self._store = store
         self._audit = audit
+        self._on_failure = on_failure
         self.failures = 0
-        """补记失败（读不到待办、待办缺调用信息、写不进记录）的累计次数。平台还没有指标
-        出口，先计在这里。"""
+        """补记失败（读不到待办、待办缺调用信息、写不进记录）的累计次数。"""
+
+    def _failed(self, stage: str) -> None:
+        """计一次补记失败，并报给回调。"""
+        self.failures += 1
+        if self._on_failure is not None:
+            self._on_failure(stage)
 
     async def _pending(self, tenant_id: str, session_id: str) -> PendingSuspension | None:
         """读当前待办；读不到记 error 日志、计一次失败，返回 None。"""
         try:
             return await pending_suspension(self._store, tenant_id, session_id)
         except Exception:
-            self.failures += 1
+            self._failed("read")
             logger.exception("会话 %s 读不到待办，这次拒绝补不上过闸记录", session_id)
             return None
 
@@ -285,7 +301,7 @@ class RejectionAudit:
                     submission_id=pending.submission_id,
                 )
             except ValueError:
-                self.failures += 1
+                self._failed("incomplete")
                 logger.exception("会话 %s 的拒绝补不上过闸记录", pending.session_id)
                 continue
             if call is not None:
@@ -306,7 +322,7 @@ class RejectionAudit:
                     call.tenant_id, "connector_call", call.gate_data(), session_id=call.session_id
                 )
             except Exception:
-                self.failures += 1
+                self._failed("write")
                 logger.exception(
                     "会话 %s 的调用 %s 被拒绝，过闸记录没有写进去", call.session_id, call.call_id
                 )

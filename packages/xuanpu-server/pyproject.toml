@@ -29,6 +29,8 @@ dependencies = [
     "httpx>=0.27",
     "uvicorn>=0.29",
     "cryptography>=42",
+    # 指标端点的 Prometheus 文本格式
+    "prometheus_client>=0.20",
 ]
 
 [project.optional-dependencies]

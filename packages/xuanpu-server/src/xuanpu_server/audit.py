@@ -5,6 +5,10 @@
 
 写审计不允许悄悄失败：闸门与控制面的记录同步写入，写不进去则操作本身失败；引擎事件
 在后台成批写入，写不进去时记错误日志并保留在缓冲里等下一次重试。
+
+给了指标（``PlatformMetrics``）时，这里也是两项指标的打点处：每次写失败计一次
+``audit_write_failures``；每条过闸记录（闸门的放行与拒绝、人工拒绝的补记都经 ``gate``）按
+传输与决定计一次 ``connector_calls``——不论记录写没写成，调用（或拒绝）都已经发生了。
 """
 
 from __future__ import annotations
@@ -22,6 +26,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from xuanpu_server.controlplane.store import ControlPlaneStore
+    from xuanpu_server.metrics import PlatformMetrics
     from xuanpu_server.tenancy import Principal
 
 logger = logging.getLogger(__name__)
@@ -96,14 +101,31 @@ def digest_arguments(arguments: Any) -> str:
 class AuditLog:
     """审计写入口。"""
 
-    def __init__(self, store: ControlPlaneStore, *, now: Callable[[], float] = time.time) -> None:
+    def __init__(
+        self,
+        store: ControlPlaneStore,
+        *,
+        now: Callable[[], float] = time.time,
+        metrics: PlatformMetrics | None = None,
+    ) -> None:
         """
         Args:
             store: 控制面存储。
             now: 取当前时间的函数，测试时可替换。
+            metrics: 平台指标；None 不打点。
         """
         self._store = store
         self._now = now
+        self._metrics = metrics
+
+    async def _append(self, records: list[AuditRecord]) -> int:
+        """写入记录。写失败计一次指标，异常原样上抛。"""
+        try:
+            return await self._store.append_audit(records)
+        except Exception:
+            if self._metrics is not None:
+                self._metrics.audit_write_failed()
+            raise
 
     async def control(
         self,
@@ -115,7 +137,7 @@ class AuditLog:
         session_id: str | None = None,
     ) -> None:
         """记一条控制面操作。"""
-        await self._store.append_audit(
+        await self._append(
             [
                 AuditRecord(
                     tenant_id=tenant_id,
@@ -137,8 +159,10 @@ class AuditLog:
         *,
         session_id: str | None = None,
     ) -> None:
-        """记一次过闸。"""
-        await self._store.append_audit(
+        """记一次过闸。``connector_call`` 先按 ``data`` 里的传输与决定计一次调用，再写。"""
+        if kind == "connector_call" and self._metrics is not None:
+            self._metrics.connector_call(str(data["transport"]), str(data["decision"]))
+        await self._append(
             [
                 AuditRecord(
                     tenant_id=tenant_id,
@@ -154,7 +178,7 @@ class AuditLog:
 
     async def engine(self, records: list[AuditRecord]) -> int:
         """成批写入引擎事件。"""
-        return await self._store.append_audit(records)
+        return await self._append(records)
 
 
 __all__ = [

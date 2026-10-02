@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
     from xuanpu_server.audit import AuditLog
     from xuanpu_server.controlplane.store import ControlPlaneStore
+    from xuanpu_server.metrics import PlatformMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,26 @@ def is_terminal(event: taifeng.EventMsg) -> bool:
     return kind in TERMINAL_KINDS and bool(event.msg.data.get("is_root", False))
 
 
+def turn_outcome(event: taifeng.EventMsg) -> str:
+    """结束一轮（或送回审批的那一次）的事件 → 指标 ``xuanpu_turns_total`` 的 ``outcome``。
+
+    ``turn_suspended`` 是 suspended；``turn_completed`` 的 ``end_reason`` 为 cancelled（停止生成）
+    是 cancelled，否则是 completed；``turn_failed`` 的 ``kind`` 为 cancelled（排队中被停）是
+    cancelled，否则是 failed。送回审批没有续跑的那一次单列：被拒是 resume_rejected，只核销了
+    一部分是 resume_partial——它们不是一轮对话，用量里也不计一轮。
+    """
+    kind, data = event.msg.kind, event.msg.data
+    if kind == "turn_suspended":
+        return "suspended"
+    if kind == "suspension_resolve_rejected":
+        return "resume_rejected"
+    if kind == "suspension_partially_resolved":
+        return "resume_partial"
+    if kind == "turn_completed":
+        return "cancelled" if data.get("end_reason") == "cancelled" else "completed"
+    return "cancelled" if data.get("kind") == "cancelled" else "failed"
+
+
 class TurnStream:
     """一轮对话的事件流。"""
 
@@ -145,6 +166,7 @@ class EngineEventHub:
         session_id: str,
         audit: AuditLog,
         store: ControlPlaneStore,
+        metrics: PlatformMetrics,
         capture_requests: bool = False,
         on_turn_end: Callable[[str], None] | None = None,
     ) -> None:
@@ -155,10 +177,12 @@ class EngineEventHub:
             session_id: 所属会话。
             audit: 审计写入口。
             store: 控制面存储，用量入账用。
+            metrics: 平台指标：一轮结束记结局，按估算入账记一次。
             capture_requests: 是否把含完整提示词的事件写进审计。
             on_turn_end: 一轮对话结束时的回调，参数是 submission 标识。
         """
         self._on_turn_end = on_turn_end
+        self._metrics = metrics
         self._engine = engine
         self._tenant_id = tenant_id
         self._session_id = session_id
@@ -247,6 +271,7 @@ class EngineEventHub:
         """一轮（或送回审批的那一次）结束：移出在途、落回复全文、入账，并写出审计。"""
         if self._on_turn_end is not None:
             self._on_turn_end(event.submission_id)
+        self._metrics.turn_ended(turn_outcome(event))
         text = "".join(self._texts.pop(event.submission_id, []))
         # 送回审批被拒或只核销了一部分：没有采样，不落回复全文、不计一轮
         if event.msg.kind not in RESUME_ENDING_KINDS:
@@ -317,6 +342,7 @@ class EngineEventHub:
             )
             record["error"] = type(exc).__name__
         self._buffer.append(self._record("usage_estimated", event, record, seq=None))
+        self._metrics.usage_estimated()
         return int(record["estimated_input_tokens"])
 
     async def _flush(self) -> None:
@@ -359,4 +385,5 @@ __all__ = [
     "SubmissionIndex",
     "TurnStream",
     "is_terminal",
+    "turn_outcome",
 ]

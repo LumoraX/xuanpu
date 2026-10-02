@@ -311,8 +311,8 @@ async def test_approvals_alone_do_not_read_the_audit() -> None:
 async def test_failures_are_logged_and_counted_not_raised(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """读不到待办、待办缺调用信息、写不进过闸记录：都记 error 日志并计数，不抛给送回的一方；
-    一条写失败不影响其余的。"""
+    """读不到待办、待办缺调用信息、写不进过闸记录：都记 error 日志并计数（经 ``on_failure``
+    报出是哪个环节），不抛给送回的一方；一条写失败不影响其余的。"""
     caplog.set_level(logging.INFO)
     store = await suspended_store(
         permission("r1", "mcp__docs__update_doc"),
@@ -330,7 +330,12 @@ async def test_failures_are_logged_and_counted_not_raised(
                 raise RuntimeError("控制面写不进去")
             written.append(data["call_id"])
 
-    rejections = RejectionAudit(store=store, audit=FlakyAudit())  # type: ignore[arg-type]
+    stages: list[str] = []
+    rejections = RejectionAudit(
+        store=store,
+        audit=FlakyAudit(),  # type: ignore[arg-type]
+        on_failure=stages.append,
+    )
     rejected = {"granted": False}
     pending = await rejections.prepare(
         "acme", "ses_1", {"r1": rejected, "r2": rejected, "r3": rejected}
@@ -339,6 +344,7 @@ async def test_failures_are_logged_and_counted_not_raised(
     assert await rejections.record(pending, REGISTRY.get) == 1
     assert written == ["failed", "call-r3"]
     assert rejections.failures == 2
+    assert stages == ["incomplete", "write"]
 
     async def broken(*args: Any, **kwargs: Any) -> Any:
         raise RuntimeError("控制面读不出来")
@@ -346,5 +352,6 @@ async def test_failures_are_logged_and_counted_not_raised(
     store.query_audit = broken  # type: ignore[method-assign]
     assert (await rejections.prepare("acme", "ses_1", {"r1": rejected})).requests == ()
     assert rejections.failures == 3
+    assert stages == ["incomplete", "write", "read"]
     errors = [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR]
     assert len(errors) == 3

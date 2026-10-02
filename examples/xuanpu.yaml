@@ -91,6 +91,11 @@ limits:
 audit:
   capture_requests: false   # 是否把每次发给模型的完整请求写进审计；内容敏感，默认关闭
 
+# 指标端点 GET /metrics（Prometheus 文本格式）。`xuanpu keygen metrics` 生成抓取令牌与这个摘要；
+# 令牌交给 Prometheus。不配这一段就不开指标端点（404）。
+metrics:
+  token_hash: ${XUANPU_METRICS_TOKEN_HASH}
+
 lease_seconds: 60
 # instance_id: xuanpu-1     # 本实例的标识，写进会话租约与 /healthz；不给则每次启动随机生成
 shutdown_drain_seconds: 30   # 停机时给在途对话多少秒跑完，到期仍未结束的会被取消

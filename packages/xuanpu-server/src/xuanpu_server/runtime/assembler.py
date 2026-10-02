@@ -227,6 +227,10 @@ class RuntimeAssembler:
         """平台默认参数。"""
         return self._defaults
 
+    def live_runtimes(self) -> int:
+        """当前组装着（还没回收）的运行时数。"""
+        return len(self._runtimes)
+
     def _scoped(self, area: str, package: ResolvedPackage) -> Path:
         """某个运行时在数据目录下的专属目录。"""
         record = package.record

@@ -20,6 +20,7 @@ TenantStatus = Literal["active", "suspended"]
 
 API_KEY_PREFIX = "xp"
 ROOT_KEY_PREFIX = "xproot"
+METRICS_TOKEN_PREFIX = "xpmetrics"
 
 _TENANT_ID = re.compile(r"^[a-z][a-z0-9-]{1,38}[a-z0-9]$")
 _KEY_ID = re.compile(r"^[0-9a-f]{12}$")
@@ -153,6 +154,16 @@ def generate_root_key() -> tuple[str, str]:
     return f"{ROOT_KEY_PREFIX}_{secret}", hash_secret(secret)
 
 
+def generate_metrics_token() -> tuple[str, str]:
+    """生成指标抓取令牌，返回 ``(完整的令牌, 摘要)``。摘要写进服务配置的 ``metrics.token_hash``。
+
+    与根凭据同一种做法：平台只存摘要；前缀不同，两者不能互相顶替。抓取令牌只能读 ``/metrics``，
+    不是调用者身份。
+    """
+    secret = secrets.token_urlsafe(32)
+    return f"{METRICS_TOKEN_PREFIX}_{secret}", hash_secret(secret)
+
+
 def parse_api_key(presented: str) -> tuple[str, str]:
     """拆出 ``(key_id, 密钥)``。
 
@@ -171,16 +182,27 @@ def verify_secret(secret: str, expected_hash: str) -> bool:
     return hmac.compare_digest(hash_secret(secret), expected_hash)
 
 
+def _verify_prefixed(presented: str, prefix: str, expected_hash: str) -> bool:
+    """校验 ``<前缀>_<密钥>`` 形状的凭据：前缀要对，密钥的摘要做常数时间比较。"""
+    actual, _, secret = presented.partition("_")
+    if actual != prefix or not secret:
+        return False
+    return verify_secret(secret, expected_hash)
+
+
 def verify_root_key(presented: str, root_key_hash: str) -> bool:
     """校验平台根凭据。"""
-    prefix, _, secret = presented.partition("_")
-    if prefix != ROOT_KEY_PREFIX or not secret:
-        return False
-    return verify_secret(secret, root_key_hash)
+    return _verify_prefixed(presented, ROOT_KEY_PREFIX, root_key_hash)
+
+
+def verify_metrics_token(presented: str, token_hash: str) -> bool:
+    """校验指标抓取令牌。"""
+    return _verify_prefixed(presented, METRICS_TOKEN_PREFIX, token_hash)
 
 
 __all__ = [
     "API_KEY_PREFIX",
+    "METRICS_TOKEN_PREFIX",
     "ROOT_KEY_PREFIX",
     "ApiKeyRecord",
     "Principal",
@@ -189,11 +211,13 @@ __all__ = [
     "Tenant",
     "TenantStatus",
     "generate_api_key",
+    "generate_metrics_token",
     "generate_root_key",
     "hash_secret",
     "parse_api_key",
     "tenant_directory",
     "validate_tenant_id",
+    "verify_metrics_token",
     "verify_root_key",
     "verify_secret",
 ]

@@ -427,8 +427,11 @@ async def open_world(
     states: StateBackendFactory | None = None,
     instance_id: str = "inst-test",
     data_dir_name: str = "data",
+    metrics_token_hash: str | None = None,
 ) -> World:
     """在 ``tmp_path`` 下装配并启动一个平台，开通一个租户、两把凭据、一条密钥。
+
+    ``metrics_token_hash`` 给了就开指标端点（抓取令牌的摘要）。
 
     对象存储放在数据目录之外（``tmp_path/objects``），几个实例可以共用。返回之后平台由
     调用方关闭；开通到一半失败时这里先关掉它。
@@ -449,6 +452,7 @@ async def open_world(
         instance_id=instance_id,
         objects=objects,
         states=states,
+        metrics_token_hash=metrics_token_hash,
     )
     await platform.start()
     try:

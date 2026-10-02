@@ -49,12 +49,14 @@ from xuanpu_server.runtime.events import EngineEventHub, SubmissionIndex, TurnSt
 from xuanpu_server.runtime.gate_audit import RejectionAudit
 from xuanpu_server.runtime.leases import SessionKey, SessionLeases
 from xuanpu_server.runtime.session_history import pending_requests, replay_turn
+from xuanpu_server.runtime.session_metadata import validate_metadata
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
     from xuanpu_server.audit import AuditLog
     from xuanpu_server.controlplane.store import ControlPlaneStore
+    from xuanpu_server.metrics import PlatformMetrics
     from xuanpu_server.packages import PackageRegistry
     from xuanpu_server.quota import QuotaGuard
     from xuanpu_server.runtime.assembler import RuntimeAssembler, TenantRuntime
@@ -63,22 +65,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 MAX_MESSAGE_CHARS = 200_000
-MAX_METADATA_ITEMS = 16
-MAX_METADATA_CHARS = 256
-
-
-def validate_metadata(metadata: dict[str, str] | None) -> dict[str, str]:
-    """业务方附加的关联标识：条数与长度有限，键值都是字符串。"""
-    if not metadata:
-        return {}
-    if len(metadata) > MAX_METADATA_ITEMS:
-        raise InvalidRequestError(f"metadata 最多 {MAX_METADATA_ITEMS} 项")
-    for key, value in metadata.items():
-        if not isinstance(key, str) or not isinstance(value, str):
-            raise InvalidRequestError("metadata 的键和值必须都是字符串")
-        if not key or len(key) > MAX_METADATA_CHARS or len(value) > MAX_METADATA_CHARS:
-            raise InvalidRequestError(f"metadata 的键值长度须在 1 到 {MAX_METADATA_CHARS} 之间")
-    return dict(metadata)
 
 
 @dataclass
@@ -125,6 +111,7 @@ class SessionManager:
         quota: QuotaGuard,
         audit: AuditLog,
         submissions: SubmissionIndex,
+        metrics: PlatformMetrics,
         instance_id: str,
         lease_seconds: float = 60.0,
         now: Callable[[], float] = time.time,
@@ -137,6 +124,7 @@ class SessionManager:
             quota: 配额检查。
             audit: 审计写入口。
             submissions: submission → 会话的对照表。
+            metrics: 平台指标，交给事件枢纽与拒绝补记打点。
             instance_id: 本实例的标识，写进租约。
             lease_seconds: 租约时长。续期间隔取它的三分之一。
             now: 取当前时间的函数，测试时可替换。
@@ -146,7 +134,10 @@ class SessionManager:
         self._runtimes = runtimes
         self._quota = quota
         self._audit = audit
-        self._rejections = RejectionAudit(store=store, audit=audit)
+        self._metrics = metrics
+        self._rejections = RejectionAudit(
+            store=store, audit=audit, on_failure=metrics.backfill_failed
+        )
         self._submissions = submissions
         self._leases = SessionLeases(
             store, instance_id=instance_id, lease_seconds=lease_seconds, now=now
@@ -334,6 +325,7 @@ class SessionManager:
                 session_id=record.session_id,
                 audit=self._audit,
                 store=self._store,
+                metrics=self._metrics,
                 capture_requests=self._runtimes.defaults.capture_requests,
                 on_turn_end=turn_ended,
             )
@@ -355,9 +347,14 @@ class SessionManager:
         _require_active(record)
         return await self._open(record)
 
-    def in_flight_turns(self, tenant_id: str) -> int:
-        """本实例上该租户进行中的对话数。"""
-        return sum(len(live.in_flight) for key, live in self._live.items() if key[0] == tenant_id)
+    def in_flight_turns(self, tenant_id: str | None = None) -> int:
+        """本实例上进行中的对话数；给了租户只算该租户的。"""
+        lives = (live for key, live in self._live.items() if tenant_id in (None, key[0]))
+        return sum(len(live.in_flight) for live in lives)
+
+    def held_sessions(self) -> int:
+        """本实例当前持有（有引擎）的会话数。"""
+        return len(self._live)
 
     async def _admit_turn(self, tenant_id: str) -> None:
         """开始一轮对话前的准入：不在停机中，且未超过租户的并发上限。"""
@@ -556,12 +553,9 @@ class SessionManager:
         """停止接受新的对话，等在途对话结束（最多等这么久），返回到期时仍在途的对话数。"""
         self._draining = True
         deadline = asyncio.get_running_loop().time() + timeout_seconds
-        while asyncio.get_running_loop().time() < deadline:
-            remaining = sum(len(live.in_flight) for live in self._live.values())
-            if remaining == 0:
-                return 0
+        while self.in_flight_turns() and asyncio.get_running_loop().time() < deadline:
             await asyncio.sleep(0.1)
-        return sum(len(live.in_flight) for live in self._live.values())
+        return self.in_flight_turns()
 
     async def shutdown(self, *, drain_seconds: float = 0.0) -> None:
         """停止续期，释放本实例持有的全部会话。会话本身保持活动状态，可由别的实例接手。
