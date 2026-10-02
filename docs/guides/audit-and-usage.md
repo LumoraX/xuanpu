@@ -72,7 +72,7 @@
 | `decision` | `allowed`：放行并已调用。`denied` 留给策略直接拒绝的情况。`rejected`：人工拒绝（送回审批时 `granted` 不为真），调用没有发出——这条由平台在内核确认核销了这次拒绝之后补记，只对连接器工具补（脚本、命令被拒绝没有过闸记录） |
 | `is_error`、`detail` | 调用是否出错；出错时的简述（超时是 `timeout`）。人工拒绝的 `detail` 是 `rejected_by_user`，`is_error` 为 `false` |
 | `duration_ms` | 耗时；人工拒绝的为 0 |
-| `arguments_digest` | 调用参数的 SHA-256 摘要。人工拒绝的按待办里记下的参数算（那份参数经过脱敏与截断） |
+| `arguments_digest` | 调用参数的 SHA-256 摘要。闸门发起审批时就算好、放进待办的 `detail.arguments_digest`，人工拒绝的补记用的是同一个值 |
 | `call_id`、`thread_id`、`submission_id` | 用来和内核事件对上。`submission_id` 是调用归属的那一轮：审批通过后才执行的调用，是送回审批的那一轮（同 `suspension_resolved_by` 的 `submission_id`）；人工拒绝的，是挂起的那一轮；内核自己发起的重跑没有，为空 |
 
 `decision` 为 `allowed` 的记录意味着：**调用确实发出去了**。需要审批的调用在批准或拒绝之前不会有过闸记录。

@@ -281,13 +281,18 @@ data: {"submission_id": "sub_…", "overflowed": false}
 需要审批时本轮以 `turn_suspended` 结束，`data.pending` 列出待办：
 
 ```json
-{"request_id": "req_7fcbe0950662111f", "reason": "permission",
+{"request_id": "req_4c060f5db252bc57", "reason": "permission",
  "payload_schema": {"type": "object", "properties": {"granted": {"type": "boolean"}, "reason": {"type": "string"}}, "required": ["granted"]},
  "related_call_id": "call_3",
  "detail": {"scope": "tool_use", "target": "api__tickets__updateTicket",
             "reason": "调用连接器 tickets 的 updateTicket（write）",
-            "args": {"id": "T-1001", "body": {"priority": "high"}}}}
+            "call_chain": [], "call_id": "call_3", "thread_id": "thr_96548b0d001a65d6",
+            "args": {"id": "T-1001", "body": {"priority": "high"}},
+            "arguments_digest": "sha256:ab129ec1c7282db457ccb63ffaa5de0ae0929b62aba56e9f0a3fe52d84f7929f"},
+ "ttl_seconds": null, "on_expire": "abort"}
 ```
+
+连接器工具的审批，`detail` 里是要调的工具（`target`）、调用参数（`args`）与参数摘要（`arguments_digest`，与这次调用的过闸记录里的是同一个值）。
 
 `GET /v1/sessions/{id}/pending` 随时返回当前的待办：`{"pending": [ … ]}`，没有待办时是空列表。
 
@@ -295,7 +300,7 @@ data: {"submission_id": "sub_…", "overflowed": false}
 
 ```
 POST /v1/sessions/{id}/resume
-{"resolutions": {"req_7fcbe0950662111f": {"granted": true}}}
+{"resolutions": {"req_4c060f5db252bc57": {"granted": true}}}
 → 事件流
 ```
 

@@ -189,7 +189,8 @@ event: turn_suspended
 data: {…, "data": {"pending": [{"request_id": "req_7fcbe0950662111f", "reason": "permission",
        "detail": {"scope": "tool_use", "target": "api__tickets__updateTicket",
                   "reason": "调用连接器 tickets 的 updateTicket（write）",
-                  "args": {"id": "T-1001", "body": {"priority": "high"}}}, …}], …}}
+                  "args": {"id": "T-1001", "body": {"priority": "high"}},
+                  "arguments_digest": "sha256:ab129ec1…", …}, …}], …}}
 ```
 
 此时工单还没被改。把批准送回去，对话从停下的地方继续：

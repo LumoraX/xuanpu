@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Any
 import taifeng
 from xuanpu_spec import OpenApiError, load_openapi
 
+from xuanpu_server.audit import digest_arguments
 from xuanpu_server.errors import PackageInvalidError, PlatformError, RuntimeUnavailableError
 from xuanpu_server.runtime.connector_process import ObservingExecutor
 from xuanpu_server.runtime.gate_audit import ConnectorToolInfo, gate_call_data
@@ -134,9 +135,6 @@ class ConnectorGate:
         """绑定一个工具。"""
         self._invoke = invoke
         self._info = info
-        self._connector = info.connector
-        self._tool = info.tool
-        self._effect = info.effect
         self._tenant_id = tenant_id
         self._policy = policy
         self._audit = audit
@@ -147,7 +145,7 @@ class ConnectorGate:
     async def _record(
         self,
         ctx: taifeng.ToolContext,
-        args: dict[str, Any],
+        arguments_digest: str,
         *,
         decision: str,
         started: float,
@@ -160,7 +158,8 @@ class ConnectorGate:
         重跑的那次送回的提交标识；内核自己发起的重跑（如到期裁决）没有这个键，记为 None，
         会话按线程归属。
         """
-        submission_id = ctx.extras.get("submission_id")
+        extra = ctx.extras.get("submission_id")
+        submission_id = extra if isinstance(extra, str) else None
         await self._audit.gate(
             self._tenant_id,
             "connector_call",
@@ -171,7 +170,7 @@ class ConnectorGate:
                 detail=detail,
                 call_id=ctx.call_id,
                 thread_id=ctx.thread_id,
-                args=args,
+                arguments_digest=arguments_digest,
                 submission_id=submission_id,
                 duration_ms=int((time.monotonic() - started) * 1000),
             ),
@@ -181,19 +180,33 @@ class ConnectorGate:
     async def __call__(self, args: dict[str, Any], ctx: taifeng.ToolContext) -> taifeng.ToolResult:
         """工具处理函数。"""
         started = time.monotonic()
+        info = self._info
+        # 摘要只算一次：过闸记录用它；也放进审批请求（进待办的 detail），人工拒绝的补记
+        # 拿到的就是同一个值
+        digest = digest_arguments(args)
         # 审批：需要人来定时，这里抛出挂起信号，本轮对话停在这一步；
         # 审批通过后内核带着同一个 call_id 重新进来，这次直接放行
         decision = await self._policy.check(
             taifeng.PermissionRequest(
                 scope="tool_use",
                 target=self.full_name,
-                reason=f"调用连接器 {self._connector} 的 {self._tool}（{self._effect}）",
-                metadata={"call_id": ctx.call_id, "thread_id": ctx.thread_id, "args": args},
+                reason=f"调用连接器 {info.connector} 的 {info.tool}（{info.effect}）",
+                metadata={
+                    "call_id": ctx.call_id,
+                    "thread_id": ctx.thread_id,
+                    "args": args,
+                    "arguments_digest": digest,
+                },
             )
         )
         if not decision.granted:
             await self._record(
-                ctx, args, decision="denied", started=started, is_error=True, detail=decision.reason
+                ctx,
+                digest,
+                decision="denied",
+                started=started,
+                is_error=True,
+                detail=decision.reason,
             )
             return taifeng.ToolResult.error(
                 f"permission_denied: {decision.reason}", reason="permission_denied"
@@ -202,18 +215,18 @@ class ConnectorGate:
             text, is_error = await asyncio.wait_for(self._invoke(args), timeout=self._timeout)
         except TimeoutError:
             await self._record(
-                ctx, args, decision="allowed", started=started, is_error=True, detail="timeout"
+                ctx, digest, decision="allowed", started=started, is_error=True, detail="timeout"
             )
             return taifeng.ToolResult.error("connector_timeout", reason="timeout")
         except (taifeng.McpToolError, ConnectorCallError) as exc:
             await self._record(
-                ctx, args, decision="allowed", started=started, is_error=True, detail=str(exc)
+                ctx, digest, decision="allowed", started=started, is_error=True, detail=str(exc)
             )
             return taifeng.ToolResult.error(f"connector_error: {exc}", reason="connector_error")
         except PlatformError as exc:
             # 调用途中平台侧出了问题（比如密钥刚被删掉）：记下来，告诉模型这次调用没成
             await self._record(
-                ctx, args, decision="allowed", started=started, is_error=True, detail=exc.code
+                ctx, digest, decision="allowed", started=started, is_error=True, detail=exc.code
             )
             return taifeng.ToolResult.error(f"{exc.code}: {exc.message}", reason=exc.code)
         except taifeng.SuspendSignal:
@@ -224,17 +237,15 @@ class ConnectorGate:
             # 而异常文本里是什么说不准（可能带着凭据或远端回的任意内容），所以过闸记录、
             # 日志与交给模型的错误都只写异常类型，不带原文
             kind = type(exc).__name__
-            logger.error(
-                "连接器 %s 的工具 %s 调用时出了意外：%s", self._connector, self._tool, kind
-            )
+            logger.error("连接器 %s 的工具 %s 调用时出了意外：%s", info.connector, info.tool, kind)
             await self._record(
-                ctx, args, decision="allowed", started=started, is_error=True, detail=kind
+                ctx, digest, decision="allowed", started=started, is_error=True, detail=kind
             )
             return taifeng.ToolResult.error(f"connector_error: {kind}", reason="connector_error")
-        await self._record(ctx, args, decision="allowed", started=started, is_error=is_error)
+        await self._record(ctx, digest, decision="allowed", started=started, is_error=is_error)
         if is_error:
             return taifeng.ToolResult.error(text or "connector_error", reason="tool_error")
-        return taifeng.ToolResult.ok(text, connector=self._connector, tool=self._tool)
+        return taifeng.ToolResult.ok(text, connector=info.connector, tool=info.tool)
 
 
 class ConnectorSet:

@@ -76,8 +76,12 @@ async def test_approved_call_is_attributed_to_the_resume_submission(
 
 
 async def test_rejected_call_leaves_a_gate_record(world: Any, step: Any, read_turn: Any) -> None:
-    """人工拒绝的连接器调用补一条过闸记录：归到挂起的那一轮，参数只记摘要，工具没有被调用。"""
-    arguments = {"id": "T-1", "note": "客户的机密备注"}
+    """人工拒绝的连接器调用补一条过闸记录：归到挂起的那一轮，参数只记摘要，工具没有被调用。
+
+    摘要是闸门发起审批时按原始参数算好、放进待办的那一个：参数里有键名像凭据的字段时，审计
+    里记下的参数已经脱敏，按它算会不一样。
+    """
+    arguments = {"id": "T-1", "note": "客户的机密备注", "api_token": "tok-raw"}
     session, suspended, pending = await suspend(
         world, step, read_turn, [("c1", "mcp__crm__update_ticket", arguments)]
     )
@@ -104,6 +108,8 @@ async def test_rejected_call_leaves_a_gate_record(world: Any, step: Any, read_tu
     assert data["submission_id"] != resumed.submission_id
     assert data["duration_ms"] == 0
     assert data["arguments_digest"] == digest_arguments(arguments)
+    assert pending[0]["detail"]["arguments_digest"] == digest_arguments(arguments)
+    assert pending[0]["detail"]["args"]["api_token"] == "[已脱敏]"
     assert "args" not in data and "arguments" not in data
     assert "机密备注" not in json.dumps(data, ensure_ascii=False)
 
@@ -384,7 +390,13 @@ REGISTRY = {
 
 def permission(request_id: str, target: str, *, scope: str = "tool_use", **detail: Any) -> Any:
     """一条审批待办，形状照内核 ``turn_suspended`` 事件里的 ``pending`` 项。"""
-    fields = {"call_id": f"call-{request_id}", "thread_id": "thr_1", "args": {"id": request_id}}
+    args = {"id": request_id}
+    fields = {
+        "call_id": f"call-{request_id}",
+        "thread_id": "thr_1",
+        "args": args,
+        "arguments_digest": digest_arguments(args),
+    }
     return {
         "request_id": request_id,
         "reason": "permission",
@@ -465,7 +477,7 @@ async def test_failures_are_logged_and_counted_not_raised(
     caplog.set_level(logging.INFO)
     store = await suspended_store(
         permission("r1", "mcp__docs__update_doc"),
-        permission("r2", "mcp__docs__update_doc", args=None),
+        permission("r2", "mcp__docs__update_doc", args=None, arguments_digest=None),
         permission("r3", "mcp__crm__update_ticket"),
     )
     written: list[str] = []
@@ -529,4 +541,18 @@ async def test_watch_only_records_what_the_kernel_settled_this_time() -> None:
     await watch.resolved(frozenset({"r2"}))
     records = await store.query_audit("acme", AuditQuery(source="gate"))
     assert [r.data["call_id"] for r in records] == ["call-r2"]
+    assert rejections.failures == 0
+
+
+async def test_pending_from_before_the_upgrade_falls_back_to_the_audited_args(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """升级前就已挂起的待办没有参数摘要：按待办里记下的参数算，并记 warning。"""
+    caplog.set_level(logging.WARNING)
+    store = await suspended_store(permission("r1", "mcp__docs__update_doc", arguments_digest=None))
+    rejections = RejectionAudit(store=store, audit=AuditLog(store))
+    pending = await rejections.prepare("acme", "ses_1", {"r1": {"granted": False}})
+    [call] = rejections.calls(pending, REGISTRY.get)
+    assert call.arguments_digest == digest_arguments({"id": "r1"})
+    assert any("没有参数摘要" in r.getMessage() for r in caplog.records)
     assert rejections.failures == 0

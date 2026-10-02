@@ -10,7 +10,7 @@ import pytest
 from prometheus_client import REGISTRY
 from prometheus_client.parser import text_string_to_metric_families
 from xuanpu_server.api import create_app
-from xuanpu_server.audit import AuditLog
+from xuanpu_server.audit import AuditLog, digest_arguments
 from xuanpu_server.controlplane import InMemoryControlPlane
 from xuanpu_server.metrics import PlatformMetrics
 from xuanpu_server.platform import ROOT_PRINCIPAL
@@ -395,7 +395,7 @@ async def test_audit_writes_count_failures_and_connector_calls() -> None:
         detail="",
         call_id="call-1",
         thread_id="thr_1",
-        args={},
+        arguments_digest=digest_arguments({}),
         submission_id="sub_1",
         duration_ms=3,
     )

@@ -9,7 +9,7 @@
 
 1. ``prepare``：送回之前（内核核销之前）读审计里最近一次挂起还没处理的待办
    （``session_history.pending_suspension``），取出这次被拒的那些，连同详情（工具全名、
-   call_id、线程、参数）与挂起的那一轮的提交标识——补的记录归到被拒的那一轮。已经核销过的
+   call_id、线程、参数摘要）与挂起的那一轮的提交标识——补的记录归到被拒的那一轮。已经核销过的
    待办不在其中，不再补：它的记录在第一次核销时补过了。
 2. ``watch``：按运行时的连接器登记（``ConnectorSet.describe``）挑出连接器工具（连接器、工具、
    传输、副作用分类）。stdio 与 remote 的工具名前缀都是 ``mcp__``，传输只能从登记里查；查不到
@@ -23,10 +23,13 @@
 ``on_failure`` 报出是哪个环节（``read`` 读不到待办、``incomplete`` 待办缺调用信息、``write``
 写不进记录、``unconfirmed`` 等不到内核的结论；接到平台指标）。
 
+参数摘要由闸门在发起审批时算好、放进审批请求（待办的 ``detail.arguments_digest``），补的记录
+用的就是这个值，与闸门放行时记的一致。升级前就已挂起的待办没有这个字段，退回按待办里记下的
+参数算并记 warning——那份参数经过脱敏与截断，碰上键名像凭据的字符串、超过 8000 字符的字符串，
+算出来与原始参数的摘要不同。
+
 已知限制：
 
-- 参数摘要按审计里待办记下的参数算：那份参数经过脱敏与截断（键名像凭据的字符串、超过
-  8000 字符的字符串），碰上这两种情况，与闸门按原始参数算的摘要不同。
 - 待办以审计为准（与 ``SessionManager.pending`` 同一口径）：事件枢纽先把挂起事件推给调用方、
   再写审计，紧跟着送回可能落在这中间；挂起事件写库失败、暂留在缓冲里时也一样。这时查不到
   待办，补不上记录。
@@ -82,11 +85,11 @@ def gate_call_data(
     detail: str,
     call_id: str,
     thread_id: str,
-    args: Mapping[str, Any],
-    submission_id: object,
+    arguments_digest: str,
+    submission_id: str | None,
     duration_ms: int,
 ) -> dict[str, Any]:
-    """一条 ``connector_call`` 过闸记录的 ``data``。参数只记摘要，不记原文。
+    """一条 ``connector_call`` 过闸记录的 ``data``。参数只记摘要（``digest_arguments``），不记原文。
 
     Args:
         info: 被调用的连接器工具。
@@ -95,7 +98,7 @@ def gate_call_data(
         detail: 简述（出错原因、拒绝缘由）。
         call_id: 内核的工具调用标识。
         thread_id: 发起调用的线程。
-        args: 调用参数，只用来算摘要。
+        arguments_digest: 调用参数的摘要。
         submission_id: 这次调用归属的那一轮的提交标识；内核自己发起的重跑没有，为 None。
         duration_ms: 耗时。
     """
@@ -109,7 +112,7 @@ def gate_call_data(
         "detail": detail,
         "call_id": call_id,
         "thread_id": thread_id,
-        "arguments_digest": digest_arguments(args),
+        "arguments_digest": arguments_digest,
         "submission_id": submission_id,
         "duration_ms": duration_ms,
     }
@@ -126,7 +129,7 @@ class RejectedCall:
         info: 被拒的连接器工具。
         call_id: 内核的工具调用标识。
         thread_id: 发起调用的线程。
-        args: 待办里记下的调用参数。
+        arguments_digest: 调用参数的摘要。
         submission_id: 挂起的那一轮（被拒的那一轮）的提交标识。
     """
 
@@ -136,7 +139,7 @@ class RejectedCall:
     info: ConnectorToolInfo
     call_id: str
     thread_id: str
-    args: dict[str, Any]
+    arguments_digest: str
     submission_id: str | None
 
     def gate_data(self) -> dict[str, Any]:
@@ -148,7 +151,7 @@ class RejectedCall:
             detail=REJECTED_BY_USER,
             call_id=self.call_id,
             thread_id=self.thread_id,
-            args=self.args,
+            arguments_digest=self.arguments_digest,
             submission_id=self.submission_id,
             duration_ms=0,
         )
@@ -170,7 +173,7 @@ def _rejected_call(
     """一条被拒绝的待办 → 要补记的连接器调用；不是连接器工具的审批返回 None。
 
     Raises:
-        ValueError: 是连接器工具的审批，却缺调用信息（call_id、线程或参数）。
+        ValueError: 是连接器工具的审批，却缺调用信息（call_id、线程，或参数摘要与参数都没有）。
     """
     detail = item.get("detail")
     if item.get("reason") != "permission" or not isinstance(detail, dict):
@@ -181,12 +184,10 @@ def _rejected_call(
     info = describe(target)
     if info is None:
         return None
-    call_id, thread_id, args = detail.get("call_id"), detail.get("thread_id"), detail.get("args")
-    # 连接器工具的待办由闸门发起，必带这三项；缺了说明记录不完整，不能编一条
+    call_id, thread_id = detail.get("call_id"), detail.get("thread_id")
+    # 连接器工具的待办由闸门发起，必带这几项；缺了说明记录不完整，不能编一条
     if not isinstance(call_id, str) or not isinstance(thread_id, str):
         raise ValueError(f"待办 {item.get('request_id')!r} 缺 call_id 或线程标识")
-    if not isinstance(args, dict):
-        raise ValueError(f"待办 {item.get('request_id')!r} 缺调用参数")
     return RejectedCall(
         tenant_id=tenant_id,
         session_id=session_id,
@@ -194,9 +195,31 @@ def _rejected_call(
         info=info,
         call_id=call_id,
         thread_id=thread_id,
-        args=args,
+        arguments_digest=_digest_of(item, detail),
         submission_id=submission_id,
     )
+
+
+def _digest_of(item: Mapping[str, Any], detail: Mapping[str, Any]) -> str:
+    """待办里的参数摘要（闸门发起审批时算好的）。
+
+    升级前就已挂起的待办没有这个字段：按待办里记下的参数算，并记 warning（那份参数经过
+    脱敏与截断，可能与原始参数的摘要不同）。
+
+    Raises:
+        ValueError: 摘要与参数都没有。
+    """
+    digest = detail.get("arguments_digest")
+    if isinstance(digest, str):
+        return digest
+    args = detail.get("args")
+    if not isinstance(args, dict):
+        raise ValueError(f"待办 {item.get('request_id')!r} 缺参数摘要与调用参数")
+    logger.warning(
+        "待办 %s 没有参数摘要（升级前挂起的），按审计里记下的参数算，可能与原始参数的摘要不同",
+        item.get("request_id"),
+    )
+    return digest_arguments(args)
 
 
 @dataclass(frozen=True)
