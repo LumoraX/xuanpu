@@ -3,9 +3,12 @@
 - ``GET /v1/me``：当前调用者；
 - ``GET /v1/auth/feishu/login``、``GET /v1/auth/feishu/callback``：飞书登录（不需要凭据，结果都是
   302；流程见 ``identity.login``）；``POST /v1/auth/logout``：退出浏览器登录；
-- ``GET /v1/identity/feishu``、``PUT /v1/identity/feishu``：租户的飞书配置。
+- ``GET /v1/identity/feishu``、``PUT /v1/identity/feishu``：租户的飞书配置；
+- ``POST /v1/identity/feishu/events/{tenant_id}``：飞书事件回调（不走平台的认证，靠飞书的签名；
+  流程见 ``identity.callback``）；
+- 用户管理（``/v1/users``…）在 ``api.users``，经这里一并挂上，``api.app`` 不必再改。
 
-用户管理、事件回调、对账以后也加在这里。
+对账以后也加在这里。
 """
 
 from __future__ import annotations
@@ -18,6 +21,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 
 from xuanpu_server.api import schemas  # noqa: TC001 —— FastAPI 运行时解析请求体的标注
 from xuanpu_server.api.auth import Caller  # noqa: TC001 —— FastAPI 运行时解析路由标注
+from xuanpu_server.api.users import users_router
 from xuanpu_server.errors import PlatformError
 from xuanpu_server.identity.cookies import (
     clear_login_attempt_cookie,
@@ -28,6 +32,12 @@ from xuanpu_server.identity.cookies import (
     read_login_cookie,
     set_login_attempt_cookie,
     set_login_cookie,
+)
+from xuanpu_server.identity.events import (
+    MAX_EVENT_BODY_BYTES,
+    NONCE_HEADER,
+    SIGNATURE_HEADER,
+    TIMESTAMP_HEADER,
 )
 from xuanpu_server.identity.login import LOGIN_ATTEMPT_TTL_SECONDS
 from xuanpu_server.identity.urls import callback_url, event_url
@@ -110,10 +120,23 @@ def login_response(
     return response
 
 
+async def read_bounded(request: Request, limit: int) -> bytes:
+    """读请求体，读到超过 ``limit`` 就停：返回的最多 ``limit + 1`` 字节，超没超限由调用方判断。"""
+    chunks: list[bytes] = []
+    size = 0
+    async for chunk in request.stream():
+        chunks.append(chunk)
+        size += len(chunk)
+        if size > limit:
+            break
+    return b"".join(chunks)[: limit + 1]
+
+
 def identity_router(platform: Platform) -> APIRouter:
-    """身份相关的路由。"""
+    """身份相关的路由（含 ``api.users`` 的用户管理）。"""
     router = APIRouter()
     identity = platform.identity
+    router.include_router(users_router(platform))
 
     @router.get("/v1/me")
     async def me(who: Caller) -> dict[str, Any]:
@@ -193,7 +216,22 @@ def identity_router(platform: Platform) -> APIRouter:
         )
         return feishu_config_view(config.tenant_id, config, identity.settings)
 
+    @router.post("/v1/identity/feishu/events/{tenant_id}")
+    async def feishu_events(tenant_id: str, request: Request) -> dict[str, Any]:
+        """飞书事件回调：URL 验证回 ``challenge``，离职事件停用员工，别的事件 200 忽略。
+
+        不走平台的认证（没有 ``Caller``）：来源靠飞书的签名认。请求体最多读 1 MiB 多一个字节。
+        """
+        headers = request.headers
+        return await identity.events.handle(
+            tenant_id,
+            body=await read_bounded(request, MAX_EVENT_BODY_BYTES),
+            signature=headers.get(SIGNATURE_HEADER),
+            timestamp=headers.get(TIMESTAMP_HEADER),
+            nonce=headers.get(NONCE_HEADER),
+        )
+
     return router
 
 
-__all__ = ["feishu_config_view", "identity_router", "login_response", "me_view"]
+__all__ = ["feishu_config_view", "identity_router", "login_response", "me_view", "read_bounded"]

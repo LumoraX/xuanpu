@@ -11,8 +11,11 @@
   操作——建会话、发消息、送审批结果、停止生成、关闭会话（``control`` 给 ``session``）。管理员或系统
   key 在员工的会话里做的事，``actor`` 是管理员或那把 key，``user_id`` 仍是这名员工；要查「某个
   管理员在别人会话里做了什么」，按 ``actor`` 查；
-- 与会话无关的控制面操作，``user_id`` 取调用者代表的员工（浏览器登录或代员工调用），API key 与
-  根凭据为空。
+- 针对某名员工的身份操作——改角色、停用、启用、停用后的收尾失败（``control`` 给 ``user_id``）——
+  ``user_id`` 是被操作的这名员工，``actor`` 是谁做的（管理员、API key，或 ``system:<名字>`` 这样的
+  平台内部调用者）。按 ``user_id`` 查一名员工，能看到他何时被谁停用；
+- 其余与会话无关的控制面操作，``user_id`` 取调用者代表的员工（浏览器登录或代员工调用），API key、
+  根凭据与系统调用者为空。
 
 设计 8.2 原写「控制面操作取调用者」，会话上的控制面操作改为取会话主人，见实现计划的对齐表。
 
@@ -154,23 +157,29 @@ class AuditLog:
         data: dict[str, Any] | None = None,
         *,
         session: SessionRecord | None = None,
+        user_id: str | None = None,
     ) -> None:
         """记一条控制面操作。``actor`` 总是调用者。
 
         Args:
             session: 操作所在的会话。给了就是会话上的操作：``session_id`` 取它，``user_id`` 取会话
-                主人（API key 直接建的会话没有主人，为空），不论是谁触发的；不给就是与会话无关的
-                操作，``user_id`` 取调用者代表的员工。
+                主人（API key 直接建的会话没有主人，为空），不论是谁触发的。
+            user_id: 操作针对的员工（改角色、停用、启用这类身份操作）：给了就是 ``user_id`` 取它，
+                不论是谁触发的。两者都不给就是一般的控制面操作，``user_id`` 取调用者代表的员工。
 
         Raises:
-            RuntimeError: ``session`` 不属于 ``tenant_id``。这是调用方的编程错误（会把记录写进
-                别的租户），按内部错误处理，不当作请求不合法。
+            RuntimeError: ``session`` 不属于 ``tenant_id``，或 ``session`` 与 ``user_id`` 同时给了。
+                这是调用方的编程错误（会把记录写进别的租户、归错员工），按内部错误处理，不当作
+                请求不合法。
         """
         if session is not None and session.tenant_id != tenant_id:
             raise RuntimeError(
                 f"会话 {session.session_id!r} 属于租户 {session.tenant_id!r}，"
                 f"不能记进租户 {tenant_id!r} 的审计"
             )
+        if session is not None and user_id is not None:
+            raise RuntimeError("session 与 user_id 只能给一个：会话上的记录归会话主人")
+        owner = session.user_id if session is not None else user_id or principal.user_id
         await self._append(
             [
                 AuditRecord(
@@ -181,7 +190,7 @@ class AuditLog:
                     actor=principal.actor,
                     session_id=session.session_id if session is not None else None,
                     data=sanitize(data or {}),
-                    user_id=session.user_id if session is not None else principal.user_id,
+                    user_id=owner,
                 )
             ]
         )

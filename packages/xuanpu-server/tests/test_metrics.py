@@ -35,6 +35,8 @@ FAMILIES = {
     "xuanpu_usage_estimated": "counter",
     "xuanpu_usage_write_failures": "counter",
     "xuanpu_logins": "counter",
+    "xuanpu_users_disabled": "counter",
+    "xuanpu_feishu_events": "counter",
 }
 
 
@@ -364,7 +366,7 @@ async def test_metrics_carry_no_tenant_session_or_secret(
     ):
         assert secret not in text, secret
     labels = {name for _, pairs in samples(text) for name, _ in pairs}
-    assert labels == {"outcome", "transport", "decision", "stage", "result"}
+    assert labels == {"outcome", "transport", "decision", "stage", "result", "reason"}
 
 
 def test_login_results_match_the_failure_reasons() -> None:

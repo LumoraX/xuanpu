@@ -33,7 +33,7 @@
 | `source` | 来源，三种之一：`control`、`gate`、`engine` |
 | `kind` | 事件类型 |
 | `at` | 发生时间，Unix 秒 |
-| `actor` | 谁触发的。用 API key 的是 `key:<API key 标识>`（根凭据是 `key:root`）；浏览器登录的员工是 `user:<员工标识>`；代员工调用是 `key:<API key 标识>/user:<员工标识>`（见[认证](../architecture/http-api.md#认证)）；模型驱动的是 `engine`；飞书登录失败、还没认出是哪名员工时是 `anonymous` |
+| `actor` | 谁触发的。用 API key 的是 `key:<API key 标识>`（根凭据是 `key:root`）；浏览器登录的员工是 `user:<员工标识>`；代员工调用是 `key:<API key 标识>/user:<员工标识>`（见[认证](../architecture/http-api.md#认证)）；模型驱动的是 `engine`；飞书登录失败、还没认出是哪名员工时是 `anonymous`；平台自己发起的是 `system:<名字>`：`system:feishu-event`（飞书离职事件停用员工）、`system:user-disabled`（员工停用后关闭他的会话） |
 | `session_id` | 关联的会话；与会话无关的操作为空 |
 | `stream`、`seq` | 只有内核事件有：事件流的标识与流内序号 |
 | `data` | 事件内容 |
@@ -48,7 +48,8 @@
 | 记录 | `user_id` |
 | --- | --- |
 | 会话里的一切记录：会话上的控制面操作（`session_created`、`message_sent`、`suspension_resolved_by`、`turn_cancel_requested`、`session_closed`）、内核事件（`source=engine`，含平台补的 `turn_text`、`usage_estimated`、`audit_gap`）、过闸记录（`source=gate`，含人工拒绝的补记） | 会话的主人，不论是谁触发的（是谁触发的看 `actor`） |
-| 与会话无关的控制面操作（签发 key、写密钥、发布业务包、退出登录等） | 调用者代表的员工：浏览器登录的员工，或代员工调用时被代的员工；用 API key、根凭据直接调的为空 |
+| 针对某名员工的操作：`user_role_changed`、`user_disabled`、`user_enabled`、`user_cleanup_failed` | 被操作的这名员工，不论是谁做的（是谁做的看 `actor`：管理员、API key，或 `system:feishu-event`） |
+| 其余与会话无关的控制面操作（签发 key、写密钥、发布业务包、退出登录等） | 调用者代表的员工：浏览器登录的员工，或代员工调用时被代的员工；用 API key、根凭据直接调的为空 |
 | 飞书登录的几种记录 | 认出的员工，见下文 |
 
 会话的主人是建会话时调用者代表的员工；API key 直接建的会话没有主人，会话里的记录 `user_id` 都为空。比如管理员用自己的 API key 批准了员工张三会话里的一次写操作：`suspension_resolved_by` 的 `actor` 是那把 key、`user_id` 是张三；随后执行的那次调用的过闸记录 `actor` 是 `engine`、`user_id` 也是张三——两条都是张三会话里的记录。所以按 `user_id=张三` 能看到他会话里的全部经过（包括别人在里面做的事）；要查「这个管理员在别人的会话里做了什么」，按 `actor` 查（见下文「查询」）。
@@ -72,7 +73,7 @@
 | `package_activated` | 切换生效版本 | `name`、`version`、`previous` |
 | `eval_completed` | 跑完一次评测 | `package`、`version`、`passed`、`failed`、`total_tokens` |
 | `session_created` | 新建会话 | `package`、`version`、`entry`、`metadata` |
-| `session_closed` | 关闭会话 | — |
+| `session_closed` | 关闭会话。员工停用后由平台关掉的，`actor` 是 `system:user-disabled` | — |
 | `message_sent` | 用户发出一条消息 | `submission_id`、`text` |
 | `suspension_resolved_by` | 送回审批决定 | `submission_id`、`decisions`（待办标识 → 批准与否） |
 | `turn_cancel_requested` | 停止生成（确有在途对话被停时才记）。与会话上的其他操作一样，`user_id` 是会话的主人，是谁停的看 `actor` | `submission_ids`：停了哪些 |
@@ -81,6 +82,12 @@
 | `login_failed` | 飞书登录失败，而且飞书确实认出了一个人：`not_in_app_scope`（不在应用的可用范围内）、`tenant_mismatch`（飞书企业不符）、`user_disabled`（员工已停用）。别的失败原因（员工拒绝授权、登录链接失效、租户不可用、调飞书失败）只计指标 `xuanpu_logins_total`、记平台日志，不写审计——登录接口不需要凭据，否则谁都能往审计里灌记录 | `reason`：失败原因，含义见[接口文档的 `login_error` 表](../architecture/http-api.md#飞书登录) |
 | `logout` | 员工退出浏览器登录 | — |
 | `identity_config_updated` | 写入或替换租户的[飞书配置](../architecture/http-api.md#飞书配置) | `app_id`、`session_ttl_seconds`、`refs`（App Secret、Encrypt Key、Verification Token 在保管库里的名字：`app`、`encrypt`、`verification`），没有明文 |
+| `user_role_changed` | [改员工的角色](../architecture/http-api.md#员工)（角色真的变了才记） | `before`、`after`：`tenant_admin` 或 `tenant_member` |
+| `user_disabled` | 员工被停用：管理员停用，或飞书离职事件（`actor` 是 `system:feishu-event`）。只在状态确实从启用变成停用时记，重复停用不记 | `reason`：`admin`、`feishu_resigned`（离职）、`feishu_frozen`（暂停）、`feishu_exited`（主动退出）；飞书事件另有 `event_id`（飞书的事件标识，重推时不变） |
+| `user_enabled` | 管理员重新启用员工（已是启用的不记）。已关闭的会话不恢复 | `previous_reason`：停用时的原因 |
+| `user_cleanup_failed` | 员工停用之后的某项收尾失败了（现在唯一的一项是关闭他名下的会话）。再停用他一次会重跑全部收尾，见[运维手册](operations.md#员工停用与离职) | `listener`：哪一项收尾（`close_sessions`）；`error`：异常类型，如 `SessionCleanupError`。异常文本不进审计，在平台日志里 |
+
+员工管理的四种记录（`user_role_changed`、`user_disabled`、`user_enabled`、`user_cleanup_failed`）的 `user_id` 是被操作的员工，`actor` 是谁做的：按 `user_id` 查一名员工，就能看到他何时、因为什么、被谁停用；飞书离职事件签名不符、来源对不上的请求不写审计（只计指标、记日志），防止被刷。
 
 飞书登录的三种记录（`user_created`、`login_succeeded`、`login_failed`）发生在调用者有身份之前：认出了员工的，`actor` 是 `user:<员工标识>`、`user_id` 是他；飞书认出了人、平台里还对不上是谁的（不在可用范围、飞书企业不符）`actor` 是 `anonymous`、`user_id` 为空。授权码、飞书令牌与 App Secret 一概不进审计。
 
@@ -195,8 +202,8 @@ curl "https://xuanpu.internal/v1/audit?session_id=ses_…&limit=200" -H "Authori
 | `kind` | 只看某种事件 |
 | `source` | `control` / `gate` / `engine` |
 | `since`、`until` | 时间范围，Unix 秒；`since` 含，`until` 不含 |
-| `user_id` | 只看归到某名员工名下的：他名下会话里的一切记录（不论是谁触发的），以及他做的与会话无关的控制面操作 |
-| `actor` | 只看某个触发者的，精确匹配：`key:<API key 标识>`、`user:<员工标识>`、`key:<API key 标识>/user:<员工标识>`（代员工调用，与那把 key 自己的是两个值）、`engine`。低频的排查查询，审计表上没有为它建索引，记录多时会慢 |
+| `user_id` | 只看归到某名员工名下的：他名下会话里的一切记录（不论是谁触发的）、针对他的员工管理记录（改角色、停用、启用），以及他做的与会话无关的控制面操作 |
+| `actor` | 只看某个触发者的，精确匹配：`key:<API key 标识>`、`user:<员工标识>`、`key:<API key 标识>/user:<员工标识>`（代员工调用，与那把 key 自己的是两个值）、`engine`、`system:<名字>`。低频的排查查询，审计表上没有为它建索引，记录多时会慢 |
 | `after_id` | 只看编号大于它的，翻页用 |
 | `limit` | 每页条数，默认 100，最大 1000 |
 
@@ -237,6 +244,8 @@ async for record in client.admin.audit(session_id=session_id, source="gate"):
 | 某一轮用了多少 token | `kind=turn_completed` 的 `data.subtree_usage`（含子 skill）；没有这个字段时看 `data.usage` |
 | 某名员工的会话里发生了什么、他做了什么 | `user_id=usr_…`；员工查看自己的记录以后再开放，现在只有租户管理员能查 |
 | 某个管理员或某把 key 在别人的会话里做了什么 | `actor=user:usr_…`（浏览器登录的管理员）或 `actor=key:…`，再加 `user_id=` 只看某名员工会话里的 |
+| 某名员工是什么时候、因为什么、被谁停用的 | `kind=user_disabled&user_id=usr_…`：`data.reason` 是原因，`actor` 是谁（`system:feishu-event` 是飞书离职事件）；停用后哪些会话被关了看 `actor=system:user-disabled&user_id=usr_…`，收尾失败看 `kind=user_cleanup_failed` |
+| 谁改过员工的角色 | `kind=user_role_changed`，`data.before`、`data.after` |
 
 一轮对话的所有记录靠 `data.submission_id` 串起来。送回审批决定后的续跑是一个新的 `submission_id`；要把「挂起的那一轮」和「续跑的那一轮」对上，用待办标识或 `call_id`。
 

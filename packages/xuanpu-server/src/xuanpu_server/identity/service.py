@@ -1,6 +1,7 @@
-"""身份服务：认出调用者（设计 6.2、6.3）、飞书登录与退出（7.1）、租户的飞书配置（第 9 节）。
+"""身份服务：认出调用者（设计 6.2、6.3）、飞书登录与退出（7.1）、停用流水线（7.2）、离职事件回调
+（7.3）、用户管理与租户的飞书配置（第 9 节）。
 
-停用流水线、对账、用户管理以后也收在这里（P1 后续任务）。目前有：
+对账以后也收在这里（P1 后续任务）。目前有：
 
 - ``authenticate_login``：浏览器登录。**每个请求都查库**——登录会话存在且未过期、员工启用、
   租户启用，三者任一不满足都按凭据无效处理（接入层另外清掉 cookie）。不做缓存，停用立即生效。
@@ -11,6 +12,9 @@
 - ``maintenance``：周期任务（``identity.maintenance``），清理过期的登录尝试与登录会话；随平台的
   ``start``、``close`` 启停。
 - ``feishu_config``、``put_feishu_config``：租户管理员读写本租户的飞书应用配置。
+- ``disabling``：员工停用流水线（``identity.disable``），「员工停用」监听者由装配处登记；
+  ``disable_user``、``enable_user`` 是它与启用的入口。
+- ``users``：用户管理（``identity.users``）；``events``：飞书事件回调（``identity.callback``）。
 
 两处认证都遵守身份存储的约定：``get_login_session`` 不带租户，租户一律取自返回的登录会话记录，
 再拿它去查员工与租户。
@@ -31,11 +35,14 @@ from xuanpu_server.errors import (
     PlatformError,
     SecretMissingError,
 )
+from xuanpu_server.identity.callback import FeishuEventCallback
 from xuanpu_server.identity.config import normalize_origin
 from xuanpu_server.identity.cookies import login_token_hash
+from xuanpu_server.identity.disable import DisablePipeline
 from xuanpu_server.identity.login import FEISHU, FeishuLogin
 from xuanpu_server.identity.maintenance import IdentityMaintenance
 from xuanpu_server.identity.models import TenantIdentityConfig
+from xuanpu_server.identity.users import UserAdmin
 from xuanpu_server.secrets import validate_secret_name
 from xuanpu_server.tenancy import Principal, lower_role
 
@@ -45,8 +52,9 @@ if TYPE_CHECKING:
     from xuanpu_server.audit import AuditLog
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.identity.config import IdentityConfig
+    from xuanpu_server.identity.disable import DisableOutcome
     from xuanpu_server.identity.feishu import FeishuClient
-    from xuanpu_server.identity.models import UserRecord
+    from xuanpu_server.identity.models import DisabledReason, UserRecord
     from xuanpu_server.identity.store import IdentityStore
     from xuanpu_server.metrics import PlatformMetrics
     from xuanpu_server.secrets import SecretVault
@@ -149,15 +157,54 @@ class IdentityService:
             now=now,
         )
         self.maintenance = IdentityMaintenance(store, now=now)
+        self.disabling = DisablePipeline(store=store, audit=audit, metrics=metrics, now=now)
+        self.users = UserAdmin(store=store, disabling=self.disabling, audit=audit, now=now)
+        self.events = FeishuEventCallback(
+            store=store, vault=vault, disabling=self.disabling, metrics=metrics
+        )
 
     def start(self) -> None:
         """启动身份域的周期任务（清理过期的登录尝试与登录会话）。"""
         self.maintenance.start()
 
     async def close(self) -> None:
-        """停掉周期任务（等它结束），再关闭飞书客户端的连接。可以重复调用。"""
+        """等停用流水线的后台收尾（有上限，见 ``identity.disable``），停掉周期任务（等它结束），
+        再关闭飞书客户端的连接。可以重复调用。"""
+        await self.disabling.close()
         await self.maintenance.close()
         await self.login.feishu.aclose()
+
+    async def disable_user(
+        self,
+        tenant_id: str,
+        user_id: str,
+        reason: DisabledReason,
+        actor: Principal,
+        *,
+        keep_an_admin: bool,
+    ) -> DisableOutcome:
+        """停用员工：停用流水线的三步都做完再返回（``identity.disable``）。可以重复调用：对已停用的
+        员工状态不变、不再记 ``user_disabled``，但会重跑全部监听者。
+
+        Args:
+            actor: 谁停用的：管理员接口取调用者，飞书事件、对账取系统调用者。
+            keep_an_admin: 为真时不停用最后一名启用的管理员（管理员接口）；离职事件、对账为假。
+
+        Raises:
+            NotFoundError: 本租户没有这名员工。
+            ConflictError: ``keep_an_admin`` 为真且这是最后一名启用的管理员。
+        """
+        return await self.disabling.disable(
+            tenant_id, user_id, reason, actor, keep_an_admin=keep_an_admin
+        )
+
+    async def enable_user(self, tenant_id: str, user_id: str, actor: Principal) -> UserRecord:
+        """重新启用员工：只改状态、记 ``user_enabled``，不恢复已关闭的会话（``identity.users``）。
+
+        Raises:
+            NotFoundError: 本租户没有这名员工。
+        """
+        return await self.users.enable(tenant_id, user_id, actor)
 
     async def authenticate_login(self, token: str) -> Principal:
         """由登录 cookie 里的令牌得到调用者（浏览器登录）。

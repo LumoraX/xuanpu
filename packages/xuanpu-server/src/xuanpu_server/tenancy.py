@@ -27,6 +27,7 @@ METRICS_TOKEN_PREFIX = "xpmetrics"
 
 _TENANT_ID = re.compile(r"^[a-z][a-z0-9-]{1,38}[a-z0-9]$")
 _KEY_ID = re.compile(r"^[0-9a-f]{12}$")
+_SYSTEM_NAME = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
 
 
 @dataclass(frozen=True)
@@ -101,7 +102,8 @@ def lower_role(first: Role, second: Role) -> Role:
 class Principal:
     """一次调用的调用者。
 
-    调用者有四种，``key_id`` 与 ``user_id`` 至少有一个：
+    经接口来的调用者有四种，``key_id`` 与 ``user_id`` 至少有一个；另有平台自己在内部发起操作时用的
+    系统调用者（``system_principal``），不经任何接口签发：
 
     | 调用者 | ``key_id`` | ``user_id`` | ``actor`` |
     | --- | --- | --- | --- |
@@ -109,21 +111,34 @@ class Principal:
     | API key | key 的标识 | 空 | ``key:<key_id>`` |
     | 浏览器登录（cookie） | 空 | 员工 | ``user:<user_id>`` |
     | 系统代员工（带 ``X-Xuanpu-Act-As``） | key 的标识 | 员工 | ``key:<key_id>/user:<user_id>`` |
+    | 系统调用者（平台内部，``system`` 为名字） | 空 | 空 | ``system:<名字>`` |
 
     Attributes:
         role: 生效的角色。代员工调用时是 key 与员工两者中较低的那个（``lower_role``）。
         tenant_id: 所属租户；平台管理员不属于任何租户，为 None。
         key_id: 所用 API key 的标识；根凭据为 ``"root"``；浏览器登录没有 key，为 None。
         user_id: 代表的员工（平台用户标识）；不代表任何员工的 API key 与根凭据为 None。
+        system: 系统调用者的名字（如 ``feishu-event``）；经接口来的调用者为 None。
     """
 
     role: Role
     tenant_id: str | None
     key_id: str | None
     user_id: str | None = None
+    system: str | None = None
 
     def __post_init__(self) -> None:
-        """调用者总要落到一把 key 或一名员工上；员工总属于某个租户。"""
+        """调用者总要落到一把 key、一名员工或一个系统名字上；员工与系统调用者总属于某个租户。"""
+        if self.system is not None:
+            if self.tenant_id is None:
+                raise ValueError("系统调用者必须属于某个租户")
+            if self.key_id is not None or self.user_id is not None:
+                raise ValueError("系统调用者不带 key 与员工")
+            if not _SYSTEM_NAME.match(self.system):
+                raise ValueError(
+                    f"系统调用者的名字不合法：{self.system!r}（小写字母开头，只含小写字母、数字、连字符）"
+                )
+            return
         if self.key_id is None and self.user_id is None:
             raise ValueError("调用者必须有 key_id 或 user_id")
         if self.user_id is not None and self.tenant_id is None:
@@ -132,6 +147,8 @@ class Principal:
     @property
     def actor(self) -> str:
         """写进审计记录的调用者标识（取值见类说明里的表）。"""
+        if self.system is not None:
+            return f"system:{self.system}"
         if self.key_id is None:
             return f"user:{self.user_id}"
         if self.user_id is None:
@@ -155,6 +172,15 @@ class Principal:
         """要求调用者是平台管理员。"""
         if self.role != "platform_admin":
             raise PermissionDeniedError("这个操作需要平台管理员权限")
+
+
+def system_principal(tenant_id: str, name: str) -> Principal:
+    """平台在某个租户里自己发起操作时的调用者（飞书离职事件、对账、停用后的收尾）。
+
+    角色是 ``tenant_admin``，只在这一个租户里；不代表任何员工，所以可见范围是本租户全部会话。审计里
+    ``actor`` 是 ``system:<name>``。只在平台内部构造，不经任何接口签发，调用方拿不到它。
+    """
+    return Principal(role="tenant_admin", tenant_id=tenant_id, key_id=None, system=name)
 
 
 def validate_tenant_id(tenant_id: str) -> str:
@@ -259,6 +285,7 @@ __all__ = [
     "hash_secret",
     "lower_role",
     "parse_api_key",
+    "system_principal",
     "tenant_directory",
     "validate_tenant_id",
     "verify_metrics_token",

@@ -11,8 +11,8 @@ prometheus_client 的进程级全局登记表）：同一进程里的几个平�
 改进程级的全局开关（会波及同进程里别的使用者）。这里计数记在本对象里，由一个自定义收集器在
 抓取时读出（prometheus_client 的标准用法）；三个 gauge 也在抓取时经回调现取当前值。
 
-打点的地方都经构造参数拿到本对象或它的方法（审计写入口、事件枢纽、拒绝补记、飞书登录），没有
-全局单例。
+打点的地方都经构造参数拿到本对象或它的方法（审计写入口、事件枢纽、拒绝补记、飞书登录、员工停用
+流水线、飞书事件回调），没有全局单例。
 """
 
 from __future__ import annotations
@@ -70,6 +70,25 @@ LoginResult = Literal[
 """
 LOGIN_RESULTS: tuple[str, ...] = get_args(LoginResult)
 
+DisableReason = Literal["feishu_resigned", "feishu_frozen", "feishu_exited", "admin"]
+"""``xuanpu_users_disabled_total`` 的 ``reason``：与 ``identity.models.DisabledReason`` 相同（有测试
+守着），这里另写一份的理由同 ``LoginResult``。"""
+DISABLE_REASONS: tuple[str, ...] = get_args(DisableReason)
+
+FeishuEventResult = Literal[
+    "url_verification",
+    "accepted",
+    "ignored",
+    "bad_signature",
+    "rejected",
+    "bad_request",
+    "unknown_tenant",
+]
+"""``xuanpu_feishu_events_total`` 的 ``result``（含义见 ``identity.callback``）：回了 URL 验证、
+处理了离职事件、合法但无事可做而忽略、签名不符（含没有签名又不是 URL 验证）、签名对而来源核对不过、
+请求体不合预期、租户没有可用的飞书配置。"""
+FEISHU_EVENT_RESULTS: tuple[str, ...] = get_args(FeishuEventResult)
+
 
 class PlatformMetrics:
     """一个平台的指标。
@@ -106,6 +125,8 @@ class PlatformMetrics:
         }
         self._backfill_failures = dict.fromkeys(BACKFILL_STAGES, 0)
         self._logins = dict.fromkeys(LOGIN_RESULTS, 0)
+        self._users_disabled = dict.fromkeys(DISABLE_REASONS, 0)
+        self._feishu_events = dict.fromkeys(FEISHU_EVENT_RESULTS, 0)
         self._audit_write_failures = 0
         self._usage_estimated = 0
         self._usage_write_failures = 0
@@ -140,6 +161,14 @@ class PlatformMetrics:
     def login(self, result: LoginResult) -> None:
         """一次飞书登录有了结果。"""
         self._logins[result] = self._logins.get(result, 0) + 1
+
+    def user_disabled(self, reason: DisableReason) -> None:
+        """一名员工被停用了（状态确实从启用变成停用；重复停用不计）。"""
+        self._users_disabled[reason] = self._users_disabled.get(reason, 0) + 1
+
+    def feishu_event(self, result: FeishuEventResult) -> None:
+        """飞书事件回调处理完一个请求。"""
+        self._feishu_events[result] = self._feishu_events.get(result, 0) + 1
 
     def render(self) -> bytes:
         """Prometheus 文本格式（0.0.4）。"""
@@ -177,6 +206,14 @@ class PlatformMetrics:
             "xuanpu_logins", "飞书登录的结果：成功，或失败原因", ["result"],
             {(result,): count for result, count in self._logins.items()},
         )  # fmt: skip
+        yield _counter(
+            "xuanpu_users_disabled", "被停用的员工数，按停用原因分", ["reason"],
+            {(reason,): count for reason, count in self._users_disabled.items()},
+        )  # fmt: skip
+        yield _counter(
+            "xuanpu_feishu_events", "飞书事件回调的请求数，按处理结果分", ["result"],
+            {(result,): count for result, count in self._feishu_events.items()},
+        )  # fmt: skip
 
 
 def _counter(
@@ -204,9 +241,13 @@ class _PlatformCollector(Collector):
 __all__ = [
     "BACKFILL_STAGES",
     "CONNECTOR_TRANSPORTS",
+    "DISABLE_REASONS",
+    "FEISHU_EVENT_RESULTS",
     "GATE_DECISIONS",
     "LOGIN_RESULTS",
     "TURN_OUTCOMES",
+    "DisableReason",
+    "FeishuEventResult",
     "LoginResult",
     "PlatformMetrics",
 ]

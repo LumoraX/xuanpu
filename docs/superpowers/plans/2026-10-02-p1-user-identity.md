@@ -60,6 +60,16 @@
 | `identity_config_updated` 只记名字与 `app_id` | 审计按键名脱敏，会把 `app_secret_ref`、`verification_token_ref` 的取值（这里只是名字）抹掉，`data` 改为 `app_id`、`session_ttl_seconds`、`refs: {app, encrypt, verification}`（Task 4） |
 | 飞书客户端的装配 | `Platform` 用 `identity_settings` 的两个基地址建 `FeishuClient`（`feishu_transport` 可注入，`close()` 时关闭），交给 `IdentityService`，登录流程放 `identity/login.py` 的 `FeishuLogin`（`IdentityService.login`）。测试夹具在平台装配后替换 `IdentityService.login.feishu` 接模拟飞书（根 `tests/conftest.py` 不加参数）（Task 4） |
 | 8.2「控制面操作取调用者；内核事件与过闸记录取会话上的 `user_id`」 | **改口径**（Task 5 审查拍板）：会话里的一切记录 `user_id` 都取会话主人，包括会话上的控制面操作——`session_created`、`message_sent`、`suspension_resolved_by`、`turn_cancel_requested`、`session_closed`（`AuditLog.control(..., session=record)`，`session_id` 与 `user_id` 都由它定）；`actor` 仍是调用者。与会话无关的控制面操作照旧取调用者。为此 `GET /v1/audit` 另加 `actor=` 条件（精确匹配，审计表不为它建索引：管理员排查用的低频查询），用来查「某个管理员在别人会话里做了什么」（Task 5） |
+| 7.3「先验签（第 2 步），再处理 URL 验证（第 4 步）」 | **改顺序**：飞书发来的 URL 验证是加密的、**不带签名头**（官方 SDK `lark-oapi` 的 `EventDispatcherHandler.do` 先处理 URL 验证再验签；openclaw/openclaw#58905 抓包确认），照设计做 URL 验证永远过不了。没有签名头的请求只认「能用 Encrypt Key 解开、`type` 是 `url_verification`、`token` 对」的，别的一概 401，且各步失败的响应逐字节相同（不给 CBC 填充预言机）；带签名头的先验签，签名对了之后内容不合预期才是 400。未加密的请求（含未加密的 URL 验证）一律不认，日志提示去配 Encrypt Key（Task 6） |
+| 7.3 时间戳 | 照设计「不去重、不设时间窗」：停用幂等，重推与重放都无害；不清楚飞书重推时是否换时间戳，设窗口可能误拒 1 小时、6 小时后的重推（Task 6） |
+| 7.3 未写「租户还没绑定飞书企业」 | 离职事件 200 忽略并记日志，不拿事件绑定（绑定只能由真实登录建立）；此时租户里也没有有飞书身份的员工（Task 6） |
+| 7.3 未写停用原因的优先级、都为假时 | `is_resigned` > `is_exited` > `is_frozen`；都不为真按 `feishu_resigned`（事件本身就是离职）。`identity.events.reason_from_status` 留给 Task 7 对账复用（对账时都不为真就不停用）（Task 6） |
+| 7.3 未写配置引用的密钥被删、请求体大小 | 密钥不在保管库 → 404（与没配置同一句提示，日志告警）；请求体上限 1 MiB，超出 `400 invalid_request`（与发布业务包超限同一错误码，不新增 413）（Task 6） |
+| 7.2 `disable_user(tenant_id, user_id, reason, actor)` | `actor` 是 `Principal`；另加 `keep_an_admin`（管理员接口 True，离职事件与对账 False）。平台内部的调用者是新的「系统调用者」`tenancy.system_principal(租户, 名字)`：`Principal.system` 为名字，`actor` 为 `system:<名字>`，角色 `tenant_admin`、只在本租户、不代表员工、不经任何接口签发——飞书事件 `system:feishu-event`，停用后关会话 `system:user-disabled`，对账 `system:reconcile`（Task 7）（Task 6） |
+| 8.2「与会话无关的控制面操作取调用者」 | **补一类**：针对某名员工的操作（`user_role_changed`、`user_disabled`、`user_enabled`、`user_cleanup_failed`）`user_id` 是被操作的员工，`actor` 是谁做的（`AuditLog.control(..., user_id=)`）；按 `user_id` 查一名员工能看到他何时被谁停用（Task 6） |
+| 7.2 第 3 步在后台时的收尾 | 任务引用存在 `DisablePipeline` 里，结束时取走异常记日志；`Platform.close()` 第一步就等它们最多 5 秒（排在释放会话之前，会话管理还完整），还没完的取消、记告警，之后不再接新的；兜底是主人停用的运行时规则，管理员再停用一次重跑（Task 6） |
+| 停用监听者关会话、会话被别的实例持有 | 监听者 `identity.listeners.CloseUserSessions` 经协议调 `SessionManager.close`（不 import `runtime`）。P0 的 `close` 不需要租约：先放掉本实例上的引擎，再把记录标 `closed`；别的实例持有的照样标 `closed`、立即生效（任何实例都不再接受消息与审批），持有者不受通知，正在跑的那一轮跑完、引擎按空闲回收。控制面列会话没有游标，按「反复取仍是 active 的前 N 个，关不掉的每轮多取同样多个」翻页（Task 6） |
+| 用户管理放 service | 放 `identity/users.py`（`UserAdmin`），路由在 `api/users.py`、经 `api/identity.py` 挂上，`api/app.py` 不变；`PUT /v1/users/{id}/status` 的响应另带 `cleanup_failed`（失败的收尾名）（Task 6） |
 
 ---
 

@@ -16,7 +16,7 @@ if TYPE_CHECKING:
         SessionRecord,
         UsageRecord,
     )
-    from xuanpu_server.identity.models import UserUsageRecord
+    from xuanpu_server.identity.models import UserRecord, UserUsageRecord
     from xuanpu_server.tenancy import ApiKeyRecord, Tenant
 
 
@@ -130,6 +130,34 @@ class FeishuConfigBody(_Request):
     )
 
 
+class UserRoleBody(_Request):
+    """改员工的角色。"""
+
+    role: Literal["tenant_admin", "tenant_member"]
+
+
+class UserStatusBody(_Request):
+    """停用或启用员工。"""
+
+    status: Literal["active", "disabled"]
+
+
+def user_view(user: UserRecord) -> dict[str, Any]:
+    """员工的对外表示：只有平台里的资料与状态，没有外部身份、登录会话之类的东西。"""
+    return {
+        "user_id": user.user_id,
+        "display_name": user.display_name,
+        "avatar_url": user.avatar_url,
+        "role": user.role,
+        "status": user.status,
+        "disabled_reason": user.disabled_reason,
+        "created_at": user.created_at,
+        "last_login_at": user.last_login_at,
+        "disabled_at": user.disabled_at,
+        "unverified_since": user.unverified_since,
+    }
+
+
 def tenant_view(tenant: Tenant) -> dict[str, Any]:
     """租户的对外表示。"""
     return {
@@ -238,6 +266,8 @@ __all__ = [
     "ResumeBody",
     "SecretBody",
     "TenantStatusBody",
+    "UserRoleBody",
+    "UserStatusBody",
     "audit_view",
     "key_view",
     "package_view",
@@ -245,4 +275,5 @@ __all__ = [
     "tenant_view",
     "usage_view",
     "user_usage_view",
+    "user_view",
 ]

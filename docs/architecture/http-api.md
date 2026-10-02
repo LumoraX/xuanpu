@@ -1,6 +1,6 @@
 # HTTP 接口（活文档）
 
-> 第一版接口，加上 P0 新增的停止生成、修改配额与指标端点，以及 P1 的调用者身份（浏览器登录 cookie、系统代员工调用、`GET /v1/me`）、飞书登录与租户的飞书配置、会话的归属与[可见范围](#可见范围)、审计与用量带上员工（`GET /v1/audit?user_id=`、`GET /v1/usage/users`）。实现在 `packages/xuanpu-server/src/xuanpu_server/api/`。
+> 第一版接口，加上 P0 新增的停止生成、修改配额与指标端点，以及 P1 的调用者身份（浏览器登录 cookie、系统代员工调用、`GET /v1/me`）、飞书登录与租户的飞书配置、会话的归属与[可见范围](#可见范围)、审计与用量带上员工（`GET /v1/audit?user_id=`、`GET /v1/usage/users`）、[员工管理](#员工)与[飞书事件回调](#飞书事件回调)（离职停用）。实现在 `packages/xuanpu-server/src/xuanpu_server/api/`。
 > 用法与注意事项见[应用接入](../guides/integrating.md)；本文是逐个接口的参考。
 
 ## 约定
@@ -35,8 +35,9 @@
 | API key | `key:<key_id>` | 空 |
 | 浏览器登录 | `user:<员工标识>` | 这名员工 |
 | 系统代员工 | `key:<key_id>/user:<员工标识>` | 这名员工 |
+| 平台自己（不经接口，如[飞书离职事件](#飞书事件回调)停用员工、停用后关会话） | `system:<名字>`：`system:feishu-event`、`system:user-disabled` | 空 |
 
-`user_id` 一栏只说与会话无关的控制面操作。会话里的一切记录——内核事件、过闸记录，以及建会话、发消息、送审批结果、停止生成、关闭会话这些会话上的操作——不论是谁触发的，`user_id` 都是会话的主人，`actor` 仍是触发者，见[审计](#审计)。
+`user_id` 一栏只说与会话无关的控制面操作；针对某名员工的操作（改角色、停用、启用）`user_id` 是被操作的员工，见[员工](#员工)。会话里的一切记录——内核事件、过闸记录，以及建会话、发消息、送审批结果、停止生成、关闭会话这些会话上的操作——不论是谁触发的，`user_id` 都是会话的主人，`actor` 仍是触发者，见[审计](#审计)。
 
 ### 浏览器登录
 
@@ -100,7 +101,7 @@ X-Xuanpu-Act-As: usr_5f0c1b2e7d9a4c3b8e6f1a20
 | 403 | `csrf_rejected` | 用登录 cookie 的写请求缺 `X-Requested-By: xuanpu` 头，或 `Origin` 与 `public_url` 不符（见[浏览器登录](#浏览器登录)） | |
 | 403 | `session_owner_disabled` | 会话的主人（员工）已停用：任何调用者都不能再往这个会话发消息、送审批结果（见[主人停用之后](#主人停用之后)）；换一把凭据也没用 | |
 | 404 | `not_found` | 资源不存在，或属于别的租户；普通成员访问别人的会话也是它（见[可见范围](#可见范围)） | |
-| 409 | `conflict` | 与现有状态冲突（版本已发布、会话已关闭等） | |
+| 409 | `conflict` | 与现有状态冲突（版本已发布、会话已关闭、要降级或停用的是租户里最后一名启用的管理员等） | |
 | 409 | `session_busy` | 会话正由另一个实例持有 | `owner`：持有者的实例标识 |
 | 429 | `quota_exceeded` | 超出租户配额 | |
 | 500 | `secret_corrupted` | 密钥的密文解不开（加密它的主密钥已不在配置里，或密文被改动） | |
@@ -119,6 +120,10 @@ X-Xuanpu-Act-As: usr_5f0c1b2e7d9a4c3b8e6f1a20
 | `GET /v1/auth/feishu/callback` | 无 | 飞书授权页跳回，完成登录，302 到 `return_to` 或落地页 |
 | `POST /v1/auth/logout` | 浏览器登录 | 退出：删掉当前登录会话，清 cookie |
 | `GET /v1/identity/feishu` · `PUT /v1/identity/feishu` | 租户管理员 | 本租户的飞书配置 |
+| `POST /v1/identity/feishu/events/{tenant_id}` | 飞书的签名 | 飞书事件回调：URL 验证、员工离职 |
+| `GET /v1/users?status=&role=&unverified=&after=&limit=` | 租户管理员 | 列出员工 |
+| `GET /v1/users/{user_id}` | 租户管理员或本人 | 取员工 |
+| `PUT /v1/users/{user_id}/role` · `PUT /v1/users/{user_id}/status` | 租户管理员 | 改员工的角色；停用或启用员工 |
 | `POST /v1/admin/tenants` | 平台管理员 | 新建租户 |
 | `GET /v1/admin/tenants` | 平台管理员 | 列出租户 |
 | `PUT /v1/admin/tenants/{id}/status` | 平台管理员 | 启用或停用租户 |
@@ -269,7 +274,7 @@ PUT /v1/identity/feishu
 
 这是**整体替换**：省略的 `session_ttl_seconds` 恢复为平台默认。已绑定的飞书企业（`feishu_tenant_key`，首次成功登录时绑定）保留不变，配置接口改不了它。
 
-`GET /v1/identity/feishu` 返回同样的形状。还没配置时 `configured` 为 `false`、各项为 `null`，`callback_url` 与 `event_url` 照样给出——先把它们填进飞书后台：`callback_url` 是重定向地址，`event_url` 是事件订阅的请求地址（离职事件的回调随后提供）。平台没配置 `public_url` 时两个地址为 `null`，`hint` 说明原因。响应里只有密钥的名字，没有明文。
+`GET /v1/identity/feishu` 返回同样的形状。还没配置时 `configured` 为 `false`、各项为 `null`，`callback_url` 与 `event_url` 照样给出——先把它们填进飞书后台：`callback_url` 是重定向地址，`event_url` 是事件订阅的请求地址（见[飞书事件回调](#飞书事件回调)）。平台没配置 `public_url` 时两个地址为 `null`，`hint` 说明原因。响应里只有密钥的名字，没有明文。
 
 | 情况 | 响应 |
 | --- | --- |
@@ -279,6 +284,104 @@ PUT /v1/identity/feishu
 | 密钥名不合法、`session_ttl_seconds` 不在 60 到 2592000 之间、缺字段或有多余的字段（`PUT`） | `400 invalid_request` |
 
 审计记 `identity_config_updated`：`data` 是 `app_id`、`session_ttl_seconds` 与 `refs`（三个密钥名：`app`、`encrypt`、`verification`），没有明文。
+
+## 飞书事件回调
+
+飞书把订阅的事件推到 `GET /v1/identity/feishu` 返回的 `event_url`，也就是这个接口。它**不走平台的认证**（不带也不认 API key、登录 cookie），靠飞书的签名认来源；平台用它在员工离职时停用他。
+
+```
+POST /v1/identity/feishu/events/acme
+X-Lark-Request-Timestamp: 1790900000
+X-Lark-Request-Nonce: 8b1e2f…
+X-Lark-Signature: 3f9a0c…（64 位十六进制）
+{"encrypt": "FcR0+…"}
+
+→ {"msg": "success"}
+```
+
+- **必须加密**：平台要求配置 Encrypt Key（飞书配置的三个密钥都必填），请求体是 `{"encrypt": "<base64>"}`：AES-256-CBC，密钥是 Encrypt Key 的 SHA-256，IV 是密文的前 16 字节，PKCS7 填充。没加密的请求一律不认。
+- **签名**：`X-Lark-Signature` 等于 `sha256(X-Lark-Request-Timestamp + X-Lark-Request-Nonce + Encrypt Key + 原始请求体)` 的十六进制，常数时间比较。
+- **URL 验证**：在飞书后台填请求地址时，飞书发一个加密的 URL 验证请求（解密后是 `{"challenge", "token", "type": "url_verification"}`），**不带签名头**。平台解开、核对 `token` 等于 Verification Token，原样回 `{"challenge": "…"}`（飞书要求 1 秒内）。所以先在飞书后台配好 Encrypt Key，再填请求地址。
+- **事件**：其余请求都必须带对签名；解开之后再核对 `header.token` 等于 Verification Token、`header.app_id` 等于配置的 App ID、`header.tenant_key` 等于租户绑定的飞书企业。飞书要求 3 秒内回 `200`，否则按 15 秒、5 分钟、1 小时、6 小时重推，最多 4 次。
+
+| 情况 | 响应 |
+| --- | --- |
+| 请求体超过 1 MiB | `400 invalid_request`（不读完、不验签） |
+| 租户不存在、标识不合法、没有配置飞书，或配置引用的 Encrypt Key、Verification Token 不在保管库里 | `404 not_found` |
+| 没有签名头：加密的 URL 验证，Verification Token 对得上 | `200`，`{"challenge": "…"}` |
+| 没有签名头的其余一切：不是 URL 验证、Token 不对、没加密、解不开 | `401 unauthenticated`，**不论哪一步没过都是同一个响应**（否则会成为能逐字节猜出明文的填充预言机） |
+| 带签名头：签名不符，或缺 `X-Lark-Request-Timestamp`、`X-Lark-Request-Nonce` | `401 unauthenticated` |
+| 签名对，但请求体不是 `{"encrypt": …}`、解不开（base64 非法、长度不是 16 的倍数、填充错误）或解出来的内容不合预期 | `400 invalid_request` |
+| 签名对，`header` 里的 Verification Token、App ID 或飞书企业对不上 | `401 unauthenticated` |
+| 租户还没绑定飞书企业（还没有员工登录过） | `200`，不处理：核对不了 `tenant_key`，也不拿事件去绑定——绑定只能由真实的登录建立；这时租户里也还没有有飞书身份的员工 |
+| `contact.user.deleted_v3`（员工离职），平台里有这名员工 | `200`，停用他（见下） |
+| 平台里没有这名员工；别的事件类型；1.0 版事件 | `200`，忽略 |
+
+**员工离职**：按 `event.object.union_id` 找到员工，同步做[停用](#员工)的前两步（标停用、删掉他的登录会话：浏览器里的 cookie 立即失效），关闭他名下的会话放到后台（不让响应等它），回 `200`。停用原因按 `event.object.status`：`is_resigned` 为真是 `feishu_resigned`，否则 `is_exited` 为真是 `feishu_exited`，否则 `is_frozen` 为真是 `feishu_frozen`，都不为真也按 `feishu_resigned`（这个事件本身就是离职）。审计 `user_disabled` 的 `actor` 是 `system:feishu-event`，`data` 是 `reason` 与 `event_id`。**离职的管理员也会被停用**，哪怕他是最后一名管理员（兜底见[运维手册](../guides/operations.md#员工停用与离职)）。
+
+- 签名不符、来源对不上的请求**只写平台日志、不写审计**（防止被刷），计指标 `xuanpu_feishu_events_total{result}`（取值见运维手册）。
+- **不去重、不设时间窗**：停用可以重复执行，飞书重推、有人重放，都只会重复一次无害的停用（状态不变、不再记 `user_disabled`，后台的收尾重跑一遍）。
+- 这个地址要能从飞书的服务器访问到（公网可达），部署时在反向代理上按来源地址限速。
+
+## 员工
+
+员工是飞书登录时自动建的（见[飞书登录](#飞书登录)），平台里没有新建、删除员工的接口。
+
+```
+GET /v1/users?status=active&limit=100
+
+→ {"users": [{"user_id": "usr_5f0c1b2e7d9a4c3b8e6f1a20", "display_name": "张三",
+              "avatar_url": "https://…/avatar.png", "role": "tenant_member", "status": "active",
+              "disabled_reason": null, "created_at": 1790900000.0, "last_login_at": 1790903600.0,
+              "disabled_at": null, "unverified_since": null}],
+   "next_after": null}
+```
+
+| 参数 | 说明 |
+| --- | --- |
+| `status` | `active` 或 `disabled` |
+| `role` | `tenant_admin` 或 `tenant_member` |
+| `unverified` | `true` 只看对账时在飞书查不到的（`unverified_since` 不为空），`false` 只看查得到的 |
+| `after` | 翻页：只看 `user_id` 大于它的 |
+| `limit` | 默认 100，最大 1000 |
+
+按 `user_id` 升序。`next_after` 不为 `null` 时还可能有下一页，把它作为 `after` 再查。
+
+| 字段 | 说明 |
+| --- | --- |
+| `user_id` | 平台的员工标识，`usr_` 加 24 位十六进制 |
+| `display_name`、`avatar_url` | 每次飞书登录时刷新 |
+| `role` | `tenant_admin` 或 `tenant_member` |
+| `status`、`disabled_reason`、`disabled_at` | `active` 或 `disabled`；停用的原因（`admin`、`feishu_resigned`、`feishu_frozen`、`feishu_exited`）与时间，启用时为 `null` |
+| `created_at`、`last_login_at` | 建账号（首次登录）与最近一次登录的时间 |
+| `unverified_since` | 对账时在飞书查不到此人的起始时间；查得到为 `null` |
+
+响应里没有飞书的标识、登录会话之类的东西。`GET /v1/users/{user_id}` 返回同样的员工对象：租户管理员取谁都行；别人只能取自己（浏览器登录，或代员工调用时被代的那名员工）。
+
+```
+PUT /v1/users/{user_id}/role
+{"role": "tenant_admin"}        # 或 "tenant_member"
+→ 员工对象
+
+PUT /v1/users/{user_id}/status
+{"status": "disabled"}          # 或 "active"
+→ 员工对象，另带 "cleanup_failed": []
+```
+
+- **停用**走停用流水线（原因 `admin`）：标停用并记 `user_disabled`；删掉他的全部登录会话（cookie 立即 `401`，代他调用 `403`）；关闭他名下的全部活动会话。三步都做完才返回；`cleanup_failed` 列出失败的收尾（现在只有 `close_sessions` 一项），失败的另记 `user_cleanup_failed`。对已停用的员工再停用一次：状态不变、不再记 `user_disabled`，收尾重跑一遍——看到 `cleanup_failed` 不为空时这样重试。停用之后他名下会话的去向见[主人停用之后](#主人停用之后)。
+- **启用**只改状态、记 `user_enabled`：已关闭的会话不恢复，删掉的登录会话也不恢复（员工重新登录即可）。`cleanup_failed` 总是空列表。
+- **改角色**：角色真的变了才记 `user_role_changed`（`data` 是 `before`、`after`）。成员升为管理员，下一个请求就有管理员权限。
+- **保住最后一名管理员**：降级或停用会让租户里一名启用的管理员都不剩时，`409 conflict`，`message` 说明原因（「这是租户里最后一名启用的管理员，不能降级或停用」），什么也不改；两名管理员同时互相降级，至多一个成功。飞书离职事件不受这一条限制（见[飞书事件回调](#飞书事件回调)）。
+- 这四种记录的 `user_id` 都是被操作的员工，`actor` 是调用者。
+
+| 情况 | 响应 |
+| --- | --- |
+| 不是租户管理员（列员工、改角色、改状态；包括浏览器登录的普通成员） | `403 permission_denied` |
+| 员工不存在；普通成员取别人（同一句提示） | `404 not_found` |
+| 要降级或停用的是最后一名启用的管理员 | `409 conflict` |
+| 取值不在上面列的范围里、缺字段或有多余的字段 | `400 invalid_request` |
+
+**第一个管理员**：员工先飞书登录一次（成为普通成员），持租户管理员 API key 的人（平台管理员可以用 `POST /v1/admin/tenants/{id}/keys` 签发这把 key）调 `PUT /v1/users/{user_id}/role` 把他设为管理员；之后管理员之间互相设置。最后一名管理员离职被停用时也这样重新指定。
 
 ## 租户
 
@@ -451,7 +554,9 @@ POST /v1/sessions
 
 ### 主人停用之后
 
-会话的主人已停用时，**任何调用者**（包括管理员与系统 key）往这个会话发消息、送审批结果都是 `403 session_owner_disabled`，什么也不提交。这是兜底：员工停用之后，他名下的会话哪怕还开着，也不会再往下跑。
+会话的主人已停用时，**任何调用者**（包括管理员与系统 key）往这个会话发消息、送审批结果都是 `403 session_owner_disabled`，什么也不提交。这是兜底：员工停用时平台会关掉他名下的全部会话（[员工](#员工)停用的第 3 步，`session_closed` 的 `actor` 是 `system:user-disabled`；关掉之后再发是 `409 conflict`），这一条管的是还没关掉的时候——飞书离职事件触发的关会话在后台跑，后台任务也可能被停机取消。
+
+会话正由别的实例持有时照样关得掉：关闭以控制面里的记录为准、立即生效，之后任何实例都不再接受它的消息与审批结果；持有它的那个实例不会收到通知，正在跑的那一轮跑完为止，引擎按空闲回收或停机时释放（与在别的实例上调 `DELETE /v1/sessions/{id}` 相同）。
 
 ```
 POST /v1/sessions/ses_c79729649fb194db4eee9ff4/messages

@@ -20,6 +20,7 @@ from xuanpu_server.errors import (
 )
 from xuanpu_server.evals import EvalRunner
 from xuanpu_server.identity.feishu import DEFAULT_TIMEOUT_SECONDS, FeishuClient
+from xuanpu_server.identity.listeners import CLOSE_SESSIONS, CloseUserSessions
 from xuanpu_server.identity.service import IdentityService
 from xuanpu_server.ids import new_id
 from xuanpu_server.metrics import PlatformMetrics
@@ -177,6 +178,10 @@ class Platform:
             now=now,
         )
         self.sessions = self._session_manager(submissions, lease_seconds)
+        # 员工停用后关掉他名下的会话：身份域不依赖运行时，监听者在这里接上会话管理
+        self.identity.disabling.register(
+            CLOSE_SESSIONS, CloseUserSessions(store=store, sessions=self.sessions)
+        )
         self.evals = EvalRunner(self.sessions, self.packages, self.audit)
 
     def _session_manager(
@@ -204,8 +209,12 @@ class Platform:
         self.identity.start()
 
     async def close(self) -> None:
-        """停止接单、等在途对话跑完、释放会话、关闭运行时，最后停掉身份域的周期任务、关掉飞书
-        客户端的连接。"""
+        """先等员工停用后的后台收尾（最多几秒，还没完的取消，见 ``identity.disable``），再停止接单、
+        等在途对话跑完、释放会话、关闭运行时，最后停掉身份域的周期任务、关掉飞书客户端的连接。
+
+        后台收尾要关会话，所以排在释放会话之前：会话管理还完整的时候让它们跑完。
+        """
+        await self.identity.disabling.close()
         await self.sessions.shutdown(drain_seconds=self._drain_seconds)
         await self.runtimes.close()
         await self.identity.close()

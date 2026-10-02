@@ -6,7 +6,9 @@
 这里不导出。``identity.config`` 是服务配置的 ``identity`` 段，由 ``xuanpu_server.config`` 引用
 （不反过来引用服务配置）。飞书接口的客户端在 ``identity.feishu``，登录流程在 ``identity.login``
 （几个地址在 ``identity.urls``，调飞书的并发上限在 ``identity.limits``），周期清理在
-``identity.maintenance``，都经 ``identity.service.IdentityService`` 对外。
+``identity.maintenance``；员工停用流水线在 ``identity.disable``（P1 的监听者在 ``identity.listeners``，
+经协议接会话管理，由 ``Platform`` 登记），用户管理在 ``identity.users``，飞书事件回调的纯计算在
+``identity.events``、编排在 ``identity.callback``。都经 ``identity.service.IdentityService`` 对外。
 """
 
 from __future__ import annotations
