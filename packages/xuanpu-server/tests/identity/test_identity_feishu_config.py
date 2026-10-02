@@ -166,11 +166,19 @@ async def test_referenced_secrets_must_exist(identity_world: Any, missing: str) 
     [
         {**BODY, "app_secret_ref": "Bad_Name"},
         {**BODY, "session_ttl_seconds": 10},
+        {**BODY, "session_ttl_seconds": 30 * 86400 + 1},
         {**BODY, "extra": 1},
         {key: value for key, value in BODY.items() if key != "app_id"},
         {**BODY, "app_id": ""},
     ],
-    ids=["bad_secret_name", "ttl_too_short", "extra_field", "missing_app_id", "empty_app_id"],
+    ids=[
+        "bad_secret_name",
+        "ttl_too_short",
+        "ttl_too_long",
+        "extra_field",
+        "missing_app_id",
+        "empty_app_id",
+    ],
 )
 async def test_body_is_validated(identity_world: Any, body: dict[str, Any]) -> None:
     """请求体不合法：400 invalid_request。"""

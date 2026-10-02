@@ -183,7 +183,7 @@ GET /v1/auth/feishu/login?tenant=acme&return_to=/console/
 | 参数 | 说明 |
 | --- | --- |
 | `tenant` | 登录哪个租户；省略时用配置 `identity.default_tenant` |
-| `return_to` | 登录完成后跳去的站内路径：以 `/` 开头，不以 `//` 或 `/\` 开头，不含反斜杠、空白与控制字符，最长 2048。不合要求的（包括 `https://…` 这类别的站点）一律改用 `identity.login_landing_path`，防止被利用做开放跳转 |
+| `return_to` | 登录完成后跳去的站内路径：以 `/` 开头，不以 `//` 或 `/\` 开头，不含反斜杠、空白与控制字符，最长 512。不合要求的（包括 `https://…` 这类别的站点）一律改用 `identity.login_landing_path`，防止被利用做开放跳转 |
 
 平台生成 `state`（32 字节随机数）与 PKCE 校验串（S256），写一条登录尝试（10 分钟有效，取出即删，多个实例都认），不申请额外的飞书权限（不带 `scope`）。同时写**登录尝试 cookie** `__Host-xuanpu_login`（本地 HTTP 开发时是 `xuanpu_login`，属性与登录 cookie 相同，10 分钟有效）：值是另一个随机数，登录尝试里只存它的摘要。回调时浏览器必须带着它，否则别人可以把自己那次登录的回调链接发给员工，员工一点就以别人的身份登录了（登录伪造）。
 
@@ -200,13 +200,13 @@ Cookie: __Host-xuanpu_login=…
 
 回调依次：
 
-1. 按 `state` 取出并删除登录尝试；核对浏览器带来的登录尝试 cookie（缺失、不符、同名不止一个都不行，这时不拿授权码去换令牌）。租户一律取自登录尝试，不看请求参数；
-2. 用授权码与校验串换飞书令牌，再取员工信息；
+1. 按 `state` 取出并删除登录尝试（`state` 不是平台发出的那种 43 个字符，直接拒绝、不查库）；核对浏览器带来的登录尝试 cookie（缺失、不符、同名不止一个都不行，这时不拿授权码去换令牌）。租户一律取自登录尝试，不看请求参数；
+2. 用授权码与校验串换飞书令牌，再取员工信息。授权码超过 512 个字符或不全是可见 ASCII 的不拿去换；每个租户同时在调飞书的登录最多 8 个，再来的最多排队 5 秒；
 3. 核对飞书企业：首次成功登录时把飞书的 `tenant_key` 绑定到租户，以后必须一致；
 4. 按飞书的 `union_id` 找员工，找不到就新建普通成员（`tenant_member`）——谁在飞书自建应用的可用范围里，谁就能登录；
 5. 员工在平台里已停用的，拒绝；
 6. 刷新姓名、头像与 `open_id`，记下登录时间；
-7. 建登录会话，写登录 cookie（有效期取租户飞书配置的 `session_ttl_seconds`，没配则取 `identity.session_ttl_seconds`），跳去 `return_to`。
+7. 建登录会话，写登录 cookie（有效期取租户飞书配置的 `session_ttl_seconds`，没配则取 `identity.session_ttl_seconds`），跳去 `return_to`。浏览器还带着（恰好一个）旧的登录 cookie 的，它对应的登录会话随之作废——新 cookie 覆盖了旧的，不作废它就只能等过期。
 
 每次登录都签发新令牌，不复用旧的；登录拿到的飞书令牌用完即丢，不保存。回调的响应总会清掉登录尝试 cookie。同一个浏览器同时开始两次登录（两个标签页）时，只有后开始的那次能完成。
 
@@ -216,15 +216,16 @@ Cookie: __Host-xuanpu_login=…
 | --- | --- |
 | `feishu_denied` | 员工在飞书授权页点了拒绝 |
 | `not_in_app_scope` | 员工不在飞书自建应用的可用范围内（飞书错误码 20010） |
-| `state_invalid` | 登录链接过期（10 分钟）或被重复使用；或浏览器没带对登录尝试 cookie——别人发来的回调链接、开始登录与回调不在同一个浏览器，或开始登录时打开的不是 `public_url` 上的地址（cookie 只写给那次打开的主机） |
+| `state_invalid` | 登录链接过期（10 分钟）、被重复使用或 `state` 形状不对；或浏览器没带对登录尝试 cookie——别人发来的回调链接、开始登录与回调不在同一个浏览器，或开始登录时打开的不是 `public_url` 上的地址（cookie 只写给那次打开的主机） |
 | `tenant_mismatch` | 员工所在的飞书企业与租户绑定的不一致 |
 | `tenant_unavailable` | 租户不存在、已停用、没配置飞书（或 App Secret 已从保管库删掉），或平台没配置 `public_url`；省略 `tenant` 又没配 `identity.default_tenant` 也是它 |
 | `user_disabled` | 这名员工在平台里已停用 |
-| `identity_unavailable` | 调飞书接口失败：网络错误、飞书服务端错误，或飞书拒绝了换令牌（授权码无效或过期、App Secret 不对等）；回调既没有 `code` 也不是员工拒绝也算 |
+| `identity_unavailable` | 调飞书接口失败：网络错误、超时、飞书服务端错误，或飞书拒绝了换令牌（授权码无效或过期、App Secret 不对等）；本租户同时在调飞书的登录太多、排队超时；回调既没有 `code` 也不是员工拒绝，或 `code` 形状不对（这时不调飞书）也算 |
 
-- 审计：成功记 `login_succeeded`，首次登录另记 `user_created`；失败记 `login_failed`（`data.reason` 是上表的原因），只在知道是哪个租户时记——`state` 不存在、租户不存在时不记。授权码、飞书令牌、App Secret 不进审计，也不进平台日志。见[审计与用量](../guides/audit-and-usage.md)。
+- 审计：成功记 `login_succeeded`，首次登录另记 `user_created`。失败只在飞书确实认出了一个人之后才记 `login_failed`（`data.reason` 是原因）：`not_in_app_scope`、`tenant_mismatch`、`user_disabled`——它们要一次真实的飞书登录，匿名请求伪造不出来。开始登录阶段的失败，以及 `feishu_denied`、`state_invalid`、`identity_unavailable`，只计指标、记平台日志，不写审计：这两个接口不需要凭据，否则谁都能往租户的审计里灌记录（与事件回调签名不符时不写审计同一口径）。授权码、飞书令牌、App Secret 不进审计，也不进平台日志。见[审计与用量](../guides/audit-and-usage.md)。
 - 指标 `xuanpu_logins_total{result}` 按结果计数（`succeeded` 或上表的原因）。
-- 授权码在回调地址的查询串里，会出现在访问日志（uvicorn、反向代理）里。它 5 分钟内有效、只能用一次，换令牌还要平台自己保管的 PKCE 校验串与 App Secret，单凭它换不到令牌。
+- 授权码在回调地址的查询串里。`xuanpu serve` 的访问日志把回调这一行的查询串抹成 `?…`；反向代理的访问日志要部署方自己处理（见[运维手册](../guides/operations.md#public_url-与-identity)）。即使漏出去，它 5 分钟内有效、只能用一次，换令牌还要平台自己保管的 PKCE 校验串与 App Secret，单凭它换不到令牌。
+- 这两个接口不需要凭据，部署时在反向代理上按来源地址限速。
 
 ### 退出登录
 
@@ -260,7 +261,7 @@ PUT /v1/identity/feishu
 | --- | --- |
 | `app_id` | 飞书自建应用的 App ID，1–128 个字符 |
 | `app_secret_ref`、`encrypt_key_ref`、`verification_token_ref` | App Secret、Encrypt Key、Verification Token 在保管库里的名字（命名规则同[密钥](#密钥)）。三个都必填，而且必须已经写入 |
-| `session_ttl_seconds` | 本租户登录会话的有效期（秒），最小 60；省略或为 `null` 时用平台默认 `identity.session_ttl_seconds` |
+| `session_ttl_seconds` | 本租户登录会话的有效期（秒），60 到 2592000（30 天）；省略或为 `null` 时用平台默认 `identity.session_ttl_seconds` |
 
 这是**整体替换**：省略的 `session_ttl_seconds` 恢复为平台默认。已绑定的飞书企业（`feishu_tenant_key`，首次成功登录时绑定）保留不变，配置接口改不了它。
 
@@ -271,7 +272,7 @@ PUT /v1/identity/feishu
 | 不是租户管理员（包括浏览器登录的普通成员） | `403 permission_denied` |
 | 平台没配置 `public_url`：启用飞书登录必须有它（`PUT`） | `400 invalid_request` |
 | 引用的密钥还不在保管库里（`PUT`） | `400 secret_missing`，`message` 里列出缺的名字 |
-| 密钥名不合法、`session_ttl_seconds` 小于 60、缺字段或有多余的字段（`PUT`） | `400 invalid_request` |
+| 密钥名不合法、`session_ttl_seconds` 不在 60 到 2592000 之间、缺字段或有多余的字段（`PUT`） | `400 invalid_request` |
 
 审计记 `identity_config_updated`：`data` 是 `app_id`、`session_ttl_seconds` 与 `refs`（三个密钥名：`app`、`encrypt`、`verification`），没有明文。
 

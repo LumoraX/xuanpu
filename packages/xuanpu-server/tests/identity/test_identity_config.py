@@ -113,6 +113,7 @@ def test_bad_origins_are_rejected(written: str, fragment: str) -> None:
     ("identity", "fragment"),
     [
         ({"session_ttl_seconds": 10}, "session_ttl_seconds"),
+        ({"session_ttl_seconds": 30 * 86400 + 1}, "session_ttl_seconds"),
         ({"reconcile_interval_seconds": 0}, "reconcile_interval_seconds"),
         ({"default_tenant": "Acme Corp"}, "租户标识非法"),
         ({"login_landing_path": "console/"}, "login_landing_path"),

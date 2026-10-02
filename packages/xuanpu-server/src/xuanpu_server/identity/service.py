@@ -8,6 +8,8 @@
 - ``act_as``：系统代员工调用。key 必须在签发时被授予这项能力；员工必须属于 key 的租户、且为
   启用状态；生效角色取 key 与员工两者中较低的那个。
 - ``login``：飞书登录的流程（``identity.login.FeishuLogin``）；``logout`` 删掉当前登录会话。
+- ``maintenance``：周期任务（``identity.maintenance``），清理过期的登录尝试与登录会话；随平台的
+  ``start``、``close`` 启停。
 - ``feishu_config``、``put_feishu_config``：租户管理员读写本租户的飞书应用配置。
 
 两处认证都遵守身份存储的约定：``get_login_session`` 不带租户，租户一律取自返回的登录会话记录，
@@ -16,6 +18,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -25,11 +28,13 @@ from xuanpu_server.errors import (
     InvalidRequestError,
     LoginSessionInvalidError,
     PermissionDeniedError,
+    PlatformError,
     SecretMissingError,
 )
 from xuanpu_server.identity.config import normalize_origin
 from xuanpu_server.identity.cookies import login_token_hash
 from xuanpu_server.identity.login import FEISHU, FeishuLogin
+from xuanpu_server.identity.maintenance import IdentityMaintenance
 from xuanpu_server.identity.models import TenantIdentityConfig
 from xuanpu_server.secrets import validate_secret_name
 from xuanpu_server.tenancy import Principal, lower_role
@@ -46,6 +51,8 @@ if TYPE_CHECKING:
     from xuanpu_server.metrics import PlatformMetrics
     from xuanpu_server.secrets import SecretVault
     from xuanpu_server.tenancy import ApiKeyRecord
+
+logger = logging.getLogger(__name__)
 
 LAST_SEEN_INTERVAL_SECONDS = 300.0
 """登录会话的 ``last_seen_at`` 最多隔这么久写一次。"""
@@ -141,9 +148,15 @@ class IdentityService:
             metrics=metrics,
             now=now,
         )
+        self.maintenance = IdentityMaintenance(store, now=now)
+
+    def start(self) -> None:
+        """启动身份域的周期任务（清理过期的登录尝试与登录会话）。"""
+        self.maintenance.start()
 
     async def close(self) -> None:
-        """关闭飞书客户端的连接。可以重复调用。"""
+        """停掉周期任务（等它结束），再关闭飞书客户端的连接。可以重复调用。"""
+        await self.maintenance.close()
         await self.login.feishu.aclose()
 
     async def authenticate_login(self, token: str) -> Principal:
@@ -284,7 +297,10 @@ class IdentityService:
             {"app_id": app_id, "session_ttl_seconds": session_ttl_seconds, "refs": names},
         )
         stored = await self.store.get_identity_config(tenant_id, FEISHU)
-        assert stored is not None  # 刚写入，配置不会删除
+        if stored is None:
+            # 刚写进去就读不回来（配置不会删除）：存储出了问题，按内部错误处理，细节只进日志
+            logger.error("租户 %s 的飞书配置刚写入，身份存储里却读不回来", tenant_id)
+            raise PlatformError("服务内部错误")
         return stored
 
 

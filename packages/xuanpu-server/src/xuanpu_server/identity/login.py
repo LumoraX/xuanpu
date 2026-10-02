@@ -14,24 +14,23 @@
       5. 按 (租户, feishu, union_id) 找用户，找不到建普通成员
       6. 用户已停用 → 拒绝
       7. 刷新姓名、头像、open_id 与最近登录时间
-      8. 建登录会话（每次新令牌），写登录 cookie
+      8. 建登录会话（每次新令牌），写登录 cookie；浏览器带着的旧登录会话作废
       9. 302 到 return_to
 
 失败一律 302 到落地页 ``identity.login_landing_path``，带 ``?login_error=<原因>``（七种原因见
-``models.LoginFailureReason`` 与 http-api.md），并记 ``login_failed``——知道是哪个租户才记（state
-不存在、租户不存在时不知道记在哪），审计里只有原因。授权码、飞书令牌、App Secret 不进日志与审计；
-飞书令牌用完即丢，不保存。
+``models.LoginFailureReason`` 与 http-api.md），计指标、记日志。授权码、飞书令牌、App Secret 不进
+日志与审计；飞书令牌用完即丢，不保存。
 
-**对设计的加固**：
+**对设计的加固**（取舍记在实现计划的对齐表里）：
 
-- 登录尝试 cookie（见 ``identity.cookies``）：没有它，别人可以把自己那次登录的回调链接发给员工，
-  员工点开就以别人的身份登录了（登录伪造）。缺失、不符、同名不止一个都按 ``state_invalid``，
-  且不拿授权码去换令牌；登录尝试此时已经取出删掉，同一个回调链接再用也不行。
-- 平台没配 ``public_url`` 时不能开始登录（``tenant_unavailable``）：回调地址由它拼出，登录 cookie
-  也只在配了它时才被认。
-- 飞书接口的错误里，只有 20010 归为 ``not_in_app_scope``；授权码无效或过期、应用凭据不对等飞书
-  明确拒绝的，与网络错误、5xx 一样归为 ``identity_unavailable``（员工能做的都是稍后重试或找
-  管理员）。
+- 登录尝试 cookie（``identity.cookies``）防登录伪造；缺失、不符、同名不止一个都按 ``state_invalid``，
+  且不拿授权码去换令牌。
+- 匿名请求刷不出审计：只有飞书认出了一个人之后的失败（``AUDITED_REASONS``）才记 ``login_failed``，
+  别的只计指标、记日志（与设计 7.3 事件回调「不写审计防被刷」同一口径）。
+- 未认证的请求驱动不了平台反复调飞书：``state`` 形状不对不查库，``code`` 形状不对不调飞书，每个
+  租户同时在调飞书的登录有上限（``identity.limits``）。
+- 飞书的错误只有 20010 归为 ``not_in_app_scope``，别的（含授权码无效、App Secret 不对）都是
+  ``identity_unavailable``。
 """
 
 from __future__ import annotations
@@ -43,12 +42,16 @@ import secrets
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
-from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from xuanpu_server.errors import ConflictError, NotFoundError, SecretMissingError
-from xuanpu_server.identity.config import SITE_PATH
 from xuanpu_server.identity.cookies import login_token_hash, new_login_token
 from xuanpu_server.identity.feishu import FeishuError, code_challenge, new_code_verifier
+from xuanpu_server.identity.limits import (
+    FEISHU_CALLS_PER_TENANT,
+    FEISHU_QUEUE_SECONDS,
+    CallLimitBusyError,
+    TenantCallLimit,
+)
 from xuanpu_server.identity.models import (
     ExternalIdentity,
     LoginAttempt,
@@ -56,6 +59,7 @@ from xuanpu_server.identity.models import (
     UserRecord,
     new_user_id,
 )
+from xuanpu_server.identity.urls import callback_url, safe_return_to, with_login_error
 from xuanpu_server.tenancy import validate_tenant_id
 
 if TYPE_CHECKING:
@@ -71,7 +75,7 @@ if TYPE_CHECKING:
     )
     from xuanpu_server.identity.service import IdentitySettings
     from xuanpu_server.identity.store import IdentityStore
-    from xuanpu_server.metrics import PlatformMetrics
+    from xuanpu_server.metrics import LoginResult, PlatformMetrics
     from xuanpu_server.secrets import SecretVault
 
 logger = logging.getLogger(__name__)
@@ -79,44 +83,17 @@ logger = logging.getLogger(__name__)
 FEISHU: IdentityProvider = "feishu"
 LOGIN_ATTEMPT_TTL_SECONDS = 600
 """登录尝试（与登录尝试 cookie）的有效期：从开始登录算起 10 分钟。"""
-MAX_RETURN_TO_LENGTH = 2048
-"""``return_to`` 的最大长度；更长的按不合格处理。"""
-CALLBACK_PATH = "/v1/auth/feishu/callback"
-EVENTS_PATH_PREFIX = "/v1/identity/feishu/events/"
-_SITE_PATH = re.compile(SITE_PATH)
-# 回调里 error 参数的取值只有形如 access_denied 的才写进日志，别的（可能是伪造的长串）不写
+MAX_CODE_LENGTH = 512
+"""授权码的最大长度。"""
+AUDITED_REASONS: frozenset[str] = frozenset(
+    {"not_in_app_scope", "tenant_mismatch", "user_disabled"}
+)
+"""记 ``login_failed`` 审计的失败原因：飞书确实认出了一个人之后才会出现的这几种。"""
+# state 是 secrets.token_urlsafe(32)：32 字节的 base64url，不带填充，恰好 43 个字符
+_STATE = re.compile(r"^[A-Za-z0-9_-]{43}$")
+# 授权码只收可见 ASCII；回调里 error 参数只有形如 access_denied 的才写进日志
+_CODE = re.compile(r"^[\x21-\x7e]+$")
 _ERROR_PARAM = re.compile(r"^[a-z_]{1,64}$")
-
-
-def callback_url(public_url: str) -> str:
-    """飞书登录的回调地址（要填进飞书后台的重定向地址）。"""
-    return public_url + CALLBACK_PATH
-
-
-def event_url(public_url: str, tenant_id: str) -> str:
-    """租户的飞书事件地址（要填进飞书后台的事件订阅请求地址）。"""
-    return f"{public_url}{EVENTS_PATH_PREFIX}{tenant_id}"
-
-
-def safe_return_to(value: str | None, *, fallback: str) -> str:
-    """登录完成后跳去哪：只收站内路径，否则用 ``fallback``（落地页）。
-
-    站内路径：以 ``/`` 开头、不以 ``//`` 或 ``/\\`` 开头，不含反斜杠、空白与控制字符，不超过
-    ``MAX_RETURN_TO_LENGTH``。``https://evil.com``、``//evil.com``、``/\\evil.com`` 这类会被浏览器
-    当成别的站点的，一律不收，防止被利用做开放跳转。
-    """
-    if value is None or len(value) > MAX_RETURN_TO_LENGTH:
-        return fallback
-    if any(ord(char) < 0x20 or ord(char) == 0x7F for char in value):
-        return fallback
-    return value if _SITE_PATH.match(value) else fallback
-
-
-def with_login_error(path: str, reason: LoginFailureReason) -> str:
-    """落地页加上 ``login_error=<原因>``（保留路径里已有的查询串，放在片段之前）。"""
-    parts = urlsplit(path)
-    query = "&".join(item for item in (parts.query, urlencode({"login_error": reason})) if item)
-    return urlunsplit(("", "", parts.path, query, parts.fragment))
 
 
 class LoginFailedError(Exception):
@@ -124,9 +101,10 @@ class LoginFailedError(Exception):
 
     Attributes:
         reason: 失败原因。
-        tenant_id: 知道是哪个、且确实存在的租户；None 时不写审计。
+        tenant_id: 知道是哪个、且确实存在的租户。
         user_id: 已经认出的员工（``user_disabled`` 时）。
         detail: 只写进服务端日志的说明，不含机密。
+        warn: 记成告警（飞书出错、配置缺失、排队超时这类要运维看的）；否则记成普通信息。
     """
 
     def __init__(
@@ -136,6 +114,7 @@ class LoginFailedError(Exception):
         tenant_id: str | None = None,
         user_id: str | None = None,
         detail: str = "",
+        warn: bool = False,
     ) -> None:
         """记下原因与上下文。"""
         super().__init__(f"{reason}：{detail}" if detail else reason)
@@ -143,6 +122,7 @@ class LoginFailedError(Exception):
         self.tenant_id = tenant_id
         self.user_id = user_id
         self.detail = detail
+        self.warn = warn
 
 
 @dataclass(frozen=True)
@@ -167,6 +147,7 @@ class FeishuLogin:
 
     Attributes:
         feishu: 飞书接口的客户端（测试时换成接模拟飞书的）。
+        feishu_limit: 每个租户同时在调飞书的登录上限（排队超时按 ``identity_unavailable``）。
     """
 
     def __init__(
@@ -200,6 +181,9 @@ class FeishuLogin:
         self._settings = settings
         self._metrics = metrics
         self._now = now
+        self.feishu_limit = TenantCallLimit(
+            limit=FEISHU_CALLS_PER_TENANT, queue_seconds=FEISHU_QUEUE_SECONDS
+        )
 
     # --- 开始 ---
 
@@ -248,6 +232,7 @@ class FeishuLogin:
         code: str | None,
         error: str | None,
         attempt_cookie: str | None,
+        session_cookie: str | None = None,
     ) -> LoginRedirect:
         """完成登录（飞书回调）：签发登录会话并跳去 ``return_to``，或跳回落地页。
 
@@ -256,30 +241,31 @@ class FeishuLogin:
             code: 授权码；员工拒绝时没有。
             error: 飞书给的错误（员工拒绝时是 ``access_denied``）。
             attempt_cookie: 浏览器带来的登录尝试 cookie；没带或同名不止一个时为 None。
+            session_cookie: 浏览器带来的（旧的）登录 cookie；登录成功后它对应的登录会话作废。
         """
         try:
-            return await self._complete(state, code, error, attempt_cookie)
+            redirect = await self._complete(state, code, error, attempt_cookie)
         except LoginFailedError as failure:
             return await self._failed(failure)
+        await self._revoke(session_cookie)
+        return redirect
 
     async def _complete(
         self, state: str | None, code: str | None, error: str | None, attempt_cookie: str | None
     ) -> LoginRedirect:
-        """完成登录的各步（模块说明的 1–9），失败抛 ``LoginFailedError``。"""
+        """完成登录的各步（模块说明的 1–8），失败抛 ``LoginFailedError``。"""
         attempt = await self._take_attempt(state, attempt_cookie)
-        # 租户一律取自登录尝试，不接受请求参数
-        tenant_id = attempt.tenant_id
+        tenant_id = attempt.tenant_id  # 租户一律取自登录尝试，不接受请求参数
         if error is not None:
+            # 员工拒绝时飞书只带 error；error 与 code 同时出现也按 error 处理
             shown = error if _ERROR_PARAM.match(error) else "（形状不对，不记）"
             reason: LoginFailureReason = (
                 "feishu_denied" if error == "access_denied" else "identity_unavailable"
             )
             raise LoginFailedError(reason, tenant_id=tenant_id, detail=f"飞书回调带 error={shown}")
-        if not code:
+        if not code or len(code) > MAX_CODE_LENGTH or not _CODE.match(code):
             raise LoginFailedError(
-                "identity_unavailable",
-                tenant_id=tenant_id,
-                detail="飞书回调既没有 code 也没有 error",
+                "identity_unavailable", tenant_id=tenant_id, detail="回调没有 code，或形状不对"
             )
         await self._active_tenant(tenant_id)
         public_url = self._public_url(tenant_id)
@@ -292,9 +278,9 @@ class FeishuLogin:
         return await self._sign_in(user, info, config, attempt.return_to)
 
     async def _take_attempt(self, state: str | None, attempt_cookie: str | None) -> LoginAttempt:
-        """取出并删除登录尝试，核对登录尝试 cookie。"""
-        if not state:
-            raise LoginFailedError("state_invalid", detail="回调没有 state")
+        """取出并删除登录尝试，核对登录尝试 cookie。形状不对的 state 不查库。"""
+        if state is None or not _STATE.match(state):
+            raise LoginFailedError("state_invalid", detail="回调没有 state，或形状不对")
         attempt = await self._store.take_login_attempt(state, now=self._now())
         if attempt is None:
             raise LoginFailedError("state_invalid", detail="登录尝试不存在、已用过或已过期")
@@ -308,28 +294,37 @@ class FeishuLogin:
     async def _feishu_user(
         self, config: TenantIdentityConfig, attempt: LoginAttempt, code: str, public_url: str
     ) -> FeishuUserInfo:
-        """用授权码换令牌，再取用户信息。令牌用完即丢。"""
+        """用授权码换令牌，再取用户信息（占本租户的一个调飞书名额）。令牌用完即丢。"""
         tenant_id = config.tenant_id
         try:
             app_secret = await self._vault.get(tenant_id, config.app_secret_ref)
         except SecretMissingError as exc:
             raise LoginFailedError(
-                "tenant_unavailable", tenant_id=tenant_id, detail="飞书 App Secret 不在保管库里"
+                "tenant_unavailable",
+                tenant_id=tenant_id,
+                detail="飞书 App Secret 不在保管库里",
+                warn=True,
             ) from exc
         try:
-            token = await self.feishu.exchange_code(
-                app_id=config.app_id,
-                app_secret=app_secret,
-                code=code,
-                redirect_uri=callback_url(public_url),
-                code_verifier=attempt.code_verifier,
-            )
-            return await self.feishu.user_info(token)
+            async with self.feishu_limit.slot(tenant_id):
+                token = await self.feishu.exchange_code(
+                    app_id=config.app_id,
+                    app_secret=app_secret,
+                    code=code,
+                    redirect_uri=callback_url(public_url),
+                    code_verifier=attempt.code_verifier,
+                )
+                return await self.feishu.user_info(token)
+        except CallLimitBusyError as exc:
+            raise LoginFailedError(
+                "identity_unavailable", tenant_id=tenant_id, detail=str(exc), warn=True
+            ) from exc
         except FeishuError as exc:
-            reason: LoginFailureReason = (
-                "not_in_app_scope" if exc.kind == "not_in_app_scope" else "identity_unavailable"
-            )
-            raise LoginFailedError(reason, tenant_id=tenant_id, detail=str(exc)) from exc
+            scope = exc.kind == "not_in_app_scope"
+            reason: LoginFailureReason = "not_in_app_scope" if scope else "identity_unavailable"
+            raise LoginFailedError(
+                reason, tenant_id=tenant_id, detail=str(exc), warn=not scope
+            ) from exc
 
     async def _check_tenant_key(self, config: TenantIdentityConfig, info: FeishuUserInfo) -> None:
         """核对飞书企业：首次成功登录绑定，以后必须一致。"""
@@ -377,12 +372,8 @@ class FeishuLogin:
             if raced is None:
                 raise
             return raced
-        await self._audit.login(
-            tenant_id,
-            "user_created",
-            {"provider": FEISHU, "display_name": user.display_name, "role": user.role},
-            user_id=user.user_id,
-        )
+        data = {"provider": FEISHU, "display_name": user.display_name, "role": user.role}
+        await self._audit.login(tenant_id, "user_created", data, user_id=user.user_id)
         return user
 
     async def _sign_in(
@@ -427,10 +418,23 @@ class FeishuLogin:
                 user.tenant_id, FEISHU, info.union_id, {**current, "open_id": info.open_id}
             )
 
+    async def _revoke(self, previous: str | None) -> None:
+        """登录成功时，浏览器带着的旧登录 cookie 对应的登录会话作废。
+
+        浏览器里的旧 cookie 已被新令牌覆盖，不作废它，那个会话只能等过期；拿到过旧令牌的人
+        也就还能接着用。只认确实存在的登录会话，租户取自它的记录。
+        """
+        if previous is None:
+            return
+        token_hash = login_token_hash(previous)
+        session = await self._store.get_login_session(token_hash, now=self._now())
+        if session is not None:
+            await self._store.delete_login_session(session.tenant_id, token_hash)
+
     # --- 共用 ---
 
     async def _active_tenant(self, tenant_id: str | None) -> str:
-        """租户必须存在且启用。不存在的（含标识不合法）不带租户报错，不写审计。"""
+        """租户必须存在且启用。"""
         if tenant_id is None:
             raise LoginFailedError(
                 "tenant_unavailable", detail="没有指定租户，也没有配置 identity.default_tenant"
@@ -464,11 +468,11 @@ class FeishuLogin:
         return config
 
     async def _failed(self, failure: LoginFailedError) -> LoginRedirect:
-        """失败：计数、记日志；知道租户的记 ``login_failed``；跳回落地页带上原因。"""
+        """失败：计数、记日志；飞书认出了人的那几种另记 ``login_failed``；跳回落地页带上原因。"""
         self._count(failure.reason)
-        level = logging.WARNING if failure.reason == "identity_unavailable" else logging.INFO
+        level = logging.WARNING if failure.warn else logging.INFO
         logger.log(level, "飞书登录失败（租户 %s）：%s", failure.tenant_id, failure)
-        if failure.tenant_id is not None:
+        if failure.tenant_id is not None and failure.reason in AUDITED_REASONS:
             await self._audit.login(
                 failure.tenant_id,
                 "login_failed",
@@ -477,22 +481,17 @@ class FeishuLogin:
             )
         return LoginRedirect(with_login_error(self._settings.login_landing_path, failure.reason))
 
-    def _count(self, result: str) -> None:
+    def _count(self, result: LoginResult) -> None:
         """记一次登录结果的指标。"""
         if self._metrics is not None:
             self._metrics.login(result)
 
 
 __all__ = [
-    "CALLBACK_PATH",
-    "EVENTS_PATH_PREFIX",
+    "AUDITED_REASONS",
     "LOGIN_ATTEMPT_TTL_SECONDS",
-    "MAX_RETURN_TO_LENGTH",
+    "MAX_CODE_LENGTH",
     "FeishuLogin",
     "LoginFailedError",
     "LoginRedirect",
-    "callback_url",
-    "event_url",
-    "safe_return_to",
-    "with_login_error",
 ]

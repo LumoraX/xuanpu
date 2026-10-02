@@ -29,7 +29,8 @@ from xuanpu_server.identity.cookies import (
     set_login_attempt_cookie,
     set_login_cookie,
 )
-from xuanpu_server.identity.login import LOGIN_ATTEMPT_TTL_SECONDS, callback_url, event_url
+from xuanpu_server.identity.login import LOGIN_ATTEMPT_TTL_SECONDS
+from xuanpu_server.identity.urls import callback_url, event_url
 
 if TYPE_CHECKING:
     from xuanpu_server.identity.login import LoginRedirect
@@ -147,16 +148,19 @@ def identity_router(platform: Platform) -> APIRouter:
     ) -> RedirectResponse:
         """飞书授权页跳回：完成登录，302 到 ``return_to``（失败时回落地页）；总清掉登录尝试 cookie。
 
-        登录尝试 cookie 同名不止一个时按没带处理（``state_invalid``）。
+        登录尝试 cookie 同名不止一个时按没带处理（``state_invalid``）。浏览器还带着（恰好一个）
+        旧的登录 cookie 的，登录成功后它对应的登录会话作废。
         """
         secure = identity.settings.cookie_secure
-        name = login_attempt_cookie_name(secure)
-        presented = cookie_values(request.headers.getlist("cookie"), name=name)
+        headers = request.headers.getlist("cookie")
+        attempts = cookie_values(headers, name=login_attempt_cookie_name(secure))
+        sessions = cookie_values(headers, name=login_cookie_name(secure))
         outcome = await identity.login.complete(
             state=state,
             code=code,
             error=error,
-            attempt_cookie=presented[0] if len(presented) == 1 else None,
+            attempt_cookie=attempts[0] if len(attempts) == 1 else None,
+            session_cookie=sessions[0] if len(sessions) == 1 else None,
         )
         return login_response(outcome, secure=secure, clear_attempt=True)
 

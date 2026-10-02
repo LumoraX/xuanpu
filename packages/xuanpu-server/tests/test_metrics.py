@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, get_args
 
 import httpx
 import pytest
@@ -12,7 +12,8 @@ from prometheus_client.parser import text_string_to_metric_families
 from xuanpu_server.api import create_app
 from xuanpu_server.audit import AuditLog, digest_arguments
 from xuanpu_server.controlplane import InMemoryControlPlane
-from xuanpu_server.metrics import PlatformMetrics
+from xuanpu_server.identity import LoginFailureReason
+from xuanpu_server.metrics import LOGIN_RESULTS, PlatformMetrics
 from xuanpu_server.platform import ROOT_PRINCIPAL
 from xuanpu_server.runtime.gate_audit import ConnectorToolInfo, gate_call_data
 from xuanpu_server.tenancy import generate_metrics_token
@@ -364,6 +365,12 @@ async def test_metrics_carry_no_tenant_session_or_secret(
         assert secret not in text, secret
     labels = {name for _, pairs in samples(text) for name, _ in pairs}
     assert labels == {"outcome", "transport", "decision", "stage", "result"}
+
+
+def test_login_results_match_the_failure_reasons() -> None:
+    """``xuanpu_logins_total`` 的取值：成功，加上与身份域一致的七种失败原因（指标模块另写一份，
+    运行时不依赖身份域）。"""
+    assert LOGIN_RESULTS == ("succeeded", *get_args(LoginFailureReason))
 
 
 # --- 每个平台各自一份 ---

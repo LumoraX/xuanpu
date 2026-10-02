@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from xuanpu_server.identity.config import MAX_SESSION_TTL_SECONDS, MIN_SESSION_TTL_SECONDS
 from xuanpu_server.tenancy import QuotaLimits
 
 if TYPE_CHECKING:
@@ -115,15 +116,17 @@ class CancelBody(_Request):
 class FeishuConfigBody(_Request):
     """租户的飞书配置（整体替换）。三个 ``*_ref`` 是保管库里密钥的名字，不是明文。
 
-    ``session_ttl_seconds`` 省略或为 null 时用平台默认（``identity.session_ttl_seconds``），最小
-    60，与平台配置的下限一致。
+    ``session_ttl_seconds`` 省略或为 null 时用平台默认（``identity.session_ttl_seconds``）；取值
+    范围与平台配置相同：60 到 2592000（30 天）。
     """
 
     app_id: str = Field(min_length=1, max_length=128)
     app_secret_ref: str
     encrypt_key_ref: str
     verification_token_ref: str
-    session_ttl_seconds: int | None = Field(default=None, ge=60)
+    session_ttl_seconds: int | None = Field(
+        default=None, ge=MIN_SESSION_TTL_SECONDS, le=MAX_SESSION_TTL_SECONDS
+    )
 
 
 def tenant_view(tenant: Tenant) -> dict[str, Any]:

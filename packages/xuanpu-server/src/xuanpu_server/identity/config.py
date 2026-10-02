@@ -26,6 +26,10 @@ if TYPE_CHECKING:
 # pydantic 的正则引擎不支持前瞻，所以写成「只有 /，或 / 后跟一个合格的首字符」
 SITE_PATH = r"^/([^/\\\s][^\\\s]*)?$"
 _HOST_NAME = re.compile(r"^[a-z0-9.-]+$")
+MIN_SESSION_TTL_SECONDS = 60
+"""登录会话有效期的下限（秒）。"""
+MAX_SESSION_TTL_SECONDS = 30 * 86400
+"""登录会话有效期的上限（秒）：30 天。登录会话不滑动续期，太长等于一次登录永久有效。"""
 
 
 def _normalized_host(host: str, *, name: str, value: str) -> str:
@@ -79,7 +83,8 @@ class IdentityConfig(BaseModel):
     """员工身份（飞书登录）的平台级设置。租户自己的飞书应用经接口配置，不在这里。
 
     Attributes:
-        session_ttl_seconds: 登录会话的默认有效期（秒）；租户的飞书配置可以覆盖。
+        session_ttl_seconds: 登录会话的默认有效期（秒），60 到 2592000（30 天）；租户的飞书配置
+            可以覆盖。
         cookie_secure: 登录 cookie 是否只走 HTTPS。为真时 cookie 名带 ``__Host-`` 前缀
             （``__Host-xuanpu_session``）；本地用 HTTP 开发时设为 false，cookie 名是
             ``xuanpu_session``（见 ``identity.cookies``）。
@@ -95,7 +100,9 @@ class IdentityConfig(BaseModel):
     # 与服务配置的各段相同：拼错的键要报错，取值不可变
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    session_ttl_seconds: int = Field(default=604800, ge=60)
+    session_ttl_seconds: int = Field(
+        default=604800, ge=MIN_SESSION_TTL_SECONDS, le=MAX_SESSION_TTL_SECONDS
+    )
     cookie_secure: bool = True
     reconcile_interval_seconds: float = Field(default=86400.0, ge=60)
     default_tenant: str | None = None
@@ -116,4 +123,10 @@ class IdentityConfig(BaseModel):
         return normalize_origin(value, name=str(info.field_name))
 
 
-__all__ = ["SITE_PATH", "IdentityConfig", "normalize_origin"]
+__all__ = [
+    "MAX_SESSION_TTL_SECONDS",
+    "MIN_SESSION_TTL_SECONDS",
+    "SITE_PATH",
+    "IdentityConfig",
+    "normalize_origin",
+]

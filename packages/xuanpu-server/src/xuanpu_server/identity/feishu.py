@@ -31,18 +31,26 @@
 | --- | --- |
 | ``not_in_app_scope`` | 响应体 ``code`` 为 20010：员工不在自建应用的可用范围内 |
 | ``denied`` | 飞书明确拒绝：HTTP 4xx（429 除外），或 HTTP 200 而 ``code`` 不为 0 |
-| ``unavailable`` | 网络错误、超时、HTTP 5xx 或 429、重定向、响应体不是 JSON 对象或缺字段 |
+| ``unavailable`` | 网络错误、超时、HTTP 5xx 或 429、重定向；响应体过大、不是 JSON 对象或缺字段 |
 
 **授权码、令牌、App Secret、PKCE 校验串不进日志、不进异常文本、不进 repr**：异常文本只有接口名、
 分类、HTTP 状态、飞书的错误码，以及形如 ``invalid_grant`` 的错误类型；飞书给的错误描述
 （``msg``、``error_description``）一概不用——它们可能原样回显请求里的内容。令牌只经
 ``AccessToken.value`` 取用，``repr`` 里没有它。本模块不写日志，失败由调用方按需记录。
+
+**时限与大小**：每次请求（连接、发送、读完响应体）有一个总时限 ``timeout_seconds``，不只是 httpx
+那种按单个环节计的超时——对端一点一点地吐数据也拖不过它；响应体边读边数，超过 1 MiB 就不再读。
+
+**出口**：只连 ``open_base``（默认 ``open.feishu.cn``），不读环境里的代理设置；``accounts_base``
+只用来拼授权页地址，是员工的浏览器去访问。
 """
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
+import json
 import re
 import secrets
 from dataclasses import dataclass, field
@@ -61,7 +69,9 @@ NOT_IN_APP_SCOPE = 20010
 MAX_BATCH_USERS = 50
 """批量查员工一次最多查这么多人。"""
 DEFAULT_TIMEOUT_SECONDS = 10.0
-"""平台装配客户端时用的单次请求超时（秒）。"""
+"""平台装配客户端时用的单次请求的总时限（秒）。"""
+MAX_RESPONSE_BYTES = 1024 * 1024
+"""响应体的上限：飞书这几个接口的正常响应只有几 KB，超过 1 MiB 按响应不合预期处理。"""
 
 _AUTHORIZE_PATH = "/open-apis/authen/v1/authorize"
 _TOKEN_PATH = "/open-apis/authen/v2/oauth/token"  # noqa: S105 —— 接口路径，不是凭据
@@ -185,10 +195,11 @@ class FeishuClient:
             open_base: 开放接口的基地址（只写源，如 ``https://open.feishu.cn``）。
             accounts_base: 授权页的基地址（如 ``https://accounts.feishu.cn``）。
             transport: 自定义 httpx 传输；None 用默认的。测试时换成模拟服务端。
-            timeout_seconds: 单次请求的超时。
+            timeout_seconds: 单次请求的总时限：连接、发送、读完响应体一共这么久。
         """
         self._open_base = open_base.rstrip("/")
         self._accounts_base = accounts_base.rstrip("/")
+        self._timeout_seconds = timeout_seconds
         self._client = httpx.AsyncClient(
             timeout=timeout_seconds,
             follow_redirects=False,
@@ -323,22 +334,56 @@ class FeishuClient:
         if token is not None:
             headers["Authorization"] = f"Bearer {token.value}"
         try:
-            response = await self._client.request(
-                method, self._open_base + path, json=json_body, params=params, headers=headers
-            )
+            async with asyncio.timeout(self._timeout_seconds):
+                status, raw = await self._send(
+                    operation, method, path, json_body=json_body, params=params, headers=headers
+                )
+        except TimeoutError as exc:
+            raise FeishuError("unavailable", operation, detail="超时") from exc
         except httpx.HTTPError as exc:
             # httpx 的异常文本不含请求体与请求头；这里只报类型，不拼它的文本
             raise FeishuError(
                 "unavailable", operation, detail=f"网络错误 {type(exc).__name__}"
             ) from exc
-        return _checked(response, operation)
+        return _checked(status, raw, operation)
+
+    async def _send(
+        self,
+        operation: str,
+        method: str,
+        path: str,
+        *,
+        json_body: dict[str, str] | None,
+        params: httpx.QueryParams | None,
+        headers: dict[str, str],
+    ) -> tuple[int, bytes]:
+        """发请求、边读边数响应体，返回 ``(状态码, 响应体)``。
+
+        Raises:
+            FeishuError: 响应体超过 ``MAX_RESPONSE_BYTES``。
+            httpx.HTTPError: 网络层失败（由 ``_call`` 转成 ``FeishuError``）。
+        """
+        url = self._open_base + path
+        async with self._client.stream(
+            method, url, json=json_body, params=params, headers=headers
+        ) as response:
+            raw = bytearray()
+            async for chunk in response.aiter_bytes():
+                raw.extend(chunk)
+                if len(raw) > MAX_RESPONSE_BYTES:
+                    raise FeishuError(
+                        "unavailable",
+                        operation,
+                        status=response.status_code,
+                        detail="响应体超过 1 MiB",
+                    )
+            return response.status_code, bytes(raw)
 
 
-def _checked(response: httpx.Response, operation: str) -> dict[str, Any]:
-    """两层错误检查（分类见模块说明），通过时返回响应体。"""
-    status = response.status_code
+def _checked(status: int, raw: bytes, operation: str) -> dict[str, Any]:
+    """两层错误检查（分类见模块说明），通过时返回解析后的响应体。"""
     try:
-        body: Any = response.json()
+        body: Any = json.loads(raw)
     except ValueError:
         body = None
     code = body.get("code") if isinstance(body, dict) else None
@@ -412,6 +457,7 @@ def _contact_user(item: Any, operation: str) -> FeishuContactUser:
 __all__ = [
     "DEFAULT_TIMEOUT_SECONDS",
     "MAX_BATCH_USERS",
+    "MAX_RESPONSE_BYTES",
     "NOT_IN_APP_SCOPE",
     "AccessToken",
     "FeishuClient",

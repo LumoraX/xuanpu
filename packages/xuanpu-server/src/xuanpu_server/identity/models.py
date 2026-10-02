@@ -213,11 +213,11 @@ class LoginAttempt:
 
     state: str
     tenant_id: str
-    code_verifier: str
+    code_verifier: str = field(repr=False)
     return_to: str
     created_at: float
     expires_at: float
-    cookie_hash: str
+    cookie_hash: str = field(repr=False)
 
 
 @dataclass(frozen=True)

@@ -182,7 +182,7 @@ identity:
 
 | 键 | 默认 | 说明 |
 | --- | --- | --- |
-| `identity.session_ttl_seconds` | `604800`（7 天） | 登录会话的默认有效期，最小 60。从登录时刻算起，不随使用延长；租户的飞书配置可以覆盖 |
+| `identity.session_ttl_seconds` | `604800`（7 天） | 登录会话的默认有效期，60 到 2592000（30 天）。从登录时刻算起，不随使用延长；租户的飞书配置可以覆盖（同样的范围） |
 | `identity.cookie_secure` | `true` | 登录 cookie 是否只走 HTTPS。为 `true` 时 cookie 名是 `__Host-xuanpu_session`（带 `Secure`，浏览器拒收别的子域写来的同名 cookie）；本地用 HTTP 开发时设为 `false`，cookie 名是 `xuanpu_session`、不带 `Secure`，否则浏览器不会带上它 |
 | `identity.reconcile_interval_seconds` | `86400` | 按飞书通讯录对账的周期，最小 60 |
 | `identity.default_tenant` | 无 | 登录链接省略 `tenant` 时用的租户，只有一家企业的部署用得上 |
@@ -190,6 +190,13 @@ identity:
 | `identity.feishu_open_base`、`identity.feishu_accounts_base` | `https://open.feishu.cn`、`https://accounts.feishu.cn` | 飞书开放接口与授权页的基地址，与 `public_url` 一样只写源、同样规整。接 Lark 国际版，或测试时指向模拟服务端才需要改 |
 
 飞书登录的接口与租户的飞书配置见[接口文档的飞书登录一节](../architecture/http-api.md#飞书登录)：没配 `public_url` 时不能启用飞书登录（配置接口报 `400`，登录跳回落地页带 `login_error=tenant_unavailable`）。按飞书通讯录对账随后提供，在那之前 `identity.reconcile_interval_seconds` 不起作用。
+
+启用飞书登录时还要注意：
+
+- **出站网络**：平台要能直连 `identity.feishu_open_base`（默认 `https://open.feishu.cn`），用来换令牌、取员工信息。飞书客户端**不读环境变量里的代理设置**（`HTTPS_PROXY` 等），出口只能是直连或网络层的透明代理。`identity.feishu_accounts_base`（默认 `https://accounts.feishu.cn`）是飞书授权页，由员工的浏览器访问，平台自己不连它。每次调飞书总时限 10 秒，响应体超过 1 MiB 按出错处理。
+- **限速**：`/v1/auth/feishu/login` 与 `/v1/auth/feishu/callback` 不需要凭据，在反向代理上按来源地址限速（见下文[反向代理](#反向代理)）。平台自己也有几道防线：开始登录写的登录尝试 10 分钟就过期，`return_to` 最长 512 个字符；回调里 `state` 形状不对不查库、授权码形状不对不调飞书；每个租户同时在调飞书的登录最多 8 个，再来的最多排队 5 秒，等不到就跳回落地页带 `login_error=identity_unavailable`；匿名请求刷不出审计记录。
+- **清理**：每个实例每 5 分钟清一次过期的登录尝试与登录会话（不需要配置）。清理出错只在标准错误里记一条，下一轮再试。
+- **访问日志**：回调地址的查询串里有授权码。`xuanpu serve` 的访问日志把这一行的查询串抹成 `?…`（`GET /v1/auth/feishu/callback?… HTTP/1.1`）；反向代理的访问日志要自己处理，比如不记这个路径的查询串。
 
 ## 初次部署
 
@@ -219,7 +226,8 @@ curl http://127.0.0.1:8420/healthz
 
 - 关闭响应缓冲（平台已带 `X-Accel-Buffering: no`，nginx 会照办）；
 - 读超时大于 15 秒（平台每 15 秒发一次保活）；
-- 发布业务包的请求体最大 64 MiB。
+- 发布业务包的请求体最大 64 MiB；
+- 启用飞书登录时，对 `/v1/auth/feishu/*` 按来源地址限速（比如每个地址每分钟几十次）。这两个接口不需要凭据，正常员工一次登录各访问一次。
 
 `/console/` 是控制台的静态页面，不需要的话在代理上屏蔽这个路径。`/metrics` 只给 Prometheus 抓，不要对外暴露。框架自动生成的接口描述 `/openapi.json` 与 `/docs`、`/redoc` 都是关着的：
 

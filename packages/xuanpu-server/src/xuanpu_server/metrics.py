@@ -17,14 +17,12 @@ prometheus_client 的进程级全局登记表）：同一进程里的几个平�
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, get_args
+from typing import TYPE_CHECKING, Literal, get_args
 
 from prometheus_client import CollectorRegistry, generate_latest
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
 from xuanpu_spec.manifest import Transport
-
-from xuanpu_server.identity.models import LoginFailureReason
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -55,8 +53,22 @@ BACKFILL_STAGES: tuple[str, ...] = ("incomplete", "write", "unconfirmed")
 对那次送回的结论。读不到待办时整次送回失败、没有提交给内核，不算补记失败；送回在内核里排队时
 被停下（内核没处理它，待办还在）也不算。"""
 
-LOGIN_RESULTS: tuple[str, ...] = ("succeeded", *get_args(LoginFailureReason))
-"""``xuanpu_logins_total`` 的 ``result``：登录成功，或七种失败原因之一（设计 7.1）。"""
+LoginResult = Literal[
+    "succeeded",
+    "feishu_denied",
+    "not_in_app_scope",
+    "state_invalid",
+    "tenant_mismatch",
+    "tenant_unavailable",
+    "user_disabled",
+    "identity_unavailable",
+]
+"""``xuanpu_logins_total`` 的 ``result``：登录成功，或七种失败原因之一（设计 7.1）。
+
+后七个与 ``identity.models.LoginFailureReason`` 相同（有测试守着）；这里另写一份，免得指标模块在
+运行时依赖身份域。
+"""
+LOGIN_RESULTS: tuple[str, ...] = get_args(LoginResult)
 
 
 class PlatformMetrics:
@@ -125,8 +137,8 @@ class PlatformMetrics:
         """一轮对话结束时用量没有入账（写控制面失败；这一轮的用量不再补记）。"""
         self._usage_write_failures += 1
 
-    def login(self, result: str) -> None:
-        """一次飞书登录有了结果。``result`` 取 ``LOGIN_RESULTS`` 里的值。"""
+    def login(self, result: LoginResult) -> None:
+        """一次飞书登录有了结果。"""
         self._logins[result] = self._logins.get(result, 0) + 1
 
     def render(self) -> bytes:
@@ -195,5 +207,6 @@ __all__ = [
     "GATE_DECISIONS",
     "LOGIN_RESULTS",
     "TURN_OUTCOMES",
+    "LoginResult",
     "PlatformMetrics",
 ]

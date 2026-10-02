@@ -48,7 +48,15 @@
 | 启用飞书登录但 `public_url` 未配置：PUT 报 400 或启动时报错，选一个 | 选 `PUT /v1/identity/feishu` 报 `400 invalid_request`；开始登录时没配同样按 `tenant_unavailable` 跳回落地页（Task 4） |
 | 设计第 3 节「实现时要再对照文档确认的」三项 | 2026-10-02 对照飞书开放平台文档核对：应用身份令牌接口与参数如设计所写，令牌在响应顶层 `tenant_access_token`、`expire`（最长 2 小时）；URL 验证（未加密）是 `{"challenge", "token", "type": "url_verification"}`，加密时整体在 `encrypt` 里，要在 1 秒内回 `{"challenge": …}`；事件推送要在 3 秒内回 HTTP 200，失败按 15 秒、5 分钟、1 小时、6 小时重推，最多 4 次（Task 4 核对，Task 6、7 用） |
 | 飞书接口的错误 | `FeishuError` 分三类：`not_in_app_scope`（20010）、`denied`（4xx，或 HTTP 200 而 `code` 不为 0）、`unavailable`（网络、5xx、429、重定向、响应不合预期）。登录里只有第一类是 `not_in_app_scope`，后两类都是 `identity_unavailable`（含授权码无效或过期、App Secret 不对）（Task 4） |
-| `login_succeeded`、`login_failed`、`user_created` 由谁写 | 登录走完之前调用者没有 `Principal`，经 `AuditLog.login` 写：认出员工的 `actor` 是 `user:<user_id>`，否则是 `anonymous`；`login_failed` 只在知道是哪个、且存在的租户时写（state 不存在、租户不存在时只计指标、记日志）。文档覆盖测试同时扫 `.control(` 与 `.login(`（Task 4） |
+| `login_succeeded`、`login_failed`、`user_created` 由谁写 | 登录走完之前调用者没有 `Principal`，经 `AuditLog.login` 写：认出员工的 `actor` 是 `user:<user_id>`，否则是 `anonymous`。文档覆盖测试同时扫 `.control(` 与 `.login(`（Task 4） |
+| 7.1「失败一律记 `login_failed`」 | **对设计的加固**（与 7.3 事件回调「签名不符不写审计，防止被刷」同一口径）：登录接口不需要凭据，只有飞书确实认出了一个人之后的失败才记——`not_in_app_scope`、`tenant_mismatch`、`user_disabled`（要一次真实的飞书登录，匿名伪造不出来）；开始登录阶段的失败，以及回调里的 `feishu_denied`、`state_invalid`（含登录尝试 cookie 不符）、`identity_unavailable` 只计指标、记日志。回调里不是 `access_denied` 的 `error` 记 INFO；飞书出错、App Secret 缺失、排队超时记 WARNING（Task 4 审查修正） |
+| 过期的登录尝试与登录会话由谁清 | `identity/maintenance.py` 的周期任务 `IdentityMaintenance`：`Platform.start()` 经 `IdentityService.start()` 启动、`close()` 时取消并等它结束；每 5 分钟（`PURGE_INTERVAL_SECONDS`）调一次 `purge_expired_logins(now)`，一轮出错记日志、不退出。Task 7 的对账挂进同一个周期任务。`return_to` 最长 512；运维手册要求反向代理对 `/v1/auth/feishu/*` 限速（Task 4 审查修正） |
+| 未认证的回调能让平台去调飞书 | `state` 不符合 `^[A-Za-z0-9_-]{43}$`（`token_urlsafe(32)` 的形状）直接 `state_invalid`、不查库；`code` 超过 512 个字符或不全是可见 ASCII 按 `identity_unavailable`（选它而不是 `state_invalid`：与「回调没有 code」同一类），不调飞书；每个租户同时在调飞书的登录最多 8 个（`identity/limits.py` 的 `TenantCallLimit`），再来的最多排队 5 秒，超时按 `identity_unavailable`（Task 4 审查修正） |
+| 每次登录签发新令牌 | 另加：回调成功时，浏览器带着（恰好一个）有效的旧登录 cookie 的，它对应的旧登录会话作废（Task 4 审查修正） |
+| 第 12 节「授权码不进日志」 | 平台自己的日志本来就不记；`xuanpu serve` 另给 `uvicorn.access` 装过滤器，回调请求行的查询串抹成 `?…`。反向代理的访问日志由部署方处理（运维手册）（Task 4 审查修正） |
+| `session_ttl_seconds` 只有下限 | 加上限 30 天（2592000）：平台配置 `identity.session_ttl_seconds` 与 `PUT /v1/identity/feishu` 都校验（Task 4 审查修正） |
+| 飞书客户端的超时与出口 | 每次请求一个总时限（`asyncio.timeout`，10 秒，含读完响应体）；响应体边读边数，超过 1 MiB 按 `unavailable`；不读环境代理，平台只直连 `feishu_open_base`（授权页由浏览器访问），写进运维手册（Task 4 审查修正） |
+| 指标的结果取值 | `metrics.py` 自己写一份 `LoginResult`（`Literal`），运行时不依赖身份域；测试守着它与 `LoginFailureReason` 一致（Task 4 审查修正） |
 | `identity_config_updated` 只记名字与 `app_id` | 审计按键名脱敏，会把 `app_secret_ref`、`verification_token_ref` 的取值（这里只是名字）抹掉，`data` 改为 `app_id`、`session_ttl_seconds`、`refs: {app, encrypt, verification}`（Task 4） |
 | 飞书客户端的装配 | `Platform` 用 `identity_settings` 的两个基地址建 `FeishuClient`（`feishu_transport` 可注入，`close()` 时关闭），交给 `IdentityService`，登录流程放 `identity/login.py` 的 `FeishuLogin`（`IdentityService.login`）。测试夹具在平台装配后替换 `IdentityService.login.feishu` 接模拟飞书（根 `tests/conftest.py` 不加参数）（Task 4） |
 

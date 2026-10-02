@@ -197,12 +197,14 @@ class Platform:
         )
 
     async def start(self) -> None:
-        """清掉上次进程留下的暂存残留，再启动后台任务。"""
+        """清掉上次进程留下的暂存残留，再启动后台任务（会话续期、身份域的周期清理）。"""
         await self.packages.start()
         await self.sessions.start()
+        self.identity.start()
 
     async def close(self) -> None:
-        """停止接单、等在途对话跑完、释放会话、关闭运行时，最后关掉飞书客户端的连接。"""
+        """停止接单、等在途对话跑完、释放会话、关闭运行时，最后停掉身份域的周期任务、关掉飞书
+        客户端的连接。"""
         await self.sessions.shutdown(drain_seconds=self._drain_seconds)
         await self.runtimes.close()
         await self.identity.close()

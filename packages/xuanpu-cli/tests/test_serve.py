@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import os
 import signal
 import socket
@@ -15,8 +16,9 @@ from typing import TYPE_CHECKING
 import httpx
 import pytest
 from fastapi import FastAPI
-from xuanpu_cli.main import uvicorn_config
+from xuanpu_cli.main import FEISHU_CALLBACK_PATH, CallbackQueryFilter, uvicorn_config
 from xuanpu_server.config import ServerConfig
+from xuanpu_server.identity.urls import CALLBACK_PATH
 from xuanpu_server.tenancy import generate_root_key
 
 if TYPE_CHECKING:
@@ -44,6 +46,56 @@ def server_config(tmp_path: Path, **overrides: object) -> ServerConfig:
             **overrides,
         }
     )
+
+
+def _access_record(path: str) -> logging.LogRecord:
+    """uvicorn 写访问日志时那样的一条记录。"""
+    return logging.LogRecord(
+        "uvicorn.access",
+        logging.INFO,
+        __file__,
+        1,
+        '%s - "%s %s HTTP/%s" %d',
+        ("10.0.0.1:5000", "GET", path, "1.1", 302),
+        None,
+    )
+
+
+@pytest.mark.parametrize(
+    ("path", "logged"),
+    [
+        (
+            "/v1/auth/feishu/callback?code=secret-code&state=s1",
+            '10.0.0.1:5000 - "GET /v1/auth/feishu/callback?… HTTP/1.1" 302',
+        ),
+        (
+            "/v1/auth/feishu/callback",
+            '10.0.0.1:5000 - "GET /v1/auth/feishu/callback HTTP/1.1" 302',
+        ),
+        (
+            "/v1/auth/feishu/login?tenant=acme",
+            '10.0.0.1:5000 - "GET /v1/auth/feishu/login?tenant=acme HTTP/1.1" 302',
+        ),
+        (
+            "/v1/sessions?code=x",
+            '10.0.0.1:5000 - "GET /v1/sessions?code=x HTTP/1.1" 302',
+        ),
+    ],
+)
+def test_access_log_hides_the_callback_query(path: str, logged: str) -> None:
+    """访问日志里飞书登录回调的查询串（授权码、state）抹成 ``?…``，别的请求行原样。"""
+    record = _access_record(path)
+    assert CallbackQueryFilter().filter(record) is True
+    assert record.getMessage() == logged
+    assert FEISHU_CALLBACK_PATH == CALLBACK_PATH
+
+
+def test_serve_installs_the_access_log_filter(tmp_path: Path) -> None:
+    """构造 HTTP 服务器配置时给 ``uvicorn.access`` 装上过滤器，装一次（重复构造也只有一个）。"""
+    uvicorn_config(FastAPI(), server_config(tmp_path))
+    uvicorn_config(FastAPI(), server_config(tmp_path))
+    access = logging.getLogger("uvicorn.access")
+    assert [type(item) for item in access.filters].count(CallbackQueryFilter) == 1
 
 
 @pytest.mark.parametrize(("drain", "expected"), [(30.0, 35), (0.0, 5), (7.5, 13)])

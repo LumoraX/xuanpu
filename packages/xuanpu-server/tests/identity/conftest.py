@@ -18,17 +18,23 @@ from urllib.parse import parse_qs, urlsplit
 
 import httpx
 import pytest
+from prometheus_client.parser import text_string_to_metric_families
 from xuanpu_server.api import create_app
 from xuanpu_server.controlplane import InMemoryControlPlane
 from xuanpu_server.controlplane.models import AuditQuery
 from xuanpu_server.identity import LoginSession, UserRecord, new_user_id
 from xuanpu_server.identity.config import IdentityConfig
-from xuanpu_server.identity.cookies import login_cookie_name, new_login_token
+from xuanpu_server.identity.cookies import (
+    login_attempt_cookie_name,
+    login_cookie_name,
+    new_login_token,
+)
 from xuanpu_server.identity.feishu import FeishuClient
 from xuanpu_server.identity.service import IdentitySettings
 from xuanpu_server.platform import ROOT_PRINCIPAL
 
 if TYPE_CHECKING:
+    import asyncio
     from collections.abc import AsyncIterator
 
     from xuanpu_server.controlplane.models import AuditRecord
@@ -49,6 +55,8 @@ SECRET_REFS = {
     "verification_token_ref": "feishu-verification-token",
 }
 """飞书配置引用的三个密钥名。"""
+LANDING = "/console/"
+"""默认的落地页（``identity.login_landing_path``）。"""
 _TOKEN_PATH = "/open-apis/authen/v2/oauth/token"
 _USER_INFO_PATH = "/open-apis/authen/v1/user_info"
 
@@ -70,7 +78,8 @@ class FakeFeishu:
 
     换令牌时像真的飞书一样核对：App ID 与 App Secret、授权码只能用一次、``redirect_uri`` 与授权时
     一致、PKCE 校验串与 challenge 对得上。``fail`` 按接口（``token``、``user_info``）注入失败：值是
-    响应就原样返回，是异常就抛出（模拟网络错误）。
+    响应就原样返回，是异常就抛出（模拟网络错误）。``hold`` 给了的话，换令牌的请求先等它被置位
+    （``in_flight`` 是正卡在那里的请求数），用来测并发上限。
     """
 
     accounts_base: str
@@ -78,6 +87,8 @@ class FakeFeishu:
     tokens: dict[str, FeishuPerson] = field(default_factory=dict)
     fail: dict[str, httpx.Response | Exception] = field(default_factory=dict)
     requests: list[httpx.Request] = field(default_factory=list)
+    hold: asyncio.Event | None = None
+    in_flight: int = 0
 
     @staticmethod
     def person(**fields: Any) -> FeishuPerson:
@@ -102,12 +113,18 @@ class FakeFeishu:
         self.grants[code] = (person, query["code_challenge"], query["redirect_uri"])
         return query["state"], code
 
-    def handle(self, request: httpx.Request) -> httpx.Response:
+    async def handle(self, request: httpx.Request) -> httpx.Response:
         """按路径分派；先看有没有注入的失败。"""
         self.requests.append(request)
         name = {_TOKEN_PATH: "token", _USER_INFO_PATH: "user_info"}.get(request.url.path)
         if name is None:
             return httpx.Response(404, json={"code": 404, "msg": "not found"})
+        if name == "token" and self.hold is not None:
+            self.in_flight += 1
+            try:
+                await self.hold.wait()
+            finally:
+                self.in_flight -= 1
         injected = self.fail.get(name)
         if isinstance(injected, Exception):
             raise injected
@@ -246,6 +263,103 @@ class IdentityWorld:
         await platform.identity.put_feishu_config(
             admin, app_id=APP_ID, session_ttl_seconds=session_ttl_seconds, **SECRET_REFS
         )
+
+    # --- 浏览器的几个动作（飞书登录）---
+    # cookie 一律由用例显式带，每次请求后清掉 httpx 的 cookie 罐
+
+    async def get(self, path: str, **kwargs: Any) -> httpx.Response:
+        """发一个 GET，然后清掉 httpx 的 cookie 罐。"""
+        response = await self.http.get(path, **kwargs)
+        self.http.cookies.clear()
+        return response
+
+    async def begin(self, **params: str) -> httpx.Response:
+        """开始登录。"""
+        return await self.get("/v1/auth/feishu/login", params=params)
+
+    async def callback(
+        self, *, binding: str | None, cookies: str | None = None, **params: str
+    ) -> httpx.Response:
+        """飞书跳回平台。``binding`` 是浏览器带的登录尝试 cookie（None 是没带）；``cookies`` 是
+        另外原样带上的 ``Cookie`` 内容。"""
+        parts = [f"{login_attempt_cookie_name(self.secure)}={binding}"] if binding else []
+        parts += [cookies] if cookies else []
+        headers = {"Cookie": "; ".join(parts)} if parts else {}
+        return await self.get("/v1/auth/feishu/callback", params=params, headers=headers)
+
+    async def authorize(self, person: dict[str, Any], **params: str) -> tuple[str, str, str]:
+        """开始登录并在飞书授权页点同意，返回 ``(state, code, 登录尝试 cookie)``。"""
+        started = await self.begin(**{"tenant": "acme", **params})
+        assert started.status_code == 302, started.text
+        binding = self.cookie_value(started, login_attempt_cookie_name(self.secure))
+        state, code = self.feishu.authorize(
+            started.headers["location"], self.feishu.person(**person)
+        )
+        return state, code, binding
+
+    async def feishu_login(self, person: dict[str, Any], **params: str) -> httpx.Response:
+        """完整走一遍飞书登录，返回回调的响应。"""
+        state, code, binding = await self.authorize(person, **params)
+        return await self.callback(binding=binding, state=state, code=code)
+
+    def session_token(self, response: httpx.Response) -> str:
+        """回调响应写入的登录令牌。"""
+        return self.cookie_value(response, self.cookie_name)
+
+    @staticmethod
+    def set_cookies(response: httpx.Response) -> dict[str, str]:
+        """响应里的 ``Set-Cookie``：cookie 名 → 整行。"""
+        headers = response.headers.get_list("set-cookie")
+        return {header.split("=", 1)[0]: header for header in headers}
+
+    @classmethod
+    def cookie_value(cls, response: httpx.Response, name: str) -> str:
+        """响应写入的某个 cookie 的取值。"""
+        return cls.set_cookies(response)[name].split(";", 1)[0].split("=", 1)[1]
+
+    @staticmethod
+    def attributes(header: str) -> set[str]:
+        """一行 ``Set-Cookie`` 里除取值之外的属性（小写）。"""
+        return {part.strip().lower() for part in header.split(";")[1:]}
+
+    @staticmethod
+    def login_error(response: httpx.Response) -> str | None:
+        """跳回落地页的 ``login_error``；不是跳回落地页带原因的返回 None。"""
+        parts = urlsplit(response.headers["location"])
+        return parse_qs(parts.query).get("login_error", [None])[0]
+
+    def attempt_cleared(self, response: httpx.Response) -> bool:
+        """响应清掉了登录尝试 cookie。"""
+        name = login_attempt_cookie_name(self.secure)
+        header = self.set_cookies(response).get(name, "")
+        return header.startswith(f'{name}="";') and "max-age=0" in self.attributes(header)
+
+    def logins(self) -> dict[str, float]:
+        """``xuanpu_logins_total`` 各个 ``result`` 的计数。"""
+        text = self.world.platform.metrics.render().decode()
+        return {
+            sample.labels["result"]: sample.value
+            for family in text_string_to_metric_families(text)
+            if family.name == "xuanpu_logins"
+            for sample in family.samples
+        }
+
+    async def assert_login_failed(
+        self, response: httpx.Response, reason: str, *, audited: bool = False
+    ) -> None:
+        """跳回落地页并带上原因；没有写登录 cookie；计了一次失败。``audited`` 为真时最后一条
+        ``login_failed`` 是这个原因，否则租户 acme 里一条 ``login_failed`` 都没有。"""
+        assert response.status_code == 302
+        assert response.headers["location"] == f"{LANDING}?login_error={reason}"
+        assert response.headers["cache-control"] == "no-store"
+        assert self.cookie_name not in self.set_cookies(response)
+        assert self.logins()[reason] >= 1
+        records = await self.audit("login_failed")
+        if audited:
+            assert records[-1].data == {"reason": reason}
+            assert records[-1].source == "control"
+        else:
+            assert records == []
 
     async def audit(self, kind: str) -> list[AuditRecord]:
         """租户 acme 里某种审计记录。"""

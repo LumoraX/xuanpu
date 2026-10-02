@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import json
@@ -18,6 +19,7 @@ import httpx
 import pytest
 from xuanpu_server.identity.feishu import (
     MAX_BATCH_USERS,
+    MAX_RESPONSE_BYTES,
     AccessToken,
     FeishuClient,
     FeishuError,
@@ -347,6 +349,37 @@ async def test_tenant_access_token_error_hides_the_secret(caplog: pytest.LogCapt
         await _client(handler).tenant_access_token(app_id=APP_ID, app_secret=SECRET)
     assert (caught.value.kind, caught.value.code) == ("denied", 10014)
     _assert_clean(str(caught.value), repr(caught.value), caplog.text)
+
+
+async def test_oversized_response_is_unavailable() -> None:
+    """响应体超过 1 MiB：不再往下读，按 unavailable。"""
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        """一个超大的响应体。"""
+        return httpx.Response(200, content=b" " * (MAX_RESPONSE_BYTES + 1))
+
+    with pytest.raises(FeishuError) as caught:
+        await _exchange(_client(handler))
+    assert (caught.value.kind, caught.value.status) == ("unavailable", 200)
+    assert "1 MiB" in str(caught.value)
+
+
+async def test_whole_request_has_a_deadline() -> None:
+    """每次请求有一个总时限（不只是 httpx 按环节计的超时）：对端迟迟不给完响应，到点按
+    unavailable。"""
+
+    async def handler(_: httpx.Request) -> httpx.Response:
+        """一直不响应。"""
+        await asyncio.sleep(10)
+        return _json(200, {"code": 0})
+
+    client = FeishuClient(
+        OPEN, ACCOUNTS, transport=httpx.MockTransport(handler), timeout_seconds=0.05
+    )
+    with pytest.raises(FeishuError) as caught:
+        await _exchange(client)
+    assert caught.value.kind == "unavailable"
+    assert "超时" in str(caught.value)
 
 
 async def test_client_closes() -> None:

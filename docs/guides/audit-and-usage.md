@@ -64,11 +64,11 @@
 | `turn_cancel_requested` | 停止生成（确有在途对话被停时才记） | `submission_ids`：停了哪些 |
 | `user_created` | 员工首次[飞书登录](../architecture/http-api.md#飞书登录)，平台自动给他建账号 | `provider`（`feishu`）、`display_name`、`role`（总是 `tenant_member`） |
 | `login_succeeded` | 飞书登录成功 | `provider` |
-| `login_failed` | 飞书登录失败。只在知道是哪个租户时记（登录链接里的 `state` 不存在、租户不存在时不记） | `reason`：失败原因，取值见[接口文档的 `login_error` 表](../architecture/http-api.md#飞书登录) |
+| `login_failed` | 飞书登录失败，而且飞书确实认出了一个人：`not_in_app_scope`（不在应用的可用范围内）、`tenant_mismatch`（飞书企业不符）、`user_disabled`（员工已停用）。别的失败原因（员工拒绝授权、登录链接失效、租户不可用、调飞书失败）只计指标 `xuanpu_logins_total`、记平台日志，不写审计——登录接口不需要凭据，否则谁都能往审计里灌记录 | `reason`：失败原因，含义见[接口文档的 `login_error` 表](../architecture/http-api.md#飞书登录) |
 | `logout` | 员工退出浏览器登录 | — |
 | `identity_config_updated` | 写入或替换租户的[飞书配置](../architecture/http-api.md#飞书配置) | `app_id`、`session_ttl_seconds`、`refs`（App Secret、Encrypt Key、Verification Token 在保管库里的名字：`app`、`encrypt`、`verification`），没有明文 |
 
-飞书登录的三种记录（`user_created`、`login_succeeded`、`login_failed`）发生在调用者有身份之前：认出了员工的，`actor` 是 `user:<员工标识>`、`user_id` 是他；还没认出是谁的（如飞书报错、飞书企业不符）`actor` 是 `anonymous`、`user_id` 为空。授权码、飞书令牌与 App Secret 一概不进审计。
+飞书登录的三种记录（`user_created`、`login_succeeded`、`login_failed`）发生在调用者有身份之前：认出了员工的，`actor` 是 `user:<员工标识>`、`user_id` 是他；飞书认出了人、平台里还对不上是谁的（不在可用范围、飞书企业不符）`actor` 是 `anonymous`、`user_id` 为空。授权码、飞书令牌与 App Secret 一概不进审计。
 
 ### `gate`：连接器被调用了
 

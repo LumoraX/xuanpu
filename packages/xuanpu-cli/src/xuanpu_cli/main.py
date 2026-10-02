@@ -10,6 +10,7 @@ import argparse
 import asyncio
 import base64
 import json
+import logging
 import math
 import os
 import sys
@@ -143,6 +144,37 @@ def _console_dir() -> Path | None:
     return static_dir()
 
 
+FEISHU_CALLBACK_PATH = "/v1/auth/feishu/callback"
+"""飞书登录的回调路径：查询串里有授权码，访问日志里要抹掉。
+
+与 ``identity.urls.CALLBACK_PATH`` 相同（有测试守着）。"""
+
+
+class CallbackQueryFilter(logging.Filter):
+    """把 uvicorn 访问日志里飞书登录回调的查询串抹成 ``?…``：那里有授权码与 state。
+
+    uvicorn 记访问日志时，参数依次是客户端地址、方法、带查询串的路径、HTTP 版本、状态码；这里只改
+    第三个，记录照常输出。授权码 5 分钟有效、只能用一次，换令牌还要平台自己保管的 PKCE 校验串，
+    但「授权码不进日志」（设计第 12 节）不该靠这些兜底。
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """抹掉回调请求行的查询串；别的记录原样放行。"""
+        args = record.args
+        if isinstance(args, tuple) and len(args) == 5 and isinstance(args[2], str):
+            path, sep, _ = args[2].partition("?")
+            if sep and path == FEISHU_CALLBACK_PATH:
+                record.args = (args[0], args[1], f"{path}?…", args[3], args[4])
+        return True
+
+
+def install_access_log_filter() -> None:
+    """给 ``uvicorn.access`` 装上 ``CallbackQueryFilter``；已经装过就不再装。"""
+    access = logging.getLogger("uvicorn.access")
+    if not any(isinstance(item, CallbackQueryFilter) for item in access.filters):
+        access.addFilter(CallbackQueryFilter())
+
+
 GRACEFUL_SHUTDOWN_MARGIN_SECONDS = 5
 """HTTP 服务器停机时等已打开的响应发完的时限，比 ``shutdown_drain_seconds`` 多出的余量。"""
 
@@ -154,10 +186,13 @@ def uvicorn_config(app: FastAPI, config: ServerConfig) -> uvicorn.Config:
     对话 ``shutdown_drain_seconds``）。前一段原本没有时限，一轮对话跑多久就等多久；这里给它
     ``shutdown_drain_seconds`` 加 5 秒，到期 uvicorn 取消还没发完的响应，那几轮对话转到后台，
     由平台关闭时的那一段收尾。uvicorn 的这一项只收整秒，带小数的向上取整（只会多等，不会少等）。
+
+    访问日志装上 ``CallbackQueryFilter``（飞书登录回调的授权码不进日志）。uvicorn 在构造配置时
+    重设日志，所以过滤器在构造之后再装。
     """
     import uvicorn
 
-    return uvicorn.Config(
+    built = uvicorn.Config(
         app,
         host=config.listen.host,
         port=config.listen.port,
@@ -165,6 +200,8 @@ def uvicorn_config(app: FastAPI, config: ServerConfig) -> uvicorn.Config:
         timeout_graceful_shutdown=math.ceil(config.shutdown_drain_seconds)
         + GRACEFUL_SHUTDOWN_MARGIN_SECONDS,
     )
+    install_access_log_filter()
+    return built
 
 
 async def _serve(config: ServerConfig) -> int:
