@@ -85,6 +85,7 @@ def _attempt(state: str, tenant: str = "acme", *, at: float = 100.0) -> LoginAtt
         return_to="/console/",
         created_at=at,
         expires_at=at + 600,
+        cookie_hash="c" * 64,
     )
 
 

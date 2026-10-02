@@ -19,6 +19,7 @@ from xuanpu_server.errors import (
     PermissionDeniedError,
 )
 from xuanpu_server.evals import EvalRunner
+from xuanpu_server.identity.feishu import DEFAULT_TIMEOUT_SECONDS, FeishuClient
 from xuanpu_server.identity.service import IdentityService
 from xuanpu_server.ids import new_id
 from xuanpu_server.metrics import PlatformMetrics
@@ -51,6 +52,8 @@ from xuanpu_server.tenancy import (
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
+
+    import httpx
 
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.identity.service import IdentitySettings
@@ -92,6 +95,7 @@ class Platform:
         instance_id: str | None = None,
         lease_seconds: float = 60.0,
         shutdown_drain_seconds: float = 0.0,
+        feishu_transport: httpx.AsyncBaseTransport | None = None,
         now: Callable[[], float] = time.time,
     ) -> None:
         """
@@ -116,6 +120,8 @@ class Platform:
             instance_id: 本实例的标识；None 则随机生成。
             lease_seconds: 会话租约时长。
             shutdown_drain_seconds: 关闭时给在途对话多少时间跑完。
+            feishu_transport: 调飞书接口用的 httpx 传输；None 用默认的（直连飞书）。飞书的两个
+                基地址来自 ``identity_settings``。
             now: 取当前时间的函数，测试时可替换。
         """
         # 内核 MCP 客户端会把连接器 stdout 上的非 JSON 行原样写进日志；平台装配时给这些
@@ -143,6 +149,15 @@ class Platform:
             store=identity_store,
             control_plane=store,
             settings=identity_settings,
+            vault=vault,
+            audit=self.audit,
+            feishu=FeishuClient(
+                identity_settings.feishu_open_base,
+                identity_settings.feishu_accounts_base,
+                transport=feishu_transport,
+                timeout_seconds=DEFAULT_TIMEOUT_SECONDS,
+            ),
+            metrics=self.metrics,
             now=now,
         )
         self.quota = QuotaGuard(store, now=now)
@@ -187,9 +202,10 @@ class Platform:
         await self.sessions.start()
 
     async def close(self) -> None:
-        """停止接单、等在途对话跑完、释放会话、关闭运行时。"""
+        """停止接单、等在途对话跑完、释放会话、关闭运行时，最后关掉飞书客户端的连接。"""
         await self.sessions.shutdown(drain_seconds=self._drain_seconds)
         await self.runtimes.close()
+        await self.identity.close()
 
     # --- 认证 ---
 

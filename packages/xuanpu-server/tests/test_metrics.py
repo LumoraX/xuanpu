@@ -33,6 +33,7 @@ FAMILIES = {
     "xuanpu_gate_backfill_failures": "counter",
     "xuanpu_usage_estimated": "counter",
     "xuanpu_usage_write_failures": "counter",
+    "xuanpu_logins": "counter",
 }
 
 
@@ -362,7 +363,7 @@ async def test_metrics_carry_no_tenant_session_or_secret(
     ):
         assert secret not in text, secret
     labels = {name for _, pairs in samples(text) for name, _ in pairs}
-    assert labels == {"outcome", "transport", "decision", "stage"}
+    assert labels == {"outcome", "transport", "decision", "stage", "result"}
 
 
 # --- 每个平台各自一份 ---

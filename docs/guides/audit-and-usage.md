@@ -32,7 +32,7 @@
 | `source` | 来源，三种之一：`control`、`gate`、`engine` |
 | `kind` | 事件类型 |
 | `at` | 发生时间，Unix 秒 |
-| `actor` | 谁触发的。用 API key 的是 `key:<API key 标识>`（根凭据是 `key:root`）；浏览器登录的员工是 `user:<员工标识>`；代员工调用是 `key:<API key 标识>/user:<员工标识>`（见[认证](../architecture/http-api.md#认证)）；模型驱动的是 `engine` |
+| `actor` | 谁触发的。用 API key 的是 `key:<API key 标识>`（根凭据是 `key:root`）；浏览器登录的员工是 `user:<员工标识>`；代员工调用是 `key:<API key 标识>/user:<员工标识>`（见[认证](../architecture/http-api.md#认证)）；模型驱动的是 `engine`；飞书登录失败、还没认出是哪名员工时是 `anonymous` |
 | `session_id` | 关联的会话；与会话无关的操作为空 |
 | `stream`、`seq` | 只有内核事件有：事件流的标识与流内序号 |
 | `data` | 事件内容 |
@@ -62,6 +62,13 @@
 | `message_sent` | 用户发出一条消息 | `submission_id`、`text` |
 | `suspension_resolved_by` | 送回审批决定 | `submission_id`、`decisions`（待办标识 → 批准与否） |
 | `turn_cancel_requested` | 停止生成（确有在途对话被停时才记） | `submission_ids`：停了哪些 |
+| `user_created` | 员工首次[飞书登录](../architecture/http-api.md#飞书登录)，平台自动给他建账号 | `provider`（`feishu`）、`display_name`、`role`（总是 `tenant_member`） |
+| `login_succeeded` | 飞书登录成功 | `provider` |
+| `login_failed` | 飞书登录失败。只在知道是哪个租户时记（登录链接里的 `state` 不存在、租户不存在时不记） | `reason`：失败原因，取值见[接口文档的 `login_error` 表](../architecture/http-api.md#飞书登录) |
+| `logout` | 员工退出浏览器登录 | — |
+| `identity_config_updated` | 写入或替换租户的[飞书配置](../architecture/http-api.md#飞书配置) | `app_id`、`session_ttl_seconds`、`refs`（App Secret、Encrypt Key、Verification Token 在保管库里的名字：`app`、`encrypt`、`verification`），没有明文 |
+
+飞书登录的三种记录（`user_created`、`login_succeeded`、`login_failed`）发生在调用者有身份之前：认出了员工的，`actor` 是 `user:<员工标识>`、`user_id` 是他；还没认出是谁的（如飞书报错、飞书企业不符）`actor` 是 `anonymous`、`user_id` 为空。授权码、飞书令牌与 App Secret 一概不进审计。
 
 ### `gate`：连接器被调用了
 

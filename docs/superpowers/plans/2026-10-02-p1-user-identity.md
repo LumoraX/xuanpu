@@ -44,6 +44,13 @@
 | 「只有租户管理员或平台管理员能签发带 `can_act_as_user` 的 key」 | 现有规则里签发本身就只有这两种调用者能做（成员、被代调用的成员一律 403），不另设规则；有测试守着（Task 3） |
 | `GET /v1/me` 按调用者返回不同内容 | 四种调用者同一个形状：`actor`、`role`（生效角色）、`tenant_id`、`key_id`、`user_id`、`display_name`，用不上的为 `null`；代表员工时比认证多查一次员工记录（只在页面加载时调）；通过认证却查不到员工记录按内部错误 500 处理（Task 3） |
 | 设计第 11 节的默认值 | 只写在 `identity/config.py` 的 `IdentityConfig` 里；运行时的 `IdentitySettings` 没有默认值，一律经 `IdentitySettings.from_config` 构造（Task 3 修正） |
+| 回调「按 state 取出登录尝试」即可 | **对设计的加固**（防登录伪造：别人把自己那次登录的回调链接发给员工）：开始登录时另写登录尝试 cookie（`cookie_secure` 时 `__Host-xuanpu_login`，否则 `xuanpu_login`；HttpOnly、SameSite=Lax、Path=/、10 分钟），值是独立随机数，登录尝试里只存摘要（`LoginAttempt.cookie_hash`，迁移 0004 的 `login_attempt` 表加 `cookie_hash` 列）；回调时缺失、不符、同名不止一个都按 `state_invalid`，且不拿授权码换令牌；回调的响应总清掉它（Task 4） |
+| 启用飞书登录但 `public_url` 未配置：PUT 报 400 或启动时报错，选一个 | 选 `PUT /v1/identity/feishu` 报 `400 invalid_request`；开始登录时没配同样按 `tenant_unavailable` 跳回落地页（Task 4） |
+| 设计第 3 节「实现时要再对照文档确认的」三项 | 2026-10-02 对照飞书开放平台文档核对：应用身份令牌接口与参数如设计所写，令牌在响应顶层 `tenant_access_token`、`expire`（最长 2 小时）；URL 验证（未加密）是 `{"challenge", "token", "type": "url_verification"}`，加密时整体在 `encrypt` 里，要在 1 秒内回 `{"challenge": …}`；事件推送要在 3 秒内回 HTTP 200，失败按 15 秒、5 分钟、1 小时、6 小时重推，最多 4 次（Task 4 核对，Task 6、7 用） |
+| 飞书接口的错误 | `FeishuError` 分三类：`not_in_app_scope`（20010）、`denied`（4xx，或 HTTP 200 而 `code` 不为 0）、`unavailable`（网络、5xx、429、重定向、响应不合预期）。登录里只有第一类是 `not_in_app_scope`，后两类都是 `identity_unavailable`（含授权码无效或过期、App Secret 不对）（Task 4） |
+| `login_succeeded`、`login_failed`、`user_created` 由谁写 | 登录走完之前调用者没有 `Principal`，经 `AuditLog.login` 写：认出员工的 `actor` 是 `user:<user_id>`，否则是 `anonymous`；`login_failed` 只在知道是哪个、且存在的租户时写（state 不存在、租户不存在时只计指标、记日志）。文档覆盖测试同时扫 `.control(` 与 `.login(`（Task 4） |
+| `identity_config_updated` 只记名字与 `app_id` | 审计按键名脱敏，会把 `app_secret_ref`、`verification_token_ref` 的取值（这里只是名字）抹掉，`data` 改为 `app_id`、`session_ttl_seconds`、`refs: {app, encrypt, verification}`（Task 4） |
+| 飞书客户端的装配 | `Platform` 用 `identity_settings` 的两个基地址建 `FeishuClient`（`feishu_transport` 可注入，`close()` 时关闭），交给 `IdentityService`，登录流程放 `identity/login.py` 的 `FeishuLogin`（`IdentityService.login`）。测试夹具在平台装配后替换 `IdentityService.login.feishu` 接模拟飞书（根 `tests/conftest.py` 不加参数）（Task 4） |
 
 ---
 

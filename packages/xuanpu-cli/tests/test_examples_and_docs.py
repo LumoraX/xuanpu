@@ -224,15 +224,15 @@ def test_every_manifest_field_is_documented() -> None:
 
 
 def test_every_audit_kind_is_documented() -> None:
-    """审计手册覆盖平台自己写入的全部事件类型。"""
+    """审计手册覆盖平台自己写入的全部事件类型：控制面操作（``.control``），以及飞书登录流程
+    （``.login``，那时调用者还没有身份）。"""
     kinds: set[str] = {"connector_call", "turn_text", "audit_gap", "usage_estimated"}
     for path in SERVER_SRC.rglob("*.py"):
-        kinds |= set(
-            re.findall(
-                r'\.control\(\s*\w+,\s*[\w.]+,\s*"([a-z_]+)"', path.read_text(encoding="utf-8")
-            )
-        )
+        source = path.read_text(encoding="utf-8")
+        kinds |= set(re.findall(r'\.control\(\s*\w+,\s*[\w.]+,\s*"([a-z_]+)"', source))
+        kinds |= set(re.findall(r'\.login\(\s*[\w.]+,\s*"([a-z_]+)"', source))
     assert {"message_sent", "suspension_resolved_by", "tenant_created"} <= kinds
+    assert {"login_succeeded", "login_failed", "user_created", "logout"} <= kinds
     assert _missing(kinds, _read("docs/guides/audit-and-usage.md")) == []
 
 

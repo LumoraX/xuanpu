@@ -80,13 +80,15 @@ CREATE INDEX "${prefix}login_session_expiry_idx"
     ON "${schema}"."${prefix}login_session" (expires_at);
 
 -- 进行中的登录（授权页往返）。取出即删；放在库里是为了多个实例都能认。没走完的由维护任务清理。
+-- cookie_hash 是登录尝试 cookie 的摘要：回调时浏览器出示的 cookie 必须与它对上（防登录伪造）。
 CREATE TABLE "${schema}"."${prefix}login_attempt" (
     state         TEXT PRIMARY KEY,
     tenant_id     TEXT NOT NULL REFERENCES "${schema}"."${prefix}tenant" (tenant_id),
     code_verifier TEXT NOT NULL,
     return_to     TEXT NOT NULL,
     created_at    DOUBLE PRECISION NOT NULL,
-    expires_at    DOUBLE PRECISION NOT NULL
+    expires_at    DOUBLE PRECISION NOT NULL,
+    cookie_hash   TEXT NOT NULL
 );
 CREATE INDEX "${prefix}login_attempt_expiry_idx"
     ON "${schema}"."${prefix}login_attempt" (expires_at);

@@ -40,7 +40,9 @@ _CONFIG_COLUMNS = (
     "feishu_tenant_key, session_ttl_seconds"
 )
 _LOGIN_SESSION_COLUMNS = "token_hash, tenant_id, user_id, created_at, expires_at, last_seen_at"
-_LOGIN_ATTEMPT_COLUMNS = "state, tenant_id, code_verifier, return_to, created_at, expires_at"
+_LOGIN_ATTEMPT_COLUMNS = (
+    "state, tenant_id, code_verifier, return_to, created_at, expires_at, cookie_hash"
+)
 _USER_USAGE_COLUMNS = "tenant_id, day, user_id, input_tokens, output_tokens, total_tokens, turns"
 _RECONCILE_COLUMNS = "tenant_id, last_run_at, lease_owner, lease_expires_at"
 
@@ -185,13 +187,14 @@ class PostgresIdentityStore(PostgresUserTables):
         try:
             await self._execute(
                 f"INSERT INTO {self._t['login_attempt']} ({_LOGIN_ATTEMPT_COLUMNS}) "
-                "VALUES ($1, $2, $3, $4, $5, $6)",
+                "VALUES ($1, $2, $3, $4, $5, $6, $7)",
                 attempt.state,
                 attempt.tenant_id,
                 attempt.code_verifier,
                 attempt.return_to,
                 attempt.created_at,
                 attempt.expires_at,
+                attempt.cookie_hash,
             )
         except asyncpg.UniqueViolationError as exc:
             raise ConflictError("登录尝试的 state 冲突") from exc

@@ -11,7 +11,8 @@ prometheus_client 的进程级全局登记表）：同一进程里的几个平�
 改进程级的全局开关（会波及同进程里别的使用者）。这里计数记在本对象里，由一个自定义收集器在
 抓取时读出（prometheus_client 的标准用法）；三个 gauge 也在抓取时经回调现取当前值。
 
-打点的地方都经构造参数拿到本对象或它的方法（审计写入口、事件枢纽、拒绝补记），没有全局单例。
+打点的地方都经构造参数拿到本对象或它的方法（审计写入口、事件枢纽、拒绝补记、飞书登录），没有
+全局单例。
 """
 
 from __future__ import annotations
@@ -22,6 +23,8 @@ from prometheus_client import CollectorRegistry, generate_latest
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
 from xuanpu_spec.manifest import Transport
+
+from xuanpu_server.identity.models import LoginFailureReason
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -51,6 +54,9 @@ BACKFILL_STAGES: tuple[str, ...] = ("incomplete", "write", "unconfirmed")
 """``xuanpu_gate_backfill_failures_total`` 的 ``stage``：待办缺调用信息、写不进记录、等不到内核
 对那次送回的结论。读不到待办时整次送回失败、没有提交给内核，不算补记失败；送回在内核里排队时
 被停下（内核没处理它，待办还在）也不算。"""
+
+LOGIN_RESULTS: tuple[str, ...] = ("succeeded", *get_args(LoginFailureReason))
+"""``xuanpu_logins_total`` 的 ``result``：登录成功，或七种失败原因之一（设计 7.1）。"""
 
 
 class PlatformMetrics:
@@ -87,6 +93,7 @@ class PlatformMetrics:
             for decision in GATE_DECISIONS
         }
         self._backfill_failures = dict.fromkeys(BACKFILL_STAGES, 0)
+        self._logins = dict.fromkeys(LOGIN_RESULTS, 0)
         self._audit_write_failures = 0
         self._usage_estimated = 0
         self._usage_write_failures = 0
@@ -117,6 +124,10 @@ class PlatformMetrics:
     def usage_write_failed(self) -> None:
         """一轮对话结束时用量没有入账（写控制面失败；这一轮的用量不再补记）。"""
         self._usage_write_failures += 1
+
+    def login(self, result: str) -> None:
+        """一次飞书登录有了结果。``result`` 取 ``LOGIN_RESULTS`` 里的值。"""
+        self._logins[result] = self._logins.get(result, 0) + 1
 
     def render(self) -> bytes:
         """Prometheus 文本格式（0.0.4）。"""
@@ -150,6 +161,10 @@ class PlatformMetrics:
             "xuanpu_usage_write_failures", "一轮对话结束时用量入账失败的次数", [],
             {(): self._usage_write_failures},
         )  # fmt: skip
+        yield _counter(
+            "xuanpu_logins", "飞书登录的结果：成功，或失败原因", ["result"],
+            {(result,): count for result, count in self._logins.items()},
+        )  # fmt: skip
 
 
 def _counter(
@@ -178,6 +193,7 @@ __all__ = [
     "BACKFILL_STAGES",
     "CONNECTOR_TRANSPORTS",
     "GATE_DECISIONS",
+    "LOGIN_RESULTS",
     "TURN_OUTCOMES",
     "PlatformMetrics",
 ]

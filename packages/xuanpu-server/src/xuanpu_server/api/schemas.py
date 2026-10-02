@@ -112,6 +112,20 @@ class CancelBody(_Request):
     submission_id: str | None = Field(default=None, min_length=1, max_length=64)
 
 
+class FeishuConfigBody(_Request):
+    """租户的飞书配置（整体替换）。三个 ``*_ref`` 是保管库里密钥的名字，不是明文。
+
+    ``session_ttl_seconds`` 省略或为 null 时用平台默认（``identity.session_ttl_seconds``），最小
+    60，与平台配置的下限一致。
+    """
+
+    app_id: str = Field(min_length=1, max_length=128)
+    app_secret_ref: str
+    encrypt_key_ref: str
+    verification_token_ref: str
+    session_ttl_seconds: int | None = Field(default=None, ge=60)
+
+
 def tenant_view(tenant: Tenant) -> dict[str, Any]:
     """租户的对外表示。"""
     return {

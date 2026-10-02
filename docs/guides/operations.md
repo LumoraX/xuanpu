@@ -189,7 +189,7 @@ identity:
 | `identity.login_landing_path` | `/console/` | 登录完成或失败后的默认落地页。必须是站内路径：以 `/` 开头，不以 `//` 或 `/\` 开头，不含反斜杠与空白 |
 | `identity.feishu_open_base`、`identity.feishu_accounts_base` | `https://open.feishu.cn`、`https://accounts.feishu.cn` | 飞书开放接口与授权页的基地址，与 `public_url` 一样只写源、同样规整。接 Lark 国际版，或测试时指向模拟服务端才需要改 |
 
-飞书登录、对账的流程随飞书登录一起提供；在那之前，这一段只有 `public_url` 与 `cookie_secure` 影响认证。
+飞书登录的接口与租户的飞书配置见[接口文档的飞书登录一节](../architecture/http-api.md#飞书登录)：没配 `public_url` 时不能启用飞书登录（配置接口报 `400`，登录跳回落地页带 `login_error=tenant_unavailable`）。按飞书通讯录对账随后提供，在那之前 `identity.reconcile_interval_seconds` 不起作用。
 
 ## 初次部署
 
@@ -458,6 +458,7 @@ xuanpu_usage_estimated_total 1.0
 | `xuanpu_gate_backfill_failures_total` | counter | `stage` | 人工拒绝的过闸记录没补上的次数（`incomplete` 待办缺字段、`write` 写库失败、`unconfirmed` 等不到内核对那次送回的结论）。送回在内核里排队时就被停下的不算：内核没处理它，待办还在，可以再送 |
 | `xuanpu_usage_estimated_total` | counter | — | 被停下的一轮按上下文估算入账的次数 |
 | `xuanpu_usage_write_failures_total` | counter | — | 一轮对话结束时用量写库失败的次数。这一轮照常结束，但它的用量没有入账、不再补记：`/v1/usage` 与当天的 token 配额都会少算，查数据库 |
+| `xuanpu_logins_total` | counter | `result` | 飞书登录的结果：`succeeded`，或失败原因（`feishu_denied`、`not_in_app_scope`、`state_invalid`、`tenant_mismatch`、`tenant_unavailable`、`user_disabled`、`identity_unavailable`，含义见[接口文档](../architecture/http-api.md#飞书登录)）。`identity_unavailable` 持续上涨说明平台连不上飞书或应用凭据不对，看平台日志里「飞书登录失败」的告警 |
 
 指标不带租户标签（避免标签基数随租户数膨胀）；按租户看用量用 `GET /v1/usage`。
 

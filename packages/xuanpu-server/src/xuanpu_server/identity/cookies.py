@@ -1,4 +1,4 @@
-"""浏览器登录的 cookie，与 cookie 认证请求的防跨站请求伪造检查（设计 6.2，另有加固）。
+"""登录与登录尝试的 cookie，以及 cookie 认证请求的防跨站请求伪造检查（设计 6.2，另有加固）。
 
 **cookie**：值是 32 字节随机数（URL 安全的 base64）；HttpOnly、SameSite=Lax、Path=/，不带
 Domain。平台只存令牌的 SHA-256 摘要，令牌本身不落库。名字随 ``identity.cookie_secure``：
@@ -14,6 +14,13 @@ Domain。平台只存令牌的 SHA-256 摘要，令牌本身不落库。名字�
 **没有配置 ``public_url`` 时平台不认登录 cookie**（带 cookie 的请求按没有凭据处理，见
 ``api.auth``）：飞书登录要求 ``public_url``，没有它就不会签发 cookie；这样下面两条检查在认
 cookie 时总是都生效。
+
+**登录尝试 cookie**（对设计的加固，防登录伪造）：开始飞书登录时另写一个 cookie，值是独立的
+32 字节随机数，登录尝试里只存它的摘要；回调时浏览器出示的必须与摘要对上，回调的响应总把它清掉。
+没有它，别人可以把自己那次登录的回调链接发给员工，员工点开就以别人的身份登录了。名字同样随
+``identity.cookie_secure``：``__Host-xuanpu_login``（带 Secure）或 ``xuanpu_login``；HttpOnly、
+SameSite=Lax、Path=/，有效期与登录尝试相同。SameSite=Lax 的 cookie 在飞书授权页跳回平台（顶层
+GET 导航）时照样会带上。
 
 **防跨站请求伪造**：用 cookie 认证的写请求（GET、HEAD、OPTIONS 以外的方法）必须同时满足：
 
@@ -43,6 +50,10 @@ LOGIN_COOKIE = "xuanpu_session"
 """登录 cookie 的名字（``cookie_secure`` 为假时）。"""
 SECURE_LOGIN_COOKIE = "__Host-xuanpu_session"
 """登录 cookie 的名字（``cookie_secure`` 为真时）。"""
+LOGIN_ATTEMPT_COOKIE = "xuanpu_login"
+"""登录尝试 cookie 的名字（``cookie_secure`` 为假时）。"""
+SECURE_LOGIN_ATTEMPT_COOKIE = "__Host-xuanpu_login"
+"""登录尝试 cookie 的名字（``cookie_secure`` 为真时）。"""
 REQUESTED_BY_HEADER = "X-Requested-By"
 """cookie 认证的写请求必须带的头。"""
 REQUESTED_BY_VALUE = "xuanpu"
@@ -56,6 +67,11 @@ def login_cookie_name(secure: bool) -> str:
     return SECURE_LOGIN_COOKIE if secure else LOGIN_COOKIE
 
 
+def login_attempt_cookie_name(secure: bool) -> str:
+    """登录尝试 cookie 的名字：只走 HTTPS 时带 ``__Host-`` 前缀。"""
+    return SECURE_LOGIN_ATTEMPT_COOKIE if secure else LOGIN_ATTEMPT_COOKIE
+
+
 def new_login_token() -> tuple[str, str]:
     """签发一个登录令牌，返回 ``(令牌, 摘要)``。令牌只写进 cookie，库里只存摘要。"""
     token = secrets.token_urlsafe(32)
@@ -67,40 +83,58 @@ def login_token_hash(token: str) -> str:
     return hash_secret(token)
 
 
+def _set(response: Response, name: str, value: str, *, max_age: int, secure: bool) -> None:
+    """按模块说明的属性写一个 cookie。"""
+    response.set_cookie(
+        name, value, max_age=max_age, path="/", secure=secure, httponly=True, samesite="lax"
+    )
+
+
+def _clear(response: Response, name: str, *, secure: bool) -> None:
+    """清掉一个 cookie。名字与属性要与写入时相同，浏览器才认作同一个 cookie。"""
+    response.delete_cookie(name, path="/", secure=secure, httponly=True, samesite="lax")
+
+
 def set_login_cookie(response: Response, token: str, *, max_age: int, secure: bool) -> None:
     """把登录令牌写进 cookie。名字与属性见模块说明；``max_age`` 与登录会话的有效期一致。"""
-    response.set_cookie(
-        login_cookie_name(secure),
-        token,
-        max_age=max_age,
-        path="/",
-        secure=secure,
-        httponly=True,
-        samesite="lax",
-    )
+    _set(response, login_cookie_name(secure), token, max_age=max_age, secure=secure)
 
 
 def clear_login_cookie(response: Response, *, secure: bool) -> None:
-    """清掉浏览器里的登录 cookie。名字与属性要与写入时相同，浏览器才认作同一个 cookie。"""
-    response.delete_cookie(
-        login_cookie_name(secure), path="/", secure=secure, httponly=True, samesite="lax"
-    )
+    """清掉浏览器里的登录 cookie。"""
+    _clear(response, login_cookie_name(secure), secure=secure)
 
 
-def read_login_cookie(cookie_headers: Iterable[str], *, name: str) -> str | None:
-    """从请求的 ``Cookie`` 头（可能不止一个）里取登录令牌；没有这个 cookie 返回 None。
+def set_login_attempt_cookie(response: Response, value: str, *, max_age: int, secure: bool) -> None:
+    """写登录尝试 cookie。``max_age`` 与登录尝试的有效期一致。"""
+    _set(response, login_attempt_cookie_name(secure), value, max_age=max_age, secure=secure)
 
-    只认名字完全相同的（cookie 名区分大小写）；取值原样返回，不去引号（平台写的令牌不带引号）。
 
-    Raises:
-        AuthenticationError: 同名 cookie 出现不止一次（见模块说明；调用方不要因此清 cookie）。
+def clear_login_attempt_cookie(response: Response, *, secure: bool) -> None:
+    """清掉登录尝试 cookie（回调之后它就没用了）。"""
+    _clear(response, login_attempt_cookie_name(secure), secure=secure)
+
+
+def cookie_values(cookie_headers: Iterable[str], *, name: str) -> list[str]:
+    """从请求的 ``Cookie`` 头（可能不止一个）里取某个名字的全部取值，按出现顺序。
+
+    只认名字完全相同的（cookie 名区分大小写）；取值原样返回，不去引号（平台写的值不带引号）。
     """
-    values = [
+    return [
         value.strip()
         for header in cookie_headers
         for key, sep, value in (chunk.partition("=") for chunk in header.split(";"))
         if sep and key.strip() == name
     ]
+
+
+def read_login_cookie(cookie_headers: Iterable[str], *, name: str) -> str | None:
+    """从请求的 ``Cookie`` 头里取登录令牌；没有这个 cookie 返回 None。
+
+    Raises:
+        AuthenticationError: 同名 cookie 出现不止一次（见模块说明；调用方不要因此清 cookie）。
+    """
+    values = cookie_values(cookie_headers, name=name)
     if len(values) > 1:
         raise AuthenticationError("凭据无效")
     return values[0] if values else None
@@ -131,16 +165,22 @@ def check_cookie_request(method: str, headers: Mapping[str, str], *, public_orig
 
 
 __all__ = [
+    "LOGIN_ATTEMPT_COOKIE",
     "LOGIN_COOKIE",
     "REQUESTED_BY_HEADER",
     "REQUESTED_BY_VALUE",
     "SAFE_METHODS",
+    "SECURE_LOGIN_ATTEMPT_COOKIE",
     "SECURE_LOGIN_COOKIE",
     "check_cookie_request",
+    "clear_login_attempt_cookie",
     "clear_login_cookie",
+    "cookie_values",
+    "login_attempt_cookie_name",
     "login_cookie_name",
     "login_token_hash",
     "new_login_token",
     "read_login_cookie",
+    "set_login_attempt_cookie",
     "set_login_cookie",
 ]

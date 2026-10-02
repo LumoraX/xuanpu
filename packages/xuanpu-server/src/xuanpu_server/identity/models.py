@@ -15,6 +15,16 @@ from xuanpu_server.tenancy import TenantRole
 UserStatus = Literal["active", "disabled"]
 DisabledReason = Literal["feishu_resigned", "feishu_frozen", "feishu_exited", "admin"]
 IdentityProvider = Literal["feishu"]
+LoginFailureReason = Literal[
+    "feishu_denied",
+    "not_in_app_scope",
+    "state_invalid",
+    "tenant_mismatch",
+    "tenant_unavailable",
+    "user_disabled",
+    "identity_unavailable",
+]
+"""飞书登录失败的原因（设计 7.1），也是落地页 ``?login_error=`` 的取值。"""
 
 USER_ID_PREFIX = "usr"
 MAX_PAGE_SIZE = 1000
@@ -197,6 +207,8 @@ class LoginAttempt:
         return_to: 登录完成后的站内落地路径。
         created_at: 发起时间。
         expires_at: 到期时刻；有效期由服务层在建记录时算好。
+        cookie_hash: 登录尝试 cookie 里那个随机数的 SHA-256。回调时浏览器出示的 cookie 必须与它
+            对上，防登录伪造：别人把自己那次登录的回调链接发给员工，员工的浏览器没有对应的 cookie。
     """
 
     state: str
@@ -205,6 +217,7 @@ class LoginAttempt:
     return_to: str
     created_at: float
     expires_at: float
+    cookie_hash: str
 
 
 @dataclass(frozen=True)
@@ -287,6 +300,7 @@ __all__ = [
     "ExternalIdentity",
     "IdentityProvider",
     "LoginAttempt",
+    "LoginFailureReason",
     "LoginSession",
     "ReconcileState",
     "TenantIdentityConfig",

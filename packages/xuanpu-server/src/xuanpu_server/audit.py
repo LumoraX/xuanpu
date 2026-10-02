@@ -1,7 +1,8 @@
 """审计记录的写入。
 
 审计来自三处（ADR 0004 决策 4）：内核事件总线、效应面闸门、控制面操作。三处都经
-``AuditLog`` 落到控制面存储；记录只追加。
+``AuditLog`` 落到控制面存储；记录只追加。飞书登录流程的记录也算控制面操作，因为那时调用者还没有
+身份，单独经 ``login`` 写入。
 
 写审计不允许悄悄失败：闸门与控制面的记录同步写入，写不进去则操作本身失败；引擎事件
 在后台成批写入，写不进去时记错误日志并保留在缓冲里等下一次重试。例外是人工拒绝的补记
@@ -37,6 +38,9 @@ logger = logging.getLogger(__name__)
 STREAMING_KINDS: frozenset[str] = frozenset({"assistant_text", "assistant_reasoning"})
 # 含完整提示词与对话正文的事件：只在租户显式开启留痕时写入
 SENSITIVE_KINDS: frozenset[str] = frozenset({"llm_request_recorded"})
+
+ANONYMOUS_ACTOR = "anonymous"
+"""还没认出是谁的调用者在审计里的 ``actor``（飞书登录失败、还不知道是哪名员工时）。"""
 
 _REDACTED = "[已脱敏]"
 # 键名里出现这些整词就当作凭据（按 _ - . 与大小写切词；"input_tokens" 切出的是 "tokens"，不算）
@@ -154,6 +158,29 @@ class AuditLog:
             ]
         )
 
+    async def login(
+        self, tenant_id: str, kind: str, data: dict[str, Any], *, user_id: str | None
+    ) -> None:
+        """记一条飞书登录流程里的事件（``login_succeeded``、``login_failed``、``user_created``）。
+
+        登录走完之前调用者还没有身份（没有 ``Principal``），所以单独一个入口：认出了员工的，
+        ``actor`` 是 ``user:<user_id>``、``user_id`` 列填他；还没认出是谁的（比如飞书报错、企业
+        不符），``actor`` 是 ``anonymous``。来源记为 ``control``。
+        """
+        await self._append(
+            [
+                AuditRecord(
+                    tenant_id=tenant_id,
+                    source="control",
+                    kind=kind,
+                    at=self._now(),
+                    actor=f"user:{user_id}" if user_id is not None else ANONYMOUS_ACTOR,
+                    data=sanitize(data),
+                    user_id=user_id,
+                )
+            ]
+        )
+
     async def gate(
         self,
         tenant_id: str,
@@ -185,6 +212,7 @@ class AuditLog:
 
 
 __all__ = [
+    "ANONYMOUS_ACTOR",
     "SENSITIVE_KINDS",
     "STREAMING_KINDS",
     "AuditLog",

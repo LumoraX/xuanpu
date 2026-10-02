@@ -1,15 +1,16 @@
-"""身份服务：把请求里的登录 cookie、代员工调用的请求头解析成调用者（设计 6.2、6.3）。
+"""身份服务：认出调用者（设计 6.2、6.3）、飞书登录与退出（7.1）、租户的飞书配置（第 9 节）。
 
-登录的开始与完成、停用流水线、对账、用户管理以后也收在这里（P1 后续任务）；本模块目前只有
-认证相关的两块：
+停用流水线、对账、用户管理以后也收在这里（P1 后续任务）。目前有：
 
 - ``authenticate_login``：浏览器登录。**每个请求都查库**——登录会话存在且未过期、员工启用、
   租户启用，三者任一不满足都按凭据无效处理（接入层另外清掉 cookie）。不做缓存，停用立即生效。
   ``last_seen_at`` 最多每 5 分钟写一次，免得每个请求都写库。
 - ``act_as``：系统代员工调用。key 必须在签发时被授予这项能力；员工必须属于 key 的租户、且为
   启用状态；生效角色取 key 与员工两者中较低的那个。
+- ``login``：飞书登录的流程（``identity.login.FeishuLogin``）；``logout`` 删掉当前登录会话。
+- ``feishu_config``、``put_feishu_config``：租户管理员读写本租户的飞书应用配置。
 
-两处都遵守身份存储的约定：``get_login_session`` 不带租户，租户一律取自返回的登录会话记录，
+两处认证都遵守身份存储的约定：``get_login_session`` 不带租户，租户一律取自返回的登录会话记录，
 再拿它去查员工与租户。
 """
 
@@ -19,18 +20,31 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from xuanpu_server.errors import LoginSessionInvalidError, PermissionDeniedError
+from xuanpu_server.errors import (
+    AuthenticationError,
+    InvalidRequestError,
+    LoginSessionInvalidError,
+    PermissionDeniedError,
+    SecretMissingError,
+)
 from xuanpu_server.identity.config import normalize_origin
 from xuanpu_server.identity.cookies import login_token_hash
+from xuanpu_server.identity.login import FEISHU, FeishuLogin
+from xuanpu_server.identity.models import TenantIdentityConfig
+from xuanpu_server.secrets import validate_secret_name
 from xuanpu_server.tenancy import Principal, lower_role
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from xuanpu_server.audit import AuditLog
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.identity.config import IdentityConfig
+    from xuanpu_server.identity.feishu import FeishuClient
     from xuanpu_server.identity.models import UserRecord
     from xuanpu_server.identity.store import IdentityStore
+    from xuanpu_server.metrics import PlatformMetrics
+    from xuanpu_server.secrets import SecretVault
     from xuanpu_server.tenancy import ApiKeyRecord
 
 LAST_SEEN_INTERVAL_SECONDS = 300.0
@@ -45,8 +59,8 @@ class IdentitySettings:
 
     Attributes:
         public_url: 平台对外地址，已规整为源（``scheme://host[:port]``，不带路径）；None 表示
-            没有配置，这时平台不认登录 cookie（见 ``identity.cookies``）。配置了就用来校验
-            cookie 认证请求的 ``Origin``，以后也用来拼飞书的回调地址与事件地址
+            没有配置，这时平台不认登录 cookie（见 ``identity.cookies``），也不能启用飞书登录。
+            配置了就用来校验 cookie 认证请求的 ``Origin``，拼飞书的回调地址与事件地址
             （``<public_url>/v1/auth/feishu/callback`` 等）。
         session_ttl_seconds: 登录会话的默认有效期；租户的身份配置可以覆盖。
         cookie_secure: 登录 cookie 是否只走 HTTPS。
@@ -94,6 +108,10 @@ class IdentityService:
         store: IdentityStore,
         control_plane: ControlPlaneStore,
         settings: IdentitySettings,
+        vault: SecretVault,
+        audit: AuditLog,
+        feishu: FeishuClient,
+        metrics: PlatformMetrics | None = None,
         now: Callable[[], float] = time.time,
     ) -> None:
         """
@@ -101,12 +119,32 @@ class IdentityService:
             store: 身份存储。
             control_plane: 同一部署的控制面存储（查租户是否启用）。
             settings: 身份域的平台级设置。
+            vault: 密钥保管库（飞书的 App Secret；配置引用的密钥是否存在）。
+            audit: 审计写入口。
+            feishu: 飞书接口的客户端；归本服务所有，``close`` 时关闭。
+            metrics: 平台指标；None 不打点。
             now: 取当前时间的函数，测试时可替换。
         """
         self.store = store
         self.settings = settings
         self._control_plane = control_plane
+        self._vault = vault
+        self._audit = audit
         self._now = now
+        self.login = FeishuLogin(
+            store=store,
+            control_plane=control_plane,
+            vault=vault,
+            audit=audit,
+            settings=settings,
+            feishu=feishu,
+            metrics=metrics,
+            now=now,
+        )
+
+    async def close(self) -> None:
+        """关闭飞书客户端的连接。可以重复调用。"""
+        await self.login.feishu.aclose()
 
     async def authenticate_login(self, token: str) -> Principal:
         """由登录 cookie 里的令牌得到调用者（浏览器登录）。
@@ -161,6 +199,93 @@ class IdentityService:
             return None
         tenant_id = principal.require_tenant()
         return await self.store.get_user(tenant_id, principal.user_id)
+
+    async def logout(self, principal: Principal, token: str | None) -> None:
+        """退出浏览器登录：删掉这个登录 cookie 对应的登录会话，记 ``logout``。
+
+        Args:
+            principal: 调用者；必须是浏览器登录，即凭 ``token`` 这个登录 cookie 认出来的。
+            token: 请求里登录 cookie 的令牌。
+
+        Raises:
+            InvalidRequestError: 调用者不是浏览器登录（API key、代员工调用、根凭据）。
+            AuthenticationError: 请求里没有登录 cookie（浏览器登录一定是凭它认出来的，走到这里
+                说明认证与取 cookie 不一致，按凭据无效处理）。
+        """
+        if principal.key_id is not None or principal.user_id is None:
+            raise InvalidRequestError("退出登录只用于浏览器登录（登录 cookie）；API key 不需要退出")
+        if token is None:
+            raise AuthenticationError("凭据无效")
+        tenant_id = principal.require_tenant()
+        await self.store.delete_login_session(tenant_id, login_token_hash(token))
+        await self._audit.control(principal, tenant_id, "logout")
+
+    async def feishu_config(self, principal: Principal) -> TenantIdentityConfig | None:
+        """本租户的飞书配置（只有密钥的名字，没有明文）；还没配置返回 None。租户管理员可读。"""
+        tenant_id = principal.require_tenant_admin()
+        return await self.store.get_identity_config(tenant_id, FEISHU)
+
+    async def put_feishu_config(
+        self,
+        principal: Principal,
+        *,
+        app_id: str,
+        app_secret_ref: str,
+        encrypt_key_ref: str,
+        verification_token_ref: str,
+        session_ttl_seconds: int | None,
+    ) -> TenantIdentityConfig:
+        """写入或整体替换本租户的飞书配置（已绑定的飞书企业保留），返回写入后的配置。
+
+        三个密钥只收名字，明文由管理员先经 ``PUT /v1/secrets/{name}`` 写进保管库。审计
+        ``identity_config_updated`` 只记 App ID、有效期与三个名字。
+
+        Raises:
+            PermissionDeniedError: 不是租户管理员。
+            InvalidRequestError: 平台没有配置 ``public_url``（启用飞书登录必须有），或密钥名不合法。
+            SecretMissingError: 引用的密钥还不在保管库里。
+        """
+        tenant_id = principal.require_tenant_admin()
+        if self.settings.public_url is None:
+            raise InvalidRequestError(
+                "平台没有配置 public_url：飞书的回调地址与事件地址由它生成，启用飞书登录前先配置它"
+            )
+        refs = (app_secret_ref, encrypt_key_ref, verification_token_ref)
+        for name in refs:
+            validate_secret_name(name)
+        present = set(await self._vault.names(tenant_id))
+        missing = [name for name in refs if name not in present]
+        if missing:
+            listed = "、".join(missing)
+            raise SecretMissingError(
+                f"引用的密钥还不在保管库里：{listed}（先用 PUT /v1/secrets/{{name}} 写入）"
+            )
+        await self.store.put_identity_config(
+            TenantIdentityConfig(
+                tenant_id=tenant_id,
+                provider=FEISHU,
+                app_id=app_id,
+                app_secret_ref=app_secret_ref,
+                encrypt_key_ref=encrypt_key_ref,
+                verification_token_ref=verification_token_ref,
+                session_ttl_seconds=session_ttl_seconds,
+            )
+        )
+        # 键名避开 secret、token 这类词：审计的按键名脱敏会把它们的取值（这里只是名字）抹掉
+        names = {
+            "app": app_secret_ref,
+            "encrypt": encrypt_key_ref,
+            "verification": verification_token_ref,
+        }
+        await self._audit.control(
+            principal,
+            tenant_id,
+            "identity_config_updated",
+            {"app_id": app_id, "session_ttl_seconds": session_ttl_seconds, "refs": names},
+        )
+        stored = await self.store.get_identity_config(tenant_id, FEISHU)
+        assert stored is not None  # 刚写入，配置不会删除
+        return stored
 
 
 __all__ = ["LAST_SEEN_INTERVAL_SECONDS", "IdentityService", "IdentitySettings"]
