@@ -43,7 +43,7 @@ spec:
       network: false          # 脚本是否需要出网，默认否
       shell: false            # 是否开放沙盒内的后台命令工具，默认否
   connectors:
-    - name: crm                 # stdio：平台启动的 MCP server 进程
+    - name: crm                 # stdio：平台在连接器沙盒里启动的 MCP server 进程
       command: ["uvx", "crm-mcp"]
       env:
         CRM_TOKEN: {secret: crm-token}   # 密钥引用，明文由平台注入
@@ -119,11 +119,11 @@ spec:
 | 字段 | 适用 | 默认 | 说明 |
 | --- | --- | --- | --- |
 | `name` | 全部 | 必填 | 命名规则同包名。出现在工具名里 |
-| `transport` | 全部 | `stdio` | `stdio`：平台启动的 MCP server 进程；`http`：按 OpenAPI 文档调用的接口；`remote`：部署在别处的 MCP server |
+| `transport` | 全部 | `stdio` | `stdio`：平台在连接器沙盒里启动的 MCP server 进程；`http`：按 OpenAPI 文档调用的接口；`remote`：部署在别处的 MCP server |
 | `effect` | 全部 | `external` | 这个连接器的工具默认的副作用分类：`read`、`write`、`external` |
 | `tools` | 全部 | 空（开放全部） | 白名单。每项 `{name, effect}`，`effect` 省略时用默认分类；不能重名 |
-| `command` | stdio | 必填 | 启动 MCP server 的命令，字符串数组。工作目录是业务包根目录 |
-| `env` | stdio | 空 | 传给进程的环境变量。每项是 `{value: 字面量}` 或 `{secret: 密钥名}`，二选一 |
+| `command` | stdio | 必填 | 启动 MCP server 的命令，字符串数组。工作目录是业务包根目录。进程在连接器沙盒里运行，能读、能写什么见[编写业务包](../guides/writing-packages.md#mcp-连接器stdio) |
+| `env` | stdio | 空 | 传给进程的环境变量。每项是 `{value: 字面量}` 或 `{secret: 密钥名}`，二选一。不能设置动态链接器变量（`LD_*`、`DYLD_*`，不分大小写） |
 | `openapi` | http | 必填 | OpenAPI 3.x 文档在包内的相对路径（YAML 或 JSON，最大 8 MiB） |
 | `baseUrl` | http | 文档 `servers` 的第一个绝对地址 | 接口的基地址，`http://` 或 `https://` 开头 |
 | `url` | remote | 必填 | MCP server 的端点地址，带主机名，`https://` 开头（试用可用 `http://`）；端口须是合法数字；不能带用户名与口令，不能有空白与控制字符 |
@@ -203,9 +203,13 @@ connectors:
 | 校验提醒 | `http://` 地址又声明了 `auth`（凭据会明文经过网络）、地址带查询参数（不要把凭据放在地址里），`xuanpu validate` 各给一条提醒，不阻止发布 |
 | 副作用分类 | 逐工具声明优先，否则用连接器的 `effect`（默认 `external`）；不采信 server 自己声称的只读标注 |
 | 白名单 | `tools` 里声明的工具 server 必须提供，否则会话起不来；没声明的工具模型看不到 |
-| 超时 | 单次调用按 `timeoutSeconds` 与平台的连接器超时取小的；超时的调用记为 `connector_timeout` |
+| 超时 | 单次调用按 `timeoutSeconds` 与平台的连接器超时取小的（握手与列工具也按它算）；超时的调用记为 `connector_timeout`，平台通知远端取消，但远端可能已经执行了 |
+| 出口 | 请求从平台节点发出，不进沙盒；不跟随重定向，不读环境里的代理与证书配置。平台不限制 `url` 指向哪里（包括内网与云元数据地址），出网范围靠部署的网络策略约束 |
+| 回包 | 交给模型与审计的文本（成功的结果与错误）都按凭据的明文脱敏 |
+| 不支持 | OAuth 换取令牌；私有 CA 签发的证书；运行中增减工具（工具在组装运行时时定下，不监听 `tools/list_changed`）；server 发起的 elicitation、sampling、roots 请求（回 `-32601`） |
+| 规范版本 | `xuanpu-spec` 2026.10.2.7 起认得 `transport: remote` 与上面的校验规则 |
 
-远端 MCP 连接器与另外两种传输共用同一个闸门：白名单、审批、审计都一样。
+远端 MCP 连接器与另外两种传输共用同一个闸门：白名单、审批、审计都一样。为什么直连、不经 MCP 网关，见 [ADR 0013](../decisions/0013-connector-sandbox-and-remote-mcp.md)。
 
 ## 凭据头
 

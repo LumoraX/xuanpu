@@ -13,7 +13,7 @@
 | Python 3.12+ 与 [uv](https://docs.astral.sh/uv/) | |
 | macOS，或装了 `bubblewrap` 的 Linux | 脚本在操作系统级的沙盒里跑。Linux 还要允许创建用户命名空间 |
 | 一个兼容 OpenAI Chat 接口的模型地址 | 要支持流式输出与工具调用。LiteLLM Proxy、各家的兼容端点都可以 |
-| 三个仓库检出在同一个父目录下 | `xuanpu`、`taifeng-sandbox`、`taifeng-stores`。后两个还没发布到 PyPI，开发期从同级目录取源码 |
+| 四个仓库检出在同一个父目录下 | `xuanpu`、`taifeng`、`taifeng-sandbox`、`taifeng-stores`。后三个还没发布到 PyPI，开发期从同级目录取源码 |
 
 ```bash
 cd xuanpu
@@ -49,7 +49,7 @@ curl localhost:8420/healthz
 # {"status":"ok","version":"2026.9.30.1","instance":"inst_9c7a5cea5506bdae0d89e8da"}
 ```
 
-试用配置把控制面放在内存里：停掉进程，租户、凭据、业务包登记、会话、审计都会丢。正式部署见[部署与运维](operations.md)。
+试用配置把控制面放在内存里：停掉进程，租户、凭据、业务包登记、会话、审计都会丢。数据目录 `/tmp/xuanpu-trial` 里的东西留在盘上：业务包归档（`objects/`，本机对象存储）、会话主存（`threads/`）、解包缓存与沙盒工作区；要从头再来，停掉进程后把这个目录一起删掉。各目录是什么见[数据目录](operations.md#数据目录)，正式部署见[部署与运维](operations.md)。
 
 ## 2. 启动样例工单接口
 
@@ -99,11 +99,11 @@ uv run xuanpu validate examples/support-desk
 # support-desk 1.0.0：校验通过
 
 uv run xuanpu pack examples/support-desk -o support-desk.zip
-# 已写入 support-desk.zip（3259 字节，sha256:53ad4612…）
+# 已写入 support-desk.zip（3254 字节，sha256:71887b9e…）
 
 curl -X POST 'localhost:8420/v1/packages?activate=true' \
      -H "Authorization: Bearer $KEY" --data-binary @support-desk.zip
-# {"name":"support-desk","version":"1.0.0","digest":"sha256:53ad4612…","active":true,…}
+# {"name":"support-desk","version":"1.0.0","digest":"sha256:71887b9e…","active":true,…}
 ```
 
 ## 5. 跑评测
@@ -245,7 +245,7 @@ curl "localhost:8420/v1/usage?since=2026-09-30&until=2026-09-30" -H "Authorizati
 
 ## 9. 用控制台再走一遍
 
-浏览器打开 <http://127.0.0.1:8420/console/>，填入 `KEY`，可以在页面上对话、审批、发布业务包、跑评测、查审计和用量。
+浏览器打开 <http://127.0.0.1:8420/console/>，填入 `KEY`，可以在页面上对话、审批、发布业务包、跑评测、查审计和用量。流式输出时「发送」按钮变成「停止」，点它停下正在生成的这一轮，会话接着可用（接口的用法见[应用接入](integrating.md#停止生成)）。
 
 ## 接下来
 

@@ -65,11 +65,11 @@
 
 ### `gate`：连接器被调用了
 
-模型每调一次连接器工具（MCP 或 HTTP），记一条 `connector_call`，同步写入：
+模型每调一次连接器工具（stdio MCP、远端 MCP 或 HTTP），记一条 `connector_call`，同步写入：
 
 | `data` 字段 | 含义 |
 | --- | --- |
-| `connector`、`transport`、`tool` | 哪个连接器的哪个工具，走的什么传输 |
+| `connector`、`transport`、`tool` | 哪个连接器的哪个工具，走的什么传输（`stdio`、`remote`、`http`） |
 | `effect` | 副作用分类：`read` / `write` / `external` |
 | `decision` | `allowed`：放行并已调用。`denied` 留给策略直接拒绝的情况。`rejected`：人工拒绝（送回审批时 `granted` 不为真），调用没有发出——这条由平台在内核确认核销了这次拒绝之后补记，只对连接器工具补（脚本、命令被拒绝没有过闸记录） |
 | `is_error`、`detail` | 调用是否出错；出错时的简述（超时是 `timeout`）。人工拒绝的 `detail` 是 `rejected_by_user`，`is_error` 为 `false` |
@@ -78,6 +78,16 @@
 | `call_id`、`thread_id`、`submission_id` | 用来和内核事件对上。`submission_id` 是调用归属的那一轮：审批通过后才执行的调用，是送回审批的那一轮（同 `suspension_resolved_by` 的 `submission_id`）；人工拒绝的，是挂起的那一轮；内核自己发起的重跑没有，为空 |
 
 `decision` 为 `allowed` 的记录意味着：**调用确实发出去了**。需要审批的调用在批准或拒绝之前不会有过闸记录。
+
+人工拒绝补记的那条（同一个试用实例里，把同样的改工单操作拒绝了一次；`data` 部分）：
+
+```json
+{"connector": "tickets", "transport": "http", "tool": "updateTicket", "effect": "write",
+ "decision": "rejected", "is_error": false, "detail": "rejected_by_user", "call_id": "call_0",
+ "thread_id": "thr_5c029b6613981225",
+ "arguments_digest": "sha256:ab129ec1c7282db457ccb63ffaa5de0ae0929b62aba56e9f0a3fe52d84f7929f",
+ "submission_id": "sub_30ced7b66d23", "duration_ms": 0}
+```
 
 ### `engine`：模型做了什么
 
@@ -88,7 +98,7 @@ taifeng 内核的事件，成批写入（最迟半秒或攒够 64 条）。一�
 | `turn_started` | 一轮开始 | 入口 skill、线程标识 |
 | `tool_call_started` | 模型发起工具调用 | 工具名、**完整的调用参数** |
 | `tool_call_completed` | 工具调用结束 | **工具的输出**、是否出错、耗时 |
-| `engine_log` | 内核日志，如脚本执行的开始与结束 | 脚本名、耗时、输出字节数 |
+| `engine_log` | 内核日志，如脚本执行的开始与结束；停止生成时另有一条（见下文「停止生成在审计里」） | 脚本名、耗时、输出字节数；`level`、`message` |
 | `turn_suspended` | 停在审批点 | 待办列表，含被挂起的调用的参数 |
 | `suspension_resolved` | 审批决定已送达 | 待办标识 |
 | `turn_completed` / `turn_failed` | 一轮结束 | token 用量、往返次数、耗时 |
@@ -97,6 +107,30 @@ taifeng 内核的事件，成批写入（最迟半秒或攒够 64 条）。一�
 | `usage_estimated` | 平台在被停下的一轮结束时补的一条（见下文「用量」） | `submission_id`、`estimated_input_tokens`、`reason`（`cancelled`）；拿不到估算时 `estimated_input_tokens` 为 0，另有 `error` |
 
 内核事件的种类随内核版本增加，上表不是全集。
+
+### 停止生成在审计里
+
+停下一轮对话会留下四条记录，靠被停的那一轮的 `submission_id` 串起来。下面是一次实际停止（只列 `kind` 与 `data` 里的关键字段）：
+
+```json
+{"source": "control", "kind": "turn_cancel_requested", "actor": "key:c4c3635d7b6b",
+ "data": {"submission_ids": ["sub_b622812d2c61"]}}
+{"source": "engine", "kind": "engine_log",
+ "data": {"submission_id": "sub_4ad4ee8a83ea", "level": "info", "message": "cancelled turn sub_b622812d2c61", "extra": {}}}
+{"source": "engine", "kind": "turn_completed",
+ "data": {"submission_id": "sub_b622812d2c61", "end_reason": "cancelled", "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, …}, …}}
+{"source": "engine", "kind": "usage_estimated",
+ "data": {"submission_id": "sub_b622812d2c61", "estimated_input_tokens": 903, "reason": "cancelled"}}
+```
+
+| 记录 | 说明 |
+| --- | --- |
+| `turn_cancel_requested` | 谁停的（`actor`）、停了哪几轮。只在确有在途的对话被提交了取消时记 |
+| `engine_log` | 内核受理取消时发的日志。它挂在取消请求**自己的**提交上（平台不对外给出这个标识），被停的那一轮写在 `message` 里 |
+| `turn_completed` | 被停的那一轮的结束：`end_reason` 为 `cancelled`、`success` 为 `false`、`cancel_reason` 为 `requested`；还在排队时被停的是 `turn_failed`，`data.kind` 为 `cancelled`。`usage` 不含被打断的那次采样 |
+| `usage_estimated` | 平台补的估算，见下文「用量」 |
+
+被停之前已经输出的文本照样在这一轮的 `turn_text` 里。
 
 两类事件不进审计：
 
@@ -114,7 +148,7 @@ taifeng 内核的事件，成批写入（最迟半秒或攒够 64 条）。一�
 | 工具的调用参数 | 在 | `tool_call_started` 的 `arguments`；需要审批时还在 `turn_suspended` 里 |
 | 工具的返回内容 | 在 | `tool_call_completed` 的 `output` |
 | 发给模型的完整提示词 | 默认不在 | 打开 `capture_requests` 后在 `llm_request_recorded` |
-| 租户密钥的明文 | 不在 | 明文只在发请求或启动连接器进程的那一刻取出，不经过事件 |
+| 租户密钥的明文 | 平台不放进去 | 明文只在发请求或启动连接器进程的那一刻取出，不经过事件。外部系统把密钥写进返回内容时：远端 MCP 的结果与错误、stdio 连接器的错误文本在交给模型之前按值脱敏；**stdio 连接器成功的结果与 HTTP 连接器的响应不脱敏**，会原样进 `tool_call_completed` |
 | API key、根凭据 | 不在 | 平台只存摘要，审计里只有 key 的标识 |
 
 平台在写入前做两件兜底的事：
@@ -150,9 +184,12 @@ Python 客户端会自动翻页：
 ```python
 async for record in client.admin.audit(session_id=session_id, source="gate"):
     print(record.kind, record.data["tool"], record.data["decision"], record.data["duration_ms"])
-# connector_call getTicket allowed 1
-# connector_call updateTicket allowed 1
+# connector_call listTickets allowed 1
+# connector_call updateTicket allowed 0
+# connector_call updateTicket rejected 0
 ```
+
+（一个会话里查了一次工单、批准了一次改工单、拒绝了一次改工单。）
 
 控制台的「审计」页签能按会话、事件类型、来源筛选。
 
@@ -213,7 +250,7 @@ while True:
 
 审计表没有任何更新路径。建议数据库层面也不给平台的连接账号 `UPDATE` / `DELETE` 这张表的权限。
 
-`state.backend` 为 `postgres` 时，对话消息另外镜像在每个租户自己的一组表里（表名前缀是租户标识摘要），结构见 taifeng-stores 的文档。
+`state.backend` 为 `postgres` 时，会话主存（内核续接会话用的对话消息）也在这个库里：每个租户一组表，表名前缀是租户标识的摘要，结构见 taifeng-stores 的文档。它是内核的工作数据，不是审计，没有 `actor`、来源这些字段；查谁在什么时候说了什么，以审计为准。
 
 ### 留存
 

@@ -1,6 +1,6 @@
 # 应用接入
 
-你的系统（客服工作台、工单系统、内部门户……）怎样调用平台：建会话、发消息、收事件流、处理审批、断线后补齐。
+你的系统（客服工作台、工单系统、内部门户……）怎样调用平台：建会话、发消息、收事件流、处理审批、停止生成、断线后补齐。
 
 接口的完整清单见 [HTTP 接口](../architecture/http-api.md)。本文讲用法和要注意的地方。例子用 Python 客户端，直接调 HTTP 的写法见[快速上手](quickstart.md)。
 
@@ -54,7 +54,7 @@ session = await client.sessions.create(
 await client.sessions.close(session.session_id)
 ```
 
-没关的会话一直算作「活动会话」，计入租户的 `max_active_sessions` 配额。关闭时如果还有对话在进行，那一轮会被取消；关闭后不能再发消息（`409 conflict`）。
+没关的会话一直算作「活动会话」，计入租户的 `max_active_sessions` 配额。关闭时如果还有对话在进行，那一轮会被取消；关闭后不能再发消息（`409 conflict`）。只想停掉正在生成的那一轮、会话接着用，见[停止生成](#停止生成)。
 
 会话一段时间没有对话，平台会释放它占用的内存，下次发消息时自动从存储里续接。这对调用方是透明的，只是续接后的第一轮会慢一点。
 
@@ -92,7 +92,7 @@ async for event in client.sessions.send(session.session_id, "查一下工单 T-1
 | `assistant_reasoning` | 模型的推理过程增量（模型支持时才有） | `delta` |
 | `tool_call_started` | 模型发起一次工具调用 | `call_id`、`name`、`arguments` |
 | `tool_call_completed` | 工具调用结束 | `call_id`、`name`、`output`、`is_error`、`duration_ms` |
-| `turn_completed` | 这一轮正常结束 | `usage`、`iterations`、`duration_ms` |
+| `turn_completed` | 这一轮结束 | `usage`、`iterations`、`duration_ms`；被停下时 `end_reason` 是 `cancelled` |
 | `turn_failed` | 这一轮失败 | 失败原因 |
 | `turn_suspended` | 这一轮停在审批点 | `pending` |
 | `suspension_resolved` | 审批结果已送达，开始续跑 | `request_ids` |
@@ -159,9 +159,54 @@ async for event in client.sessions.resume(session.session_id, decision):
 - 续跑的事件流里，被批准的那次调用不会再出现 `tool_call_completed` 事件。它是否执行、结果如何，以审计里的 `connector_call` 记录为准（见[审计与用量](audit-and-usage.md)）。
 - **平台不区分「谁有权审批」**：本租户任何一把 API key 都能调 `resume`。谁能批什么，由你的系统在调用之前把关。审计会记下是哪把 key 送回的决定。
 
+## 停止生成
+
+用户点了「停止」，或者你的系统不想再等这一轮了，就把它停下。会话保持活动，可以接着发消息：
+
+```python
+cancelled = await client.sessions.cancel(session.session_id, submission_id=submission_id)
+print(cancelled)                                  # ['sub_9d2b8c768998']
+```
+
+`submission_id` 是事件流里每条事件都带着的那个（`event.submission_id`，或第一帧 `turn`、响应头 `X-Submission-Id`）。省略它就停掉这个会话里全部在途的对话。返回的是这次真正提交了取消的那几轮。
+
+接口只是提交取消，不等那一轮收尾；被停的那一轮从**它自己的事件流**照常结束：
+
+```python
+print(last.kind, last.terminal, last.data["end_reason"], last.data["cancel_reason"])
+# turn_completed True cancelled requested
+```
+
+还在排队、没开始跑的那一轮则以 `turn_failed`（`data.kind` 为 `cancelled`）结束。`event.terminal` 两种都算好了。已经输出的那部分文本照样记进审计（回放里的 `turn_text`）。被停的一轮照样计一轮用量；被打断的那次采样网关报不出用量，平台按上下文估算计入输入（见[审计与用量](audit-and-usage.md#用量)）。
+
+和关闭会话的区别：
+
+| | 停止生成 | 关闭会话 |
+| --- | --- | --- |
+| 停什么 | 在途的那一轮（或指定的那一轮） | 会话里的一切 |
+| 之后 | 会话照常可用，接着发消息 | 不能再发消息（`409 conflict`），不再计入活动会话配额 |
+
+几种碰巧的情况，都按「已经停不了」处理即可：
+
+- **点击到达之前这一轮已经结束**：不带 `submission_id` 返回 `[]`；带了返回 `400 invalid_request`（「不在途（已经结束或不存在）」）。
+  ```python
+  print(await client.sessions.cancel(session.session_id))   # []
+  try:
+      await client.sessions.cancel(session.session_id, submission_id=submission_id)
+  except XuanpuError as exc:
+      print(exc.status, exc.code, exc.message)
+  # 400 invalid_request submission 'sub_9d2b8c768998' 不在途（已经结束或不存在）
+  ```
+- **会话还在准备**（这个实例刚接手会话、第一次组装业务包）：取消返回 `[]`，随后开始的那一轮不受影响。看到 `[]` 而事件流还在走，稍等再停一次。
+- **内核还没接手刚发出的那一轮**：平台最多等约 1 秒，到点仍没接手就不提交，返回值里没有它。
+- **刚送回批准就停**：被批准的那次调用照样执行（它在续跑那一轮之前执行），停下的只是之后的采样。
+- **挂起等审批的那一轮不归它管**：它已经不在途了。要放弃，就把审批拒绝送回。
+
+多实例部署下，会话在另一个实例上时返回 `409 session_busy`（带 `owner`），与发消息一样靠粘性路由避免。本租户任何一把 API key 都能停任何会话里的对话；只想停自己发起的那一轮，就带上它的 `submission_id`。审计里的 `turn_cancel_requested` 记下是哪把 key 停的。
+
 ## 断线之后
 
-调用方断开连接，**这一轮对话不会停**，平台会把它跑完；要让它停下，调 `await client.sessions.cancel(session_id, submission_id=...)`（见[停止生成](../architecture/http-api.md#停止生成)）。重新连上之后不要重发消息（那会开启新的一轮），用 `submission_id` 回放：
+调用方断开连接，**这一轮对话不会停**，平台会把它跑完；要让它停下，用[停止生成](#停止生成)。重新连上之后不要重发消息（那会开启新的一轮），用 `submission_id` 回放：
 
 ```python
 events = await client.sessions.replay(session.session_id, submission_id)
@@ -210,7 +255,7 @@ except XuanpuError as exc:
 | 409 | `conflict` | 会话已关闭、版本已发布过等 | — |
 | 409 | `session_busy` | 会话正由另一个平台实例持有。`details["owner"]` 是那个实例的标识 | 见下 |
 | 429 | `quota_exceeded` | 超出租户配额：活动会话数、当天 token、同时进行的对话数 | 退避后重试，或关闭不用的会话 |
-| 503 | `runtime_unavailable` | 沙盒、连接器不可用，或者实例正在停机 | 稍后重试；多实例部署下换一个实例 |
+| 503 | `runtime_unavailable` | 沙盒、连接器、对象存储不可用；实例正在停机；或者会话的持有在准备期间中断过（提示里有「请重试」） | 稍后重试；多实例部署下换一个实例。提示「请重试」的直接重试 |
 | 500 | `internal_error` | 平台内部错误 | 重试；持续出现找平台管理员 |
 
 连不上平台、或者事件流中途断开时，客户端抛 `XuanpuTransportError`（`code` 是 `transport_error`）。
@@ -231,6 +276,6 @@ except XuanpuError as exc:
 
 ## 目前做不到的
 
-- [停止生成](../architecture/http-api.md#停止生成)只停在途的那一轮：挂起等审批的那一轮要靠拒绝审批来放弃，已经执行的调用不会撤回。
+- [停止生成](#停止生成)只停在途的那一轮：挂起等审批的那一轮要靠拒绝审批来放弃，已经执行的调用不会撤回。
 - 没有 JavaScript 客户端；浏览器端请直接用 `fetch` 读事件流（控制台的 [`app.js`](../../packages/xuanpu-console/src/xuanpu_console/static/app.js) 是一个可以参照的实现）。
 - 消息只支持文本，不支持图片与文件。

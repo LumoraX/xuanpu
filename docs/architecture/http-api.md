@@ -41,7 +41,7 @@
 | 429 | `quota_exceeded` | 超出租户配额 | |
 | 500 | `secret_corrupted` | 密钥的密文解不开（加密它的主密钥已不在配置里，或密文被改动） | |
 | 500 | `internal_error` | 未预料的错误；细节只进服务端日志 | |
-| 503 | `runtime_unavailable` | 沙盒或连接器不可用，或实例正在停机 | |
+| 503 | `runtime_unavailable` | 沙盒、连接器或对象存储不可用；实例正在停机；会话的持有在准备期间中断过（`message` 里说「请重试」，直接重试即可） | |
 
 `code` 是稳定的，`message` 的文案可能调整。
 
@@ -174,7 +174,7 @@ Content-Type: application/zip
 <归档的字节>
 
 → 201
-{"name": "support-desk", "version": "1.0.0", "digest": "sha256:53ad4612…", "active": true,
+{"name": "support-desk", "version": "1.0.0", "digest": "sha256:71887b9e…", "active": true,
  "published_at": 1790753314.06, "published_by": "key:be139be29730"}
 ```
 
