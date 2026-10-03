@@ -10,18 +10,22 @@
 <header class="topbar">
   <div class="brand">玄圃 <span class="sub">xuanpu 控制台</span></div>
   <form id="connect" class="connect">
-    <input id="base-url" type="url" placeholder="平台地址（留空 = 当前站点）" autocomplete="off">
-    <input id="api-key" type="password" placeholder="API key" autocomplete="off" required>
+    <input aria-label="平台地址" id="base-url" type="url" placeholder="平台地址（留空 = 当前站点）" autocomplete="off">
+    <input aria-label="API key" id="api-key" type="password" placeholder="API key" autocomplete="off" required>
     <button type="submit">连接</button>
+    <button id="feishu-login" type="button" class="ghost">用飞书登录</button>
     <span id="conn-status" class="status"></span>
   </form>
+  <div id="current-user" class="row hidden"><img id="user-avatar" class="avatar hidden" alt=""><span id="user-name"></span><button id="logout" type="button" class="ghost">退出</button></div>
 </header>
+<p id="login-error" class="login-error hidden" role="alert"></p>
 
 <nav class="tabs" id="tabs">
   <button data-tab="sessions" class="active">会话</button>
-  <button data-tab="packages">业务包</button>
-  <button data-tab="audit">审计</button>
-  <button data-tab="usage">用量</button>
+  <button data-admin data-tab="packages" class="hidden">业务包</button>
+  <button data-admin data-tab="audit" class="hidden">审计</button>
+  <button data-admin data-tab="usage" class="hidden">用量</button>
+  <button data-admin data-tab="users" class="hidden">用户</button>
 </nav>
 
 <main>
@@ -98,9 +102,22 @@
       <tbody></tbody>
     </table>
   </section>
+  <section id="tab-users" class="tab">
+    <form id="users-filter" class="row">
+      <label>状态 <select id="users-status"><option value="">全部</option><option value="active">启用</option><option value="disabled">停用</option></select></label>
+      <label>角色 <select id="users-role"><option value="">全部</option><option value="tenant_admin">管理员</option><option value="tenant_member">成员</option></select></label>
+      <label>飞书对账 <select id="users-unverified"><option value="">全部</option><option value="true">查不到</option><option value="false">未标记</option></select></label>
+      <button type="submit">查询</button><button id="users-more" type="button" class="ghost" disabled>下一页</button>
+    </form>
+    <p id="users-notice" role="status"></p>
+    <div class="table-scroll"><table id="users-table" class="table">
+      <thead><tr><th>姓名</th><th>角色</th><th>状态</th><th>最近登录</th><th>飞书对账</th><th>操作</th></tr></thead><tbody></tbody>
+    </table></div>
+  </section>
 </main>
 
 <div id="toast" class="toast hidden"></div>
 <script src="app.js"></script>
+<script src="identity.js"></script>
 </body>
 </html>

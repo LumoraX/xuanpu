@@ -8,6 +8,7 @@ const $ = (id) => document.getElementById(id);
 const conn = {
   baseUrl: localStorage.getItem("xuanpu.baseUrl") || "",
   apiKey: sessionStorage.getItem("xuanpu.apiKey") || "",
+  epoch: 0, controller: new AbortController(), me: null,
 };
 
 function url(path) {
@@ -15,11 +16,12 @@ function url(path) {
 }
 
 function headers(extra) {
-  return { Authorization: "Bearer " + conn.apiKey, ...(extra || {}) };
+  return { ...(conn.apiKey ? { Authorization: "Bearer " + conn.apiKey } : { "X-Requested-By": "xuanpu" }), ...(extra || {}) };
 }
 
 async function api(method, path, options = {}) {
-  const init = { method, headers: headers(options.headers) };
+  const epoch = conn.epoch;
+  const init = { ...requestOptions(), method, headers: headers(options.headers) };
   if (options.json !== undefined) {
     init.headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(options.json);
@@ -28,11 +30,13 @@ async function api(method, path, options = {}) {
   }
   const response = await fetch(url(path), init);
   const text = await response.text();
+  if (epoch !== conn.epoch) throw new DOMException("身份已切换", "AbortError");
   let body = {};
   try { body = text ? JSON.parse(text) : {}; } catch { body = { raw: text }; }
   if (!response.ok) {
     const error = body.error || { code: "http_" + response.status, message: text.slice(0, 200) };
-    throw Object.assign(new Error(error.message), { code: error.code, details: error });
+    if (response.status === 401 && conn.me) resetIdentity();
+    throw Object.assign(new Error(error.message), { code: error.code, details: error, status: response.status });
   }
   return body;
 }
@@ -46,6 +50,7 @@ function toast(message, kind) {
 }
 
 function fail(error) {
+  if (error.name === "AbortError") return;
   console.error(error);
   toast(error.message || String(error));
 }
@@ -54,38 +59,16 @@ function when(seconds) {
   return seconds ? new Date(seconds * 1000).toLocaleString() : "";
 }
 
-$("connect").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  conn.baseUrl = $("base-url").value.trim();
-  conn.apiKey = $("api-key").value.trim();
-  localStorage.setItem("xuanpu.baseUrl", conn.baseUrl);
-  // 凭据只留在本标签页的会话里，关掉页面即忘
-  sessionStorage.setItem("xuanpu.apiKey", conn.apiKey);
-  const status = $("conn-status");
-  try {
-    const health = await api("GET", "/healthz");
-    status.textContent = "已连接 · " + health.instance;
-    status.className = "status ok";
-    await loadSessions();
-    await loadPackages();
-  } catch (error) {
-    status.textContent = "连接失败：" + error.message;
-    status.className = "status bad";
-  }
-});
-
-$("base-url").value = conn.baseUrl;
-$("api-key").value = conn.apiKey;
-
 // ---------- 标签页 ----------
 
 $("tabs").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-tab]");
-  if (!button) return;
+  if (!button || button.classList.contains("hidden")) return;
   for (const item of $("tabs").querySelectorAll("button")) item.classList.toggle("active", item === button);
   for (const section of document.querySelectorAll(".tab")) {
     section.classList.toggle("active", section.id === "tab-" + button.dataset.tab);
   }
+  if (button.dataset.tab === "users") loadUsers(true).catch(fail);
   if (button.dataset.tab === "usage" && !$("usage-since").value) {
     const today = new Date().toISOString().slice(0, 10);
     $("usage-until").value = today;
@@ -113,7 +96,7 @@ async function loadSessions() {
       `<div>${escape(session.package)} <span class="tag ${session.status === "active" ? "ok" : ""}">${session.status}</span></div>` +
       `<div class="meta">${escape(session.session_id)}</div>` +
       `<div class="meta">${escape(session.entry)} · ${when(session.updated_at)}</div>`;
-    item.addEventListener("click", () => openSession(session));
+    item.addEventListener("click", () => openSession(session).catch(fail));
     list.appendChild(item);
   }
 }
@@ -129,7 +112,7 @@ $("new-session").addEventListener("submit", async (event) => {
     if (entry) json.entry = entry;
     const session = await api("POST", "/v1/sessions", { json });
     await loadSessions();
-    openSession(session);
+    await openSession(session);
   } catch (error) { fail(error); }
 });
 
@@ -163,6 +146,10 @@ async function openSession(session) {
 }
 
 async function loadHistory(sessionId) {
+  if (!isAdmin()) {
+    append("event", "成员暂不支持加载历史对话；你仍可继续发送消息和处理本会话的待办。");
+    return;
+  }
   // 从审计里把这个会话的对话重建出来：用户消息看 message_sent，回复看 turn_text；
   // 工具调用与挂起作为事件行
   const params = `session_id=${encodeURIComponent(sessionId)}&limit=1000`;
@@ -288,11 +275,13 @@ $("stop-btn").addEventListener("click", async () => {
 });
 
 async function streamTurn(path, json) {
+  const epoch = conn.epoch;
   setStreaming(chat.sessionId);
   $("pending").classList.add("hidden");
   let bubble = null;
   try {
     const response = await fetch(url(path), {
+      ...requestOptions(),
       method: "POST",
       headers: headers({ "Content-Type": "application/json" }),
       body: JSON.stringify(json),
@@ -302,6 +291,7 @@ async function streamTurn(path, json) {
       throw new Error((body.error && body.error.message) || ("HTTP " + response.status));
     }
     for await (const [name, data] of sse(response)) {
+      if (epoch !== conn.epoch) throw new DOMException("身份已切换", "AbortError");
       if (name === "turn") {
         chat.streaming.submissionId = data.submission_id;
         $("stop-btn").disabled = false;
@@ -329,10 +319,12 @@ async function streamTurn(path, json) {
       }
     }
   } catch (error) {
-    fail(error);
+    if (epoch === conn.epoch) fail(error);
   } finally {
+    if (epoch !== conn.epoch) return;
     setStreaming(null);
     await loadPending().catch(fail);
+    if (epoch !== conn.epoch) return;
     await loadSessions().catch(fail);
   }
 }
@@ -392,6 +384,7 @@ async function loadPackages() {
       } catch (error) { fail(error); }
     });
     row.querySelector('[data-act="eval"]').addEventListener("click", async () => {
+      const epoch = conn.epoch;
       const report = $("eval-report");
       report.classList.remove("hidden");
       report.textContent = `正在评测 ${item.name} ${item.version}…`;
@@ -404,7 +397,7 @@ async function loadPackages() {
           if (c.reply) lines.push(`      回复：${c.reply.slice(0, 200)}`);
         }
         report.textContent = lines.join("\n");
-      } catch (error) { report.textContent = "评测失败：" + error.message; }
+      } catch (error) { if (epoch === conn.epoch && error.name !== "AbortError") report.textContent = "评测失败：" + error.message; }
     });
     rows.appendChild(row);
   }
@@ -412,6 +405,7 @@ async function loadPackages() {
 
 $("publish").addEventListener("submit", async (event) => {
   event.preventDefault();
+  const epoch = conn.epoch;
   const file = $("archive").files[0];
   if (!file) return;
   const status = $("publish-status");
@@ -419,14 +413,17 @@ $("publish").addEventListener("submit", async (event) => {
   status.className = "status";
   try {
     const activate = $("publish-activate").checked ? "true" : "false";
+    const body = await file.arrayBuffer();
+    if (epoch !== conn.epoch) return;
     const result = await api("POST", `/v1/packages?activate=${activate}`, {
-      body: await file.arrayBuffer(),
+      body,
       headers: { "Content-Type": "application/zip" },
     });
     status.textContent = `已发布 ${result.name} ${result.version}`;
     status.className = "status ok";
     await loadPackages();
   } catch (error) {
+    if (epoch !== conn.epoch || error.name === "AbortError") return;
     const problems = (error.details && error.details.problems) || [];
     status.textContent = error.message + (problems.length ? "：" + problems.join("；") : "");
     status.className = "status bad";
@@ -486,5 +483,4 @@ async function loadUsage() {
 
 $("usage-filter").addEventListener("submit", (event) => { event.preventDefault(); loadUsage().catch(fail); });
 
-// 已经有凭据时自动连接
-if (conn.apiKey) $("connect").requestSubmit();
+// 身份初始化由随后加载的 identity.js 负责。

@@ -77,3 +77,25 @@ main { padding: 16px; }
 .report { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-top: 12px; white-space: pre-wrap; font-family: var(--mono); font-size: 12px; }
 .toast { position: fixed; right: 16px; bottom: 16px; background: var(--bad); color: #fff; padding: 10px 14px; border-radius: 8px; max-width: 480px; }
 .toast.info { background: var(--accent); }
+
+/* 身份状态与窄屏表格：横向滚动留在表格容器内。 */
+.avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; }
+.login-error { color: var(--bad); padding: 8px 16px; }
+#users-notice { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--warn); }
+.table-scroll { max-width: 100%; overflow-x: auto; }
+.tab { max-width: 100%; overflow-x: auto; }
+#tab-sessions { overflow: visible; }
+.chat-pane, .list-pane { min-width: 0; }
+.chat-head { overflow-wrap: anywhere; }
+#users-table td { min-width: 90px; }
+#users-table td:first-child { overflow-wrap: anywhere; max-width: 260px; }
+#users-table button { margin: 2px; white-space: nowrap; }
+@media (max-width: 600px) {
+  .connect { width: 100%; }
+  .connect input { min-width: 0; width: 100%; }
+  .tabs { flex-wrap: wrap; }
+  .row input, .send textarea { min-width: 0; max-width: 100%; }
+  .send { flex-wrap: wrap; }
+  .chat-head { flex-wrap: wrap; }
+  .msg { max-width: 100%; }
+}

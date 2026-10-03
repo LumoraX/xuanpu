@@ -399,6 +399,7 @@ async def test_console_is_served_when_configured(world: Any, tmp_path: Any) -> N
         page = await http.get("/console/")
         assert page.status_code == 200
         assert "xuanpu 控制台" in page.text
+        assert page.headers["x-frame-options"] == "DENY"
         assert (await http.get("/console/app.js")).status_code == 200
         assert (await http.get("/console/../xuanpu.yaml")).status_code in (400, 404)
         # 控制台不需要凭据，但接口仍然需要

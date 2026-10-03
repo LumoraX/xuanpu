@@ -13,13 +13,13 @@ from typing import TYPE_CHECKING, Annotated, Any
 from fastapi import FastAPI, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response, StreamingResponse
-from fastapi.staticfiles import StaticFiles
 from prometheus_client import CONTENT_TYPE_PLAIN_0_0_4
 
 from xuanpu_server import __version__
 from xuanpu_server.api import schemas
 from xuanpu_server.api.audit_usage import audit_usage_router
 from xuanpu_server.api.auth import Caller, bearer
+from xuanpu_server.api.console import ConsoleStaticFiles
 from xuanpu_server.api.identity import identity_router
 from xuanpu_server.api.sse import stream_turn
 from xuanpu_server.errors import (
@@ -364,7 +364,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
         return {"cancelled": await platform.sessions.cancel(who, session_id, submission_id)}
 
     if console_dir is not None:
-        app.mount("/console", StaticFiles(directory=str(console_dir), html=True), name="console")
+        app.mount("/console", ConsoleStaticFiles(directory=str(console_dir), html=True), name="console")
 
     return app
 
