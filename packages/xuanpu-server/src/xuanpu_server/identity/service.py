@@ -1,7 +1,7 @@
 """身份服务：认出调用者（设计 6.2、6.3）、飞书登录与退出（7.1）、停用流水线（7.2）、离职事件回调
 （7.3）、用户管理与租户的飞书配置（第 9 节）。
 
-对账以后也收在这里（P1 后续任务）。目前有：
+飞书登录、离职事件与通讯录对账统一在这里装配：
 
 - ``authenticate_login``：浏览器登录。**每个请求都查库**——登录会话存在且未过期、员工启用、
   租户启用，三者任一不满足都按凭据无效处理（接入层另外清掉 cookie）。不做缓存，停用立即生效。
@@ -10,7 +10,7 @@
   启用状态；生效角色取 key 与员工两者中较低的那个。
 - ``login``：飞书登录的流程（``identity.login.FeishuLogin``）；``logout`` 删掉当前登录会话。
 - ``maintenance``：周期任务（``identity.maintenance``），清理过期的登录尝试与登录会话；随平台的
-  ``start``、``close`` 启停。
+  ``start``、``close`` 启停，同时触发已绑定租户的通讯录对账。
 - ``feishu_config``、``put_feishu_config``：租户管理员读写本租户的飞书应用配置。
 - ``disabling``：员工停用流水线（``identity.disable``），「员工停用」监听者由装配处登记；
   ``disable_user``、``enable_user`` 是它与启用的入口。
@@ -42,6 +42,7 @@ from xuanpu_server.identity.disable import DisablePipeline
 from xuanpu_server.identity.login import FEISHU, FeishuLogin
 from xuanpu_server.identity.maintenance import IdentityMaintenance
 from xuanpu_server.identity.models import TenantIdentityConfig
+from xuanpu_server.identity.reconcile import IdentityReconcile
 from xuanpu_server.identity.users import UserAdmin
 from xuanpu_server.secrets import validate_secret_name
 from xuanpu_server.tenancy import Principal, lower_role
@@ -156,22 +157,32 @@ class IdentityService:
             metrics=metrics,
             now=now,
         )
-        self.maintenance = IdentityMaintenance(store, now=now)
         self.disabling = DisablePipeline(store=store, audit=audit, metrics=metrics, now=now)
         self.users = UserAdmin(store=store, disabling=self.disabling, audit=audit, now=now)
         self.events = FeishuEventCallback(
             store=store, vault=vault, disabling=self.disabling, metrics=metrics
         )
 
+        self.reconcile = IdentityReconcile(
+            self,
+            control_plane=control_plane,
+            vault=vault,
+            audit=audit,
+            feishu=feishu,
+            metrics=metrics,
+            now=now,
+        )
+        self.maintenance = IdentityMaintenance(store, reconcile=self.reconcile.run_due, now=now)
+
     def start(self) -> None:
         """启动身份域的周期任务（清理过期的登录尝试与登录会话）。"""
         self.maintenance.start()
 
     async def close(self) -> None:
-        """等停用流水线的后台收尾（有上限，见 ``identity.disable``），停掉周期任务（等它结束），
+        """先停周期任务（等它结束），再等停用流水线的后台收尾（有上限，见 ``identity.disable``），
         再关闭飞书客户端的连接。可以重复调用。"""
-        await self.disabling.close()
         await self.maintenance.close()
+        await self.disabling.close()
         await self.login.feishu.aclose()
 
     async def disable_user(

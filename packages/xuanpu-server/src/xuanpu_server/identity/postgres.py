@@ -307,6 +307,32 @@ class PostgresIdentityStore(PostgresUserTables):
             raise _missing_tenant(tenant_id) from exc
         return row is not None
 
+    async def renew_reconcile(
+        self, tenant_id: str, *, owner: str, now: float, lease_seconds: float
+    ) -> bool:
+        """原子续期仍有效且属于本持有者的租约。"""
+        require_reconcile_window(0, lease_seconds)
+        changed = await self._execute(
+            f"UPDATE {self._t['identity_reconcile']} SET lease_expires_at = $4 "
+            "WHERE tenant_id = $1 AND lease_owner = $2 AND lease_expires_at > $3",
+            tenant_id,
+            owner,
+            now,
+            now + lease_seconds,
+        )
+        return bool(changed)
+
+    async def release_reconcile(self, tenant_id: str, *, owner: str) -> bool:
+        """失败释放，不更新完成时间。"""
+        changed = await self._execute(
+            f"UPDATE {self._t['identity_reconcile']} "
+            "SET lease_owner = NULL, lease_expires_at = 0 "
+            "WHERE tenant_id = $1 AND lease_owner = $2",
+            tenant_id,
+            owner,
+        )
+        return bool(changed)
+
     async def finish_reconcile(self, tenant_id: str, *, owner: str, now: float) -> bool:
         """完成对账并放开租约。"""
         changed = await self._execute(

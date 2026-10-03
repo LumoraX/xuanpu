@@ -128,6 +128,8 @@ class PlatformMetrics:
         self._logins = dict.fromkeys(LOGIN_RESULTS, 0)
         self._users_disabled = dict.fromkeys(DISABLE_REASONS, 0)
         self._feishu_events = dict.fromkeys(FEISHU_EVENT_RESULTS, 0)
+        self._reconcile_runs = dict.fromkeys(("succeeded", "failed", "cancelled"), 0)
+        self._reconcile_users = dict.fromkeys(("checked", "disabled", "unverified"), 0)
         self._audit_write_failures = 0
         self._usage_estimated = 0
         self._usage_write_failures = 0
@@ -170,6 +172,14 @@ class PlatformMetrics:
     def feishu_event(self, result: FeishuEventResult) -> None:
         """飞书事件回调处理完一个请求。"""
         self._feishu_events[result] = self._feishu_events.get(result, 0) + 1
+
+    def reconcile_run(self, result: str) -> None:
+        """一次已认领的对账运行结束。"""
+        self._reconcile_runs[result] += 1
+
+    def reconcile_user(self, outcome: str) -> None:
+        """对账员工处理计数；checked 包含后两项。"""
+        self._reconcile_users[outcome] += 1
 
     def render(self) -> bytes:
         """Prometheus 文本格式（0.0.4）。"""
@@ -215,6 +225,18 @@ class PlatformMetrics:
             "xuanpu_feishu_events", "飞书事件回调的请求数，按处理结果分", ["result"],
             {(result,): count for result, count in self._feishu_events.items()},
         )  # fmt: skip
+        yield _counter(
+            "xuanpu_reconcile_runs",
+            "对账运行次数",
+            ["result"],
+            {(result,): count for result, count in self._reconcile_runs.items()},
+        )
+        yield _counter(
+            "xuanpu_reconcile_users",
+            "对账员工处理计数",
+            ["outcome"],
+            {(outcome,): count for outcome, count in self._reconcile_users.items()},
+        )
 
 
 def _counter(

@@ -338,3 +338,12 @@ curl "https://xuanpu.internal/v1/usage/users?since=2026-10-01&until=2026-10-31" 
 ### 其他维度
 
 平台只按租户、按员工按天汇总。要按会话、按业务包、按入口拆分，从审计里算：取一轮结束的记录（`turn_completed`、`turn_failed`、`turn_suspended`），`data.subtree_usage`（没有时用 `data.usage`）是这一轮的用量，`session_id` 对到会话，再由会话的 `session_created` 记录对到业务包、版本与 `metadata`。
+
+
+### 通讯录对账审计
+
+对账以 `system:reconcile` 为 actor。`identity_unverified` 仅首次设置 `unverified_since` 时记录，关联被标记的 `user_id`；再次查不到不重复记录，再查到清除标记。
+
+每次已认领的对账记录 `identity_reconciled`：`result` 为 `succeeded` 或 `failed`，带 `checked`、`disabled`、`unverified` 计数；失败额外带异常类型 `error`（取消为 `CancelledError`），不含飞书响应或凭据。失败计数仅表示已处理部分，不代表整租户完成。停用仍有既有 `user_disabled` 审计。存储不可达时审计也可能失败，结合平台日志及 `xuanpu_reconcile_runs_total` 排查。
+
+成功先持久化对账完成时间，再写成功审计；若完成存储失败或失租，仅记录失败终态。完成后的审计写入失败不会撤销完成时间或补写失败终态，此时对账已生效、成功指标已计数，但成功审计可能缺失，接口可能报错；结合日志与完成状态判断，勿将接口错误直接视为扫描失败。

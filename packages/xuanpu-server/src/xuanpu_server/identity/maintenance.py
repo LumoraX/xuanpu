@@ -4,8 +4,8 @@
 每隔 ``PURGE_INTERVAL_SECONDS`` 调一次 ``IdentityStore.purge_expired_logins(now)``：没走完的登录
 （开始登录不需要凭据，谁都能写一条登录尝试）与过期没退出的登录会话都在这里清掉，库里不会越积越多。
 
-一轮出错只记日志，循环不退出，下一轮再试（存储一时连不上不该让清理永久停掉）。以后按飞书通讯录的
-对账（P1 后续任务）也挂进这个周期任务。
+一轮出错只记日志，循环不退出，下一轮再试（存储一时连不上不该让清理永久停掉）。按飞书通讯录的
+对账挂进同一个周期；对账自身用租约判断是否到期。
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable
 
     from xuanpu_server.identity.store import IdentityStore
 
@@ -36,14 +36,17 @@ class IdentityMaintenance:
         store: IdentityStore,
         *,
         interval_seconds: float = PURGE_INTERVAL_SECONDS,
+        reconcile: Callable[[], Awaitable[None]] | None = None,
         now: Callable[[], float] = time.time,
     ) -> None:
         """
         Args:
             store: 身份存储。
             interval_seconds: 两轮之间隔多久；测试时可调小。
+            reconcile: 同周期检查应执行的对账，省略时只清理登录记录。
             now: 取当前时间的函数，测试时可替换。
         """
+        self._reconcile = reconcile
         self._store = store
         self._interval = interval_seconds
         self._now = now
@@ -70,7 +73,10 @@ class IdentityMaintenance:
 
     async def run_once(self) -> int:
         """跑一轮：清掉全部租户里过期的登录尝试与登录会话，返回清掉的条数。"""
-        return await self._store.purge_expired_logins(self._now())
+        purged = await self._store.purge_expired_logins(self._now())
+        if self._reconcile is not None:
+            await self._reconcile()
+        return purged
 
     async def _loop(self) -> None:
         """每隔一个间隔跑一轮；一轮出错记日志、接着跑（取消照常向外传）。"""

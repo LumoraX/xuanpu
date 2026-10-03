@@ -764,3 +764,10 @@ xuanpu_connector_calls_total{decision="allowed",transport="http"} 1.0
 - 凭据是单独的抓取令牌（不是 API key，也不是根凭据）；不带或不对都是 401，错误体与其他接口一样。
 - 每个实例只报自己的数；指标不带租户标签，按租户看用量用上面的 `/v1/usage`。
 - 指标的含义见[运维手册的监控一节](../guides/operations.md#监控与排查)。
+
+
+### 飞书通讯录对账
+
+`POST /v1/identity/feishu/reconcile`：本租户管理员立即执行一次对账，无请求体；沿用身份认证与 cookie 写请求的防跨站检查。返回 `200` 和 `{"checked": 51, "disabled": 2, "unverified": 1}`。手工触发忽略每日周期，但仍需认领租约；正在执行时返回 `409 conflict`。普通成员返回 `403 permission_denied`，租户没有绑定飞书企业或未启用返回 `400 invalid_request`，飞书失败、排队超时、单步超时或失去租约返回 `503 runtime_unavailable`。其他存储错误沿用 `500`。
+
+只查询 active 飞书身份，每批最多 50 人。明确离职、暂停或退出走统一停用流水线（可停用最后一名管理员）；查不到只标记 `unverified_since`，不会停用，再次查到清除标记。返回了员工但未给状态时不推断离职。失败保留已完成的停用，记录含部分计数的 `identity_reconciled` 审计，不记本次成功完成时间，下个维护周期重试。

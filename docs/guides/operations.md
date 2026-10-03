@@ -189,7 +189,7 @@ identity:
 | `identity.login_landing_path` | `/console/` | 登录完成或失败后的默认落地页。必须是站内路径：以 `/` 开头，不以 `//` 或 `/\` 开头，不含反斜杠与空白 |
 | `identity.feishu_open_base`、`identity.feishu_accounts_base` | `https://open.feishu.cn`、`https://accounts.feishu.cn` | 飞书开放接口与授权页的基地址，与 `public_url` 一样只写源、同样规整。接 Lark 国际版，或测试时指向模拟服务端才需要改 |
 
-飞书登录的接口与租户的飞书配置见[接口文档的飞书登录一节](../architecture/http-api.md#飞书登录)：没配 `public_url` 时不能启用飞书登录（配置接口报 `400`，登录跳回落地页带 `login_error=tenant_unavailable`）。按飞书通讯录对账随后提供，在那之前 `identity.reconcile_interval_seconds` 不起作用。
+飞书登录的接口与租户的飞书配置见[接口文档的飞书登录一节](../architecture/http-api.md#飞书登录)：没配 `public_url` 时不能启用飞书登录（配置接口报 `400`，登录跳回落地页带 `login_error=tenant_unavailable`）。通讯录对账与登录清理共用每 5 分钟的维护循环，逐个检查 active 且已绑定飞书企业的租户；`identity.reconcile_interval_seconds` 从上次成功完成起计算（默认每日）。
 
 启用飞书登录时还要注意：
 
@@ -342,7 +342,7 @@ curl -X PUT localhost:8420/v1/admin/tenants/acme/quota \
 
 ### 员工停用与离职
 
-员工有三种途径被停用：租户管理员调 `PUT /v1/users/{id}/status`（原因 `admin`）、飞书推来的离职事件（原因 `feishu_resigned`、`feishu_frozen` 或 `feishu_exited`，见[接口文档的飞书事件回调一节](../architecture/http-api.md#飞书事件回调)），以及按飞书通讯录的每日对账（随后提供）。三种都走同一条停用流水线：
+员工有三种途径被停用：租户管理员调 `PUT /v1/users/{id}/status`（原因 `admin`）、飞书推来的离职事件（原因 `feishu_resigned`、`feishu_frozen` 或 `feishu_exited`，见[接口文档的飞书事件回调一节](../architecture/http-api.md#飞书事件回调)），以及按飞书通讯录的每日对账。三种都走同一条停用流水线：
 
 1. 把员工标为停用，记下原因与时间；
 2. 删掉他的全部登录会话：浏览器里的 cookie 下一个请求就是 `401`，代他调用是 `403`。然后，状态真的变了的，才记一条审计 `user_disabled`、指标 `xuanpu_users_disabled_total{reason}` 计一次。审计排在最后，是为了它写不进去时（这次停用照样报错）停用与删登录会话都已经落下；代价是重试时状态已是停用，这条 `user_disabled` 不会补写——平台日志里有错误、`xuanpu_audit_write_failures_total` 会计一次；
@@ -644,3 +644,17 @@ lsof -nP -d cwd | grep '<data_dir>/cache/packages'
 - **`audit.capture_requests` 默认关着是有原因的**：打开后完整的提示词与对话正文都会进审计表。
 
 已知限制的完整清单见[架构总览](../architecture/README.md#已知限制)。
+
+
+### 通讯录对账运维
+
+管理员可通过 `POST /v1/identity/feishu/reconcile` 立即对账，正常返回检查、停用、查不到人数；409 表示租约被占，503 表示本次未完成。失败不推进每日周期，下一次维护（约 5 分钟后）重试。飞书报错前已经停用的员工保持停用。查不到通常与通讯录可见范围有关，只设未验证标记；检查应用权限及可见范围，修复后再对账。返回员工但缺状态不会被推断为离职，因此应同时核对员工状态字段权限。
+
+应用令牌只在内存保存，过期前 5 分钟更新，应用或密钥变化后下次对账重新获取；不写日志与审计。对账与登录共享每租户出站并发限制。对账租约 120 秒，在批次和每名员工处理前原子续期，单步最多 30 秒；失租停止。没有整租户运行时限。关闭平台先取消维护，再关闭停用流水线和飞书连接；失败审计与释放租约也有 30 秒时限。存储不可达时释放可能失败，租约到期后其他实例可接手。
+
+| 指标 | 类型 | 标签 | 含义 |
+| --- | --- | --- | --- |
+| `xuanpu_reconcile_runs_total` | counter | `result` | `succeeded`、`failed`、`cancelled`；只计已认领的运行，不计未到周期/被占跳过 |
+| `xuanpu_reconcile_users_total` | counter | `outcome` | `checked`、`disabled`、`unverified`；checked 包含后两项，失败时已处理计数保留，重试可能再次检查 |
+
+指标不带租户标签；租户级排查使用审计的 `identity_reconciled`。缺状态本身暂无独立指标。

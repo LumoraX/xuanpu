@@ -209,11 +209,12 @@ class Platform:
         self.identity.start()
 
     async def close(self) -> None:
-        """先等员工停用后的后台收尾（最多几秒，还没完的取消，见 ``identity.disable``），再停止接单、
-        等在途对话跑完、释放会话、关闭运行时，最后停掉身份域的周期任务、关掉飞书客户端的连接。
+        """先取消并等身份维护和对账结束，再等员工停用后的后台收尾（最多几秒，见 ``identity.disable``），
+        停止接单、等在途对话跑完、释放会话、关闭运行时，最后关掉飞书客户端的连接。
 
         后台收尾要关会话，所以排在释放会话之前：会话管理还完整的时候让它们跑完。
         """
+        await self.identity.maintenance.close()
         await self.identity.disabling.close()
         await self.sessions.shutdown(drain_seconds=self._drain_seconds)
         await self.runtimes.close()

@@ -216,6 +216,11 @@ def identity_router(platform: Platform) -> APIRouter:
         )
         return feishu_config_view(config.tenant_id, config, identity.settings)
 
+    @router.post("/v1/identity/feishu/reconcile")
+    async def reconcile_feishu(who: Caller) -> dict[str, int]:
+        """管理员立即对账；忽略周期但仍须取得租约。"""
+        return await identity.reconcile.run(who.require_tenant_admin(), manual=True)
+
     @router.post("/v1/identity/feishu/events/{tenant_id}")
     async def feishu_events(tenant_id: str, request: Request) -> dict[str, Any]:
         """飞书事件回调：URL 验证回 ``challenge``，离职事件停用员工，别的事件 200 忽略。

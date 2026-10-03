@@ -333,6 +333,16 @@ class IdentityStore(Protocol):
         """
         ...
 
+    async def renew_reconcile(
+        self, tenant_id: str, *, owner: str, now: float, lease_seconds: float
+    ) -> bool:
+        """仅当前持有者且租约未过期时原子续期；过期不能复活。"""
+        ...
+
+    async def release_reconcile(self, tenant_id: str, *, owner: str) -> bool:
+        """失败或取消时按持有者释放租约，保留上次成功完成时间。"""
+        ...
+
     async def finish_reconcile(self, tenant_id: str, *, owner: str, now: float) -> bool:
         """完成对账：记下完成时间 ``now`` 并放开租约。只有当前持有者能完成，返回是否完成了。
 

@@ -439,6 +439,27 @@ class InMemoryIdentityStore:
             )
             return True
 
+    async def renew_reconcile(
+        self, tenant_id: str, *, owner: str, now: float, lease_seconds: float
+    ) -> bool:
+        """原子续期仍有效且属于本持有者的租约。"""
+        require_reconcile_window(0, lease_seconds)
+        async with self._lock:
+            state = self._reconcile.get(tenant_id)
+            if state is None or state.lease_owner != owner or state.lease_expires_at <= now:
+                return False
+            self._reconcile[tenant_id] = replace(state, lease_expires_at=now + lease_seconds)
+            return True
+
+    async def release_reconcile(self, tenant_id: str, *, owner: str) -> bool:
+        """失败释放，不更新完成时间。"""
+        async with self._lock:
+            state = self._reconcile.get(tenant_id)
+            if state is None or state.lease_owner != owner:
+                return False
+            self._reconcile[tenant_id] = replace(state, lease_owner=None, lease_expires_at=0)
+            return True
+
     async def finish_reconcile(self, tenant_id: str, *, owner: str, now: float) -> bool:
         """完成对账并放开租约。"""
         async with self._lock:

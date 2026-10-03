@@ -76,6 +76,17 @@
 
 ---
 
+### Task 7 实现选择
+
+| 设计 / 计划 | 实现选择 |
+| --- | --- |
+| 独立周期启动描述 | 复用 `IdentityMaintenance` 同一维护循环，经 `IdentityService` 随平台启停；关闭先取消维护，再关闭停用链 |
+| 长时对账租约 | 新增 `renew_reconcile`、`release_reconcile` 双存储契约；120 秒租约，每批及每用户前续期，仅未过期 owner 可续期；每步 30 秒超时，无整租户时限 |
+| 失败与重试 | 失败释放租约但不更新 last_run_at；部分停用保留，后续继续查 active 身份；审计与释放同样有界，存储故障时可等待租约到期接手 |
+| 应用令牌缓存 | 内存按租户保存，核对 app_id 与最新密钥摘要，提前五分钟更新；凭据及摘要不出现在审计日志 |
+| 审计 / 指标 | 成败统一 identity_reconciled，查不到首次记 identity_unverified；新增 reconcile_runs/result 与 reconcile_users/outcome，无租户标签 |
+| 用例位置 | `tests/identity/test_reconcile.py` 与 `test_reconcile_store.py`，不扩根夹具及认证大文件 |
+
 ## Task 1：拆分 `controlplane/postgres.py`（纯搬移）
 
 **Files:** Create `controlplane/postgres_audit.py`；Modify `controlplane/postgres.py`、`controlplane/__init__.py`（若导出）。
