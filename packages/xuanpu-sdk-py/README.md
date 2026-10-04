@@ -13,15 +13,18 @@ async with XuanpuClient("http://localhost:8420", api_key) as client:
     print(reply)
 ```
 
-## `XuanpuClient(base_url, api_key, *, timeout_seconds=60.0)`
+## `XuanpuClient(base_url, api_key, *, timeout_seconds=60.0, act_as_user=None)`
 
 `api_key` 是租户的 API key；只调 `admin.create_tenant`、`admin.set_quota`、`admin.issue_tenant_key` 时用根凭据。`timeout_seconds` 约束普通请求，事件流与评测不受它限制。
 
 用 `async with` 管理连接，或者用完调 `await client.close()`。
 
+`act_as_user` 固定本客户端代表的员工，普通请求与 SSE 都带 `X-Xuanpu-Act-As`。key 必须已被授予 `act_as_users`，目标必须是本租户启用的员工；生效角色取 key 与员工中较低者，不能借此提权。代表另一个员工时新建客户端，不在共享客户端里切身份；省略参数保持原 API key 行为。SDK 不管理浏览器 cookie 登录。
+
 | 方法 | 说明 |
 | --- | --- |
 | `await client.health()` | 存活探测，返回 `{"status", "version", "instance"}` |
+| `await client.me()` | 返回 `actor`、`role`、`tenant_id`、`key_id`、`user_id`、`display_name`；不适用的字段为 `null` |
 
 ## `client.sessions`
 
@@ -37,6 +40,8 @@ async with XuanpuClient("http://localhost:8420", api_key) as client:
 | `await cancel(session_id, *, submission_id=None)` | `list[str]` | 停止生成：取消在途的对话，返回停了哪些 submission |
 | `await pending(session_id)` | `list[dict]` | 当前等待处理的审批请求 |
 | `await replay(session_id, submission_id, *, after_seq=-1)` | `list[dict]` | 回放一轮对话已记入审计的事件 |
+
+代调用普通成员时仅能访问本人会话，访问他人的会话为 404。`mine=True` 对代调用按员工过滤，对普通 API key 按创建者过滤。`Session.user_id` 是会话主人；无主人的系统会话与旧服务端响应均为 `None`。
 
 `send` 与 `resume` 不是协程，直接 `async for`：
 
@@ -104,11 +109,12 @@ await client.packages.publish(pack_package(Path("./support-desk")), activate=Tru
 | --- | --- | --- | --- |
 | `await create_tenant(tenant_id, name, *, max_active_sessions=None, max_daily_tokens=None, max_concurrent_turns=None)` | 平台管理员 | `dict` | 新建租户 |
 | `await set_quota(tenant_id, *, max_active_sessions=None, max_daily_tokens=None, max_concurrent_turns=None)` | 平台管理员 | `dict` | 整体替换租户的配额，返回租户对象。没给的项恢复为不限，不保留原值 |
-| `await issue_tenant_key(tenant_id, name, *, role="tenant_member")` | 平台管理员 | `IssuedKey` | 给某个租户签发 API key |
-| `await issue_key(name, *, role="tenant_member")` | 租户管理员 | `IssuedKey` | 给本租户签发 API key |
+| `await issue_tenant_key(tenant_id, name, *, role="tenant_member", act_as_users=False)` | 平台管理员 | `IssuedKey` | 给某个租户签发 API key，可显式授予代调用能力 |
+| `await issue_key(name, *, role="tenant_member", act_as_users=False)` | 租户管理员 | `IssuedKey` | 给本租户签发 API key |
 | `await revoke_key(key_id)` | 租户管理员 | `None` | 吊销 |
-| `audit(*, session_id=None, kind=None, source=None, since=None, until=None, limit=100)` | 租户管理员 | `AsyncIterator[AuditRecord]` | 查审计，自动翻页；`limit` 是每页条数 |
+| `audit(*, session_id=None, kind=None, source=None, user_id=None, actor=None, since=None, until=None, limit=100)` | 租户管理员 | `AsyncIterator[AuditRecord]` | 查审计，自动翻页；`limit` 是每页条数；user_id 是归属员工，actor 精确匹配触发者 |
 | `await usage(since, until)` | 租户管理员 | `list[Usage]` | 一段日期内的用量，日期写 `YYYY-MM-DD` |
+| `await user_usage(since, until, *, user_id=None)` | 租户管理员 | `list[UserUsage]` | UTC 日期范围内按天、按员工的用量；可筛一个员工；不含无主人的系统会话 |
 
 `IssuedKey.key` 是完整的 API key，只在签发时出现一次。
 
@@ -125,11 +131,12 @@ async with XuanpuClient("http://localhost:8420", root_key) as root:
 
 | 类型 | 字段 |
 | --- | --- |
-| `Session` | `session_id`、`package`、`version`、`entry`、`status`、`owner`、`created_at`、`updated_at`、`created_by`、`metadata` |
+| `Session` | `session_id`、`package`、`version`、`entry`、`status`、`owner`、`created_at`、`updated_at`、`created_by`、`metadata`、`user_id` |
 | `Event` | `kind`、`submission_id`、`seq`、`at`、`data`；属性 `terminal`（是否结束了这一轮）、`text_delta`（文本增量，不是文本事件时为空串） |
 | `PackageVersion` | `name`、`version`、`digest`、`active`、`published_at`、`published_by` |
-| `AuditRecord` | `audit_id`、`source`、`kind`、`at`、`actor`、`session_id`、`stream`、`seq`、`data` |
+| `AuditRecord` | `audit_id`、`source`、`kind`、`at`、`actor`、`session_id`、`stream`、`seq`、`data`、`user_id`（旧服务端缺此字段时为 `None`） |
 | `Usage` | `day`、`input_tokens`、`output_tokens`、`total_tokens`、`turns` |
+| `UserUsage` | `Usage` 的全部字段，另加 `user_id` |
 | `IssuedKey` | `key`、`key_id`、`tenant_id`、`name`、`role` |
 
 ## 异常
@@ -143,4 +150,4 @@ async with XuanpuClient("http://localhost:8420", root_key) as root:
 
 ## 没有封装的接口
 
-列出租户、启停租户、列出本租户的 API key，客户端没有对应的方法，需要时直接调 HTTP 接口。
+列出租户、启停租户、列出本租户的 API key、用户管理、飞书配置与手工对账，客户端没有对应的方法，需要时直接调 HTTP 接口。飞书浏览器登录见[接入手册](../../docs/guides/feishu-login.md)。

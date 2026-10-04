@@ -1,6 +1,6 @@
 # P1 用户身份 实现计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 员工用飞书账号登录平台，平台里的每一件事都能归到具体的人；离职自动停用（设计见 [P1 详细设计](../specs/2026-09-30-p1-user-identity-design.md)，用户已逐项确认）。
 
@@ -67,7 +67,7 @@
 | 7.3 未写配置引用的密钥被删、请求体大小 | 密钥不在保管库 → 404（与没配置同一句提示，日志告警）；请求体上限 1 MiB，超出 `400 invalid_request`（与发布业务包超限同一错误码，不新增 413）（Task 6） |
 | 7.2 `disable_user(tenant_id, user_id, reason, actor)` | `actor` 是 `Principal`；另加 `keep_an_admin`（管理员接口 True，离职事件与对账 False）。平台内部的调用者是新的「系统调用者」`tenancy.system_principal(租户, 名字)`：`Principal.system` 为名字，`actor` 为 `system:<名字>`，角色 `tenant_admin`、只在本租户、不代表员工、不经任何接口签发——飞书事件 `system:feishu-event`，停用后关会话 `system:user-disabled`，对账 `system:reconcile`（Task 7）（Task 6） |
 | 8.2「与会话无关的控制面操作取调用者」 | **补一类**：针对某名员工的操作（`user_role_changed`、`user_disabled`、`user_enabled`、`user_cleanup_failed`）`user_id` 是被操作的员工，`actor` 是谁做的（`AuditLog.control(..., user_id=)`）；按 `user_id` 查一名员工能看到他何时被谁停用（Task 6） |
-| 7.2 第 3 步在后台时的收尾 | 任务引用存在 `DisablePipeline` 里，结束时取走异常记日志；`Platform.close()` 第一步就等它们最多 5 秒（排在释放会话之前，会话管理还完整），还没完的取消、记告警，之后不再接新的；兜底是主人停用的运行时规则，管理员再停用一次重跑（Task 6）。审查修正：同时在跑的最多 8 个（`BACKGROUND_CONCURRENCY`，信号量），免得批量离职占满连接池；按 `(租户, 员工)` 合并——已有任务在跑时不新建，记下「跑完再来一轮」（正在跑的那一轮可能早于新请求读过会话列表，不能算已覆盖），期间的请求并成一轮、用最新的 `actor`。管理员接口同步的第 3 步不经上限与合并 |
+| 7.2 第 3 步在后台时的收尾 | 任务引用存在 `DisablePipeline` 里，结束时取走异常记日志；`Platform.close()` 在停止身份维护之后等它们最多 5 秒（排在释放会话之前，会话管理还完整），还没完的取消、记告警，之后不再接新的；兜底是主人停用的运行时规则，管理员再停用一次重跑（Task 6）。审查修正：同时在跑的最多 8 个（`BACKGROUND_CONCURRENCY`，信号量），免得批量离职占满连接池；按 `(租户, 员工)` 合并——已有任务在跑时不新建，记下「跑完再来一轮」（正在跑的那一轮可能早于新请求读过会话列表，不能算已覆盖），期间的请求并成一轮、用最新的 `actor`。管理员接口同步的第 3 步不经上限与合并 |
 | 7.2 第 1 步「状态真的变了才记 `user_disabled`」的位置 | 审查修正：顺序是改状态 → 删登录会话 → 记审计（审计写不进去时停用效果已全部落下）。**已知限制**：之后重试状态已是停用，这条 `user_disabled` 不会补写，靠错误日志与 `xuanpu_audit_write_failures_total`（审计手册「完整性」）（Task 6） |
 | Task 6 的测试文件 | `tests/identity/` 下：`test_identity_disable.py`、`test_disable_background.py`（后台收尾）、`test_user_admin.py`；事件回调在子目录 `tests/identity/feishu_events/`（`test_feishu_events.py` 正常流程、`test_feishu_event_errors.py` 坏请求），样本与把手放在子目录的 `conftest.py`（importlib 模式下测试模块不能互相 import），取值经上一级的 `feishu_app` 夹具拿到（审查修正） |
 | 设计第 9 节 `GET /v1/users?status=&unverified=` | 另加 `role=`（`tenant_admin`/`tenant_member`）、`after=`（按 `user_id` 翻页）、`limit=`（默认 100、最大 1000），响应带 `next_after`；与 `UserQuery`、审计的翻页同一做法（Task 6） |
@@ -85,92 +85,99 @@
 | 失败与重试 | 失败释放租约但不更新 last_run_at；部分停用保留，后续继续查 active 身份；审计与释放同样有界，存储故障时可等待租约到期接手 |
 | 应用令牌缓存 | 内存按租户保存，核对 app_id 与最新密钥摘要，提前五分钟更新；凭据及摘要不出现在审计日志 |
 | 审计 / 指标 | 成败统一 identity_reconciled，查不到首次记 identity_unverified；新增 reconcile_runs/result 与 reconcile_users/outcome，无租户标签 |
+| 完成审计顺序 | 先完成持久化再写成功审计；完成失败/失租仅记失败；完成后审计写失败不撤销完成时间或补写失败终态。真实 Platform.close 先停身份维护 |
 | 用例位置 | `tests/identity/test_reconcile.py` 与 `test_reconcile_store.py`，不扩根夹具及认证大文件 |
 
 ## Task 1：拆分 `controlplane/postgres.py`（纯搬移）
 
 **Files:** Create `controlplane/postgres_audit.py`；Modify `controlplane/postgres.py`、`controlplane/__init__.py`（若导出）。
 
-- [ ] 把审计（`append_audit`、`query_audit`）与用量（`add_usage`、`get_usage`、`list_usage`）的 SQL 与行转换挪到 `postgres_audit.py`（一个由 `PostgresControlPlane` 组合使用的类或一组函数，选与现有代码风格一致的写法）。对外接口与行为不变。
-- [ ] 契约测试 `tests/test_controlplane_contract.py` 全过即证明行为不变；`postgres.py` 降到 500 行以下。
-- [ ] 提交：`refactor: 控制面 Postgres 实现拆出审计与用量`
+- [x] 把审计（`append_audit`、`query_audit`）与用量（`add_usage`、`get_usage`、`list_usage`）的 SQL 与行转换挪到 `postgres_audit.py`（一个由 `PostgresControlPlane` 组合使用的类或一组函数，选与现有代码风格一致的写法）。对外接口与行为不变。
+- [x] 契约测试 `tests/test_controlplane_contract.py` 全过即证明行为不变；`postgres.py` 降到 500 行以下。
+- [x] 提交：`refactor: 控制面 Postgres 实现拆出审计与用量`
 
 ## Task 2：身份模型、存储协议、两个实现、迁移
 
 **Files:** Create `identity/__init__.py`、`identity/models.py`、`identity/store.py`、`identity/memory.py`、`identity/postgres.py`、`controlplane/migrations/0004_identity.sql`；Modify `controlplane/models.py`（`SessionRecord.user_id`、`AuditRecord.user_id`、`AuditQuery.user_id`）、`tenancy.py`（`ApiKeyRecord.can_act_as_user`）、控制面两个实现（新字段的读写）、`controlplane/schema.py`（若迁移列表需要登记）。Test：`tests/test_identity_store_contract.py`（新建，内存与 Postgres 参数化，照 `test_controlplane_contract.py` 的夹具写法）、`tests/test_controlplane_contract.py`（新字段）。
 
-- [ ] 模型按设计 5.1：`UserRecord`、`ExternalIdentity`、`TenantIdentityConfig`、`LoginSession`、`LoginAttempt`、`UserUsageRecord`、对账状态。`user_id` 由 `ids.new_id("usr")` 生成（核对 `ids.py` 的格式，设计要求 `usr_` 加 12 位十六进制——若不一致，以现有 `new_id` 为准并在设计对齐表里记一笔）。
-- [ ] `IdentityStore` 协议的方法（以设计第 7 节的流程为准，至少）：用户的建、取、按外部身份取、列（按状态、是否查不到）、改（角色、状态、`unverified_since`、`last_login_at`、显示信息）；外部身份的建与改属性；租户身份配置的取与写；登录会话的建、按摘要取、删一个、删某用户全部、`touch`（`last_seen_at` 最多每 5 分钟写一次的节流由服务层做，存储只管写）；登录尝试的建与「取出即删」（原子）；按用户用量的累加与按日期区间列；对账租约的 `claim_reconcile(tenant_id, owner, now, interval, lease_seconds) -> bool` 与 `finish_reconcile`。全部按租户隔离（规则 3）。
-- [ ] 迁移 `0004_identity.sql`：新表（租户前缀照现有迁移写法）；`sessions` 表加 `user_id`、`audit` 表加 `user_id` 并建索引；`api_keys` 表加 `can_act_as_user BOOLEAN NOT NULL DEFAULT FALSE`；`user_usage` 表。`xuanpu migrate` 能把 0003 的库升到 0004（补测试）。
-- [ ] 契约测试覆盖每个方法，包括：登录尝试只能取出一次（并发两次取，只有一个拿到）；对账租约两个 owner 并发认领只有一个成功、过期后可被别人认领、`interval` 内不重复认领；跨租户取不到。
-- [ ] 提交：`feat: 身份域的模型、存储协议与内存、Postgres 实现`
+- [x] 模型按设计 5.1：`UserRecord`、`ExternalIdentity`、`TenantIdentityConfig`、`LoginSession`、`LoginAttempt`、`UserUsageRecord`、对账状态。`user_id` 由 `ids.new_id("usr")` 生成（核对 `ids.py` 的格式，设计要求 `usr_` 加 12 位十六进制——若不一致，以现有 `new_id` 为准并在设计对齐表里记一笔）。
+- [x] `IdentityStore` 协议的方法（以设计第 7 节的流程为准，至少）：用户的建、取、按外部身份取、列（按状态、是否查不到）、改（角色、状态、`unverified_since`、`last_login_at`、显示信息）；外部身份的建与改属性；租户身份配置的取与写；登录会话的建、按摘要取、删一个、删某用户全部、`touch`（`last_seen_at` 最多每 5 分钟写一次的节流由服务层做，存储只管写）；登录尝试的建与「取出即删」（原子）；按用户用量的累加与按日期区间列；对账租约的 `claim_reconcile(tenant_id, owner, now, interval, lease_seconds) -> bool` 与 `finish_reconcile`。全部按租户隔离（规则 3）。
+- [x] 迁移 `0004_identity.sql`：新表（租户前缀照现有迁移写法）；`sessions` 表加 `user_id`、`audit` 表加 `user_id` 并建索引；`api_keys` 表加 `can_act_as_user BOOLEAN NOT NULL DEFAULT FALSE`；`user_usage` 表。`xuanpu migrate` 能把 0003 的库升到 0004（补测试）。
+- [x] 契约测试覆盖每个方法，包括：登录尝试只能取出一次（并发两次取，只有一个拿到）；对账租约两个 owner 并发认领只有一个成功、过期后可被别人认领、`interval` 内不重复认领；跨租户取不到。
+- [x] 提交：`feat: 身份域的模型、存储协议与内存、Postgres 实现`
 
 ## Task 3：调用者身份与认证入口
 
 **Files:** Create `identity/cookies.py`、`identity/service.py`（先放解析登录会话与代调用这两块）；Modify `tenancy.py`（`Principal`）、`platform.py`（`authenticate` 扩展或新增 `authenticate_request`）、`api/app.py`（`caller` 依赖）、`config.py`（`public_url`、`identity` 段）、`api/schemas.py`（签发 key 加 `act_as_users`）。Test：`tests/test_identity_auth.py`（新建）。
 
-- [ ] `Principal` 加 `user_id: str | None = None`，`key_id` 改为 `str | None`；`actor` 按设计 5.2 的表（`key:root`、`key:<id>`、`user:<user_id>`、`key:<id>/user:<user_id>`）。全仓 grep `key_id`、`actor` 的用法，保证现有行为不变（现有测试全过）。
-- [ ] 认证顺序按设计 6.1：有 `Authorization` 走 key/根凭据，另带 `X-Xuanpu-Act-As` 走代调用（6.3：key 须 `can_act_as_user`、用户同租户且 `active`，否则 403；生效角色取 key 与用户的较低者）；否则有 `xuanpu_session` cookie 走登录会话（6.2：每个请求查库——会话存在未过期、用户 `active`、租户 `active`，任一不满足 401 并清 cookie；不缓存）；都没有 401。两种失败对外同一个 401。
-- [ ] 防跨站请求伪造（6.2）：cookie 认证的非 GET/HEAD/OPTIONS 请求必须带 `X-Requested-By: xuanpu`；带了 `Origin` 的必须等于 `public_url` 的源；不满足 403（错误码按 errors.py 现有的选或新增，写进 http-api.md）。
-- [ ] 签发 key：`POST /v1/admin/tenants/{id}/keys` 与 `POST /v1/keys` 加 `act_as_users: bool = false`；只有租户管理员或平台管理员能签发带它的 key（成员签发报 403——核对现有签发规则：成员本来能不能签？按现有规则加限制）。
-- [ ] `GET /v1/me`：返回当前调用者（用户：`user_id`、显示名、角色、租户；key：`key_id`、角色、租户；代调用：两者都有）。
-- [ ] 配置：`public_url: str | None`（启用飞书登录时必填——在 Task 4 的配置校验里检查）；`identity` 段按设计第 11 节（`session_ttl_seconds`、`cookie_secure`、`reconcile_interval_seconds`、`default_tenant`、`login_landing_path`、`feishu_open_base`、`feishu_accounts_base`）。operations.md 配置表与 `examples/xuanpu.yaml` 同步。
-- [ ] 测试：三种调用者各自的 `actor` 与审计；cookie 有效/过期/用户停用/租户停用；写请求缺自定义头、`Origin` 不符被拒；代调用的四种拒绝（key 没能力、用户别的租户、用户停用、不带 key）与角色取较低者；`GET /v1/me` 三种形态。登录会话在测试里直接经存储建（登录流程是 Task 4）。
-- [ ] 提交：`feat: 调用者身份带上用户——登录 cookie、系统代员工调用、防跨站请求伪造`
+- [x] `Principal` 加 `user_id: str | None = None`，`key_id` 改为 `str | None`；`actor` 按设计 5.2 的表（`key:root`、`key:<id>`、`user:<user_id>`、`key:<id>/user:<user_id>`）。全仓 grep `key_id`、`actor` 的用法，保证现有行为不变（现有测试全过）。
+- [x] 认证顺序按设计 6.1：有 `Authorization` 走 key/根凭据，另带 `X-Xuanpu-Act-As` 走代调用（6.3：key 须 `can_act_as_user`、用户同租户且 `active`，否则 403；生效角色取 key 与用户的较低者）；否则有 `xuanpu_session` cookie 走登录会话（6.2：每个请求查库——会话存在未过期、用户 `active`、租户 `active`，任一不满足 401 并清 cookie；不缓存）；都没有 401。两种失败对外同一个 401。
+- [x] 防跨站请求伪造（6.2）：cookie 认证的非 GET/HEAD/OPTIONS 请求必须带 `X-Requested-By: xuanpu`；带了 `Origin` 的必须等于 `public_url` 的源；不满足 403（错误码按 errors.py 现有的选或新增，写进 http-api.md）。
+- [x] 签发 key：`POST /v1/admin/tenants/{id}/keys` 与 `POST /v1/keys` 加 `act_as_users: bool = false`；只有租户管理员或平台管理员能签发带它的 key（成员签发报 403——核对现有签发规则：成员本来能不能签？按现有规则加限制）。
+- [x] `GET /v1/me`：返回当前调用者（用户：`user_id`、显示名、角色、租户；key：`key_id`、角色、租户；代调用：两者都有）。
+- [x] 配置：`public_url: str | None`（启用飞书登录时必填——在 Task 4 的配置校验里检查）；`identity` 段按设计第 11 节（`session_ttl_seconds`、`cookie_secure`、`reconcile_interval_seconds`、`default_tenant`、`login_landing_path`、`feishu_open_base`、`feishu_accounts_base`）。operations.md 配置表与 `examples/xuanpu.yaml` 同步。
+- [x] 测试：三种调用者各自的 `actor` 与审计；cookie 有效/过期/用户停用/租户停用；写请求缺自定义头、`Origin` 不符被拒；代调用的四种拒绝（key 没能力、用户别的租户、用户停用、不带 key）与角色取较低者；`GET /v1/me` 三种形态。登录会话在测试里直接经存储建（登录流程是 Task 4）。
+- [x] 提交：`feat: 调用者身份带上用户——登录 cookie、系统代员工调用、防跨站请求伪造`
 
 ## Task 4：飞书客户端与登录流程
 
 **Files:** Create `identity/feishu.py`、`identity/login.py`（或并入 service——注意行数）、`api/identity.py`；Modify `api/app.py`（挂路由）、`platform.py`/`bootstrap.py`（装配 `IdentityService`）。Test：`tests/test_feishu_client.py`、`tests/test_identity_login.py`（新建）。
 
-- [ ] `FeishuClient(open_base, accounts_base, transport=None, timeout)`：拼授权地址（PKCE S256、`state`、不申请额外 scope）、换令牌（`POST /open-apis/authen/v2/oauth/token`，JSON 体）、取用户信息（`GET /open-apis/authen/v1/user_info`）、取应用身份令牌（`POST /open-apis/auth/v3/tenant_access_token/internal`）、批量查员工（`GET /open-apis/contact/v3/users/batch`，`user_id_type=union_id`，每批 ≤ 50）。错误分两层（HTTP 状态与响应体 `code`），20010 映射为「不在可用范围」。令牌与授权码不进日志与异常文本。设计第 3 节「实现时要再对照文档确认的」三项：实现时查飞书开放平台文档核对，在代码注释与报告里写明核对结果。
-- [ ] 登录流程按设计 7.1（9 步与 7 种失败原因）：`GET /v1/auth/feishu/login`、`GET /v1/auth/feishu/callback`、`POST /v1/auth/logout`。`return_to` 只收站内路径；`tenant` 省略时用 `identity.default_tenant`；失败一律 302 落地页带 `?login_error=`，记 `login_failed`；成功记 `login_succeeded`，首次登录记 `user_created`；每次登录签发新令牌；cookie 属性按 6.2。
-- [ ] 租户身份配置：`GET /v1/identity/feishu`（不含明文；附回调地址与事件地址）、`PUT /v1/identity/feishu`（引用的三个密钥必须已存在，否则 400；记 `identity_config_updated`）。启用飞书登录但 `public_url` 未配置时：PUT 报 400（或启动时报配置错误——选一个，写清楚）。
-- [ ] 测试：飞书客户端用 `httpx.MockTransport`（成功、20010、令牌接口错误码、网络错误）；登录全流程用模拟飞书服务端（首次登录建账号、再次登录刷新信息、7 种失败原因各一条、`return_to` 开放跳转被拒、state 只能用一次、tenant_key 首登绑定后不一致被拒）；登出删会话清 cookie。
-- [ ] 指标：`xuanpu_logins_total{result}`。
-- [ ] 提交：`feat: 飞书登录——授权、回调、登出与租户的飞书配置`
+- [x] `FeishuClient(open_base, accounts_base, transport=None, timeout)`：拼授权地址（PKCE S256、`state`、不申请额外 scope）、换令牌（`POST /open-apis/authen/v2/oauth/token`，JSON 体）、取用户信息（`GET /open-apis/authen/v1/user_info`）、取应用身份令牌（`POST /open-apis/auth/v3/tenant_access_token/internal`）、批量查员工（`GET /open-apis/contact/v3/users/batch`，`user_id_type=union_id`，每批 ≤ 50）。错误分两层（HTTP 状态与响应体 `code`），20010 映射为「不在可用范围」。令牌与授权码不进日志与异常文本。设计第 3 节「实现时要再对照文档确认的」三项：实现时查飞书开放平台文档核对，在代码注释与报告里写明核对结果。
+- [x] 登录流程按设计 7.1（9 步与 7 种失败原因）：`GET /v1/auth/feishu/login`、`GET /v1/auth/feishu/callback`、`POST /v1/auth/logout`。`return_to` 只收站内路径；`tenant` 省略时用 `identity.default_tenant`；失败一律 302 落地页带 `?login_error=`，记 `login_failed`；成功记 `login_succeeded`，首次登录记 `user_created`；每次登录签发新令牌；cookie 属性按 6.2。
+- [x] 租户身份配置：`GET /v1/identity/feishu`（不含明文；附回调地址与事件地址）、`PUT /v1/identity/feishu`（引用的三个密钥必须已存在，否则 400；记 `identity_config_updated`）。启用飞书登录但 `public_url` 未配置时：PUT 报 400（或启动时报配置错误——选一个，写清楚）。
+- [x] 测试：飞书客户端用 `httpx.MockTransport`（成功、20010、令牌接口错误码、网络错误）；登录全流程用模拟飞书服务端（首次登录建账号、再次登录刷新信息、7 种失败原因各一条、`return_to` 开放跳转被拒、state 只能用一次、tenant_key 首登绑定后不一致被拒）；登出删会话清 cookie。
+- [x] 指标：`xuanpu_logins_total{result}`。
+- [x] 提交：`feat: 飞书登录——授权、回调、登出与租户的飞书配置`
 
 ## Task 5：会话归属、可见性、审计与用量带上用户
 
 **Files:** Create `runtime/ownership.py`（可见性与主人状态检查）；Modify `runtime/sessions.py`（只加调用）、`runtime/events.py`（`user_id` 写进引擎事件审计；用量同时写按用户的表）、`runtime/events.py` 的 `SubmissionIndex`（登记会话主人）、`audit.py`（`control` 取 `principal.user_id`；`gate` 取会话主人）、`api/app.py`（`GET /v1/audit?user_id=`、`GET /v1/usage/users`）。Test：`tests/test_session_ownership.py`、`tests/test_user_usage.py`（新建）。
 
-- [ ] 建会话：调用者有 `user_id` 的写进 `SessionRecord.user_id`。
-- [ ] 可见性按设计 8.1：普通成员（登录或被代调用）只看自己的会话——列会话强制只列自己的，取别人的会话 404（取、关、发消息、送审批、停止、回放、待办，全部经同一个检查）；管理员（登录）看本租户全部；不带代调用的 API key 看本租户全部（不变）。`mine=true` 对用户按 `user_id`、对 key 按创建者。
-- [ ] 运行时规则（设计 7.2 末段）：会话主人已停用时，任何调用者都不能再发消息、送审批、停止（停止可以放行？——停止只会让会话更快停下，放行；在 `ownership.py` 的 docstring 里写明），返回 403。
-- [ ] 审计 `user_id`：控制面操作取调用者；内核事件、过闸记录、人工拒绝补记、停止生成、估算入账取会话主人。`AuditQuery.user_id`；`GET /v1/audit?user_id=`（仍只对管理员开放）。
-- [ ] 用量：会话有 `user_id` 的同时累加按用户的表（含 P0 的估算入账）；`GET /v1/usage/users?since=&until=`（租户管理员）。
-- [ ] 测试：成员只看到自己的会话（列、取、发消息、回放、待办、停止都被挡）；管理员与 key 看全部；代调用以员工身份可见范围生效；主人停用后发消息 403；各类审计记录带对 `user_id`（含过闸与补记）；按用户用量与租户总量一致。
-- [ ] 提交：`feat: 会话归属与可见性；审计与用量带上用户`
+- [x] 建会话：调用者有 `user_id` 的写进 `SessionRecord.user_id`。
+- [x] 可见性按设计 8.1：普通成员（登录或被代调用）只看自己的会话——列会话强制只列自己的，取别人的会话 404（取、关、发消息、送审批、停止、回放、待办，全部经同一个检查）；管理员（登录）看本租户全部；不带代调用的 API key 看本租户全部（不变）。`mine=true` 对用户按 `user_id`、对 key 按创建者。
+- [x] 运行时规则（设计 7.2 末段）：会话主人已停用时，任何调用者都不能再发消息、送审批、停止（停止可以放行？——停止只会让会话更快停下，放行；在 `ownership.py` 的 docstring 里写明），返回 403。
+- [x] 审计 `user_id`：控制面操作取调用者；内核事件、过闸记录、人工拒绝补记、停止生成、估算入账取会话主人。`AuditQuery.user_id`；`GET /v1/audit?user_id=`（仍只对管理员开放）。
+- [x] 用量：会话有 `user_id` 的同时累加按用户的表（含 P0 的估算入账）；`GET /v1/usage/users?since=&until=`（租户管理员）。
+- [x] 测试：成员只看到自己的会话（列、取、发消息、回放、待办、停止都被挡）；管理员与 key 看全部；代调用以员工身份可见范围生效；主人停用后发消息 403；各类审计记录带对 `user_id`（含过闸与补记）；按用户用量与租户总量一致。
+- [x] 提交：`feat: 会话归属与可见性；审计与用量带上用户`
 
 ## Task 6：停用流水线、用户管理、离职事件回调
 
 **Files:** Create `identity/disable.py`（停用流水线与监听者登记）、`identity/listeners.py`（P1 的监听者：关闭他名下所有 active 会话）、`identity/events.py`（验签、解密、URL 验证、解析离职事件——纯计算）；Modify `identity/service.py`、`api/identity.py`、`bootstrap.py`/`platform.py`（注册监听者）。Test：`tests/test_identity_disable.py`、`tests/test_feishu_events.py`（新建）。
 
-- [ ] 停用流水线按设计 7.2：`disable_user(tenant_id, user_id, reason, actor)` 幂等；状态真的变了才记 `user_disabled`；删全部登录会话；依次通知监听者，失败记 `user_cleanup_failed`、不影响其余；再次停用重跑全部监听者。重新启用只改状态、记 `user_enabled`。
-- [ ] 用户管理接口：`GET /v1/users?status=&unverified=`、`GET /v1/users/{id}`（管理员或本人）、`PUT /v1/users/{id}/role`（记 `user_role_changed`；不能把自己降级到没有管理员——若租户只剩这一个管理员，拒绝并说明原因）、`PUT /v1/users/{id}/status`（停用走流水线，原因 `admin`）。
-- [ ] 事件回调按设计 7.3：`POST /v1/identity/feishu/events/{tenant_id}`；签名不符 401（只写日志不写审计）；解密；URL 验证；核对 token、`app_id`、`tenant_key`；`contact.user.deleted_v3` → 同步执行停用第 1、2 步，第 3 步（监听者）放后台任务（任务引用保存、异常取走记日志）；其他事件 200 忽略；3 秒内响应。
-- [ ] 测试：流水线三步、幂等、监听者失败留审计、重跑；用户管理的权限与最后一个管理员保护；事件回调：URL 验证、签名不符、token/`app_id`/`tenant_key` 不符、离职事件导致停用且会话被关、未知事件忽略；测试里按设计第 3 节的算法用 `cryptography` 加密出样本（含填充错误、长度错误的坏样本）。
-- [ ] 指标：`xuanpu_users_disabled_total{reason}`。
-- [ ] 提交：`feat: 员工停用流水线、用户管理与飞书离职事件回调`
+- [x] 停用流水线按设计 7.2：`disable_user(tenant_id, user_id, reason, actor)` 幂等；状态真的变了才记 `user_disabled`；删全部登录会话；依次通知监听者，失败记 `user_cleanup_failed`、不影响其余；再次停用重跑全部监听者。重新启用只改状态、记 `user_enabled`。
+- [x] 用户管理接口：`GET /v1/users?status=&unverified=`、`GET /v1/users/{id}`（管理员或本人）、`PUT /v1/users/{id}/role`（记 `user_role_changed`；不能把自己降级到没有管理员——若租户只剩这一个管理员，拒绝并说明原因）、`PUT /v1/users/{id}/status`（停用走流水线，原因 `admin`）。
+- [x] 事件回调按设计 7.3：`POST /v1/identity/feishu/events/{tenant_id}`；签名不符 401（只写日志不写审计）；解密；URL 验证；核对 token、`app_id`、`tenant_key`；`contact.user.deleted_v3` → 同步执行停用第 1、2 步，第 3 步（监听者）放后台任务（任务引用保存、异常取走记日志）；其他事件 200 忽略；3 秒内响应。
+- [x] 测试：流水线三步、幂等、监听者失败留审计、重跑；用户管理的权限与最后一个管理员保护；事件回调：URL 验证、签名不符、token/`app_id`/`tenant_key` 不符、离职事件导致停用且会话被关、未知事件忽略；测试里按设计第 3 节的算法用 `cryptography` 加密出样本（含填充错误、长度错误的坏样本）。
+- [x] 指标：`xuanpu_users_disabled_total{reason}`。
+- [x] 提交：`feat: 员工停用流水线、用户管理与飞书离职事件回调`
 
 ## Task 7：每日对账
 
 **Files:** Create `identity/reconcile.py`；Modify `platform.py`（启动、停止周期任务）、`api/identity.py`（`POST /v1/identity/feishu/reconcile`）。Test：`tests/test_identity_reconcile.py`（新建）。
 
-- [ ] 按设计 7.4：周期任务遍历配置了飞书的租户，`claim_reconcile` 认领；应用身份令牌在内存缓存到过期前 5 分钟；分页取 `active` 且有飞书身份的用户，每 50 人批量查；离职/暂停/已退出按原因停用；查不到的设 `unverified_since`、记 `identity_unverified`（不停用）；再次查到清标记；完成记 `identity_reconciled`（检查、停用、查不到的人数）；飞书报错中止本次、记 `identity_reconciled` 注明失败。手工触发接口不受周期限制，但仍要认领租约。
-- [ ] 周期任务的异常不能让循环退出（记日志、下个周期再试）；`Platform.close()` 时取消并等待它结束。
-- [ ] 测试：三种状态被停用；查不到只标记；再次查到清标记；两个实例只有一个认领成功；飞书报错中止且已停用的保持；手工触发。
-- [ ] 提交：`feat: 每日对账——按飞书通讯录停用离职员工`
+- [x] 按设计 7.4：周期任务遍历配置了飞书的租户，`claim_reconcile` 认领；应用身份令牌在内存缓存到过期前 5 分钟；分页取 `active` 且有飞书身份的用户，每 50 人批量查；离职/暂停/已退出按原因停用；查不到的设 `unverified_since`、记 `identity_unverified`（不停用）；再次查到清标记；完成记 `identity_reconciled`（检查、停用、查不到的人数）；飞书报错中止本次、记 `identity_reconciled` 注明失败。手工触发接口不受周期限制，但仍要认领租约。
+- [x] 周期任务的异常不能让循环退出（记日志、下个周期再试）；`Platform.close()` 时取消并等待它结束。
+- [x] 测试：三种状态被停用；查不到只标记；再次查到清标记；两个实例只有一个认领成功；飞书报错中止且已停用的保持；手工触发。
+- [x] 提交：`feat: 每日对账——按飞书通讯录停用离职员工`
 
 ## Task 8：控制台
 
 **Files:** Modify `xuanpu-console/src/xuanpu_console/static/{index.html,app.js,style.css}`；Test：`xuanpu-console/tests/test_static.py`。
 
-- [ ] 按设计第 10 节：登录页保留粘贴 API key，同源时另显示「用飞书登录」（`?tenant=` 或默认租户）；按 `login_error` 显示原因；cookie 模式（请求不带 `Authorization`，写请求带 `X-Requested-By: xuanpu`）；页面显示当前员工与退出；「用户」页（仅管理员）：姓名、角色、状态、最近登录、查不到标记；设为/取消管理员、停用、启用。
-- [ ] 静态测试覆盖新页面与登录按钮；用 Playwright 在真实浏览器里走一遍（本地起平台与模拟飞书服务端，后台起、用完杀掉）：飞书登录 → 看到自己的会话 → 退出；管理员在用户页停用一名员工。
-- [ ] 提交：`feat(console): 飞书登录与用户页`
+- [x] 按设计第 10 节：登录页保留粘贴 API key，同源时另显示「用飞书登录」（`?tenant=` 或默认租户）；按 `login_error` 显示原因；cookie 模式（请求不带 `Authorization`，写请求带 `X-Requested-By: xuanpu`）；页面显示当前员工与退出；「用户」页（仅管理员）：姓名、角色、状态、最近登录、查不到标记；设为/取消管理员、停用、启用。
+- [x] 静态测试覆盖新页面与登录按钮；用 Playwright 在真实浏览器里走一遍（本地起平台与模拟飞书服务端，后台起、用完杀掉）：飞书登录 → 看到自己的会话 → 退出；管理员在用户页停用一名员工。
+- [x] 提交：`feat(console): 飞书登录与用户页`
 
 ## Task 9：文档
 
-- [ ] 按设计第 15 节：http-api.md（新接口、两种认证方式、代员工调用、可见性规则、新错误原因——前面任务已补的核对一遍）；架构总览新增「身份」一节、租户隔离表加用户、已知限制（对账查不到不自动停用、事件回调要求公网可达、管理员仍可看全部会话正文——规则 7 要在 P6 前收紧）；新手册 `docs/guides/feishu-login.md`「接入飞书登录」（建自建应用、重定向与事件地址、权限、可用范围与通讯录权限范围、Encrypt Key；写密钥、调配置接口、指定第一个管理员；**实机核对清单**——设计第 14 节的 4 项）；operations.md（配置、对账、停用流水线）；audit-and-usage.md（新审计类型、按用户用量）；integrating.md（代员工调用）；console README。命令与输出要实际跑过（用模拟飞书服务端）。
-- [ ] 设计文档状态改为「已实现（feat/p1-identity）」，列出与设计不同的地方。
-- [ ] 提交：`docs: P1 用户身份——接入飞书登录手册、接口与运维文档`
+- [x] 按设计第 15 节：http-api.md（新接口、两种认证方式、代员工调用、可见性规则、新错误原因——前面任务已补的核对一遍）；架构总览新增「身份」一节、租户隔离表加用户、已知限制（对账查不到不自动停用、事件回调要求公网可达、管理员仍可看全部会话正文——规则 7 要在 P6 前收紧）；新手册 `docs/guides/feishu-login.md`「接入飞书登录」（建自建应用、重定向与事件地址、权限、可用范围与通讯录权限范围、Encrypt Key；写密钥、调配置接口、指定第一个管理员；**实机核对清单**——设计第 14 节的 4 项）；operations.md（配置、对账、停用流水线）；audit-and-usage.md（新审计类型、按用户用量）；integrating.md（代员工调用）；console README。命令与输出要实际跑过（用模拟飞书服务端）。
+- [x] 设计文档状态改为「已实现（feat/p1-identity）」，列出与设计不同的地方。
+- [x] 提交：`feat(sdk): 补齐用户身份并完成 P1 接入文档`（本文所在提交）。
+
+- [x] Python SDK 身份补齐与独立文件测试；先红 8 failed，后 SDK/真实 API 定向 20 passed。
+- [x] 真实 CLI + 模拟飞书手册验收；配置、首位管理员、代调用、对账、加密 URL 验证、签名离职事件、回调日志；测试服务已回收。
+- [x] Task 9 SDK 与文档独立审查通过；主代理最终四门禁通过：pytest 1130 passed in 57.66s，Ruff 全绿，mypy 90 源文件无问题，锁文件检查 102 packages。
+
+Task 7 提交 `3dc24fb`，Task 8 提交 `862c73f`；Task 9 随本文所在提交完成，最终结果见[进度记录](2026-10-02-p1-progress.md)。真实飞书五项核对保持未完成，见接入手册；本轮未推送、未发布、未合 main。

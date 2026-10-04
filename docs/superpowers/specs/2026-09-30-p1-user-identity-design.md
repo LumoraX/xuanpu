@@ -1,11 +1,11 @@
 # P1 用户身份：飞书登录 —— 详细设计
 
 - 日期：2026-09-30
-- 状态：设计已与用户逐项确认，待写实现计划
+- 状态：已实现（feat/p1-identity）；本地实现与模拟飞书验证，真实飞书验收见手册待办
 - 上游决策：[ADR 0007](../../decisions/0007-workbench-enterprise-apps-and-personal-space.md)（决策 2 与「拍板结果」）、[ADR 0009](../../decisions/0009-small-core-connect-everything.md)、[ADR 0010](../../decisions/0010-user-identity-feishu-login.md)（本设计的关键取舍）
 - 读者：实现 P1 的工程师与 agent
 
-> 本文是实现前的设计。实现落地后，当前生效的行为以 `docs/architecture/` 为准。
+> 本文保留实现前的设计过程；第 17 节列出落地时的差异与加固，优先于正文原始流程。当前生效的完整行为以 [架构与接口](../../architecture/README.md)为准，逐项实现记录见[计划对齐表](../plans/2026-10-02-p1-user-identity.md#与设计的对齐p0-之后的变化)。本地实现不代表已部署或真实飞书已验收。
 
 ## 1. 目标与范围
 
@@ -78,7 +78,7 @@ P1 提供一个「员工停用」通知点，P3（冻结空间）、P6（撤销�
 | 字段 | 说明 |
 | --- | --- |
 | `tenant_id` | 所属租户 |
-| `user_id` | 平台分配：`usr_` 加 12 位十六进制。平台内部各处一律用它，飞书的标识只作外部映射 |
+| `user_id` | 平台分配：`usr_` 加 24 位十六进制（实现沿用 `ids.new_id`，原设计的 12 位已修正）。平台内部各处一律用它，飞书的标识只作外部映射 |
 | `display_name`、`avatar_url` | 每次登录时按飞书返回刷新 |
 | `role` | `tenant_admin` 或 `tenant_member`，沿用 `tenancy.Role` |
 | `status` | `active` 或 `disabled` |
@@ -382,3 +382,26 @@ P1 提供一个「员工停用」通知点，P3（冻结空间）、P6（撤销�
 8. 文档与实机核对清单。
 
 每一步结束时，pytest、ruff、mypy 都要全绿。
+
+## 17. 已实现的对齐与差异（2026-10-04）
+
+| 原设计位置 | 当前实现 |
+| --- | --- |
+| 模块与依赖 | 身份路由拆为 identity/users/audit_usage；服务拆为 login/users/disable/callback/reconcile/maintenance。停用监听者通过协议调用运行时，不让身份域 import runtime；PostgreSQL 审计 SQL 独立模块 |
+| 数据记录与标识 | 用户 ID 为 `usr_` + 24 位；登录尝试有 `expires_at` 与 `cookie_hash`。cookie 摘要与 OAuth state 入口先查记录，再从记录确定租户；后台枚举/清理可跨租户，其余按租户过滤 |
+| `public_url` 与 cookie | `public_url` 限源并规整，不支持反向代理子路径；未配置时不认 cookie。Secure 模式使用 `__Host-xuanpu_session`，本地 HTTP 才用 `xuanpu_session`；同名 cookie 重复时拒绝且不清除 |
+| 登录绑定与负载限制 | 另发登录尝试 cookie（Secure 时 `__Host-xuanpu_login`），回调要求 cookie 与 state 绑定。state/code/return_to 有形状与长度限制；同租户飞书出站共用上限 8、排队 5 秒的限流器 |
+| 回调日志与登录审计 | 真实 CLI 访问日志隐藏回调查询串；匿名可伪造失败仅日志与固定指标，认出员工后的失败才记 login_failed，避免匿名刷审计。飞书错误不记录令牌与授权码 |
+| 代调用与 `me` | cookie 带代调用头为 400，根凭据代调用为 403；`me` 四种调用者统一 actor/role/tenant_id/key_id/user_id/display_name 形状，不适用字段为 null |
+| 审计归属 | 会话相关控制面、内核和过闸审计的 user_id 全部取主人；员工管理操作取被操作员工；其他控制面取调用者。actor 始终记录触发者；新增 actor 精确筛选，按用户用量包含估算入账 |
+| URL 验证验签顺序 | 支持加密但无签名头的 URL 验证：解密、type、token 全通过才返回 challenge，任何失败统一 401；有签名头则先验签。拒收全部明文回调。依据官方 SDK 处理顺序及 OpenClaw 报文观察，非官方文档原文；真实飞书仍待核对 |
+| 普通事件 | 核对 token/app_id/已绑定 tenant_key；未绑定企业时忽略，不能通过事件绑定。无事件去重或时间窗，停用幂等；请求体限制 1 MiB，坏 Unicode 与过长 challenge 拒绝 |
+| 停用与管理员保护 | 管理员接口 keep_an_admin=True，离职事件/对账 False。同步先改状态、删登录再写审计；后台关会话限并发 8、按员工合并、关闭等待最多 5 秒。跨实例关闭记录立即生效，远端在途对话不被主动取消 |
+| 用户管理 | 列表增加 role/after/limit 与 next_after；状态变更响应带 cleanup_failed。重复停用重跑监听者；改角色与状态审计归属被操作员工 |
+| 对账维护 | 同一维护循环每 5 分钟检查 active 且已绑定租户，每 50 人按 subject 翻页；120 秒租约，每批/员工/完成前续期、每步 30 秒。失败释放但不推进完成时间，下维护周期重试；缺状态不误停用，查不到首次标记审计、再次查到清除 |
+| 对账令牌与完成 | 应用令牌内存缓存到过期前 5 分钟，每批核对应用与最新密钥摘要。完成时间先落库再写成功审计，完成后审计失败不反写失败终态；这是需用日志与指标排查的已知边界 |
+| 生命周期与指标 | 平台先停身份维护再关停用链、会话与运行时；失败审计与租约释放也有时限。新增登录、停用、事件、对账固定枚举指标，不带租户标签 |
+| 控制台与 SDK | 控制台保留 API key 与同源飞书入口，成员不发管理请求，重新打开会话时提示历史权限限制；管理员用户页支持过滤分页。页面防 iframe、姓名文本渲染、头像只收 HTTPS。SDK补user_id、me、审计筛选、UserUsage、签key能力与固定act_as_user客户端，兼容旧响应 |
+| 升级与验收 | 0004 在事务内普通建审计索引，可能阻塞写入；新枚举先升级所有读取者再开放写入。本地真实 CLI+模拟飞书通过，真实飞书五项核对仍未完成；本轮未推送、未发布、未合 main |
+
+官方权限核对补充：通讯录查询与离职事件用 `contact:contact.base:readonly`；状态字段另需 `contact:user.employee:readonly` 等字段权限。完整官方来源、飞书后台操作与真实应用清单见[接入飞书登录](../../guides/feishu-login.md)。本轮只声明本地分支实现，远端与 registry 状态未刷新。

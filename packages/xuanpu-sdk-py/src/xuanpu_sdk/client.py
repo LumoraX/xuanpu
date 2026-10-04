@@ -11,7 +11,15 @@ from typing import TYPE_CHECKING, Any, Self
 import httpx
 
 from xuanpu_sdk.errors import XuanpuError, XuanpuTransportError
-from xuanpu_sdk.models import AuditRecord, Event, IssuedKey, PackageVersion, Session, Usage
+from xuanpu_sdk.models import (
+    AuditRecord,
+    Event,
+    IssuedKey,
+    PackageVersion,
+    Session,
+    Usage,
+    UserUsage,
+)
 from xuanpu_sdk.sse import parse_sse
 
 if TYPE_CHECKING:
@@ -38,11 +46,17 @@ def _raise_for(response: httpx.Response) -> None:
 class _Http:
     """带凭据的请求封装。"""
 
-    def __init__(self, base_url: str, api_key: str, timeout: float, transport: Any) -> None:
+    def __init__(
+        self, base_url: str, api_key: str, timeout: float, transport: Any,
+        act_as_user: str | None,
+    ) -> None:
         """建立底层 HTTP 客户端。"""
+        headers = {"Authorization": f"Bearer {api_key}"}
+        if act_as_user is not None:
+            headers["X-Xuanpu-Act-As"] = act_as_user
         self._client = httpx.AsyncClient(
             base_url=base_url,
-            headers={"Authorization": f"Bearer {api_key}"},
+            headers=headers,
             timeout=timeout,
             transport=transport,
         )
@@ -118,7 +132,7 @@ class Sessions:
     async def list(
         self, *, status: str | None = None, mine: bool = False, limit: int = 50
     ) -> list[Session]:
-        """列出会话；``mine`` 只看本凭据创建的。"""
+        """列出可见会话；``mine`` 对代调用按员工过滤，其他 key 按创建者过滤。"""
         params: dict[str, Any] = {"limit": limit, "mine": "true" if mine else "false"}
         if status is not None:
             params["status"] = status
@@ -297,17 +311,22 @@ class Admin:
         )
 
     async def issue_tenant_key(
-        self, tenant_id: str, name: str, *, role: str = "tenant_member"
+        self, tenant_id: str, name: str, *, role: str = "tenant_member", act_as_users: bool = False
     ) -> IssuedKey:
         """给某个租户签发 API key（平台管理员）。"""
         body = await self._http.request(
-            "POST", f"/v1/admin/tenants/{tenant_id}/keys", json={"name": name, "role": role}
+            "POST", f"/v1/admin/tenants/{tenant_id}/keys",
+            json={"name": name, "role": role, "act_as_users": act_as_users},
         )
         return IssuedKey.from_json(body)
 
-    async def issue_key(self, name: str, *, role: str = "tenant_member") -> IssuedKey:
+    async def issue_key(
+        self, name: str, *, role: str = "tenant_member", act_as_users: bool = False
+    ) -> IssuedKey:
         """给本租户签发 API key（租户管理员）。"""
-        body = await self._http.request("POST", "/v1/keys", json={"name": name, "role": role})
+        body = await self._http.request(
+            "POST", "/v1/keys", json={"name": name, "role": role, "act_as_users": act_as_users}
+        )
         return IssuedKey.from_json(body)
 
     async def revoke_key(self, key_id: str) -> None:
@@ -320,6 +339,8 @@ class Admin:
         session_id: str | None = None,
         kind: str | None = None,
         source: str | None = None,
+        user_id: str | None = None,
+        actor: str | None = None,
         since: float | None = None,
         until: float | None = None,
         limit: int = 100,
@@ -330,6 +351,8 @@ class Admin:
             ("session_id", session_id),
             ("kind", kind),
             ("source", source),
+            ("user_id", user_id),
+            ("actor", actor),
             ("since", since),
             ("until", until),
         ):
@@ -349,6 +372,16 @@ class Admin:
         body = await self._http.request("GET", "/v1/usage", params={"since": since, "until": until})
         return [Usage.from_json(item) for item in body["usage"]]
 
+    async def user_usage(
+        self, since: str, until: str, *, user_id: str | None = None
+    ) -> list[UserUsage]:
+        """按 UTC 日期查询员工用量，可限定一名员工；需要租户管理员。"""
+        params = {"since": since, "until": until}
+        if user_id is not None:
+            params["user_id"] = user_id
+        body = await self._http.request("GET", "/v1/usage/users", params=params)
+        return [UserUsage.from_json(item) for item in body["usage"]]
+
 
 class XuanpuClient:
     """平台客户端。
@@ -367,6 +400,7 @@ class XuanpuClient:
         *,
         timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
         transport: Any = None,
+        act_as_user: str | None = None,
     ) -> None:
         """
         Args:
@@ -374,8 +408,10 @@ class XuanpuClient:
             api_key: 凭据（根凭据或 API key）。
             timeout_seconds: 普通请求的超时；事件流不受它限制。
             transport: 自定义传输（测试时把客户端直接接到 ASGI 应用上）。
+            act_as_user: 固定代表的员工；key 必须已获代调用能力，角色取两者中较低者。
+                要代表其他员工须新建客户端，不在共享客户端上切换身份。
         """
-        self._http = _Http(base_url, api_key, timeout_seconds, transport)
+        self._http = _Http(base_url, api_key, timeout_seconds, transport, act_as_user)
         self.sessions = Sessions(self._http)
         self.packages = Packages(self._http)
         self.secrets = Secrets(self._http)
@@ -384,6 +420,10 @@ class XuanpuClient:
     async def health(self) -> dict[str, Any]:
         """存活探测。"""
         return await self._http.request("GET", "/healthz")
+
+    async def me(self) -> dict[str, Any]:
+        """查询当前生效身份：actor、role、tenant_id、key_id、user_id 与 display_name。"""
+        return await self._http.request("GET", "/v1/me")
 
     async def close(self) -> None:
         """关闭连接。"""

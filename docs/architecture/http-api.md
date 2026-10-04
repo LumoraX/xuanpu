@@ -1,6 +1,6 @@
 # HTTP 接口（活文档）
 
-> 第一版接口，加上 P0 新增的停止生成、修改配额与指标端点，以及 P1 的调用者身份（浏览器登录 cookie、系统代员工调用、`GET /v1/me`）、飞书登录与租户的飞书配置、会话的归属与[可见范围](#可见范围)、审计与用量带上员工（`GET /v1/audit?user_id=`、`GET /v1/usage/users`）、[员工管理](#员工)与[飞书事件回调](#飞书事件回调)（离职停用）。实现在 `packages/xuanpu-server/src/xuanpu_server/api/`。
+> 第一版接口，加上 P0 新增的停止生成、修改配额与指标端点，以及 P1 的调用者身份（浏览器登录 cookie、系统代员工调用、`GET /v1/me`）、飞书登录与租户的飞书配置、会话的归属与[可见范围](#可见范围)、审计与用量带上员工（`GET /v1/audit?user_id=`、`GET /v1/usage/users`）、[员工管理](#员工)、[通讯录对账](#飞书通讯录对账)与[飞书事件回调](#飞书事件回调)（离职停用）。实现在 `packages/xuanpu-server/src/xuanpu_server/api/`。
 > 用法与注意事项见[应用接入](../guides/integrating.md)；本文是逐个接口的参考。
 
 ## 约定
@@ -252,6 +252,8 @@ X-Requested-By: xuanpu
 ## 飞书配置
 
 租户管理员配置本租户的飞书自建应用。三个密钥先经 `PUT /v1/secrets/{name}` 写进保管库，这里只引用名字：
+
+首次接入顺序、飞书后台权限与范围、首位管理员及真实应用待验项目见[接入飞书登录](../guides/feishu-login.md)。
 
 ```
 PUT /v1/identity/feishu
@@ -771,3 +773,5 @@ xuanpu_connector_calls_total{decision="allowed",transport="http"} 1.0
 `POST /v1/identity/feishu/reconcile`：本租户管理员立即执行一次对账，无请求体；沿用身份认证与 cookie 写请求的防跨站检查。返回 `200` 和 `{"checked": 51, "disabled": 2, "unverified": 1}`。手工触发忽略每日周期，但仍需认领租约；正在执行时返回 `409 conflict`。普通成员返回 `403 permission_denied`，租户没有绑定飞书企业或未启用返回 `400 invalid_request`，飞书失败、排队超时、单步超时或失去租约返回 `503 runtime_unavailable`。其他存储错误沿用 `500`。
 
 只查询 active 飞书身份，每批最多 50 人。明确离职、暂停或退出走统一停用流水线（可停用最后一名管理员）；查不到只标记 `unverified_since`，不会停用，再次查到清除标记。返回了员工但未给状态时不推断离职。失败保留已完成的停用，记录含部分计数的 `identity_reconciled` 审计，不记本次成功完成时间，下个维护周期重试。
+
+完成时间先落库，之后才写成功审计。完成后的审计写入失败可能使接口报错，但不撤销完成时间或补记失败终态；成功指标仍已计数。这与扫描失败不推进完成时间的情况不同，排查时结合完成状态、审计写入失败指标和日志。[审计边界](../guides/audit-and-usage.md#通讯录对账审计)

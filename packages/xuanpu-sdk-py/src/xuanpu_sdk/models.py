@@ -26,6 +26,7 @@ class Session:
     updated_at: float
     created_by: str
     metadata: dict[str, str] = field(default_factory=dict)
+    user_id: str | None = None
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> Session:
@@ -87,11 +88,12 @@ class AuditRecord:
     stream: str | None
     seq: int | None
     data: dict[str, Any]
+    user_id: str | None = None
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> AuditRecord:
         """由响应构造。"""
-        return cls(**{key: data[key] for key in cls.__dataclass_fields__})
+        return cls(**{key: data[key] for key in cls.__dataclass_fields__ if key in data})
 
 
 @dataclass(frozen=True)
@@ -126,6 +128,18 @@ class IssuedKey:
         return cls(**{key: data[key] for key in cls.__dataclass_fields__})
 
 
+@dataclass(frozen=True)
+class UserUsage(Usage):
+    """某一天归到一名员工的用量；不包含没有主人的系统会话。"""
+
+    user_id: str
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> UserUsage:
+        """由按用户用量响应构造。"""
+        return cls(**{key: data[key] for key in cls.__dataclass_fields__})
+
+
 __all__ = [
     "RESUME_ENDING_KINDS",
     "TERMINAL_KINDS",
@@ -135,4 +149,5 @@ __all__ = [
     "PackageVersion",
     "Session",
     "Usage",
+    "UserUsage",
 ]

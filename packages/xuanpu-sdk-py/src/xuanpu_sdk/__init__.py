@@ -6,7 +6,15 @@ from importlib.metadata import version
 
 from xuanpu_sdk.client import XuanpuClient
 from xuanpu_sdk.errors import XuanpuError, XuanpuTransportError
-from xuanpu_sdk.models import AuditRecord, Event, IssuedKey, PackageVersion, Session, Usage
+from xuanpu_sdk.models import (
+    AuditRecord,
+    Event,
+    IssuedKey,
+    PackageVersion,
+    Session,
+    Usage,
+    UserUsage,
+)
 
 __all__ = [
     "AuditRecord",
@@ -15,6 +23,7 @@ __all__ = [
     "PackageVersion",
     "Session",
     "Usage",
+    "UserUsage",
     "XuanpuClient",
     "XuanpuError",
     "XuanpuTransportError",

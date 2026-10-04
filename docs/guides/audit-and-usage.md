@@ -342,6 +342,8 @@ curl "https://xuanpu.internal/v1/usage/users?since=2026-10-01&until=2026-10-31" 
 
 ### 通讯录对账审计
 
+Python SDK 现在提供 `client.admin.audit(user_id=..., actor=...)`（条件在翻页时保留）与 `client.admin.user_usage(since, until, user_id=...)`。`AuditRecord.user_id` 与 `UserUsage.user_id` 保留归属；旧版服务端的审计响应没有 `user_id` 时 SDK 解析为 `None`，不伪造归属。成员查询自身审计仍留待 P6，P1 这两个接口都需要租户管理员。
+
 对账以 `system:reconcile` 为 actor。`identity_unverified` 仅首次设置 `unverified_since` 时记录，关联被标记的 `user_id`；再次查不到不重复记录，再查到清除标记。
 
 每次已认领的对账记录 `identity_reconciled`：`result` 为 `succeeded` 或 `failed`，带 `checked`、`disabled`、`unverified` 计数；失败额外带异常类型 `error`（取消为 `CancelledError`），不含飞书响应或凭据。失败计数仅表示已处理部分，不代表整租户完成。停用仍有既有 `user_disabled` 审计。存储不可达时审计也可能失败，结合平台日志及 `xuanpu_reconcile_runs_total` 排查。

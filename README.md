@@ -4,7 +4,7 @@
 
 > 玄圃：昆仑山上众神居住的园子。泰逢是山海经里的神，玄圃是承载它们的地方。
 
-> **状态**：第一版 + P0 底座升级（`feat/p0-base`，依赖 taifeng 2026.10.1.10）。业务包规范、平台服务（控制面 + 运行时 + HTTP 接口 + 评测）、命令行、Python 客户端、控制台可用。P0 之后：会话主存进 Postgres、业务包归档进对象存储，多实例不再共用数据目录；能停止生成；stdio 连接器在连接器沙盒里运行，远端 MCP server 可以直接接（[ADR 0013](docs/decisions/0013-connector-sandbox-and-remote-mcp.md)）；有指标端点与配额修改。MCP 网关暂缓（ADR 0006）。已知限制见[架构总览](docs/architecture/README.md#已知限制)。
+> **状态**：第一版 + P0 底座升级 + P1 用户身份（本地 `feat/p1-identity`，依赖 taifeng 2026.10.1.10）。业务包规范、平台服务、命令行、Python 客户端、控制台可用。P0 支持 Postgres 会话主存、对象存储归档、停止生成、连接器沙盒与远端 MCP、指标与配额修改；P1 增加飞书登录、用户管理、会话归属与隔离、代员工调用、按员工审计用量、离职事件与每日对账。真实 CLI 与模拟飞书已验证，真实飞书应用尚未验收；本轮未推送、未发布、未合入 main。MCP 网关暂缓（ADR 0006）。已知限制见[架构总览](docs/architecture/README.md#已知限制)。
 
 ## 定位：像用数据库一样用 agent
 
@@ -49,7 +49,7 @@ uv run xuanpu pack examples/support-desk -o support-desk.zip
 | 组件 | 包 | 状态 |
 | --- | --- | --- |
 | 业务包规范 | `xuanpu-spec` | 可用 |
-| 平台服务（运行时 + 控制面） | `xuanpu-server` | 可用（第一版 + P0 底座升级） |
+| 平台服务（运行时 + 控制面） | `xuanpu-server` | 可用（第一版 + P0 + P1 用户身份） |
 | 命令行 | `xuanpu-cli` | 可用 |
 | Python 客户端 | `xuanpu-sdk-py` | 可用 |
 | 控制台 | `xuanpu-console` | 可用（服务启动后访问 `/console/`） |
@@ -63,6 +63,7 @@ uv run xuanpu pack examples/support-desk -o support-desk.zip
 | 先跑起来 | [快速上手](docs/guides/quickstart.md) |
 | 把业务场景写成业务包 | [编写业务包](docs/guides/writing-packages.md) |
 | 在自己的系统里调用平台 | [应用接入](docs/guides/integrating.md) |
+| 配置员工登录、离职事件与首位管理员 | [接入飞书登录](docs/guides/feishu-login.md) |
 | 部署、配置、多实例、密钥轮换、备份、安全须知 | [部署与运维](docs/guides/operations.md) |
 | 了解审计里有什么、怎么查、用量怎么算 | [审计与用量](docs/guides/audit-and-usage.md) |
 | 查字段与接口 | [业务包规范](docs/architecture/package-spec.md) · [HTTP 接口](docs/architecture/http-api.md) · [命令行](packages/xuanpu-cli/README.md) · [Python 客户端](packages/xuanpu-sdk-py/README.md) |

@@ -13,7 +13,7 @@
 | `tenant_member` | 建会话、对话、审批、看业务包列表 | 你的应用后端 |
 | `tenant_admin` | 以上全部，加上发布业务包、管理密钥与 API key、跑评测、查审计与用量 | 发布流水线、管理后台 |
 
-应用后端用 `tenant_member` 的 key 就够了。API key 不要下发到浏览器或移动端：它能访问本租户的全部会话。前端经你的后端转发。
+应用后端用 `tenant_member` 的 key 就够了。API key 不要下发到浏览器或移动端：未代员工调用的 key 能访问本租户全部会话。前端经你的后端转发；需要员工隔离与归属时用[代调用](#代表员工调用)。平台自带控制台也支持[飞书登录](feishu-login.md)，不需要向员工下发 key。
 
 平台不认识你的终端用户。想把会话和你系统里的用户、客户、工单对应起来，用建会话时的 `metadata`。
 
@@ -157,7 +157,7 @@ async for event in client.sessions.resume(session.session_id, decision):
 - **等待不限时**，也不占用平台资源。审批人第二天才处理也可以；正式部署下（控制面在 Postgres）期间平台重启也不影响。
 - **待办可以随时再查**：`await client.sessions.pending(session_id)`。审批界面和发起对话的页面不是同一个时用它。
 - 续跑的事件流里，被批准的那次调用不会再出现 `tool_call_completed` 事件。它是否执行、结果如何，以审计里的 `connector_call` 记录为准（见[审计与用量](audit-and-usage.md)）。
-- **平台不区分「谁有权审批」**：本租户任何一把 API key 都能调 `resume`。谁能批什么，由你的系统在调用之前把关。审计会记下是哪把 key 送回的决定。
+- **会话可见性先于审批**：普通员工与代表普通员工的调用只能操作本人会话。未代调用的本租户 API key 仍可调任何可见会话的 `resume`；P1 没有更细的审批人策略，谁能批什么由接入系统把关。主人停用后所有调用者都不能再送审批。审计的 `actor` 记录触发者，`user_id` 记录会话主人。
 
 ## 停止生成
 
@@ -204,7 +204,36 @@ print(last.kind, last.terminal, last.data["end_reason"], last.data["cancel_reaso
 - **刚送回批准就停**：被批准的那次调用照样执行（它在续跑那一轮之前执行），停下的只是之后的采样。
 - **挂起等审批的那一轮不归它管**：它已经不在途了。要放弃，就把审批拒绝送回。
 
-多实例部署下，会话在另一个实例上时返回 `409 session_busy`（带 `owner`），与发消息一样靠粘性路由避免。本租户任何一把 API key 都能停任何会话里的对话；只想停自己发起的那一轮，就带上它的 `submission_id`。审计里的 `turn_cancel_requested` 记下是哪把 key 停的。
+多实例部署下，会话在另一个实例上时返回 `409 session_busy`（带 `owner`），与发消息一样靠粘性路由避免。未代调用的本租户 API key 能停本租户任意会话；普通员工及代表普通员工的调用只能停本人会话。只想停指定一轮，就带上它的 `submission_id`。审计里的 `turn_cancel_requested` 区分触发者 `actor` 与会话主人 `user_id`。
+
+## 代表员工调用
+
+管理员签发 key 时显式传 `act_as_users: true`，业务后端在每次请求中带 `X-Xuanpu-Act-As: <user_id>`。目标必须是同租户启用员工；没有能力、目标不存在或停用均为 403。角色取 key 和员工中较低者，代普通成员不会获得管理员权限。
+
+```bash
+curl -fsS -X POST "$BASE/v1/keys" \
+  -H "Authorization: Bearer $KEY" -H 'Content-Type: application/json' \
+  -d '{"name":"workflow","role":"tenant_member","act_as_users":true}'
+# 返回一次性的 key 与 key_id；安全保存，令 DELEGATED_KEY 为该 key
+curl -fsS "$BASE/v1/me" \
+  -H "Authorization: Bearer $DELEGATED_KEY" -H "X-Xuanpu-Act-As: $MEMBER_USER"
+```
+
+这两步已在本地真实 CLI 与模拟员工下运行，`me.role` 为 `tenant_member`，`me.user_id` 为目标员工，`actor` 为 `key:<key_id>/user:<user_id>`。变量来源与员工登录见[接入飞书登录](feishu-login.md)。
+
+Python SDK 在创建客户端时固定身份，普通请求与事件流均使用同一身份头：
+
+```python
+async with XuanpuClient(base_url, delegated_key, act_as_user=user_id) as employee:
+    me = await employee.me()
+    session = await employee.sessions.create("demo")
+    assert session.user_id == user_id
+    await employee.sessions.close(session.session_id)
+```
+
+上例已用本地验收业务包 `demo` 经网络运行。代表另一个员工时另建客户端，不修改共享客户端的请求头。普通成员的会话列表只返回本人会话，访问别人会话为 404；管理员仍可看本租户全部会话。`mine=True` 对代表员工的调用按员工过滤，其他 key 按创建者过滤。
+
+管理员查询员工审计时，`client.admin.audit(user_id=..., actor=...)` 分别筛主人/被操作员工与触发者；`client.admin.user_usage(since, until, user_id=...)` 返回按用户用量。会话的无主记录 `user_id=None`；员工停用后登录和代调用立即拒绝，主人已停用的会话不能继续发消息或送审批。
 
 ## 断线之后
 
