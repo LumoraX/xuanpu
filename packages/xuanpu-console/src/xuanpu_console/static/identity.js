@@ -32,6 +32,9 @@ function safeAvatar(value) {
 }
 
 function applyPermissions() {
+  $("admin-connection").classList.toggle("hidden", !!conn.me && !isAdmin());
+  if (conn.me) $("admin-connection").open = false;
+  $("feishu-login").classList.toggle("hidden", !!conn.me?.user_id || !sameOrigin());
   for (const node of document.querySelectorAll("[data-admin]")) node.classList.toggle("hidden", !isAdmin());
   $("current-user").classList.toggle("hidden", !conn.me);
   $("user-name").textContent = conn.me ? (conn.me.display_name || "API key") + (isAdmin() ? " · 管理员" : " · 成员") : "";
@@ -46,6 +49,10 @@ function resetIdentity() {
   conn.controller = new AbortController();
   conn.epoch += 1;
   conn.me = null;
+  $("new-package").innerHTML = '<option value="">登录后自动加载</option>';
+  $("new-package").disabled = true;
+  $("new-session-btn").disabled = true;
+  $("business-hint").textContent = "登录后选择业务，即可开始对话；无需填写地址或密钥。";
   chat.sessionId = null;
   chat.status = null;
   chat.streaming = null;
@@ -90,6 +97,7 @@ async function connectIdentity({ automatic = false } = {}) {
       const avatar = safeAvatar(user.avatar_url);
       if (avatar) { $("user-avatar").src = avatar; $("user-avatar").classList.remove("hidden"); }
     }
+    await loadBusinessChoices();
     await loadSessions();
     if (isAdmin()) await loadPackages();
     return epoch === conn.epoch;
@@ -112,6 +120,21 @@ $("connect").addEventListener("submit", (event) => {
   sessionStorage.setItem("xuanpu.apiKey", conn.apiKey);
   connectIdentity().catch(fail);
 });
+
+// 业务目录沿用有租户隔离的只读接口，仅展示已生效业务；入口由服务器选默认值。
+async function loadBusinessChoices() {
+  const body = await api("GET", "/v1/packages");
+  const choices = body.packages.filter(item => item.active);
+  const select = $("new-package");
+  const previous = select.value;
+  select.innerHTML = choices.length ? choices.map(item =>
+    `<option value="${escape(item.name)}">${escape(item.name === "support-desk" ? "工单助手" : item.name)}</option>`
+  ).join("") : '<option value="">暂无可用业务</option>';
+  select.value = choices.some(item => item.name === previous) ? previous : (choices[0]?.name || "");
+  select.disabled = !choices.length;
+  $("new-session-btn").disabled = !choices.length;
+  $("business-hint").textContent = choices.length ? "选择业务后点击开始使用。" : "暂无可用业务，请联系管理员启用。";
+}
 
 function updateLoginButton() {
   $("feishu-login").classList.toggle("hidden", !sameOrigin($("base-url").value.trim()));

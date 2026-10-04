@@ -99,3 +99,13 @@ main { padding: 16px; }
   .chat-head { flex-wrap: wrap; }
   .msg { max-width: 100%; }
 }
+
+/* 普通用户只登录和选择业务，部署信息收在管理员入口。 */
+.login-actions { margin: 0; }
+.admin-connection { margin-left: auto; font-size: 13px; }
+.admin-connection summary { color: var(--muted); cursor: pointer; }
+.admin-connection[open] .connect { padding-top: 10px; }
+#new-session { align-items: stretch; }
+#new-package { min-width: 0; flex: 1; }
+#new-session label { width: 100%; font-weight: 600; }
+@media (max-width: 600px) { .connect input { min-width: 0; width: 100%; } }

@@ -271,7 +271,7 @@ PUT /v1/identity/feishu
 | 字段 | 说明 |
 | --- | --- |
 | `app_id` | 飞书自建应用的 App ID，1–128 个字符 |
-| `app_secret_ref`、`encrypt_key_ref`、`verification_token_ref` | App Secret、Encrypt Key、Verification Token 在保管库里的名字（命名规则同[密钥](#密钥)）。三个都必填，而且必须已经写入 |
+| `app_secret_ref`、`encrypt_key_ref`、`verification_token_ref` | App Secret、Encrypt Key、Verification Token 在保管库里的名字（命名规则同[密钥](#密钥)）。App Secret 必填；后两项可省略或为空，提供的引用必须已经写入 |
 | `session_ttl_seconds` | 本租户登录会话的有效期（秒），60 到 2592000（30 天）；省略或为 `null` 时用平台默认 `identity.session_ttl_seconds` |
 
 这是**整体替换**：省略的 `session_ttl_seconds` 恢复为平台默认。已绑定的飞书企业（`feishu_tenant_key`，首次成功登录时绑定）保留不变，配置接口改不了它。
@@ -301,7 +301,7 @@ X-Lark-Signature: 3f9a0c…（64 位十六进制）
 → {"msg": "success"}
 ```
 
-- **必须加密**：平台要求配置 Encrypt Key（飞书配置的三个密钥都必填），请求体是 `{"encrypt": "<base64>"}`：AES-256-CBC，密钥是 Encrypt Key 的 SHA-256，IV 是密文的前 16 字节，PKCS7 填充。没加密的请求一律不认。
+- **必须加密**：启用事件回调必须同时配置 Encrypt Key 和 Verification Token；仅登录不要求这两项，请求体是 `{"encrypt": "<base64>"}`：AES-256-CBC，密钥是 Encrypt Key 的 SHA-256，IV 是密文的前 16 字节，PKCS7 填充。没加密的请求一律不认。
 - **签名**：`X-Lark-Signature` 等于 `sha256(X-Lark-Request-Timestamp + X-Lark-Request-Nonce + Encrypt Key + 原始请求体)` 的十六进制，常数时间比较。
 - **URL 验证**：在飞书后台填请求地址时，飞书发一个加密的 URL 验证请求（解密后是 `{"challenge", "token", "type": "url_verification"}`），**不带签名头**。平台解开、核对 `token` 等于 Verification Token，原样回 `{"challenge": "…"}`（飞书要求 1 秒内）。所以先在飞书后台配好 Encrypt Key，再填请求地址。
 - **事件**：其余请求都必须带对签名；解开之后再核对 `header.token` 等于 Verification Token、`header.app_id` 等于配置的 App ID、`header.tenant_key` 等于租户绑定的飞书企业。飞书要求 3 秒内回 `200`，否则按 15 秒、5 分钟、1 小时、6 小时重推，最多 4 次。
@@ -775,3 +775,11 @@ xuanpu_connector_calls_total{decision="allowed",transport="http"} 1.0
 只查询 active 飞书身份，每批最多 50 人。明确离职、暂停或退出走统一停用流水线（可停用最后一名管理员）；查不到只标记 `unverified_since`，不会停用，再次查到清除标记。返回了员工但未给状态时不推断离职。失败保留已完成的停用，记录含部分计数的 `identity_reconciled` 审计，不记本次成功完成时间，下个维护周期重试。
 
 完成时间先落库，之后才写成功审计。完成后的审计写入失败可能使接口报错，但不撤销完成时间或补记失败终态；成功指标仍已计数。这与扫描失败不推进完成时间的情况不同，排查时结合完成状态、审计写入失败指标和日志。[审计边界](../guides/audit-and-usage.md#通讯录对账审计)
+
+### 飞书登录与事件独立配置
+
+`PUT /v1/identity/feishu` 的 `encrypt_key_ref`、`verification_token_ref` 可省略或为 null/空串；空串规范化为 null，提供的引用仍须已存在于保管库。App ID 与 App Secret 引用必需。GET/PUT 响应新增 `events_enabled`，仅两项事件引用齐全时为 true。未启用事件时 POST 回调被拒绝，登录流程不受影响；配置 token 单独存在不会启用事件。
+
+### GET /v1/sessions/{session_id}/history
+
+已认证调用者按原会话可见性读取历史，普通员工只能读本人会话，跨租户或他人会话返回 404。只允许 `after_id`（默认 0，非负）与 `limit`（默认100，1–200），不接受额外过滤条件。返回 `records`（audit_id、at、kind、data）与 `next_after_id`；正文仅用户消息和助手回复，工具记录只含名称、错误标记、耗时，不含工具原始结果或请求。分页按底层审计推进，records 可以为空但仍有下一页；直到 next_after_id 为 null 才结束。租户审计接口权限不变。

@@ -9,13 +9,18 @@
 <body>
 <header class="topbar">
   <div class="brand">玄圃 <span class="sub">xuanpu 控制台</span></div>
-  <form id="connect" class="connect">
-    <input aria-label="平台地址" id="base-url" type="url" placeholder="平台地址（留空 = 当前站点）" autocomplete="off">
-    <input aria-label="API key" id="api-key" type="password" placeholder="API key" autocomplete="off" required>
-    <button type="submit">连接</button>
-    <button id="feishu-login" type="button" class="ghost">用飞书登录</button>
-    <span id="conn-status" class="status"></span>
-  </form>
+  <div class="row login-actions">
+    <button id="feishu-login" type="button">用飞书登录</button>
+    <span id="conn-status" class="status">请先登录</span>
+  </div>
+  <details id="admin-connection" class="admin-connection">
+    <summary>管理员连接</summary>
+    <form id="connect" class="connect">
+      <input aria-label="平台地址" id="base-url" type="url" placeholder="当前站点（默认，无需填写）" autocomplete="off">
+      <input aria-label="管理员 API key" id="api-key" type="password" placeholder="管理员 API key" autocomplete="off" required>
+      <button type="submit">连接</button>
+    </form>
+  </details>
   <div id="current-user" class="row hidden"><img id="user-avatar" class="avatar hidden" alt=""><span id="user-name"></span><button id="logout" type="button" class="ghost">退出</button></div>
 </header>
 <p id="login-error" class="login-error hidden" role="alert"></p>
@@ -33,18 +38,19 @@
   <section id="tab-sessions" class="tab active">
     <aside class="list-pane">
       <form id="new-session" class="row">
-        <input id="new-package" placeholder="业务包名" required>
-        <input id="new-entry" placeholder="入口（可选）">
-        <button type="submit">新建会话</button>
+        <label for="new-package">选择业务</label><select id="new-package" required disabled><option value="">登录后自动加载</option></select>
+        <input id="new-entry" type="hidden">
+        <button type="submit" id="new-session-btn" disabled>开始使用</button>
       </form>
       <div class="row">
         <label><input type="checkbox" id="show-closed"> 显示已关闭</label>
         <button id="refresh-sessions" type="button" class="ghost">刷新</button>
       </div>
+      <p id="business-hint" class="status">登录后选择业务，即可开始对话；无需填写地址或密钥。</p>
       <ul id="session-list" class="items"></ul>
     </aside>
     <div class="chat-pane">
-      <div id="chat-head" class="chat-head">选择或新建一个会话</div>
+      <div id="chat-head" class="chat-head">选择业务，开始一次对话</div>
       <div id="pending" class="pending hidden"></div>
       <div id="transcript" class="transcript"></div>
       <form id="send" class="send">

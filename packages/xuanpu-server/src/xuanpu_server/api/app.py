@@ -20,6 +20,7 @@ from xuanpu_server.api import schemas
 from xuanpu_server.api.audit_usage import audit_usage_router
 from xuanpu_server.api.auth import Caller, bearer
 from xuanpu_server.api.console import ConsoleStaticFiles
+from xuanpu_server.api.history import history_router
 from xuanpu_server.api.identity import identity_router
 from xuanpu_server.api.sse import stream_turn
 from xuanpu_server.errors import (
@@ -133,6 +134,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     _install_error_handlers(app)
     app.include_router(identity_router(platform))
     app.include_router(audit_usage_router(platform))
+    app.include_router(history_router(platform))
 
     @app.get("/healthz")
     async def healthz() -> dict[str, Any]:

@@ -2,7 +2,7 @@
 
 业务方只选档位（``fast`` / ``balanced`` / ``deep``），不写模型名、不碰密钥（ADR 0001 后果）。
 平台按部署配置把档位对应到模型网关上的模型；网关负责各家模型的接入、限流与回退
-（ADR 0003，采用 LiteLLM Proxy 或任何兼容 OpenAI Chat 接口的网关）。
+（ADR 0003，采用兼容 OpenAI Chat 或 Responses 的网关，不自建协议适配器）。
 
 skill 自己的 ``model`` 字段只在取值是档位名时生效，用来给个别 skill 换档；写了具体模型名
 则忽略并沿用业务包的档位——模型名是部署细节，不该出现在业务包里。
@@ -11,7 +11,7 @@ skill 自己的 ``model`` 字段只在取值是档位名时生效，用来给个
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Protocol, get_args, runtime_checkable
+from typing import TYPE_CHECKING, Any, Literal, Protocol, get_args, runtime_checkable
 
 import taifeng
 from xuanpu_spec.manifest import ModelTier
@@ -44,7 +44,8 @@ class GatewayConfig:
     """模型网关的接入配置。
 
     Attributes:
-        base_url: 网关地址（兼容 OpenAI Chat 接口）。
+        base_url: 网关地址（含 /v1 前缀）。
+        protocol: 全档位共用的协议；codex_responses 使用 Codex Responses 方言。
         profiles: 档位 → 模型。
         api_key: 平台访问网关的凭据，所有租户共用。与 ``api_key_secret`` 二选一。
         api_key_secret: 租户密钥名。给了它，就用各租户自己在保管库里存的凭据访问网关，
@@ -55,9 +56,12 @@ class GatewayConfig:
     profiles: Mapping[str, ModelProfile]
     api_key: str | None = None
     api_key_secret: str | None = None
+    protocol: Literal["chat", "responses", "codex_responses"] = "chat"
 
     def __post_init__(self) -> None:
         """三个档位都要有对应的模型；凭据来源必须且只能有一个。"""
+        if self.protocol not in ("chat", "responses", "codex_responses"):
+            raise ValueError("未知模型协议：仅支持 chat、responses、codex_responses")
         missing = [tier for tier in TIERS if tier not in self.profiles]
         if missing:
             raise ValueError(f"模型网关配置缺少档位：{', '.join(missing)}")
@@ -167,9 +171,20 @@ class GatewayModelClientFactory:
         if tier not in TIERS:
             raise RuntimeUnavailableError(f"未知的模型档位：{tier!r}")
         api_key = await self._api_key(tenant_id)
+        client_types: dict[
+            str,
+            type[taifeng.OpenAIChatClient]
+            | type[taifeng.OpenAIResponsesClient]
+            | type[taifeng.CodexResponsesClient],
+        ] = {
+            "chat": taifeng.OpenAIChatClient,
+            "responses": taifeng.OpenAIResponsesClient,
+            "codex_responses": taifeng.CodexResponsesClient,
+        }
+        client_type = client_types[self._config.protocol]
         tiers = {
             name: TierBinding(
-                client=taifeng.OpenAIChatClient(
+                client=client_type(
                     api_key=api_key,
                     model=profile.model,
                     base_url=self._config.base_url,

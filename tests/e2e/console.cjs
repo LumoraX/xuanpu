@@ -25,7 +25,7 @@ async function login(page, user, tenant = false) {
 }
 
 async function newSession(page) {
-  await page.locator('#new-package').fill('demo');
+  await page.locator('#new-package').selectOption('demo');
   await page.locator('#new-session button').click();
   await page.waitForFunction(() => document.querySelectorAll('#session-list li').length > 0);
   return page.locator('#session-list li').last().getAttribute('data-id');
@@ -49,6 +49,7 @@ async function main() {
     }
     // 先保留一把旧 key，再切飞书，确保回调后属于员工而不是 key。
     await alice.goto(base + '/console/');
+    await alice.locator('#admin-connection summary').click();
     await alice.locator('#api-key').fill(key);
     await alice.locator('#connect button[type=submit]').click();
     await alice.waitForFunction(() => document.getElementById('conn-status').textContent.startsWith('已连接'));
@@ -64,6 +65,9 @@ async function main() {
     const bobMe = await login(bob, 'bob');
     assert.equal(bobMe.role, 'tenant_member');
     assert.equal(await bob.locator('[data-tab=users]').isVisible(), false);
+    assert.equal(await bob.locator('#base-url').isVisible(), false);
+    assert.equal(await bob.locator('#api-key').isVisible(), false);
+    assert.equal(await bob.locator('#new-package').inputValue(), 'demo');
     assert.equal(await bob.locator('#user-avatar').getAttribute('src'), null);
     assert.equal(await bob.evaluate(() => window.pwned), undefined);
     assert((await bob.locator('#user-name').textContent()).includes('<img src=x'));
@@ -71,9 +75,9 @@ async function main() {
     assert.notEqual(aliceSession, bobSession);
     assert.equal(await bob.locator('#session-list li').count(), 1);
     assert.equal(await bob.locator('#session-list li').getAttribute('data-id'), bobSession);
-    await bob.waitForFunction(() => document.getElementById('transcript').textContent.includes('成员暂不支持加载历史对话'));
+    await bob.waitForFunction(() => !document.getElementById('message').disabled);
     assert.equal(await bob.evaluate(async id => (await fetch('/v1/sessions/' + id)).status, aliceSession), 404);
-    assert(!memberRequests.some(req => /\/v1\/(audit|usage|packages)(\?|$)/.test(req.url)));
+    assert(!memberRequests.some(req => /\/v1\/(audit|usage)(\?|$)/.test(req.url)));
     assert(!memberRequests.some(req => req.headers.authorization));
     assert(memberRequests.filter(req => req.method === 'POST').every(req => req.headers['x-requested-by'] === 'xuanpu'));
     await bob.setViewportSize({width:375, height:812});
@@ -133,6 +137,7 @@ async function checkKey(browser, bobMe) {
     // API key 保留可用：另一个浏览器上下文中连接，跨源地址不显示飞书入口。
     const keyPage = await (await browser.newContext()).newPage();
     await keyPage.goto(base + '/console/');
+    await keyPage.locator('#admin-connection summary').click();
     await keyPage.locator('#base-url').fill('https://other.example');
     assert.equal(await keyPage.locator('#feishu-login').isVisible(), false);
     await keyPage.locator('#base-url').fill('');

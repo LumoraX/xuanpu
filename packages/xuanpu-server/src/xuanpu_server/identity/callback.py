@@ -223,13 +223,16 @@ class FeishuEventCallback:
     async def _secrets(self, config: TenantIdentityConfig) -> _Secrets:
         """取 Encrypt Key 与 Verification Token 的明文。
 
-        不在保管库里的，按没有可用配置处理（另记告警：配置坏了）。
+        缺任一引用时事件明确关闭；不在保管库里的，按没有可用配置处理（另记告警）。
         """
+        encrypt_ref, verification_ref = config.encrypt_key_ref, config.verification_token_ref
+        if not encrypt_ref or not verification_ref:
+            raise _unknown_tenant("飞书事件已关闭：Encrypt Key 与 Verification Token 引用尚未配齐")
         try:
             return _Secrets(
-                encrypt_key=await self._vault.get(config.tenant_id, config.encrypt_key_ref),
+                encrypt_key=await self._vault.get(config.tenant_id, encrypt_ref),
                 verification_token=await self._vault.get(
-                    config.tenant_id, config.verification_token_ref
+                    config.tenant_id, verification_ref
                 ),
             )
         except SecretMissingError as exc:

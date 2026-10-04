@@ -24,3 +24,5 @@
 | [Python 客户端](../../packages/xuanpu-sdk-py/README.md) | `XuanpuClient` 的全部方法 |
 | [控制台](../../packages/xuanpu-console/README.md) | 网页界面能做什么 |
 | [examples/](../../examples/) | 样例业务包 `support-desk`、样例工单接口、两份配置 |
+
+- [本地部署与真实业务体验](local-trial.md)

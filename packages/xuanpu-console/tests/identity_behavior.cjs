@@ -79,5 +79,28 @@ const run = code => vm.runInContext(code, context);
   finishMe({ok:true, text:async () => '{"role":"tenant_member"}'});
   await change;
   assert.equal(element('users-notice').textContent, '新身份');
+  // 普通员工无需填写连接地址、密钥、业务包名；只选择已生效的业务。
+  run('conn.me={role:"tenant_member", user_id:"member"}; applyPermissions()');
+  assert.equal(element('admin-connection').classList.contains('hidden'), true);
+  context.fetch = async () => ({ok:true, text:async () => JSON.stringify({packages:[
+    {name:'old', active:false}, {name:'support-desk', active:true}
+  ]})});
+  await run('loadBusinessChoices()');
+  assert.equal(element('new-package').value, 'support-desk');
+  assert.equal(element('new-session-btn').disabled, false);
+  assert(!element('new-package').innerHTML.includes('old'));
+  context.fetch = async () => ({ok:true, text:async () => '{"packages":[]}'});
+  await run('loadBusinessChoices()');
+  assert.equal(element('new-session-btn').disabled, true);
+  assert.match(element('business-hint').textContent, /管理员/);
+  run('resetIdentity()');
+  assert.equal(element('new-session-btn').disabled, true);
+  run('conn.me={role:"tenant_admin"}');
+  context.fetch = async () => ({ok:true, text:async () => JSON.stringify({packages:[
+    {name:'new-business', version:'1.0.0', digest:'sha256:abc', active:true}
+  ]})});
+  await run('loadPackages()');
+  assert.equal(element('new-session-btn').disabled, false, '发布或启用后无需重连');
+  assert.equal(element('new-package').value, 'new-business');
   console.log('identity behavior passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });

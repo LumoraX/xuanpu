@@ -27,7 +27,7 @@ Postgres    对象存储       模型网关       沙盒后端      外部系统
 | Postgres | 部署方 | 控制面（租户、凭据、业务包登记、密钥密文、会话、用量、审计）与状态面（线程目录、会话主存，每个租户一组表） |
 | 对象存储 | 部署方 | 业务包归档的正本。S3 兼容服务，首选阿里云 OSS |
 | 数据目录 | 部署方 | 每个实例自己的一份本地目录：业务包解包后的缓存、脚本沙盒的工作区、连接器的工作目录。丢了可以重建，**不在实例之间共用** |
-| 模型网关 | 部署方 | 任何兼容 OpenAI Chat 接口的地址，要支持流式与工具调用。各家模型的接入、限流、回退在网关上做 |
+| 模型网关 | 部署方 | 支持 Chat Completions 或 Responses 的地址，要支持流式与工具调用。各家模型的接入、限流、回退在网关上做 |
 | 沙盒后端 | 部署方 | 本机隔离（macOS seatbelt / Linux bubblewrap）或 Docker。业务包的脚本与 stdio 连接器都在里面跑 |
 | 反向代理 | 部署方 | 平台不做 TLS，默认只监听本机 |
 
@@ -77,6 +77,10 @@ uv run xuanpu --help
 
 ### `models`
 
+`models.protocol` 默认 `chat`，也可为 `responses`（OpenAI Responses）或 `codex_responses`（Codex 网关方言）。三个档位共用协议，平台复用 taifeng 稳定客户端，不根据模型名猜测，也不自动换协议。Responses 的地址仍填以 `/v1` 结尾的基地址，客户端请求 `/responses`。模型名与可用协议由网关决定，不能用 Chat 请求失败来断定模型不存在。
+
+Responses 当前只支持 `state.backend: local`；`control_plane.backend: postgres` 可以照常用于保存租户、用户与审计。配置了外部 Postgres 会话主存和非 Chat 协议时，启动立即报错，不等到第一次对话才失败。本地持续使用见[本地部署](local-trial.md)。
+
 | 键 | 说明 |
 | --- | --- |
 | `base_url` | 网关地址，以 `/v1` 结尾 |
@@ -106,7 +110,7 @@ uv run xuanpu --help
 
 `postgres` 后端给每个租户建一组带专属前缀的表，**建表发生在该租户第一次对话时**。所以这个连接用的数据库角色需要在 schema 里建表的权限；建表受 `command_timeout_seconds` 约束，以后若有大表上的迁移，要临时调大状态面的这一项。
 
-`postgres` 后端只支持 Chat 协议的模型客户端（内核对外部会话主存的限制）；平台经模型网关用的就是 Chat 协议，不受影响。
+`postgres` 后端只支持 Chat 协议的模型客户端（内核对外部会话主存的限制）；选择 `responses` 或 `codex_responses` 时必须使用 `state.backend=local`；控制面仍可使用 PostgreSQL。
 
 ### `sandbox`
 
@@ -198,6 +202,12 @@ identity:
 - **清理**：每个实例每 5 分钟清一次过期的登录尝试与登录会话（不需要配置）。清理出错只在标准错误里记一条，下一轮再试。
 - **访问日志**：回调地址的查询串里有授权码。`xuanpu serve` 的访问日志把这一行的查询串抹成 `?…`（`GET /v1/auth/feishu/callback?… HTTP/1.1`）；2026-10-04 已用真实 CLI 与模拟飞书登录验证，见[接入手册的实际日志](feishu-login.md#6-本地验证边界与真实应用核对清单)。反向代理的访问日志要自己处理，比如不记这个路径的查询串。
 - **事件回调**：离职事件经 `POST <public_url>/v1/identity/feishu/events/<租户>` 推给平台（见[接口文档的飞书事件回调一节](../architecture/http-api.md#飞书事件回调)），所以这个地址要能从飞书的服务器访问到（公网可达）。它不需要平台的凭据、只认飞书的签名，在反向代理上同样按来源地址限速；请求体最大 1 MiB。签名不符的请求只计指标 `xuanpu_feishu_events_total{result="bad_signature"}`、记一条告警，不写审计。
+
+### 飞书仅登录模式
+
+只配 App ID 与 App Secret 即可启用登录。`encrypt_key_ref`、`verification_token_ref` 可省略、为空或 null；接口以 null 返回未配引用，`events_enabled` 仅在两项齐备时为 true。可以先保存 Verification Token、以后再启用 Encrypt Key。事件未启用时回调拒绝请求，不接受明文事件或明文地址验证；后续补齐密钥即可启用，不影响已有用户与企业绑定。
+
+控制面迁移 `0005_identity_optional_event_secrets.sql` 允许事件密钥引用为空，保留旧配置。升级时先运行迁移，再启动新版本。
 
 ## 初次部署
 
@@ -673,3 +683,5 @@ lsof -nP -d cwd | grep '<data_dir>/cache/packages'
 | `xuanpu_reconcile_users_total` | counter | `outcome` | `checked`、`disabled`、`unverified`；checked 包含后两项，失败时已处理计数保留，重试可能再次检查 |
 
 指标不带租户标签；租户级排查使用审计的 `identity_reconciled`。缺状态本身暂无独立指标。
+
+升级已有身份数据库时，先执行包含 `0005` 的迁移，并将所有服务实例升级，再保存空事件密钥引用；旧版本不能读取这种配置。

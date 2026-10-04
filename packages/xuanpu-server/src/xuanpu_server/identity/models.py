@@ -150,8 +150,8 @@ class TenantIdentityConfig:
         provider: 身份源；第一版只有 ``feishu``。
         app_id: 飞书自建应用的 App ID。
         app_secret_ref: App Secret 在保管库里的名字。
-        encrypt_key_ref: Encrypt Key 在保管库里的名字。
-        verification_token_ref: Verification Token 在保管库里的名字。
+        encrypt_key_ref: Encrypt Key 在保管库里的名字；未配置时事件关闭。
+        verification_token_ref: Verification Token 在保管库里的名字；可单独保留，但两项齐备才启用事件。
         feishu_tenant_key: 首次成功登录时绑定的飞书企业标识；之后的登录与事件都必须一致。
             只经 ``IdentityStore.bind_tenant_key`` 写入，``put_identity_config`` 不改它。
         session_ttl_seconds: 登录会话有效期；为空时用平台默认值。
@@ -161,18 +161,26 @@ class TenantIdentityConfig:
     provider: IdentityProvider
     app_id: str
     app_secret_ref: str
-    encrypt_key_ref: str
-    verification_token_ref: str
+    encrypt_key_ref: str | None = None
+    verification_token_ref: str | None = None
     feishu_tenant_key: str | None = None
     session_ttl_seconds: int | None = None
 
     def __post_init__(self) -> None:
         """身份源取值受限；有效期为正数。"""
         require_choice("provider", self.provider, get_args(IdentityProvider))
+        for name in ("encrypt_key_ref", "verification_token_ref"):
+            if getattr(self, name) == "":
+                object.__setattr__(self, name, None)
         if self.session_ttl_seconds is not None and self.session_ttl_seconds < 1:
             raise ValueError(
                 f"session_ttl_seconds 必须为正数或 None，得到 {self.session_ttl_seconds}"
             )
+
+    @property
+    def events_enabled(self) -> bool:
+        """事件仅在加密密钥与验证令牌引用都配置时启用，登录不依赖这两项。"""
+        return bool(self.encrypt_key_ref and self.verification_token_ref)
 
 
 @dataclass(frozen=True)

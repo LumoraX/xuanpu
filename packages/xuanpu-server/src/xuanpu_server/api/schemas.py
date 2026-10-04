@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from xuanpu_server.identity.config import MAX_SESSION_TTL_SECONDS, MIN_SESSION_TTL_SECONDS
 from xuanpu_server.tenancy import QuotaLimits
@@ -115,7 +115,9 @@ class CancelBody(_Request):
 
 
 class FeishuConfigBody(_Request):
-    """租户的飞书配置（整体替换）。三个 ``*_ref`` 是保管库里密钥的名字，不是明文。
+    """租户的飞书配置（整体替换）。``*_ref`` 是保管库里密钥的名字，不是明文。
+
+    App Secret 必填；两个事件引用可省略或为空，只有两者齐备才启用加密事件。
 
     ``session_ttl_seconds`` 省略或为 null 时用平台默认（``identity.session_ttl_seconds``）；取值
     范围与平台配置相同：60 到 2592000（30 天）。
@@ -123,11 +125,17 @@ class FeishuConfigBody(_Request):
 
     app_id: str = Field(min_length=1, max_length=128)
     app_secret_ref: str
-    encrypt_key_ref: str
-    verification_token_ref: str
+    encrypt_key_ref: str | None = None
+    verification_token_ref: str | None = None
     session_ttl_seconds: int | None = Field(
         default=None, ge=MIN_SESSION_TTL_SECONDS, le=MAX_SESSION_TTL_SECONDS
     )
+
+    @field_validator("encrypt_key_ref", "verification_token_ref")
+    @classmethod
+    def normalize_event_ref(cls, value: str | None) -> str | None:
+        """可选事件引用的空字符串与未配置统一存为 None。"""
+        return None if value == "" else value
 
 
 class UserRoleBody(_Request):

@@ -121,8 +121,9 @@ class TierConfig(_Section):
 
 
 class ModelsConfig(_Section):
-    """模型网关。"""
+    """模型网关；所有档位使用同一协议，避免混用会话历史。"""
 
+    protocol: Literal["chat", "responses", "codex_responses"] = "chat"
     base_url: str
     api_key: str | None = None
     api_key_secret: str | None = None
@@ -316,6 +317,8 @@ class ServerConfig(_Section):
         if self.primary_master_key not in self.master_keys:
             raise ValueError("primary_master_key 不在 master_keys 里")
         self.decoded_master_keys()
+        if self.state.backend == "postgres" and self.models.protocol != "chat":
+            raise ValueError("state.backend=postgres 的外部会话主存仅支持 models.protocol=chat")
         return self
 
     def decoded_master_keys(self) -> dict[str, bytes]:

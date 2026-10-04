@@ -146,17 +146,13 @@ async function openSession(session) {
 }
 
 async function loadHistory(sessionId) {
-  if (!isAdmin()) {
-    append("event", "成员暂不支持加载历史对话；你仍可继续发送消息和处理本会话的待办。");
-    return;
-  }
-  // 从审计里把这个会话的对话重建出来：用户消息看 message_sent，回复看 turn_text；
+  // 从经过会话归属检查的历史接口恢复对话，普通成员只可读自己的会话；
   // 工具调用与挂起作为事件行
-  const params = `session_id=${encodeURIComponent(sessionId)}&limit=1000`;
+  const historyPath = `/v1/sessions/${encodeURIComponent(sessionId)}/history?limit=200`;
   let after = 0;
   const records = [];
   for (;;) {
-    const page = await api("GET", `/v1/audit?${params}&after_id=${after}`);
+    const page = await api("GET", `${historyPath}&after_id=${after}`);
     records.push(...page.records);
     if (page.next_after_id == null) break;
     after = page.next_after_id;
@@ -401,6 +397,7 @@ async function loadPackages() {
     });
     rows.appendChild(row);
   }
+  await loadBusinessChoices();
 }
 
 $("publish").addEventListener("submit", async (event) => {

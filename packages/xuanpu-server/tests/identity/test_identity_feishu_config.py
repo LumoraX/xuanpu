@@ -65,6 +65,7 @@ async def test_put_then_get_without_plaintext(identity_world: Any) -> None:
             == put.json()
             == {
                 "configured": True,
+                "events_enabled": True,
                 **body,
                 "feishu_tenant_key": None,
                 "callback_url": CALLBACK,
@@ -94,6 +95,7 @@ async def test_get_before_configuring(identity_world: Any) -> None:
         assert got.status_code == 200
         assert got.json() == {
             "configured": False,
+            "events_enabled": False,
             "app_id": None,
             "app_secret_ref": None,
             "encrypt_key_ref": None,

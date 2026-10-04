@@ -57,7 +57,7 @@ curl -fsS "$BASE/v1/identity/feishu" \
 
 ## 3. 设置加密并写入平台
 
-在「开发配置 → 事件与回调 → 加密策略」取得或设置 Encrypt Key、Verification Token。飞书本身允许明文事件；**xuanpu 要求 Encrypt Key，拒收明文事件与明文 URL 验证**。三个密钥经保管库写入，身份配置只保存引用名称。
+在「开发配置 → 事件与回调 → 加密策略」取得或设置 Encrypt Key、Verification Token。飞书本身允许明文事件；**xuanpu 仅在启用事件回调时要求 Encrypt Key，拒收明文事件与明文 URL 验证**。登录只需 App ID 与 App Secret，事件的两个引用可省略或传 null/空串；`events_enabled=false` 表示尚未启用事件。密钥经保管库写入，身份配置只保存引用名称。
 
 下面的模拟值已实际运行；正式操作不要把密钥写进共享终端历史或版本库。
 
@@ -82,7 +82,7 @@ curl -fsS -X PUT "$BASE/v1/identity/feishu" \
 # {"configured":true,"session_ttl_seconds":28800,"feishu_tenant_key":null}
 ```
 
-`session_ttl_seconds` 是该租户的覆盖值，上例 8 小时；省略或传 `null` 恢复平台默认。此接口整体替换配置，但保留已经绑定的飞书企业，不能拿它改企业绑定。三个引用必须已存在。
+`session_ttl_seconds` 是该租户的覆盖值，上例 8 小时；省略或传 `null` 恢复平台默认。此接口整体替换配置，但保留已经绑定的飞书企业，不能拿它改企业绑定。提供的引用必须已存在；只测试登录时可不提供事件相关引用。
 
 现在保存飞书事件请求地址并订阅 `contact.user.deleted_v3`。官方说明：配置 Encrypt Key 后 URL 验证体为加密内容，解密后取 `challenge`，一秒内原样返回 `{"challenge": ...}`。[官方说明](https://open.feishu.cn/document/ukTMukTMukTM/uYDNxYjL2QTM24iN0EjN/event-subscription-configure-/choose-a-subscription-mode/send-notifications-to-developers-server)
 

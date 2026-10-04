@@ -239,6 +239,7 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
         )
         gateway = GatewayConfig(
             base_url=config.models.base_url,
+            protocol=config.models.protocol,
             api_key=config.models.api_key,
             api_key_secret=config.models.api_key_secret,
             profiles={

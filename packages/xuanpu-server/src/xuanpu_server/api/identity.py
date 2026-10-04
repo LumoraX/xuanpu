@@ -85,6 +85,7 @@ def feishu_config_view(
     public_url = settings.public_url
     return {
         "configured": config is not None,
+        "events_enabled": config.events_enabled if config else False,
         "app_id": config.app_id if config else None,
         "app_secret_ref": config.app_secret_ref if config else None,
         "encrypt_key_ref": config.encrypt_key_ref if config else None,

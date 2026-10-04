@@ -25,6 +25,7 @@ listen:
 
 # 模型网关：任何兼容 OpenAI Chat 接口的网关（如 LiteLLM Proxy）。
 models:
+  protocol: chat  # 可选 responses 或 codex_responses；Responses 的 state.backend 须为 local
   base_url: http://litellm:4000/v1
   # 二选一：
   api_key: ${MODEL_GATEWAY_KEY}        # 所有租户共用平台的网关凭据

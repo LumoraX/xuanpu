@@ -13,6 +13,7 @@ master_keys:
 primary_master_key: k1
 
 models:
+  protocol: chat  # 可选 responses 或 codex_responses；Responses 的 state.backend 须为 local
   base_url: ${MODEL_GATEWAY_URL}       # 任何兼容 OpenAI Chat 接口的地址，以 /v1 结尾
   api_key: ${MODEL_GATEWAY_KEY}
   tiers:

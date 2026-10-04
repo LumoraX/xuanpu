@@ -302,13 +302,14 @@ class IdentityService:
         *,
         app_id: str,
         app_secret_ref: str,
-        encrypt_key_ref: str,
-        verification_token_ref: str,
-        session_ttl_seconds: int | None,
+        encrypt_key_ref: str | None = None,
+        verification_token_ref: str | None = None,
+        session_ttl_seconds: int | None = None,
     ) -> TenantIdentityConfig:
         """写入或整体替换本租户的飞书配置（已绑定的飞书企业保留），返回写入后的配置。
 
-        三个密钥只收名字，明文由管理员先经 ``PUT /v1/secrets/{name}`` 写进保管库。审计
+        App Secret 必填，事件的两个引用可单独保存，只有齐备时启用事件。
+        密钥只收名字，明文由管理员先经 ``PUT /v1/secrets/{name}`` 写进保管库。审计
         ``identity_config_updated`` 只记 App ID、有效期与三个名字。
 
         Raises:
@@ -321,7 +322,10 @@ class IdentityService:
             raise InvalidRequestError(
                 "平台没有配置 public_url：飞书的回调地址与事件地址由它生成，启用飞书登录前先配置它"
             )
-        refs = (app_secret_ref, encrypt_key_ref, verification_token_ref)
+        encrypt_key_ref = None if encrypt_key_ref == "" else encrypt_key_ref
+        verification_token_ref = None if verification_token_ref == "" else verification_token_ref
+        refs = [app_secret_ref]
+        refs.extend(name for name in (encrypt_key_ref, verification_token_ref) if name is not None)
         for name in refs:
             validate_secret_name(name)
         present = set(await self._vault.names(tenant_id))
