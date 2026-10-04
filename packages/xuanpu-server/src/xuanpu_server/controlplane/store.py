@@ -23,12 +23,18 @@ if TYPE_CHECKING:
         SessionRecord,
         UsageRecord,
     )
+    from xuanpu_server.reminders.store import ReminderStore
     from xuanpu_server.tenancy import ApiKeyRecord, Tenant
 
 
 @runtime_checkable
 class ControlPlaneStore(Protocol):
     """控制面存储。"""
+
+    @property
+    def reminder_store(self) -> ReminderStore:
+        """与控制面共享后端的提醒存储。"""
+        ...
 
     # --- 租户与凭据 ---
 

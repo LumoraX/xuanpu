@@ -27,6 +27,7 @@ from xuanpu_server.errors import (
     NotFoundError,
     SessionBusyError,
 )
+from xuanpu_server.reminders.postgres import PostgresReminderStore
 from xuanpu_server.tenancy import ApiKeyRecord, QuotaLimits, Tenant
 
 if TYPE_CHECKING:
@@ -89,6 +90,7 @@ class PostgresControlPlane:
             pool: 宿主创建并管理的连接池。
             namespace: 表所在的 schema 与表名前缀。
         """
+        self.reminder_store = PostgresReminderStore(pool, namespace=namespace)
         self._pool = pool
         self._namespace = namespace
         names = ("tenant", "api_key", "package_version", "package_active", "secret", "session")

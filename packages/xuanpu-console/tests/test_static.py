@@ -16,7 +16,7 @@ def test_static_files_present() -> None:
     assert (directory / "style.css").is_file()
     html = (directory / "index.html").read_text(encoding="utf-8")
     referenced = set(re.findall(r'(?:src|href)="([^"]+)"', html))
-    assert referenced == {"app.js", "identity.js", "style.css", "?admin=1", "?"}
+    assert referenced == {"app.js", "identity.js", "reminders.js", "style.css", "?admin=1", "?"}
 
 
 def test_console_only_talks_to_documented_endpoints() -> None:
@@ -25,7 +25,7 @@ def test_console_only_talks_to_documented_endpoints() -> None:
     paths = set(re.findall(r'["`](/(?:v1/[a-z]+|healthz)[^"`?]*)', script))
     allowed_prefixes = (
         "/healthz", "/v1/sessions", "/v1/packages", "/v1/audit", "/v1/usage",
-        "/v1/me", "/v1/auth", "/v1/users", "/v1/assistant",
+        "/v1/me", "/v1/auth", "/v1/users", "/v1/assistant", "/v1/reminders", "/v1/notifications",
     )  # fmt: skip
     assert paths
     assert all(path.startswith(allowed_prefixes) for path in paths), paths

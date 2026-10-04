@@ -117,3 +117,15 @@ main { padding: 16px; }
 .suggestions span, .entry-footer { color: var(--muted); font-size: 12px; }
 .entry-footer { padding: 12px 20px; text-align: right; }
 .entry-footer a { color: var(--muted); }
+
+/* 提醒属于个人工作，不要求选择业务或填写渠道密钥。 */
+#reminders-panel { margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+.reminder-items { list-style: none; padding: 0; max-height: 24rem; overflow: auto; }
+.reminder-item { padding: .7rem 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.reminder-item button { margin: .4rem .4rem 0 0; }
+.reminder-preview { margin: .6rem 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: .7rem; overflow-wrap: anywhere; }
+.reminder-preview button { margin: .5rem .5rem 0 0; }
+.reminder-preview label { display: block; }
+.reminder-form { display: flex; flex-wrap: wrap; gap: .5rem; }
+.reminder-form strong, .reminder-form p { flex-basis: 100%; }
+.reminder-form input { min-width: 0; max-width: 100%; }

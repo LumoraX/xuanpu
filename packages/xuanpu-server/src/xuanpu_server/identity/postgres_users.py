@@ -93,6 +93,9 @@ class PostgresUserTables:
             pool: 宿主创建并管理的连接池（与控制面共用）。
             namespace: 表所在的 schema 与表名前缀（与控制面相同）。
         """
+        self._tenant_table = namespace.table("tenant")
+        self._reminder_table = namespace.table("reminder")
+        self._delivery_table = namespace.table("notification_delivery")
         self._pool = pool
         self._t = {name: namespace.table(name) for name in _TABLES}
 
@@ -245,6 +248,11 @@ class PostgresUserTables:
         """改状态；``status <> $3`` 的条件让并发的同向修改只有一个生效。"""
         require_status_change(status, reason)
         async with self._pool.acquire() as conn, conn.transaction():
+            # 与提醒事务统一租户→用户锁序，停用和取消必须一起提交。
+            await conn.fetchval(
+                f"SELECT tenant_id FROM {self._tenant_table} WHERE tenant_id=$1 FOR UPDATE",
+                tenant_id,
+            )
             if keep_an_admin and status == "disabled":
                 await self._require_another_admin(conn, tenant_id, user_id)
             changed = affected(
@@ -259,6 +267,21 @@ class PostgresUserTables:
                     at if status == "disabled" else None,
                 )
             )
+            if status == "disabled":
+                await conn.execute(
+                    f"UPDATE {self._reminder_table} SET status='cancelled',version=version+1,updated_at=$3 "
+                    "WHERE tenant_id=$1 AND user_id=$2 AND status='active'",
+                    tenant_id,
+                    user_id,
+                    at,
+                )
+                await conn.execute(
+                    f"UPDATE {self._delivery_table} SET status='skipped',claim_token=NULL,lease_until=0,"
+                    "error_code='identity_disabled' WHERE tenant_id=$1 AND user_id=$2 "
+                    "AND status IN ('pending','sending')",
+                    tenant_id,
+                    user_id,
+                )
         if not changed:
             await self._require_user_exists(tenant_id, user_id)
         return bool(changed)

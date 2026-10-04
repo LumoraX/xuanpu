@@ -791,3 +791,18 @@ xuanpu_connector_calls_total{decision="allowed",transport="http"} 1.0
 返回 `{session: 会话对象或null, message: 说明或null}`。命中相同业务、版本、入口的活动会话则复用，否则新建本人会话；前端再用原 `/messages` 发送需求。无匹配或信息不足时返回中文说明或问题；不强行选择第一项，不声称已执行业务。切换流程保留原会话和待审批。
 
 识别请求使用租户并发额度和 token 配额，计入租户及员工用量（turns=0），记录 `assistant_route_sampled`；完成时记录模型用量，中断时估算并标记。请求有30秒总超时，计量收尾最多3秒；调用错误返回可重试提示，不返回供应商原始错误。目录最多100个入口，历史扫描最多10000条审计并保留最近6条文本，超过限制明确说明。
+
+## 玄圃原生提醒与通知
+
+这些接口要求当前启用的租户及员工；无个人身份的API key返回403，可用已有严格授权的act_as。成员只能操作本人记录，跨人或跨租户对象404。cookie写请求沿用CSRF规则。
+
+- `POST /v1/reminders`：`{title,due_at,timezone,repeat,channels,request_id}`。due_at是有限UTC秒，首次须未来且五年内；timezone为有效IANA；repeat为once/daily/weekly；channels包含inbox且可选feishu。title最多500字；request_id最多128字，每用户幂等，同ID不同原始内容409。返回提醒对象；每人最多100条活动提醒。
+- `GET /v1/reminders?status=active`：本人最近100条；status可省略或为active/completed/cancelled，先按状态筛选再取100条。控制台默认展示待办，支持切换历史。返回`{items:[...]}`。记录含reminder_id/status/version/created_at/updated_at。
+- `PUT /v1/reminders/{reminder_id}`：Reminder输入字段加version；仅活动记录可编辑，版本过期409。
+- `DELETE /v1/reminders/{reminder_id}?version=N`：取消；重复取消幂等，已完成不会伪装为取消。
+- `GET /v1/reminders/channels`：`{channels:["inbox", ...]}`，查询本人已配置目标的外部渠道；不表示供应商权限保证成功。
+- `GET /v1/notifications`：after_id默认0，limit 1–100，latest=true取最近窗口；返回`{items:[...]}`，每项有notification_id、title、due_at、created_at、read_at和deliveries。后者含channel/status/attempts/last_error_code，不含租约令牌。
+- `POST /v1/notifications/{notification_id}/read`：幂等标读，返回当前通知。
+- `GET /v1/notifications/events`：SSE，接受after_id与Last-Event-ID（取较大值），每条`event: notification`、`id: 通知ID`、`data: 通知对象`。有心跳，周期重新鉴权。连接中断后按游标补读；游标不携带权限，查询仍按tenant/user过滤。
+
+`POST /v1/assistant/route`新增timezone（默认Asia/Shanghai），模型使用服务端当前时间。响应增加reminder_draft与open_reminders；内置提醒不需要发布业务包。草稿包含明确时间/时区/重复/默认inbox，不创建任务；确认后调用POST /v1/reminders才算创建成功。平台不支持的重复规则必须说明或澄清，不能静默更改。

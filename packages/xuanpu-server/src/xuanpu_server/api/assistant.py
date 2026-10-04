@@ -28,10 +28,12 @@ def assistant_router(platform: Platform) -> APIRouter:
             done, _ = await asyncio.wait((work, disconnected), return_when=asyncio.FIRST_COMPLETED)
             if disconnected in done:
                 return Response(status_code=499)
-            session, message = work.result()
+            result = work.result()
             return {
-                "session": schemas.session_view(session) if session else None,
-                "message": message,
+                "session": schemas.session_view(result.session) if result.session else None,
+                "message": result.message,
+                "reminder_draft": result.reminder_draft,
+                "open_reminders": result.open_reminders,
             }
         finally:
             # 普通HTTP请求的断连不会自动取消handler；显式取消采样并等待有界计量收尾。

@@ -17,3 +17,4 @@
 | [0011](0011-system-design-decisions.md) | 整体设计定下的九件事 —— 底座先无状态、员工内容管理员默认不可见、新增触发与个人 skill | Accepted |
 | [0012](0012-personal-workstation.md) | 员工端是个人工作站 —— 一人一个助理、事项、四种待办、部门助理透明 | Accepted |
 | [0013](0013-connector-sandbox-and-remote-mcp.md) | 连接器进沙盒、远端 MCP 直连 —— stdio 连接器在单独的连接器沙盒里运行，`transport: remote` 不等网关 | Accepted |
+| [0014](0014-enterprise-core-and-durable-reminders.md) | 玄圃企业核心、持久提醒与渠道分离 | Accepted（修订0009决策1/3与0012决策5，旧文保留历史） |

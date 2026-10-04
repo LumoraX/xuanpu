@@ -45,6 +45,7 @@ function applyPermissions() {
 
 // 先取消旧请求并递增代际，再清除可见的身份数据；旧响应不能把上一位员工的数据填回来。
 function resetIdentity() {
+  resetReminders();
   conn.controller.abort();
   conn.controller = new AbortController();
   conn.epoch += 1;
@@ -116,6 +117,7 @@ async function connectIdentity({ automatic = false } = {}) {
     if (current) await openSession(current);
     else startConversation();
     if (isAdmin()) await loadPackages();
+    startReminders().catch(fail);
     return epoch === conn.epoch;
   } catch (error) {
     if (epoch !== conn.epoch || error.name === "AbortError") return false;

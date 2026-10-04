@@ -72,6 +72,8 @@
 | `package_published` | 发布业务包版本 | `name`、`version`、`digest` |
 | `package_activated` | 切换生效版本 | `name`、`version`、`previous` |
 | `eval_completed` | 跑完一次评测 | `package`、`version`、`passed`、`failed`、`total_tokens` |
+| `reminder.created` / `reminder.updated` / `reminder.cancelled` | 员工创建、修改或取消提醒，与业务状态同事务提交 | `reminder_id`、`version`；正文不进入该操作摘要 |
+| `reminder.fired` | 后台到期生成站内通知，与通知和下一次时间同事务提交；actor为`system:reminders` | `reminder_id`、`version`、`notification_id` |
 | `session_created` | 新建会话 | `package`、`version`、`entry`、`metadata` |
 | `assistant_route_sampled` | 直接对话入口完成或中断业务识别；计入租户与员工 token 用量，不增加业务轮数 | `estimated`、`input_tokens`、`output_tokens`、`total_tokens`、`turns=0`；不记录识别提示词与模型原文 |
 | `session_closed` | 关闭会话。员工停用后由平台关掉的，`actor` 是 `system:user-disabled` | — |

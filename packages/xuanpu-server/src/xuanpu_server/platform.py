@@ -28,6 +28,8 @@ from xuanpu_server.metrics import PlatformMetrics
 from xuanpu_server.objectstore import LocalObjectStore
 from xuanpu_server.packages import PackageRegistry
 from xuanpu_server.quota import QuotaGuard
+from xuanpu_server.reminders.feishu import FeishuNotificationSender
+from xuanpu_server.reminders.service import ReminderService
 from xuanpu_server.runtime.assembler import (
     LocalStateBackends,
     RuntimeAssembler,
@@ -162,6 +164,14 @@ class Platform:
             metrics=self.metrics,
             now=now,
         )
+        self.notification_sender = FeishuNotificationSender(
+            control=store, identity=identity_store, vault=vault,
+            open_base=identity_settings.feishu_open_base, transport=feishu_transport,
+        )
+        self.reminders = ReminderService(
+            store=store.reminder_store, control=store, identity=identity_store,
+            audit=self.audit, sender=self.notification_sender, now=now,
+        )
         self.quota = QuotaGuard(store, now=now)
         self.packages = PackageRegistry(
             store, self.audit, data_dir=data_dir, objects=self.objects, now=now
@@ -209,6 +219,7 @@ class Platform:
         await self.packages.start()
         await self.sessions.start()
         self.identity.start()
+        self.reminders.start()
 
     async def close(self) -> None:
         """先取消并等身份维护和对账结束，再等员工停用后的后台收尾（最多几秒，见 ``identity.disable``），
@@ -216,6 +227,8 @@ class Platform:
 
         后台收尾要关会话，所以排在释放会话之前：会话管理还完整的时候让它们跑完。
         """
+        await self.reminders.close()
+        await self.notification_sender.close()
         await self.assistant.close()
         await self.identity.maintenance.close()
         await self.identity.disabling.close()

@@ -272,9 +272,16 @@ $("send").addEventListener("submit", async event => {
   $("new-session-btn").disabled = true;
   try {
     const route = await api("POST", "/v1/assistant/route", {json: {
-      text, ...(chat.sessionId ? {session_id: chat.sessionId} : {}), context: chat.routeContext,
+      text, ...(chat.sessionId ? {session_id: chat.sessionId} : {}), context: chat.routeContext, timezone:browserTimezone(),
     }});
     if (epoch !== conn.epoch || generation !== chat.generation) return;
+    if (route.reminder_draft || route.open_reminders) {
+      $("welcome").classList.add("hidden"); append("user",text); append("assistant",route.message);
+      chat.routeContext=[]; $("message").value="";
+      if(route.reminder_draft) showReminderDraft(route.reminder_draft);
+      else {$("reminders-panel").open=true;await refreshReminders();}
+      return;
+    }
     if (!route.session) {
       $("welcome").classList.add("hidden");
       append("user", text);

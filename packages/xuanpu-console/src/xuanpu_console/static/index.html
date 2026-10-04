@@ -48,6 +48,14 @@
       </div>
       <p id="business-hint" class="status">登录后直接说出需求，助手会找到对应流程。</p>
       <ul id="session-list" class="items"></ul>
+      <details id="reminders-panel" class="hidden" open>
+        <summary>我的提醒与通知</summary>
+        <div class="row"><button id="new-reminder" type="button" class="ghost">新建提醒</button><button id="refresh-reminders" type="button" class="ghost">刷新提醒</button></div>
+        <label>查看提醒 <select id="reminder-status"><option value="active">等待提醒</option><option value="completed">已提醒</option><option value="cancelled">已取消</option></select></label>
+        <ul id="reminder-list" class="reminder-items"></ul>
+        <h3>通知中心</h3><p id="notification-status" class="meta"></p>
+        <ul id="notification-list" class="reminder-items" aria-live="polite"></ul>
+      </details>
     </aside>
     <div class="chat-pane">
       <section id="welcome" class="welcome">
@@ -61,10 +69,12 @@
       <div id="transcript" class="transcript"></div>
       <div id="suggestions" class="suggestions hidden" aria-label="试试这样问">
         <span>试试这样问</span>
+        <button type="button" class="ghost" data-prompt="明天早上8点提醒我准备复盘。">创建提醒</button>
         <button type="button" class="ghost" data-prompt="我要报销差旅费。">我要报销</button>
         <button type="button" class="ghost" data-prompt="我要确认员工手册。">确认员工手册</button>
         <button type="button" class="ghost" data-prompt="请查询工单 T-1001，并告诉我处理时限。">查询工单</button>
       </div>
+      <section id="reminder-preview" class="reminder-preview hidden" aria-live="polite"></section>
       <form id="send" class="send">
         <textarea id="message" rows="2" placeholder="告诉我你想办什么，Enter 发送" disabled></textarea>
         <button type="submit" id="send-btn" disabled>发送</button>
@@ -137,6 +147,7 @@
 <footer class="entry-footer"><a href="?admin=1">管理员入口</a> · <a href="?">员工入口</a></footer>
 <div id="toast" class="toast hidden"></div>
 <script src="app.js"></script>
+<script src="reminders.js"></script>
 <script src="identity.js"></script>
 </body>
 </html>

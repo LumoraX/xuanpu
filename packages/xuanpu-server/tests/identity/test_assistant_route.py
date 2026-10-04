@@ -19,20 +19,21 @@ async def routed(identity_world: Any) -> Any:
         yield ident, headers, user
 
 
-async def test_route_auth_and_no_business(identity_world: Any) -> None:
-    """未登录拒绝，无业务不调用模型、不伪造服务。"""
+async def test_route_auth_and_no_business(identity_world: Any, step: Any) -> None:
+    """未登录拒绝；无业务包仍保留内置提醒，但不伪造报销能力。"""
     async with identity_world() as ident:
         response = await ident.http.post("/v1/assistant/route", json={"text": "报销"})
         assert response.status_code == 401
         user = await ident.user()
         headers = {**ident.cookie(await ident.login(user)), "X-Requested-By": "xuanpu"}
+        ident.world.models.script(step(text=json.dumps({"package": None, "entry": None, "message": "企业尚未开通报销业务"})))
         response = await ident.http.post(
             "/v1/assistant/route", headers=headers, json={"text": "报销"}
         )
         assert response.status_code == 200
         assert response.json()["session"] is None
         assert "未开通" in response.json()["message"]
-        assert not ident.world.models.requests
+        assert len(ident.world.models.requests) == 1
 
 
 async def test_route_reuse_and_accounting(routed: Any, step: Any) -> None:
@@ -313,7 +314,7 @@ async def test_route_server_history_overrides_client_context(routed: Any, step: 
     assert all(x not in request for x in ("历史-0", "历史-1", "private-secret"))
 
 
-async def test_route_other_tenant_session_rejected(routed: Any) -> None:
+async def test_route_other_tenant_session_rejected(routed: Any, step: Any) -> None:
     """别租户的会话和目录不能用作本人的路由上下文。"""
     from xuanpu_server.platform import ROOT_PRINCIPAL
 
@@ -328,11 +329,12 @@ async def test_route_other_tenant_session_rejected(routed: Any) -> None:
         json={"text": "工单", "session_id": session.session_id},
     )
     assert response.status_code == 404
+    ident.world.models.script(step(text=json.dumps({"package": None, "entry": None, "message": "企业尚未开通工单"})))
     response = await ident.http.post("/v1/assistant/route", headers=headers, json={"text": "工单"})
     assert response.status_code == 200
     assert response.json()["session"] is None
     assert "未开通" in response.json()["message"]
-    assert not ident.world.models.requests
+    assert "support-desk" not in ident.world.models.requests[-1].model_dump_json()
 
 
 async def test_route_provider_error_redacted(routed: Any, monkeypatch: Any) -> None:
@@ -464,7 +466,8 @@ async def test_route_followup_clarification_with_current_session(routed: Any, st
         headers=headers,
         json={"text": "处理一下", "session_id": first["session_id"]},
     )
-    assert response.json() == {"session": None, "message": question}
+    assert response.json()["session"] is None
+    assert response.json()["message"] == question
     response = await ident.http.post(
         "/v1/assistant/route",
         headers=headers,

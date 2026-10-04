@@ -15,6 +15,7 @@ from xuanpu_server.identity.models import (
     require_reconcile_window,
     require_status_change,
 )
+from xuanpu_server.reminders.memory import InMemoryReminderStore
 
 if TYPE_CHECKING:
     from xuanpu_server.controlplane import ControlPlaneStore
@@ -56,6 +57,15 @@ class InMemoryIdentityStore:
         self._attempts: dict[str, LoginAttempt] = {}
         self._usage: dict[tuple[str, str, str], UserUsageRecord] = {}
         self._reconcile: dict[str, ReconcileState] = {}
+        reminders = control_plane.reminder_store
+        if not isinstance(reminders, InMemoryReminderStore):
+            raise TypeError("内存身份存储要求内存提醒后端")
+        self._reminders = reminders
+        reminders.bind_identity(
+            lambda tenant, user: (
+                (tenant, user) in self._users and self._users[(tenant, user)].status == "active"
+            )
+        )
 
     async def _require_tenant(self, tenant_id: str) -> None:
         """租户不存在则报错。"""
@@ -172,6 +182,8 @@ class InMemoryIdentityStore:
                 disabled_reason=reason,
                 disabled_at=at if disabled else None,
             )
+            if disabled:
+                self._reminders.disable_user(tenant_id, user_id, at)
             return True
 
     async def update_user_profile(

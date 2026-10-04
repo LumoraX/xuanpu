@@ -18,6 +18,7 @@ const context = vm.createContext({ console, URL, URLSearchParams, AbortControlle
   fetch: async () => ({ ok: false, status: 401, text: async () => '{"error":{"message":"未登录"}}' }),
 });
 vm.runInContext(fs.readFileSync(process.argv[2] + '/app.js', 'utf8'), context);
+vm.runInContext(fs.readFileSync(process.argv[2] + '/reminders.js', 'utf8'), context);
 vm.runInContext(fs.readFileSync(process.argv[2] + '/identity.js', 'utf8'), context);
 const run = code => vm.runInContext(code, context);
 (async () => {
@@ -180,5 +181,12 @@ const run = code => vm.runInContext(code, context);
   assert.equal(run('chat.routeContext.length'), 1);
   historyReady({ok:true,text:async () => '{"records":[],"next_after_id":null}'});
   await opening;
+  run('reminderState.cursor=51; reminderState.draft={title:"旧账号"}; resetReminders()');
+  assert.equal(run('reminderState.cursor'), 0);
+  assert.equal(run('reminderState.draft'), null);
+  assert.equal(run('reminderState.controller'), null);
+  assert.equal(run('reminderWallTime(Date.parse("2026-10-05T09:30:00Z")/1000, "America/New_York")'), '2026-10-05T05:30');
+  assert.equal(run('reminderTimestamp("2026-10-05T05:30", "America/New_York")'), Date.parse('2026-10-05T09:30:00Z')/1000);
+  assert.throws(()=>run('reminderTimestamp("2026-03-08T02:30", "America/New_York")'));
   console.log('identity behavior passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });
