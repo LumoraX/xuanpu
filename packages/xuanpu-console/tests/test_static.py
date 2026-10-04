@@ -16,7 +16,7 @@ def test_static_files_present() -> None:
     assert (directory / "style.css").is_file()
     html = (directory / "index.html").read_text(encoding="utf-8")
     referenced = set(re.findall(r'(?:src|href)="([^"]+)"', html))
-    assert referenced == {"app.js", "identity.js", "style.css"}
+    assert referenced == {"app.js", "identity.js", "style.css", "?admin=1", "?"}
 
 
 def test_console_only_talks_to_documented_endpoints() -> None:

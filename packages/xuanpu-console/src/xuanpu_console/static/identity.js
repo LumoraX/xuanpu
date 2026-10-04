@@ -32,7 +32,7 @@ function safeAvatar(value) {
 }
 
 function applyPermissions() {
-  $("admin-connection").classList.toggle("hidden", !!conn.me && !isAdmin());
+  $("admin-connection").classList.toggle("hidden", !adminMode || (!!conn.me && !isAdmin()));
   if (conn.me) $("admin-connection").open = false;
   $("feishu-login").classList.toggle("hidden", !!conn.me?.user_id || !sameOrigin());
   for (const node of document.querySelectorAll("[data-admin]")) node.classList.toggle("hidden", !isAdmin());
@@ -53,6 +53,10 @@ function resetIdentity() {
   $("new-package").disabled = true;
   $("new-session-btn").disabled = true;
   $("business-hint").textContent = "登录后选择业务，即可开始对话；无需填写地址或密钥。";
+  chat.generation += 1;
+  chat.creating = false;
+  $("welcome").classList.remove("hidden");
+  $("suggestions").classList.add("hidden");
   chat.sessionId = null;
   chat.status = null;
   chat.streaming = null;
@@ -64,7 +68,7 @@ function resetIdentity() {
   $("show-closed").checked = false;
   for (const id of ["session-list", "transcript", "pending", "eval-report"]) $(id).innerHTML = "";
   for (const id of ["package-table", "audit-table", "usage-table", "users-table"]) $(id).querySelector("tbody").innerHTML = "";
-  $("chat-head").textContent = "选择或新建一个会话";
+  $("chat-head").textContent = "选择业务，开始一次对话";
   $("message").value = "";
   $("message").disabled = true;
   $("send-btn").disabled = true;
@@ -98,7 +102,10 @@ async function connectIdentity({ automatic = false } = {}) {
       if (avatar) { $("user-avatar").src = avatar; $("user-avatar").classList.remove("hidden"); }
     }
     await loadBusinessChoices();
-    await loadSessions();
+    const sessions = await loadSessions();
+    const remembered = sessionStorage.getItem(sessionMemoryKey());
+    const current = sessions.find(session => session.session_id === remembered) || sessions[0];
+    if (current) await openSession(current);
     if (isAdmin()) await loadPackages();
     return epoch === conn.epoch;
   } catch (error) {
@@ -128,7 +135,7 @@ async function loadBusinessChoices() {
   const select = $("new-package");
   const previous = select.value;
   select.innerHTML = choices.length ? choices.map(item =>
-    `<option value="${escape(item.name)}">${escape(item.name === "support-desk" ? "工单助手" : item.name)}</option>`
+    `<option value="${escape(item.name)}">${escape(businessName(item.name))}</option>`
   ).join("") : '<option value="">暂无可用业务</option>';
   select.value = choices.some(item => item.name === previous) ? previous : (choices[0]?.name || "");
   select.disabled = !choices.length;

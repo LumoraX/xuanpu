@@ -5,9 +5,10 @@ const $ = (id) => document.getElementById(id);
 
 // ---------- 连接 ----------
 
+const adminMode = new URLSearchParams(location.search).get("admin") === "1";
 const conn = {
-  baseUrl: localStorage.getItem("xuanpu.baseUrl") || "",
-  apiKey: sessionStorage.getItem("xuanpu.apiKey") || "",
+  baseUrl: adminMode ? localStorage.getItem("xuanpu.baseUrl") || "" : "",
+  apiKey: adminMode ? sessionStorage.getItem("xuanpu.apiKey") || "" : "",
   epoch: 0, controller: new AbortController(), me: null,
 };
 
@@ -81,7 +82,12 @@ $("tabs").addEventListener("click", (event) => {
 
 // streaming：正在流式输出的那一轮 { sessionId, submissionId }（停止按钮停的是它）；
 // submissionId 在收到 turn 帧之前为 null；没有在输出时 streaming 为 null
-const chat = { sessionId: null, status: null, streaming: null };
+const chat = { sessionId: null, status: null, streaming: null, generation: 0, creating: false };
+function businessName(name) { return name === "support-desk" ? "工单助手" : name; }
+function sessionMemoryKey() {
+  const me = conn.me;
+  return me ? `xuanpu.lastSession.${me.tenant_id}.${me.user_id || me.key_id}` : null;
+}
 
 async function loadSessions() {
   const status = $("show-closed").checked ? "" : "&status=active";
@@ -93,12 +99,12 @@ async function loadSessions() {
     item.dataset.id = session.session_id;
     item.classList.toggle("active", session.session_id === chat.sessionId);
     item.innerHTML =
-      `<div>${escape(session.package)} <span class="tag ${session.status === "active" ? "ok" : ""}">${session.status}</span></div>` +
-      `<div class="meta">${escape(session.session_id)}</div>` +
-      `<div class="meta">${escape(session.entry)} · ${when(session.updated_at)}</div>`;
+      `<div>${escape(businessName(session.package))} <span class="tag ${session.status === "active" ? "ok" : ""}">${session.status === "active" ? "进行中" : "已结束"}</span></div>` +
+      `<div class="meta">${when(session.updated_at)}</div>`;
     item.addEventListener("click", () => openSession(session).catch(fail));
     list.appendChild(item);
   }
+  return body.sessions;
 }
 
 $("refresh-sessions").addEventListener("click", () => loadSessions().catch(fail));
@@ -106,6 +112,11 @@ $("show-closed").addEventListener("change", () => loadSessions().catch(fail));
 
 $("new-session").addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (chat.streaming) { toast("请等当前回复完成，或先点击停止。", "info"); return; }
+  if (chat.creating || !conn.me || !$("new-package").value) return;
+  chat.creating = true;
+  const epoch = conn.epoch;
+  $("new-session-btn").disabled = true;
   try {
     const json = { package: $("new-package").value.trim() };
     const entry = $("new-entry").value.trim();
@@ -114,6 +125,12 @@ $("new-session").addEventListener("submit", async (event) => {
     await loadSessions();
     await openSession(session);
   } catch (error) { fail(error); }
+  finally {
+    if (epoch === conn.epoch) {
+      chat.creating = false;
+      $("new-session-btn").disabled = !$("new-package").value;
+    }
+  }
 });
 
 function escape(value) {
@@ -130,22 +147,31 @@ function append(kind, text) {
 }
 
 async function openSession(session) {
+  if (chat.streaming) { toast("请等当前回复完成，或先点击停止。", "info"); return; }
+  const generation = ++chat.generation;
+  $("pending").innerHTML = "";
+  $("pending").classList.add("hidden");
+  const memoryKey = sessionMemoryKey();
+  if (memoryKey) sessionStorage.setItem(memoryKey, session.session_id);
+  $("welcome").classList.add("hidden");
+  $("suggestions").classList.toggle("hidden", session.package !== "support-desk" || session.status !== "active");
   chat.sessionId = session.session_id;
   chat.status = session.status;
   for (const item of $("session-list").children) item.classList.toggle("active", item.dataset.id === session.session_id);
   $("chat-head").innerHTML =
-    `<span>${escape(session.package)} ${escape(session.version)} · ${escape(session.entry)} <span class="mono">${escape(session.session_id)}</span></span>` +
+    `<span>${escape(businessName(session.package))} · ${session.status === "active" ? "进行中" : "已结束，可以开始新对话"}</span>` +
     `<span><button type="button" id="close-session" class="danger" ${session.status !== "active" ? "disabled" : ""}>关闭会话</button></span>`;
   $("close-session").addEventListener("click", closeSession);
   $("transcript").innerHTML = "";
   const active = session.status === "active";
   $("message").disabled = !active;
   $("send-btn").disabled = !active;
-  await loadHistory(session.session_id);
+  await loadHistory(session.session_id, generation);
+  if (generation !== chat.generation) return;
   await loadPending();
 }
 
-async function loadHistory(sessionId) {
+async function loadHistory(sessionId, generation = chat.generation) {
   // 从经过会话归属检查的历史接口恢复对话，普通成员只可读自己的会话；
   // 工具调用与挂起作为事件行
   const historyPath = `/v1/sessions/${encodeURIComponent(sessionId)}/history?limit=200`;
@@ -153,6 +179,7 @@ async function loadHistory(sessionId) {
   const records = [];
   for (;;) {
     const page = await api("GET", `${historyPath}&after_id=${after}`);
+    if (generation !== chat.generation || sessionId !== chat.sessionId) return;
     records.push(...page.records);
     if (page.next_after_id == null) break;
     after = page.next_after_id;
@@ -190,7 +217,10 @@ function isStoppedInQueue(event) {
 async function loadPending() {
   const box = $("pending");
   if (!chat.sessionId) { box.classList.add("hidden"); return; }
-  const body = await api("GET", `/v1/sessions/${chat.sessionId}/pending`);
+  const generation = chat.generation;
+  const sessionId = chat.sessionId;
+  const body = await api("GET", `/v1/sessions/${sessionId}/pending`);
+  if (generation !== chat.generation || sessionId !== chat.sessionId) return;
   box.innerHTML = "";
   if (!body.pending.length) { box.classList.add("hidden"); return; }
   box.classList.remove("hidden");
@@ -204,17 +234,18 @@ async function loadPending() {
       `<code>${escape(JSON.stringify(detail.args ?? detail, null, 1))}</code></div>` +
       `<div><button type="button" data-grant="true">批准</button> <button type="button" data-grant="false" class="ghost">拒绝</button></div>`;
     for (const button of card.querySelectorAll("button")) {
-      button.addEventListener("click", () => resolve(item.request_id, button.dataset.grant === "true"));
+      button.addEventListener("click", () => resolve(item.request_id, button.dataset.grant === "true", sessionId, generation));
     }
     box.appendChild(card);
   }
 }
 
-async function resolve(requestId, granted) {
+async function resolve(requestId, granted, sessionId, generation) {
+  if (sessionId !== chat.sessionId || generation !== chat.generation || chat.streaming) return;
   const resolutions = {};
   resolutions[requestId] = { granted, reason: granted ? "控制台批准" : "控制台拒绝" };
   append("event", (granted ? "批准" : "拒绝") + " " + requestId);
-  await streamTurn(`/v1/sessions/${chat.sessionId}/resume`, { resolutions });
+  await streamTurn(`/v1/sessions/${sessionId}/resume`, { resolutions });
 }
 
 $("send").addEventListener("submit", async (event) => {
@@ -350,6 +381,7 @@ async function* sse(response) {
 }
 
 async function closeSession() {
+  if (chat.streaming) { toast("请先停止当前回复，再结束会话。", "info"); return; }
   if (!chat.sessionId || !confirm("关闭这个会话？进行中的对话会被取消。")) return;
   try {
     const session = await api("DELETE", `/v1/sessions/${chat.sessionId}`);
@@ -481,3 +513,12 @@ async function loadUsage() {
 $("usage-filter").addEventListener("submit", (event) => { event.preventDefault(); loadUsage().catch(fail); });
 
 // 身份初始化由随后加载的 identity.js 负责。
+
+// 示例只准备消息，由用户决定是否发送。
+for (const button of document.querySelectorAll("[data-prompt]")) {
+  button.addEventListener("click", () => {
+    if (!chat.sessionId || chat.status !== "active" || chat.streaming) return;
+    $("message").value = button.dataset.prompt;
+    $("message").focus();
+  });
+}

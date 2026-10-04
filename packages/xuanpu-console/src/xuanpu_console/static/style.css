@@ -109,3 +109,11 @@ main { padding: 16px; }
 #new-package { min-width: 0; flex: 1; }
 #new-session label { width: 100%; font-weight: 600; }
 @media (max-width: 600px) { .connect input { min-width: 0; width: 100%; } }
+
+.welcome { padding: 24px; border-bottom: 1px solid var(--line); }
+.welcome h1 { font-size: 23px; line-height: 1.5; margin: 0 0 12px; }
+.welcome li { margin: 8px 0; }
+.suggestions { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; align-items: center; }
+.suggestions span, .entry-footer { color: var(--muted); font-size: 12px; }
+.entry-footer { padding: 12px 20px; text-align: right; }
+.entry-footer a { color: var(--muted); }

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import html
+import json
 import secrets
 import sys
 from base64 import urlsafe_b64encode
@@ -14,7 +15,7 @@ from urllib.parse import urlencode
 
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 
 app = FastAPI()
 attempts: dict[str, dict[str, str]] = {}
@@ -102,6 +103,22 @@ async def contacts(request: Request) -> dict[str, object]:
     assert request.headers["authorization"] == "Bearer demo-directory"
     return {"code": 0, "data": {"items": [{"union_id": user, "status": {"is_activated": True}}
                                             for user in request.query_params.getlist("user_ids") if user in USERS]}}
+
+
+
+
+@app.post("/v1/chat/completions")
+async def model_reply() -> StreamingResponse:
+    """固定文本模型仅用于浏览器的发送与刷新恢复验收，不冒充真实模型验收。"""
+    async def chunks():
+        """输出合法 Chat SSE，保证前端测试不依赖真实模型。"""
+        for delta, finish in [({"role": "assistant", "content": ""}, None),
+                              ({"content": "这是可恢复的测试回复。"}, None), ({}, "stop")]:
+            item = {"id": "test-chat", "object": "chat.completion.chunk", "created": 1,
+                    "model": "mock", "choices": [{"index": 0, "delta": delta, "finish_reason": finish}]}
+            yield "data: " + json.dumps(item, ensure_ascii=False) + "\n\n"
+        yield "data: [DONE]\n\n"
+    return StreamingResponse(chunks(), media_type="text/event-stream")
 
 
 if __name__ == "__main__":

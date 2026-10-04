@@ -48,7 +48,7 @@ async function main() {
       await page.route('https://example.com/avatar.png', route => route.fulfill({contentType:'image/svg+xml', body:'<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30"><circle cx="15" cy="15" r="15" fill="blue"/></svg>'}));
     }
     // 先保留一把旧 key，再切飞书，确保回调后属于员工而不是 key。
-    await alice.goto(base + '/console/');
+    await alice.goto(base + '/console/?admin=1');
     await alice.locator('#admin-connection summary').click();
     await alice.locator('#api-key').fill(key);
     await alice.locator('#connect button[type=submit]').click();
@@ -62,6 +62,16 @@ async function main() {
     await alice.locator('[data-tab=users]').waitFor({state:'visible'});
     const memberRequests = [];
     bob.on('request', req => { if (req.url().startsWith(base + '/v1/')) memberRequests.push({url:req.url(), headers:req.headers(), method:req.method()}); });
+    await bob.goto(base + '/console/');
+    assert.equal(await bob.locator('#admin-connection').isVisible(), false);
+    await bob.screenshot({path:path.join(out, 'welcome.png'), fullPage:true});
+    await bob.evaluate(() => {
+      localStorage.setItem('xuanpu.baseUrl', 'https://old.invalid');
+      sessionStorage.setItem('xuanpu.apiKey', 'stale-admin-key');
+    });
+    await bob.reload();
+    assert.equal(await bob.locator('#feishu-login').isVisible(), true);
+    assert.equal(await bob.locator('#base-url').isVisible(), false);
     const bobMe = await login(bob, 'bob');
     assert.equal(bobMe.role, 'tenant_member');
     assert.equal(await bob.locator('[data-tab=users]').isVisible(), false);
@@ -76,6 +86,14 @@ async function main() {
     assert.equal(await bob.locator('#session-list li').count(), 1);
     assert.equal(await bob.locator('#session-list li').getAttribute('data-id'), bobSession);
     await bob.waitForFunction(() => !document.getElementById('message').disabled);
+    await bob.locator('#message').fill('历史恢复验收');
+    await bob.locator('#send-btn').click();
+    await bob.getByText('这是可恢复的测试回复。', {exact:true}).waitFor();
+    await bob.waitForFunction(() => !document.getElementById('send-btn').disabled);
+    await bob.reload();
+    await bob.getByText('这是可恢复的测试回复。', {exact:true}).waitFor();
+    assert.equal(await bob.locator('#session-list li.active').getAttribute('data-id'), bobSession);
+    assert.equal(await bob.locator('#welcome').isVisible(), false);
     assert.equal(await bob.evaluate(async id => (await fetch('/v1/sessions/' + id)).status, aliceSession), 404);
     assert(!memberRequests.some(req => /\/v1\/(audit|usage)(\?|$)/.test(req.url)));
     assert(!memberRequests.some(req => req.headers.authorization));
@@ -136,7 +154,7 @@ async function checkAdmin(alice, bob, aliceMe, bobMe) {
 async function checkKey(browser, bobMe) {
     // API key 保留可用：另一个浏览器上下文中连接，跨源地址不显示飞书入口。
     const keyPage = await (await browser.newContext()).newPage();
-    await keyPage.goto(base + '/console/');
+    await keyPage.goto(base + '/console/?admin=1');
     await keyPage.locator('#admin-connection summary').click();
     await keyPage.locator('#base-url').fill('https://other.example');
     assert.equal(await keyPage.locator('#feishu-login').isVisible(), false);

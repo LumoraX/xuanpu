@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>xuanpu 控制台</title>
+<title>玄圃 · 企业业务助手</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="topbar">
-  <div class="brand">玄圃 <span class="sub">xuanpu 控制台</span></div>
+  <div class="brand">玄圃 <span class="sub">企业业务助手</span></div>
   <div class="row login-actions">
     <button id="feishu-login" type="button">用飞书登录</button>
     <span id="conn-status" class="status">请先登录</span>
   </div>
-  <details id="admin-connection" class="admin-connection">
+  <details id="admin-connection" class="admin-connection hidden">
     <summary>管理员连接</summary>
     <form id="connect" class="connect">
       <input aria-label="平台地址" id="base-url" type="url" placeholder="当前站点（默认，无需填写）" autocomplete="off">
@@ -50,9 +50,21 @@
       <ul id="session-list" class="items"></ul>
     </aside>
     <div class="chat-pane">
+      <section id="welcome" class="welcome">
+        <h1>把业务交给助手，把决定留给你</h1>
+        <p>查询业务信息、执行工作流程，需要修改数据时先由你批准。</p>
+        <ol><li>用企业飞书账号登录</li><li>选择左侧业务，点击「开始使用」</li><li>用一句话告诉助手你要做什么</li></ol>
+        <p class="status">账号和业务由企业管理员准备，你无需配置服务或模型。</p>
+      </section>
       <div id="chat-head" class="chat-head">选择业务，开始一次对话</div>
       <div id="pending" class="pending hidden"></div>
       <div id="transcript" class="transcript"></div>
+      <div id="suggestions" class="suggestions hidden" aria-label="试试这样问">
+        <span>试试这样问</span>
+        <button type="button" class="ghost" data-prompt="请查询工单 T-1001，并告诉我处理时限。">查询工单与时限</button>
+        <button type="button" class="ghost" data-prompt="请将工单 T-1001 的优先级改为 high。">调整工单优先级</button>
+        <button type="button" class="ghost" data-prompt="退款通常多久可以到账？">了解退款政策</button>
+      </div>
       <form id="send" class="send">
         <textarea id="message" rows="2" placeholder="输入消息，Enter 发送，Shift+Enter 换行" disabled></textarea>
         <button type="submit" id="send-btn" disabled>发送</button>
@@ -122,6 +134,7 @@
   </section>
 </main>
 
+<footer class="entry-footer"><a href="?admin=1">管理员入口</a> · <a href="?">员工入口</a></footer>
 <div id="toast" class="toast hidden"></div>
 <script src="app.js"></script>
 <script src="identity.js"></script>

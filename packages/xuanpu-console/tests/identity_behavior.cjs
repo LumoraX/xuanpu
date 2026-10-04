@@ -10,7 +10,7 @@ function element(id) {
     removeAttribute() {}, setAttribute() {}, appendChild() {}, dataset: {} });
   return elements.get(id);
 }
-const storage = () => ({ getItem() { return ''; }, setItem() {}, removeItem() {} });
+const storage = () => ({ getItem(key) { return key === 'xuanpu.baseUrl' ? 'https://old.example' : key === 'xuanpu.apiKey' ? 'old-admin-key' : ''; }, setItem() {}, removeItem() {} });
 const context = vm.createContext({ console, URL, URLSearchParams, AbortController, DOMException,
   setTimeout, clearTimeout, localStorage: storage(), sessionStorage: storage(),
   location: { origin: 'http://localhost', pathname: '/console/', search: '', assign() {} },
@@ -22,6 +22,8 @@ vm.runInContext(fs.readFileSync(process.argv[2] + '/identity.js', 'utf8'), conte
 const run = code => vm.runInContext(code, context);
 (async () => {
   await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(run('conn.baseUrl'), '', '普通入口不得读取旧管理员地址');
+  assert.equal(element('admin-connection').classList.contains('hidden'), true);
   assert.equal(run('headers()["Authorization"]'), undefined);
   assert.equal(run('headers()["X-Requested-By"]'), 'xuanpu');
   assert.equal(run('requestOptions().credentials'), 'same-origin');
@@ -102,5 +104,33 @@ const run = code => vm.runInContext(code, context);
   await run('loadPackages()');
   assert.equal(element('new-session-btn').disabled, false, '发布或启用后无需重连');
   assert.equal(element('new-package').value, 'new-business');
+  // 旧会话延迟返回时，不允许覆盖已切换会话的历史或审批。
+  run('chat.sessionId="old-session"; chat.generation=70');
+  let releaseHistory;
+  context.fetch = () => new Promise(resolve => { releaseHistory = resolve; });
+  const history = run('loadHistory("old-session", 70)');
+  run('chat.sessionId="new-session"; chat.generation=71');
+  element('div').textContent = '当前会话';
+  releaseHistory({ok:true, text:async () => JSON.stringify({records:[{kind:'message_sent', data:{text:'旧会话秘密'}}], next_after_id:null})});
+  await history;
+  assert.equal(element('div').textContent, '当前会话');
+  let releasePending;
+  context.fetch = () => new Promise(resolve => { releasePending = resolve; });
+  const approval = run('loadPending()');
+  run('chat.sessionId="third-session"; chat.generation=72');
+  element('pending').innerHTML = '当前会话审批';
+  releasePending({ok:true, text:async () => '{"pending":[]}'});
+  await approval;
+  assert.equal(element('pending').innerHTML, '当前会话审批');
+  let staleApprovalRequests = 0;
+  context.fetch = async () => { staleApprovalRequests++; throw new Error('旧审批不应发请求'); };
+  await run('resolve("old-request", true, "old-session", 70)');
+  assert.equal(staleApprovalRequests, 0);
+  run('chat.streaming={sessionId:"third-session"}');
+  await element('new-session').listeners.submit({preventDefault() {}});
+  assert.equal(staleApprovalRequests, 0, '回复期间新建不得悄悄创建额外会话');
+  await run('closeSession()');
+  assert.equal(staleApprovalRequests, 0, '回复期间关闭应引导先停止');
+  run('clearTimeout(toast.timer)');
   console.log('identity behavior passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });
