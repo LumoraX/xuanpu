@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import errno
 import hashlib
 import json
 import os
@@ -89,8 +90,17 @@ def feishu_payload(feishu: dict) -> dict:
 def require_free_port(port: int) -> None:
     """启动之前拒绝任何已有监听者，不接管未知服务。"""
     try:
+        # Darwin允许可复用的具体地址覆盖通配监听，必须先排除可连接的服务。
+        with socket.socket() as probe:
+            probe.settimeout(0.2)
+            result = probe.connect_ex(('127.0.0.1', port))
+            if result != errno.ECONNREFUSED:
+                raise OSError(result, '端口已有监听者或无法确认空闲')
         with socket.socket() as sock:
+            # 与HTTP服务器相同：允许已关闭连接的TIME_WAIT，仍拒绝真实监听者。
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.bind(('127.0.0.1', port))
+            sock.listen(1)
     except OSError as error:
         raise RuntimeError(f'端口 {port} 已占用；请停止原服务或指定其他端口') from error
 

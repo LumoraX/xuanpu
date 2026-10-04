@@ -284,7 +284,7 @@ async def test_delivery_finish_rechecks_tenant(env):
     await service.store.fire(record, 1200)
     delivery = (await service.store.claim_deliveries(1200))[0][0]
     tenant = await control.get_tenant("acme")
-    await control.update_tenant(replace(tenant, status="disabled"))
+    await control.update_tenant(replace(tenant, status="suspended"))
     await service.store.finish_delivery(delivery, "sent", 1201)
     assert (await service.store.deliveries("acme", "usr_a", delivery.notification_id))[
         0
@@ -323,7 +323,7 @@ async def test_tenant_pause_resume_catches_up_without_cancelling(env):
     service, who, clock, _, control = env
     record = await service.create(who, body(repeat="daily"), "tenant-pause")
     tenant = await control.get_tenant("acme")
-    await control.update_tenant(replace(tenant, status="disabled"))
+    await control.update_tenant(replace(tenant, status="suspended"))
     clock[0] = 1100 + 5 * 86400
     await service.run_once()
     assert (await service.store.get("acme", "usr_a", record.reminder_id)).status == "active"
@@ -426,7 +426,7 @@ async def test_unattempted_outbox_can_start_after_long_pause(env):
     record = await service.create(who, body(channels=["inbox", "feishu"]), "unattempted")
     await service.store.fire(record, 1200)
     tenant = await control.get_tenant("acme")
-    await control.update_tenant(replace(tenant, status="disabled"))
+    await control.update_tenant(replace(tenant, status="suspended"))
     clock[0] = 1200 + 7 * 86400
     await service.run_once()
     assert sender.calls == []
@@ -449,7 +449,7 @@ async def test_paused_tenant_does_not_starve_global_scans(env):
     other = Principal(role="tenant_member", tenant_id="other", user_id="usr_a", key_id=None)
     await service.create(other, body(due_at=1150.0, channels=["inbox", "feishu"]), "other")
     tenant = await control.get_tenant("acme")
-    await control.update_tenant(replace(tenant, status="disabled"))
+    await control.update_tenant(replace(tenant, status="suspended"))
     clock[0] = 1200
     await service.run_once()
     assert len(await service.notifications(other)) == 1
@@ -511,7 +511,7 @@ async def test_pause_before_network_resets_window_only_without_prior_attempt(env
         clock[0] += 1
     delivery, notification = (await service.store.claim_deliveries(clock[0]))[0]
     tenant = await control.get_tenant("acme")
-    await control.update_tenant(replace(tenant, status="disabled"))
+    await control.update_tenant(replace(tenant, status="suspended"))
     await service._worker._send(delivery, notification)
     pending = (await service.store.deliveries("acme", "usr_a", notification.notification_id))[0]
     assert pending.status == "pending"

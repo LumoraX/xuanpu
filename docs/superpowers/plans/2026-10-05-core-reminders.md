@@ -87,3 +87,13 @@ class ReminderInput(BaseModel):
 - 真实已配置gpt-5.6-luna：明早8点/每周一9点得到明确草稿，缺时间追问；结果`/tmp/xuanpu-reminder-real-model-result.json`。未为真实员工创建提醒或发送测试消息。
 - 全量日志`/tmp/xuanpu-reminders-release-tests.log`；构建、门禁和浏览器日志同前缀。临时目录可能清理，不提交其中配置/凭据。
 - 合并前主线旧会话抽查：历史14条。以下本地迁移和停机到期验收完成后单独补录。
+
+
+### 本地重启工具补修
+
+真实停机到期验收发现旧端口检查将TIME_WAIT误报为占用。已用真实套接字红测试复现；端口探测先限时连接并仅在明确拒绝连接后继续，再用可复用地址绑定/监听，保留对已有回环和通配监听者的拒绝，避免Darwin具体地址覆盖通配监听。
+
+- 启动工具专项18 passed；独立审查通过。
+- 最终全量：1292 passed、1 skipped，79.92秒（`/tmp/xuanpu-reminders-port-final-tests.log`）。门禁ruff、mypy 105源文件、锁检查与diff检查通过。
+- 提醒租户暂停测试使用正式`suspended`状态，最后提醒+发送器72 passed、1 skipped（`/tmp/xuanpu-reminders-suspended-tests.log`）。
+- 第一次验收创建的隔离租户已暂停，其临时凭据已撤销；服务已恢复。修复后重新跑真实重启链路，见后续记录。

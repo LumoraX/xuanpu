@@ -28,7 +28,7 @@ async def test_feishu_sender_uses_mapping_and_stable_key(identity_world: Any) ->
                 if pause:
                     tenant = await p.store.get_tenant("acme")
                     assert tenant is not None
-                    await p.store.update_tenant(replace(tenant, status="disabled"))
+                    await p.store.update_tenant(replace(tenant, status="suspended"))
                 if deactivate:
                     await p.identity.disable_user("acme", user.user_id, "admin", ident.world.admin, keep_an_admin=False)
                 return httpx.Response(200, json={'code': 0, 'tenant_access_token': 'test-token', 'expire': 7200})

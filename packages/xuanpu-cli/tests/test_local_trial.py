@@ -72,6 +72,33 @@ def test_busy_port_not_adopted():
             mod.require_free_port(sock.getsockname()[1])
 
 
+def test_closed_server_time_wait_allows_immediate_restart():
+    """服务器主动断开留下TIME_WAIT时，端口仍能立即供新服务器监听。"""
+    mod = support()
+    with socket.socket() as server:
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind(('127.0.0.1', 0))
+        server.listen(1)
+        address = server.getsockname()
+        with socket.create_connection(address, timeout=2) as client:
+            accepted, _ = server.accept()
+            accepted.close()
+            assert client.recv(1) == b''
+    mod.require_free_port(address[1])
+
+
+@pytest.mark.parametrize('address', ['127.0.0.1', '0.0.0.0'])
+def test_reusable_listening_port_still_rejected(address):
+    """即使已有服务启用地址复用，也不能把其监听端口当作空闲。"""
+    mod = support()
+    with socket.socket() as server:
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind((address, 0))
+        server.listen(1)
+        with pytest.raises(RuntimeError, match='端口'):
+            mod.require_free_port(server.getsockname()[1])
+
+
 def test_explicit_chat_and_optional_event_keys(tmp_path):
     """保留显式协议选择，独立保留已有事件密钥。"""
     mod = support()
