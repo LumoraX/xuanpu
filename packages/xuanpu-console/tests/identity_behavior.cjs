@@ -132,5 +132,8 @@ const run = code => vm.runInContext(code, context);
   await run('closeSession()');
   assert.equal(staleApprovalRequests, 0, '回复期间关闭应引导先停止');
   run('clearTimeout(toast.timer)');
+  assert.equal(run('identityStatus({user_id:"user", display_name:"张三", key_id:null})'), '已登录 · 张三（飞书）');
+  assert.equal(run('identityStatus({user_id:null, key_id:"key"})'), '后台凭据已连接 · 非个人登录');
+  assert.equal(run('identityStatus({user_id:"user", display_name:"张三", key_id:"delegated"})'), '后台凭据已连接 · 非个人登录');
   console.log('identity behavior passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });

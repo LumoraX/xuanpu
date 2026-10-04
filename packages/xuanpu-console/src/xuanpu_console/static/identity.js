@@ -87,6 +87,12 @@ function resetIdentity() {
   applyPermissions();
 }
 
+// 姓名代表个人身份；租户代码和后台凭据不能冒充已登录员工。
+function identityStatus(me) {
+  if (me.key_id) return "后台凭据已连接 · 非个人登录";
+  return "已登录 · " + (me.display_name || "飞书用户") + "（飞书）";
+}
+
 async function connectIdentity({ automatic = false } = {}) {
   resetIdentity();
   const epoch = conn.epoch;
@@ -94,7 +100,7 @@ async function connectIdentity({ automatic = false } = {}) {
     const me = await api("GET", "/v1/me");
     conn.me = me;
     applyPermissions();
-    $("conn-status").textContent = "已连接 · " + (me.tenant_id || "根凭据");
+    $("conn-status").textContent = identityStatus(me);
     $("conn-status").className = "status ok";
     if (me.user_id) {
       const user = await api("GET", `/v1/users/${encodeURIComponent(me.user_id)}`);

@@ -20,7 +20,7 @@ async function login(page, user, tenant = false) {
   await page.waitForURL(mock + '/open-apis/authen/v1/authorize?**');
   await page.locator('#' + user).click();
   await page.waitForURL(base + '/console/**');
-  await page.waitForFunction(() => document.getElementById('conn-status').textContent.startsWith('已连接'));
+  await page.waitForFunction(() => (/^(已登录|后台凭据已连接)/).test(document.getElementById('conn-status').textContent));
   return page.evaluate(async () => (await fetch('/v1/me')).json());
 }
 
@@ -52,7 +52,7 @@ async function main() {
     await alice.locator('#admin-connection summary').click();
     await alice.locator('#api-key').fill(key);
     await alice.locator('#connect button[type=submit]').click();
-    await alice.waitForFunction(() => document.getElementById('conn-status').textContent.startsWith('已连接'));
+    await alice.waitForFunction(() => (/^(已登录|后台凭据已连接)/).test(document.getElementById('conn-status').textContent));
     const aliceMe = await login(alice, 'alice', true);
     assert.equal(aliceMe.key_id, null);
     assert.equal(await alice.evaluate(() => sessionStorage.getItem('xuanpu.apiKey')), null);
