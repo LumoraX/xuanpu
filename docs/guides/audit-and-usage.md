@@ -73,6 +73,7 @@
 | `package_activated` | 切换生效版本 | `name`、`version`、`previous` |
 | `eval_completed` | 跑完一次评测 | `package`、`version`、`passed`、`failed`、`total_tokens` |
 | `session_created` | 新建会话 | `package`、`version`、`entry`、`metadata` |
+| `assistant_route_sampled` | 直接对话入口完成或中断业务识别；计入租户与员工 token 用量，不增加业务轮数 | `estimated`、`input_tokens`、`output_tokens`、`total_tokens`、`turns=0`；不记录识别提示词与模型原文 |
 | `session_closed` | 关闭会话。员工停用后由平台关掉的，`actor` 是 `system:user-disabled` | — |
 | `message_sent` | 用户发出一条消息 | `submission_id`、`text` |
 | `suspension_resolved_by` | 送回审批决定 | `submission_id`、`decisions`（待办标识 → 批准与否） |

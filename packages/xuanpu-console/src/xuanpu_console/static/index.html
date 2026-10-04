@@ -38,35 +38,35 @@
   <section id="tab-sessions" class="tab active">
     <aside class="list-pane">
       <form id="new-session" class="row">
-        <label for="new-package">选择业务</label><select id="new-package" required disabled><option value="">登录后自动加载</option></select>
+        <select id="new-package" class="hidden" aria-label="已启用能力" disabled><option value="">登录后自动加载</option></select>
         <input id="new-entry" type="hidden">
-        <button type="submit" id="new-session-btn" disabled>开始使用</button>
+        <button type="submit" id="new-session-btn" disabled>新对话</button>
       </form>
       <div class="row">
         <label><input type="checkbox" id="show-closed"> 显示已关闭</label>
         <button id="refresh-sessions" type="button" class="ghost">刷新</button>
       </div>
-      <p id="business-hint" class="status">登录后选择业务，即可开始对话；无需填写地址或密钥。</p>
+      <p id="business-hint" class="status">登录后直接说出需求，助手会找到对应流程。</p>
       <ul id="session-list" class="items"></ul>
     </aside>
     <div class="chat-pane">
       <section id="welcome" class="welcome">
         <h1>把业务交给助手，把决定留给你</h1>
         <p>查询业务信息、执行工作流程，需要修改数据时先由你批准。</p>
-        <ol><li>用企业飞书账号登录</li><li>选择左侧业务，点击「开始使用」</li><li>用一句话告诉助手你要做什么</li></ol>
+        <p>登录后，直接输入「我要报销差旅费」「我要确认员工手册」或「帮我查工单」。助手会识别需求；信息不够时会继续问你。</p>
         <p class="status">账号和业务由企业管理员准备，你无需配置服务或模型。</p>
       </section>
-      <div id="chat-head" class="chat-head">选择业务，开始一次对话</div>
+      <div id="chat-head" class="chat-head">直接告诉我，你想办什么？</div>
       <div id="pending" class="pending hidden"></div>
       <div id="transcript" class="transcript"></div>
       <div id="suggestions" class="suggestions hidden" aria-label="试试这样问">
         <span>试试这样问</span>
-        <button type="button" class="ghost" data-prompt="请查询工单 T-1001，并告诉我处理时限。">查询工单与时限</button>
-        <button type="button" class="ghost" data-prompt="请将工单 T-1001 的优先级改为 high。">调整工单优先级</button>
-        <button type="button" class="ghost" data-prompt="退款通常多久可以到账？">了解退款政策</button>
+        <button type="button" class="ghost" data-prompt="我要报销差旅费。">我要报销</button>
+        <button type="button" class="ghost" data-prompt="我要确认员工手册。">确认员工手册</button>
+        <button type="button" class="ghost" data-prompt="请查询工单 T-1001，并告诉我处理时限。">查询工单</button>
       </div>
       <form id="send" class="send">
-        <textarea id="message" rows="2" placeholder="输入消息，Enter 发送，Shift+Enter 换行" disabled></textarea>
+        <textarea id="message" rows="2" placeholder="告诉我你想办什么，Enter 发送" disabled></textarea>
         <button type="submit" id="send-btn" disabled>发送</button>
         <button type="button" id="stop-btn" class="danger hidden">停止</button>
       </form>

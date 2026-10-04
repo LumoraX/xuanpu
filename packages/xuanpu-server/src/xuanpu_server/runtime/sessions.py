@@ -147,6 +147,7 @@ class SessionManager:
         self._locks: dict[SessionKey, asyncio.Lock] = {}
         self._heartbeat: asyncio.Task[None] | None = None
         self._draining = False
+        self._routing: dict[str, int] = {}
 
     async def start(self) -> None:
         """启动租约续期。"""
@@ -343,11 +344,25 @@ class SessionManager:
     def in_flight_turns(self, tenant_id: str | None = None) -> int:
         """本实例上进行中的对话数；给了租户只算该租户的。"""
         lives = (live for key, live in self._live.items() if tenant_id in (None, key[0]))
-        return sum(len(live.in_flight) for live in lives)
+        routing = sum(n for tenant, n in self._routing.items() if tenant_id in (None, tenant))
+        return sum(len(live.in_flight) for live in lives) + routing
 
     def held_sessions(self) -> int:
         """本实例当前持有（有引擎）的会话数。"""
         return len(self._live)
+
+    async def admit_routing(self, tenant_id: str) -> None:
+        """路由采样和业务轮次共用本实例的租户并发额度。"""
+        await self._admit_turn(tenant_id)
+        self._routing[tenant_id] = self._routing.get(tenant_id, 0) + 1
+
+    def release_routing(self, tenant_id: str) -> None:
+        """无让出点释放路由占用，取消和失败也调用。"""
+        remaining = self._routing[tenant_id] - 1
+        if remaining:
+            self._routing[tenant_id] = remaining
+        else:
+            self._routing.pop(tenant_id)
 
     async def _admit_turn(self, tenant_id: str) -> None:
         """开始一轮对话前的准入：不在停机中，且未超过租户的并发上限。"""

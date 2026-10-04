@@ -17,6 +17,7 @@ from prometheus_client import CONTENT_TYPE_PLAIN_0_0_4
 
 from xuanpu_server import __version__
 from xuanpu_server.api import schemas
+from xuanpu_server.api.assistant import assistant_router
 from xuanpu_server.api.audit_usage import audit_usage_router
 from xuanpu_server.api.auth import Caller, bearer
 from xuanpu_server.api.console import ConsoleStaticFiles
@@ -135,6 +136,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.include_router(identity_router(platform))
     app.include_router(audit_usage_router(platform))
     app.include_router(history_router(platform))
+    app.include_router(assistant_router(platform))
 
     @app.get("/healthz")
     async def healthz() -> dict[str, Any]:

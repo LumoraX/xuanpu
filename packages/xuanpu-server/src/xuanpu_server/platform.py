@@ -11,6 +11,7 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from xuanpu_server.assistant import AssistantRouter
 from xuanpu_server.audit import AuditLog
 from xuanpu_server.errors import (
     AuthenticationError,
@@ -178,6 +179,7 @@ class Platform:
             now=now,
         )
         self.sessions = self._session_manager(submissions, lease_seconds)
+        self.assistant = AssistantRouter(self, models, now=now)
         # 员工停用后关掉他名下的会话：身份域不依赖运行时，监听者在这里接上会话管理
         self.identity.disabling.register(
             CLOSE_SESSIONS, CloseUserSessions(store=store, sessions=self.sessions)
@@ -214,6 +216,7 @@ class Platform:
 
         后台收尾要关会话，所以排在释放会话之前：会话管理还完整的时候让它们跑完。
         """
+        await self.assistant.close()
         await self.identity.maintenance.close()
         await self.identity.disabling.close()
         await self.sessions.shutdown(drain_seconds=self._drain_seconds)

@@ -52,9 +52,11 @@ function resetIdentity() {
   $("new-package").innerHTML = '<option value="">登录后自动加载</option>';
   $("new-package").disabled = true;
   $("new-session-btn").disabled = true;
-  $("business-hint").textContent = "登录后选择业务，即可开始对话；无需填写地址或密钥。";
+  $("business-hint").textContent = "登录后直接说出需求，助手会找到对应流程。";
   chat.generation += 1;
   chat.creating = false;
+  chat.routing = false;
+  chat.routeContext = [];
   $("welcome").classList.remove("hidden");
   $("suggestions").classList.add("hidden");
   chat.sessionId = null;
@@ -68,7 +70,7 @@ function resetIdentity() {
   $("show-closed").checked = false;
   for (const id of ["session-list", "transcript", "pending", "eval-report"]) $(id).innerHTML = "";
   for (const id of ["package-table", "audit-table", "usage-table", "users-table"]) $(id).querySelector("tbody").innerHTML = "";
-  $("chat-head").textContent = "选择业务，开始一次对话";
+  $("chat-head").textContent = "直接告诉我，你想办什么？";
   $("message").value = "";
   $("message").disabled = true;
   $("send-btn").disabled = true;
@@ -112,6 +114,7 @@ async function connectIdentity({ automatic = false } = {}) {
     const remembered = sessionStorage.getItem(sessionMemoryKey());
     const current = sessions.find(session => session.session_id === remembered) || sessions[0];
     if (current) await openSession(current);
+    else startConversation();
     if (isAdmin()) await loadPackages();
     return epoch === conn.epoch;
   } catch (error) {
@@ -145,8 +148,8 @@ async function loadBusinessChoices() {
   ).join("") : '<option value="">暂无可用业务</option>';
   select.value = choices.some(item => item.name === previous) ? previous : (choices[0]?.name || "");
   select.disabled = !choices.length;
-  $("new-session-btn").disabled = !choices.length;
-  $("business-hint").textContent = choices.length ? "选择业务后点击开始使用。" : "暂无可用业务，请联系管理员启用。";
+  $("new-session-btn").disabled = !conn.me;
+  $("business-hint").textContent = "直接输入你的需求，无需选择业务。";
 }
 
 function updateLoginButton() {

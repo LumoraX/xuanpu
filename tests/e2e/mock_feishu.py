@@ -108,12 +108,15 @@ async def contacts(request: Request) -> dict[str, object]:
 
 
 @app.post("/v1/chat/completions")
-async def model_reply() -> StreamingResponse:
+async def model_reply(request: Request) -> StreamingResponse:
     """固定文本模型仅用于浏览器的发送与刷新恢复验收，不冒充真实模型验收。"""
+    payload = await request.json()
+    is_router = "玄圃业务分流器" in json.dumps(payload.get("messages", []), ensure_ascii=False)
+    reply = json.dumps({"package":"demo", "entry":"greet", "message":None}) if is_router else "这是可恢复的测试回复。"
     async def chunks():
         """输出合法 Chat SSE，保证前端测试不依赖真实模型。"""
         for delta, finish in [({"role": "assistant", "content": ""}, None),
-                              ({"content": "这是可恢复的测试回复。"}, None), ({}, "stop")]:
+                              ({"content": reply}, None), ({}, "stop")]:
             item = {"id": "test-chat", "object": "chat.completion.chunk", "created": 1,
                     "model": "mock", "choices": [{"index": 0, "delta": delta, "finish_reason": finish}]}
             yield "data: " + json.dumps(item, ensure_ascii=False) + "\n\n"

@@ -25,10 +25,12 @@ async function login(page, user, tenant = false) {
 }
 
 async function newSession(page) {
-  await page.locator('#new-package').selectOption('demo');
   await page.locator('#new-session button').click();
-  await page.waitForFunction(() => document.querySelectorAll('#session-list li').length > 0);
-  return page.locator('#session-list li').last().getAttribute('data-id');
+  await page.locator('#message').fill('你好，请帮我处理业务');
+  await page.locator('#send-btn').click();
+  await page.getByText('这是可恢复的测试回复。', {exact:true}).waitFor();
+  await page.waitForFunction(() => !document.getElementById('send-btn').disabled);
+  return page.locator('#session-list li.active').getAttribute('data-id');
 }
 
 async function main() {
@@ -77,7 +79,8 @@ async function main() {
     assert.equal(await bob.locator('[data-tab=users]').isVisible(), false);
     assert.equal(await bob.locator('#base-url').isVisible(), false);
     assert.equal(await bob.locator('#api-key').isVisible(), false);
-    assert.equal(await bob.locator('#new-package').inputValue(), 'demo');
+    assert.equal(await bob.locator('#new-package').isVisible(), false);
+    await bob.waitForFunction(() => !document.getElementById('message').disabled);
     assert.equal(await bob.locator('#user-avatar').getAttribute('src'), null);
     assert.equal(await bob.evaluate(() => window.pwned), undefined);
     assert((await bob.locator('#user-name').textContent()).includes('<img src=x'));
@@ -88,10 +91,10 @@ async function main() {
     await bob.waitForFunction(() => !document.getElementById('message').disabled);
     await bob.locator('#message').fill('历史恢复验收');
     await bob.locator('#send-btn').click();
-    await bob.getByText('这是可恢复的测试回复。', {exact:true}).waitFor();
+    await bob.getByText('这是可恢复的测试回复。', {exact:true}).first().waitFor();
     await bob.waitForFunction(() => !document.getElementById('send-btn').disabled);
     await bob.reload();
-    await bob.getByText('这是可恢复的测试回复。', {exact:true}).waitFor();
+    await bob.getByText('这是可恢复的测试回复。', {exact:true}).first().waitFor();
     assert.equal(await bob.locator('#session-list li.active').getAttribute('data-id'), bobSession);
     assert.equal(await bob.locator('#welcome').isVisible(), false);
     assert.equal(await bob.evaluate(async id => (await fetch('/v1/sessions/' + id)).status, aliceSession), 404);
