@@ -72,8 +72,8 @@ class ReminderInput(BaseModel):
 - [x] 独立规格审查→安全与一致性代码审查→修复回归。
 - [x] 新ADR、HTTP与架构、管理员运维手册说明调度/部署/补发/失败处理/替换渠道，完整产品路线图分领域记录。
 - [x] `uv run pytest -q`、`uv run ruff check --select F,S108,I,TC packages`、`uv run mypy packages/*/src`、`uv lock --check`、构建。
-- [ ] 浏览器验收，真实gpt-5.6-luna时间解析，Postgres多实例与停机到期恢复，不向真实员工发测试消息。
-- [ ] 合并主线，沿用私有JSON本地迁移重启，验证旧会话/新提醒持久与主线运行路径；记录已完成与未实现领域，不称整个ERP已完成。
+- [x] 浏览器验收，真实gpt-5.6-luna时间解析，Postgres并发事务与停机到期恢复，不向真实员工发测试消息。
+- [x] 合并主线，沿用私有JSON本地迁移重启，验证旧会话/新提醒持久与主线运行路径；记录已完成与未实现领域，不称整个ERP已完成。
 
 
 ## 2026-10-05 合并前验收
@@ -97,3 +97,15 @@ class ReminderInput(BaseModel):
 - 最终全量：1292 passed、1 skipped，79.92秒（`/tmp/xuanpu-reminders-port-final-tests.log`）。门禁ruff、mypy 105源文件、锁检查与diff检查通过。
 - 提醒租户暂停测试使用正式`suspended`状态，最后提醒+发送器72 passed、1 skipped（`/tmp/xuanpu-reminders-suspended-tests.log`）。
 - 第一次验收创建的隔离租户已暂停，其临时凭据已撤销；服务已恢复。修复后重新跑真实重启链路，见后续记录。
+
+
+## 本地主线部署验收（2026-10-05）
+
+- 实现提交`a7121ed`、端口补修`06a24ac`均已快进合入本地main。server=2026.10.5.3，console=2026.10.5.5；实际导入和两个服务进程都来自`<xuanpu 仓库>`。
+- 沿用已有私有JSON，控制面成功迁移到0006；本地平台8420、工单样例8431运行，控制台实际返回新提醒脚本与状态筛选。未推送远端、未发布云端。
+- 真实Postgres停机到期验收：隔离合成员工创建20秒后一次性站内提醒；停止平台和数据库，在原定时间之后重新启动；仅生成1条通知；原request_id重复提交仍为同一已完成提醒；再等待多个扫描周期仍只有1条；标为已读成功。
+- 升级前、第一次启动后、第二次重启后的旧会话历史均14条。测试不调用真实飞书发送接口，external_messages=0。
+- 成功验收租户`reminder-accept-2156ded2`已暂停，临时key已通过HTTP撤销。先前暴露端口问题的租户`reminder-accept-3fae8b20`亦已暂停且测试key撤销。真实员工未新增测试提醒。
+- 本机结果`/tmp/xuanpu-live-reminder-restart-result.json`：passed=true，notification_count=1，idempotent_retry=true，history_before=history_after=14。测试辅助脚本与私有运行配置不提交。
+- 浏览器关闭后的系统推送、真实飞书消息送达、企业微信/邮箱sender尚未验收或实现。当前本机休眠会停止调度，恢复补发；持续在线服务部署是下一环境阶段。
+- 领域A提醒/通知闭环完成；领域B身份来源与双向同步、C事项/审批/文档签收、D专业业务与财务适配仍按[领域设计](../specs/2026-10-05-core-reminders-design.md)继续，不能把本轮称为全企业业务已完成。
