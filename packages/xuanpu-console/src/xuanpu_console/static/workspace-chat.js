@@ -2,6 +2,7 @@
 "use strict";
 const workspaceChat={attachments:[],matter:null,request:null,loading:0};
 function resetWorkspaceChat() {
+  closeAttachmentMenu();
   workspaceChat.attachments=[];workspaceChat.matter=null;workspaceChat.request=null;workspaceChat.loading++;
   $("attachment-chips").replaceChildren();$("attachment-input").value="";$("attach-file").disabled=true;
 }
@@ -24,6 +25,7 @@ function renderAttachmentChips() {
   }
 }
 function workspaceRouteExtras(text) {
+  closeAttachmentMenu();
   if(!conn.me?.user_id)return {};
   workspaceChat.loading++; // 新轮次使所有未完成的历史恢复失效，避免迟到快照覆盖回复。
   const attachments=workspaceChat.attachments.map(x=>x.id),matter_id=workspaceChat.matter?.id || null;
@@ -94,11 +96,41 @@ async function handleWorkspaceRoute(route,text) {
   else await openWorkspace(route.open_workspace);
   return true;
 }
+function closeAttachmentMenu(restoreFocus=false) {
+  const menu=$("attachment-menu"),button=$("attach-file");
+  const wasOpen=!menu.classList.contains("hidden");
+  menu.classList.add("hidden");button.setAttribute("aria-expanded","false");
+  if(wasOpen && restoreFocus && !button.disabled)button.focus();
+}
+function openAttachmentMenu(last=false) {
+  if(!conn.ready || $("attach-file").disabled || chat.routing || chat.streaming)return;
+  $("attachment-menu").classList.remove("hidden");$("attach-file").setAttribute("aria-expanded","true");
+  const items=$("attachment-menu").querySelectorAll('[role="menuitem"]');
+  items[last?items.length-1:0].focus();
+}
 $("attach-file").addEventListener("click",()=>{
-  if(chat.routing || chat.streaming)return;
-  const box=$("workspace-draft");box.classList.remove("hidden");box.replaceChildren();
-  const menu=wsText("div","","attachment-menu");menu.append(wsButton("上传本机文件",()=>{$("attachment-input").click();box.replaceChildren();box.classList.add("hidden");}),wsButton("从我的文件选择",()=>{box.replaceChildren();box.classList.add("hidden");return openWorkspace("file",{picking:true});}),wsButton("取消",()=>{box.replaceChildren();box.classList.add("hidden");}));box.append(menu);
+  if($("attachment-menu").classList.contains("hidden"))openAttachmentMenu();else closeAttachmentMenu(true);
 });
+$("attach-file").addEventListener("keydown",event=>{
+  if(["ArrowDown","ArrowUp"].includes(event.key)){event.preventDefault();openAttachmentMenu(event.key==="ArrowUp");}
+});
+$("attachment-upload").addEventListener("click",()=>{closeAttachmentMenu(true);$("attachment-input").click();});
+$("attachment-pick").addEventListener("click",()=>{closeAttachmentMenu();openWorkspace("file",{picking:true}).catch(fail);});
+// 菜单与业务草稿独立；移开焦点不删除已编辑的确认内容，也不抢外部输入焦点。
+for(const name of ["pointerdown","focusin"])document.addEventListener(name,event=>{
+  if(!$("attachment-menu").contains(event.target) && !$("attach-file").contains(event.target))closeAttachmentMenu();
+},true);
+document.addEventListener("keydown",event=>{
+  if($("attachment-menu").classList.contains("hidden"))return;
+  if(event.key==="Escape"){event.preventDefault();event.stopPropagation();closeAttachmentMenu(true);return;}
+  if(event.key==="Tab"){closeAttachmentMenu(true);return;}
+  if(!["ArrowDown","ArrowUp","Home","End"].includes(event.key))return;
+  event.preventDefault();event.stopPropagation();
+  const items=Array.from($("attachment-menu").querySelectorAll('[role="menuitem"]'));
+  const index=items.indexOf(document.activeElement);
+  const next=event.key==="Home"?0:event.key==="End"?items.length-1:(index+(event.key==="ArrowDown"?1:-1)+items.length)%items.length;
+  items[next].focus();
+},true);
 $("attachment-input").addEventListener("change",async()=>{
   try{await uploadWorkspaceFiles($("attachment-input").files,{attach:true});}catch(error){fail(error);}finally{$("attachment-input").value="";}
 });
@@ -115,6 +147,7 @@ $("message").addEventListener("paste",event=>{
   event.preventDefault();uploadWorkspaceFiles(files,{attach:true}).catch(fail);
 });
 function clearWorkspaceConversationContext() {
+  closeAttachmentMenu();
   workspaceChat.matter=null;workspaceChat.request=null;
   $("workspace-draft").replaceChildren();$("workspace-draft").classList.add("hidden");renderAttachmentChips();
 }

@@ -3,6 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 module.exports=async function workspaceJourney(page,other,out) {
+  await require('./composer.cjs')(page,out);
   const module=async kind=>{await page.locator(`#workspace-nav [data-workspace="${kind}"]`).click();await page.locator('#workspace-feedback').filter({hasText:'正在加载'}).waitFor({state:'hidden'});};
   const save=async()=>{await page.locator('#workspace-content button[type=submit]').click();await page.locator('#workspace-content .workspace-form').waitFor({state:'hidden'});};
   const items=async(kind)=>page.evaluate(async kind=>(await (await fetch('/v1/workspace/items?kind='+kind)).json()).items,kind);
@@ -43,6 +44,9 @@ module.exports=async function workspaceJourney(page,other,out) {
   await page.waitForFunction(()=>!document.getElementById('send-btn').disabled);
   await page.locator('#message').fill('记录工作站待办');await page.locator('#send-btn').click();
   await page.locator('#workspace-draft').getByLabel('标题',{exact:true}).waitFor();
+  await page.locator('#workspace-draft').getByLabel('标题',{exact:true}).fill('尚未确认的编辑');
+  await page.locator('#attach-file').click();await page.locator('#attach-file').click();
+  assert.equal(await page.locator('#workspace-draft').getByLabel('标题',{exact:true}).inputValue(),'尚未确认的编辑','附件菜单不能清除业务确认内容');
   assert.equal((await items('todo')).some(x=>x.data.title==='对话创建的周报待办'),false);
   await page.reload();await page.locator('#workspace-draft').getByLabel('标题',{exact:true}).waitFor();
   await page.locator('#workspace-draft button[type=submit]').click();await page.getByText('已保存：对话创建的周报待办',{exact:true}).waitFor();
@@ -139,5 +143,6 @@ module.exports=async function workspaceJourney(page,other,out) {
   assert.equal(historyCalls,2);
   await page.unroute('**/v1/workspace/messages?**');await page.locator('#new-session-btn').click();
 
+  await require('./composer.cjs').withAttachments(page,out);
   console.log('workstation journey passed: folders/files/version/trash/matters/todos/calendar/skills/settings/chat/attachments/isolation/mobile');
 };
