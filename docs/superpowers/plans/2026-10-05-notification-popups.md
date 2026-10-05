@@ -10,7 +10,7 @@
 - [x] 新增`static/notification-alerts.js`，提供`resetNotificationAlerts()`和`observeNotificationAlerts(items,{snapshot})`。在`index.html`加入固定位置区域及脚本，在`style.css`实现卡片、暗色、窄屏与减少动画偏好。
 - [x] `reminders.js`接入SSE即时弹卡、初次快照汇总、补查、标读刷新及注销清理；快照请求序号防旧结果覆盖已读。
 - [x] 浏览器验证真实定时生成的站内通知弹卡、不抢焦点、按钮操作、历史汇总、窄屏暗色；现有无模型手动兜底保持可用。
-- [ ] 更新架构与本地手册，console升2026.10.5.8；全量pytest/Ruff/mypy/lock、构建、独立审查后合并本地主线，验证8420资源与历史保存。
+- [x] 更新架构与本地手册，console升2026.10.5.8；全量pytest/Ruff/mypy/lock、构建、独立审查后合并本地主线，验证8420资源与历史保存。
 
 
 ## 验收证据
@@ -24,3 +24,11 @@
 
 - 独立审查发现的启动弱网历史重播、关闭汇总被迟到快照复活两项P2均已先红后绿修复：初次快照状态与显示水位独立，汇总展示标记在本次登录期间保留。新增真实脚本回归覆盖首次GET失败/SSE先到/迟到快照/关闭/新通知。最终复核无剩余P1/P2。
 - 常驻独立读屏播报区域不受卡片显隐影响，退出清空；未进行真实读屏软件人工验收，不把DOM检查当成读屏实测。
+
+
+## 本地部署
+
+- 实现提交`3dc8a65`已fast-forward合并本地主线；`uv sync --all-packages --all-extras`安装console 2026.10.5.8。
+- 8420实际返回的六个静态资源（含新增notification-alerts.js）均与主线文件哈希一致；路径指向主线`xuanpu/packages/xuanpu-console/src/xuanpu_console/static`。
+- 主线控制台专项6 passed；platform和tickets均运行中；既有会话`ses_c004382ccd2a3c51ec2292eb`的14条历史保留。
+- 静态资源更新，无需重启后台；未修改用户私有JSON、未创建真实员工测试通知、未推送远端或发布云端。已打开网页刷新后生效。
