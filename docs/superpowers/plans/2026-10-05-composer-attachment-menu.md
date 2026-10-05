@@ -22,6 +22,8 @@
 - 修改前真实浏览器复现：第二次点击加号后上传选项仍可见，断言失败。修复后同一回归通过。
 - 真实 Chromium 完整控制台/个人工作站旅程通过，证据 `/tmp/xuanpu-composer-browser.log`。新增覆盖重复点击、外部点击、Esc、Tab/Shift+Tab 的最终焦点、方向键、取消上传、个人文件选择、输入保留及确认卡编辑保留。
 - 1280px、375px 浅色菜单和375px深色多附件/长文件名截图已检查；无横向溢出，移除附件不提交消息。截图位于 `/tmp/xuanpu-composer-browser/`。
-- 独立代码审查无阻塞问题；控制台 `2026.10.5.10` 源码包及 wheel 已构建到 `/tmp/xuanpu-composer-dist/`。
+- 独立代码审查无阻塞问题；控制台 `2026.10.5.11` 源码包及 wheel 已构建到 `/tmp/xuanpu-composer-dist/`。
 - 本轮浏览器业务变更使用隔离验收服务和模拟身份/模型，不新增真实员工数据，也不向飞书发送测试消息。
-- 项目门禁实际执行：`uv run pytest` → `1394 passed, 1 skipped in 92.10s`；`uv run ruff check --select F,S108,I,TC packages scripts tests/e2e` → `All checks passed!`；`uv run mypy packages/*/src` → `Success: no issues found in 116 source files`。
+- 项目门禁实际执行：`uv run pytest` → `1394 passed, 1 skipped in 98.66s`；`uv run ruff check --select F,S108,I,TC packages scripts tests/e2e` → `All checks passed!`；`uv run mypy packages/*/src` → `Success: no issues found in 116 source files`。
+- 真实本地欢迎页另发现 1280×720 下旧对话区最小高度会把输入框挤出面板；增加首次登录的边界回归并确认修改前失败，再解除对话区固定最小高度，保持输入框高度。
+- 补充欢迎页修复后，完整浏览器旅程和三项项目门禁再次通过；两条弹性布局规则独立复审无阻塞问题。

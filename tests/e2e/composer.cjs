@@ -1,6 +1,13 @@
 // 输入框附件菜单的真实交互回归：关闭方式、键盘、文件选择和窄屏定位。
 const assert=require('node:assert/strict');
 const path=require('node:path');
+async function welcomeComposer(page,out) {
+  await page.setViewportSize({width:1280,height:720});
+  await page.locator('#welcome').waitFor();
+  const form=await page.locator('#send').boundingBox(),pane=await page.locator('.chat-pane').boundingBox();
+  assert(form.y+form.height<=pane.y+pane.height,'欢迎页输入框应留在对话面板内');
+  await page.screenshot({path:path.join(out,'composer-welcome.png'),fullPage:true});
+}
 module.exports=async function composerJourney(page,out) {
   const add=page.locator('#attach-file'),upload=page.getByText('上传本机文件',{exact:true});
   await page.locator('#message').fill('输入内容应该保留');
@@ -37,6 +44,7 @@ module.exports=async function composerJourney(page,out) {
   }
   await page.setViewportSize({width:1280,height:720});
 };
+module.exports.welcome=welcomeComposer;
 
 // 附件真实上传后检查窄屏和深色主题，并验证移除附件不会误发消息。
 module.exports.withAttachments=async function composerAttachments(page,out) {

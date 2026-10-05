@@ -40,7 +40,7 @@
 .attachment-chip { display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: var(--user); border-radius: 6px; max-width: 100%; overflow-wrap: anywhere; }
 .attachment-chip button { padding: 0 4px; }
 /* 正文和底部工具置于同一输入框内，菜单独立浮起，不挤动对话或确认卡。 */
-.send { display: flex; flex-direction: column; gap: 8px; margin: 12px; padding: 14px 14px 10px; border: 1px solid var(--line); border-radius: 24px; background: var(--panel); box-shadow: 0 2px 8px #00000006; }
+.send { display: flex; flex: none; flex-direction: column; gap: 8px; margin: 12px; padding: 14px 14px 10px; border: 1px solid var(--line); border-radius: 24px; background: var(--panel); box-shadow: 0 2px 8px #00000006; }
 .send:focus-within { border-color: var(--accent); }
 .send textarea { flex: none; width: 100%; min-height: 64px; max-height: 220px; padding: 2px 4px; border: 0; border-radius: 0; background: transparent; outline: none; resize: none; }
 .send .attachment-chips { padding: 0 4px; }
@@ -61,7 +61,7 @@
 #workspace-draft .workspace-form { max-height: 320px; overflow: auto; }
 .workspace-context { color: var(--accent); border-left: 3px solid var(--accent); padding: 8px 12px; margin-bottom: 12px; }
 .chat-pane { max-height: calc(100dvh - 150px); min-height: 480px; }
-.transcript { min-height: 160px; }
+.transcript { min-height: 0; }
 @media (min-width: 1400px) { body.workspace-open #tab-sessions { padding-right: 620px; } }
 @media (max-width: 800px) {
   #tab-sessions.active { grid-template-columns: 1fr; }
