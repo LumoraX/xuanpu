@@ -25,7 +25,7 @@
   <div id="current-user" class="row hidden"><img id="user-avatar" class="avatar hidden" alt=""><span id="user-name"></span><button id="logout" type="button" class="ghost">退出</button></div>
 </header>
 <p id="login-error" class="login-error hidden" role="alert"></p>
-<section id="notifications-panel" class="notification-panel hidden" aria-label="通知">
+<section id="notifications-panel" class="notification-panel hidden" aria-label="通知" tabindex="-1">
   <div class="row"><strong>通知</strong><button id="close-notifications" type="button" class="ghost">收起通知</button></div>
   <p id="notification-status" class="meta"></p>
   <ul id="notification-list" class="reminder-items" aria-live="polite"></ul>
@@ -168,7 +168,13 @@
 
 <footer class="entry-footer"><a href="?admin=1">管理员入口</a> · <a href="?">员工入口</a></footer>
 <div id="toast" class="toast hidden"></div>
+<div id="notification-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+<aside id="notification-alerts" class="notification-alerts hidden" aria-label="新通知提示">
+  <div id="notification-alert-list"></div>
+  <button id="notification-alert-more" type="button" class="notification-alert-more hidden">更多通知，请到通知中心查看</button>
+</aside>
 <script src="app.js"></script>
+<script src="notification-alerts.js"></script>
 <script src="reminders.js"></script>
 <script src="identity.js"></script>
 </body>

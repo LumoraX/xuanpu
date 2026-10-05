@@ -19,6 +19,8 @@ function element(tag = "div") {
       this.children.push(child); child.parentNode = this; return child;
     },
     prepend(child) {this.children.unshift(child);},
+    remove() {if(this.parentNode) this.parentNode.children=this.parentNode.children.filter(node=>node!==this);},
+    focus() {}, scrollIntoView() {},
     setAttribute(name, value) {this.attributes[name] = value;},
     addEventListener(name, callback) {this.listeners[name] = callback;},
   };
@@ -50,6 +52,7 @@ function harness() {
       options.signal.addEventListener("abort", () => reject(new DOMException("退出", "AbortError")));
     }),
   });
+  vm.runInContext(fs.readFileSync(path.join(process.argv[2], "notification-alerts.js"), "utf8"), context);
   vm.runInContext(fs.readFileSync(path.join(process.argv[2], "reminders.js"), "utf8"), context);
   return {context, node, timers, streams, errors, messages,
     run: code => vm.runInContext(code, context)};
@@ -246,7 +249,99 @@ async function manualModuleIsAnIndependentSurface() {
   assert(h.node('new-reminder').classList.contains('hidden'));
 }
 
+async function visibleNotificationsHaveSafeActions() {
+  const h=harness();let items=[], writes=0, rejected=true;
+  h.context.api=async method=>{
+    if(method==='POST') {writes++;if(rejected) throw new Error('标读失败');items[0].read_at=1;}
+    return {items};
+  };
+  h.run('resetReminders()');await h.run('refreshNotifications()');
+  items=[{notification_id:1,title:'<img src=x onerror=alert(1)>',due_at:2000000000,read_at:null}];
+  await h.run('refreshNotifications()');
+  const rack=h.node('notification-alert-list');
+  assert.equal(rack.children.length,1,'新站内通知必须出现悬浮卡片');
+  const card=rack.children[0];
+  assert(findChild(card,node=>node.textContent===items[0].title),'提醒内容按纯文本展示');
+  assert(!findChild(card,node=>node.tag==='img'));
+  await h.run('refreshNotifications()');assert.equal(rack.children[0],card,'重复补读不重建卡片');
+  assert(h.node('notifications-panel').classList.contains('hidden'));
+  const read=findChild(card,node=>node.textContent==='标为已读');
+  await read.listeners.click();assert.equal(writes,1);assert.equal(read.disabled,false);
+  assert.equal(rack.children.length,1,'标读失败保留卡片');
+  rejected=false;await read.listeners.click();assert.equal(rack.children.length,0);
+  items=[{notification_id:2,title:'第二条',due_at:2000000001,read_at:null},...items];
+  await h.run('refreshNotifications()');
+  findChild(rack,node=>node.attributes['aria-label']==='关闭通知提示').listeners.click();
+  assert.equal(writes,2,'关闭不能标读');
+  await h.run('refreshNotifications()');assert.equal(rack.children.length,0,'关闭后补读不重新弹出');
+  for(let id=3;id<=7;id++) items.unshift({notification_id:id,title:'通知'+id,due_at:2000000000,read_at:null});
+  await h.run('refreshNotifications()');assert.equal(rack.children.length,3,'同时最多三张卡片');
+  assert.equal(h.node('notification-alert-more').classList.contains('hidden'),false);
+  h.run('resetReminders()');assert.equal(rack.children.length,0);
+  await h.run('refreshNotifications()');assert.equal(rack.children.length,1,'历史未读只汇总一次');
+  assert(findChild(rack,node=>node.textContent==='你有未读通知'));
+  await findChild(rack,node=>node.textContent==='查看通知').listeners.click();
+  assert.equal(h.node('notifications-panel').classList.contains('hidden'),false);
+  h.run('resetReminders()');assert.equal(rack.children.length,0);
+}
+
+async function olderNotificationSnapshotsCannotUndoRead() {
+  const h=harness();let release;
+  h.context.api=async()=>({items:[]});await h.run('refreshNotifications()');
+  h.context.api=()=>new Promise(resolve=>{release=resolve;});
+  const earlier=h.run('refreshNotifications()');
+  h.context.api=async()=>({items:[{notification_id:1,title:'已经读过',due_at:2000000000,read_at:1}]});
+  await h.run('refreshNotifications()');
+  release({items:[{notification_id:1,title:'旧的未读快照',due_at:2000000000,read_at:null}]});await earlier;
+  assert.equal(h.node('notification-toggle').textContent,'通知','迟到快照不能恢复未读');
+  assert.equal(h.node('notification-alert-list').children.length,0,'迟到快照不能复活悬浮卡片');
+}
+
+async function earlyStreamHistoryIsSummarized() {
+  const h=harness();let finishInitial, reads=0;
+  const items=[1,2,3,4].map(notification_id=>({notification_id,title:'历史'+notification_id,due_at:2000000000,read_at:null}));
+  h.context.api=async(method,url)=>{
+    if(url.startsWith('/v1/reminders?')) throw new Error('首次提醒列表失败');
+    if(url.startsWith('/v1/notifications')) {
+      if(++reads===1) return new Promise(resolve=>{finishInitial=resolve;});
+      return {items};
+    }
+    return {channels:['inbox']};
+  };
+  h.context.fetch=async()=>({ok:true});
+  h.context.sse=async function*(){yield ['notification',items[0]];};
+  await h.run('startReminders()');
+  await new Promise(resolve=>setImmediate(resolve));
+  finishInitial({items});await new Promise(resolve=>setImmediate(resolve));
+  const rack=h.node('notification-alert-list');
+  assert.equal(rack.children.length,1,'SSE先返回历史也只能显示一次汇总');
+  assert(findChild(rack,node=>node.textContent==='你有未读通知'));
+  assert(!findChild(rack,node=>node.textContent==='历史4'));
+  h.context.fresh={notification_id:5,title:'之后的新通知',due_at:2000000001,read_at:null};
+  h.run('observeNotificationAlerts([fresh])');
+  assert(findChild(rack,node=>node.textContent==='之后的新通知'));
+  h.run('resetReminders()');
+}
+
+async function closedStartupSummaryStaysClosed() {
+  const h=harness();
+  h.context.historyItem={notification_id:1,title:'历史通知',due_at:2000000000,read_at:null};
+  h.run('observeNotificationAlerts([historyItem])');
+  findChild(h.node('notification-alert-list'),node=>node.attributes['aria-label']==='关闭通知提示').listeners.click();
+  h.run('observeNotificationAlerts([historyItem])');
+  assert.equal(h.node('notification-alert-list').children.length,0,'首次快照前重复SSE不能复活已关汇总');
+  h.context.api=async()=>({items:[h.context.historyItem]});
+  await h.run('refreshNotifications()');
+  assert.equal(h.node('notification-alert-list').children.length,0,'迟到的首次快照不能复活已关汇总');
+  h.run('observeNotificationAlerts([{...historyItem,notification_id:2,title:"真正的新通知"}])');
+  assert(findChild(h.node('notification-alert-list'),node=>node.textContent==='真正的新通知'));
+}
+
 (async () => {
+  await closedStartupSummaryStaysClosed();
+  await earlyStreamHistoryIsSummarized();
+  await visibleNotificationsHaveSafeActions();
+  await olderNotificationSnapshotsCannotUndoRead();
   await manualCreationRetriesSafely(503);
   await manualCreationRetriesSafely(422);
   await manualModuleIsAnIndependentSurface();

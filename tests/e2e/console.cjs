@@ -112,18 +112,39 @@ async function main() {
     await bob.locator('#confirm-reminder').click();
     await bob.locator('#reminder-preview').waitFor({state:'hidden'});
     assert.equal(await bob.locator('#reminders-panel').isVisible(),false);
+    await bob.locator('#message').fill('正在输入，提醒不要打断');
+    await bob.locator('#message').focus();
+    const popup=bob.locator('.notification-alert').filter({hasText:'浏览器提醒验收'});
+    await popup.waitFor({timeout:15000});
+    assert.equal(await bob.evaluate(()=>document.activeElement.id),'message','弹卡不能抢走输入焦点');
+    assert.equal(await bob.locator('#message').inputValue(),'正在输入，提醒不要打断');
+    await bob.emulateMedia({colorScheme:'dark'});
+    await bob.screenshot({path:path.join(out,'notification-popup-dark.png'),fullPage:true});
+    await bob.setViewportSize({width:375,height:812});
+    assert(await bob.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'悬浮通知窄屏溢出');
+    const popupBox=await popup.boundingBox();assert(popupBox.x>=0 && popupBox.x+popupBox.width<=375);
+    await bob.screenshot({path:path.join(out,'notification-popup-mobile.png'),fullPage:true});
+    await popup.getByRole('button',{name:'关闭通知提示'}).click();
+    assert.equal(await bob.locator('.notification-alert').count(),0);
+    assert.equal(await bob.evaluate(async()=> (await (await fetch('/v1/notifications')).json()).items[0].read_at),null);
+    await bob.setViewportSize({width:1280,height:900});await bob.emulateMedia({colorScheme:'light'});
+    await bob.locator('#message').fill('');
     await bob.locator('#notification-toggle').getByText('通知 · 有未读',{exact:true}).waitFor({timeout:15000});
     assert.equal(await bob.locator('#notifications-panel').isVisible(),false);
     await bob.locator('#notification-toggle').click();
     await bob.locator('#notification-list').getByText('浏览器提醒验收',{exact:true}).waitFor({timeout:15000});
     await bob.reload();
     assert.equal(await bob.locator('#notifications-panel').isVisible(),false);
-    await bob.locator('#notification-toggle').click();
+    const summary=bob.locator('.notification-alert').filter({hasText:'你有未读通知'});
+    await summary.waitFor();
+    assert.equal(await bob.locator('.notification-alert').count(),1,'刷新只汇总，不重播历史');
+    await summary.getByRole('button',{name:'查看通知'}).click();
     await bob.locator('#notification-list').getByText('浏览器提醒验收',{exact:true}).waitFor();
     await bob.locator('#notification-list').getByRole('button',{name:'标为已读'}).click();
     await bob.locator('#notification-list').getByText('已读',{exact:true}).waitFor();
     assert.equal(await alice.evaluate(async()=> (await (await fetch('/v1/notifications')).json()).items.length),0);
     await bob.locator('#close-notifications').click();
+    await checkNotificationPopupRead(bob);
     await bob.locator('#message').fill('一小时后提醒我提交报告');
     await bob.locator('#send-btn').click();
     await bob.locator('#confirm-reminder').click();
@@ -185,6 +206,19 @@ async function main() {
 }
 
 // 关闭对话识别通路仍能完整管理提醒，刷新和切换入口共用记录。
+async function checkNotificationPopupRead(page) {
+  const response=await page.evaluate(async()=>{
+    const result=await fetch('/v1/reminders',{method:'POST',headers:{'Content-Type':'application/json','X-Requested-By':'xuanpu'},body:JSON.stringify({title:'悬浮通知标读验收',due_at:Date.now()/1000+3,timezone:'Asia/Shanghai',repeat:'once',channels:['inbox'],request_id:crypto.randomUUID()})});
+    return result.status;
+  });
+  assert.equal(response,200);
+  const popup=page.locator('.notification-alert').filter({hasText:'悬浮通知标读验收'});
+  await popup.waitFor({timeout:15000});
+  await popup.getByRole('button',{name:'标为已读',exact:true}).click();
+  await popup.waitFor({state:'detached'});
+  assert(await page.evaluate(async()=> (await (await fetch('/v1/notifications')).json()).items.find(item=>item.title==='悬浮通知标读验收').read_at));
+}
+
 async function checkFunctionFallback(page) {
   let modelCalls=0;
   await page.route('**/v1/assistant/route',async route=>{modelCalls++;await route.fulfill({status:503,body:'{}'});});

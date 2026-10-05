@@ -1,6 +1,6 @@
 // 玄圃提醒：持久状态在服务端，页面只负责确认、管理与读取通知。
 "use strict";
-const reminderState = {cursor:0, generation:0, context:0, editor:0, draft:null, controller:null, channels:["inbox"], retry:null, poll:null};
+const reminderState = {cursor:0, generation:0, context:0, editor:0, draft:null, controller:null, channels:["inbox"], retry:null, poll:null, notificationRequest:0, notificationApplied:0};
 const repeatLabels = {once:"一次", daily:"每天", weekly:"每周"};
 const deliveryLabels = {pending:"待发送", sending:"发送中", sent:"已发送", failed:"发送失败", skipped:"已停止发送"};
 
@@ -55,6 +55,8 @@ function setNotificationsOpen(open) {
 }
 function resetReminders() {
   reminderState.generation++; reminderState.editor++;
+  reminderState.notificationRequest=0;reminderState.notificationApplied=0;
+  resetNotificationAlerts();
   if (reminderState.controller) reminderState.controller.abort();
   clearTimeout(reminderState.retry); clearTimeout(reminderState.poll);
   reminderState.controller = null; reminderState.retry = null; reminderState.poll=null; reminderState.cursor = 0;
@@ -131,8 +133,11 @@ async function refreshReminders() {
 }
 async function refreshNotifications() {
   const generation = reminderState.generation;
+  const request = ++reminderState.notificationRequest;
   const body = await api("GET", "/v1/notifications?limit=100&latest=true");
-  if (generation !== reminderState.generation) return;
+  if (generation !== reminderState.generation || request < reminderState.notificationApplied) return;
+  reminderState.notificationApplied=request;
+  observeNotificationAlerts(body.items,{snapshot:true});
   const unread = body.items.some(item => !item.read_at);
   $("notification-toggle").textContent = unread ? "通知 · 有未读" : "通知";
   $("notification-toggle").title = "查看最近100条通知";
@@ -244,6 +249,7 @@ async function startNotificationStream(generation) {
       if(generation !== reminderState.generation) return;
       if(name==="notification") {
         reminderState.cursor=Math.max(reminderState.cursor, Number(data.notification_id || data.id || 0));
+        observeNotificationAlerts([data]);
         await Promise.all([refreshNotifications(),refreshReminders()]);
       }
     }
