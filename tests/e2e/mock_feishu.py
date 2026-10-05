@@ -117,6 +117,12 @@ async def model_reply(request: Request) -> StreamingResponse:
         from datetime import UTC, datetime, timedelta
         reply = json.dumps({"package":"@reminders", "entry":"create", "message":None,
             "reminder":{"title":"浏览器提醒验收", "due_at":(datetime.now(UTC)+timedelta(seconds=5)).isoformat(), "timezone":"UTC", "repeat":"once"}})
+    if is_router and "一小时后提醒我" in json.dumps(payload.get("messages", []), ensure_ascii=False):
+        from datetime import UTC, datetime, timedelta
+        reply = json.dumps({"package":"@reminders", "entry":"create", "message":None,
+            "reminder":{"title":"可取消提醒", "due_at":(datetime.now(UTC)+timedelta(hours=1)).isoformat(), "timezone":"UTC", "repeat":"once"}})
+    if is_router and "查看我的提醒" in json.dumps(payload.get("messages", []), ensure_ascii=False):
+        reply = json.dumps({"package":"@reminders", "entry":"manage", "message":None})
     async def chunks():
         """输出合法 Chat SSE，保证前端测试不依赖真实模型。"""
         for delta, finish in [({"role": "assistant", "content": ""}, None),

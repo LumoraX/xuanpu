@@ -70,7 +70,7 @@ function findChild(node, predicate) {
   return null;
 }
 
-async function olderSubmissionKeepsNewDraft(mode) {
+async function olderSubmissionKeepsNewDraft(mode, changedConversation = false) {
   const h = harness();
   const posted = [];
   let finish;
@@ -87,12 +87,13 @@ async function olderSubmissionKeepsNewDraft(mode) {
     pending = findChild(h.node("reminder-preview"), node => node.id === "confirm-reminder").listeners.click();
   } else {
     h.context.existing = {...newDraft("较早提醒 A"), reminder_id: "a", version: 1};
-    h.run(mode === "edit" ? "editReminder(existing)" : "editReminder()");
+    h.run("editReminder(existing)");
     const form = h.node("reminder-preview").children[0];
     findChild(form, node => node.attributes["aria-label"] === "提醒内容").value = "较早提醒 A";
     pending = form.listeners.submit({preventDefault() {}});
   }
   assert.equal(posted.length, 1, `${mode} 必须已发送旧提交`);
+  if (changedConversation) h.run('dismissReminderContext()');
   showDraft(h, "新的草稿 B");
   const laterCard = h.node("reminder-preview").children[0];
   const laterRequest = h.run("reminderState.draft.request_id");
@@ -103,7 +104,8 @@ async function olderSubmissionKeepsNewDraft(mode) {
   assert.equal(h.node("reminder-preview").children[0], laterCard);
   assert.equal(h.node("reminder-preview").classList.contains("hidden"), false);
   assert.equal(h.errors.length, 0);
-  if (mode === "draft") assert(h.messages.some(item => item.text.includes("较早草稿 A")));
+  if (changedConversation) assert.equal(h.messages.length, 0, '旧对话提交结果不能插入新对话');
+  else if (mode === "draft") assert(h.messages.some(item => item.text.includes("较早草稿 A")));
 }
 
 async function initialFailureRecovers(failingPath) {
@@ -141,10 +143,69 @@ async function initialFailureRecovers(failingPath) {
   assert.equal(h.errors.length, 0);
 }
 
+async function capabilitiesStayInTheBackground() {
+  const h = harness();
+  let unread = true;
+  h.context.api = async (method, url) => url.endsWith('/channels') ? {channels:['inbox']} :
+    url.startsWith('/v1/notifications') ? {items:[{notification_id:1,title:'到期消息',due_at:2000000000,read_at:unread ? null : 2000000001}]} : {items:[]};
+  h.run('resetReminders()');
+  await h.run('startReminders()');
+  assert(h.node('reminders-panel').classList.contains('hidden'), '登录后台启动不应展开提醒管理');
+  assert(h.node('notifications-panel').classList.contains('hidden'), '后台通知不应强行打开列表');
+  assert.equal(h.node('notification-toggle').textContent, '通知 · 有未读');
+  showDraft(h, '对话确认');
+  assert(h.node('reminders-panel').classList.contains('hidden'), '提出提醒只出现对话确认卡');
+  await h.run('showReminderManager()');
+  assert.equal(h.node('reminders-panel').classList.contains('hidden'), false);
+  h.run('dismissReminderContext()');
+  assert(h.node('reminders-panel').classList.contains('hidden'));
+  assert(h.node('reminder-preview').classList.contains('hidden'));
+  await h.node('notification-toggle').listeners.click();
+  assert.equal(h.node('notifications-panel').classList.contains('hidden'), false);
+  unread = false;
+  await h.run('refreshNotifications()');
+  assert.equal(h.node('notification-toggle').textContent, '通知');
+  h.node('close-notifications').listeners.click();
+  await h.run('refreshNotifications()');
+  assert(h.node('notifications-panel').classList.contains('hidden'));
+  let release;
+  h.context.api = async () => new Promise(resolve => {release=resolve;});
+  const opening=h.run('showReminderManager()');
+  h.run('dismissReminderContext()');
+  release({items:[]});await opening;
+  assert(h.node('reminders-panel').classList.contains('hidden'), '晚回来的列表不能重新展开');
+  h.run('resetReminders()');
+  assert(h.node('notification-toggle').classList.contains('hidden'));
+  assert.equal(h.node('notification-toggle').textContent,'通知');
+}
+
+async function lateCancellationStaysInItsConversation(rejected) {
+  const h = harness();
+  let complete;
+  let reads = 0;
+  h.context.api = async method => {
+    if (method === 'DELETE') return await new Promise((resolve, reject) => {
+      complete = () => rejected ? reject(new Error('旧取消冲突')) : resolve({});
+    });
+    reads++;
+    return {items:[{...newDraft('旧提醒'),reminder_id:'old',version:1,status:'active'}]};
+  };
+  await h.run('showReminderManager()');
+  const cancelling=findChild(h.node('reminder-list'),node=>node.textContent==='取消提醒').listeners.click();
+  h.run('dismissReminderContext()');
+  complete();await cancelling;
+  assert.equal(h.errors.length,0,'旧取消请求不能向新对话显示错误');
+  assert.equal(reads,1,'旧取消结果不能替新对话刷新清单');
+  assert(h.node('reminders-panel').classList.contains('hidden'));
+}
+
 (async () => {
-  for (const mode of ["draft", "create", "edit"]) await olderSubmissionKeepsNewDraft(mode);
+  for(const rejected of [true,false]) await lateCancellationStaysInItsConversation(rejected);
+  await capabilitiesStayInTheBackground();
+  for (const mode of ["draft", "edit"]) await olderSubmissionKeepsNewDraft(mode);
+  for (const mode of ["draft", "edit"]) await olderSubmissionKeepsNewDraft(mode, true);
   for (const endpoint of ["/v1/reminders?status=active", "/v1/notifications?limit=100&latest=true", "/v1/reminders/channels"]) {
     await initialFailureRecovers(endpoint);
   }
-  console.log("reminder behavior passed: 3 editor races, 3 initial failures and logout cleanup");
+  console.log("reminder behavior passed: 2 editor races, 3 initial failures and logout cleanup");
 })().catch(error => {console.error(error); process.exitCode = 1;});

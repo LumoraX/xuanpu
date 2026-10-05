@@ -114,6 +114,7 @@ $("show-closed").addEventListener("change", () => loadSessions().catch(fail));
 function startConversation() {
   if (chat.streaming || chat.routing) { toast("请等当前请求完成，或先停止回复。", "info"); return; }
   if (!conn.me) return;
+  dismissReminderContext();
   chat.generation += 1;
   chat.sessionId = null;
   chat.status = null;
@@ -150,6 +151,7 @@ function append(kind, text) {
 
 async function openSession(session, {fromRoute = false} = {}) {
   if (chat.streaming || (chat.routing && !fromRoute)) { toast("请等当前请求完成，或先停止回复。", "info"); return; }
+  dismissReminderContext();
   if (!fromRoute) chat.routeContext = [];
   const generation = ++chat.generation;
   $("pending").innerHTML = "";
@@ -279,9 +281,10 @@ $("send").addEventListener("submit", async event => {
       $("welcome").classList.add("hidden"); append("user",text); append("assistant",route.message);
       chat.routeContext=[]; $("message").value="";
       if(route.reminder_draft) showReminderDraft(route.reminder_draft);
-      else {$("reminders-panel").open=true;await refreshReminders();}
+      else await showReminderManager();
       return;
     }
+    dismissReminderContext();
     if (!route.session) {
       $("welcome").classList.add("hidden");
       append("user", text);
