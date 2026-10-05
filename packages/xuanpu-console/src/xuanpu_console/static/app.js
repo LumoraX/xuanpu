@@ -9,7 +9,7 @@ const adminMode = new URLSearchParams(location.search).get("admin") === "1";
 const conn = {
   baseUrl: adminMode ? localStorage.getItem("xuanpu.baseUrl") || "" : "",
   apiKey: adminMode ? sessionStorage.getItem("xuanpu.apiKey") || "" : "",
-  epoch: 0, controller: new AbortController(), me: null,
+  epoch: 0, controller: new AbortController(), me: null, ready: false,
 };
 
 function url(path) {
@@ -65,6 +65,10 @@ function when(seconds) {
 $("tabs").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-tab]");
   if (!button || button.classList.contains("hidden")) return;
+  if (button.classList.contains("active")) return;
+  // 切页保留输入，但旧识别结果不得抢占新打开的功能表单。
+  if (chat.routing) chat.generation++;
+  dismissReminderContext();
   for (const item of $("tabs").querySelectorAll("button")) item.classList.toggle("active", item === button);
   for (const section of document.querySelectorAll(".tab")) {
     section.classList.toggle("active", section.id === "tab-" + button.dataset.tab);
@@ -174,6 +178,7 @@ async function openSession(session, {fromRoute = false} = {}) {
   await loadHistory(session.session_id, generation);
   if (generation !== chat.generation) return;
   await loadPending();
+  return generation === chat.generation ? generation : undefined;
 }
 
 async function loadHistory(sessionId, generation = chat.generation) {
@@ -266,7 +271,7 @@ $("send").addEventListener("submit", async event => {
   const text = $("message").value.trim();
   if (!text || !conn.me || chat.streaming || chat.routing) return;
   const epoch = conn.epoch;
-  const generation = chat.generation;
+  let generation = chat.generation;
   chat.routing = true;
   $("send-btn").disabled = true;
   $("send-btn").textContent = "正在理解…";
@@ -298,9 +303,10 @@ $("send").addEventListener("submit", async event => {
     const message = businessMessage(text, chat.routeContext);
     if (route.session.session_id !== chat.sessionId) {
       await loadSessions();
-      await openSession(route.session, {fromRoute:true});
+      if (epoch !== conn.epoch || generation !== chat.generation) return;
+      generation = await openSession(route.session, {fromRoute:true});
     }
-    if (epoch !== conn.epoch) return;
+    if (epoch !== conn.epoch || generation !== chat.generation) return;
     chat.routeContext = [];
     $("message").value = "";
     append("user", message);

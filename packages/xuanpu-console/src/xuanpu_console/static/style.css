@@ -100,7 +100,7 @@ main { padding: 16px; }
   .msg { max-width: 100%; }
 }
 
-/* 普通用户只登录和选择业务，部署信息收在管理员入口。 */
+/* 员工默认通过对话使用，部署信息收在管理员入口。 */
 .login-actions { margin: 0; }
 .admin-connection { margin-left: auto; font-size: 13px; }
 .admin-connection summary { color: var(--muted); cursor: pointer; }
@@ -130,3 +130,13 @@ main { padding: 16px; }
 .reminder-form { display: flex; flex-wrap: wrap; gap: .5rem; }
 .reminder-form strong, .reminder-form p { flex-basis: 100%; }
 .reminder-form input { min-width: 0; max-width: 100%; }
+
+/* 功能是独立辅助入口，不占据对话侧栏。 */
+.functions-intro h1 { margin: 0; font-size: 23px; }
+.function-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 16px; }
+.function-card { padding: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.function-card h2 { margin: 0; font-size: 18px; }
+.function-card p { color: var(--muted); }
+#reminder-module-host .reminder-preview { margin: 16px 0 0; background: var(--panel); }
+.reminder-form label { display: flex; flex-direction: column; gap: 6px; min-width: 0; max-width: 100%; }
+.reminder-form label.channel-choice { display: block; flex-basis: 100%; }

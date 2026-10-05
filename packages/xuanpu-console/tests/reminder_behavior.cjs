@@ -12,9 +12,12 @@ function element(tag = "div") {
     tag, children: [], listeners: {}, attributes: {}, dataset: {}, value: "",
     textContent: "", disabled: false, checked: false,
     classList: {add: value => classes.add(value), remove: value => classes.delete(value),
-      contains: value => classes.has(value)},
+      contains: value => classes.has(value), toggle: (value, yes) => yes ? classes.add(value) : classes.delete(value)},
     set innerHTML(value) {assert.equal(value, ""); this.children = [];},
-    appendChild(child) {this.children.push(child); return child;},
+    appendChild(child) {
+      if (child.parentNode) child.parentNode.children = child.parentNode.children.filter(node => node !== child);
+      this.children.push(child); child.parentNode = this; return child;
+    },
     prepend(child) {this.children.unshift(child);},
     setAttribute(name, value) {this.attributes[name] = value;},
     addEventListener(name, callback) {this.listeners[name] = callback;},
@@ -87,7 +90,7 @@ async function olderSubmissionKeepsNewDraft(mode, changedConversation = false) {
     pending = findChild(h.node("reminder-preview"), node => node.id === "confirm-reminder").listeners.click();
   } else {
     h.context.existing = {...newDraft("较早提醒 A"), reminder_id: "a", version: 1};
-    h.run("editReminder(existing)");
+    h.run(mode === 'manual' ? 'editReminder()' : 'editReminder(existing)');
     const form = h.node("reminder-preview").children[0];
     findChild(form, node => node.attributes["aria-label"] === "提醒内容").value = "较早提醒 A";
     pending = form.listeners.submit({preventDefault() {}});
@@ -199,11 +202,58 @@ async function lateCancellationStaysInItsConversation(rejected) {
   assert(h.node('reminders-panel').classList.contains('hidden'));
 }
 
+async function manualCreationRetriesSafely(status) {
+  const h=harness(), posted=[];
+  h.node('reminder-status').value='cancelled';
+  h.run('editReminder()');
+  const form=h.node('reminder-preview').children[0];
+  assert(form, '手动兜底必须提供可提交的新建表单');
+  const title=findChild(form,node=>node.attributes['aria-label']==='提醒内容');
+  const due=findChild(form,node=>node.attributes['aria-label']==='提醒时间');
+  title.value='手动创建'; due.value='2033-05-18T10:00';
+  h.context.api=async(method,url,options)=>{
+    assert(!url.includes('/assistant/'), '手动功能不得依赖模型');
+    if(method==='POST') {
+      posted.push(JSON.parse(JSON.stringify(options.json)));
+      if(posted.length===1) throw Object.assign(new Error('提交失败'),{status});
+    }
+    return {items:[]};
+  };
+  await form.listeners.submit({preventDefault(){}});
+  assert.equal(posted.length,1);
+  assert(posted[0].request_id);
+  assert.equal(title.disabled, status!==422, '明确拒绝可编辑；结果不确定时冻结重试');
+  title.value='修正内容';
+  await form.listeners.submit({preventDefault(){}});
+  assert.equal(posted.length,2);
+  if(status===422) assert.equal(posted[1].title,'修正内容');
+  else assert.deepEqual(posted[1],posted[0], '网络失败重试必须同正文同ID');
+  assert.equal(h.messages.length,0,'手动保存不向对话插入消息');
+  assert(h.node('reminder-preview').classList.contains('hidden'));
+  assert.equal(h.node('reminder-status').value,'active','新建完成应显示等待提醒列表');
+}
+
+async function manualModuleIsAnIndependentSurface() {
+  const h=harness();
+  await h.run('showReminderManager("module")');
+  assert.equal(h.node('reminder-workspace').parentNode,h.node('reminder-module-host'));
+  assert.equal(h.node('new-reminder').classList.contains('hidden'),false);
+  h.node('new-reminder').listeners.click();
+  assert(h.node('reminder-preview').children.length);
+  h.run('dismissReminderContext()');
+  await h.run('showReminderManager()');
+  assert.equal(h.node('reminder-workspace').parentNode,h.node('reminder-chat-host'));
+  assert(h.node('new-reminder').classList.contains('hidden'));
+}
+
 (async () => {
+  await manualCreationRetriesSafely(503);
+  await manualCreationRetriesSafely(422);
+  await manualModuleIsAnIndependentSurface();
   for(const rejected of [true,false]) await lateCancellationStaysInItsConversation(rejected);
   await capabilitiesStayInTheBackground();
-  for (const mode of ["draft", "edit"]) await olderSubmissionKeepsNewDraft(mode);
-  for (const mode of ["draft", "edit"]) await olderSubmissionKeepsNewDraft(mode, true);
+  for (const mode of ["draft", "edit", "manual"]) await olderSubmissionKeepsNewDraft(mode);
+  for (const mode of ["draft", "edit", "manual"]) await olderSubmissionKeepsNewDraft(mode, true);
   for (const endpoint of ["/v1/reminders?status=active", "/v1/notifications?limit=100&latest=true", "/v1/reminders/channels"]) {
     await initialFailureRecovers(endpoint);
   }

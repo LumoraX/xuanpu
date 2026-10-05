@@ -32,6 +32,7 @@ function safeAvatar(value) {
 }
 
 function applyPermissions() {
+  $("functions-tab").classList.toggle("hidden", !conn.me?.user_id || !conn.ready);
   $("admin-connection").classList.toggle("hidden", !adminMode || (!!conn.me && !isAdmin()));
   if (conn.me) $("admin-connection").open = false;
   $("feishu-login").classList.toggle("hidden", !!conn.me?.user_id || !sameOrigin());
@@ -50,6 +51,7 @@ function resetIdentity() {
   conn.controller = new AbortController();
   conn.epoch += 1;
   conn.me = null;
+  conn.ready = false;
   $("new-package").innerHTML = '<option value="">登录后自动加载</option>';
   $("new-package").disabled = true;
   $("new-session-btn").disabled = true;
@@ -117,6 +119,9 @@ async function connectIdentity({ automatic = false } = {}) {
     if (current) await openSession(current);
     else startConversation();
     if (isAdmin()) await loadPackages();
+    if (epoch !== conn.epoch) return false;
+    conn.ready = true;
+    applyPermissions();
     startReminders().catch(fail);
     return epoch === conn.epoch;
   } catch (error) {

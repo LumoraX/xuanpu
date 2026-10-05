@@ -20,3 +20,4 @@ def test_identity_request_isolation() -> None:
         capture_output=True, text=True, timeout=20, check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+    assert "identity behavior passed" in result.stdout, result.stdout + result.stderr

@@ -28,16 +28,22 @@ function reminderTimestamp(wall, zone) {
 function reminderNode(tag, text, className = "") {
   const node = document.createElement(tag); node.textContent = text; node.className = className; return node;
 }
-// 能力界面跟随当前对话，后台调度和通知连接保持独立。
+// 界面按入口挂载；后台调度和通知连接保持独立。
 function dismissReminderContext() {
   reminderState.context++; reminderState.editor++; reminderState.draft=null;
   $("reminders-panel").classList.add("hidden");
   $("reminder-preview").classList.add("hidden");
   $("reminder-preview").innerHTML="";
+  $("reminder-feedback").textContent="";
 }
-async function showReminderManager() {
+function mountReminderWorkspace(surface) {
+  $(surface === "module" ? "reminder-module-host" : "reminder-chat-host").appendChild($("reminder-workspace"));
+  $("new-reminder").classList.toggle("hidden", surface !== "module");
+}
+async function showReminderManager(surface = "conversation") {
   if (!conn.me?.user_id) return;
   dismissReminderContext();
+  mountReminderWorkspace(surface);
   $("reminder-status").value="active";
   $("reminders-panel").classList.remove("hidden");
   await refreshReminders();
@@ -54,6 +60,7 @@ function resetReminders() {
   reminderState.controller = null; reminderState.retry = null; reminderState.poll=null; reminderState.cursor = 0;
   reminderState.draft = null; reminderState.channels = ["inbox"];
   dismissReminderContext(); setNotificationsOpen(false);
+  mountReminderWorkspace("conversation");
   $("notification-toggle").classList.add("hidden");
   $("notification-toggle").textContent="通知";
   $("reminder-status").value = "active";
@@ -120,7 +127,7 @@ async function refreshReminders() {
     }
     list.appendChild(row);
   }
-  if (!body.items.length) list.appendChild(reminderNode("li", status === "active" ? "还没有待办提醒，直接告诉助手什么时候提醒你。" : "还没有此类提醒。", "meta"));
+  if (!body.items.length) list.appendChild(reminderNode("li", status === "active" ? "暂无待办提醒。可以在对话里告诉助手，也可以从功能页新建。" : "还没有此类提醒。", "meta"));
 }
 async function refreshNotifications() {
   const generation = reminderState.generation;
@@ -149,6 +156,7 @@ async function refreshNotifications() {
   if (!body.items.length) list.appendChild(reminderNode("li", "暂无通知。离线期间的提醒会保存在这里。", "meta"));
 }
 function showReminderDraft(draft) {
+  mountReminderWorkspace("conversation");
   $("reminders-panel").classList.add("hidden");
   const editor=++reminderState.editor;
   reminderState.draft = {...draft, request_id:crypto.randomUUID()};
@@ -181,36 +189,44 @@ function showReminderDraft(draft) {
   discard.addEventListener("click", () => {if(confirm.disabled) return; reminderState.draft=null;box.innerHTML="";box.classList.add("hidden");});
   box.appendChild(discard);
 }
-function editReminder(item) {
-  if (!item) return;
+function editReminder(item = null) {
+  if (!conn.me?.user_id) return;
   const editor=++reminderState.editor;
+  $("reminder-feedback").textContent="";
   const box=$("reminder-preview"); box.innerHTML="";box.classList.remove("hidden"); reminderState.draft=null;
   const form=document.createElement("form"); form.className="reminder-form";
-  const title=document.createElement("input"); title.required=true;title.maxLength=500;title.value=item.title;title.placeholder="提醒内容";title.setAttribute("aria-label","提醒内容");
+  const title=document.createElement("input"); title.required=true;title.maxLength=500;title.value=item?.title || "";title.placeholder="例如：准备复盘材料";title.setAttribute("aria-label","提醒内容");
   const due=document.createElement("input"); due.type="datetime-local";due.required=true;due.setAttribute("aria-label","提醒时间");
-  const zone=item.timezone;
-  const originalWall=reminderWallTime(item.due_at,zone);
-  due.value=originalWall;
+  const zone=item?.timezone || browserTimezone();
+  const originalWall=item ? reminderWallTime(item.due_at,zone) : "";
+  due.value=originalWall || reminderWallTime(Date.now()/1000+3600,zone);
   const repeat=document.createElement("select");repeat.setAttribute("aria-label","重复方式");
   for(const [value,label] of Object.entries(repeatLabels)) {const option=reminderNode("option",label);option.value=value;repeat.appendChild(option);} repeat.value=item?.repeat || "once";
-  form.appendChild(reminderNode("strong","修改提醒"));form.appendChild(title);form.appendChild(due);form.appendChild(repeat);
-  form.appendChild(reminderNode("p",`编辑时间按 ${zone} 显示，保留提醒原时区。通知保存在玄圃。`,"meta"));
+  form.appendChild(reminderNode("strong",item ? "修改提醒" : "新建提醒"));
+  for(const [name,field] of [["提醒内容",title],["提醒时间",due],["重复方式",repeat]]) {const label=reminderNode("label",name);label.appendChild(field);form.appendChild(label);}
+  form.appendChild(reminderNode("p",`时间按 ${zone} 显示。通知保存在玄圃，关闭网页也不影响后台提醒。`,"meta"));
   const feishu=document.createElement("input");feishu.type="checkbox";feishu.checked=item?.channels.includes("feishu") || false;
-  if(reminderState.channels.includes("feishu") || feishu.checked) {const label=reminderNode("label"," 同时通过飞书提醒我");label.prepend(feishu);form.appendChild(label);}
+  if(reminderState.channels.includes("feishu") || feishu.checked) {const label=reminderNode("label"," 同时通过飞书提醒我","channel-choice");label.prepend(feishu);form.appendChild(label);}
   const submit=reminderNode("button","保存提醒");submit.type="submit";form.appendChild(submit);
   const discard=reminderNode("button","返回","ghost");discard.type="button";discard.addEventListener("click",()=>{box.innerHTML="";box.classList.add("hidden");});form.appendChild(discard);
+  let submitted=null;
+  const requestId=crypto.randomUUID();
   form.addEventListener("submit",async event=>{
     event.preventDefault();if(submit.disabled) return; submit.disabled=true;
     const generation=reminderState.generation, context=reminderState.context;
     try {
-      const body={title:title.value.trim(),due_at:item && due.value===originalWall ? item.due_at : reminderTimestamp(due.value,zone),timezone:zone,repeat:repeat.value,channels:feishu.checked ? ["inbox","feishu"] : ["inbox"]};
-      await api("PUT",`/v1/reminders/${encodeURIComponent(item.reminder_id)}`,{json:{...body,version:item.version}});
+      if(!submitted) submitted={title:title.value.trim(),due_at:item && due.value===originalWall ? item.due_at : reminderTimestamp(due.value,zone),timezone:zone,repeat:repeat.value,channels:feishu.checked ? ["inbox","feishu"] : ["inbox"],...(item ? {version:item.version} : {request_id:requestId})};
+      for(const field of [title,due,repeat,feishu,discard]) field.disabled=true;
+      await api(item ? "PUT" : "POST",item ? `/v1/reminders/${encodeURIComponent(item.reminder_id)}` : "/v1/reminders",{json:submitted});
       if(generation !== reminderState.generation || context !== reminderState.context) return;
-      if(editor===reminderState.editor) {box.innerHTML="";box.classList.add("hidden");}await refreshReminders();
+      if(editor===reminderState.editor) {box.innerHTML="";box.classList.add("hidden");$("reminder-feedback").textContent=item ? "提醒已更新。" : "提醒已创建。";}
+      if(!item && editor===reminderState.editor) $("reminder-status").value="active";
+      // 写入已成功；列表读取失败只提示刷新，不能把成功操作当成提交失败。
+      await refreshReminders().catch(error=>{if(generation===reminderState.generation && context===reminderState.context) fail(error);});
     } catch(error){if(generation===reminderState.generation && context===reminderState.context){
       submit.disabled=false;
-      if(error.status===400 || error.status===422) {for(const field of [title,due,repeat,feishu]) field.disabled=false;}
-      else {submit.textContent="重试保存";}
+      if(!submitted || error.status===400 || error.status===422) {submitted=null;for(const field of [title,due,repeat,feishu,discard]) field.disabled=false;}
+      else {submit.textContent="重试保存";discard.disabled=false;}
       fail(error);
     }}
   });box.appendChild(form);
@@ -240,6 +256,10 @@ async function startNotificationStream(generation) {
   }
 }
 $("reminder-status").addEventListener("change",()=>refreshReminders().catch(fail));
+$("new-reminder").addEventListener("click",()=>editReminder());
+$("refresh-reminders").addEventListener("click",()=>refreshReminders().catch(fail));
+$("open-reminder-module").addEventListener("click",()=>showReminderManager("module").catch(fail));
+$("open-notification-module").addEventListener("click",async()=>{setNotificationsOpen(true);await refreshNotifications().catch(fail);});
 $("close-reminders").addEventListener("click",dismissReminderContext);
 $("notification-toggle").addEventListener("click",async()=>{
   const open=$("notifications-panel").classList.contains("hidden");

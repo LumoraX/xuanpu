@@ -181,6 +181,45 @@ const run = code => vm.runInContext(code, context);
   assert.equal(run('chat.routeContext.length'), 1);
   historyReady({ok:true,text:async () => '{"records":[],"next_after_id":null}'});
   await opening;
+  // 切页发生在分流后的列表/历史/审批读取时，同样不能启动旧会话或清空新表单。
+  for(const delayed of ['/v1/sessions?', '/history?', '/pending']) {
+    run('chat.routing=false;chat.streaming=null;chat.sessionId=null;conn.me={tenant_id:"tenant",user_id:"member"}');
+    element('message').value='延迟分流';
+    let completeRead, signalRead;
+    const reached=new Promise(resolve=>{signalRead=resolve;});
+    let messagePosts=0;
+    context.fetch=async(target)=>{
+      if(target.endsWith('/messages')) {messagePosts++;throw new Error('切页后不能启动旧对话');}
+      const body=target.endsWith('/route') ? {session:{session_id:'late',status:'active',package:'demo'}} :
+        target.includes('/history?') ? {records:[],next_after_id:null} : target.endsWith('/pending') ? {pending:[]} : {sessions:[]};
+      if(target.includes(delayed) && !completeRead) {signalRead();return new Promise(resolve=>{completeRead=()=>resolve({ok:true,text:async()=>JSON.stringify(body)});});}
+      return {ok:true,text:async()=>JSON.stringify(body)};
+    };
+    const sending=element('send').listeners.submit({preventDefault(){}});
+    await reached;
+    const functionsButton=element('functions-tab');functionsButton.dataset.tab='functions';functionsButton.classList.remove('hidden');functionsButton.classList.remove('active');
+    element('tabs').listeners.click({target:{closest:()=>functionsButton}});
+    element('reminder-preview').innerHTML='新模块表单';
+    completeRead();await sending;
+    assert.equal(element('reminder-preview').innerHTML,'新模块表单',delayed+' 迟到读取不能清表单');
+    assert.equal(messagePosts,0,delayed+' 切页后不能继续提交业务消息');
+    assert.equal(element('message').value,'延迟分流');
+  }
+  // 功能入口不能早于会话初始化开放，否则迟到的恢复操作会清空用户表单。
+  let finishChoices, choicesReady;
+  const choicesWaiting=new Promise(resolve=>{choicesReady=resolve;});
+  run('globalThis.savedStartReminders=startReminders;startReminders=async()=>{}');
+  context.fetch=async target=>{
+    if(target.endsWith('/v1/packages')) {choicesReady();return new Promise(resolve=>{finishChoices=()=>resolve({ok:true,text:async()=>'{"packages":[]}'});});}
+    const body=target.endsWith('/v1/me') ? {tenant_id:'tenant',user_id:'member',role:'tenant_member'} : target.includes('/v1/sessions?') ? {sessions:[]} : {};
+    return {ok:true,text:async()=>JSON.stringify(body)};
+  };
+  const connecting=run('connectIdentity()');
+  await choicesWaiting;
+  assert(element('functions-tab').classList.contains('hidden'),'初始化期间不提前显示功能入口');
+  finishChoices();assert.equal(await connecting,true);
+  assert.equal(element('functions-tab').classList.contains('hidden'),false);
+  run('startReminders=savedStartReminders');
   run('reminderState.cursor=51; reminderState.draft={title:"旧账号"}; resetReminders()');
   assert.equal(run('reminderState.cursor'), 0);
   assert.equal(run('reminderState.draft'), null);

@@ -103,7 +103,7 @@ async function main() {
     assert(memberRequests.filter(req => req.method === 'POST').every(req => req.headers['x-requested-by'] === 'xuanpu'));
     // 提醒必须先确认，确认前无后台任务；后台到点与站内通知独立于对话。
     assert.equal(await bob.locator('aside #reminders-panel').count(),0);
-    assert.equal(await bob.getByRole('button',{name:'新建提醒',exact:true}).count(),0);
+    assert.equal(await bob.locator('#new-reminder').isVisible(),false);
     assert.equal(await bob.locator('#reminders-panel').isVisible(),false);
     await bob.locator('#message').fill('5秒后提醒我：浏览器提醒验收');
     await bob.locator('#send-btn').click();
@@ -154,6 +154,8 @@ async function main() {
     await bob.locator('#reminders-panel').waitFor();
     await bob.locator('#new-session-btn').click();
     assert.equal(await bob.locator('#reminders-panel').isVisible(),false);
+    await checkFunctionFallback(bob);
+    await checkLateRouteDuringManualEdit(bob);
     await bob.setViewportSize({width:375, height:812});
     assert(await bob.evaluate(() => document.documentElement.scrollWidth <= innerWidth), '成员页面发生横向溢出');
     await bob.screenshot({path:path.join(out, 'member-mobile.png'), fullPage:true});
@@ -161,6 +163,8 @@ async function main() {
     await bob.waitForFunction(() => document.getElementById('conn-status').textContent === '已退出');
     assert.equal(await bob.locator('#session-list li').count(), 0);
     assert.equal(await bob.locator('#notification-list li').count(), 0);
+    assert.equal(await bob.locator('#functions-tab').isVisible(), false);
+    assert.equal(await bob.locator('#reminder-preview').isVisible(), false);
     assert.equal(await bob.evaluate(async () => (await fetch('/v1/me')).status), 401);
     await login(bob, 'bob');
     await checkAdmin(alice, bob, aliceMe, bobMe);
@@ -175,9 +179,83 @@ async function main() {
     assert(stats.pkce_verified >= 5);
     assert.equal(stats.pkce_verified, stats.exchanges);
     assert.deepEqual(failures, []);
-    fs.writeFileSync(path.join(out, 'result.json'), JSON.stringify({passed:true, checks:['真实CLI','真实PKCE登录','本人会话隔离','退出清cookie','管理员停用启用','409最后管理员','API key','姓名XSS/头像','过滤分页/收尾失败','375px无溢出','DENY响应头'], stats, aliceSession, bobSession}, null, 2));
+    fs.writeFileSync(path.join(out, 'result.json'), JSON.stringify({passed:true, checks:['真实CLI','真实PKCE登录','本人会话隔离','退出清cookie','管理员停用启用','409最后管理员','API key','姓名XSS/头像','过滤分页/收尾失败','375px无溢出','DENY响应头','无模型手动提醒CRUD','对话与功能同数据','切页隔离迟到识别'], stats, aliceSession, bobSession}, null, 2));
     console.log('console browser acceptance passed');
   } finally { await browser.close(); }
+}
+
+// 关闭对话识别通路仍能完整管理提醒，刷新和切换入口共用记录。
+async function checkFunctionFallback(page) {
+  let modelCalls=0;
+  await page.route('**/v1/assistant/route',async route=>{modelCalls++;await route.fulfill({status:503,body:'{}'});});
+  await page.locator('#functions-tab').click();
+  assert.equal(await page.locator('#reminders-panel').isVisible(),false);
+  await page.locator('#open-reminder-module').click();
+  await page.locator('#new-reminder').click();
+  await page.getByRole('textbox',{name:'提醒内容',exact:true}).fill('手动兜底提醒');
+  await page.getByLabel('重复方式',{exact:true}).selectOption('daily');
+  await page.getByRole('button',{name:'保存提醒',exact:true}).click();
+  await page.locator('#reminder-list li').filter({hasText:'手动兜底提醒'}).waitFor();
+  await page.reload();
+  await page.locator('#functions-tab').waitFor();
+  assert.equal(await page.locator('#tab-sessions').isVisible(),true);
+  assert.equal(await page.locator('#reminders-panel').isVisible(),false);
+  await page.locator('#functions-tab').click();
+  await page.locator('#open-reminder-module').click();
+  await page.locator('#reminder-list li').filter({hasText:'手动兜底提醒'}).getByRole('button',{name:'修改',exact:true}).click();
+  await page.getByRole('textbox',{name:'提醒内容',exact:true}).fill('手动修改后');
+  await page.getByLabel('重复方式',{exact:true}).selectOption('weekly');
+  await page.getByRole('button',{name:'保存提醒',exact:true}).click();
+  await page.locator('#reminder-list li').filter({hasText:'手动修改后'}).getByText(/每周/).waitFor();
+  assert.equal(modelCalls,0,'手动新建和修改不应调用模型');
+  await page.unroute('**/v1/assistant/route');
+  await page.locator('[data-tab=sessions]').click();
+  await page.locator('#message').fill('查看我的提醒');
+  await page.locator('#send-btn').click();
+  await page.locator('.chat-pane #reminder-list li').filter({hasText:'手动修改后'}).waitFor();
+  assert.equal(await page.locator('#new-reminder').isVisible(),false);
+  await page.route('**/v1/assistant/route',async route=>{modelCalls++;await route.fulfill({status:503,body:'{}'});});
+  await page.locator('#functions-tab').click();
+  await page.locator('#open-reminder-module').click();
+  const row=page.locator('#reminder-list li').filter({hasText:'手动修改后'});
+  await row.getByRole('button',{name:'取消提醒',exact:true}).click();
+  await row.waitFor({state:'detached'});
+  await page.locator('#reminder-status').selectOption('cancelled');
+  await row.getByText('已取消',{exact:true}).waitFor();
+  await page.locator('#new-reminder').click();
+  await page.setViewportSize({width:375,height:812});
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'功能页面发生横向溢出');
+  await page.screenshot({path:path.join(out,'functions-mobile.png'),fullPage:true});
+  await page.getByRole('button',{name:'返回',exact:true}).click();
+  await page.locator('#open-notification-module').click();
+  await page.locator('#notification-list').getByText('浏览器提醒验收',{exact:true}).waitFor();
+  await page.locator('#close-notifications').click();
+  assert.equal(modelCalls,0,'手动取消与通知查看不应调用模型');
+  await page.unroute('**/v1/assistant/route');
+  await page.locator('[data-tab=sessions]').click();
+}
+
+async function checkLateRouteDuringManualEdit(page) {
+  let release;
+  await page.route('**/v1/assistant/route',async route=>{
+    await new Promise(resolve=>{release=resolve;});
+    await route.fulfill({json:{message:'旧草稿',reminder_draft:{title:'迟到的草稿',due_at:2000000000,timezone:'UTC',repeat:'once'}}});
+  });
+  await page.locator('#message').fill('等待中的提醒需求');
+  const requested=page.waitForRequest('**/v1/assistant/route');
+  await page.locator('#send-btn').click();await requested;
+  await page.locator('#functions-tab').click();
+  await page.locator('#open-reminder-module').click();
+  await page.locator('#new-reminder').click();
+  await page.getByRole('textbox',{name:'提醒内容',exact:true}).fill('正在手动编辑');
+  release();
+  await page.waitForFunction(()=>!document.getElementById('send-btn').disabled);
+  assert.equal(await page.getByRole('textbox',{name:'提醒内容',exact:true}).inputValue(),'正在手动编辑');
+  assert.equal(await page.locator('#confirm-reminder').count(),0);
+  await page.unroute('**/v1/assistant/route');
+  await page.locator('[data-tab=sessions]').click();
+  assert.equal(await page.locator('#message').inputValue(),'等待中的提醒需求');
+  await page.locator('#message').fill('');
 }
 
 async function checkAdmin(alice, bob, aliceMe, bobMe) {

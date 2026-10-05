@@ -23,3 +23,4 @@ def test_reminder_editor_and_notification_recovery() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+    assert "reminder behavior passed" in result.stdout, result.stdout + result.stderr
