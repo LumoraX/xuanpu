@@ -72,7 +72,14 @@ class ReminderService:
         if "feishu" in body.channels and "feishu" not in await self.channels(who):
             raise InvalidRequestError("该员工尚未配置飞书通知")
 
-    async def create(self, who: Principal, body: ReminderInput, request_id: str) -> ReminderRecord:
+    async def create(
+        self,
+        who: Principal,
+        body: ReminderInput,
+        request_id: str,
+        *,
+        proposal_id: str | None = None,
+    ) -> ReminderRecord:
         """创建提醒；原创建指纹用于幂等，时间额度判断交由事务。"""
         tenant, user = await self.require_employee(who)
         if not isinstance(request_id, str) or not request_id.strip() or len(request_id) > 128:
@@ -81,8 +88,10 @@ class ReminderService:
         if existing is not None:
             if existing.original_fingerprint != body.fingerprint():
                 raise ConflictError("request_id 已用于其他提醒内容")
-            return existing
-        await self._validate_channels(who, body)
+            if proposal_id is None:
+                return existing
+        if existing is None:
+            await self._validate_channels(who, body)
         now = self._now()
         record = ReminderRecord(
             "rem_" + secrets.token_hex(12),
@@ -100,7 +109,7 @@ class ReminderService:
             now,
             body.fingerprint(),
         )
-        saved = await self.store.create(record, now, actor=who.actor)
+        saved = await self.store.create(record, now, actor=who.actor, proposal_id=proposal_id)
         return saved
 
     async def list(

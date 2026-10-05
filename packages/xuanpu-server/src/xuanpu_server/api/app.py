@@ -18,6 +18,7 @@ from prometheus_client import CONTENT_TYPE_PLAIN_0_0_4
 from xuanpu_server import __version__
 from xuanpu_server.api import schemas
 from xuanpu_server.api.assistant import assistant_router
+from xuanpu_server.api.assistant_actions import assistant_actions_router
 from xuanpu_server.api.audit_usage import audit_usage_router
 from xuanpu_server.api.auth import Caller, bearer
 from xuanpu_server.api.console import ConsoleStaticFiles
@@ -25,6 +26,8 @@ from xuanpu_server.api.history import history_router
 from xuanpu_server.api.identity import identity_router
 from xuanpu_server.api.reminders import reminders_router
 from xuanpu_server.api.sse import stream_turn
+from xuanpu_server.api.workspace import workspace_router
+from xuanpu_server.assistant_workspace import prepare_business_message
 from xuanpu_server.errors import (
     AuthenticationError,
     InvalidRequestError,
@@ -138,7 +141,9 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.include_router(audit_usage_router(platform))
     app.include_router(history_router(platform))
     app.include_router(assistant_router(platform))
+    app.include_router(assistant_actions_router(platform))
     app.include_router(reminders_router(platform))
+    app.include_router(workspace_router(platform))
 
     @app.get("/healthz")
     async def healthz() -> dict[str, Any]:
@@ -352,7 +357,11 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
         session_id: str, body: schemas.MessageBody, who: Caller
     ) -> StreamingResponse:
         """发一条消息，响应是这一轮对话的事件流。"""
-        return _turn_response(await platform.sessions.send_message(who, session_id, body.text))
+        await platform.sessions.get(who, session_id)
+        text, attachments = await prepare_business_message(platform, who, body.text, body.attachments)
+        return _turn_response(await platform.sessions.send_message(
+            who, session_id, text, attachments=attachments, audit_text=body.text
+        ))
 
     @app.post("/v1/sessions/{session_id}/resume")
     async def resume_session(

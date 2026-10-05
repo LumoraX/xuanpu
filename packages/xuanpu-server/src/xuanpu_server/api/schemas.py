@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -93,9 +93,10 @@ class CreateSessionBody(_Request):
 
 
 class MessageBody(_Request):
-    """发消息。"""
+    """发消息；附件只接受个人空间标识，不接受任意路径或正文。"""
 
     text: str
+    attachments: list[Annotated[str, Field(min_length=1, max_length=128)]] = Field(default_factory=list, max_length=8)
 
 
 class ResumeBody(_Request):

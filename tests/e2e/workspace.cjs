@@ -1,0 +1,143 @@
+// 真实个人工作站旅程：点击、上传、下载和刷新；模型仅由验收服务固定响应。
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+module.exports=async function workspaceJourney(page,other,out) {
+  const module=async kind=>{await page.locator(`#workspace-nav [data-workspace="${kind}"]`).click();await page.locator('#workspace-feedback').filter({hasText:'正在加载'}).waitFor({state:'hidden'});};
+  const save=async()=>{await page.locator('#workspace-content button[type=submit]').click();await page.locator('#workspace-content .workspace-form').waitFor({state:'hidden'});};
+  const items=async(kind)=>page.evaluate(async kind=>(await (await fetch('/v1/workspace/items?kind='+kind)).json()).items,kind);
+  await module('file');
+  await page.locator('#workspace-toolbar').getByRole('button',{name:'新建文件夹',exact:true}).click();
+  await page.getByLabel('名称',{exact:true}).fill('旅程资料');await save();
+  await page.locator('.workspace-record').filter({hasText:'旅程资料'}).getByRole('button',{name:'打开',exact:true}).click();
+  await page.getByLabel('上传文件',{exact:true}).setInputFiles({name:'旅程.txt',mimeType:'text/plain',buffer:Buffer.from('验收附件正文：订单二十单。')});
+  await page.locator('.workspace-record').filter({hasText:'旅程.txt'}).waitFor();
+  const file=(await items('file'))[0];
+  const download=page.waitForEvent('download');await page.getByRole('button',{name:'下载',exact:true}).click();
+  const got=await download;assert.equal(fs.readFileSync(await got.path(),'utf8'),'验收附件正文：订单二十单。');
+  await page.getByRole('button',{name:'版本',exact:true}).click();
+  await page.getByLabel('上传新版本',{exact:true}).setInputFiles({name:'new.txt',mimeType:'text/plain',buffer:Buffer.from('验收附件正文：订单三十单。')});
+  await page.locator('.workspace-record').filter({hasText:'版本 2'}).waitFor();
+  assert.equal(await page.evaluate(async id=>await (await fetch(`/v1/workspace/files/${id}/content?revision=1`)).text(),file.id),'验收附件正文：订单二十单。');
+  await module('matter');await page.getByRole('button',{name:'新建事项',exact:true}).click();
+  await page.getByLabel('标题',{exact:true}).fill('周报整理');await page.getByLabel('说明',{exact:true}).fill('把资料和工作放在一起');await save();
+  const matter=(await items('matter'))[0];
+  await module('todo');await page.getByRole('button',{name:'新建待办',exact:true}).click();
+  await page.getByLabel('标题',{exact:true}).fill('检查订单');await page.getByLabel('关联事项',{exact:true}).selectOption(matter.id);await save();
+  await page.locator('.workspace-record').filter({hasText:'检查订单'}).getByRole('button',{name:'完成',exact:true}).click();
+  await page.locator('.workspace-record').filter({hasText:'检查订单'}).getByText('已完成',{exact:true}).waitFor();
+  await module('event');await page.getByRole('button',{name:'新建日程',exact:true}).click();
+  await page.getByLabel('标题',{exact:true}).fill('周报回顾');
+  await page.getByLabel('开始（当前设备时区）',{exact:true}).fill('2026-10-10T09:00');await page.getByLabel('结束（当前设备时区）',{exact:true}).fill('2026-10-10T10:00');
+  await page.getByLabel('关联事项',{exact:true}).selectOption(matter.id);await save();
+  await module('skill');await page.getByRole('button',{name:'新建能力',exact:true}).click();
+  await page.getByLabel('标题',{exact:true}).fill('我的周报方法');await page.getByLabel('工作指令',{exact:true}).fill('先写进展，再写风险和计划。');await save();
+  await module('settings');await page.getByLabel('助手名字',{exact:true}).fill('小玄');await page.getByLabel('怎么称呼你',{exact:true}).fill('同事');
+  await page.getByRole('button',{name:'保存设置',exact:true}).click();await page.locator('#assistant-name').filter({hasText:'小玄'}).waitFor();
+  await page.reload();await page.locator('#assistant-name').filter({hasText:'小玄'}).waitFor();
+  await module('file');await page.locator('.workspace-record').filter({hasText:'旅程资料'}).getByRole('button',{name:'打开',exact:true}).click();
+  await page.getByRole('button',{name:'属性 / 移动',exact:true}).click();await page.getByLabel('关联事项',{exact:true}).selectOption(matter.id);await page.getByLabel('标签（用逗号分隔）',{exact:true}).fill('周报，订单');await save();
+  await page.getByRole('button',{name:'加入对话',exact:true}).click();await page.locator('#workspace-close').click();
+  await page.locator('#new-session-btn').click();await page.locator('#message').fill('总结工作站附件');await page.locator('#send-btn').click();
+  await page.getByText('已读到验收附件正文。',{exact:true}).waitFor();
+  await page.waitForFunction(()=>!document.getElementById('send-btn').disabled);
+  await page.locator('#message').fill('记录工作站待办');await page.locator('#send-btn').click();
+  await page.locator('#workspace-draft').getByLabel('标题',{exact:true}).waitFor();
+  assert.equal((await items('todo')).some(x=>x.data.title==='对话创建的周报待办'),false);
+  await page.reload();await page.locator('#workspace-draft').getByLabel('标题',{exact:true}).waitFor();
+  await page.locator('#workspace-draft button[type=submit]').click();await page.getByText('已保存：对话创建的周报待办',{exact:true}).waitFor();
+  await page.reload();await page.locator('#transcript').getByText('记录工作站待办',{exact:true}).waitFor();
+  assert.equal((await items('todo')).filter(x=>x.data.title==='对话创建的周报待办').length,1);
+  assert.equal(await page.locator('#workspace-draft').isVisible(),false);
+  await page.locator('#transcript').getByText('已保存：对话创建的周报待办',{exact:true}).waitFor();
+  // 即使终态聊天未写入，领域确认回执仍能在刷新时恢复正确提示。
+  await page.route('**/v1/workspace/messages?**',async route=>{
+    const response=await route.fetch(),data=await response.json();
+    data.items=data.items.filter(item=>!item.request_id.endsWith(':confirmed'));
+    await route.fulfill({json:data});
+  });
+  await page.reload();await page.locator('#transcript').getByText('已保存：对话创建的周报待办',{exact:true}).waitFor();
+  assert.equal(await page.locator('#workspace-draft').isVisible(),false);
+  await page.unroute('**/v1/workspace/messages?**');
+  assert.equal(await other.evaluate(async id=>(await fetch('/v1/workspace/items/'+id)).status,file.id),404);
+  await module('matter');await page.getByRole('button',{name:'查看事项',exact:true}).click();
+  await page.locator('#workspace-content').getByText('▤ 旅程.txt',{exact:true}).waitFor();await page.locator('#workspace-content').getByText('检查订单',{exact:true}).waitFor();
+  await page.locator('#workspace-toolbar').getByRole('button',{name:'聊这件事',exact:true}).click();
+  await page.locator('#message').fill('事项进展验收：资料已整理');await page.locator('#send-btn').click();
+  await page.getByText('事项进展已记录。',{exact:true}).waitFor();
+  await page.waitForFunction(()=>!document.getElementById('send-btn').disabled);
+  await module('matter');await page.getByRole('button',{name:'查看事项',exact:true}).click();
+  await page.locator('#workspace-content').getByText('事项进展验收：资料已整理',{exact:true}).waitFor();
+  await page.screenshot({path:path.join(out,'workstation-matter.png'),fullPage:true});
+  await module('file');page.once('dialog',dialog=>dialog.accept());await page.locator('.workspace-record').filter({hasText:'旅程资料'}).getByRole('button',{name:'移入回收站',exact:true}).click();
+  await page.locator('#workspace-toolbar').getByRole('button',{name:'回收站',exact:true}).click();
+  await page.locator('.workspace-record').filter({hasText:'旅程资料'}).getByRole('button',{name:'恢复',exact:true}).click();
+  await page.locator('#workspace-toolbar').getByRole('button',{name:'返回文件',exact:true}).click();
+  await page.locator('.workspace-record').filter({hasText:'旅程资料'}).waitFor();
+  await page.setViewportSize({width:375,height:812});
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'工作站窄屏不应横向溢出');
+  await page.screenshot({path:path.join(out,'workstation-mobile.png'),fullPage:true});
+  await page.locator('#workspace-close').click();await page.setViewportSize({width:1280,height:720});
+  // 历史快照迟到时，不得清空已经完成的新一轮对话。
+  let releaseHistory,historyRequested,historyFinished;
+  const held=new Promise(resolve=>releaseHistory=resolve);
+  const requested=new Promise(resolve=>historyRequested=resolve);
+  const finished=new Promise(resolve=>historyFinished=resolve);
+  await page.route('**/v1/workspace/items?kind=file',async route=>{historyRequested();await held;await route.continue();historyFinished();},{times:1});
+  await page.locator('#new-session-btn').click();await requested;
+  await page.locator('#message').fill('普通对话并发验收');await page.locator('#send-btn').click();
+  await page.getByText('新回复不能被旧历史覆盖。',{exact:true}).waitFor();
+  const oldResponse=page.waitForResponse(response=>response.url().endsWith('/v1/workspace/items?kind=file'));
+  releaseHistory();await finished;await oldResponse;
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  await page.getByText('新回复不能被旧历史覆盖。',{exact:true}).waitFor();
+  // 文件夹内的全局搜索不能把根目录文件无意移进当前目录。
+  await module('file');await page.getByLabel('上传文件',{exact:true}).setInputFiles({name:'根目录.txt',mimeType:'text/plain',buffer:Buffer.from('root')});
+  await page.locator('.workspace-record').filter({hasText:'根目录.txt'}).waitFor();
+  await page.locator('.workspace-record').filter({hasText:'旅程资料'}).getByRole('button',{name:'打开',exact:true}).click();
+  await page.getByLabel('搜索文件',{exact:true}).fill('根目录');await page.getByLabel('搜索文件',{exact:true}).press('Tab');
+  await page.locator('.workspace-record').filter({hasText:'根目录.txt'}).getByRole('button',{name:'属性 / 移动',exact:true}).click();
+  assert.equal(await page.getByLabel('所在文件夹',{exact:true}).inputValue(),'');
+  await page.getByLabel('标签（用逗号分隔）',{exact:true}).fill('根目录测试');await save();
+  assert.equal((await items('file')).find(x=>x.data.name==='根目录.txt').data.parent_id,null);
+  await page.locator('#workspace-close').click();
+
+  // 旧链接或浏览器不支持的时区不能让整个工作窗口失效。
+  await page.route('**/v1/workspace/items?trashed=false',async route=>{
+    const response=await route.fetch(),data=await response.json();
+    data.items.push({id:'invalid-old-reference',kind:'file',version:1,updated_at:1,trashed_at:null,data:{name:'旧链接',source_url:'https://example.com:bad/file',parent_id:null,tags:[]}});
+    await route.fulfill({json:data});
+  });
+  await module('file');
+  await page.locator('.workspace-record').filter({hasText:'旧链接'}).getByText('文档链接无效，请移入回收站后重新关联有效链接。',{exact:true}).waitFor();
+  assert(await page.locator('.workspace-record').filter({hasText:'旧链接'}).getByRole('button',{name:'移入回收站',exact:true}).isVisible());
+  await page.unroute('**/v1/workspace/items?trashed=false');
+  await module('settings');await page.getByLabel('时间显示时区',{exact:true}).fill('Invalid/Timezone');
+  await page.getByRole('button',{name:'保存设置',exact:true}).click();
+  await page.getByText('当前浏览器不支持这个时区，请选择有效时区，例如 Asia/Shanghai。',{exact:true}).waitFor();
+  assert((await page.evaluate(()=>{const original=workspace.settings.timezone;workspace.settings.timezone='Invalid/Timezone';try{return workspaceTime(1);}finally{workspace.settings.timezone=original;}})).includes('UTC（所选时区暂不受浏览器支持）'));
+  await page.locator('#workspace-close').click();
+
+  // 超过旧的 10,000 条上限时仍首屏显示最新记录，更早记录按游标逐页补读。
+  let historyCalls=0;
+  await page.route('**/v1/workspace/messages?**',async route=>{
+    const query=new URL(route.request().url()).searchParams;historyCalls++;
+    assert.equal(query.get('latest'),'true');
+    const end=Math.min(10002,Number(query.get('before_id') || 10003)-1);
+    const records=Array.from({length:Math.min(100,end)},(_,index)=>({id:end-99+index,role:'assistant',text:'历史验收消息 '+(end-99+index),attachments:[],metadata:{}}));
+    await route.fulfill({json:{items:records}});
+  });
+  await page.locator('#new-session-btn').click();
+  await page.locator('#transcript').getByText('历史验收消息 10002',{exact:true}).waitFor();
+  assert.equal(historyCalls,1);
+  await page.locator('#message').fill('普通对话并发验收');await page.locator('#send-btn').click();
+  await page.getByText('新回复不能被旧历史覆盖。',{exact:true}).waitFor();
+  await page.waitForFunction(()=>!document.getElementById('send-btn').disabled);
+  await page.getByRole('button',{name:'加载更早记录',exact:true}).click();
+  await page.locator('#transcript').getByText('历史验收消息 9803',{exact:true}).waitFor();
+  await page.locator('#transcript').getByText('历史验收消息 10002',{exact:true}).waitFor();
+  assert.equal(historyCalls,2);
+  await page.unroute('**/v1/workspace/messages?**');await page.locator('#new-session-btn').click();
+
+  console.log('workstation journey passed: folders/files/version/trash/matters/todos/calendar/skills/settings/chat/attachments/isolation/mobile');
+};

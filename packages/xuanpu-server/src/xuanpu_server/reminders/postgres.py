@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, replace
 from typing import TYPE_CHECKING, Any
 
@@ -10,7 +11,9 @@ from xuanpu_server.controlplane.schema import DEFAULT_NAMESPACE
 from xuanpu_server.errors import ConflictError, NotFoundError
 from xuanpu_server.reminders.models import NotificationRecord, ReminderRecord
 from xuanpu_server.reminders.postgres_delivery import PostgresDeliveryStore
+from xuanpu_server.reminders.proposals import proposal_decision
 from xuanpu_server.reminders.schedule import latest_due, next_due, validate_due
+from xuanpu_server.workspace.models import fingerprint
 
 if TYPE_CHECKING:
     import builtins
@@ -35,13 +38,21 @@ class PostgresReminderStore(PostgresDeliveryStore):
     def __init__(self, pool: asyncpg.Pool, *, namespace: SqlNamespace = DEFAULT_NAMESPACE) -> None:
         """由控制面装配同后端存储。"""
         super().__init__(pool, namespace=namespace)
+        self._t["workspace_request"] = namespace.table("workspace_request")
 
     async def create(
-        self, record: ReminderRecord, now: float, *, actor: str | None = None
+        self,
+        record: ReminderRecord,
+        now: float,
+        *,
+        actor: str | None = None,
+        proposal_id: str | None = None,
     ) -> ReminderRecord:
         """幂等先于时间和额度，在员工锁内分配活动额度。"""
         async with self._pool.acquire() as conn, conn.transaction():
             await self._require_active(conn, record.tenant_id, record.user_id)
+            if proposal_id is not None:
+                await self._reserve_proposal(conn, record, proposal_id, now, actor)
             old = await conn.fetchrow(
                 f"SELECT {RC} FROM {self._t['reminder']} WHERE tenant_id=$1 AND user_id=$2 AND request_id=$3",
                 record.tenant_id,
@@ -52,6 +63,8 @@ class PostgresReminderStore(PostgresDeliveryStore):
                 existing = reminder(old)
                 if existing.original_fingerprint != record.original_fingerprint:
                     raise ConflictError("request_id 已用于其他提醒内容")
+                if proposal_id is not None:
+                    await self._complete_proposal(conn, existing, proposal_id)
                 return existing
             validate_due(record.due_at, now)
             count = await conn.fetchval(
@@ -66,7 +79,56 @@ class PostgresReminderStore(PostgresDeliveryStore):
                 *asdict(record).values(),
             )
             await self._record_audit(conn, record, "created", now, actor)
+            if proposal_id is not None:
+                await self._complete_proposal(conn, record, proposal_id)
             return record
+
+    async def _reserve_proposal(
+        self, conn: Any, record: ReminderRecord, proposal_id: str, now: float, actor: str | None
+    ) -> None:
+        """员工行锁内决定与提醒共用当前事务，错误自然回滚预留。"""
+        key, payload = proposal_decision(record, proposal_id)
+        digest = fingerprint(payload)
+        old = await conn.fetchrow(
+            f"SELECT fingerprint FROM {self._t['workspace_request']} WHERE tenant_id=$1 AND user_id=$2 AND request_id=$3",
+            record.tenant_id,
+            record.user_id,
+            key,
+        )
+        if old is not None:
+            if old["fingerprint"] != digest:
+                raise ConflictError("建议动作或确认内容已变化")
+            return
+        await conn.execute(
+            f"INSERT INTO {self._t['workspace_request']} (tenant_id,user_id,request_id,fingerprint,result) VALUES ($1,$2,$3,$4,$5::jsonb)",
+            record.tenant_id,
+            record.user_id,
+            key,
+            digest,
+            json.dumps({}),
+        )
+        await self._audit_event(
+            conn,
+            AuditRecord(
+                tenant_id=record.tenant_id,
+                user_id=record.user_id,
+                source="control",
+                kind="workspace.proposal_reserved",
+                at=now,
+                actor=actor or "user:" + record.user_id,
+                data={},
+            ),
+        )
+
+    async def _complete_proposal(self, conn: Any, record: ReminderRecord, proposal_id: str) -> None:
+        """提醒标识在同一提交中成为权威回执，终态消息只作展示。"""
+        await conn.execute(
+            f"UPDATE {self._t['workspace_request']} SET result=$4::jsonb WHERE tenant_id=$1 AND user_id=$2 AND request_id=$3",
+            record.tenant_id,
+            record.user_id,
+            "proposal:" + proposal_id,
+            json.dumps({"state": "confirmed", "result": {"reminder_id": record.reminder_id}}),
+        )
 
     async def get_request(
         self, tenant_id: str, user_id: str, request_id: str

@@ -98,6 +98,9 @@ async function main() {
     assert.equal(await bob.locator('#session-list li.active').getAttribute('data-id'), bobSession);
     assert.equal(await bob.locator('#welcome').isVisible(), false);
     assert.equal(await bob.evaluate(async id => (await fetch('/v1/sessions/' + id)).status, aliceSession), 404);
+    await require('./workspace.cjs')(bob,alice,out);
+    await bob.locator('.session-history summary').click();
+    await bob.locator('#session-list li').first().click();
     assert(!memberRequests.some(req => /\/v1\/(audit|usage)(\?|$)/.test(req.url)));
     assert(!memberRequests.some(req => req.headers.authorization));
     assert(memberRequests.filter(req => req.method === 'POST').every(req => req.headers['x-requested-by'] === 'xuanpu'));

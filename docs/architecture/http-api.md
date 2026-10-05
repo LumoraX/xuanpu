@@ -806,3 +806,31 @@ xuanpu_connector_calls_total{decision="allowed",transport="http"} 1.0
 - `GET /v1/notifications/events`：SSE，接受after_id与Last-Event-ID（取较大值），每条`event: notification`、`id: 通知ID`、`data: 通知对象`。有心跳，周期重新鉴权。连接中断后按游标补读；游标不携带权限，查询仍按tenant/user过滤。
 
 `POST /v1/assistant/route`新增timezone（默认Asia/Shanghai），模型使用服务端当前时间。响应增加reminder_draft与open_reminders；内置提醒不需要发布业务包。草稿包含明确时间/时区/重复/默认inbox，不创建任务；确认后调用POST /v1/reminders才算创建成功。平台不支持的重复规则必须说明或澄清，不能静默更改。
+
+
+## 个人工作站 `/v1/workspace`
+
+所有接口使用现有 Caller/CSRF 验证，要求启用租户中的启用员工身份；机器 key 需显式合法代理员工，管理员不能指定另一员工读取。记录返回 `id,kind,data,version,created_at,updated_at,trashed_at`。
+
+| 方法与路径 | 请求及行为 |
+| --- | --- |
+| GET /items | kind、trashed、search 可选，返回 items；只返回本人 |
+| POST /items | kind、data、request_id；支持 folder/file/matter/todo/event/skill；file仅创建HTTPS引用 |
+| GET /items/{id} | 本人记录 |
+| PUT /items/{id} | data部分更新与version；过期版本409 |
+| DELETE /items/{id}?version= | 移入回收站，文件夹递归；不删除正本 |
+| POST /items/{id}/restore?version= | 恢复同一批回收，冲突整体回滚 |
+| POST /files?name=&parent_id=&request_id= | 原始字节上传，Content-Type为类型；20MiB上限 |
+| PUT /files/{id}/content?version=&request_id= | 增加内容版本；id和名称不变 |
+| GET /files/{id}/content?revision= | 当前或指定历史版本，安全下载响应 |
+| GET /files/{id}/versions | 返回 items，含revision、size、mime_type、created_at |
+| GET /settings | 本人助手偏好，初始版本1 |
+| PUT /settings | 保存本人偏好，须携带version |
+| GET /summary | counts、used_bytes、quota_bytes、max_file_bytes |
+| GET /messages?after_id=&before_id=&limit=&latest=&matter_id= | 主对话历史；默认100、上限100，latest选择最近窗口，before_id为排他上界，用于向前分页；客户端不能伪造助手消息 |
+
+`data` 按 kind 严格验证：folder含name/parent_id；file含name/parent_id/matter_id/tags/source_url，mime_type/size/current_revision由上传派生且不可修改；matter含title/description/status（active/completed/archived）；todo含title/description/status（open/done）/due_at/matter_id；event含title/description/start_at/end_at/timezone/matter_id；skill含title/description/instructions/enabled。时间使用UTC秒，时区为IANA标识，关联必须属于本人。
+
+`POST /v1/assistant/route` 增加可选request_id、attachments（本人文件id最多8个）、matter_id。返回可能含workspace_draft、open_workspace、proposal_id；这些都是建议，不是已执行结果。request_id稳定重试复用已持久选择、业务会话或结果；跨实例认领有60秒租约。模型响应尚未持久化时硬崩溃，租约过期后可能重新采样，不承诺供应商调用严格一次。主对话输入与输出由服务器记录。
+
+`GET /v1/assistant/proposals` 列最近100条尚待确认建议（更早记录仍保存）；`GET /{id}`返回pending/confirmed/cancelled及草稿或结果。`POST /{id}/confirm`请求为`{data:{...}}`，能力类型从本人已持久草稿确定，返回state/result/proposal_id；`POST /{id}/cancel`取消建议。原子决定与领域创建防止确认/取消竞争及重试重复；确认回执与领域创建同事务持久化，终态聊天消息仅用于展示；即使聊天写入失败，查询状态和重试仍返回实际确认结果。`POST /v1/sessions/{id}/messages` 增加attachments，服务端验证个人空间归属并转换为内核稳定附件，原有工具审批不变。

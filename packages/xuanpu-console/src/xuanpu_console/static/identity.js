@@ -47,6 +47,7 @@ function applyPermissions() {
 // 先取消旧请求并递增代际，再清除可见的身份数据；旧响应不能把上一位员工的数据填回来。
 function resetIdentity() {
   resetReminders();
+  if (typeof resetWorkspace === "function") resetWorkspace();
   conn.controller.abort();
   conn.controller = new AbortController();
   conn.epoch += 1;
@@ -115,7 +116,7 @@ async function connectIdentity({ automatic = false } = {}) {
     await loadBusinessChoices();
     const sessions = await loadSessions();
     const remembered = sessionStorage.getItem(sessionMemoryKey());
-    const current = sessions.find(session => session.session_id === remembered) || sessions[0];
+    const current = sessions.find(session => session.session_id === remembered);
     if (current) await openSession(current);
     else startConversation();
     if (isAdmin()) await loadPackages();
@@ -123,6 +124,7 @@ async function connectIdentity({ automatic = false } = {}) {
     conn.ready = true;
     applyPermissions();
     startReminders().catch(fail);
+    if (typeof startWorkspace === "function") startWorkspace().catch(fail);
     return epoch === conn.epoch;
   } catch (error) {
     if (epoch !== conn.epoch || error.name === "AbortError") return false;

@@ -111,18 +111,31 @@ async def contacts(request: Request) -> dict[str, object]:
 async def model_reply(request: Request) -> StreamingResponse:
     """固定文本模型仅用于浏览器的发送与刷新恢复验收，不冒充真实模型验收。"""
     payload = await request.json()
-    is_router = "玄圃业务分流器" in json.dumps(payload.get("messages", []), ensure_ascii=False)
+    is_router = "玄圃个人工作助手" in json.dumps(payload.get("messages", []), ensure_ascii=False)
+    incoming = payload.get("messages", [])[-1].get("content", "")
+    if isinstance(incoming, list):
+        incoming = incoming[0]["text"]
+    route_input = json.loads(incoming).get("text", "") if is_router else incoming
     reply = json.dumps({"package":"demo", "entry":"greet", "message":None}) if is_router else "这是可恢复的测试回复。"
-    if is_router and "浏览器提醒验收" in json.dumps(payload.get("messages", []), ensure_ascii=False):
+    if is_router and "浏览器提醒验收" in route_input:
         from datetime import UTC, datetime, timedelta
         reply = json.dumps({"package":"@reminders", "entry":"create", "message":None,
             "reminder":{"title":"浏览器提醒验收", "due_at":(datetime.now(UTC)+timedelta(seconds=5)).isoformat(), "timezone":"UTC", "repeat":"once"}})
-    if is_router and "一小时后提醒我" in json.dumps(payload.get("messages", []), ensure_ascii=False):
+    if is_router and "一小时后提醒我" in route_input:
         from datetime import UTC, datetime, timedelta
         reply = json.dumps({"package":"@reminders", "entry":"create", "message":None,
             "reminder":{"title":"可取消提醒", "due_at":(datetime.now(UTC)+timedelta(hours=1)).isoformat(), "timezone":"UTC", "repeat":"once"}})
-    if is_router and "查看我的提醒" in json.dumps(payload.get("messages", []), ensure_ascii=False):
+    if is_router and "查看我的提醒" in route_input:
         reply = json.dumps({"package":"@reminders", "entry":"manage", "message":None})
+    if is_router and "记录工作站待办" in route_input:
+        reply = json.dumps({"package":"@workspace", "entry":"create", "message":None,
+                            "workspace_draft":{"kind":"todo","data":{"title":"对话创建的周报待办"}}})
+    if is_router and "总结工作站附件" in route_input:
+        reply = json.dumps({"package":None,"entry":None,"message":"已读到验收附件正文。" if "验收附件正文" in json.dumps(payload,ensure_ascii=False) else "未收到附件正文。"})
+    if is_router and "普通对话并发验收" in route_input:
+        reply = json.dumps({"package":None,"entry":None,"message":"新回复不能被旧历史覆盖。"})
+    if is_router and "事项进展验收" in route_input:
+        reply = json.dumps({"package":None,"entry":None,"message":"事项进展已记录。"})
     async def chunks():
         """输出合法 Chat SSE，保证前端测试不依赖真实模型。"""
         for delta, finish in [({"role": "assistant", "content": ""}, None),

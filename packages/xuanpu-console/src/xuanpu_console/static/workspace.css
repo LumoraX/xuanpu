@@ -1,0 +1,61 @@
+/* 个人工作站：对话常驻，模块按需打开；不把功能表单塞进对话侧栏。 */
+:root { --accent: #2f7d6d; --user: #dcebe6; }
+@media (prefers-color-scheme: dark) { :root { --accent: #58ac97; --user: #243d37; } }
+#tab-sessions.active { grid-template-columns: 224px minmax(0, 1fr); min-height: calc(100dvh - 175px); }
+.assistant-identity { display: flex; align-items: center; gap: 12px; padding: 8px 2px 18px; }
+.assistant-identity p { margin: 3px 0 0; }
+.assistant-mark { border-radius: 50%; background: var(--accent); color: white; width: 42px; height: 42px; display: grid; place-items: center; font-family: serif; font-size: 22px; }
+.workspace-nav { display: grid; gap: 3px; margin-bottom: 22px; }
+.workspace-nav button { background: transparent; color: var(--text); text-align: left; padding: 10px 12px; display: flex; justify-content: space-between; }
+.workspace-nav button:hover, .workspace-nav button[aria-expanded="true"] { background: var(--user); }
+.workspace-nav span { color: var(--muted); font-size: 12px; }
+.session-history { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; }
+.session-history summary { cursor: pointer; color: var(--muted); margin-bottom: 12px; }
+.workspace-window { position: fixed; z-index: 50; top: 110px; right: 24px; bottom: 28px; width: min(600px, calc(100vw - 270px)); border: 1px solid var(--line); border-radius: 14px; background: var(--panel); box-shadow: 0 12px 45px #0003; display: flex; flex-direction: column; overflow: hidden; }
+.workspace-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.workspace-header h2 { margin: 0; font-size: 18px; }
+.workspace-toolbar { padding: 12px 16px 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.workspace-toolbar input { flex: 1; min-width: 80px; }
+#workspace-feedback { margin: 8px 16px; overflow-wrap: anywhere; }
+.workspace-content { padding: 4px 16px 20px; overflow: auto; flex: 1; min-height: 0; }
+.workspace-empty { padding: 36px 12px; text-align: center; color: var(--muted); }
+.workspace-record { padding: 14px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.workspace-record h3 { margin: 0 0 5px; font-size: 15px; }
+.workspace-record p { margin: 5px 0; white-space: pre-wrap; }
+.workspace-record .row { margin: 10px 0 0; }
+.workspace-record .meta { color: var(--muted); font-size: 12px; }
+.workspace-form { display: grid; gap: 12px; }
+.workspace-form label { display: grid; gap: 5px; font-size: 13px; }
+.workspace-form input, .workspace-form select, .workspace-form textarea { width: 100%; min-width: 0; }
+.workspace-form textarea { resize: vertical; min-height: 84px; }
+.workspace-form input[type="checkbox"] { width: auto; }
+.workspace-form .row { margin-top: 6px; }
+.workspace-form button { padding: 8px 16px; }
+.workspace-detail { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; }
+.workspace-breadcrumb { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; width: 100%; }
+.workspace-breadcrumb button { padding: 4px 8px; }
+.file-drop-active { outline: 2px dashed var(--accent); outline-offset: -6px; }
+.attachment-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px; }
+.attachment-chips:empty { display: none; }
+.attachment-chip { display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: var(--user); border-radius: 6px; max-width: 100%; overflow-wrap: anywhere; }
+.attachment-chip button { padding: 0 4px; }
+.attachment-menu { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 0; }
+#workspace-draft:empty { display: none; }
+#workspace-draft .workspace-form { max-height: 320px; overflow: auto; }
+.workspace-context { color: var(--accent); border-left: 3px solid var(--accent); padding: 8px 12px; margin-bottom: 12px; }
+.chat-pane { max-height: calc(100dvh - 150px); min-height: 480px; }
+.transcript { min-height: 160px; }
+@media (min-width: 1400px) { body.workspace-open #tab-sessions { padding-right: 620px; } }
+@media (max-width: 800px) {
+  #tab-sessions.active { grid-template-columns: 1fr; }
+  .list-pane { padding: 10px; }
+  .assistant-identity { padding: 0 0 8px; }
+  .workspace-nav { display: flex; flex-wrap: wrap; margin: 0 0 8px; gap: 2px; }
+  .workspace-nav button { padding: 6px 10px; gap: 8px; }
+  .session-history { margin: 0; padding: 4px; }
+  #new-session { margin: 4px 0; }
+  .workspace-window { top: 76px; right: 12px; bottom: 12px; width: calc(100vw - 24px); }
+  .chat-pane { min-height: 480px; max-height: none; }
+  .workspace-header { padding: 12px; }
+  .workspace-content { padding: 8px 12px; }
+}

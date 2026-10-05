@@ -8,23 +8,31 @@ from typing import TYPE_CHECKING
 
 from xuanpu_server.errors import ConflictError, NotFoundError, PermissionDeniedError
 from xuanpu_server.reminders.models import DeliveryRecord, NotificationRecord, ReminderRecord
+from xuanpu_server.reminders.proposals import proposal_decision
 from xuanpu_server.reminders.schedule import latest_due, next_due, validate_due
+from xuanpu_server.workspace.rules import audit, remember, replay
 
 if TYPE_CHECKING:
     import builtins
     from collections.abc import Callable
 
     from xuanpu_server.controlplane.models import AuditRecord
+    from xuanpu_server.workspace.memory import InMemoryWorkspaceStore
 
 
 class InMemoryReminderStore:
     """同一控制面的内存提醒、通知和投递任务。"""
 
     def __init__(
-        self, tenant_active: Callable[[str], bool], *, audit: Callable[[AuditRecord], None]
+        self,
+        tenant_active: Callable[[str], bool],
+        *,
+        audit: Callable[[AuditRecord], None],
+        workspace: InMemoryWorkspaceStore,
     ) -> None:
         """身份在身份存储装配时绑定；没有身份一律拒绝。"""
         self._audit = audit
+        self._workspace = workspace
         self._tenant_active = tenant_active
         self._user_active: Callable[[str, str], bool] = lambda tenant, user: False
         self._reminders: dict[str, ReminderRecord] = {}
@@ -66,9 +74,24 @@ class InMemoryReminderStore:
                 )
 
     async def create(
-        self, record: ReminderRecord, now: float, *, actor: str | None = None
+        self,
+        record: ReminderRecord,
+        now: float,
+        *,
+        actor: str | None = None,
+        proposal_id: str | None = None,
     ) -> ReminderRecord:
-        """创建幂等优先，员工活动额度不可被并发穿透。"""
+        """普通创建无让出；建议确认与工作台决定共享员工事务。"""
+        if proposal_id is not None:
+            return await self._create_proposal(record, now, actor, proposal_id)
+        prepared = self._prepare_create(record, now)
+        if prepared.reminder_id not in self._reminders:
+            self._audit_event(prepared, "created", now, actor)
+            self._reminders[prepared.reminder_id] = prepared
+        return prepared
+
+    def _prepare_create(self, record: ReminderRecord, now: float) -> ReminderRecord:
+        """只做创建校验，任何失败都发生在审计与域写入前。"""
         self._require_active(record.tenant_id, record.user_id)
         owned = [
             r
@@ -83,9 +106,43 @@ class InMemoryReminderStore:
         validate_due(record.due_at, now)
         if sum(r.status == "active" for r in owned) >= 100:
             raise ConflictError("每名员工最多100条活动提醒")
-        self._audit_event(record, "created", now, actor)
-        self._reminders[record.reminder_id] = record
         return record
+
+    async def _create_proposal(
+        self, record: ReminderRecord, now: float, actor: str | None, proposal_id: str
+    ) -> ReminderRecord:
+        """决定、提醒审计及提醒创建同生共死，失败不冻结用户草稿。"""
+        key, payload = proposal_decision(record, proposal_id)
+
+        async def guard() -> None:
+            """检查身份不让出执行权，保持内存提交不可分割。"""
+            self._require_active(record.tenant_id, record.user_id)
+
+        async with self._workspace.transaction(
+            record.tenant_id, record.user_id, guard, key
+        ) as state:
+            prior = replay(state, key, payload)
+            prepared = self._prepare_create(record, now)
+            if prior is None:
+                audit(state, actor or "user:" + record.user_id, "proposal_reserved", now, {})
+            remember(
+                state,
+                key,
+                payload,
+                {"state": "confirmed", "result": {"reminder_id": prepared.reminder_id}},
+            )
+            if prepared.reminder_id not in self._reminders:
+                state.audits.append(
+                    {
+                        "actor": actor or "user:" + record.user_id,
+                        "kind": "reminder.created",
+                        "at": now,
+                        "data": {"reminder_id": prepared.reminder_id, "version": prepared.version},
+                    }
+                )
+        # 退出事务的身份检查和批量审计都没有让出点，紧接着提交提醒。
+        self._reminders[prepared.reminder_id] = prepared
+        return prepared
 
     async def get_request(
         self, tenant_id: str, user_id: str, request_id: str

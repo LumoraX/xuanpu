@@ -52,6 +52,7 @@ from xuanpu_server.tenancy import (
     verify_root_key,
     verify_secret,
 )
+from xuanpu_server.workspace.service import WorkspaceService
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -171,6 +172,10 @@ class Platform:
         self.reminders = ReminderService(
             store=store.reminder_store, control=store, identity=identity_store,
             audit=self.audit, sender=self.notification_sender, now=now,
+        )
+        self.workspace = WorkspaceService(
+            store=store.workspace_store, control=store, identity=identity_store,
+            objects=self.objects, now=now,
         )
         self.quota = QuotaGuard(store, now=now)
         self.packages = PackageRegistry(

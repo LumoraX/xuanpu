@@ -95,7 +95,7 @@ function sessionMemoryKey() {
 
 async function loadSessions() {
   const status = $("show-closed").checked ? "" : "&status=active";
-  const body = await api("GET", "/v1/sessions?limit=100" + status);
+  const body = await api("GET", "/v1/sessions?limit=100" + status + (conn.me?.user_id && !adminMode ? "&mine=true" : ""));
   const list = $("session-list");
   list.innerHTML = "";
   for (const session of body.sessions) {
@@ -119,6 +119,7 @@ function startConversation() {
   if (chat.streaming || chat.routing) { toast("请等当前请求完成，或先停止回复。", "info"); return; }
   if (!conn.me) return;
   dismissReminderContext();
+  if(typeof clearWorkspaceConversationContext === "function") clearWorkspaceConversationContext();
   chat.generation += 1;
   chat.sessionId = null;
   chat.status = null;
@@ -134,6 +135,7 @@ function startConversation() {
   $("send-btn").disabled = false;
   $("message").value = "";
   for (const item of $("session-list").children) item.classList.remove("active");
+  if (typeof loadMainConversation === "function") loadMainConversation().catch(fail);
 }
 $("new-session").addEventListener("submit", event => {
   event.preventDefault();
@@ -156,6 +158,7 @@ function append(kind, text) {
 async function openSession(session, {fromRoute = false} = {}) {
   if (chat.streaming || (chat.routing && !fromRoute)) { toast("请等当前请求完成，或先停止回复。", "info"); return; }
   dismissReminderContext();
+  if(typeof clearWorkspaceConversationContext === "function") clearWorkspaceConversationContext();
   if (!fromRoute) chat.routeContext = [];
   const generation = ++chat.generation;
   $("pending").innerHTML = "";
@@ -272,6 +275,7 @@ $("send").addEventListener("submit", async event => {
   if (!text || !conn.me || chat.streaming || chat.routing) return;
   const epoch = conn.epoch;
   let generation = chat.generation;
+  const extras = typeof workspaceRouteExtras === "function" ? workspaceRouteExtras(text) : {};
   chat.routing = true;
   $("send-btn").disabled = true;
   $("send-btn").textContent = "正在理解…";
@@ -280,12 +284,15 @@ $("send").addEventListener("submit", async event => {
   try {
     const route = await api("POST", "/v1/assistant/route", {json: {
       text, ...(chat.sessionId ? {session_id: chat.sessionId} : {}), context: chat.routeContext, timezone:browserTimezone(),
+      ...extras,
     }});
     if (epoch !== conn.epoch || generation !== chat.generation) return;
+    if (typeof handleWorkspaceRoute === "function" && await handleWorkspaceRoute(route,text)) return;
+    if (typeof workspaceRouteAccepted === "function") workspaceRouteAccepted();
     if (route.reminder_draft || route.open_reminders) {
-      $("welcome").classList.add("hidden"); append("user",text); append("assistant",route.message);
+      $("welcome").classList.add("hidden"); append("user",text); if(typeof appendSentFiles === "function")await appendSentFiles(extras.attachments); append("assistant",route.message);
       chat.routeContext=[]; $("message").value="";
-      if(route.reminder_draft) showReminderDraft(route.reminder_draft);
+      if(route.reminder_draft) showReminderDraft(route.reminder_draft,route.proposal_id);
       else await showReminderManager();
       return;
     }
@@ -293,6 +300,7 @@ $("send").addEventListener("submit", async event => {
     if (!route.session) {
       $("welcome").classList.add("hidden");
       append("user", text);
+      if(typeof appendSentFiles === "function")await appendSentFiles(extras.attachments);
       append("assistant", route.message || "请再说明一下你想办理的事情。");
       chat.routeContext.push({role:"user", text:text.slice(0, 2000)},
         {role:"assistant", text:(route.message || "").slice(0, 2000)});
@@ -310,7 +318,8 @@ $("send").addEventListener("submit", async event => {
     chat.routeContext = [];
     $("message").value = "";
     append("user", message);
-    await streamTurn(`/v1/sessions/${chat.sessionId}/messages`, {text: message});
+    if(typeof appendSentFiles === "function")await appendSentFiles(extras.attachments);
+    await streamTurn(`/v1/sessions/${chat.sessionId}/messages`, {text: message, ...(extras.attachments?.length ? {attachments:extras.attachments} : {})});
   } catch (error) {
     if (epoch === conn.epoch) fail(error); // 识别失败保留草稿，让用户直接重试。
   } finally {

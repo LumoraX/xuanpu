@@ -14,7 +14,12 @@ class ReminderStore(Protocol):
     """原子提醒、通知和投递存储，由控制面提供同后端实例。"""
 
     async def create(
-        self, record: ReminderRecord, now: float, *, actor: str | None = None
+        self,
+        record: ReminderRecord,
+        now: float,
+        *,
+        actor: str | None = None,
+        proposal_id: str | None = None,
     ) -> ReminderRecord:
         """幂等优先，在员工锁内校验身份、时间和限额。"""
         ...

@@ -51,7 +51,7 @@ async def test_version_four_upgrades_without_rewriting_or_losing_refs(
 ) -> None:
     """0004 已有配置原样保留；仅新迁移 0005 放开可空事件列，重复升级无操作。"""
     migrations = load_migrations()
-    assert migrations[-1].version == 6
+    assert migrations[-1].version == 7
     old = [migration for migration in migrations if migration.version <= 4]
     pool = await asyncpg.create_pool(postgres_dsn, min_size=1, max_size=2)
     namespace = SqlNamespace(schema="t_" + secrets.token_hex(6), prefix="xp_")
@@ -66,8 +66,8 @@ async def test_version_four_upgrades_without_rewriting_or_losing_refs(
         await store.put_identity_config(original)
         await store.bind_tenant_key("acme", "feishu", "enterprise")
         executed = await apply_migrations(pool, namespace)
-        assert [migration.version for migration in executed] == [5, 6]
-        assert await current_version(pool, namespace) == 6
+        assert [migration.version for migration in executed] == [5, 6, 7]
+        assert await current_version(pool, namespace) == 7
         assert await apply_migrations(pool, namespace) == []
         assert await store.get_identity_config("acme", "feishu") == replace(original, feishu_tenant_key="enterprise")
         await store.put_identity_config(replace(original, encrypt_key_ref=None, verification_token_ref=None))

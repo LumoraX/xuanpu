@@ -160,7 +160,7 @@ async function refreshNotifications() {
   }
   if (!body.items.length) list.appendChild(reminderNode("li", "暂无通知。离线期间的提醒会保存在这里。", "meta"));
 }
-function showReminderDraft(draft) {
+function showReminderDraft(draft,proposalId=null) {
   mountReminderWorkspace("conversation");
   $("reminders-panel").classList.add("hidden");
   const editor=++reminderState.editor;
@@ -183,7 +183,8 @@ function showReminderDraft(draft) {
       if (!current.submitted) current.submitted = {title:current.title,due_at:current.due_at,timezone:current.timezone,repeat:current.repeat,
         channels:extra.checked ? ["inbox","feishu"] : ["inbox"],request_id:current.request_id};
       extra.disabled=true;
-      await api("POST", "/v1/reminders", {json:current.submitted});
+      if(proposalId) {const {request_id,...data}=current.submitted;await api("POST", `/v1/assistant/proposals/${encodeURIComponent(proposalId)}/confirm`, {json:{data}});}
+      else await api("POST", "/v1/reminders", {json:current.submitted});
       if (generation !== reminderState.generation || context !== reminderState.context) return;
       if(editor===reminderState.editor) {reminderState.draft=null; box.innerHTML=""; box.classList.add("hidden");}
       append("assistant", `提醒已创建：${current.title}，${reminderTime(current)}（${current.timezone}）。`);
@@ -191,7 +192,7 @@ function showReminderDraft(draft) {
     } catch(error) {if (generation === reminderState.generation && context === reminderState.context) {confirm.disabled=false; fail(error);}}
   }); box.appendChild(confirm);
   const discard = reminderNode("button", "暂不创建", "ghost"); discard.type="button";
-  discard.addEventListener("click", () => {if(confirm.disabled) return; reminderState.draft=null;box.innerHTML="";box.classList.add("hidden");});
+  discard.addEventListener("click", async () => {if(confirm.disabled) return; try {if(proposalId)await api("POST", `/v1/assistant/proposals/${encodeURIComponent(proposalId)}/cancel`);reminderState.draft=null;box.innerHTML="";box.classList.add("hidden");}catch(error){fail(error);}});
   box.appendChild(discard);
 }
 function editReminder(item = null) {

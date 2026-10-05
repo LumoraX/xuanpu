@@ -395,6 +395,8 @@ class RuntimeAssembler:
                     budget.max_iterations or defaults.max_iterations, defaults.max_iterations
                 ),
                 enable_request_capture=defaults.capture_requests,
+                image_input_policy=taifeng.ImageInputPolicy(enabled=True, max_images=8, max_item_bytes=20*1024*1024, max_total_bytes=20*1024*1024),
+                file_input_policy=taifeng.FileInputPolicy(enabled=True, max_files=8, max_item_bytes=20*1024*1024, max_total_bytes=20*1024*1024),
                 **options,
             )
         except BaseException:

@@ -34,6 +34,9 @@ def assistant_router(platform: Platform) -> APIRouter:
                 "message": result.message,
                 "reminder_draft": result.reminder_draft,
                 "open_reminders": result.open_reminders,
+                "workspace_draft": result.workspace_draft,
+                "open_workspace": result.open_workspace,
+                "proposal_id": result.proposal_id,
             }
         finally:
             # 普通HTTP请求的断连不会自动取消handler；显式取消采样并等待有界计量收尾。

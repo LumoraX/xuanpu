@@ -28,6 +28,8 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import functools
+import hashlib
+import json
 import logging
 import time
 from dataclasses import dataclass, field
@@ -37,6 +39,7 @@ import taifeng
 
 from xuanpu_server.controlplane.models import SessionRecord
 from xuanpu_server.errors import (
+    ConflictError,
     InvalidRequestError,
     LeaseInterruptedError,
     QuotaExceededError,
@@ -162,10 +165,32 @@ class SessionManager:
         version: str | None = None,
         entry: str | None = None,
         metadata: dict[str, str] | None = None,
+        request_id: str | None = None,
     ) -> SessionRecord:
         """新建会话。版本在此钉死：之后业务包切换生效版本不影响这个会话。"""
         tenant_id = principal.require_tenant()
         labels = validate_metadata(metadata)
+        stable_id = None
+        if request_id is not None:
+            if (
+                not request_id.strip()
+                or len(request_id) > 128
+                or not principal.user_id
+                or not version
+                or not entry
+            ):
+                raise InvalidRequestError("幂等会话需要员工、明确版本、入口和有效请求标识")
+            stable_id = (
+                "ses_"
+                + hashlib.sha256(
+                    json.dumps([tenant_id, principal.user_id, request_id]).encode()
+                ).hexdigest()[:32]
+            )
+            existing = await self._request_session(
+                principal, stable_id, package, version, entry, labels
+            )
+            if existing is not None:
+                return existing
         await self._quota.check_new_session(tenant_id)
         resolved = await self._packages.resolve(tenant_id, package, version)
         entries = resolved.manifest.spec.skills.entries
@@ -176,7 +201,7 @@ class SessionManager:
             )
         now = self._now()
         record = SessionRecord(
-            session_id=new_id("ses"),
+            session_id=stable_id or new_id("ses"),
             tenant_id=tenant_id,
             package=resolved.record.name,
             version=resolved.record.version,
@@ -187,7 +212,17 @@ class SessionManager:
             metadata=labels,
             user_id=principal.user_id,
         )
-        await self._store.create_session(record)
+        try:
+            await self._store.create_session(record)
+        except ConflictError:
+            if stable_id is None:
+                raise
+            existing = await self._request_session(
+                principal, stable_id, package, version, entry, labels
+            )
+            if existing is None:
+                raise
+            return existing
         await self._audit.control(
             principal,
             tenant_id,
@@ -201,6 +236,40 @@ class SessionManager:
             session=record,
         )
         return record
+
+    async def request_session(self, principal: Principal, request_id: str) -> SessionRecord | None:
+        """查询该员工请求已创建的会话，供崩溃恢复判断副作用。"""
+        if not principal.user_id or not request_id.strip() or len(request_id) > 128:
+            raise InvalidRequestError("幂等会话查询需要员工和有效请求标识")
+        tenant = principal.require_tenant()
+        digest = hashlib.sha256(
+            json.dumps([tenant, principal.user_id, request_id]).encode()
+        ).hexdigest()[:32]
+        record = await self._store.get_session(tenant, "ses_" + digest)
+        return await self.get(principal, record.session_id) if record is not None else None
+
+    async def _request_session(
+        self,
+        principal: Principal,
+        session_id: str,
+        package: str,
+        version: str | None,
+        entry: str | None,
+        metadata: dict[str, str],
+    ) -> SessionRecord | None:
+        """稳定会话标识仍核对本人及原版本入口，不能改请求重定向。"""
+        record = await self._store.get_session(principal.require_tenant(), session_id)
+        if record is None:
+            return None
+        if (record.user_id, record.package, record.version, record.entry, record.metadata) != (
+            principal.user_id,
+            package,
+            version,
+            entry,
+            metadata,
+        ):
+            raise ConflictError("请求标识已用于不同的业务会话")
+        return await self.get(principal, session_id)
 
     async def get(self, principal: Principal, session_id: str) -> SessionRecord:
         """取会话。别的租户的、调用者看不见的（见 ``ownership``），都按不存在处理。"""
@@ -399,7 +468,15 @@ class SessionManager:
         )
         return Turn(live.record.session_id, submission_id, stream)
 
-    async def send_message(self, principal: Principal, session_id: str, text: str) -> Turn:
+    async def send_message(
+        self,
+        principal: Principal,
+        session_id: str,
+        text: str,
+        *,
+        attachments: list[dict[str, Any]] | None = None,
+        audit_text: str | None = None,
+    ) -> Turn:
         """发一条用户消息，开始一轮对话。"""
         if not text.strip():
             raise InvalidRequestError("消息不能为空")
@@ -408,13 +485,18 @@ class SessionManager:
         await self._quota.check_new_turn(principal.require_tenant())
         await self._admit_turn(principal.require_tenant())
         live = await self._active(principal, session_id)
-        turn = await self._submit(live, taifeng.UserMessage(text=text))
+        turn = await self._submit(
+            live, taifeng.UserMessage(text=text, attachments=attachments or [])
+        )
         # 用户说了什么不在内核事件里，审计要有它才完整（超长部分会被截断）
         await self._audit.control(
             principal,
             live.record.tenant_id,
             "message_sent",
-            {"submission_id": turn.submission_id, "text": text},
+            {
+                "submission_id": turn.submission_id,
+                "text": text if audit_text is None else audit_text,
+            },
             session=live.record,
         )
         return turn

@@ -25,11 +25,17 @@ if TYPE_CHECKING:
     )
     from xuanpu_server.reminders.store import ReminderStore
     from xuanpu_server.tenancy import ApiKeyRecord, Tenant
+    from xuanpu_server.workspace.store import WorkspaceStore
 
 
 @runtime_checkable
 class ControlPlaneStore(Protocol):
     """控制面存储。"""
+
+    @property
+    def workspace_store(self) -> WorkspaceStore:
+        """与控制面共享事务域的个人工作台存储。"""
+        ...
 
     @property
     def reminder_store(self) -> ReminderStore:

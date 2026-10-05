@@ -16,6 +16,7 @@ from xuanpu_server.controlplane.models import (
 )
 from xuanpu_server.errors import ConflictError, NotFoundError, SessionBusyError
 from xuanpu_server.reminders.memory import InMemoryReminderStore
+from xuanpu_server.workspace.memory import InMemoryWorkspaceStore
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -32,11 +33,13 @@ class InMemoryControlPlane:
     def __init__(self) -> None:
         """从空状态开始。"""
         self._lock = asyncio.Lock()
+        self.workspace_store = InMemoryWorkspaceStore(self._append_workspace_audit)
         self.reminder_store = InMemoryReminderStore(
             lambda tenant_id: (
                 tenant_id in self._tenants and self._tenants[tenant_id].status == "active"
             ),
             audit=lambda record: self._append_reminder_audit(record),
+            workspace=self.workspace_store,
         )
         self._tenants: dict[str, Tenant] = {}
         self._keys: dict[str, ApiKeyRecord] = {}
@@ -294,6 +297,13 @@ class InMemoryControlPlane:
         return sorted(found, key=lambda record: record.day)
 
     # --- 审计 ---
+
+    def _append_workspace_audit(self, records: list[AuditRecord]) -> None:
+        """批量同步提交工作台审计，无让出点和部分追加。"""
+        added = [
+            replace(record, audit_id=len(self._audit) + i + 1) for i, record in enumerate(records)
+        ]
+        self._audit.extend(added)
 
     def _append_reminder_audit(self, record: AuditRecord) -> None:
         """提醒无让出事务同步追加审计，失败先于领域状态提交。"""

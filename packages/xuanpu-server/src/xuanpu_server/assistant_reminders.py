@@ -48,3 +48,6 @@ class RouteOutcome:
     message: str | None = None
     reminder_draft: dict[str, Any] | None = None
     open_reminders: bool = False
+    workspace_draft: dict[str, Any] | None = None
+    open_workspace: str | None = None
+    proposal_id: str | None = None

@@ -29,6 +29,7 @@ from xuanpu_server.errors import (
 )
 from xuanpu_server.reminders.postgres import PostgresReminderStore
 from xuanpu_server.tenancy import ApiKeyRecord, QuotaLimits, Tenant
+from xuanpu_server.workspace.postgres import PostgresWorkspaceStore
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -91,6 +92,7 @@ class PostgresControlPlane:
             namespace: 表所在的 schema 与表名前缀。
         """
         self.reminder_store = PostgresReminderStore(pool, namespace=namespace)
+        self.workspace_store = PostgresWorkspaceStore(pool, namespace=namespace)
         self._pool = pool
         self._namespace = namespace
         names = ("tenant", "api_key", "package_version", "package_active", "secret", "session")
