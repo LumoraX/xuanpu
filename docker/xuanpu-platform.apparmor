@@ -1,0 +1,6 @@
+# Ubuntu 24.04 允许玄圃容器创建非特权 user namespace；不改变全局 sysctl。
+abi <abi/4.0>,
+#include <tunables/global>
+profile xuanpu-platform flags=(unconfined) {
+  userns,
+}

@@ -1,0 +1,106 @@
+name: xuanpu
+
+x-platform: &platform
+  image: ${IMAGE:?需要 IMAGE}:${VERSION:?需要 VERSION}
+  user: "10001:10001"
+  init: true
+  read_only: true
+  mem_limit: 4g
+  cpus: 2.0
+  pids_limit: 512
+  volumes:
+    - ./config/config.json:/run/xuanpu/config.json:ro
+    - ./volumes/data:/var/lib/xuanpu
+  cap_drop: [ALL]
+  # bubblewrap 需要创建非特权 user/mount namespace；不授予 SYS_ADMIN、不挂载 Docker socket。
+  security_opt:
+    - no-new-privileges:true
+    - seccomp:unconfined
+    - apparmor:xuanpu-platform
+    - systempaths=unconfined
+  tmpfs:
+    - /tmp:size=128m,mode=1777
+  logging:
+    driver: json-file
+    options: {max-size: "10m", max-file: "3"}
+
+services:
+  postgres:
+    image: postgres:16-bookworm
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 256
+    restart: unless-stopped
+    networks:
+      default: {aliases: [xuanpu-database]}
+    environment:
+      POSTGRES_USER: xuanpu
+      POSTGRES_DB: xuanpu
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes:
+      - ./volumes/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U xuanpu -d xuanpu"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+  migrate:
+    <<: *platform
+    profiles: [operations]
+    command: [migrate, --config, /run/xuanpu/config.json]
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  platform:
+    <<: *platform
+    restart: unless-stopped
+    stop_grace_period: 90s
+    depends_on:
+      postgres: {condition: service_healthy}
+    ports: ["127.0.0.1:8420:8420"]
+    networks:
+      default: {}
+      proxy: {aliases: [xuanpu-platform]}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8420/healthz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 6
+
+  # 仅为已安装的 support-desk 示例包保留；正式业务应替换为企业工单系统。
+  trial-tickets:
+    image: ${IMAGE:?需要 IMAGE}:${VERSION:?需要 VERSION}
+    profiles: [trial]
+    user: "10001:10001"
+    init: true
+    entrypoint: [python, /opt/xuanpu/trial_tickets.py]
+    restart: unless-stopped
+    read_only: true
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 64
+    network_mode: service:platform
+    depends_on:
+      platform: {condition: service_healthy, restart: true}
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - ./secrets/tickets_token:/run/xuanpu/tickets_token:ro
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-proxy-network}

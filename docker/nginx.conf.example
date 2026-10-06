@@ -1,0 +1,35 @@
+# 复制至统一 Nginx 的 conf.d，替换域名与证书路径；验证成功后 reload。
+server {
+    listen 80;
+    server_name xuanpu.example.com;
+    location ^~ /.well-known/acme-challenge/ {
+        root /etc/letsencrypt/webroot;
+    }
+    location / { return 301 https://$host$request_uri; }
+}
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name xuanpu.example.com;
+    ssl_certificate /etc/letsencrypt/live/xuanpu.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/xuanpu.example.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    client_max_body_size 64m;
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set $xuanpu_upstream http://xuanpu-platform:8420;
+    location / {
+        proxy_pass $xuanpu_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Connection "";
+        # 对话与通知都使用 SSE：禁用缓存，每条事件即时到达浏览器。
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 360s;
+        proxy_send_timeout 360s;
+        # 写请求不能自动重放，以免重复执行业务。
+        proxy_next_upstream off;
+    }
+}
