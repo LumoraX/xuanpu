@@ -13,7 +13,7 @@
 - [x] `static/index.html`、`style.css`：入口移至用户区；通知中心增加非模态dialog语义与标题，固定浮层和内部滚动。
 - [x] `static/notification-center.js`：集中位置计算、开关、三入口、关闭和焦点逻辑；`reminders.js`与`notification-alerts.js`保留数据及实时提示，删除重复开关和主动页面滚动。
 - [x] 同步脚本加载与测试DOM替身；执行控制台测试、完整浏览器旅程，人工检查桌面/375px深色截图；独立设计与代码审查。
-- [ ] 更新架构、手册及控制台版本，运行全量pytest、Ruff、mypy，构建、提交并合入本地main；核对已运行服务静态资源并在真实登录页面验证。
+- [x] 更新架构、手册及控制台版本，运行全量pytest、Ruff、mypy，构建、提交并合入本地main；核对已运行服务静态资源并在真实登录页面验证。
 
 业务数据、标读接口、SSE和提示卡去重维持既有契约；关闭面板不等于标为已读。真实员工环境只查看/开关页面，业务变更测试在隔离服务中运行。
 
@@ -27,3 +27,4 @@
 - 独立设计与实现审查无阻塞问题；`uv run ruff check --select F,S108,I,TC packages scripts tests/e2e`：All checks passed；`uv run mypy packages/*/src`：Success: no issues found in 116 source files。
 - `uv build --package xuanpu-console --out-dir /tmp/xuanpu-notification-center-dist` 成功生成2026.10.6.1源码包和wheel，核对wheel包含新脚本且内容与源码一致。
 - `uv run pytest`：1395 passed, 1 skipped in 101.17s；所有源码门禁通过。
+- 已将实现 `afbd7e2` 合入本地main，控制台升级2026.10.6.1；运行中HTML/CSS及三个通知脚本与main字节一致。真实员工登录页刷新后验证右上浮层、再次点击收起及工作区不移动；截图 `/tmp/xuanpu-notification-center-local.jpg`。本轮没有重启服务、修改数据库或发送测试飞书消息，也未进行远端推送/云端发布。
