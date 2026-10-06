@@ -14,11 +14,13 @@ const storage = () => ({ getItem(key) { return key === 'xuanpu.baseUrl' ? 'https
 const context = vm.createContext({ console, URL, URLSearchParams, AbortController, DOMException,
   setTimeout, clearTimeout, localStorage: storage(), sessionStorage: storage(),
   location: { origin: 'http://localhost', pathname: '/console/', search: '', assign() {} },
-  document: { getElementById: element, querySelectorAll() { return []; }, createElement: element },
+  document: { getElementById: element, querySelectorAll() { return []; }, createElement: element, addEventListener() {} },
+  window: {addEventListener() {}},
   fetch: async () => ({ ok: false, status: 401, text: async () => '{"error":{"message":"未登录"}}' }),
 });
 vm.runInContext(fs.readFileSync(process.argv[2] + '/app.js', 'utf8'), context);
 vm.runInContext(fs.readFileSync(process.argv[2] + '/notification-alerts.js', 'utf8'), context);
+vm.runInContext(fs.readFileSync(process.argv[2] + '/notification-center.js', 'utf8'), context);
 vm.runInContext(fs.readFileSync(process.argv[2] + '/reminders.js', 'utf8'), context);
 vm.runInContext(fs.readFileSync(process.argv[2] + '/identity.js', 'utf8'), context);
 const run = code => vm.runInContext(code, context);

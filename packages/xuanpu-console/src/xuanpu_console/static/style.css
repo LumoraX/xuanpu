@@ -119,8 +119,17 @@ main { padding: 16px; }
 .entry-footer a { color: var(--muted); }
 
 /* 提醒属于个人工作，不要求选择业务或填写渠道密钥。 */
-.notification-panel { margin: 12px 20px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
-.notification-panel > .row, #reminders-panel > .row { justify-content: space-between; }
+.notification-panel { position: fixed; z-index: 1100; top: 72px; right: 16px; width: min(400px, calc(100vw - 24px)); max-height: min(560px, calc(100dvh - 96px)); margin: 0; padding: 16px; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); box-shadow: 0 12px 40px #0003; outline: none; }
+.notification-panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex: none; }
+.notification-panel-heading strong { font-size: 17px; }
+#close-notifications { border: 0; border-radius: 50%; width: 36px; height: 36px; padding: 0; color: var(--muted); font-size: 24px; }
+#close-notifications:hover { background: var(--assistant); }
+#notification-status { color: var(--muted); font-size: 12px; margin: 4px 0 8px; flex: none; }
+#notification-list { min-height: 0; max-height: none; margin: 0; overflow-y: auto; overscroll-behavior: contain; }
+#notification-list .reminder-item:last-child { border-bottom: 0; }
+#notification-list .meta { color: var(--muted); font-size: 12px; }
+.notification-panel button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#reminders-panel > .row { justify-content: space-between; }
 .reminder-items { list-style: none; padding: 0; max-height: 24rem; overflow: auto; }
 .reminder-item { padding: .7rem 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
 .reminder-item button { margin: .4rem .4rem 0 0; }

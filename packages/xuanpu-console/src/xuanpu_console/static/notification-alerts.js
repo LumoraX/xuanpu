@@ -21,14 +21,9 @@ function dismissNotificationAlert(key) {
     $("notification-alert-more").classList.add("hidden");
   }
 }
-async function openNotificationCenter() {
-  clearVisibleNotificationAlerts();
-  setNotificationsOpen(true);
-  $("notifications-panel").scrollIntoView({block:"start"});
-  $("notifications-panel").focus({preventScroll:true});
-  await refreshNotifications().catch(fail);
-}
 function addNotificationAlert(item, unreadCount = null) {
+  // 正在查看通知中心时仅更新列表与水位，不再叠加提示卡遮挡操作。
+  if(!$("notifications-panel").classList.contains("hidden")) return;
   // 汇总显示过即记住；关闭后，迟到的首次快照或历史SSE不能让它复活。
   if(!item && notificationAlerts.summaryShown) return;
   if(!item) notificationAlerts.summaryShown=true;

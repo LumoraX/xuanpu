@@ -48,11 +48,6 @@ async function showReminderManager(surface = "conversation") {
   $("reminders-panel").classList.remove("hidden");
   await refreshReminders();
 }
-function setNotificationsOpen(open) {
-  if (open) $("notifications-panel").classList.remove("hidden");
-  else $("notifications-panel").classList.add("hidden");
-  $("notification-toggle").setAttribute("aria-expanded", String(open));
-}
 function resetReminders() {
   reminderState.generation++; reminderState.editor++;
   reminderState.notificationRequest=0;reminderState.notificationApplied=0;
@@ -266,11 +261,4 @@ $("reminder-status").addEventListener("change",()=>refreshReminders().catch(fail
 $("new-reminder").addEventListener("click",()=>editReminder());
 $("refresh-reminders").addEventListener("click",()=>refreshReminders().catch(fail));
 $("open-reminder-module").addEventListener("click",()=>showReminderManager("module").catch(fail));
-$("open-notification-module").addEventListener("click",async()=>{setNotificationsOpen(true);await refreshNotifications().catch(fail);});
 $("close-reminders").addEventListener("click",dismissReminderContext);
-$("notification-toggle").addEventListener("click",async()=>{
-  const open=$("notifications-panel").classList.contains("hidden");
-  setNotificationsOpen(open);
-  if(open) await refreshNotifications().catch(fail);
-});
-$("close-notifications").addEventListener("click",()=>setNotificationsOpen(false));

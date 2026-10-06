@@ -85,6 +85,7 @@ async function main() {
     assert.equal(await bob.evaluate(() => window.pwned), undefined);
     assert((await bob.locator('#user-name').textContent()).includes('<img src=x'));
     await require('./composer.cjs').welcome(bob,out);
+    await require('./notification-center.cjs')(bob,out);
     const bobSession = await newSession(bob);
     assert.notEqual(aliceSession, bobSession);
     assert.equal(await bob.locator('#session-list li').count(), 1);

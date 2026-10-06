@@ -9,7 +9,7 @@ const vm = require("node:vm");
 function element(tag = "div") {
   const classes = new Set();
   return {
-    tag, children: [], listeners: {}, attributes: {}, dataset: {}, value: "",
+    tag, children: [], listeners: {}, attributes: {}, dataset: {}, style: {}, offsetWidth:400, value: "",
     textContent: "", disabled: false, checked: false,
     classList: {add: value => classes.add(value), remove: value => classes.delete(value),
       contains: value => classes.has(value), toggle: (value, yes) => yes ? classes.add(value) : classes.delete(value)},
@@ -21,6 +21,7 @@ function element(tag = "div") {
     prepend(child) {this.children.unshift(child);},
     remove() {if(this.parentNode) this.parentNode.children=this.parentNode.children.filter(node=>node!==this);},
     focus() {}, scrollIntoView() {},
+    getBoundingClientRect() {return {bottom:48,right:1000};},
     setAttribute(name, value) {this.attributes[name] = value;},
     addEventListener(name, callback) {this.listeners[name] = callback;},
   };
@@ -35,7 +36,8 @@ function harness() {
   };
   const context = vm.createContext({
     console, crypto, AbortController, DOMException,
-    document: {createElement: element}, $: node,
+    document: {createElement: element, addEventListener() {}}, $: node,
+    window: {innerWidth:1280,innerHeight:720,addEventListener() {}},
     conn: {me: {user_id: "employee"}},
     api: async () => ({items: []}),
     append: (role, text) => messages.push({role, text}),
@@ -52,7 +54,9 @@ function harness() {
       options.signal.addEventListener("abort", () => reject(new DOMException("退出", "AbortError")));
     }),
   });
+  node('notifications-panel').classList.add('hidden');
   vm.runInContext(fs.readFileSync(path.join(process.argv[2], "notification-alerts.js"), "utf8"), context);
+  vm.runInContext(fs.readFileSync(path.join(process.argv[2], "notification-center.js"), "utf8"), context);
   vm.runInContext(fs.readFileSync(path.join(process.argv[2], "reminders.js"), "utf8"), context);
   return {context, node, timers, streams, errors, messages,
     run: code => vm.runInContext(code, context)};
@@ -282,6 +286,11 @@ async function visibleNotificationsHaveSafeActions() {
   assert(findChild(rack,node=>node.textContent==='你有未读通知'));
   await findChild(rack,node=>node.textContent==='查看通知').listeners.click();
   assert.equal(h.node('notifications-panel').classList.contains('hidden'),false);
+  items.unshift({notification_id:8,title:'中心打开期间的新通知',due_at:2000000000,read_at:null});
+  await h.run('refreshNotifications()');assert.equal(rack.children.length,0,'中心打开期间不能叠加提示卡');
+  assert(findChild(h.node('notification-list'),node=>node.textContent==='中心打开期间的新通知'));
+  h.run('setNotificationsOpen(false)');await h.run('refreshNotifications()');
+  assert.equal(rack.children.length,0,'已在中心显示的新通知不能关闭后再次弹卡');
   h.run('resetReminders()');assert.equal(rack.children.length,0);
 }
 

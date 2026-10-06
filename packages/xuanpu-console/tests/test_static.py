@@ -17,7 +17,7 @@ def test_static_files_present() -> None:
     html = (directory / "index.html").read_text(encoding="utf-8")
     referenced = set(re.findall(r'(?:src|href)="([^"]+)"', html))
     assert referenced == {
-        "app.js", "identity.js", "reminders.js", "notification-alerts.js", "style.css",
+        "app.js", "identity.js", "reminders.js", "notification-alerts.js", "notification-center.js", "style.css",
         "?admin=1", "?", "workspace.css", "workspace.js", "workspace-forms.js",
         "workspace-files.js", "workspace-chat.js",
     }
