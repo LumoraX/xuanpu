@@ -1,0 +1,8 @@
+{
+  "name": "xuanpu-desktop",
+  "version": "2026.10.6",
+  "private": true,
+  "description": "玄圃桌面客户端",
+  "scripts": { "dev": "tauri dev", "build": "tauri build", "test": "cargo test --manifest-path src-tauri/Cargo.toml" },
+  "devDependencies": { "@tauri-apps/cli": "2.12.1" }
+}

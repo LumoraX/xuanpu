@@ -53,6 +53,7 @@ uv run xuanpu pack examples/support-desk -o support-desk.zip
 | 命令行 | `xuanpu-cli` | 可用 |
 | Python 客户端 | `xuanpu-sdk-py` | 可用 |
 | 控制台 | `xuanpu-console` | 可用（服务启动后访问 `/console/`） |
+| macOS 桌面客户端 | `xuanpu-desktop` | Apple Silicon 本机测试包；[安装与边界](docs/guides/desktop-client.md) |
 | MCP 网关 | — | 暂缓（ADR 0006）；部署在别处的 MCP server 经 `transport: remote` 直连（ADR 0013） |
 | JavaScript 客户端 | `xuanpu-sdk-js` | 未开始 |
 

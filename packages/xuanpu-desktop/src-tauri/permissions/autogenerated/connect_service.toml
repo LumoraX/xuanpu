@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-connect-service"
+description = "Enables the connect_service command without any pre-configured scope."
+commands.allow = ["connect_service"]
+
+[[permission]]
+identifier = "deny-connect-service"
+description = "Denies the connect_service command without any pre-configured scope."
+commands.deny = ["connect_service"]

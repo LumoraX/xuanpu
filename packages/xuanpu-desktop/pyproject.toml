@@ -1,0 +1,9 @@
+# 桌面客户端使用 Rust/Tauri 构建，不发布 Python 包。
+[project]
+name = "xuanpu-desktop"
+version = "2026.10.6"
+description = "玄圃桌面客户端"
+requires-python = ">=3.12"
+
+[tool.uv]
+package = false

@@ -1,0 +1,7 @@
+{
+  "identifier": "bootstrap",
+  "description": "仅本地启动页允许连接管理员预置服务；远程业务页面没有原生 API 权限。",
+  "local": true,
+  "windows": ["main"],
+  "permissions": ["allow-connect-service"]
+}

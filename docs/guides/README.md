@@ -25,4 +25,5 @@
 | [控制台](../../packages/xuanpu-console/README.md) | 网页界面能做什么 |
 | [examples/](../../examples/) | 样例业务包 `support-desk`、样例工单接口、两份配置 |
 
+- [桌面客户端安装与构建](desktop-client.md)
 - [本地部署与真实业务体验](local-trial.md)

@@ -1,0 +1,19 @@
+[package]
+name = "xuanpu-desktop"
+version = "2026.10.6"
+edition = "2021"
+description = "玄圃桌面客户端"
+authors = ["LumoraX"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+url = { version = "2", features = ["serde"] }
+uuid = { version = "1", features = ["v4"] }
+tauri = { version = "2.12.1", features = [] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+open = "5"
+tokio = { version = "1", features = ["time"] }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }

@@ -1,0 +1,4 @@
+{
+  "service_url": "http://127.0.0.1:8420/console/",
+  "auth_origins": ["https://accounts.feishu.cn/", "https://open.feishu.cn/", "https://passport.feishu.cn/"]
+}
