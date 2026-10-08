@@ -27,5 +27,5 @@
 - 项目门禁实际执行：`uv run pytest` → `1394 passed, 1 skipped in 98.66s`；`uv run ruff check --select F,S108,I,TC packages scripts tests/e2e` → `All checks passed!`；`uv run mypy packages/*/src` → `Success: no issues found in 116 source files`。
 - 真实本地欢迎页另发现 1280×720 下旧对话区最小高度会把输入框挤出面板；增加首次登录的边界回归并确认修改前失败，再解除对话区固定最小高度，保持输入框高度。
 - 补充欢迎页修复后，完整浏览器旅程和三项项目门禁再次通过；两条弹性布局规则独立复审无阻塞问题。
-- 已合入本地 main（实现提交 `4e2e598`、`9265bbf`），安装控制台 `2026.10.5.11`；运行中的 `http://127.0.0.1:8420/console/` 的 HTML/CSS/JS 与 main 字节一致。真实员工登录页面已刷新并验证点击展开、再次点击收起，短视口下输入框完整位于面板内。
+- 已合入本地 main（实现提交 `eeae5d7`、`ed8fc4d`），安装控制台 `2026.10.5.11`；运行中的 `http://127.0.0.1:8420/console/` 的 HTML/CSS/JS 与 main 字节一致。真实员工登录页面已刷新并验证点击展开、再次点击收起，短视口下输入框完整位于面板内。
 - 本次仅更新控制台静态资源与安装元数据，没有重启平台、修改数据库、推送远端或发布云端。

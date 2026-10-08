@@ -28,7 +28,7 @@
 
 ## 本地部署
 
-- 实现提交`3dc8a65`已fast-forward合并本地主线；`uv sync --all-packages --all-extras`安装console 2026.10.5.8。
+- 实现提交`a975011`已fast-forward合并本地主线；`uv sync --all-packages --all-extras`安装console 2026.10.5.8。
 - 8420实际返回的六个静态资源（含新增notification-alerts.js）均与主线文件哈希一致；路径指向主线`xuanpu/packages/xuanpu-console/src/xuanpu_console/static`。
 - 主线控制台专项6 passed；platform和tickets均运行中；既有会话`ses_c004382ccd2a3c51ec2292eb`的14条历史保留。
 - 静态资源更新，无需重启后台；未修改用户私有JSON、未创建真实员工测试通知、未推送远端或发布云端。已打开网页刷新后生效。

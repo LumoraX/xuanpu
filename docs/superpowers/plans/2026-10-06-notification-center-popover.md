@@ -27,4 +27,4 @@
 - 独立设计与实现审查无阻塞问题；`uv run ruff check --select F,S108,I,TC packages scripts tests/e2e`：All checks passed；`uv run mypy packages/*/src`：Success: no issues found in 116 source files。
 - `uv build --package xuanpu-console --out-dir /tmp/xuanpu-notification-center-dist` 成功生成2026.10.6.1源码包和wheel，核对wheel包含新脚本且内容与源码一致。
 - `uv run pytest`：1395 passed, 1 skipped in 101.17s；所有源码门禁通过。
-- 已将实现 `afbd7e2` 合入本地main，控制台升级2026.10.6.1；运行中HTML/CSS及三个通知脚本与main字节一致。真实员工登录页刷新后验证右上浮层、再次点击收起及工作区不移动；截图 `/tmp/xuanpu-notification-center-local.jpg`。本轮没有重启服务、修改数据库或发送测试飞书消息，也未进行远端推送/云端发布。
+- 已将实现 `6618984` 合入本地main，控制台升级2026.10.6.1；运行中HTML/CSS及三个通知脚本与main字节一致。真实员工登录页刷新后验证右上浮层、再次点击收起及工作区不移动；截图 `/tmp/xuanpu-notification-center-local.jpg`。本轮没有重启服务、修改数据库或发送测试飞书消息，也未进行远端推送/云端发布。
