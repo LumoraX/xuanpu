@@ -103,4 +103,4 @@ secrets:
 networks:
   proxy:
     external: true
-    name: ${PROXY_NETWORK:-proxy-network}
+    name: ${PROXY_NETWORK:?需要 PROXY_NETWORK：反向代理所在的外部网络名，见 .env.example}

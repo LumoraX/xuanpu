@@ -4,9 +4,9 @@
 
 当前 `codex_responses` 模型协议使用本地会话状态，必须保持一个平台副本。将来扩容前需要完成该协议与 Postgres 状态面的适配、对象存储替换及完整迁移验证；不能直接复制平台容器。
 
-`docker/deploy.sh` 在本机构建 linux/amd64 镜像并发布阿里云仓库，只有推送成功才更新 `docker/.env` 的 IMAGE 与 VERSION。临时构建上下文只包含七个运行 wheel、锁定的公开依赖、Dockerfile 和试用工单入口；真实 JSON、凭据和业务文件均不发送到构建器。安装包保留各自版本，部署记录额外保留不可变镜像 digest。
+`docker/deploy.sh` 在本机构建 linux/amd64 镜像并推送到 `docker/.env`（或环境变量）指定的镜像仓库，只有推送成功才更新 `docker/.env` 的 IMAGE 与 VERSION。镜像仓库、代理网络名、服务器地址等部署环境信息只放在不进仓库的 `docker/.env` 与部署者本机配置里，仓库只带 `docker/.env.example` 模板。临时构建上下文只包含七个运行 wheel、锁定的公开依赖、Dockerfile 和试用工单入口；真实 JSON、凭据和业务文件均不发送到构建器。安装包保留各自版本，部署记录额外保留不可变镜像 digest。
 
-服务器 `<部署目录>` 使用独立 Compose 项目和 Postgres。数据库不暴露宿主端口，平台仅绑定服务器回环 8420，并通过已有代理网络提供 HTTPS。Nginx 禁止响应缓冲和写请求重试，以支持 SSE 和避免重复业务。
+服务器 `<部署目录>` 使用独立 Compose 项目和 Postgres。数据库不暴露宿主端口，平台仅绑定服务器回环 8420，并通过 `.env` 中 `PROXY_NETWORK` 指定的已有代理网络提供 HTTPS。Nginx 禁止响应缓冲和写请求重试，以支持 SSE 和避免重复业务。
 
 平台以 UID/GID 10001 运行，根文件系统只读、能力全部移除；JSON 配置只读挂载在 `/run/xuanpu/config.json`，不放在业务沙盒默认可读的 `/etc` 或 `/opt`。Docker socket 不挂载。业务脚本仍由 bubblewrap 创建独立 user/pid/ipc namespace，并限制可读业务包与可写工作区。为允许非特权 namespace，平台使用 seccomp unconfined、专属 AppArmor userns 许可 profile 及 systempaths unconfined；这放开容器默认系统调用过滤及 /proc 掩蔽，必须结合非 root、无能力、bubblewrap 和容器资源上限使用，不应将其误解为独立虚拟机。平台总内存 4 GiB、CPU 2、进程 512；PG 1 GiB、CPU 1。每个业务运行时暂不单独划分 cgroup。
 

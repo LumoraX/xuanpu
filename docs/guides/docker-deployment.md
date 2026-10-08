@@ -1,19 +1,20 @@
 # Docker 镜像发布与服务器部署
 
-适用：一台 Linux 服务器（下文用 SSH 主机别名 `<服务器>` 指代，地址与登录方式写在部署者本机的 `~/.ssh/config`，不进仓库）、服务器目录 `<部署目录>`，平台单实例。正式公网地址需要企业域名、DNS 指向服务器、HTTPS 证书以及飞书后台登记相同回调；平台与数据库可先在服务器内部部署验证。
+适用：一台 Linux 服务器上的单实例部署。下文的 `<服务器>` 是部署者本机 `~/.ssh/config` 里的主机别名，`<部署目录>` 是服务器上放 Compose 项目的目录。服务器地址、域名、镜像仓库、代理网络名都是部署环境信息，只写在本机配置与 `docker/.env` 里，不写进仓库。正式公网地址需要企业域名、DNS 指向服务器、HTTPS 证书以及飞书后台登记相同回调；平台与数据库可先在服务器内部部署验证。
 
 ## 本机构建
 
 ```bash
 cd docker   # 在 xuanpu 仓库根目录下
+cp .env.example .env   # 首次：填 IMAGE（镜像仓库，不含 tag）与 PROXY_NETWORK（反向代理所在的外部网络）
 ./deploy.sh
 ```
 
-构建依赖 uv、Docker Buildx，以及相邻的 taifeng-sandbox/taifeng-stores 源码。默认目标 linux/amd64，仓库 registry.example.com/your-namespace/xuanpu；使用 Docker 已登录的仓库身份。`OUTPUT_MODE=load ./deploy.sh` 仅构建到本机，不更新发布版本。镜像中包含控制台，服务器不需要另启前端服务。
+构建依赖 uv、Docker Buildx，以及相邻的 taifeng-sandbox/taifeng-stores 源码。默认目标 linux/amd64。镜像仓库取环境变量 `IMAGE`，没有则取 `docker/.env` 里的 `IMAGE`；两处都没有时脚本报「需要 IMAGE」并退出，不会推到任何默认仓库。使用 Docker 已登录的仓库身份。推送成功后只改写 `.env` 的 IMAGE 与 VERSION，`PROXY_NETWORK` 等其他项原样保留。`OUTPUT_MODE=load ./deploy.sh` 仅构建到本机，不更新发布版本。镜像中包含控制台，服务器不需要另启前端服务。
 
 ## 服务器布局
 
-- `compose.yml`、`.env`：部署描述与镜像版本，.env 不存业务秘密。
+- `compose.yml`、`.env`：部署描述，以及镜像仓库、镜像版本与代理网络名（模板见 `docker/.env.example`）。Compose 缺 `PROXY_NETWORK` 时拒绝启动。.env 不存业务秘密。
 - `config/config.json`：平台 JSON（600、UID 10001），保留企业配置、加密主密钥和模型配置；容器中路径 /run/xuanpu/config.json。
 - `secrets/postgres_password`：独立 Postgres 的初始化密码（600）。该值同时写进 JSON 的 PG DSN（主机名必须使用专属别名 xuanpu-database，不能使用共享代理网络中可能冲突的 postgres），初始化后不能只改密码文件。
 - `secrets/tickets_token`：试用工单令牌（600、UID 10001），仅 trial profile 使用。

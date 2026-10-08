@@ -3,7 +3,13 @@
 set -euo pipefail
 DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$DEPLOY_DIR/.." && pwd)"
-IMAGE="${IMAGE:-registry.example.com/your-namespace/xuanpu}"
+ENV_FILE="$DEPLOY_DIR/.env"
+# 镜像仓库等部署环境信息只来自环境变量或 docker/.env（不进仓库，模板见 .env.example）。
+env_value() {
+    if [[ -f "$ENV_FILE" ]]; then sed -n "s/^$1=//p" "$ENV_FILE" | tail -n 1; fi
+}
+IMAGE="${IMAGE:-$(env_value IMAGE)}"
+[[ -n "$IMAGE" ]] || { echo '需要 IMAGE：在环境变量或 docker/.env 中设置镜像仓库，见 docker/.env.example' >&2; exit 2; }
 VERSION="${VERSION:-$(TZ=Asia/Shanghai date '+%Y.%m.%d.%H%M%S').$(git -C "$REPO_DIR" rev-parse --short HEAD).${RANDOM}}"
 PLATFORM="${PLATFORM:-linux/amd64}"
 OUTPUT_MODE="${OUTPUT_MODE:-push}"
@@ -29,9 +35,12 @@ docker buildx build --platform "$PLATFORM" --file "$BUILD_CONTEXT/Dockerfile" \
     --tag "$IMAGE:$VERSION" --output type=docker "$BUILD_CONTEXT"
 if [[ "$OUTPUT_MODE" == push ]]; then
     docker push "$IMAGE:$VERSION"
-    # 不携带任何数据库凭据；.env 只负责镜像定位。
-    printf 'IMAGE=%s\nVERSION=%s\n' "$IMAGE" "$VERSION" > "$DEPLOY_DIR/.env.next"
-    mv "$DEPLOY_DIR/.env.next" "$DEPLOY_DIR/.env"
+    # .env 只放镜像定位与部署环境名称，不放凭据；只替换 IMAGE、VERSION，其余项原样保留。
+    {
+        if [[ -f "$ENV_FILE" ]]; then grep -vE '^(IMAGE|VERSION)=' "$ENV_FILE" || true; fi
+        printf 'IMAGE=%s\nVERSION=%s\n' "$IMAGE" "$VERSION"
+    } > "$ENV_FILE.next"
+    mv "$ENV_FILE.next" "$ENV_FILE"
     echo "镜像已发布：$IMAGE:$VERSION"
 else
     echo "镜像已载入本地：$IMAGE:$VERSION；未更新服务器发布版本"
