@@ -4,7 +4,7 @@
 
 > 玄圃：昆仑山上众神居住的园子。泰逢是山海经里的神，玄圃是承载它们的地方。
 
-> **状态**：第一版 + P0 底座升级 + P1 用户身份（依赖 taifeng 2026.10.1.10）。业务包规范、平台服务、命令行、Python 客户端、控制台可用。P0 支持 Postgres 会话主存、对象存储归档、停止生成、连接器沙盒与远端 MCP、指标与配额修改；P1 增加飞书登录、用户管理、会话归属与隔离、代员工调用、按员工审计用量、离职事件与每日对账。现支持 Responses 模型、本地持久化启动、普通员工自然语言入口与本人会话历史。个人工作站提供真实持久的文件夹/文件版本、事项、待办、日程、个人能力与助手设置；对话附件与模块共用个人空间，写入建议须本人确认。已增加玄圃原生提醒与通知中心，支持一次/每日/每周、后台持久调度、站内通知及可选飞书出口。真实模型的样例工单查询、脚本和审批写入已验证；飞书提醒消息尚未向真实员工发送验收，未发布云端。见[本地试用](docs/guides/local-trial.md)。MCP 网关暂缓（ADR 0006）。已知限制见[架构总览](docs/architecture/README.md#已知限制)。
+> **状态**：第一版 + P0 底座升级 + P1 用户身份（依赖 taifeng 2026.10.1.10）。业务包规范、平台服务、命令行、Python 客户端、控制台可用。P0 支持 Postgres 会话主存、对象存储归档、停止生成、连接器沙盒与远端 MCP、指标与配额修改；P1 增加飞书登录、用户管理、会话归属与隔离、代员工调用、按员工审计用量、离职事件与每日对账。现支持 Responses 模型、本地持久化启动、普通员工自然语言入口与本人会话历史。个人工作站提供真实持久的文件夹/文件版本、事项、待办、日程、个人能力与助手设置；对话附件与模块共用个人空间，写入建议须本人确认。已增加玄圃原生提醒与通知中心，支持一次/每日/每周、后台持久调度、站内通知及可选飞书出口。真实模型的样例工单查询、脚本和审批写入已验证；飞书提醒消息尚未向真实员工发送验收。已用 Docker 部署到一台内部服务器并验收（单实例，尚无公网域名），见[本地试用](docs/guides/local-trial.md)与 [Docker 部署](docs/guides/docker-deployment.md)。MCP 网关暂缓（ADR 0006）。已知限制见[架构总览](docs/architecture/README.md#已知限制)。
 
 ## 定位：像用数据库一样用 agent
 
@@ -66,6 +66,7 @@ uv run xuanpu pack examples/support-desk -o support-desk.zip
 | 在自己的系统里调用平台 | [应用接入](docs/guides/integrating.md) |
 | 配置员工登录、离职事件与首位管理员 | [接入飞书登录](docs/guides/feishu-login.md) |
 | 部署、配置、多实例、密钥轮换、备份、安全须知 | [部署与运维](docs/guides/operations.md) |
+| 在本机持续试用，或用 Docker 部署到服务器 | [本机开箱](docs/guides/local-trial.md) · [Docker 部署](docs/guides/docker-deployment.md) · [桌面客户端](docs/guides/desktop-client.md) |
 | 了解审计里有什么、怎么查、用量怎么算 | [审计与用量](docs/guides/audit-and-usage.md) |
 | 查字段与接口 | [业务包规范](docs/architecture/package-spec.md) · [HTTP 接口](docs/architecture/http-api.md) · [命令行](packages/xuanpu-cli/README.md) · [Python 客户端](packages/xuanpu-sdk-py/README.md) |
 | 了解设计 | [架构总览](docs/architecture/README.md)：四个平面、一轮对话的路径、租户隔离、已知限制 |
