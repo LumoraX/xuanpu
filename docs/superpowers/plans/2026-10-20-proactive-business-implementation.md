@@ -36,5 +36,5 @@
 - [x] 执行 `uv run pytest`、`uv run ruff check --select F,S108,I,TC packages`、`uv run mypy packages/*/src`；新增前端交互脚本检查真实按钮与刷新恢复。
 - [x] 用真实 gpt-5.6-luna 完成“只在对话表达承诺 → 主动核实 → 设置短期安排 → 到期再跟进 → 标记完成 → 不再通知”，保留不含凭据的回执。
 - [x] 同步架构与使用说明，审查规格覆盖与代码质量后合入 main。
-- [ ] 按 `docker/deploy.sh` 本机构建并发布 image；备份服务器 PostgreSQL/配置、迁移、更新 Compose 版本，等待健康后验证公开接口与数据持久。
-- [ ] 通过当前正式域名验证通知、跟进动作和刷新；发布回执记录镜像、摘要、迁移版本与实测边界。
+- [x] 按 `docker/deploy.sh` 本机构建并发布 image；备份服务器 PostgreSQL/配置、迁移、更新 Compose 版本，等待健康后验证公开接口与数据持久。
+- [x] 通过当前正式域名验证通知、跟进动作和刷新；发布回执记录镜像、摘要、迁移版本与实测边界。
