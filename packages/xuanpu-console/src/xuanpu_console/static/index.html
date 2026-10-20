@@ -96,6 +96,7 @@
           <section id="reminder-preview" class="reminder-preview hidden" aria-live="polite"></section>
         </div>
       </div>
+      <div id="proactive-draft" class="reminder-preview hidden" aria-live="polite"></div>
       <div id="workspace-draft" class="reminder-preview hidden" aria-live="polite"></div>
       <form id="send" class="send">
         <div id="attachment-chips" class="attachment-chips" aria-label="待发送附件"></div>
@@ -140,6 +141,7 @@
       <article class="function-card"><h2>日程</h2><p>安排自己的时间，查看日程和到期提醒。</p><button data-workspace="event" type="button">打开日程</button></article>
       <article class="function-card"><h2>个人能力与设置</h2><p>沉淀工作方法，设置助手的称呼、风格和时区。</p><button data-workspace="skill" type="button">个人能力</button> <button data-workspace="settings" type="button" class="ghost">助手设置</button></article>
       <article class="function-card"><h2>提醒</h2><p>新建提醒、调整时间，查看已提醒或已取消的记录。</p><button id="open-reminder-module" type="button">管理提醒</button></article>
+      <article class="function-card"><h2>业务跟进</h2><p>查看需要核实、安排或继续处理的工作，在对话中确认决定。</p><button id="open-proactive-module" type="button">查看业务跟进</button></article>
       <article class="function-card"><h2>通知</h2><p>查看到期提醒和送达情况，离线期间的通知也会保留。</p><button id="open-notification-module" type="button" class="ghost">查看通知</button></article>
     </div>
     <div id="reminder-module-host"></div>
@@ -221,6 +223,7 @@
 <script src="workspace-forms.js"></script>
 <script src="workspace-files.js"></script>
 <script src="workspace-chat.js"></script>
+<script src="proactive.js"></script>
 <script src="identity.js"></script>
 </body>
 </html>

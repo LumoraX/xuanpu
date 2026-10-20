@@ -1,0 +1,55 @@
+// 真实浏览器与真实HTTP/调度；身份源和模型脚本仅替代外部供应商边界。
+const fs=require('node:fs');
+const path=require('node:path');
+const assert=require('node:assert/strict');
+const {chromium}=require(process.argv[3]);
+const state=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+const out=path.dirname(process.argv[2]);
+(async()=>{
+  const browser=await chromium.launch({headless:true,...(process.argv[4]?{executablePath:process.argv[4]}:{})});
+  const context=await browser.newContext();
+  const page=await context.newPage();
+  const failures=[];page.on('pageerror',e=>failures.push(e.message));
+  try {
+    await page.goto(state.base+'/console/');
+    await page.locator('#feishu-login').click();
+    await page.waitForURL(state.mock+'/open-apis/authen/v1/authorize?**');
+    await page.locator('#alice').click();
+    await page.waitForURL(state.base+'/console/**');
+    await page.waitForFunction(()=>document.getElementById('conn-status').textContent.startsWith('已登录'));
+    await page.locator('#message').fill('下午把 A-107 项目的报价发给客户，我还没有创建待办或提醒。');
+    await page.locator('#send-btn').click();
+    await page.getByText('已了解这项报价安排。',{exact:true}).waitFor();
+    const first=page.locator('.notification-alert').filter({hasText:'A-107'});
+    await first.waitFor({timeout:15000});
+    await page.screenshot({path:path.join(out,'proactive-initial.png'),fullPage:true});
+    await first.getByRole('button',{name:'处理',exact:true}).click();
+    await page.locator('#proactive-draft').getByText('发送 A-107 项目报价',{exact:true}).waitFor();
+    await page.locator('#proactive-draft').getByRole('button',{name:'设置提醒',exact:true}).click();
+    const due=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(new Date(Date.now()+65000)).replace(' ','T');
+    await page.getByLabel('提醒时间',{exact:true}).fill(due);
+    const saved=page.waitForResponse(r=>r.url().includes('/v1/proactive/')&&r.url().endsWith('/actions')&&r.request().method()==='POST');
+    await page.locator('#proactive-draft').getByRole('button',{name:'确认设置提醒',exact:true}).click();
+    const response=await saved;assert.equal(response.status(),200,await response.text());
+    const waiting=await response.json();assert.equal(waiting.status,'waiting');assert(waiting.reminder_id);
+    await page.reload();
+    await page.waitForFunction(()=>document.getElementById('conn-status').textContent.startsWith('已登录'));
+    const second=page.locator('.notification-alert').filter({hasText:'跟进：发送 A-107'});
+    await second.waitFor({timeout:75000});
+    await page.screenshot({path:path.join(out,'proactive-due.png'),fullPage:true});
+    await second.getByRole('button',{name:'处理',exact:true}).click();
+    await page.locator('#proactive-draft').getByRole('button',{name:'完成了',exact:true}).click();
+    await page.getByText('已确认完成：发送 A-107 项目报价。',{exact:true}).waitFor();
+    await page.reload();
+    await page.waitForFunction(()=>document.getElementById('conn-status').textContent.startsWith('已登录'));
+    const data=await page.evaluate(async()=>({followups:await(await fetch('/v1/proactive')).json(),notes:await(await fetch('/v1/notifications')).json()}));
+    assert.equal(data.followups.items.find(item=>item.id===waiting.id).status,'resolved');
+    const count=data.notes.items.length;
+    await page.waitForTimeout(2500);
+    assert.equal(await page.evaluate(async()=>(await(await fetch('/v1/notifications')).json()).items.length),count);
+    assert.deepEqual(failures,[]);
+    const receipt={passed:true,model:'scripted external boundary',identity:'mock Feishu PKCE redirect',checks:['未建待办的对话承诺','后台自动生成通知','浮层处理入口','用户确认具体提醒时间','刷新恢复等待','到点只通知一次','原生提醒关联业务处理','完成并刷新后停止'],notification_count:count};
+    fs.writeFileSync(path.join(out,'proactive-browser.json'),JSON.stringify(receipt,null,2));
+    console.log(JSON.stringify(receipt));
+  } finally {await browser.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

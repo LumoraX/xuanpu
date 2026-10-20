@@ -21,6 +21,7 @@ from pydantic import (
 )
 
 from xuanpu_server.errors import InvalidRequestError
+from xuanpu_server.reminders.models import default_channels
 
 Name = Annotated[str, Field(min_length=1, max_length=255, pattern=r"\S")]
 Title = Annotated[str, Field(min_length=1, max_length=500, pattern=r"\S")]
@@ -140,6 +141,29 @@ class SkillData(StrictModel):
     enabled: bool = True
 
 
+class QuietHours(StrictModel):
+    """按本人时区解释的免打扰窗口，允许跨午夜。"""
+
+    enabled: bool = False
+    start: str = Field(default="22:00", pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    end: str = Field(default="08:00", pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+
+
+class IgnoredCheckType(StrictModel):
+    """本人忽略的检查类型及可空的 UTC 恢复时间。"""
+
+    type: str = Field(min_length=1, max_length=128, pattern=r"\S")
+    until: Timestamp | None = None
+
+
+class ProactiveChecksSettings(StrictModel):
+    """主动检查开关、免打扰与个人忽略规则。"""
+
+    enabled: bool = True
+    quiet_hours: QuietHours = Field(default_factory=QuietHours)
+    ignored_types: list[IgnoredCheckType] = Field(default_factory=list, max_length=100)
+
+
 class SettingsData(StrictModel):
     """个人助手偏好，不覆盖平台授权规则。"""
 
@@ -147,6 +171,18 @@ class SettingsData(StrictModel):
     user_title: str = Field(default="", max_length=80)
     style: str = Field(default="简洁、清晰", min_length=1, max_length=1000, pattern=r"\S")
     timezone: str = "Asia/Shanghai"
+    proactive_checks: ProactiveChecksSettings = Field(default_factory=ProactiveChecksSettings)
+    proactive_channels: list[Literal["inbox", "feishu"]] = Field(default_factory=default_channels)
+
+    @field_validator("proactive_channels")
+    @classmethod
+    def valid_proactive_channels(
+        cls, value: list[Literal["inbox", "feishu"]]
+    ) -> list[Literal["inbox", "feishu"]]:
+        """核心通知必选，外部出口只能由本人明确开启。"""
+        if "inbox" not in value or len(value) != len(set(value)):
+            raise ValueError("必须包含站内信且渠道不能重复")
+        return value
 
     @field_validator("timezone")
     @classmethod
@@ -215,3 +251,9 @@ class WorkspaceState:
     next_message_id: int = 1
     messages: list[dict[str, Any]] = field(default_factory=list)
     audits: list[dict[str, Any]] = field(default_factory=list)
+    checks: dict[str, dict[str, Any]] = field(default_factory=dict)
+    followups: dict[str, dict[str, Any]] = field(default_factory=dict)
+    scan_state: dict[str, Any] = field(default_factory=dict)
+    pending_notifications: list[dict[str, Any]] = field(default_factory=list)
+    pending_reminders: list[dict[str, Any]] = field(default_factory=list)
+    pending_reminder_cancellations: list[str] = field(default_factory=list)

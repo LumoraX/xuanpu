@@ -101,11 +101,16 @@ def main() -> None:
     parser.add_argument("--playwright-module", default="playwright")
     parser.add_argument("--browser")
     parser.add_argument("--serve-only", action="store_true")
+    parser.add_argument("--scenario", choices=("console", "proactive"), default="console")
     args = parser.parse_args()
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     platform_port, mock_port = free_port(), free_port()
     config, root = setup_config(output, platform_port, mock_port)
+    if args.scenario == "proactive":
+        data = json.loads(config.read_text())
+        data.update(proactive_scan_seconds=1, proactive_interval_seconds=60)
+        config.write_text(json.dumps(data))
     processes = []
     logs = []
     try:
@@ -128,7 +133,7 @@ def main() -> None:
             while all(process.poll() is None for process in processes):
                 time.sleep(1)
         else:
-            subprocess.run(["node", str(Path(__file__).with_name("console.cjs")), str(state),
+            subprocess.run(["node", str(Path(__file__).with_name(args.scenario + ".cjs")), str(state),
                             args.playwright_module, args.browser or ""], check=True, timeout=180)
     finally:
         for process in processes:

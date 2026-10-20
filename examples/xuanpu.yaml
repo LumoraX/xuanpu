@@ -130,3 +130,7 @@ identity:
 lease_seconds: 60
 # instance_id: xuanpu-1     # 本实例的标识，写进会话租约与 /healthz；不给则每次启动随机生成。多实例时各设一个稳定的值
 shutdown_drain_seconds: 30   # 停机时给在途对话多少秒跑完，到期仍未结束的会被取消
+
+# 主动业务使用既有模型配置；员工不填密钥。
+proactive_interval_seconds: 1800
+proactive_scan_seconds: 60

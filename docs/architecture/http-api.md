@@ -834,3 +834,10 @@ xuanpu_connector_calls_total{decision="allowed",transport="http"} 1.0
 `POST /v1/assistant/route` 增加可选request_id、attachments（本人文件id最多8个）、matter_id。返回可能含workspace_draft、open_workspace、proposal_id；这些都是建议，不是已执行结果。request_id稳定重试复用已持久选择、业务会话或结果；跨实例认领有60秒租约。模型响应尚未持久化时硬崩溃，租约过期后可能重新采样，不承诺供应商调用严格一次。主对话输入与输出由服务器记录。
 
 `GET /v1/assistant/proposals` 列最近100条尚待确认建议（更早记录仍保存）；`GET /{id}`返回pending/confirmed/cancelled及草稿或结果。`POST /{id}/confirm`请求为`{data:{...}}`，能力类型从本人已持久草稿确定，返回state/result/proposal_id；`POST /{id}/cancel`取消建议。原子决定与领域创建防止确认/取消竞争及重试重复；确认回执与领域创建同事务持久化，终态聊天消息仅用于展示；即使聊天写入失败，查询状态和重试仍返回实际确认结果。`POST /v1/sessions/{id}/messages` 增加attachments，服务端验证个人空间归属并转换为内核稳定附件，原有工具审批不变。
+
+## 主动业务跟进
+
+`GET /v1/proactive` 返回本人的最近100条关注记录和 enabled；`GET /v1/proactive/{id}` 返回单条。
+`POST /v1/proactive/{id}/actions` 接受 request_id、version、可选 item_version、action（complete/postpone/ignore_stage/set_reminder/progress）、due_at（UTC秒）、timezone、channels。版本冲突409，未知或他人记录404，普通登录沿用CSRF。
+
+路由响应可带 proactive_draft 或 open_proactive。模型只提出建议，不直接写入。统一通知附 source、body、proactive_check_id/proactive_followup_id、alert_after；原生提醒的关联通过 reminder_id 查找。

@@ -271,6 +271,8 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
             instance_id=config.instance_id,
             lease_seconds=config.lease_seconds,
             shutdown_drain_seconds=config.shutdown_drain_seconds,
+            proactive_interval=config.proactive_interval_seconds,
+            proactive_scan_seconds=config.proactive_scan_seconds,
         )
         stack.push_async_callback(platform.close)
         yield platform

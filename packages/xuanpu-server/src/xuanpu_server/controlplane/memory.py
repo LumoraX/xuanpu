@@ -195,6 +195,32 @@ class InMemoryControlPlane:
         found.sort(key=lambda record: (record.updated_at, record.session_id), reverse=True)
         return found[:limit]
 
+    async def scan_user_sessions(
+        self,
+        tenant_id: str,
+        user_id: str,
+        after_id: str | None = None,
+        limit: int = 5,
+    ) -> list[SessionRecord]:
+        """固定租户和所属员工，活动时间变化不会打乱后台续扫游标。"""
+        if type(limit) is not int or not 1 <= limit <= 100:
+            raise ValueError("会话扫描分页数量须为1至100")
+        if (
+            not isinstance(tenant_id, str)
+            or not tenant_id
+            or not isinstance(user_id, str)
+            or not user_id
+        ):
+            raise ValueError("会话扫描必须指定租户和员工")
+        found = [
+            record
+            for record in self._sessions.values()
+            if record.tenant_id == tenant_id
+            and record.user_id == user_id
+            and (after_id is None or record.session_id > after_id)
+        ]
+        return sorted(found, key=lambda record: record.session_id)[:limit]
+
     async def count_active_sessions(self, tenant_id: str) -> int:
         """租户当前的活动会话数。"""
         return sum(

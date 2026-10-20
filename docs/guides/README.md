@@ -27,3 +27,7 @@
 | [Python 客户端](../../packages/xuanpu-sdk-py/README.md) | `XuanpuClient` 的全部方法 |
 | [控制台](../../packages/xuanpu-console/README.md) | 网页界面能做什么 |
 | [examples/](../../examples/) | 样例业务包 `support-desk`、样例工单接口、两份配置 |
+
+员工使用主动跟进见[主动业务助理](proactive-assistant.md)。
+
+- [2026-10-20 主动业务助理发布验收](releases/2026-10-20-proactive-business.md)

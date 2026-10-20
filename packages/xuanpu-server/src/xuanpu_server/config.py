@@ -302,6 +302,8 @@ class ServerConfig(_Section):
     lease_seconds: float = Field(default=60.0, ge=5)
     shutdown_drain_seconds: float = Field(default=30.0, ge=0)
     instance_id: str | None = None
+    proactive_interval_seconds: float = Field(default=1800.0, ge=60)
+    proactive_scan_seconds: float = Field(default=60.0, ge=1, le=300)
 
     @field_validator("public_url")
     @classmethod

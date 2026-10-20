@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 from xuanpu_server.controlplane.schema import DEFAULT_NAMESPACE
 from xuanpu_server.errors import PermissionDeniedError
 from xuanpu_server.reminders.models import DeliveryRecord, NotificationRecord
+from xuanpu_server.reminders.postgres_notifications import notification_current
 
 if TYPE_CHECKING:
     import asyncpg
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
     from xuanpu_server.controlplane.models import AuditRecord
 
 DC = "notification_id,tenant_id,user_id,channel,status,attempts,next_attempt_at,lease_until,claim_token,error_code,first_attempt_at"
-NC = "notification_id,tenant_id,user_id,reminder_id,title,due_at,created_at,read_at"
+NC = "notification_id,tenant_id,user_id,reminder_id,title,due_at,created_at,read_at,notification_key,source,body,proactive_check_id,proactive_followup_id,alert_after"
 
 
 class PostgresDeliveryStore:
@@ -35,6 +36,9 @@ class PostgresDeliveryStore:
                 "notification",
                 "notification_delivery",
                 "audit",
+                "proactive_check",
+                "proactive_followup",
+                "workspace_item",
             )
         }
 
@@ -87,6 +91,11 @@ class PostgresDeliveryStore:
             user_id,
         )
 
+    async def notification_current(self, record: NotificationRecord) -> bool:
+        """只读取通知本人范围内的业务来源，供浮层和发送前复查复用。"""
+        async with self._pool.acquire() as conn:
+            return await notification_current(conn, self._t, record)
+
     async def claim_deliveries(self, now: float) -> list[tuple[DeliveryRecord, NotificationRecord]]:
         """扫描有界候选，每条事务先拿身份锁再拿投递锁。"""
         async with self._pool.acquire() as conn:
@@ -128,6 +137,25 @@ class PostgresDeliveryStore:
             expired = current.status == "sending" and current.lease_until <= now
             if not (ready or expired):
                 return None
+            notification = await conn.fetchrow(
+                f"SELECT {NC} FROM {self._t['notification']} WHERE tenant_id=$1 AND user_id=$2 AND notification_id=$3",
+                record.tenant_id,
+                record.user_id,
+                record.notification_id,
+            )
+            assert notification is not None
+            if not await notification_current(
+                conn, self._t, NotificationRecord(**dict(notification))
+            ):
+                await conn.execute(
+                    f"UPDATE {self._t['notification_delivery']} SET status='skipped',claim_token=NULL,lease_until=0,error_code='source_resolved' "
+                    "WHERE tenant_id=$1 AND user_id=$2 AND notification_id=$3 AND channel=$4",
+                    record.tenant_id,
+                    record.user_id,
+                    record.notification_id,
+                    record.channel,
+                )
+                return None
             if current.first_attempt_at is not None and now >= current.first_attempt_at + 3600:
                 await conn.execute(
                     f"UPDATE {self._t['notification_delivery']} SET status='failed',claim_token=NULL,lease_until=0,error_code='delivery_unknown' WHERE tenant_id=$1 AND user_id=$2 AND notification_id=$3 AND channel=$4",
@@ -156,13 +184,7 @@ class PostgresDeliveryStore:
                 now + 30,
                 now,
             )
-            notification = await conn.fetchrow(
-                f"SELECT {NC} FROM {self._t['notification']} WHERE tenant_id=$1 AND user_id=$2 AND notification_id=$3",
-                record.tenant_id,
-                record.user_id,
-                record.notification_id,
-            )
-            assert claimed is not None and notification is not None
+            assert claimed is not None
             return DeliveryRecord(**dict(claimed)), NotificationRecord(**dict(notification))
 
     async def finish_delivery(

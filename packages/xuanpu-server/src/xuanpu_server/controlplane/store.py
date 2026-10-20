@@ -144,6 +144,16 @@ class ControlPlaneStore(Protocol):
         """列出会话，最近活动的在前；可按状态、创建者与所属员工（``user_id``）过滤。"""
         ...
 
+    async def scan_user_sessions(
+        self,
+        tenant_id: str,
+        user_id: str,
+        after_id: str | None = None,
+        limit: int = 5,
+    ) -> list[SessionRecord]:
+        """后台按会话标识升序有界扫描本人员工业务会话，与展示列表独立分页。"""
+        ...
+
     async def count_active_sessions(self, tenant_id: str) -> int:
         """租户当前的活动会话数。"""
         ...

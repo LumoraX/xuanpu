@@ -137,23 +137,28 @@ async function refreshNotifications() {
   $("notification-toggle").textContent = unread ? "通知 · 有未读" : "通知";
   $("notification-toggle").title = "查看最近100条通知";
   const list = $("notification-list"); list.innerHTML = "";
+  const associations=[];
   for (const item of body.items.slice().reverse()) {
     reminderState.cursor=Math.max(reminderState.cursor,item.notification_id);
     const row = reminderNode("li", "", "reminder-item");
     row.appendChild(reminderNode("strong", item.title));
-    row.appendChild(reminderNode("div", `原定 ${when(item.due_at)}`, "meta"));
+    if(item.due_at!=null)row.appendChild(reminderNode("div", `原定 ${when(item.due_at)}`, "meta"));
+    if(item.body)row.appendChild(reminderNode("p",item.body,"notification-reason"));
     for (const delivery of item.deliveries || []) {
       const status = delivery.last_error_code === "delivery_unknown" ? "送达结果未确认，请检查飞书消息" : deliveryLabels[delivery.status] || delivery.status;
       row.appendChild(reminderNode("div", `${delivery.channel === "feishu" ? "飞书" : delivery.channel}：${status}`, "meta"));
     }
     if (!item.read_at) {
       const read = reminderNode("button", "标为已读", "ghost"); read.type="button";
-      read.addEventListener("click", async () => { read.disabled=true; try { await api("POST", `/v1/notifications/${item.notification_id}/read`); await refreshNotifications(); } catch(error) {read.disabled=false; fail(error);} });
+      read.addEventListener("click", async () => { if(generation!==reminderState.generation)return;read.disabled=true; try { await api("POST", `/v1/notifications/${item.notification_id}/read`); if(generation===reminderState.generation)await refreshNotifications(); } catch(error) {if(generation===reminderState.generation){read.disabled=false; fail(error);}} });
       row.appendChild(read);
     } else row.appendChild(reminderNode("span", "已读", "meta"));
     list.appendChild(row);
+    if(typeof appendProactiveNotificationAction==="function")associations.push(appendProactiveNotificationAction(item,row,
+      ()=>generation===reminderState.generation && request===reminderState.notificationApplied && row.parentNode===list));
   }
   if (!body.items.length) list.appendChild(reminderNode("li", "暂无通知。离线期间的提醒会保存在这里。", "meta"));
+  await Promise.all(associations);
 }
 function showReminderDraft(draft,proposalId=null) {
   mountReminderWorkspace("conversation");

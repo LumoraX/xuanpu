@@ -75,7 +75,7 @@ async def test_upgrade_from_version_3_keeps_data(
 ) -> None:
     """只迁到 0003 的库：落后于代码时报错；迁到最新后旧数据都在，新列为默认值，新表可用。"""
     pool, namespace = blank
-    assert latest_version() == 7
+    assert latest_version() == 8
     first_three = [m for m in load_migrations() if m.version <= 3]
     with monkeypatch.context() as patch:
         patch.setattr(schema_module, "load_migrations", lambda: first_three)
@@ -83,7 +83,7 @@ async def test_upgrade_from_version_3_keeps_data(
     assert [m.version for m in executed] == [1, 2, 3]
     await _seed_version_3(pool, namespace)
 
-    with pytest.raises(SchemaError, match="版本为 3，代码要求 7"):
+    with pytest.raises(SchemaError, match="版本为 3，代码要求 8"):
         await ensure_current(pool, namespace)
 
     upgraded = await apply_migrations(pool, namespace)
@@ -92,8 +92,9 @@ async def test_upgrade_from_version_3_keeps_data(
         (5, "identity_optional_event_secrets"),
         (6, "reminders"),
         (7, "workspace"),
+        (8, "proactive"),
     ]
-    assert await current_version(pool, namespace) == 7
+    assert await current_version(pool, namespace) == 8
     assert await apply_migrations(pool, namespace) == []
 
     store = PostgresControlPlane(pool, namespace=namespace)

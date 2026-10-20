@@ -82,6 +82,7 @@ function renderWorkspaceSettings(settings) {
   wsField(form,"style","回复风格",settings.style,"textarea",{maxLength:1000});
   wsField(form,"timezone","时间显示时区",settings.timezone,"text",{required:true,maxLength:64});
   form.append(wsText("p","例如 Asia/Shanghai。日程表单使用当前设备时间；列表按此时区显示。服务、模型和渠道由企业管理员准备。","status"));
+  const readProactive=renderProactiveSettings(form,settings);
   const status=wsText("p","","status"),submit=wsButton("保存设置",()=>{},"");submit.type="submit";form.append(status,submit);
   form.addEventListener("submit",async event=>{
     event.preventDefault();if(submit.disabled)return;
@@ -89,7 +90,7 @@ function renderWorkspaceSettings(settings) {
     try{
       try{new Intl.DateTimeFormat("zh-CN",{timeZone:data.timezone});}
       catch(error){if(!(error instanceof RangeError))throw error;throw new Error("当前浏览器不支持这个时区，请选择有效时区，例如 Asia/Shanghai。");}
-      await workspaceMutation(()=>api("PUT",workspaceBase+"/settings",{json:{...data,version:settings.version}}));
+      await workspaceMutation(()=>api("PUT",workspaceBase+"/settings",{json:{...data,...readProactive(),version:settings.version}}));
     }
     catch(error){status.textContent=error.message;}finally{submit.disabled=false;}
   });$("workspace-content").replaceChildren(form);

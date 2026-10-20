@@ -27,6 +27,8 @@ from xuanpu_server.ids import new_id
 from xuanpu_server.metrics import PlatformMetrics
 from xuanpu_server.objectstore import LocalObjectStore
 from xuanpu_server.packages import PackageRegistry
+from xuanpu_server.proactive.service import ProactiveService
+from xuanpu_server.proactive.worker import ProactiveWorker
 from xuanpu_server.quota import QuotaGuard
 from xuanpu_server.reminders.feishu import FeishuNotificationSender
 from xuanpu_server.reminders.service import ReminderService
@@ -101,6 +103,8 @@ class Platform:
         lease_seconds: float = 60.0,
         shutdown_drain_seconds: float = 0.0,
         feishu_transport: httpx.AsyncBaseTransport | None = None,
+        proactive_interval: float = 1800.0,
+        proactive_scan_seconds: float = 60.0,
         now: Callable[[], float] = time.time,
     ) -> None:
         """
@@ -195,6 +199,10 @@ class Platform:
         )
         self.sessions = self._session_manager(submissions, lease_seconds)
         self.assistant = AssistantRouter(self, models, now=now)
+        self.proactive = ProactiveService(workspace=self.workspace, control=store,
+            identity=identity_store, sample=self.assistant.sample_proactive, now=now,
+            semantic_interval=proactive_interval, reminders=self.reminders)
+        self.proactive_worker = ProactiveWorker(self.proactive, scan_seconds=proactive_scan_seconds)
         # 员工停用后关掉他名下的会话：身份域不依赖运行时，监听者在这里接上会话管理
         self.identity.disabling.register(
             CLOSE_SESSIONS, CloseUserSessions(store=store, sessions=self.sessions)
@@ -225,6 +233,7 @@ class Platform:
         await self.sessions.start()
         self.identity.start()
         self.reminders.start()
+        self.proactive_worker.start()
 
     async def close(self) -> None:
         """先取消并等身份维护和对账结束，再等员工停用后的后台收尾（最多几秒，见 ``identity.disable``），
@@ -232,6 +241,7 @@ class Platform:
 
         后台收尾要关会话，所以排在释放会话之前：会话管理还完整的时候让它们跑完。
         """
+        await self.proactive_worker.close()
         await self.reminders.close()
         await self.notification_sender.close()
         await self.assistant.close()

@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import secrets
+import time
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from xuanpu_server.errors import ConflictError, NotFoundError, PermissionDeniedError
+from xuanpu_server.proactive.rules import alert_time
 from xuanpu_server.reminders.models import DeliveryRecord, NotificationRecord, ReminderRecord
 from xuanpu_server.reminders.proposals import proposal_decision
 from xuanpu_server.reminders.schedule import latest_due, next_due, validate_due
+from xuanpu_server.workspace.notifications import invalidated_sources, validate_notifications
+from xuanpu_server.workspace.reminders import queued_reminders, reminder_audit
 from xuanpu_server.workspace.rules import audit, remember, replay
 
 if TYPE_CHECKING:
@@ -18,6 +22,7 @@ if TYPE_CHECKING:
 
     from xuanpu_server.controlplane.models import AuditRecord
     from xuanpu_server.workspace.memory import InMemoryWorkspaceStore
+    from xuanpu_server.workspace.models import WorkspaceState
 
 
 class InMemoryReminderStore:
@@ -39,6 +44,167 @@ class InMemoryReminderStore:
         self._notifications: dict[int, NotificationRecord] = {}
         self._deliveries: dict[tuple[int, str], DeliveryRecord] = {}
         self._sequence = 0
+        workspace.bind_notifications(self._prepare_notifications)
+
+    def _prepare_notifications(
+        self,
+        tenant: str,
+        user: str,
+        state: WorkspaceState,
+        old: WorkspaceState,
+    ) -> Callable[[], None]:
+        """无副作用准备统一通知；审计成功后在同一执行片段内提交。"""
+        self._require_active(tenant, user)
+        commit_reminders = self._prepare_reminders(tenant, user, state)
+        delivery_updates = self._invalidated_deliveries(tenant, user, state, old)
+        seen = {
+            n.notification_key
+            for n in self._notifications.values()
+            if (n.tenant_id, n.user_id) == (tenant, user)
+        }
+        seen_checks = {
+            n.proactive_check_id
+            for n in self._notifications.values()
+            if (n.tenant_id, n.user_id) == (tenant, user) and n.proactive_check_id is not None
+        }
+        notifications: list[NotificationRecord] = []
+        deliveries: list[DeliveryRecord] = []
+        for pending in validate_notifications(state):
+            if pending.notification_key in seen or (
+                pending.proactive_check_id is not None and pending.proactive_check_id in seen_checks
+            ):
+                continue
+            seen.add(pending.notification_key)
+            if pending.proactive_check_id is not None:
+                seen_checks.add(pending.proactive_check_id)
+            record = pending.record(tenant, user, self._sequence + len(notifications) + 1)
+            notifications.append(record)
+            deliveries.extend(
+                DeliveryRecord(
+                    record.notification_id,
+                    tenant,
+                    user,
+                    channel,
+                    next_attempt_at=pending.alert_after,
+                )
+                for channel in pending.channels
+                if channel != "inbox"
+            )
+
+        def commit() -> None:
+            """不让出执行权，游标与投递一次性可见。"""
+            commit_reminders()
+            self._deliveries.update(delivery_updates)
+            for notification in notifications:
+                self._notifications[notification.notification_id] = notification
+                self._sequence = notification.notification_id
+            for delivery in deliveries:
+                self._deliveries[(delivery.notification_id, delivery.channel)] = delivery
+
+        return commit
+
+    def _invalidated_deliveries(
+        self,
+        tenant: str,
+        user: str,
+        state: WorkspaceState,
+        old: WorkspaceState,
+    ) -> dict[tuple[int, str], DeliveryRecord]:
+        """准备来源处理和原生提醒取消引起的撤销，审计成功前不改变已保存投递。"""
+        return self._delivery_invalidations(
+            tenant,
+            user,
+            set(invalidated_sources(old, state)),
+            set(state.pending_reminder_cancellations),
+        )
+
+    def _delivery_invalidations(
+        self,
+        tenant: str,
+        user: str,
+        sources: set[tuple[str, str]],
+        cancellations: set[str],
+    ) -> dict[tuple[int, str], DeliveryRecord]:
+        """统一准备原生提醒或主动来源的旧投递撤销，保留已经发送的历史。"""
+        invalid_ids = {
+            record.notification_id
+            for record in self._notifications.values()
+            if (record.tenant_id, record.user_id) == (tenant, user)
+            and (
+                (record.source, record.proactive_check_id or record.proactive_followup_id)
+                in sources
+                or record.reminder_id is not None
+                and record.reminder_id in cancellations
+            )
+        }
+        return {
+            key: replace(
+                delivery,
+                status="skipped",
+                claim_token=None,
+                lease_until=0,
+                error_code="source_resolved",
+            )
+            for key, delivery in self._deliveries.items()
+            if delivery.notification_id in invalid_ids and delivery.status in ("pending", "sending")
+        }
+
+    def _prepare_reminders(
+        self,
+        tenant: str,
+        user: str,
+        state: WorkspaceState,
+    ) -> Callable[[], None]:
+        """影子副本先验证额度和幂等；批量审计成功后同步提交。"""
+        records = dict(self._reminders)
+        for identifier in dict.fromkeys(state.pending_reminder_cancellations):
+            old = records.get(identifier)
+            if old is None or (old.tenant_id, old.user_id) != (tenant, user):
+                raise NotFoundError("待取消提醒不存在或不属于当前员工")
+            if old.status != "cancelled":
+                now = time.time()
+                records[identifier] = replace(
+                    old, status="cancelled", version=old.version + 1, updated_at=now
+                )
+                reminder_audit(state, records[identifier], "cancelled", now)
+        for record in queued_reminders(state, tenant, user):
+            old = next(
+                (
+                    item
+                    for item in records.values()
+                    if (item.tenant_id, item.user_id, item.request_id)
+                    == (tenant, user, record.request_id)
+                ),
+                None,
+            )
+            if old is not None:
+                if (
+                    old.original_fingerprint != record.original_fingerprint
+                    or old.reminder_id != record.reminder_id
+                ):
+                    raise ConflictError("提醒请求已有不同内容或标识，请重新准备")
+                continue
+            if record.status != "active" or record.version != 1:
+                raise ConflictError("事务提醒只能创建新的活动记录")
+            validate_due(record.due_at, record.created_at)
+            if (
+                sum(
+                    item.status == "active" and (item.tenant_id, item.user_id) == (tenant, user)
+                    for item in records.values()
+                )
+                >= 100
+            ):
+                raise ConflictError("每名员工最多100条活动提醒")
+            if record.reminder_id in records:
+                raise ConflictError("提醒标识已经存在")
+            records[record.reminder_id] = record
+            reminder_audit(state, record, "created", record.created_at)
+
+        def commit() -> None:
+            """提交前后不让出执行权，其他员工提醒不会被过期副本覆盖。"""
+            self._reminders = records
+
+        return commit
 
     def bind_identity(self, user_active: Callable[[str, str], bool]) -> None:
         """绑定不让出执行权的身份查询。"""
@@ -55,6 +221,7 @@ class InMemoryReminderStore:
 
     def disable_user(self, tenant_id: str, user_id: str, now: float) -> None:
         """身份状态变更同一无让出区间取消提醒并跳过未完成投递。"""
+        self._workspace.disable_user(tenant_id, user_id, now)
         for key, item in self._reminders.items():
             if (item.tenant_id, item.user_id, item.status) == (tenant_id, user_id, "active"):
                 self._reminders[key] = replace(
@@ -177,23 +344,44 @@ class InMemoryReminderStore:
         return sorted(records, key=lambda r: (r.created_at, r.reminder_id), reverse=True)[:100]
 
     async def update(
-        self, record: ReminderRecord, version: int, now: float, *, actor: str | None = None
+        self,
+        record: ReminderRecord,
+        version: int,
+        now: float,
+        *,
+        actor: str | None = None,
     ) -> ReminderRecord:
-        """编辑必须命中活动状态和原版本。"""
-        old = await self.get(record.tenant_id, record.user_id, record.reminder_id)
-        self._require_active(record.tenant_id, record.user_id)
-        if old.status != "active" or old.version != version:
-            raise ConflictError("提醒状态或版本已变化")
-        validate_due(record.due_at, now)
-        updated = replace(
-            record,
-            version=old.version + 1,
-            original_fingerprint=old.original_fingerprint,
-            updated_at=now,
-        )
-        self._audit_event(updated, "updated", now, actor)
-        self._reminders[record.reminder_id] = updated
-        return updated
+        """同一员工锁内编辑提醒、关联等待计划和旧投递资格。"""
+        async with self._workspace.employee_lock(record.tenant_id, record.user_id):
+            old = await self.get(record.tenant_id, record.user_id, record.reminder_id)
+            self._require_active(record.tenant_id, record.user_id)
+            if old.status != "active" or old.version != version:
+                raise ConflictError("提醒状态或版本已变化")
+            validate_due(record.due_at, now)
+            updated = replace(
+                record,
+                version=old.version + 1,
+                original_fingerprint=old.original_fingerprint,
+                updated_at=now,
+            )
+            plan = (
+                self._workspace.prepare_reminder_change(updated, now, cancelled=False)
+                if old.due_at != updated.due_at
+                else None
+            )
+            identifiers = plan[0] if plan is not None else []
+            deliveries = self._delivery_invalidations(
+                record.tenant_id,
+                record.user_id,
+                {("proactive_followup", key) for key in identifiers},
+                {record.reminder_id} if identifiers else set(),
+            )
+            self._audit_event(updated, "updated", now, actor)
+            if plan is not None:
+                plan[1]()
+            self._deliveries.update(deliveries)
+            self._reminders[record.reminder_id] = updated
+            return updated
 
     async def cancel(
         self,
@@ -205,17 +393,29 @@ class InMemoryReminderStore:
         *,
         actor: str | None = None,
     ) -> ReminderRecord:
-        """重复取消返回已取消记录，完成状态不伪装成取消。"""
-        record = await self.get(tenant_id, user_id, reminder_id)
-        self._require_active(tenant_id, user_id)
-        if record.status == "cancelled":
-            return record
-        if record.status != "active" or record.version != version:
-            raise ConflictError("提醒状态或版本已变化")
-        record = replace(record, status="cancelled", version=version + 1, updated_at=now)
-        self._audit_event(record, "cancelled", now, actor)
-        self._reminders[reminder_id] = record
-        return record
+        """取消与关联跟进一起提交，重复取消不重复推进关注版本。"""
+        async with self._workspace.employee_lock(tenant_id, user_id):
+            record = await self.get(tenant_id, user_id, reminder_id)
+            self._require_active(tenant_id, user_id)
+            if record.status == "cancelled":
+                return record
+            if record.status != "active" or record.version != version:
+                raise ConflictError("提醒状态或版本已变化")
+            updated = replace(record, status="cancelled", version=version + 1, updated_at=now)
+            identifiers, commit = self._workspace.prepare_reminder_change(
+                updated, now, cancelled=True
+            )
+            deliveries = self._delivery_invalidations(
+                tenant_id,
+                user_id,
+                {("proactive_followup", key) for key in identifiers},
+                {reminder_id},
+            )
+            self._audit_event(updated, "cancelled", now, actor)
+            commit()
+            self._deliveries.update(deliveries)
+            self._reminders[reminder_id] = updated
+            return updated
 
     def _audit_event(
         self,
@@ -255,6 +455,11 @@ class InMemoryReminderStore:
         )[:100]
 
     async def fire(self, record: ReminderRecord, now: float) -> NotificationRecord | None:
+        """提醒与主动检查在同一员工锁内分配全局通知序号。"""
+        async with self._workspace.employee_lock(record.tenant_id, record.user_id):
+            return await self._fire(record, now)
+
+    async def _fire(self, record: ReminderRecord, now: float) -> NotificationRecord | None:
         """先完成计算和同步审计，再无让出提交通知、投递及提醒状态。"""
         current = await self.get(record.tenant_id, record.user_id, record.reminder_id)
         if not self._user_active(record.tenant_id, record.user_id):
@@ -265,6 +470,10 @@ class InMemoryReminderStore:
         if current.status != "active" or current.version != record.version or current.due_at > now:
             return None
         due = latest_due(current.due_at, current.timezone, current.repeat, now)
+        settings = self._workspace.proactive_reminder_settings(
+            record.tenant_id, record.user_id, record.reminder_id
+        )
+        alert_after = alert_time(settings, now) if settings is not None else now
         notification = NotificationRecord(
             self._sequence + 1,
             record.tenant_id,
@@ -273,6 +482,7 @@ class InMemoryReminderStore:
             current.title,
             due,
             now,
+            alert_after=alert_after,
         )
         following = next_due(current.due_at, current.timezone, current.repeat, now)
         updated = replace(
@@ -288,7 +498,7 @@ class InMemoryReminderStore:
                 record.tenant_id,
                 record.user_id,
                 channel,
-                next_attempt_at=now,
+                next_attempt_at=alert_after,
             )
             for channel in current.channels
             if channel != "inbox"
@@ -311,6 +521,17 @@ class InMemoryReminderStore:
             if (n.tenant_id, n.user_id) == (tenant_id, user_id) and n.notification_id > after_id
         ]
         return found[-limit:] if after_id == -1 else found[:limit]
+
+    async def notification_current(self, record: NotificationRecord) -> bool:
+        """当前业务来源只在通知所属员工快照中解析。"""
+        reminder = self._reminders.get(record.reminder_id or "")
+        status = (
+            reminder.status
+            if reminder is not None
+            and (reminder.tenant_id, reminder.user_id) == (record.tenant_id, record.user_id)
+            else None
+        )
+        return self._workspace.notification_current(record, status)
 
     async def read(
         self, tenant_id: str, user_id: str, notification_id: int, now: float
@@ -337,6 +558,15 @@ class InMemoryReminderStore:
                 self.disable_user(record.tenant_id, record.user_id, now)
                 continue
             if not self._tenant_active(record.tenant_id):
+                continue
+            if not await self.notification_current(self._notifications[record.notification_id]):
+                self._deliveries[key] = replace(
+                    record,
+                    status="skipped",
+                    claim_token=None,
+                    lease_until=0,
+                    error_code="source_resolved",
+                )
                 continue
             if record.first_attempt_at is not None and now >= record.first_attempt_at + 3600:
                 self._deliveries[key] = replace(

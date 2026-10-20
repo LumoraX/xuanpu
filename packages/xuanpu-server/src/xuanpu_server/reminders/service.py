@@ -72,6 +72,40 @@ class ReminderService:
         if "feishu" in body.channels and "feishu" not in await self.channels(who):
             raise InvalidRequestError("该员工尚未配置飞书通知")
 
+    async def prepare(
+        self,
+        who: Principal,
+        body: ReminderInput,
+        request_id: str,
+    ) -> ReminderRecord:
+        """验证身份和渠道并构造提醒，留给调用者协调事务原子提交。"""
+        tenant, user = await self.require_employee(who)
+        if not isinstance(request_id, str) or not request_id.strip() or len(request_id) > 128:
+            raise InvalidRequestError("request_id 必须是1至128字的非空字符串")
+        existing = await self.store.get_request(tenant, user, request_id)
+        if existing is not None:
+            if existing.original_fingerprint != body.fingerprint():
+                raise ConflictError("request_id 已用于其他提醒内容")
+            return existing
+        await self._validate_channels(who, body)
+        now = self._now()
+        return ReminderRecord(
+            "rem_" + secrets.token_hex(12),
+            tenant,
+            user,
+            body.title,
+            body.due_at,
+            body.timezone,
+            body.repeat,
+            tuple(body.channels),
+            "active",
+            1,
+            request_id,
+            now,
+            now,
+            body.fingerprint(),
+        )
+
     async def create(
         self,
         who: Principal,

@@ -24,6 +24,14 @@ class WorkspaceStore(Protocol):
         """同一员工串行写入；异常回滚元数据与审计。"""
         ...
 
+    async def owners(
+        self,
+        after: tuple[str, str] | None = None,
+        limit: int = 100,
+    ) -> list[tuple[str, str]]:
+        """稳定分页枚举已有工作区，后台仍须在提交前复查员工权限。"""
+        ...
+
     async def messages(
         self,
         tenant: str,

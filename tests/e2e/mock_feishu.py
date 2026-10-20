@@ -136,6 +136,19 @@ async def model_reply(request: Request) -> StreamingResponse:
         reply = json.dumps({"package":None,"entry":None,"message":"新回复不能被旧历史覆盖。"})
     if is_router and "事项进展验收" in route_input:
         reply = json.dumps({"package":None,"entry":None,"message":"事项进展已记录。"})
+    is_proactive = "你是玄圃主动业务助理" in json.dumps(payload.get("messages", []), ensure_ascii=False)
+    if is_router and "A-107" in route_input:
+        reply = json.dumps({"package":None,"entry":None,"message":"已了解这项报价安排。"})
+    if is_proactive:
+        context = json.loads(incoming)
+        message = next((row for row in context.get("evidence", [])
+                        if row.get("role") == "user" and "A-107" in row.get("text", "")), None)
+        followups = []
+        if message and not context.get("followups"):
+            followups.append({"title":"发送 A-107 项目报价","intent_type":"commitment","certainty":"explicit",
+                "reason":"下午发送报价的安排还没有确认结果，完成了吗？", "evidence_refs":[message["ref"]],
+                "item_id":None,"followup_id":None,"proposed_time":None,"next_review_at":None,"suggested_action":"ask_status"})
+        reply = json.dumps({"followups":followups},ensure_ascii=False)
     async def chunks():
         """输出合法 Chat SSE，保证前端测试不依赖真实模型。"""
         for delta, finish in [({"role": "assistant", "content": ""}, None),

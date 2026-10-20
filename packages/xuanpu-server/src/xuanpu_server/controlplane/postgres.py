@@ -390,6 +390,34 @@ class PostgresControlPlane:
         )
         return [_session(row) for row in rows]
 
+    async def scan_user_sessions(
+        self,
+        tenant_id: str,
+        user_id: str,
+        after_id: str | None = None,
+        limit: int = 5,
+    ) -> list[SessionRecord]:
+        """复合租户员工条件在数据库内先过滤，再按标识稳定分页。"""
+        if type(limit) is not int or not 1 <= limit <= 100:
+            raise ValueError("会话扫描分页数量须为1至100")
+        if (
+            not isinstance(tenant_id, str)
+            or not tenant_id
+            or not isinstance(user_id, str)
+            or not user_id
+        ):
+            raise ValueError("会话扫描必须指定租户和员工")
+        rows = await self._fetch(
+            f"SELECT {_SESSION_COLUMNS} FROM {self._t['session']} "
+            'WHERE tenant_id=$1 AND user_id=$2 AND ($3::text IS NULL OR session_id COLLATE "C">$3) '
+            'ORDER BY session_id COLLATE "C" ASC LIMIT $4',
+            tenant_id,
+            user_id,
+            after_id,
+            limit,
+        )
+        return [_session(row) for row in rows]
+
     async def count_active_sessions(self, tenant_id: str) -> int:
         """租户当前的活动会话数。"""
         row = await self._fetchrow(

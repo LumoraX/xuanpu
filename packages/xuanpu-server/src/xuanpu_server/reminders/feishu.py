@@ -100,15 +100,21 @@ class FeishuNotificationSender:
                     raise DeliveryError('channel_unavailable', retryable=False)
                 if current != target or await self._vault.get(notification.tenant_id, config.app_secret_ref) != secret:
                     raise DeliveryError('channel_changed', retryable=True)
-                due = datetime.fromtimestamp(notification.due_at, UTC).isoformat()
-                identity = f"xuanpu:{notification.tenant_id}:{notification.reminder_id}:{notification.due_at}"
+                lines = ["玄圃提醒", notification.title]
+                if notification.body:
+                    lines.append(notification.body)
+                if notification.due_at is not None:
+                    due = datetime.fromtimestamp(notification.due_at, UTC).isoformat()
+                    lines.append("原定时间：" + due)
+                lines.append("请在玄圃通知中心查看。")
+                identity = f"xuanpu:{notification.tenant_id}:{notification.notification_id}"
                 body = {
                     "receive_id": open_id,
                     "msg_type": "text",
                     "uuid": str(uuid5(NAMESPACE_URL, identity)),
                     "content": json.dumps(
                         {
-                            "text": f"玄圃提醒\n{notification.title}\n原定时间：{due}\n请在玄圃通知中心查看。"
+                            "text": "\n".join(lines)
                         },
                         ensure_ascii=False,
                     ),

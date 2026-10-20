@@ -69,6 +69,7 @@ $("tabs").addEventListener("click", (event) => {
   // 切页保留输入，但旧识别结果不得抢占新打开的功能表单。
   if (chat.routing) chat.generation++;
   dismissReminderContext();
+  if(typeof dismissProactiveContext==="function")dismissProactiveContext();
   for (const item of $("tabs").querySelectorAll("button")) item.classList.toggle("active", item === button);
   for (const section of document.querySelectorAll(".tab")) {
     section.classList.toggle("active", section.id === "tab-" + button.dataset.tab);
@@ -119,6 +120,7 @@ function startConversation() {
   if (chat.streaming || chat.routing) { toast("请等当前请求完成，或先停止回复。", "info"); return; }
   if (!conn.me) return;
   dismissReminderContext();
+  if(typeof dismissProactiveContext==="function")dismissProactiveContext();
   if(typeof clearWorkspaceConversationContext === "function") clearWorkspaceConversationContext();
   chat.generation += 1;
   chat.sessionId = null;
@@ -158,6 +160,7 @@ function append(kind, text) {
 async function openSession(session, {fromRoute = false} = {}) {
   if (chat.streaming || (chat.routing && !fromRoute)) { toast("请等当前请求完成，或先停止回复。", "info"); return; }
   dismissReminderContext();
+  if(typeof dismissProactiveContext==="function")dismissProactiveContext();
   if(typeof clearWorkspaceConversationContext === "function") clearWorkspaceConversationContext();
   if (!fromRoute) chat.routeContext = [];
   const generation = ++chat.generation;
@@ -287,6 +290,7 @@ $("send").addEventListener("submit", async event => {
       ...extras,
     }});
     if (epoch !== conn.epoch || generation !== chat.generation) return;
+    if (typeof handleProactiveRoute === "function" && await handleProactiveRoute(route,text)) return;
     if (typeof handleWorkspaceRoute === "function" && await handleWorkspaceRoute(route,text)) return;
     if (typeof workspaceRouteAccepted === "function") workspaceRouteAccepted();
     if (route.reminder_draft || route.open_reminders) {
@@ -297,6 +301,7 @@ $("send").addEventListener("submit", async event => {
       return;
     }
     dismissReminderContext();
+    if(typeof dismissProactiveContext==="function")dismissProactiveContext();
     if (!route.session) {
       $("welcome").classList.add("hidden");
       append("user", text);

@@ -9,11 +9,13 @@ from typing import TYPE_CHECKING, Any
 from xuanpu_server.controlplane.models import AuditRecord
 from xuanpu_server.controlplane.schema import DEFAULT_NAMESPACE
 from xuanpu_server.errors import ConflictError, NotFoundError
+from xuanpu_server.proactive.rules import alert_time
 from xuanpu_server.reminders.models import NotificationRecord, ReminderRecord
 from xuanpu_server.reminders.postgres_delivery import PostgresDeliveryStore
 from xuanpu_server.reminders.proposals import proposal_decision
 from xuanpu_server.reminders.schedule import latest_due, next_due, validate_due
 from xuanpu_server.workspace.models import fingerprint
+from xuanpu_server.workspace.postgres_reminder_sync import sync_reminder_followups
 
 if TYPE_CHECKING:
     import builtins
@@ -22,7 +24,7 @@ if TYPE_CHECKING:
     from taifeng_stores import SqlNamespace
 
 RC = "reminder_id,tenant_id,user_id,title,due_at,timezone,repeat,channels,status,version,request_id,created_at,updated_at,original_fingerprint"
-NC = "notification_id,tenant_id,user_id,reminder_id,title,due_at,created_at,read_at"
+NC = "notification_id,tenant_id,user_id,reminder_id,title,due_at,created_at,read_at,notification_key,source,body,proactive_check_id,proactive_followup_id,alert_after"
 
 
 def reminder(row: asyncpg.Record) -> ReminderRecord:
@@ -39,6 +41,8 @@ class PostgresReminderStore(PostgresDeliveryStore):
         """由控制面装配同后端存储。"""
         super().__init__(pool, namespace=namespace)
         self._t["workspace_request"] = namespace.table("workspace_request")
+        self._t["workspace_settings"] = namespace.table("workspace_settings")
+        self._t["proactive_followup"] = namespace.table("proactive_followup")
 
     async def create(
         self,
@@ -202,6 +206,8 @@ class PostgresReminderStore(PostgresDeliveryStore):
             )
             assert row is not None
             updated = reminder(row)
+            if old.due_at != updated.due_at:
+                await sync_reminder_followups(conn, self._t, updated, now, cancelled=False)
             await self._record_audit(conn, updated, "updated", now, actor)
             return updated
 
@@ -231,6 +237,7 @@ class PostgresReminderStore(PostgresDeliveryStore):
                 now,
             )
             updated = replace(old, status="cancelled", version=version + 1, updated_at=now)
+            await sync_reminder_followups(conn, self._t, updated, now, cancelled=True)
             await self._record_audit(conn, updated, "cancelled", now, actor)
             return updated
 
@@ -269,6 +276,19 @@ class PostgresReminderStore(PostgresDeliveryStore):
             )
         return [reminder(row) for row in rows]
 
+    async def _reminder_alert_after(self, conn: Any, record: ReminderRecord, now: float) -> float:
+        """持有员工锁时仅对本人主动跟进关联的提醒应用当前免打扰设置。"""
+        settings = await conn.fetchval(
+            f"SELECT s.settings FROM {self._t['workspace_settings']} s "
+            "WHERE s.tenant_id=$1 AND s.user_id=$2 AND EXISTS ("
+            f"SELECT 1 FROM {self._t['proactive_followup']} f "
+            "WHERE f.tenant_id=s.tenant_id AND f.user_id=s.user_id AND f.record->>'reminder_id'=$3)",
+            record.tenant_id,
+            record.user_id,
+            record.reminder_id,
+        )
+        return alert_time(json.loads(settings), now) if settings is not None else now
+
     async def fire(self, record: ReminderRecord, now: float) -> NotificationRecord | None:
         """事务内一次提交站内通知、外部投递和下一到期时间。"""
         async with self._pool.acquire() as conn, conn.transaction():
@@ -289,14 +309,16 @@ class PostgresReminderStore(PostgresDeliveryStore):
                 or current.due_at > now
             ):
                 return None
+            alert_after = await self._reminder_alert_after(conn, current, now)
             row = await conn.fetchrow(
-                f"INSERT INTO {self._t['notification']} (tenant_id,user_id,reminder_id,title,due_at,created_at) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (reminder_id,due_at) DO NOTHING RETURNING {NC}",
+                f"INSERT INTO {self._t['notification']} (tenant_id,user_id,reminder_id,title,due_at,created_at,alert_after) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (reminder_id,due_at) DO NOTHING RETURNING {NC}",
                 current.tenant_id,
                 current.user_id,
                 current.reminder_id,
                 current.title,
                 latest_due(current.due_at, current.timezone, current.repeat, now),
                 now,
+                alert_after,
             )
             if row is None:
                 return None
@@ -309,7 +331,7 @@ class PostgresReminderStore(PostgresDeliveryStore):
                         current.tenant_id,
                         current.user_id,
                         channel,
-                        now,
+                        alert_after,
                     )
             following = next_due(current.due_at, current.timezone, current.repeat, now)
             await conn.execute(

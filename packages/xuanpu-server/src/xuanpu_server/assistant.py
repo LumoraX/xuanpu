@@ -34,7 +34,16 @@ from xuanpu_server.assistant_workspace import (
 )
 from xuanpu_server.controlplane.models import AuditQuery
 from xuanpu_server.errors import PlatformError, RuntimeUnavailableError
+from xuanpu_server.proactive.models import (
+    PROACTIVE_ENTRIES,
+    PROACTIVE_ROUTING,
+    ActionInput,
+    ProactiveProposal,
+    absolute_time,
+)
+from xuanpu_server.proactive.semantic import routing_context
 from xuanpu_server.quota import usage_day
+from xuanpu_server.tenancy import Principal
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -42,7 +51,6 @@ if TYPE_CHECKING:
     from xuanpu_server.controlplane.models import SessionRecord
     from xuanpu_server.platform import Platform
     from xuanpu_server.runtime.models import ModelClientFactory
-    from xuanpu_server.tenancy import Principal
 
 logger = logging.getLogger(__name__)
 TIMEOUT_SECONDS = 30.0
@@ -108,6 +116,7 @@ class Choice(BaseModel):
     message: str | None = Field(default=None, max_length=16000)
     reminder: ReminderProposal | None = None
     workspace_draft: WorkspaceProposal | None = None
+    proactive: ProactiveProposal | None = None
 
 
 class AssistantRouter:
@@ -182,7 +191,7 @@ class AssistantRouter:
                         saved = dict(prior["metadata"]["route"])
                     else:
                         result = await self._route(who, body, request_id=request_id, claim=claim)
-                        if result.workspace_draft or result.reminder_draft:
+                        if result.workspace_draft or result.reminder_draft or result.proactive_draft:
                             result = replace(result, proposal_id=request_id)
                         saved = {
                             "session_id": result.session.session_id if result.session else None,
@@ -192,6 +201,8 @@ class AssistantRouter:
                             "workspace_draft": result.workspace_draft,
                             "open_workspace": result.open_workspace,
                             "proposal_id": result.proposal_id,
+                            "proactive_draft": result.proactive_draft,
+                            "open_proactive": result.open_proactive,
                         }
                     await p.workspace.complete_route(who, request_id, claim["token"], saved)
                 result = await self._saved_outcome(who, saved)
@@ -258,7 +269,7 @@ class AssistantRouter:
         await p.quota.check_new_turn(tenant)
         catalog = await self._catalog(tenant)
         if who.user_id:
-            catalog = [*WORKSPACE_ENTRIES, *REMINDER_ENTRIES, *catalog]
+            catalog = [*WORKSPACE_ENTRIES, *REMINDER_ENTRIES, *PROACTIVE_ENTRIES, *catalog]
         if not catalog:
             return RouteOutcome(message="当前企业尚未开通可用业务，请联系管理员。")
         history = await self._history(current) if current else []
@@ -267,6 +278,7 @@ class AssistantRouter:
         payload = json.dumps(
             {
                 "workspace": personal,
+                "proactive_context": routing_context(await p.proactive.list(who)) if who.user_id else [],
                 "catalog": catalog,
                 "history": history,
                 "clarification_context": [x.model_dump() for x in body.context],
@@ -306,6 +318,24 @@ class AssistantRouter:
     ) -> RouteOutcome:
         """解析后的选择仍须验证能力范围；模型建议不直接执行提醒。"""
         p = self._platform
+        if choice.package == "@proactive":
+            if not who.user_id or choice.message is not None or choice.reminder or choice.workspace_draft:
+                raise ValueError("业务跟进建议无效")
+            if choice.entry == "manage" and choice.proactive is None:
+                return RouteOutcome(message="已打开你的业务跟进。", open_proactive=True)
+            if choice.entry != "action" or choice.proactive is None:
+                raise ValueError("业务跟进建议不完整")
+            suggestion = choice.proactive
+            record = await p.proactive.get(who, suggestion.id)
+            if record["version"] != suggestion.version:
+                raise RuntimeUnavailableError("业务跟进已更新，请重试")
+            action = ActionInput(request_id="preview", version=suggestion.version,
+                action=suggestion.action, due_at=absolute_time(suggestion.due_at), timezone=suggestion.timezone)
+            draft = {**action.model_dump(exclude={"request_id"}), "id": record["id"],
+                "item_version": record.get("item_version"), "title": record["title"]}
+            return RouteOutcome(message="请确认这项业务跟进的处理方式。", proactive_draft=draft)
+        if choice.proactive is not None:
+            raise ValueError("其他业务不能携带跟进动作")
         if choice.package == WORKSPACE_PACKAGE:
             if not who.user_id or choice.message is not None or choice.reminder is not None:
                 raise ValueError("工作站建议无效")
@@ -453,7 +483,8 @@ class AssistantRouter:
         raise RuntimeUnavailableError("此对话历史较长，请开始新对话")
 
     async def _sample(
-        self, who: Principal, payload: str, parts: list[dict[str, Any]] | None = None
+        self, who: Principal, payload: str, parts: list[dict[str, Any]] | None = None,
+        *, system_prompt: str | None = None, audit_kind: str = "assistant_route_sampled",
     ) -> str:
         """只采样文本，完成后按实际用量入账；中断时估算，防取消绕过配额。"""
         cancel = taifeng.CancellationToken()
@@ -465,7 +496,7 @@ class AssistantRouter:
             request = taifeng.ApiRequest.model_validate(
                 {
                     "model": "fast",
-                    "system_prompt": [_PROMPT + WORKSPACE_PROMPT],
+                    "system_prompt": [system_prompt or (_PROMPT + WORKSPACE_PROMPT + PROACTIVE_ROUTING)],
                     "input_items": [
                         {
                             "type": "message",
@@ -495,7 +526,8 @@ class AssistantRouter:
         finally:
             cancel.cancel()
             if started:
-                accounting = asyncio.create_task(self._account(who, usage, payload, output, parts))
+                accounting = asyncio.create_task(self._account(who, usage, payload, output, parts,
+                    audit_kind=audit_kind, prompt=system_prompt))
                 interrupted = False
                 while not accounting.done():
                     try:
@@ -526,13 +558,13 @@ class AssistantRouter:
         payload: str,
         output: str,
         parts: list[dict[str, Any]] | None = None,
+        *, audit_kind: str = "assistant_route_sampled", prompt: str | None = None,
     ) -> None:
         """有界记录路由用量与审计，不把输入、模型原文或密钥写进审计。"""
         estimated = not usage
         values = usage or {
             "input_tokens": len(payload)
-            + len(_PROMPT)
-            + len(WORKSPACE_PROMPT)
+            + len(prompt or (_PROMPT + WORKSPACE_PROMPT + PROACTIVE_ROUTING))
             + self._attachment_estimate(parts),
             "output_tokens": len(output),
         }
@@ -552,8 +584,22 @@ class AssistantRouter:
                 if who.user_id:
                     await p.identity.store.add_user_usage(tenant, day, who.user_id, **amounts)
                 await p.audit.control(
-                    who, tenant, "assistant_route_sampled", {"estimated": estimated, **amounts}
+                    who, tenant, audit_kind, {"estimated": estimated, **amounts}
                 )
         except Exception:
             p.metrics.usage_write_failed()
             logger.error("业务分流用量写入失败")
+
+    async def sample_proactive(self, tenant: str, user: str, payload: str) -> str:
+        """后台评估复用平台模型、租户配额、并发准入和员工计量。"""
+        from xuanpu_server.proactive.semantic import PROMPT
+
+        who = Principal("tenant_member", tenant, None, user)
+        await self._platform.workspace.require_employee(who)
+        await self._platform.quota.check_new_turn(tenant)
+        await self._platform.sessions.admit_routing(tenant)
+        try:
+            async with asyncio.timeout(TIMEOUT_SECONDS):
+                return await self._sample(who, payload, system_prompt=PROMPT, audit_kind="proactive_sampled")
+        finally:
+            self._platform.sessions.release_routing(tenant)

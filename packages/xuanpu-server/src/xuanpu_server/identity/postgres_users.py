@@ -94,6 +94,7 @@ class PostgresUserTables:
             namespace: 表所在的 schema 与表名前缀（与控制面相同）。
         """
         self._tenant_table = namespace.table("tenant")
+        self._proactive_tables = [namespace.table(name) for name in ("proactive_check", "proactive_followup")]
         self._reminder_table = namespace.table("reminder")
         self._delivery_table = namespace.table("notification_delivery")
         self._pool = pool
@@ -268,6 +269,13 @@ class PostgresUserTables:
                 )
             )
             if status == "disabled":
+                for table in self._proactive_tables:
+                    await conn.execute(
+                        f"UPDATE {table} SET record=record || jsonb_build_object('status','resolved', "
+                        "'handled_at',$3::double precision,'updated_at',$3::double precision,'lease_until',0,'claim_token',NULL) "
+                        "WHERE tenant_id=$1 AND user_id=$2 AND record->>'status' NOT IN ('resolved','dismissed')",
+                        tenant_id, user_id, at,
+                    )
                 await conn.execute(
                     f"UPDATE {self._reminder_table} SET status='cancelled',version=version+1,updated_at=$3 "
                     "WHERE tenant_id=$1 AND user_id=$2 AND status='active'",

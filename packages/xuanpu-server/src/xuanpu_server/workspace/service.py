@@ -21,6 +21,7 @@ from xuanpu_server.workspace.models import (
     validate_data,
 )
 from xuanpu_server.workspace.rules import (
+    apply_todo_change,
     audit,
     check_relations,
     check_version,
@@ -184,9 +185,7 @@ class WorkspaceService:
                 k in data for k in ("mime_type", "size", "current_revision", "source_url")
             ):
                 raise InvalidRequestError("文件内容字段只能通过文件上传修改")
-            item["data"] = validate_data(item["kind"], {**item["data"], **data})
-            check_relations(state, item)
-            touch(item, self._now())
+            apply_todo_change(state, item, data, self._now())
             audit(state, who.actor, "updated", self._now(), item)
             return public(item)
 

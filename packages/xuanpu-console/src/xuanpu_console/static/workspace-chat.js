@@ -27,6 +27,7 @@ function renderAttachmentChips() {
 function workspaceRouteExtras(text) {
   closeAttachmentMenu();
   if(!conn.me?.user_id)return {};
+  if(typeof dismissProactiveContext==="function")dismissProactiveContext();
   workspaceChat.loading++; // 新轮次使所有未完成的历史恢复失效，避免迟到快照覆盖回复。
   const attachments=workspaceChat.attachments.map(x=>x.id),matter_id=workspaceChat.matter?.id || null;
   const signature=JSON.stringify({text,attachments,matter_id,session:chat.sessionId});
@@ -49,7 +50,9 @@ async function loadMainConversation() {
   $("transcript").scrollTop=$("transcript").scrollHeight;
   $("welcome").classList.toggle("hidden",records.length>0);
   $("chat-head").textContent=(workspace.settings?.assistant_name || "玄圃助手")+" · 主对话";
-  const pending=records.slice().reverse().find(x=>x.metadata?.route?.proposal_id);
+  const proactive=records.slice().reverse().find(x=>x.metadata?.route?.proactive_draft);
+  if(proactive && !chat.routing)await restoreProactiveDraft(proactive.metadata.route.proactive_draft);
+  const pending=records.slice().reverse().find(x=>x.metadata?.route?.proposal_id && !x.metadata.route.proactive_draft);
   if(pending && !chat.routing)await restoreWorkspaceProposal(pending.metadata.route.proposal_id);
 }
 function renderWorkspaceHistory(records,files,target) {

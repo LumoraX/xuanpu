@@ -9,7 +9,10 @@ from typing import TYPE_CHECKING, Any
 
 from xuanpu_server.controlplane.schema import DEFAULT_NAMESPACE
 from xuanpu_server.errors import PermissionDeniedError
-from xuanpu_server.workspace.models import WorkspaceState
+from xuanpu_server.workspace.models import SettingsData, WorkspaceState
+from xuanpu_server.workspace.postgres_proactive import load_proactive, save_proactive
+from xuanpu_server.workspace.postgres_reminders import save_reminders
+from xuanpu_server.workspace.rules import ensure_todo_progress
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable
@@ -35,6 +38,12 @@ class PostgresWorkspaceStore:
                 "workspace_file_version",
                 "workspace_request",
                 "workspace_message",
+                "proactive_check",
+                "proactive_followup",
+                "proactive_scan_state",
+                "notification",
+                "notification_delivery",
+                "reminder",
             )
         }
 
@@ -66,6 +75,10 @@ class PostgresWorkspaceStore:
             original = deepcopy(state)
             yield state
             await self._save(conn, tenant, user, original, state)
+        # 只有真实数据库提交成功才消费事务内队列；审计或提交失败时保留原内容。
+        state.pending_notifications = []
+        state.pending_reminders = []
+        state.pending_reminder_cancellations = []
 
     async def _load(
         self, conn: Any, tenant: str, user: str, request_id: str | None
@@ -78,6 +91,8 @@ class PostgresWorkspaceStore:
             user,
         )
         state.items = {r["item_id"]: json.loads(r["record"]) for r in rows}
+        for item in state.items.values():
+            ensure_todo_progress(item)
         rows = await conn.fetch(
             f"SELECT item_id,record FROM {self._t['workspace_file_version']} WHERE tenant_id=$1 AND user_id=$2 ORDER BY item_id,revision",
             tenant,
@@ -95,6 +110,8 @@ class PostgresWorkspaceStore:
                 json.loads(settings["settings"]),
                 settings["next_message_id"],
             )
+        state.settings = {**SettingsData().model_dump(), **state.settings}
+        await load_proactive(conn, self._t, tenant, user, state)
         if request_id is not None:
             keys = [request_id]
             if request_id.startswith("proposal:"):
@@ -165,6 +182,8 @@ class PostgresWorkspaceStore:
                 message["request_id"],
                 json.dumps(message),
             )
+        await save_reminders(conn, self._t, tenant, user, state)
+        await save_proactive(conn, self._t, tenant, user, old, state)
         for audit in state.audits:
             await conn.execute(
                 f"INSERT INTO {self._t['audit']} (tenant_id,user_id,source,kind,at,actor,data) VALUES ($1,$2,'control',$3,$4,$5,$6::jsonb)",
@@ -175,6 +194,39 @@ class PostgresWorkspaceStore:
                 audit["actor"],
                 json.dumps(audit["data"]),
             )
+
+    async def owners(
+        self,
+        after: tuple[str, str] | None = None,
+        limit: int = 100,
+    ) -> list[tuple[str, str]]:
+        """合并已有元数据所有者，过滤停用身份并稳定分页。"""
+        if not 1 <= limit <= 100:
+            raise ValueError("分页数量须为1至100")
+        sources = (
+            "workspace_item",
+            "workspace_settings",
+            "workspace_message",
+            "workspace_request",
+            "proactive_check",
+            "proactive_followup",
+            "proactive_scan_state",
+        )
+        owners = " UNION ".join(
+            f"SELECT tenant_id,user_id FROM {self._t[name]}" for name in sources
+        )
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(
+                f"SELECT o.tenant_id,o.user_id FROM ({owners}) o "
+                f"JOIN {self._t['tenant']} t ON t.tenant_id=o.tenant_id AND t.status='active' "
+                f"JOIN {self._t['user']} u ON u.tenant_id=o.tenant_id AND u.user_id=o.user_id AND u.status='active' "
+                "WHERE ($1::text IS NULL OR (o.tenant_id,o.user_id)>($1,$2)) "
+                "ORDER BY o.tenant_id,o.user_id LIMIT $3",
+                after[0] if after else None,
+                after[1] if after else None,
+                limit,
+            )
+        return [(row["tenant_id"], row["user_id"]) for row in rows]
 
     async def messages(
         self,

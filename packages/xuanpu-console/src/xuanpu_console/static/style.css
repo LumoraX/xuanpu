@@ -164,3 +164,10 @@ main { padding: 16px; }
 @keyframes notification-enter { from { transform: translateX(16px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .notification-alert { animation: none; } }
 @media (max-width: 600px) { .notification-alerts { top: 12px; right: 12px; width: calc(100vw - 24px); max-height: min(60dvh, 480px); } }
+
+/* 主动跟进与通知理由按纯文本换行，长记录不撑破窄屏。 */
+#proactive-draft { overflow-wrap: anywhere; }
+#proactive-draft > button { float: right; }
+#proactive-draft details { margin: 10px 0; }
+#proactive-draft summary { cursor: pointer; }
+.notification-reason { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }

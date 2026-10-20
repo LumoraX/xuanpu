@@ -65,3 +65,44 @@ async def test_feishu_sender_uses_mapping_and_stable_key(identity_world: Any) ->
             assert len(sent) == 2
         finally:
             await sender.close()
+
+
+async def test_feishu_proactive_body_without_due_time(identity_world: Any) -> None:
+    """主动通知复用同一发送器和通知幂等键，无截止时间不编造时间行。"""
+    from xuanpu_server.reminders.feishu import FeishuNotificationSender
+
+    async with identity_world() as ident:
+        platform = ident.world.platform
+        user = await ident.user()
+        await ident.configure_feishu()
+        await ident.store.bind_tenant_key("acme", "feishu", "tk_acme")
+        await ident.store.create_external_identity(
+            ExternalIdentity("acme", "feishu", "proactive-union", user.user_id, {"open_id": "own-open-id"})
+        )
+        sent = []
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            """模拟供应商，记录实际发送的文本和稳定键。"""
+            if request.url.path.endswith("tenant_access_token/internal"):
+                return httpx.Response(200, json={"code": 0, "tenant_access_token": "token", "expire": 7200})
+            sent.append(json.loads(request.content))
+            return httpx.Response(200, json={"code": 0, "data": {"message_id": "sent"}})
+
+        sender = FeishuNotificationSender(
+            control=platform.store, identity=platform.identity.store, vault=platform.vault,
+            open_base="https://feishu.test", transport=httpx.MockTransport(handler),
+        )
+        notification = NotificationRecord(
+            9, "acme", user.user_id, None, "业务跟进", None, 2000.0,
+            notification_key="followup:1:stage1", source="proactive_followup", body="报价已经发出了吗？",
+            proactive_followup_id="followup-1", alert_after=2000.0,
+        )
+        try:
+            await sender.send(notification, "feishu")
+            await sender.send(notification, "feishu")
+            await sender.send(replace(notification, notification_id=10), "feishu")
+            text = json.loads(sent[0]["content"])["text"]
+            assert "报价已经发出了吗？" in text and "原定时间" not in text
+            assert sent[0]["uuid"] == sent[1]["uuid"] != sent[2]["uuid"]
+        finally:
+            await sender.close()

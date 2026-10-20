@@ -26,3 +26,7 @@ models:
 # public_url: http://127.0.0.1:8420
 # identity:
 #   cookie_secure: false
+
+# 主动业务使用既有模型配置；员工不填密钥。
+proactive_interval_seconds: 1800
+proactive_scan_seconds: 60

@@ -73,6 +73,10 @@ class ReminderStore(Protocol):
         """按递增持久游标读取本人的通知。"""
         ...
 
+    async def notification_current(self, record: NotificationRecord) -> bool:
+        """核实本人通知来源是否仍允许浮层提示和外部发送，不删除历史。"""
+        ...
+
     async def read(
         self, tenant_id: str, user_id: str, notification_id: int, now: float
     ) -> NotificationRecord:

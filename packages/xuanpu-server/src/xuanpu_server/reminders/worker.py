@@ -109,6 +109,9 @@ class ReminderWorker:
             # 预留整个发送超时，避免过期租约与接手工作者同时发出请求。
             if self._now() + 10 > record.lease_until:
                 return
+            if not await self._store.notification_current(notification):
+                await self._store.finish_delivery(record, "skipped", self._now(), "source_resolved")
+                return
             if self._sender is None:
                 raise DeliveryError("channel_unconfigured", retryable=False)
             await asyncio.wait_for(self._sender.send(notification, record.channel), timeout=10)

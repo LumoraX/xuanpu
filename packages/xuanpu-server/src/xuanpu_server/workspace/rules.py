@@ -7,7 +7,7 @@ from copy import deepcopy
 from typing import Any
 
 from xuanpu_server.errors import ConflictError, InvalidRequestError, NotFoundError
-from xuanpu_server.workspace.models import WorkspaceState, fingerprint
+from xuanpu_server.workspace.models import WorkspaceState, fingerprint, validate_data
 
 
 def public(item: dict[str, Any]) -> dict[str, Any]:
@@ -85,7 +85,7 @@ def remember(state: WorkspaceState, request_id: str, payload: Any, result: dict[
 
 def new_item(kind: str, data: dict[str, Any], now: float) -> dict[str, Any]:
     """生成稳定、不含用户提供路径的记录标识。"""
-    return {
+    item: dict[str, Any] = {
         "id": "ws_" + secrets.token_hex(16),
         "kind": kind,
         "data": data,
@@ -94,6 +94,9 @@ def new_item(kind: str, data: dict[str, Any], now: float) -> dict[str, Any]:
         "updated_at": now,
         "trashed_at": None,
     }
+    if kind == "todo":
+        item.update(generation=1, last_progress_at=now, progress_unknown=False)
+    return item
 
 
 def audit(state: WorkspaceState, actor: str, action: str, now: float, item: dict[str, Any]) -> None:
@@ -154,5 +157,65 @@ def recycle(
             record["trashed_at"] = now
             record["_trash_batch"] = item["id"]
     for record in members:
+        if record["kind"] == "todo":
+            ensure_todo_progress(record)
+            record["generation"] += 1
+            if restoring:
+                record["progress_unknown"] = True
+            close_proactive(state, record["id"], now)
         touch(record, now)
     return members
+
+
+def ensure_todo_progress(item: dict[str, Any]) -> None:
+    """旧待办只以创建时间回填，保留进展未知以供核实。"""
+    if item["kind"] == "todo":
+        item.setdefault("generation", 1)
+        item.setdefault("last_progress_at", item["created_at"])
+        item.setdefault("progress_unknown", True)
+
+
+def close_proactive(state: WorkspaceState, item_id: str, now: float) -> None:
+    """关闭该待办所有活动关注记录，保留通知历史。"""
+    for records in (state.checks, state.followups):
+        for record in records.values():
+            if record.get("item_id") == item_id and record.get("status") not in (
+                "resolved",
+                "dismissed",
+            ):
+                record.update(
+                    status="resolved",
+                    handled_at=now,
+                    updated_at=now,
+                    lease_until=0,
+                    claim_token=None,
+                )
+                if "version" in record:
+                    record["version"] += 1
+                if record.get("reminder_id"):
+                    state.pending_reminder_cancellations.append(record["reminder_id"])
+
+
+def apply_todo_change(
+    state: WorkspaceState,
+    item: dict[str, Any],
+    data: dict[str, Any],
+    now: float,
+    *,
+    progress: bool = False,
+) -> None:
+    """协调工作区字段、业务进展代际与旧关注；调用者负责授权和版本检查。"""
+    checked = validate_data(item["kind"], {**item["data"], **data})
+    if item["kind"] == "todo":
+        ensure_todo_progress(item)
+        changed = progress or any(
+            checked[key] != item["data"].get(key) for key in ("due_at", "status")
+        )
+        if changed:
+            item["generation"] += 1
+            item["last_progress_at"] = now
+            item["progress_unknown"] = False
+            close_proactive(state, item["id"], now)
+    item["data"] = checked
+    check_relations(state, item)
+    touch(item, now)

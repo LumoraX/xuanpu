@@ -90,11 +90,17 @@ class NotificationRecord:
     notification_id: int
     tenant_id: str
     user_id: str
-    reminder_id: str
+    reminder_id: str | None
     title: str
-    due_at: float
+    due_at: float | None
     created_at: float
     read_at: float | None = None
+    notification_key: str | None = None
+    source: str = "reminder"
+    body: str | None = None
+    proactive_check_id: str | None = None
+    proactive_followup_id: str | None = None
+    alert_after: float = 0.0
 
 
 @dataclass(frozen=True)

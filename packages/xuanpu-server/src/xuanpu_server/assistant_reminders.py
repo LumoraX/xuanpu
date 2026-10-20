@@ -51,3 +51,5 @@ class RouteOutcome:
     workspace_draft: dict[str, Any] | None = None
     open_workspace: str | None = None
     proposal_id: str | None = None
+    proactive_draft: dict[str, Any] | None = None
+    open_proactive: bool = False

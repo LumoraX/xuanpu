@@ -50,6 +50,7 @@ async def notification_view(
     deliveries = await service.deliveries(who, record.notification_id)
     return {
         **asdict(record),
+        "attention_active": await service.store.notification_current(record),
         "deliveries": [
             {
                 "channel": d.channel,
