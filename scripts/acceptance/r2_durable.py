@@ -46,7 +46,7 @@ class DurableAcceptance(Acceptance):
 
     async def schedule_cycles(self) -> None:
         """两次未来时刻由真实调度扫描受理，不直接调用fire_time或调整时钟。"""
-        source=await self.json('POST','/v1/workspace/files',params={'name':'合成调度材料.csv',
+        source=await self.json('POST','/v1/workspace/files',params={'name':self.prefix+'-合成调度材料.csv',
             'request_id':self.prefix+'-schedule-source'},content='部门,金额\nA,12.50\nB,3.00\n'.encode(),headers={'Content-Type':'text/csv'})
         zone=ZoneInfo('Asia/Shanghai')
         for cycle in (1,2):
