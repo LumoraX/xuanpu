@@ -1,26 +1,45 @@
 ---
 name: archive-audit
-description: 查询财务证据链及缺口，按适用清册组织归档，并核对四性检测和存储锁定证据。
-version: 0.1.0-design.1
+description: 查询发票查验、税务确认、红字和档案证据，准备受控税务或归档计划并核对审计缺口。
+version: 0.4.0-f3
+entry: false
 type: composite
 tool_names:
-- api__finance__getActionPlan
+- api__finance__listLegalEntities
 - api__finance__getInvoice
 - api__finance__getInvoiceEvidence
-- api__finance__getPayment
-- api__finance__getPosting
+- api__finance__verifyInvoice
+- api__finance__listInvoiceVerifications
+- api__finance__getInvoiceCompliance
+- api__finance__getComplianceOptions
+- api__finance__listCompliancePlans
+- api__finance__listTaxConfirmations
+- api__finance__listRedLetterCases
+- api__finance__getRedLetterCase
+- api__finance__refreshRedLetterCase
+- api__finance__listTaxAdjustments
+- api__finance__listArchives
 - api__finance__getArchive
+- api__finance__getArchiveManifest
+- api__finance__getArchiveTests
+- api__finance__getArchiveEvidence
+- api__finance__listArchiveSupplements
+- api__finance__auditArchive
+- api__finance__getArchiveAudits
 - api__finance__previewFinanceAction
+- api__finance__getActionPlan
 - api__finance__getOperation
 ---
-# 归档与审计
+# 查验、红字与档案核对
 
-先读取[共用执行规则](references/execution-rules.md)。从业务记录和证据接口确认适用归档清册，不自行拼造凭证、回单或标准元素。
-action=archive 预检后展示缺件与检测问题，满足资格才执行。
-只有 getArchive 的 archived 及其检测、清册摘要和锁定证据一致时报告归档完成。
+先读取受权公司和getComplianceOptions；未配置通道或正式profile未验收时说明缺口，不模拟正式成功。查询getInvoiceCompliance取得合规version；票面getInvoice.version仅用于分配。
 
-文件上传、哈希一致或生成 ZIP 均不单独表示合规归档。尚未付款的已入账应付按适用阶段清册判断，不能虚构付款回单凑齐。
-归档后出现付款、红冲或冲回，需要追加补充包并保留原包摘要；不能覆盖旧文件后重新称为原始档案。
-审计摘要分别列出已核实、未核实和不适用项目，只展示有权访问的脱敏引用。
+verifyInvoice绑定当前合规version发起实际查验；按getOperation及查验历史恢复，passed须有权威回执且未过期。用途确认confirm_usage、税务入账confirm_tax_entry以invoice为目标，仅参数accounting_period，金额由服务推导，不能聊天指定。两者与ERP记账分别记录。
 
-实际归档决定仍须真实员工人工入口，模型不调用executeFinanceAction。
+红字确认单必须来自实际权威快照。读取getRedLetterCase，核对我方确认分支、确认单ID和原始截止时间；confirm_red_letter目标red_letter_case、参数confirmation_id。超过适用原发起72小时只能refresh回查，不能延长计划复活。confirmed不等于issued；实际红票需独立原件与查验，关联交本人。调整材料收到不等于已申报或已转出。
+
+归档先查看材料、支付回单、凭证与检测缺口，再用archive准备invoice/expense_claim/payable计划；补包同时绑定parent_manifest_hash和真实source_event_ids。专用审批后仍由原经办本人执行。模型不调用executeFinanceAction、人工红票关联、人工调整补件、cancelOperation或reconcileOperation，聊天确认不升级human身份。
+
+受理/dispatching/outcome_unknown均不是完成。未知结果只查原请求，不能换键重发。getArchiveManifest/Tests/Evidence核对全部成员具体版本、真实字节摘要、保留锁与独立封存证明；auditArchive只读核对，失败追加健康告警，历史包不会改写。新付款/红冲/调整后supplement_required须另建补包。
+
+当前simulation-archive-v1只验证隔离协议，四性报告有明确范围；不能解释成官方标准材料、真实税务效力、正式WORM或法定归档认证。

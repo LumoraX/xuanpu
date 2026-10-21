@@ -1,7 +1,7 @@
 ---
 name: posting-reconciliation
 description: 为已批准报销或应付准备付款、记账和冲回计划，恢复专用审批并按真实回执解释未知结果。
-version: 0.3.0-design.2
+version: 0.4.0-f3
 entry: false
 type: composite
 tool_names:
@@ -21,7 +21,6 @@ tool_names:
 - api__finance__listPostings
 - api__finance__getPosting
 - api__catalog__listPayeeAccounts
-- api__finance__getRedLetterCase
 ---
 # 付款、记账与结果核对
 
@@ -32,5 +31,3 @@ reverse_posting以真实Posting为目标，使用其最新version、reversal_ava
 accepted/awaiting_provider不是成功；outcome_unknown仍占金额，不能换计划或幂等键再付款。getOperation与getPayment/getPosting查询真实进展，资金成功须transaction_id，入账成功须ledger_id/accounting_period/voucher_id及渠道证据。
 人工reconcileOperation只排同一请求号查单；未发工作才可取消。两者由真实员工人工入口发起，本Skill不执行。not_found也不能证明可以重发。
 simulation=true只属于隔离测试单据与回执，不能写入正式记录；当前无真实供应商上线，不声称到账、正式入账、税务确认或归档。
-
-参考设计保留后续confirm_usage、confirm_tax_entry与confirm_red_letter税务动作；这些属于F3，当前可运行包不发布，不能由F2付款或ERP凭证推导税务确认。

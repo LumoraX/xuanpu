@@ -1,8 +1,9 @@
 openapi: 3.0.3
-info: {title: 玄圃财务受控主数据 API 设计契约, version: 0.3.0-design.2, description: 完整财务设计参考；F0-F2与examples/finance已实现子集同步，F3仍是待实现设计，非供应商上线或生产验收证明。}
-servers: [{url: 'https://finance.invalid'}]
+info: {title: 玄圃财务 F1—F2 受控目录 API, version: 0.3.0-f2.1, description: 已实现独立财务原件、报销、应付、持久人工审批及可替换HTTP付款/记账结果闭环；供应商未选定，仅隔离模拟通道验证。正式执行仍受有效查验与真实专用批准阻断；不包含F3税务或正式归档。}
+servers: [{url: 'http://127.0.0.1:8443'}]
 security: [{serviceBearer: [], actorContext: []}]
-x-design-status: awaiting-written-review
+x-design-status: implemented-f0-f2-local-tested
+x-trusted-context: 平台签名注入X-Xuanpu-Context，禁止模型提供身份；executeFinanceAction/reconcileOperation及F2取消只允许cookie人工网关。
 paths:
   /v1/finance/catalog/expense-categories:
     get:
@@ -18,6 +19,13 @@ paths:
       x-delivery-phase: F1
       parameters: [{$ref: '#/components/parameters/LegalEntity'}, {$ref: '#/components/parameters/Cursor'}, {$ref: '#/components/parameters/Limit'}, {name: kind, in: query, schema: {type: string, enum: [department, project]}}]
       responses: {'200': {description: 分摊归属分页, content: {application/json: {schema: {$ref: '#/components/schemas/CostCenterPage'}}}}, default: {$ref: '#/components/responses/Error'}}
+  /v1/finance/invoice-allocations/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}]
+    get:
+      operationId: getInvoiceAllocation
+      summary: 同时验证票据和单据权限后读取分配金额及版本
+      x-delivery-phase: F1
+      responses: {'200': {description: 分配详情, content: {application/json: {schema: {$ref: '#/components/schemas/Allocation'}}}}, default: {$ref: '#/components/responses/Error'}}
   /v1/finance/catalog/business-documents:
     get:
       operationId: listBusinessDocuments
@@ -32,13 +40,6 @@ paths:
       x-delivery-phase: F2
       parameters: [{$ref: '#/components/parameters/LegalEntity'}, {$ref: '#/components/parameters/Cursor'}, {$ref: '#/components/parameters/Limit'}, {name: document_kind, in: query, required: true, schema: {type: string, enum: [expense_claim, payable]}}, {name: document_id, in: query, required: true, schema: {type: string, minLength: 1, maxLength: 128}}]
       responses: {'200': {description: 受权业务查询结果, content: {application/json: {schema: {$ref: '#/components/schemas/PayeePage'}}}}, default: {$ref: '#/components/responses/Error'}}
-  /v1/finance/invoice-allocations/{id}:
-    parameters: [{name: id, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}]
-    get:
-      operationId: getInvoiceAllocation
-      summary: 同时验证票据和单据权限后读取分配金额及版本
-      x-delivery-phase: F1
-      responses: {'200': {description: 分配详情, content: {application/json: {schema: {$ref: '#/components/schemas/Allocation'}}}}, default: {$ref: '#/components/responses/Error'}}
 components:
   securitySchemes:
     serviceBearer: {type: http, scheme: bearer}

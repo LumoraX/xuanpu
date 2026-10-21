@@ -50,6 +50,7 @@ async function renderFinanceList(generation,epoch) {
     const toolbar=$("workspace-toolbar"),select=financeSelect(toolbar,"所属公司",entities.items,financeState.entity);
     select.addEventListener("change",()=>{if(financeState.pending){financeShowPending();return;}financeState.entity=select.value;financeInvalidate();return refreshWorkspace();});
     select.disabled=!!financeState.pending;
+    if(typeof financeComplianceToolbar==="function")financeComplianceToolbar(toolbar);
     if(typeof financeSettlementToolbar==="function")financeSettlementToolbar(toolbar);
     toolbar.append(wsButton("新建报销",financeEdit),wsButton("本人草稿",()=>{financeState.claimStatus="draft";return financeLoadClaims(token);}),wsButton("全部可看记录",()=>{financeState.claimStatus="";return financeLoadClaims(token);}),wsButton("待我审批",()=>financeLoadQueue(token)),wsButton("刷新",refreshWorkspace));
     if(financeState.pending)financeShowPending();
@@ -106,6 +107,7 @@ async function financeDetail(id,review=null) {
     const approve=wsButton("批准本步骤",()=>financePreview("approve",{workflow_step_id:review.workflow_step_id}));approve.disabled=!!review.blockers?.length;
     box.append(approve,wsButton("驳回",()=>financeReason("reject",review.workflow_step_id)));}
   if(typeof financeSettlementSection==="function")await financeSettlementSection(box,claim);
+  if(typeof financeComplianceDocumentArchive==="function")await financeComplianceDocumentArchive(box,claim);
   financeFeedback("请核对报销明细、票据依据和审批步骤；审批通过不表示已付款或入账。");
 }
 function financeEvidence(box,evidence=[]) {
@@ -117,6 +119,7 @@ async function financeInvoice(id) {
   const token=financeToken(),[invoice,bundle]=await Promise.all([financeCall("getInvoice",{id}),financeCall("getInvoiceEvidence",{id})]);
   if(!financeCurrent(token))return;const box=$("workspace-content"),card=wsText("article","","workspace-record");
   card.append(wsText("h4","发票 "+invoice.number),wsText("p","票面 ¥"+invoice.gross+" · 税额 ¥"+invoice.tax+" · 可用 ¥"+invoice.available_amount+" · 版本 "+invoice.version),wsText("p","查验状态："+({not_checked:"未查验",passed:"已通过",failed:"未通过",unavailable:"不可用",pending:"处理中",stale:"已过期"}[invoice.verification_status]||invoice.verification_status)));
+  if(typeof financeComplianceInvoice==="function")card.append(wsButton("查验、税务与归档",()=>financeComplianceInvoice(id)));
   financeEvidence(card,bundle.evidence);for(const gap of bundle.gaps||[])card.append(wsText("p",gap));box.append(card);
 }
 async function financeEdit(claim=null) {

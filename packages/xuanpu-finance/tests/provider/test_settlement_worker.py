@@ -247,3 +247,18 @@ async def test_mode_changes_after_prepare_preserve_unknown_without_http() -> Non
     assert await worker.run_once()
     assert "prepare" in store.calls and "submit" not in store.calls
     assert ("defer", "DISPATCH_PAUSED", True) in store.calls
+
+
+async def test_preflight_network_outage_defers_without_stopping_worker_or_sending() -> None:
+    """物化证据尚未发送时的网络暂不可用不能停止整个队列。"""
+    class PreflightStore(Store):
+        """故障发生在dispatching持久边界之前。"""
+
+        async def prepare_settlement_dispatch(self, job: Any) -> dict[str, Any]:
+            """模拟实际取证连接超时。"""
+            raise httpx.ConnectError("temporary evidence outage")
+
+    store = PreflightStore()
+    assert await SettlementWorker(store,Providers(store),Gateway(store)).run_once()
+    assert ("defer","PREFLIGHT_NETWORK_UNAVAILABLE",False) in store.calls
+    assert "submit" not in store.calls

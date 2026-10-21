@@ -1,7 +1,7 @@
 ---
 name: expense-reimbursement
 description: 根据费用事实准备本人报销记录与真实分票，查询进度、修订草稿及准备提交或撤回计划。
-version: 0.3.0-design.2
+version: 0.4.0-f3
 entry: false
 type: composite
 tool_names:
@@ -18,8 +18,6 @@ tool_names:
 - api__catalog__listExpenseCategories
 - api__catalog__listCostCenters
 - api__catalog__getInvoiceAllocation
-- api__finance__getInvoice
-- api__finance__getInvoiceEvidence
 ---
 # 报销记录
 

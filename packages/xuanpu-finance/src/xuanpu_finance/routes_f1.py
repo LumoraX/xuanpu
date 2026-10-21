@@ -6,6 +6,7 @@ from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Query, Request
 
+from xuanpu_finance.compliance.models import ComplianceActionPreview  # noqa: TC001
 from xuanpu_finance.dependencies import FinanceCaller, get_store, require_write
 from xuanpu_finance.errors import FinanceError
 from xuanpu_finance.expenses.models import (  # noqa: TC001 — FastAPI运行时解析
@@ -144,7 +145,7 @@ async def review_queue(
 
 @router.post("/v1/finance/action-previews", status_code=201, operation_id="previewFinanceAction")
 async def preview(
-    request: Request, body: ActionPreview, key: IdempotencyKey, who: FinanceCaller
+    request: Request, body: ActionPreview | ComplianceActionPreview, key: IdempotencyKey, who: FinanceCaller
 ) -> dict[str, Any]:
     """只生成固定版本计划，不占额度或产生批准。"""
     require_write(request, cancel=body.action in {"approve", "reject", "withdraw"})

@@ -158,10 +158,16 @@ class SettlementWorker:
             return None
         try:
             request = await self.store.prepare_settlement_dispatch(job)
+        except httpx.HTTPError:
+            await self.store.defer_settlement(job, "PREFLIGHT_NETWORK_UNAVAILABLE", uncertain=False)
+            return None
         except FinanceError as error:
             if _lease_lost(error):
                 raise
-            await self.store.reject_settlement_before_dispatch(job, error.code)
+            if error.status >= 500:
+                await self.store.defer_settlement(job, error.code, uncertain=False)
+            else:
+                await self.store.reject_settlement_before_dispatch(job, error.code)
             return None
         if not self._may_dispatch():
             await self.store.defer_settlement(job, "DISPATCH_PAUSED", uncertain=True)
@@ -183,6 +189,8 @@ class SettlementWorker:
         except ProviderResponseError as error:
             result = {field: request[field] for field in RESULT_SCOPE}
             result.update(status="unknown", validation_error=error.code)
+            if error.readback_evidence:
+                result["readback_evidence"] = error.readback_evidence
             await self.store.record_settlement_result(job, result, error.raw)
             return
         except (httpx.HTTPError, FinanceError) as error:

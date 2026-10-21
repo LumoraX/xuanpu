@@ -26,3 +26,14 @@ def test_finance_settlement_behavior() -> None:
         capture_output=True, text=True, timeout=15,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_finance_compliance_behavior() -> None:
+    """税务目标独立版本、专用审批和未知结果不能被页面重放。"""
+    node = shutil.which('node')
+    assert node is not None
+    result = subprocess.run(
+        [node, str(Path(__file__).with_name('finance_compliance_behavior.cjs')), str(static_dir())],
+        capture_output=True, text=True, timeout=15,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

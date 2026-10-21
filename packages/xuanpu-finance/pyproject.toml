@@ -1,7 +1,7 @@
 [project]
 name = "xuanpu-finance"
-version = "2026.10.21.3"
-description = "玄圃进程外财务：原件归集、报销应付、专用人工审批及付款记账接口"
+version = "2026.10.21.4"
+description = "玄圃进程外财务：原件报销、实际HITL、付款记账与税务红字档案通用接口"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = ["xuanpu-spec>=2026.10.21.1", "asyncpg>=0.29", "pydantic>=2.6", "defusedxml>=0.7.1", "cryptography>=42", "anyio>=4", "fastapi>=0.110", "httpx>=0.27", "uvicorn>=0.29", "pyyaml>=6", "PyJWT[crypto]>=2.9"]

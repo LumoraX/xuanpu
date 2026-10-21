@@ -11,6 +11,10 @@ import httpx
 
 from xuanpu_finance.api import create_app
 from xuanpu_finance.auth import FinanceAuthenticator
+from xuanpu_finance.compliance.archive import ArchivePipeline
+from xuanpu_finance.compliance.evidence import EvidenceFetcher
+from xuanpu_finance.compliance.provider import ComplianceRegistry
+from xuanpu_finance.compliance.queue import ComplianceQueueAdapter
 from xuanpu_finance.errors import FinanceError
 from xuanpu_finance.gateway import PlatformGateway
 from xuanpu_finance.invoices.worker import FinanceWorker
@@ -86,6 +90,9 @@ async def configure_store(pool: asyncpg.Pool, config: FinanceConfig) -> FinanceS
         [item.public_descriptor() for item in config.settlement_providers],
         simulation=config.execution_simulation,
     )
+    await store.configure_compliance(config.compliance_policies,
+        [item.public_descriptor() for item in config.compliance_providers],
+        simulation=config.execution_simulation)
     return store
 
 
@@ -148,6 +155,11 @@ async def open_runtime(config: FinanceConfig) -> AsyncIterator[FastAPI]:
         worker = FinanceWorker(store, objects, gateway, synthetic=config.synthetic)
         providers = await provider_registry(config, resources)
         settlement = SettlementWorker(store, providers, gateway)
+        compliance = await compliance_registry(config, resources)
+        archive = ArchivePipeline(compliance, objects, EvidenceFetcher({
+            "settlement": providers, "compliance": compliance}))
+        compliance.archive = archive
+        compliance_worker = SettlementWorker(ComplianceQueueAdapter(store, archive), compliance, gateway)
         app = create_app(
             store=store,
             auth=auth,
@@ -155,6 +167,8 @@ async def open_runtime(config: FinanceConfig) -> AsyncIterator[FastAPI]:
             mode=config.mode,
             settlement_worker=settlement,
             settlement_providers=providers,
+            compliance_worker=compliance_worker,
+            compliance_providers=compliance,
         )
         app.state.finance_store, app.state.finance_objects = store, objects
         app.state.lock_pid = await lock.fetchval("SELECT pg_backend_pid()")
@@ -164,7 +178,7 @@ async def open_runtime(config: FinanceConfig) -> AsyncIterator[FastAPI]:
             app.state.worker_error = "InstanceLockLost"
             app.state.instance_lock_lost = True
             app.state.mode = "disabled"
-            for name in ("worker_task", "settlement_task"):
+            for name in ("worker_task", "settlement_task", "compliance_task"):
                 task = getattr(app.state, name, None)
                 if task is not None:
                     task.cancel()
@@ -175,3 +189,18 @@ async def open_runtime(config: FinanceConfig) -> AsyncIterator[FastAPI]:
         finally:
             if not lock.is_closed():
                 lock.remove_termination_listener(lock_lost)
+
+
+async def compliance_registry(config: FinanceConfig, resources: AsyncExitStack) -> ComplianceRegistry:
+    """合规通道使用自己的固定凭据和生命周期，不混用结算回调密钥。"""
+    client = await resources.enter_async_context(httpx.AsyncClient(timeout=30, trust_env=False,
+                                                                 follow_redirects=False))
+    tokens, secrets = {}, {}
+    for item in config.compliance_providers:
+        selector = (item.provider, item.configuration_version)
+        tokens[selector] = await secret_text(item.token_file)
+        secrets[selector] = await secret_text(item.callback_secret_file)
+        if len(secrets[selector].encode("utf-8")) < 32:
+            raise ValueError("合规回调密钥至少32字节")
+    return ComplianceRegistry(list(config.compliance_providers), client,
+                              tokens=tokens, callback_secrets=secrets)

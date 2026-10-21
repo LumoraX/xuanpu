@@ -11,6 +11,7 @@ from xuanpu_finance.expenses.models import BusinessRef
 from xuanpu_finance.models import FinancePrincipal
 from xuanpu_finance.storage.common import decode
 from xuanpu_finance.storage.f2_documents import INFLIGHT, SettlementDocumentStore
+from xuanpu_finance.storage.f3_projection import invoice_projection, require_usable_projection
 
 if TYPE_CHECKING:
     from xuanpu_finance.expenses.models import ActionPreview
@@ -244,10 +245,11 @@ class SettlementCheckStore(SettlementDocumentStore):
         )
         if not rows:
             raise FinanceError("INVOICE_EVIDENCE_REQUIRED", 409, "外部执行须有完整原件及结构化分配")
-        if doc["simulation"] and not policy["require_verified_invoice"]:
-            return
         for row in rows:
-            data = decode(row["data"])
+            data = await invoice_projection(conn, doc["tenant_id"], doc["legal_entity_id"], decode(row["data"]))
+            require_usable_projection(data)
+            if doc["simulation"] and not policy["require_verified_invoice"]:
+                continue
             evidence = data.get("verification_evidence")
             if data.get("verification_status") != "passed" or not isinstance(evidence, dict):
                 raise FinanceError(

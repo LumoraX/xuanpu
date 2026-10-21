@@ -76,6 +76,7 @@ class ProviderEvidence(BaseModel):
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     media_type: str = Field(min_length=1, max_length=128)
     object_ref: str = Field(min_length=1, max_length=2048)
+    size: int | None = Field(default=None, ge=1, le=20*1024*1024)
 
 
 class ProviderResult(BaseModel):

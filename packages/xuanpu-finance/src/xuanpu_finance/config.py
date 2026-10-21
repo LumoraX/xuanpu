@@ -8,6 +8,9 @@ from typing import Literal, Self
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from xuanpu_finance.compliance.models import CompliancePolicy  # noqa: TC001
+from xuanpu_finance.compliance.protocol import ComplianceProviderConfig  # noqa: TC001
+from xuanpu_finance.compliance_config import validate_compliance_config
 from xuanpu_finance.expenses.models import ExpensePolicy  # noqa: TC001 — Pydantic运行时解析
 from xuanpu_finance.settlement.models import (  # noqa: TC001
     BusinessSnapshot,
@@ -123,6 +126,8 @@ class FinanceConfig(StrictConfig):
     business_documents: list[BusinessSnapshot] = Field(default_factory=list)
     payee_accounts: list[PayeeAccount] = Field(default_factory=list)
     settlement_providers: list[ProviderConfig] = Field(default_factory=list)
+    compliance_policies: list[CompliancePolicy] = Field(default_factory=list)
+    compliance_providers: list[ComplianceProviderConfig] = Field(default_factory=list)
     mode: Literal["enabled", "draining", "read_only", "disabled"] = "enabled"
     environment: Literal["production", "development", "test"] = "production"
     synthetic: bool = False
@@ -145,6 +150,7 @@ class FinanceConfig(StrictConfig):
                 raise ValueError("授权必须指向已配置公司")
         self.validate_expense_links(companies)
         validate_settlement_config(self)
+        validate_compliance_config(self)
         return self
 
     def validate_expense_links(self, companies: set[tuple[str, str]]) -> None:
@@ -202,5 +208,10 @@ def load_config(path: Path) -> FinanceConfig:
             }
         )
         for provider in config.settlement_providers
+    ]
+    config.compliance_providers = [
+        provider.model_copy(update={"token_file": resolve(provider.token_file),
+                                    "callback_secret_file": resolve(provider.callback_secret_file)})
+        for provider in config.compliance_providers
     ]
     return config

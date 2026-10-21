@@ -9,6 +9,7 @@ from xuanpu_finance.errors import FinanceError
 from xuanpu_finance.models import FinancePrincipal
 from xuanpu_finance.operations import request_digest
 from xuanpu_finance.storage.common import identifier
+from xuanpu_finance.storage.imports import validate_source_environment
 from xuanpu_finance.storage.originals import OriginalStore
 
 if TYPE_CHECKING:
@@ -143,6 +144,7 @@ class WorkerStore(OriginalStore):
         )
         if source is None or source["rule_id"] != "ORIGINAL_REQUIRED":
             raise FinanceError("SUPPLEMENT_CONFLICT", 409, "源材料缺失异常不存在")
+        await validate_source_environment(conn, row["tenant_id"], row["legal_entity_id"], source, row["source_simulation"])
         if source["resolved_operation_id"] == row["id"]:
             return source
         if source["status"] == "resolved" or source["version"] != row["expected_exception_version"]:
@@ -176,7 +178,7 @@ class WorkerStore(OriginalStore):
                 "legal_entity_id": row["legal_entity_id"],
             }
             inserted = await conn.fetchrow(
-                "INSERT INTO finance_invoice(tenant_id,legal_entity_id,id,owner_id,seller_tax_id,number,issue_date,data,canonical_digest) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9) ON CONFLICT(tenant_id,legal_entity_id,seller_tax_id,number,issue_date) DO NOTHING RETURNING id",
+                "INSERT INTO finance_invoice(tenant_id,legal_entity_id,id,owner_id,seller_tax_id,number,issue_date,data,canonical_digest,source_simulation) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10) ON CONFLICT(tenant_id,legal_entity_id,seller_tax_id,number,issue_date) DO NOTHING RETURNING id",
                 row["tenant_id"],
                 row["legal_entity_id"],
                 invoice["id"],
@@ -186,6 +188,7 @@ class WorkerStore(OriginalStore):
                 invoice["issue_date"],
                 json.dumps(invoice),
                 request_digest({"invoice": parsed.invoice, "lines": parsed.lines}),
+                row["source_simulation"],
             )
             state = "parsed"
             if inserted is None:
@@ -268,6 +271,8 @@ class WorkerStore(OriginalStore):
             invoice["issue_date"],
         )
         assert previous is not None
+        if previous["source_simulation"] != row["source_simulation"]:
+            raise FinanceError("SIMULATION_MODE_CONFLICT", 409, "重复原件与历史票据的实际来源环境不一致")
         if previous["canonical_digest"] != request_digest(
             {"invoice": parsed.invoice, "lines": parsed.lines}
         ):
