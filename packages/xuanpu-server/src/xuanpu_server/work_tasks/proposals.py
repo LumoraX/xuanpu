@@ -190,6 +190,8 @@ class ActionProposalService:
                 data = choice_data(candidate, choice, task, self.now())
                 record = create_in_state(state, who.actor, candidate.kind, data,
                     entry['proposal_id'] + ':create', self.now(), entry['proposal_id'])
+                if task.trigger_origin_chain:
+                    state.items[record['id']]['_trigger_origin_chain']=list(task.trigger_origin_chain)
                 result = {'action_id':entry['action_id'], 'accepted':True, 'item_id':record['id'],
                           'kind':record['kind'], 'title':record['data']['title']}
                 reminder = prepared.get(entry['action_id'])

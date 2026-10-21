@@ -127,6 +127,9 @@ class WorkTaskRecord(FrozenModel):
     package_digest: Digest
     recovery_policy_version: Literal[1, 2] = 1
     grant_id: Identifier | None = None
+    definition_id: Identifier | None = None
+    definition_version: int | None = Field(default=None, ge=1)
+    trigger_origin_chain: tuple[str, ...] = Field(default=(),max_length=16)
     execution_kind: Literal['office', 'capability'] = 'office'
     entry: Identifier | None = None
     completion_policy: Literal['office_files', 'capability_receipt'] = 'office_files'

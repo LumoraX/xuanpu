@@ -2107,7 +2107,7 @@ requires-dist = [{ name = "httpx", specifier = ">=0.27" }]
 
 [[package]]
 name = "xuanpu-server"
-version = "2026.10.21.4"
+version = "2026.10.21.5"
 source = { editable = "packages/xuanpu-server" }
 dependencies = [
     { name = "cryptography" },

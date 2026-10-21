@@ -37,7 +37,7 @@ def advance(
     protected = {"task_id", "tenant_id", "user_id", "actor", "request_id", "input_fingerprint",
                  "inputs", "package", "package_version", "package_digest", "contains_external_input",
                  "accepted_at", "state_version", "status", "finished_at", "updated_at",
-                 "text", "timezone", "matter_id", "output_kind", "grant_id", "execution_kind", "entry",
+                 "text", "timezone", "matter_id", "output_kind", "definition_id", "definition_version", "trigger_origin_chain", "grant_id", "execution_kind", "entry",
                  "completion_policy", "recovery_policy_version"}
     if protected.intersection(changes):
         raise ConflictError("任务身份、输入与能力版本不可修改")

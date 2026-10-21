@@ -24,7 +24,11 @@ class ExecutionGrant(FrozenModel):
     created_at: Timestamp
     expires_at: Timestamp
     revoked: bool = False
-    max_attempts: int = Field(default=3, ge=1, le=10)
+    input_file_ids: tuple[str, ...] = ()
+    input_policy: Literal['fixed_revision','latest_at_occurrence'] = 'fixed_revision'
+    accepting_new_tasks: bool = True
+    task_attempt_limit: int = Field(default=3,ge=1,le=3)
+    max_attempts: int = Field(default=3, ge=1, le=300)
     max_tokens: int = Field(default=300000, ge=1)
     attempts_used: int = Field(default=0, ge=0)
 

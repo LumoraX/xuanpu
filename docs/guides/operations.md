@@ -685,3 +685,16 @@ lsof -nP -d cwd | grep '<data_dir>/cache/packages'
 预算未知预留不会自动退款。外部写入默认无权威验证器，HTTP成功也不能单独解除未知屏障。
 升级迁移0011/0012为新增表；回滚应用时保留这些表和v2记录，不将其交给旧R1执行者。
 发布前应核对[工作任务恢复机制](../architecture/work-tasks.md)和[R2-A验收边界](releases/2026-10-21-r2a-acceptance.md)。
+
+
+## R2-B 触发安排试点
+
+候选server 2026.10.21.5新增迁移0013。部署前仍需备份数据库/对象/配置，并按既有单实例迁移流程升级；本轮仅完成本地验收，没有生产发布。
+新增配置task_triggers.enabled（默认false）、scan_seconds（默认5，0.1..60）、eligibility_seconds（默认60，1..300）；
+开启还要求durable_execution.enabled。沿用R2-A已验收的文本模型上界、沙盒和单实例guard，不增加第二个模型worker。
+
+关闭开关会停止产生新实例，查询/暂停/取消继续可用。逐行暂存投递与去重墓碑保留，不能删除未知记录或用最大事件序号代替结算。
+内部WorkspaceStore.trigger_backlog()返回unsettled数量与oldest_at，供后续C3观测接入；不包含员工、目标或材料正文。
+排查实例看reason_code：feature_disabled、definition_paused可按原权限恢复；task_quota/object_quota/budget_unavailable等待额度；
+grant_revoked须重新明确确认；misfire_window_expired是错过记录；same_origin_chain跳过自身来源；chain_depth/hourly_limit需核实安排后恢复。
+取消不是外部回滚；保留原任务、版本授权、occurrence、delivery及效应回执供审计，不将新表记录交给旧R1执行者。

@@ -25,6 +25,18 @@ class WorkspaceStore(Protocol):
         """同一员工串行写入；异常回滚元数据与审计。"""
         ...
 
+    async def trigger_backlog(self) -> dict[str, int | float | None]:
+        """内部汇总未结算投递数量与最老时间，不返回员工或材料内容。"""
+        ...
+
+    async def trigger_candidates(self,kind: str, *, after: tuple[str,str,str] | None=None,limit: int=100,now: float) -> list[tuple[str,str,str]]:
+        """只查询有界due定义或逐条未结算投递。"""
+        ...
+
+    async def trigger_occurrences(self,tenant: str,user: str,identifier: str, *, after: str | None=None,limit: int=100) -> list[dict[str,Any]]:
+        """本人发生历史分页。"""
+        ...
+
     async def durable_candidates(self, *, after: tuple[str, str] | None = None,
                                  limit: int = 100, now: float) -> list[tuple[str, str, str]]:
         """按员工轮转读取有界due候选，不返回任务正文。"""

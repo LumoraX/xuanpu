@@ -272,6 +272,7 @@ class MetricsConfig(_Section):
     """抓取令牌的摘要，``xuanpu keygen metrics`` 生成。不给就不开指标端点（404）。"""
 
 
+from xuanpu_server.task_triggers.models import TriggerConfig
 from xuanpu_server.work_tasks.config import DurableExecutionConfig
 
 
@@ -300,6 +301,7 @@ class ServerConfig(_Section):
     object_store: ObjectStoreConfig = ObjectStoreConfig()
     limits: LimitsConfig = LimitsConfig()
     durable_execution: DurableExecutionConfig = DurableExecutionConfig()
+    task_triggers: TriggerConfig = TriggerConfig()
     audit: AuditConfig = AuditConfig()
     metrics: MetricsConfig = MetricsConfig()
     public_url: str | None = None
