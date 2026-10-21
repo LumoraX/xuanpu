@@ -1,0 +1,11 @@
+{
+  "environment": "isolated_simulation",
+  "image": "xuanpu-finance:2026.10.21.4",
+  "production": false,
+  "before_restart_status": "outcome_unknown",
+  "tax_posts_before_restart": 1,
+  "result": "failed",
+  "error": "KeyError('usage_status')",
+  "container_logs": "finance-api-1  | INFO:     Started server process [1]\nfinance-api-1  | INFO:     Waiting for application startup.\nfinance-api-1  | INFO:     Application startup complete.\nfinance-api-1  | INFO:     Uvicorn running on http://0.0.0.0:8443 (Press CTRL+C to quit)\nfinance-api-1  | INFO:     Shutting down\nfinance-api-1  | INFO:     Waiting for application shutdown.\nfinance-api-1  | INFO:     Application shutdown complete.\nfinance-api-1  | INFO:     Finished server process [1]\nfinance-api-1  | INFO:     Started server process [1]\nfinance-api-1  | INFO:     Waiting for application startup.\nfinance-api-1  | INFO:     Application startup complete.\nfinance-api-1  | INFO:     Uvicorn running on http://0.0.0.0:8443 (Press CTRL+C to quit)\nfinance-api-1  | INFO:     Shutting down\nfinance-api-1  | INFO:     Waiting for application shutdown.\nfinance-api-1  | INFO:     Application shutdown complete.\nfinance-api-1  | INFO:     Finished server process [1]\nfinance-api-1  | INFO:     Started server process [1]\nfinance-api-1  | INFO:     Waiting for application startup.\nfinance-api-1  | INFO:     Application startup complete.\nfinance-api-1  | INFO:     Uvicorn running on http://0.0.0.0:8443 (Press CTRL+C to quit)\n",
+  "cleanup": "dedicated_project_and_volumes_removed"
+}

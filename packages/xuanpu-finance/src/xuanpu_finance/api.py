@@ -1,4 +1,4 @@
-"""独立财务 F0/F1/F2 应用与后台工作生命周期。"""
+"""独立财务 F0/F1/F2/F3 应用与后台工作生命周期。"""
 
 from __future__ import annotations
 
@@ -19,11 +19,13 @@ from xuanpu_finance.routes import router
 from xuanpu_finance.routes_callback import router as callback_router
 from xuanpu_finance.routes_f1 import router as f1_router
 from xuanpu_finance.routes_f2 import router as f2_router
+from xuanpu_finance.routes_f3 import router as f3_router
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from xuanpu_finance.auth import FinanceAuthenticator
+    from xuanpu_finance.compliance.provider import ComplianceRegistry
     from xuanpu_finance.invoices.worker import FinanceWorker
     from xuanpu_finance.settlement.providers import ProviderRegistry
     from xuanpu_finance.settlement.worker import SettlementWorker
@@ -78,9 +80,9 @@ async def _work(app: FastAPI) -> None:
         logger.error("财务 worker 停止：%s", type(error).__name__)
 
 
-async def _settlement_work(app: FastAPI) -> None:
+async def _settlement_work(app: FastAPI, kind: str = "settlement") -> None:
     """独立外部队列在只读或停用时继续只读核对，不发新请求。"""
-    worker: SettlementWorker = app.state.settlement_worker
+    worker: SettlementWorker = getattr(app.state, kind + "_worker")
     try:
         while True:
             dispatch = app.state.mode == "enabled" and app.state.worker_error is None
@@ -90,13 +92,13 @@ async def _settlement_work(app: FastAPI) -> None:
     except asyncio.CancelledError:
         raise
     except Exception as error:
-        app.state.settlement_worker_error = type(error).__name__
+        setattr(app.state, kind + "_worker_error", type(error).__name__)
         logger.error("财务外部核对执行器停止：%s", type(error).__name__)
 
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """停止两个独立后台任务后，上层才关闭连接池与HTTP资源。"""
+    """停止三个独立后台任务后，上层才关闭连接池与HTTP资源。"""
     active = app.state.start_worker
     task = asyncio.create_task(_work(app)) if active and app.state.worker else None
     settlement = (
@@ -104,14 +106,19 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         if active and app.state.settlement_worker
         else None
     )
+    compliance = (
+        asyncio.create_task(_settlement_work(app, "compliance"))
+        if active and app.state.compliance_worker else None
+    )
     app.state.worker_task, app.state.settlement_task = task, settlement
+    app.state.compliance_task = compliance
     try:
         yield
     finally:
-        for current in (task, settlement):
+        for current in (task, settlement, compliance):
             if current is not None:
                 current.cancel()
-        for current in (task, settlement):
+        for current in (task, settlement, compliance):
             if current is not None:
                 with contextlib.suppress(asyncio.CancelledError):
                     await current
@@ -126,11 +133,13 @@ def create_app(
     start_worker: bool = True,
     settlement_worker: SettlementWorker | None = None,
     settlement_providers: ProviderRegistry | None = None,
+    compliance_worker: SettlementWorker | None = None,
+    compliance_providers: ComplianceRegistry | None = None,
 ) -> FastAPI:
     """显式注入独立存储，不在平台进程中导入此应用。"""
     if mode not in MODES:
         raise ValueError("财务模块模式无效")
-    app = FastAPI(title="玄圃财务 F0/F1/F2", version="2026.10.21.3", lifespan=_lifespan)
+    app = FastAPI(title="玄圃财务 F0–F3", version="2026.10.21.4", lifespan=_lifespan)
     app.state.store, app.state.auth, app.state.mode = store, auth, mode
     app.state.worker, app.state.start_worker, app.state.worker_error = worker, start_worker, None
     app.state.settlement_worker, app.state.settlement_providers = (
@@ -138,13 +147,9 @@ def create_app(
         settlement_providers,
     )
     app.state.settlement_worker_error, app.state.instance_lock_lost = None, False
-    if settlement_worker is not None:
-        settlement_worker.dispatch_allowed = lambda: (
-            app.state.mode == "enabled"
-            and app.state.worker_error is None
-            and app.state.settlement_worker_error is None
-            and not app.state.instance_lock_lost
-        )
+    app.state.compliance_worker, app.state.compliance_providers = compliance_worker, compliance_providers
+    app.state.compliance_worker_error = None
+    _install_dispatch_guards(app)
     app.add_exception_handler(FinanceError, _finance_error)
     app.add_exception_handler(RequestValidationError, _invalid_request)
     app.add_exception_handler(Exception, _unexpected)
@@ -153,14 +158,30 @@ def create_app(
     app.include_router(f1_router)
     app.include_router(f2_router)
     app.include_router(callback_router)
+    app.include_router(f3_router)
 
     @app.get("/health")
     async def health() -> JSONResponse:
         """健康状态不表示任何票据已验真或业务已完成。"""
-        failed = app.state.worker_error is not None or app.state.settlement_worker_error is not None
+        failed = any(getattr(app.state, name) is not None for name in (
+            "worker_error", "settlement_worker_error", "compliance_worker_error"))
         return JSONResponse(
             status_code=503 if failed else 200,
             content={"status": "unavailable" if failed else "ok", "mode": app.state.mode},
         )
 
     return app
+
+
+def _install_dispatch_guards(app: FastAPI) -> None:
+    """所有外部队列在每次发送边界读取同一实时运行状态。"""
+    def allowed() -> bool:
+        """模式、实例锁或任何后台故障立即阻止首次发送。"""
+        return (app.state.mode == "enabled" and not app.state.instance_lock_lost
+                and all(getattr(app.state, name) is None for name in (
+                    "worker_error", "settlement_worker_error", "compliance_worker_error")))
+
+    for kind in ("settlement", "compliance"):
+        worker = getattr(app.state, kind + "_worker")
+        if worker is not None:
+            worker.dispatch_allowed = allowed

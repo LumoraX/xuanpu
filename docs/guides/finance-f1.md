@@ -22,7 +22,7 @@ invoice_backed模式要求完整分配、票据正常和默认查验passed；当
 
 ## Skill 与 API
 
-F1新增操作在当前F2发布包中继续兼容；现有包共38项操作、6个Skill，见[后续F2指南](finance-f2.md)。模型可创建/修订草稿与生成计划，工具签名始终origin=agent。executeFinanceAction只接受origin=human，不能靠模型参数或工具批准升级来源。
+F1新增操作在当前F2发布包中继续兼容；当前F3包共58项操作、7个Skill，见[后续F2指南](finance-f2.md)。模型可创建/修订草稿与生成计划，工具签名始终origin=agent。executeFinanceAction只接受origin=human，不能靠模型参数或工具批准升级来源。
 
 人工页面经通用平台接口POST /v1/integration-actions/{package}/{connector}/{operation}，请求为{arguments,confirmed}。写操作必须confirmed=true；只允许当前员工cookie与CSRF，拒绝root、API key、act-as和混合凭据。平台只访问当前租户已安装、生效包中显式声明的HTTP操作，按最终报文签名，服务密钥不进入浏览器；不会调用模型或加载财务业务代码。
 

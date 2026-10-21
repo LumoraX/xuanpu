@@ -1,4 +1,4 @@
-"""已发布F0—F2业务包的工具、Skill、实际路由及请求契约。"""
+"""已发布F0—F3业务包的工具、Skill、实际路由及请求契约。"""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from xuanpu_finance.expenses.models import ActionPreview
 from xuanpu_finance.routes import router as f0_router
 from xuanpu_finance.routes_f1 import router as f1_router
 from xuanpu_finance.routes_f2 import router as f2_router
+from xuanpu_finance.routes_f3 import router as f3_router
 from xuanpu_spec import validate_package
 
 PACKAGE = Path(__file__).resolve().parents[3] / "examples/finance"
@@ -25,6 +26,7 @@ SKILLS = {
     "finance-review",
     "accounts-payable",
     "posting-reconciliation",
+    "archive-audit",
 }
 
 
@@ -56,7 +58,7 @@ def validate_schema(name: str, value: Any) -> None:
 
 
 async def test_f0_f2_package_and_kernel_reference_read() -> None:
-    """稳定内核读取六个真实Skill，附属材料仍能实际加载。"""
+    """稳定内核读取七个真实Skill，附属材料仍能实际加载。"""
     report = validate_package(PACKAGE)
     assert report.ok, report.errors
     registry = await taifeng.FilesystemSkillRegistry.load(PACKAGE / "skills")
@@ -77,11 +79,11 @@ async def test_f0_f2_package_and_kernel_reference_read() -> None:
         assert "not_checked" in result.output or "outcome_unknown" in result.output
 
 
-def test_runnable_package_has_exactly_the_38_actual_finance_operations() -> None:
-    """包不能发布未交付F3工具，也不能遗漏人工入口依赖的已实现路由。"""
+def test_runnable_package_has_exactly_the_58_actual_finance_operations() -> None:
+    """包只能发布已交付F3工具，也不能遗漏人工入口依赖的已实现路由。"""
     actual = {
         route.operation_id: (route.path, next(iter(route.methods)).lower())
-        for router in (f0_router, f1_router, f2_router)
+        for router in (f0_router, f1_router, f2_router, f3_router)
         for route in router.routes
         if isinstance(route, APIRoute)
     }
@@ -90,7 +92,7 @@ def test_runnable_package_has_exactly_the_38_actual_finance_operations() -> None
         for document in contracts().values()
         for key, (path, method, _) in operations(document).items()
     }
-    assert len(declared) == 38 and declared == actual
+    assert len(declared) == 58 and declared == actual
     manifest = yaml.safe_load((PACKAGE / "xuanpu.yaml").read_text())
     connectors = manifest["spec"]["connectors"]
     assert {tool["name"] for connector in connectors for tool in connector["tools"]} == set(actual)
@@ -98,7 +100,7 @@ def test_runnable_package_has_exactly_the_38_actual_finance_operations() -> None
     for document in contracts().values():
         assert len(document["paths"]) > 0
         assert all(
-            operation.get("x-delivery-phase") in {"F0", "F1", "F2"}
+            operation.get("x-delivery-phase") in {"F0", "F1", "F2", "F3"}
             for _, _, operation in operations(document).values()
         )
 
@@ -109,6 +111,8 @@ def test_model_skills_never_publish_human_execution_tools() -> None:
         frontmatter = yaml.safe_load(path.read_text().split("---", 2)[1])
         assert "api__finance__executeFinanceAction" not in frontmatter.get("tool_names", [])
         assert "api__finance__reconcileOperation" not in frontmatter.get("tool_names", [])
+        assert "api__finance__linkRedLetterInvoice" not in frontmatter.get("tool_names", [])
+        assert "api__finance__recordTaxAdjustmentEvidence" not in frontmatter.get("tool_names", [])
     assert "executeFinanceAction" in operations(contracts()["finance"])
 
 
@@ -212,7 +216,7 @@ def test_reference_pack_keeps_f3_design_and_synchronizes_actual_f2_routes() -> N
         for name, (path, method, _) in operations(yaml.safe_load(file.read_text())).items()
     }
     assert {name: designed[name] for name in actual} == actual
-    assert set(designed) - set(actual) == {"verifyInvoice", "getRedLetterCase", "getArchive"}
+    assert set(designed) == set(actual)
     assert validate_package(reference).ok
 
 
@@ -224,7 +228,7 @@ def test_declared_query_selectors_match_actual_fastapi_route_contract() -> None:
         for doc in documents.values()
         for name, (path, method, item) in operations(doc).items()
     }
-    for router in (f0_router, f1_router, f2_router):
+    for router in (f0_router, f1_router, f2_router, f3_router):
         for route in router.routes:
             if not isinstance(route, APIRoute):
                 continue

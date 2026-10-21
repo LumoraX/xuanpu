@@ -1,10 +1,9 @@
-# 完整闭环设计参考包；已实现F0-F2子集见examples/finance，F3仍为设计。
 apiVersion: xuanpu/v1
 kind: Package
 metadata:
   name: finance
-  version: 0.3.0-design.2
-  description: 财务能力设计包：发票、报销、应付、审核、付款入账协同与档案证据
+  version: 0.4.0-f3
+  description: 独立财务F0-F3：报销应付、实际HITL、通用税务红字与可核验归档隔离闭环
 spec:
   skills:
     entries:
@@ -44,8 +43,6 @@ spec:
       effect: read
     - name: getInvoiceEvidence
       effect: read
-    - name: verifyInvoice
-      effect: external
     - name: createExpenseClaim
       effect: write
     - name: listExpenseClaims
@@ -53,12 +50,6 @@ spec:
     - name: getExpenseClaim
       effect: read
     - name: updateExpenseClaim
-      effect: write
-    - name: createPayable
-      effect: write
-    - name: getPayable
-      effect: read
-    - name: updatePayable
       effect: write
     - name: createInvoiceAllocation
       effect: write
@@ -80,19 +71,21 @@ spec:
       effect: read
     - name: resolveException
       effect: write
-    - name: getPayment
-      effect: read
-    - name: getPosting
-      effect: read
-    - name: getRedLetterCase
-      effect: read
-    - name: getArchive
-      effect: read
+    - name: createPayable
+      effect: write
     - name: listPayables
       effect: read
+    - name: getPayable
+      effect: read
+    - name: updatePayable
+      effect: write
     - name: listPayments
       effect: read
+    - name: getPayment
+      effect: read
     - name: listPostings
+      effect: read
+    - name: getPosting
       effect: read
     - name: listActionPlans
       effect: read
@@ -100,6 +93,47 @@ spec:
       effect: read
     - name: reconcileOperation
       effect: write
+    - name: verifyInvoice
+      effect: write
+    - name: listInvoiceVerifications
+      effect: read
+    - name: getInvoiceCompliance
+      effect: read
+    - name: getComplianceOptions
+      effect: read
+    - name: listCompliancePlans
+      effect: read
+    - name: listTaxConfirmations
+      effect: read
+    - name: listRedLetterCases
+      effect: read
+    - name: getRedLetterCase
+      effect: read
+    - name: refreshRedLetterCase
+      effect: write
+    - name: linkRedLetterInvoice
+      effect: write
+    - name: listTaxAdjustments
+      effect: read
+    - name: recordTaxAdjustmentEvidence
+      effect: write
+    - name: listArchives
+      effect: read
+    - name: getArchive
+      effect: read
+    - name: getArchiveManifest
+      effect: read
+    - name: getArchiveTests
+      effect: read
+    - name: getArchiveEvidence
+      effect: read
+    - name: listArchiveSupplements
+      effect: read
+    - name: auditArchive
+      effect: read
+    - name: getArchiveAudits
+      effect: read
+    contextAudience: xuanpu-finance
   - name: catalog
     transport: http
     openapi: apis/catalog.yaml
@@ -112,12 +146,13 @@ spec:
       effect: read
     - name: listCostCenters
       effect: read
+    - name: getInvoiceAllocation
+      effect: read
     - name: listBusinessDocuments
       effect: read
     - name: listPayeeAccounts
       effect: read
-    - name: getInvoiceAllocation
-      effect: read
+    contextAudience: xuanpu-finance
   evals:
   - name: explain-missing-original
     entry: finance-assistant

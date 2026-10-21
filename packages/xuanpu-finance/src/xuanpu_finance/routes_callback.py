@@ -36,3 +36,18 @@ async def provider_callback(
     return await get_store(request).accept_provider_event(
         provider, configuration_version, event_id, hashlib.sha256(raw).hexdigest(), raw
     )
+
+
+@router.post("/v1/compliance-callbacks/{provider}/{configuration_version}", status_code=202)
+async def compliance_callback(request: Request, provider: str,
+                              configuration_version: int) -> dict[str, Any]:
+    """独立选择合规密钥并只排原任务GET，不能从回调直接更新税务事实。"""
+    registry = request.app.state.compliance_providers
+    if registry is None:
+        raise FinanceError("integration_unavailable", 503, "未配置合规回调通道")
+    headers = ("X-Finance-Timestamp", "X-Finance-Event-Id", "X-Finance-Key-Id", "X-Finance-Signature")
+    if any(len(request.headers.getlist(name)) != 1 for name in headers):
+        raise FinanceError("CALLBACK_AUTH_INVALID", 401, "渠道回调认证失败")
+    raw = await request.body()
+    event_id, body = registry.authenticate_callback(provider, configuration_version, request.headers, raw)
+    return await get_store(request).accept_compliance_event(provider, configuration_version, event_id, raw, body)

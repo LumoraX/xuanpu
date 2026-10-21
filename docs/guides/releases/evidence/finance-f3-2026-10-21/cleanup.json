@@ -1,0 +1,17 @@
+{
+  "compose_containers": 0,
+  "compose_volumes": 0,
+  "compose_networks": 0,
+  "suite_container": 0,
+  "port_60033": "closed",
+  "port_60452": "closed",
+  "status": "passed",
+  "random_finance_test_schemas_before_removal": 0,
+  "suite_anonymous_volume": "removed",
+  "browser_tab": "closed",
+  "browser_harness": "stopped",
+  "test_secret_directories": "removed",
+  "original_xuanpu_checkout": "clean",
+  "production_touched": false,
+  "development_worktree": "preserved"
+}

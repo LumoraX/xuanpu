@@ -1,0 +1,261 @@
+{
+  "environment": "isolated_simulation",
+  "image": "xuanpu-finance:2026.10.21.4",
+  "production": false,
+  "before_restart_status": "outcome_unknown",
+  "tax_posts_before_restart": 1,
+  "result": "passed",
+  "restarts": 2,
+  "verification_status": "passed",
+  "usage_status": "confirmed",
+  "original_evidence": 1,
+  "archive_readback_verified": true,
+  "audit_after_restart": "succeeded",
+  "audit_external_post_count": 0,
+  "total_external_posts": 3,
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/v1/requests"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/requests/f3req_32e4a98fdcc14300a65160873c179c50"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/requests"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/requests/f3req_32e4a98fdcc14300a65160873c179c50/evidence/tax-file"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/requests/f3req_590f025a8a6d43388562e15d5515cbd9/evidence/tax-file"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/archives"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/target"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/target/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/invoice-lines-fields"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/invoice-lines-fields/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/compliance-history"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/compliance-history/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/tax-adjustments"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/tax-adjustments/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/original_aa05e48f882f4469901fa9099a91be14"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/original_aa05e48f882f4469901fa9099a91be14/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/receipt_f3receipt_ea310f42c4284ecd90b0839903db9cf0"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/receipt_f3receipt_ea310f42c4284ecd90b0839903db9cf0/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/receipt_f3receipt_c18ce029dbcd4f6cbf399442c10f4360"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/receipt_f3receipt_c18ce029dbcd4f6cbf399442c10f4360/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/evidence_f3receipt_c18ce029dbcd4f6cbf399442c10f4360_0"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/evidence_f3receipt_c18ce029dbcd4f6cbf399442c10f4360_0/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/receipt_f3receipt_46985aa7112847068522062c79c83c73"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/receipt_f3receipt_46985aa7112847068522062c79c83c73/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/evidence_f3receipt_46985aa7112847068522062c79c83c73_0"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/evidence_f3receipt_46985aa7112847068522062c79c83c73_0/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/events"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/events/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/manifest"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/manifest/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/seal"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/seal/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/target"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/target/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/invoice-lines-fields"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/invoice-lines-fields/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/compliance-history"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/compliance-history/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/tax-adjustments"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/tax-adjustments/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/original_aa05e48f882f4469901fa9099a91be14"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/original_aa05e48f882f4469901fa9099a91be14/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/receipt_f3receipt_ea310f42c4284ecd90b0839903db9cf0"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/receipt_f3receipt_ea310f42c4284ecd90b0839903db9cf0/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/receipt_f3receipt_c18ce029dbcd4f6cbf399442c10f4360"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/receipt_f3receipt_c18ce029dbcd4f6cbf399442c10f4360/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/evidence_f3receipt_c18ce029dbcd4f6cbf399442c10f4360_0"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/evidence_f3receipt_c18ce029dbcd4f6cbf399442c10f4360_0/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/receipt_f3receipt_46985aa7112847068522062c79c83c73"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/receipt_f3receipt_46985aa7112847068522062c79c83c73/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/evidence_f3receipt_46985aa7112847068522062c79c83c73_0"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/evidence_f3receipt_46985aa7112847068522062c79c83c73_0/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/events"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/events/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/manifest"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/manifest/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/seal"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_2f46b76a33644f5aac9a1dd52ffd4bb8/objects/seal/retention"
+    }
+  ],
+  "receipts": 5,
+  "uid": "10001",
+  "image_id": "sha256:6f20ac8e1fc4a1a039233d0d7aa95bda919c489c834ab5775d2c37e61e61d0f6",
+  "storage": "dedicated_finance_pg_and_encrypted_originals_volumes",
+  "formal_tax": false,
+  "formal_archive": false,
+  "cleanup": "dedicated_project_and_volumes_removed"
+}

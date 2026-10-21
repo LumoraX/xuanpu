@@ -45,3 +45,5 @@ XML 映射在 AnyIO 可取消子进程执行，10 秒硬性业务时限超出后
 F1配置、API与人工页面见[使用指南](../../docs/guides/finance-f1.md)。expense_policies为空保留F0，内部记录须显式启用并配置实际审批人；业务数据完全保存在独立财务存储。未来企业微信/飞书接入尚未实现。
 
 F2执行与回执、独立模拟环境及渠道协议见[使用指南](../../docs/guides/finance-f2.md)。外部动作必须专用批准后由原经办人工确认；internal_record不取得外部执行资格。
+
+F3查验、红字、独立目标专用HITL和档案HTTP隔离闭环见[使用指南](../../docs/guides/finance-f3.md)。真实供应商和正式profile尚未验收，正式能力关闭；simulation逐版本锁不证明真实WORM。

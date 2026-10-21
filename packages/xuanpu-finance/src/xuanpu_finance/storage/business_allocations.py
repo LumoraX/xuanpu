@@ -9,6 +9,11 @@ from xuanpu_finance.errors import FinanceError
 from xuanpu_finance.storage.business_base import money
 from xuanpu_finance.storage.business_claims import ClaimStore
 from xuanpu_finance.storage.common import decode, identifier
+from xuanpu_finance.storage.f3_projection import (
+    effective_line_limits,
+    invoice_projection,
+    require_usable_projection,
+)
 
 if TYPE_CHECKING:
     from xuanpu_finance.expenses.models import AllocationRequest
@@ -56,8 +61,8 @@ class AllocationStore(ClaimStore):
                 body.invoice_id,
             )
             data = await self._allocation_invoice(conn, claim, invoice, body.invoice_version)
-            if Decimal(body.amount) > Decimal(data["gross"]) or Decimal(body.tax) > Decimal(
-                data["tax"]
+            if Decimal(body.amount) > Decimal(data["effective_gross"]) or Decimal(body.tax) > Decimal(
+                data["effective_tax"]
             ):
                 raise FinanceError("ALLOCATION_LIMIT", 409, "分配超过票面金额或税额")
             if body.invoice_line_id is not None:
@@ -148,7 +153,8 @@ class AllocationStore(ClaimStore):
         """重查同公司、本人、蓝票、正常票态和公司买方税号。"""
         if invoice is None or invoice["owner_id"] != claim["owner_id"]:
             raise FinanceError("INVOICE_FORBIDDEN", 403, "发票不存在或不属于申请人")
-        data = decode(invoice["data"])
+        data = await invoice_projection(conn, claim["tenant_id"], claim["legal_entity_id"], decode(invoice["data"]))
+        require_usable_projection(data)
         tax_id = await conn.fetchval(
             "SELECT tax_id FROM finance_company WHERE tenant_id=$1 AND legal_entity_id=$2 FOR SHARE",
             claim["tenant_id"],
@@ -156,7 +162,7 @@ class AllocationStore(ClaimStore):
         )
         if data["version"] != version:
             raise FinanceError("VERSION_CONFLICT", 409, "发票版本已变化")
-        if data["is_red"] or data["ticket_status"] != "normal" or Decimal(data["gross"]) <= 0:
+        if data["is_red"] or data["ticket_status"] not in {"normal", "partially_red"} or Decimal(data["effective_gross"]) <= 0:
             raise FinanceError("INVOICE_NOT_USABLE", 409, "仅正常正金额蓝票可用于报销")
         if data["buyer_tax_id"] != tax_id:
             raise FinanceError("INVOICE_BUYER_MISMATCH", 409, "发票买方税号与公司不符")
@@ -186,7 +192,8 @@ class AllocationStore(ClaimStore):
         if row is None:
             raise FinanceError("INVOICE_LINE_INVALID", 422, "指定发票明细不存在或不属于该票")
         data = decode(row["data"])
-        if amount > Decimal(data["amount"]) + Decimal(data["tax"]) or tax > Decimal(data["tax"]):
+        gross_limit, tax_limit = await effective_line_limits(conn, claim["tenant_id"], claim["legal_entity_id"], invoice, line, data)
+        if amount > gross_limit or tax > tax_limit:
             raise FinanceError("INVOICE_LINE_LIMIT", 409, "累计分配超过发票明细金额或税额")
 
     async def _reservation_check(
@@ -231,7 +238,8 @@ class AllocationStore(ClaimStore):
 
     async def _invoice_balance_check(self, conn: Connection, claim: Any, invoice: Any) -> None:
         """汇总全局reserved/consumed和本单proposal，分别保护票额、税额及行。"""
-        data = decode(invoice["data"])
+        data = await invoice_projection(conn, claim["tenant_id"], claim["legal_entity_id"], decode(invoice["data"]))
+        require_usable_projection(data)
         rows = await conn.fetch(
             "SELECT * FROM finance_allocation WHERE tenant_id=$1 AND legal_entity_id=$2 AND invoice_id=$3 AND (state IN ('reserved','consumed') OR (state='proposed' AND document_id=$4))",
             claim["tenant_id"],
@@ -241,7 +249,7 @@ class AllocationStore(ClaimStore):
         )
         amount = sum((row["amount"] for row in rows), Decimal(0))
         tax = sum((row["tax"] for row in rows), Decimal(0))
-        if amount > Decimal(data["gross"]) or tax > Decimal(data["tax"]):
+        if amount > Decimal(data["effective_gross"]) or tax > Decimal(data["effective_tax"]):
             raise FinanceError("INVOICE_BALANCE_EXCEEDED", 409, "累计分配超过可用金额或税额")
         for line in {row["invoice_line_id"] for row in rows if row["invoice_line_id"] is not None}:
             entries = [row for row in rows if row["invoice_line_id"] == line]

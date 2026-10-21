@@ -1,10 +1,14 @@
 ---
 name: invoice-intake
 description: 归集受权固定版本发票原件，查询持久进度并为报销或应付处理补件。
-version: 0.3.0-design.2
+version: 0.4.0-f3
 entry: false
 type: composite
 tool_names:
+- api__finance__verifyInvoice
+- api__finance__getInvoiceCompliance
+- api__finance__listInvoiceVerifications
+- api__finance__getRedLetterCase
 - api__finance__listLegalEntities
 - api__finance__listIntegrations
 - api__finance__importInvoices
@@ -16,7 +20,6 @@ tool_names:
 - api__finance__getInvoiceFields
 - api__finance__getInvoiceEvidence
 - api__finance__listExceptions
-- api__finance__verifyInvoice
 ---
 # 发票归集与补件
 
@@ -26,4 +29,4 @@ tool_names:
 补件先listExceptions取得open异常ID/version，importInvoices同时携带source_exception_id、expected_exception_version和新固定文件引用。失败保留待办，成功由服务关联关闭。
 用户取消F0导入时，先getOperation取得version，再取消未完成项；已完成原件和票据仍保留。f2op_付款/记账操作的取消与核对必须由真实员工在人工入口发起，本Skill不代办。
 
-参考包保留verifyInvoice查验通道设计；它属于后续F3，当前F0-F2可运行包不发布，不能因解析成功或人工确认声称已查验。
+F3查验和税务动作使用getInvoiceCompliance.version，原getInvoice.version仍是票面内容/分配版本。verifyInvoice只受理实际外查；pending/过期/不可用不是passed。F3原action_plan仍按当前实际步骤预检，实际审批及执行交人工入口。

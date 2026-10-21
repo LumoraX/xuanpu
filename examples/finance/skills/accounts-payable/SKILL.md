@@ -1,7 +1,7 @@
 ---
 name: accounts-payable
 description: 从真实供应商与合同、订单或验收目录准备原生应付、发票分配及提交或撤回计划。
-version: 0.3.0-f2.1
+version: 0.4.0-f3
 entry: false
 type: composite
 tool_names:

@@ -2,8 +2,8 @@ apiVersion: xuanpu/v1
 kind: Package
 metadata:
   name: finance
-  version: 0.3.0-f2.1
-  description: 独立财务F0-F2：发票、报销、应付、人工审批与隔离HTTP付款记账结果闭环
+  version: 0.4.0-f3
+  description: 独立财务F0-F3：报销应付、实际HITL、通用税务红字与可核验归档隔离闭环
 spec:
   skills:
     entries:
@@ -93,6 +93,46 @@ spec:
       effect: read
     - name: reconcileOperation
       effect: write
+    - name: verifyInvoice
+      effect: write
+    - name: listInvoiceVerifications
+      effect: read
+    - name: getInvoiceCompliance
+      effect: read
+    - name: getComplianceOptions
+      effect: read
+    - name: listCompliancePlans
+      effect: read
+    - name: listTaxConfirmations
+      effect: read
+    - name: listRedLetterCases
+      effect: read
+    - name: getRedLetterCase
+      effect: read
+    - name: refreshRedLetterCase
+      effect: write
+    - name: linkRedLetterInvoice
+      effect: write
+    - name: listTaxAdjustments
+      effect: read
+    - name: recordTaxAdjustmentEvidence
+      effect: write
+    - name: listArchives
+      effect: read
+    - name: getArchive
+      effect: read
+    - name: getArchiveManifest
+      effect: read
+    - name: getArchiveTests
+      effect: read
+    - name: getArchiveEvidence
+      effect: read
+    - name: listArchiveSupplements
+      effect: read
+    - name: auditArchive
+      effect: read
+    - name: getArchiveAudits
+      effect: read
     contextAudience: xuanpu-finance
   - name: catalog
     transport: http

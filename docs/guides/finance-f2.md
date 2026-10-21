@@ -44,6 +44,6 @@ F2保持财务服务、数据库、原件、密钥及备份独立。玄圃提供
 
 ## Skill 与API边界
 
-发布包提供38项操作和6个Skill；新增`accounts-payable`与`posting-reconciliation`。模型可准备外部计划、查询付款和凭证，但所有Skill均不拥有`executeFinanceAction`工具。该操作仍在连接器显式声明，供已确认的人工cookie+CSRF入口调用；财务验签再次要求origin=human。
+F2交付38项操作和6个Skill；当前F3发布包扩至58项操作和7个Skill，见[F3指南](finance-f3.md)；新增`accounts-payable`与`posting-reconciliation`。模型可准备外部计划、查询付款和凭证，但所有Skill均不拥有`executeFinanceAction`工具。该操作仍在连接器显式声明，供已确认的人工cookie+CSRF入口调用；财务验签再次要求origin=human。
 
 `getSettlementOptions`返回当前员工可用的账簿、开放期间及动作许可，目录查询只返回受权资料和脱敏账户。`listActionPlans`可恢复原执行计划。`reconcileOperation`和取消均要求expected_version、幂等键和真实人工。正式业务、真实供应商及上线证据见独立验收记录，不以接口200或模型回答代替。

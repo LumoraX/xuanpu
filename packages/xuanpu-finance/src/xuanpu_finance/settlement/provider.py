@@ -59,6 +59,7 @@ class ProviderResponseError(FinanceError):
         """错误信息不包含渠道返回的个人信息或凭据。"""
         super().__init__(code, 502, "渠道回执不满足冻结请求契约")
         self.raw = raw
+        self.readback_evidence: list[dict[str, Any]] = []
 
 
 class ProviderRegistry:

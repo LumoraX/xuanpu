@@ -1,10 +1,13 @@
 ---
 name: finance-review
 description: 读取本人实际分派的报销、应付和原行动计划审批，核对证据并准备本人决定。
-version: 0.3.0-f2.1
+version: 0.4.0-f3
 entry: false
 type: composite
 tool_names:
+- api__finance__getInvoiceCompliance
+- api__finance__listInvoiceVerifications
+- api__finance__getRedLetterCase
 - api__finance__listLegalEntities
 - api__finance__listReviewQueue
 - api__finance__getExpenseClaim
@@ -24,3 +27,5 @@ listReviewQueue返回当前员工真正分派的步骤。按target_type读取报
 将当前金额、账户脱敏快照、账套/期间、材料缺口、blockers和原计划摘要交本人在人工入口决定。模型不调用executeFinanceAction，平台工具批准不形成财务业务决定。
 一步通过只推进当前工作流；业务单据批准不授权付款、记账或冲回，原外部计划还需其专用链。原计划失效/过期时重新预检，不复制旧决定、不延长旧计划“复活”授权。
 待办和决定保存在独立财务库；通知pending或会话退出不代表完成。simulation结果保持simulation=true，不能解释为真实资金或正式凭证。
+
+F3查验和税务动作使用getInvoiceCompliance.version，原getInvoice.version仍是票面内容/分配版本。verifyInvoice只受理实际外查；pending/过期/不可用不是passed。F3原action_plan仍按当前实际步骤预检，实际审批及执行交人工入口。

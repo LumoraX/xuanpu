@@ -6,7 +6,6 @@ import base64
 import binascii
 import json
 from datetime import datetime
-from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -170,13 +169,24 @@ class FinanceBase:
             row["id"],
             who.user_id,
         )
+        f3_assigned = await self._f3_assigned(conn, who, row["legal_entity_id"], "invoice", row["id"])
         if (
             row["owner_id"] != who.user_id
             and role != "reviewer"
-            and not (role == "approver" and assigned)
+            and not (role == "approver" and (assigned or f3_assigned))
         ):
             raise FinanceError("RESOURCE_NOT_FOUND", 404, "资源不存在")
         return row
+
+    async def _f3_assigned(
+        self, conn: asyncpg.Connection | asyncpg.pool.PoolConnectionProxy,
+        who: FinancePrincipal, entity: str, target_type: str, id: str,
+    ) -> bool:
+        """F3必要证据读取仅承认当前有效岗位、制度和渠道代数的实际指派。"""
+        return bool(await conn.fetchval(
+            "SELECT EXISTS(SELECT 1 FROM finance_compliance_plan p JOIN finance_compliance_workflow w ON(w.tenant_id=p.tenant_id AND w.legal_entity_id=p.legal_entity_id AND w.plan_id=p.id) JOIN finance_compliance_workflow_step s ON(s.tenant_id=w.tenant_id AND s.legal_entity_id=w.legal_entity_id AND s.workflow_id=w.id) JOIN finance_grant_epoch e ON(e.tenant_id=s.tenant_id AND e.legal_entity_id=s.legal_entity_id AND e.user_id=s.approver_user_id AND e.generation=s.authority_generation AND e.role IN ('reviewer','approver')) JOIN finance_compliance_policy c ON(c.tenant_id=p.tenant_id AND c.legal_entity_id=p.legal_entity_id AND c.enabled AND c.generation=(p.data->'bindings'->'policy'->>'generation')::bigint) JOIN finance_compliance_provider v ON(v.tenant_id=p.tenant_id AND v.legal_entity_id=p.legal_entity_id AND v.provider=p.data->'bindings'->'provider'->>'provider' AND v.configuration_version=(p.data->'bindings'->'provider'->>'configuration_version')::integer AND v.generation=(p.data->'bindings'->'provider'->>'generation')::bigint AND v.enabled) WHERE p.tenant_id=$1 AND p.legal_entity_id=$2 AND s.approver_user_id=$3 AND p.expires_at>now() AND w.status IN ('under_review','approved') AND ((p.target_type=$4 AND p.target_id=$5) OR ($4='invoice' AND EXISTS(SELECT 1 FROM finance_red_letter_case r WHERE r.tenant_id=p.tenant_id AND r.legal_entity_id=p.legal_entity_id AND r.id=p.target_id AND r.invoice_id=$5)) OR ($4='invoice' AND EXISTS(SELECT 1 FROM finance_allocation a WHERE a.tenant_id=p.tenant_id AND a.legal_entity_id=p.legal_entity_id AND a.document_id=p.target_id AND a.invoice_id=$5)) OR ($4='invoice' AND EXISTS(SELECT 1 FROM finance_red_letter_link l LEFT JOIN finance_allocation a ON(a.tenant_id=l.tenant_id AND a.legal_entity_id=l.legal_entity_id AND a.invoice_id=l.blue_invoice_id) WHERE l.tenant_id=p.tenant_id AND l.legal_entity_id=p.legal_entity_id AND l.red_invoice_id=$5 AND (l.blue_invoice_id=p.target_id OR a.document_id=p.target_id)))))",
+            who.tenant_id, entity, who.user_id, target_type, id,
+        ))
 
     async def _invoice_snapshot(
         self,
@@ -186,15 +196,9 @@ class FinanceBase:
         value: Any,
     ) -> dict[str, Any]:
         """可用金额实时扣除reserved和consumed，永不覆盖票面或查验状态。"""
-        data = decode(value)
-        used = await conn.fetchval(
-            "SELECT COALESCE(sum(amount),0) FROM finance_allocation WHERE tenant_id=$1 AND legal_entity_id=$2 AND invoice_id=$3 AND state IN ('reserved','consumed')",
-            tenant,
-            entity,
-            data["id"],
-        )
-        data["available_amount"] = format(Decimal(data["gross"]) - used, ".2f")
-        return data
+        from xuanpu_finance.storage.f3_projection import invoice_projection
+
+        return await invoice_projection(conn, tenant, entity, decode(value))
 
     async def _exception_case(
         self,

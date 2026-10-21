@@ -1,0 +1,82 @@
+.FF                                                                      [100%]
+=================================== FAILURES ===================================
+______ test_current_policy_shortens_old_passed_ttl_after_pending_refresh _______
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10a17a6c0>
+
+    async def test_current_policy_shortens_old_passed_ttl_after_pending_refresh(store: Any) -> None:
+        """新策略缩短期限不能被旧passed或后续pending观察时刻绕过。"""
+        import json
+        from datetime import UTC, datetime, timedelta
+    
+        from xuanpu_finance.compliance.models import CompliancePolicy
+    
+        owner,_,_ = await configured(store)
+        await invoice(store)
+        await store.verify_invoice(owner,"blue",1,"old")
+        await result_for(store,await store.claim_compliance(),fresh_snapshot(
+            observed_at=(datetime.now(UTC)-timedelta(hours=2)).isoformat()))
+        version = (await store.get_invoice_compliance(owner,"blue"))["version"]
+        await store.verify_invoice(owner,"blue",version,"pending")
+        await result_for(store,await store.claim_compliance(),fresh_snapshot(2,verification_status="pending",verification_id=None))
+        assert (await store.get_invoice(owner,"blue"))["verification_status"] == "passed"
+        policy = json.loads(await store.pool.fetchval("SELECT data FROM finance_compliance_policy_revision"))
+        policy.update(enabled=True,version=2,verification_max_age_hours=1)
+        providers = [{**json.loads(row["data"]),"enabled":True} for row in await store.pool.fetch("SELECT data FROM finance_compliance_provider")]
+        await store.configure_compliance([CompliancePolicy.model_validate(policy)],providers,simulation=True)
+>       assert (await store.get_invoice(owner,"blue"))["verification_status"] == "stale"
+E       AssertionError: assert 'passed' == 'stale'
+E         
+E         - stale
+E         + passed
+
+packages/xuanpu-finance/tests/test_f3_projection.py:45: AssertionError
+_______________ test_partial_red_does_not_freeze_unaffected_line _______________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10a17b140>
+
+    async def test_partial_red_does_not_freeze_unaffected_line(store: Any) -> None:
+        """红冲已完整定位行A时，未受影响行B仍按真实剩余额度使用。"""
+        import json
+    
+        from xuanpu_finance.storage.f3_projection import effective_line_limits
+    
+        await configured(store)
+        await invoice(store)
+        data = dict(amount="30.00",tax="3.00",line_adjustments={"lineA":"30.00"},line_tax_adjustments={"lineA":"3.00"})
+        await store.pool.execute("INSERT INTO finance_red_letter_case(tenant_id,legal_entity_id,id,owner_id,invoice_id,external_case_id,authority_revision,status,data) VALUES('t','e','red','owner','blue','red',1,'issued',$1::jsonb)",json.dumps(data))
+        async with store.pool.acquire() as conn:
+>           gross,tax = await effective_line_limits(conn,"t","e","blue","lineB",{"amount":"45.00","tax":"5.00"})
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f3_projection.py:59: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+conn = <PoolConnectionProxy [released] 0x10a17ad10>, tenant = 't', entity = 'e'
+invoice_id = 'blue', line_id = 'lineB'
+data = {'amount': '45.00', 'tax': '5.00'}
+
+    async def effective_line_limits(conn: Connection, tenant: str, entity: str, invoice_id: str, line_id: str, data: dict[str, Any]) -> tuple[Decimal, Decimal]:
+        """蓝票行额度扣除权威明确定位到该行的已开红冲。"""
+        cases = await conn.fetch("SELECT data FROM finance_red_letter_case WHERE tenant_id=$1 AND legal_entity_id=$2 AND invoice_id=$3 AND status='issued' ORDER BY id", tenant, entity, invoice_id)
+        gross = Decimal(data["amount"]) + Decimal(data["tax"])
+        tax = Decimal(data["tax"])
+        for row in cases:
+            case = decode(row["data"])
+            amounts = case["line_adjustments"]
+            taxes = case.get("line_tax_adjustments", {})
+            if not amounts or not taxes:
+                raise FinanceError("RED_LINE_MAPPING_REQUIRED", 409, "已开红票缺少完整实际行映射，分行使用冻结")
+            if line_id in amounts:
+                gross -= Decimal(amounts[line_id])
+            if line_id in taxes:
+                tax -= Decimal(taxes[line_id])
+            elif Decimal(case["tax"]) > 0:
+>               raise FinanceError("RED_LINE_MAPPING_REQUIRED", 409, "已开红票缺少明确行税额映射，分行使用冻结")
+E               xuanpu_finance.errors.FinanceError: RED_LINE_MAPPING_REQUIRED: 已开红票缺少明确行税额映射，分行使用冻结
+
+packages/xuanpu-finance/src/xuanpu_finance/storage/f3_projection.py:101: FinanceError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f3_projection.py::test_current_policy_shortens_old_passed_ttl_after_pending_refresh
+FAILED packages/xuanpu-finance/tests/test_f3_projection.py::test_partial_red_does_not_freeze_unaffected_line
+2 failed, 1 passed in 0.95s

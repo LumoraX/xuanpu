@@ -3,12 +3,26 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from xuanpu_finance.errors import FinanceError
 from xuanpu_finance.models import FileRef, FinancePrincipal, InvoiceImport
 from xuanpu_finance.operations import request_digest
 from xuanpu_finance.storage.common import FinanceBase, decode, identifier
+
+if TYPE_CHECKING:
+    import asyncpg
+
+
+async def validate_source_environment(conn: asyncpg.Connection | asyncpg.pool.PoolConnectionProxy, tenant: str, entity: str, source: Any, simulation: bool) -> None:
+    """源异常操作和实际旧材料都保持原接收环境，禁止补件升级来源。"""
+    current_mode = bool(await conn.fetchval("SELECT COALESCE((SELECT simulation FROM finance_compliance_mode WHERE singleton),(SELECT simulation FROM finance_settlement_mode WHERE singleton),false)"))
+    source_mode = await conn.fetchval("SELECT source_simulation FROM finance_operation WHERE tenant_id=$1 AND legal_entity_id=$2 AND id=$3", tenant, entity, source["operation_id"])
+    receipt_mode = source_mode
+    if source["receipt_id"] is not None:
+        receipt_mode = await conn.fetchval("SELECT o.source_simulation FROM finance_receipt r JOIN finance_operation o ON(o.tenant_id=r.tenant_id AND o.legal_entity_id=r.legal_entity_id AND o.id=r.operation_id) WHERE r.tenant_id=$1 AND r.legal_entity_id=$2 AND r.id=$3", tenant, entity, source["receipt_id"])
+    if current_mode != simulation or source_mode != simulation or receipt_mode != simulation:
+        raise FinanceError("SIMULATION_MODE_CONFLICT", 409, "补件、原异常操作和旧材料的实际来源环境必须一致")
 
 
 class ImportStore(FinanceBase):
@@ -51,22 +65,9 @@ class ImportStore(FinanceBase):
                     raise FinanceError("IDEMPOTENCY_CONFLICT", 409, "同幂等键请求内容不同")
                 return await self._snapshot(conn, previous)
             if source_exception_id is not None:
-                source = await conn.fetchrow(
-                    "SELECT * FROM finance_exception WHERE tenant_id=$1 AND legal_entity_id=$2 AND id=$3 FOR UPDATE",
-                    who.tenant_id,
-                    legal_entity_id,
-                    source_exception_id,
-                )
-                source = await self._authorize(conn, who, source)
-                if (
-                    source["version"] != expected_exception_version
-                    or source["status"] == "resolved"
-                ):
-                    raise FinanceError("VERSION_CONFLICT", 409, "原异常已变化")
-                if source["rule_id"] != "ORIGINAL_REQUIRED":
-                    raise FinanceError("SUPPLEMENT_NOT_ALLOWED", 409, "仅材料缺失异常接受原件补充")
+                await self._import_supplement(conn, who, legal_entity_id, source_exception_id, expected_exception_version)
             row = await conn.fetchrow(
-                "INSERT INTO finance_operation(tenant_id,legal_entity_id,id,owner_id,idempotency_key,request_hash,trace_id,source_exception_id,expected_exception_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *",
+                "INSERT INTO finance_operation(tenant_id,legal_entity_id,id,owner_id,idempotency_key,request_hash,trace_id,source_exception_id,expected_exception_version,source_simulation) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE((SELECT simulation FROM finance_compliance_mode WHERE singleton),(SELECT simulation FROM finance_settlement_mode WHERE singleton),false)) RETURNING *",
                 who.tenant_id,
                 legal_entity_id,
                 identifier(),
@@ -94,6 +95,17 @@ class ImportStore(FinanceBase):
                 {"files": len(files), "source_exception_id": source_exception_id},
             )
             return await self._snapshot(conn, row)
+
+    async def _import_supplement(self, conn: asyncpg.Connection | asyncpg.pool.PoolConnectionProxy, who: FinancePrincipal, entity: str, id: str, expected_version: int | None) -> None:
+        """补件受理前锁定源异常并核对实际接收来源，旧正式材料不升级。"""
+        source = await conn.fetchrow("SELECT * FROM finance_exception WHERE tenant_id=$1 AND legal_entity_id=$2 AND id=$3 FOR UPDATE", who.tenant_id, entity, id)
+        source = await self._authorize(conn, who, source)
+        if source["version"] != expected_version or source["status"] == "resolved":
+            raise FinanceError("VERSION_CONFLICT", 409, "原异常已变化")
+        if source["rule_id"] != "ORIGINAL_REQUIRED":
+            raise FinanceError("SUPPLEMENT_NOT_ALLOWED", 409, "仅材料缺失异常接受原件补充")
+        simulation = bool(await conn.fetchval("SELECT COALESCE((SELECT simulation FROM finance_compliance_mode WHERE singleton),(SELECT simulation FROM finance_settlement_mode WHERE singleton),false)"))
+        await validate_source_environment(conn, who.tenant_id, entity, source, simulation)
 
     async def get_operation(self, who: FinancePrincipal, id: str) -> dict[str, Any]:
         """返回本人或授权 reviewer 可见的完整逐项进度。"""

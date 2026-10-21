@@ -1,0 +1,36 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_______________________ test_finance_compliance_behavior _______________________
+
+    def test_finance_compliance_behavior() -> None:
+        """税务目标独立版本、专用审批和未知结果不能被页面重放。"""
+        node = shutil.which('node')
+        assert node is not None
+        result = subprocess.run(
+            [node, str(Path(__file__).with_name('finance_compliance_behavior.cjs')), str(static_dir())],
+            capture_output=True, text=True, timeout=15,
+        )
+>       assert result.returncode == 0, result.stdout + result.stderr
+E       AssertionError: evalmachine.<anonymous>:1
+E         financeComplianceSupplement(item)
+E         ^
+E         
+E         ReferenceError: financeComplianceSupplement is not defined
+E             at evalmachine.<anonymous>:1:1
+E             at Script.runInContext (node:vm:149:12)
+E             at Object.runInContext (node:vm:301:6)
+E             at Object.run (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_compliance_behavior.cjs:4:859)
+E             at supplementRefreshesCurrentTargetVersion (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_compliance_behavior.cjs:15:474)
+E             at /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_compliance_behavior.cjs:16:18
+E             at Object.<anonymous> (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_compliance_behavior.cjs:16:285)
+E             at Module._compile (node:internal/modules/cjs/loader:1829:14)
+E             at Module._extensions..js (node:internal/modules/cjs/loader:1969:10)
+E             at Module.load (node:internal/modules/cjs/loader:1552:32)
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/opt/homebrew/bin/node', '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/x...sions..js (node:internal/modules/cjs/loader:1969:10)\n    at Module.load (node:internal/modules/cjs/loader:1552:32)\n').returncode
+
+packages/xuanpu-console/tests/test_finance_behavior.py:39: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-console/tests/test_finance_behavior.py::test_finance_compliance_behavior
+1 failed in 0.08s
