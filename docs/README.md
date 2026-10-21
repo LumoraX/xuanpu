@@ -14,3 +14,5 @@
 当前办公任务使用与验收见[办公交办](guides/work-tasks.md)、[任务架构](architecture/work-tasks.md)和[R1验收](guides/releases/2026-10-21-r1-acceptance.md)。
 
 财务业务闭环的待审阅设计与 Skill／API 契约见[财务能力设计](superpowers/specs/2026-10-21-finance-capability-design.md)，首个独立子项目为[F0 发票基座](superpowers/specs/2026-10-21-finance-f0-design.md)；这些材料不表示财务服务已实现或上线。
+
+R2的待实施方案见[持久执行设计](superpowers/specs/2026-10-21-r2-durable-work-design.md)及[详细实施总计划](superpowers/plans/2026-10-21-r2-delivery.md)，分为持久执行、时间与事件触发、体验与生产验收三段；计划不表示功能已经实现。
