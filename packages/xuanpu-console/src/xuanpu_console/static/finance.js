@@ -4,12 +4,13 @@ const financeState={generation:0,controller:new AbortController(),entity:null,cu
 const financeActions={submit_claim:"提交",approve:"批准本步骤",reject:"驳回",withdraw:"撤回"};
 const financeStatuses={draft:"草稿",submitted:"已提交",under_review:"审批中",approved:"审批通过",rejected:"已驳回",withdrawn:"已撤回"};
 function resetFinance() {
+  if(typeof financeFundingReleaseDownloads==="function")financeFundingReleaseDownloads();
   financeState.controller.abort();financeState.controller=new AbortController();financeState.generation++;
   Object.assign(financeState,{entity:null,current:null,plan:null,execution:null,pending:null,queue:[],categories:[],centers:[],claimStatus:""});
 }
 function financeToken(){return {epoch:conn.epoch,generation:financeState.generation};}
 function financeCurrent(token){return conn.ready && token.epoch===conn.epoch && token.generation===financeState.generation && workspace.kind==="finance";}
-function financeInvalidate(){financeState.revision++;financeState.plan=null;financeState.execution=null;}
+function financeInvalidate(){if(typeof financeFundingReleaseDownloads==="function")financeFundingReleaseDownloads();financeState.revision++;financeState.plan=null;financeState.execution=null;}
 async function financeCall(operation,arguments_={},confirmed=false,connector="finance") {
   if(conn.apiKey || !conn.me?.user_id)throw new Error("请使用员工登录后操作财务记录。");
   const epoch=conn.epoch,controller=financeState.controller;
@@ -52,6 +53,7 @@ async function renderFinanceList(generation,epoch) {
     select.disabled=!!financeState.pending;
     if(typeof financeOperationsToolbar==="function")financeOperationsToolbar(toolbar);
     if(typeof financeComplianceToolbar==="function")financeComplianceToolbar(toolbar);
+    if(typeof financeFundingToolbar==="function")financeFundingToolbar(toolbar);
     if(typeof financeSettlementToolbar==="function")financeSettlementToolbar(toolbar);
     toolbar.append(wsButton("新建报销",financeEdit),wsButton("本人草稿",()=>{financeState.claimStatus="draft";return financeLoadClaims(token);}),wsButton("全部可看记录",()=>{financeState.claimStatus="";return financeLoadClaims(token);}),wsButton("待我审批",()=>financeLoadQueue(token)),wsButton("刷新",refreshWorkspace));
     if(financeState.pending)financeShowPending();
@@ -77,7 +79,7 @@ async function financeLoadQueue(token=financeToken(),cursor="",append=false) {
   const page=await financeCall("listReviewQueue",args);if(!financeCurrent(token))return;
   financeState.queue=page.items;const box=$("workspace-content");if(!append)box.replaceChildren();
   financeFeedback("待我审批（"+page.total+"）");if(!page.items.length)box.append(wsText("p","没有分派给你的审批步骤。"));
-  for(const item of page.items){const card=wsText("article","","workspace-record");card.append(wsText("h3",item.summary),wsText("p","¥"+item.total+" · 单据版本 "+item.target_version),wsText("p",item.due_at?"审批期限："+item.due_at:"审批期限待服务确认"),wsText("p",(item.blockers||[]).map(text=>"阻断："+text).join("；")),wsButton("核对材料并审批",()=>item.target_type==="action_plan"?financeSettlementPlan(item.target_id,item):item.target_type==="payable"?financePayableDetail(item.target_id,item):financeDetail(item.target_id,item)));box.append(card);}
+  for(const item of page.items){const card=wsText("article","","workspace-record");card.append(wsText("h3",item.summary),wsText("p","¥"+item.total+" · 单据版本 "+item.target_version),wsText("p",item.due_at?"审批期限："+item.due_at:"审批期限待服务确认"),wsText("p",(item.blockers||[]).map(text=>"阻断："+text).join("；")),wsButton("核对材料并审批",()=>item.target_type==="action_plan"?financeSettlementPlan(item.target_id,item):item.target_type==="funding_case"?financeFundingDetail(item.target_id,item):item.target_type==="payable"?financePayableDetail(item.target_id,item):financeDetail(item.target_id,item)));box.append(card);}
   if(page.next_cursor)box.append(wsButton("加载更多",()=>financeLoadQueue(token,page.next_cursor,true)));
 }
 async function financeDetail(id,review=null) {
@@ -153,7 +155,7 @@ function financeAllocate(claim) {
   const invoice=financeField(form,"发票标识"),version=financeField(form,"发票当前版本","number"),amount=financeField(form,"本次分配金额（元）"),tax=financeField(form,"本次分配税额（元）","text","0.00");version.min="1";
   const save=wsButton("核对分配建议",()=>{},"");save.type="submit";form.append(save);
   form.addEventListener("input",financeInvalidate);
-  financeSubmit(form,async()=>{await financeConfirmWrite("createInvoiceAllocation",{body:{invoice_id:invoice.value.trim(),invoice_version:Number(version.value),document_id:claim.id,document_kind:claim.kind==="payable"?"payable":"expense_claim",expected_document_version:claim.version,amount:financeMoney(amount.value),tax:financeMoney(tax.value)}},"确认保存该票据版本的分配建议？",()=>claim.kind==="payable"?financePayableDetail(claim.id):financeDetail(claim.id),form);});
+  financeSubmit(form,async()=>{await financeConfirmWrite("createInvoiceAllocation",{body:{invoice_id:invoice.value.trim(),invoice_version:Number(version.value),document_id:claim.id,document_kind:claim.kind==="funding_case"?"funding_case":claim.kind==="payable"?"payable":"expense_claim",expected_document_version:claim.version,amount:financeMoney(amount.value),tax:financeMoney(tax.value)}},"确认保存该票据版本的分配建议？",()=>claim.kind==="funding_case"?financeFundingDetail(claim.id):claim.kind==="payable"?financePayableDetail(claim.id):financeDetail(claim.id),form);});
 }
 function financeReason(action,step=null) {
   financeInvalidate();const box=$("workspace-content"),form=wsText("form","","workspace-form");box.append(form);

@@ -1,6 +1,10 @@
 # 财务 F0 开发与接入
 
-F0基座用于原件归集、逐项进度、票面/字段/证据查询和持久补件。当前示例包已扩展F1，报销与内部审批见[F1指南](finance-f1.md)；通用付款/记账见[F2](finance-f2.md)，查验、红字和档案隔离闭环见[F3](finance-f3.md)。生产官方 XML 标准映射、真实模型使用、税务/支付/ERP/归档与生产环境验收分别记录在[验收记录](releases/2026-10-21-finance-f0-acceptance.md)。
+当前专用资金能力与最新包契约入口见[F5指南](finance-f5.md)（finance `0.6.0-f5`、69项API、7个Skill）。本页保留本阶段操作说明、历史版本和验证证据；当前最终门禁、制品与运行状态见[F5验收记录](releases/2026-10-22-finance-f5-acceptance.md)。
+
+F0基座用于原件归集、逐项进度、票面/字段/证据查询和持久补件。示例包的报销与内部审批见[F1指南](finance-f1.md)；通用付款/记账见[F2](finance-f2.md)，查验、红字和档案隔离闭环见[F3](finance-f3.md)。生产官方 XML 标准映射、真实模型使用、税务/支付/ERP/归档与生产环境验收分别记录在[验收记录](releases/2026-10-21-finance-f0-acceptance.md)。
+
+F5支持材料经同一固定版本收件和责任索引保全，以supporting_material与material_received区分发票导入；返回source/not_checked，不制造发票或缺票异常，见[F5材料流程](finance-f5.md#支持材料与api示例)。
 
 ## 已执行的本地验证
 
@@ -57,4 +61,4 @@ uv run python docker/finance/build_image.py
 
 [docker/finance/compose.yml](../../docker/finance/compose.yml) 是专属财务开发/预发布编排，使用财务 PG 和原件两个独立 volume，不改平台现有 Compose。启动前由操作员创建该目录下 runtime/config.yaml 与引用文件；db-password 与 database-dsn 中口令必须一致，DSN 主机为 finance-db。文件须可供镜像 UID10001读取。示例原件使用独立加密卷，S3 可按 config.py 的显式 endpoint/bucket/access_key_file/secret_key_file 切换。Compose 实际运行证据另见验收记录。
 
-当前F4已补原生站内提醒、SQL权限分页、配置/运营投影和local配套恢复，见[F4指南](finance-f4.md)与[剩余缺口台账](finance-gap-register.md)。历史阶段的工具数量以对应阶段为准，当前包61项API、7个Skill。
+当前F4已补原生站内提醒、SQL权限分页、配置/运营投影和local配套恢复，见[F4指南](finance-f4.md)与[剩余缺口台账](finance-gap-register.md)。F4阶段为61项API、7个Skill；当前F5为69项API、7个Skill，专用资金见[F5指南](finance-f5.md)。

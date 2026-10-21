@@ -233,6 +233,9 @@ class FinanceWorker:
                 claim, item["position"], "quarantined", "OBJECT_HASH_MISMATCH"
             )
             return
+        if claim["purpose"] == "supporting_material":
+            await self.store.finish_supporting_item(claim, item["position"])
+            return
         if _needs_original(data, item["content_type"], item["filename"]):
             await self.store.finish_item_error(
                 claim, item["position"], "awaiting_original", "ORIGINAL_REQUIRED"

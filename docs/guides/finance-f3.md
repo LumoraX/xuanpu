@@ -1,6 +1,8 @@
 # 财务 F3 查验、红字与档案
 
-F3保持财务服务、PG数据库、原件/物化包、密钥、队列和审计独立。玄圃提供身份、Skill和人工入口，关闭模型仍可通过“功能→财务”处理。发布包提供58项实际API及7个Skill，新增archive-audit。尚未选择税务和档案供应商；本期交付通用接口和隔离闭环，正式税务、正式标准profile及正式档案能力关闭。企业微信/飞书报销适配器仍未接入。
+当前专用资金能力与最新包契约入口见[F5指南](finance-f5.md)（finance `0.6.0-f5`、69项API、7个Skill）。本页保留本阶段操作说明、历史版本和验证证据；当前最终门禁、制品与运行状态见[F5验收记录](releases/2026-10-22-finance-f5-acceptance.md)。
+
+F3保持财务服务、PG数据库、原件/物化包、密钥、队列和审计独立。玄圃提供身份、Skill和人工入口，关闭模型仍可通过“功能→财务”处理。F3阶段包提供58项实际API及7个Skill，新增archive-audit。尚未选择税务和档案供应商；本期交付通用接口和隔离闭环，正式税务、正式标准profile及正式档案能力关闭。企业微信/飞书报销适配器仍未接入。
 
 ## 用户流程
 
@@ -11,6 +13,8 @@ F3保持财务服务、PG数据库、原件/物化包、密钥、队列和审计
 5. 档案服务接收实际ZIP。客户端逐对象版本读回每个文件、manifest、seal证明及保留锁，全部匹配后才记录封存事实。后续付款、记账、红冲或补件另做补充包，原包及时间不变。
 
 内部记录不自动获得付款、记账或税务资格。正式执行前仍需公司制度、真实经办/审批岗位、渠道和标准验收。
+
+F5归档新增funding_case及原预付父子、实际材料、原授权与撤销决定、核销/退回责任及付款/记账回执；新增源事实仍触发补包。PDF/PNG/JPEG有限结构检测及其边界见[F5指南](finance-f5.md#未知结果归档与恢复)。
 
 ## 配置与版本
 
@@ -61,4 +65,4 @@ uv run pytest packages/xuanpu-console/tests/test_finance_behavior.py -q
 
 PG用例须显式FINANCE_TEST_DSN指向独立finance_test库。实际HTTP闭环覆盖所有20个新增API响应契约；平台cookie/CSRF链在模型不可用时验证实际专用审批。部署/全量门禁及正式未验收边界见[F3验收记录](releases/2026-10-21-finance-f3-acceptance.md)。
 
-当前F4已补原生站内提醒、SQL权限分页、配置/运营投影和local配套恢复，见[F4指南](finance-f4.md)与[剩余缺口台账](finance-gap-register.md)。历史阶段的工具数量以对应阶段为准，当前包61项API、7个Skill。
+当前F4已补原生站内提醒、SQL权限分页、配置/运营投影和local配套恢复，见[F4指南](finance-f4.md)与[剩余缺口台账](finance-gap-register.md)。F4阶段为61项API、7个Skill；当前F5为69项API、7个Skill，专用资金见[F5指南](finance-f5.md)。

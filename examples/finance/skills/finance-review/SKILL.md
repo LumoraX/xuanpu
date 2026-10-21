@@ -1,7 +1,7 @@
 ---
 name: finance-review
 description: 读取本人实际分派的报销、应付和原行动计划审批，核对证据并准备本人决定。
-version: 0.5.0-f4
+version: 0.6.0-f5
 entry: false
 type: composite
 tool_names:
@@ -21,6 +21,9 @@ tool_names:
 - api__finance__getActionPlan
 - api__finance__listExceptions
 - api__finance__getOperation
+- api__finance__getFundingCase
+- api__finance__listFundingCases
+- api__finance__getFundingOptions
 ---
 # 实际人工审批
 
@@ -33,3 +36,5 @@ listReviewQueue返回当前员工真正分派的步骤。按target_type读取报
 F3查验和税务动作使用getInvoiceCompliance.version，原getInvoice.version仍是票面内容/分配版本。verifyInvoice只受理实际外查；pending/过期/不可用不是passed。F3原action_plan仍按当前实际步骤预检，实际审批及执行交人工入口。
 
 F4原生提醒由listFinanceNotifications读取当前来源，未读计数独立于当前页；提醒已读不表示审批或渠道成功。模型不调用readFinanceNotification；待审/未知应恢复原目标和原计划，不从提醒正文代批或重发。站内提醒不等于飞书、企业微信或邮件送达。
+
+F5专用资金先读[资金规则](references/funding-rules.md)。材料先真实收件并读取source回执；申报不是核实，模型仅准备草稿/预检，实际决定交员工。资金业务使用funding-cases专用入口，不伪装普通应付。

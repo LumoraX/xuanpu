@@ -28,6 +28,21 @@ class FileRef(BaseModel):
     sha256: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
 
 
+class SupportingMaterialImport(BaseModel):
+    """支持材料只接收固定文件版本，禁止借此处置发票异常或声明已核实。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    legal_entity_id: Identifier
+    files: Annotated[list[FileRef], Field(min_length=1, max_length=100)]
+
+    @model_validator(mode="after")
+    def unique_files(self) -> Self:
+        """拒绝同一次材料请求重复引用固定版本。"""
+        if len({(item.file_id, item.revision, item.sha256) for item in self.files}) != len(self.files):
+            raise ValueError("文件引用不能重复")
+        return self
+
+
 class InvoiceImport(BaseModel):
     """严格接收导入请求；补件必须绑定原异常版本。"""
 

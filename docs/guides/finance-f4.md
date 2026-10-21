@@ -1,6 +1,8 @@
 # 财务F4：提醒、运营与配套恢复
 
-F4在F0–F3隔离闭环上补齐原生提醒、SQL授权分页、实际接入状态、运营概览及配套备份恢复。业务包为finance 0.5.0-f4，61项API、7个Skill；服务2026.10.21.5、console 2026.10.21.6。财务库、原件、提醒、密钥和恢复生命周期仍独立。正式税务、真实WORM、外部消息渠道及企微/飞书报销尚未接入。
+当前专用资金能力与最新包契约入口见[F5指南](finance-f5.md)（finance `0.6.0-f5`、69项API、7个Skill）。本页保留本阶段操作说明、历史版本和验证证据；当前最终门禁、制品与运行状态见[F5验收记录](releases/2026-10-22-finance-f5-acceptance.md)。
+
+F4在F0–F3隔离闭环上补齐原生提醒、SQL授权分页、实际接入状态、运营概览及配套备份恢复。F4阶段包为finance 0.5.0-f4，61项API、7个Skill；当时服务2026.10.21.5、console 2026.10.21.6。财务库、原件、提醒、密钥和恢复生命周期仍独立。正式税务、真实WORM、外部消息渠道及企微/飞书报销尚未接入。
 
 ## 提醒与人工处理
 
@@ -11,6 +13,8 @@ F4在F0–F3隔离闭环上补齐原生提醒、SQL授权分页、实际接入�
 “核对原事项”重新读取当前待办，打开原单据或原计划；应付使用payable真实类型。已读须本人确认、版本和幂等键，不能产生批准或渠道成功。模型只能查询提醒；审批仍由实际指定人员完成，原经办随后明确执行。未知结果只按原请求查询，不重复付款、税务确认或归档上传。
 
 提醒任务按有界批次和持久游标轮转，不依赖模型。enabled/draining刷新，read_only/disabled不生成新提醒；实例锁丢失或服务退出取消四个任务。提醒任务故障在概览中单独显示，不修改业务结果；F2/F3在途核对仍按原规则运行。
+
+F5新增funding_case提醒目标；funding_due仅在预付已确定付款、到票截止日已过且未结余额为正时产生，完整核销/退回后退出当前提醒。unknown不算已付。F5新表、材料责任及原请求随独立dump/restore保留，恢复仍不启动worker，见[F5指南](finance-f5.md)。
 
 ## 运营与查询
 
@@ -52,4 +56,4 @@ uv run pytest packages/xuanpu-finance/tests/test_f4_maintenance.py packages/xuan
 uv run pytest packages/xuanpu-server/tests/identity/test_finance_f4_gateway_e2e.py -q
 ```
 
-PG用例须显式FINANCE_TEST_DSN指向独立finance_test库；维护演练还需可用PG工具（本轮专用容器xuanpu-finance-f4-test-pg）。[缺口台账](finance-gap-register.md)逐项区分本地已验、专用业务未实现与外部未验收；[F4验收记录](releases/2026-10-21-finance-f4-acceptance.md)记录最终门禁、镜像、浏览器和清理证据。
+PG用例须显式FINANCE_TEST_DSN指向独立finance_test库；维护演练还需可用PG工具（本轮专用容器xuanpu-finance-f4-test-pg）。[缺口台账](finance-gap-register.md)逐项区分既有本地已验、F5专用业务及外部未验收；[F4验收记录](releases/2026-10-21-finance-f4-acceptance.md)记录最终门禁、镜像、浏览器和清理证据。

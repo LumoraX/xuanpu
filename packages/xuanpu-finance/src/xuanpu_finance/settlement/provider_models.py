@@ -8,6 +8,8 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from xuanpu_finance.funding.models import FundingScenario  # noqa: TC001
+
 
 class ProviderConfig(BaseModel):
     """显式固定公司、版本与隔离环境，不从宿主发现凭据。"""
@@ -26,6 +28,7 @@ class ProviderConfig(BaseModel):
     enabled: bool = Field(default=True, strict=True)
     supports_idempotency: bool = Field(default=False, strict=True)
     supports_query: bool = Field(default=False, strict=True)
+    supported_funding_scenarios: list[FundingScenario] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def origin_only(self) -> Self:
@@ -56,7 +59,11 @@ class ProviderConfig(BaseModel):
 
     def public_descriptor(self) -> dict[str, Any]:
         """返回可持久校验的版本摘要，凭据及路径不进入业务存储。"""
-        return self.model_dump(exclude={"token_file", "callback_secret_file", "callback_key_id"})
+        excluded={"token_file", "callback_secret_file", "callback_key_id"}
+        # 空能力与旧F2未声明完全同义，保留已有配置版本和持久摘要。
+        if not self.supported_funding_scenarios:
+            excluded.add("supported_funding_scenarios")
+        return self.model_dump(exclude=excluded)
 
 
 class ProviderTarget(BaseModel):
@@ -64,7 +71,7 @@ class ProviderTarget(BaseModel):
 
     model_config = ConfigDict(extra="forbid", strict=True)
     id: str = Field(min_length=1)
-    type: Literal["expense_claim", "payable", "posting"]
+    type: Literal["expense_claim", "payable", "funding_case", "posting"]
     version: int = Field(ge=1)
 
 

@@ -23,6 +23,7 @@ from xuanpu_finance.storage.f3_evidence_closure import (
 )
 from xuanpu_finance.storage.f3_retention import retention_anchor
 from xuanpu_finance.storage.f3_targets import ComplianceTargetStore
+from xuanpu_finance.storage.f5_archive import funding_archive_sources
 
 if TYPE_CHECKING:
     from xuanpu_finance.compliance.models import ComplianceActionPreview
@@ -55,15 +56,19 @@ class ComplianceArchiveInputStore(ComplianceTargetStore):
         history = await compliance_history(conn, tenant, entity, invoice_ids)
         artifacts.extend([derived_artifact("compliance-history", "compliance_history", history), derived_artifact("tax-adjustments", "tax_adjustments", adjustments), *adjustment_artifacts])
         originals = await self._f3_archive_originals(conn, tenant, entity, invoice_ids)
-        if not originals:
+        funding_artifacts, funding_roles = await funding_archive_sources(conn, tenant, entity, aggregate_ids, target["simulation"])
+        if not originals and not funding_artifacts:
             raise FinanceError("ARCHIVE_ORIGINAL_REQUIRED", 409, "归档必须含真实原件")
         artifacts.extend(originals)
+        artifacts.extend(funding_artifacts)
         receipts = await self._f3_archive_receipts(conn, tenant, entity, invoice_ids)
         artifacts.extend(receipts)
         histories = await conn.fetch("SELECT kind,data,sequence,created_at FROM finance_event WHERE tenant_id=$1 AND legal_entity_id=$2 AND aggregate_id=ANY($3::text[]) AND sequence<=$4 AND kind NOT LIKE 'compliance.archive%' ORDER BY sequence", tenant, entity, aggregate_ids, cutoff_sequence)
         events = [{"id": str(r["sequence"]), "kind": r["kind"], "created_at": r["created_at"].isoformat(), "data": decode(r["data"])} for r in histories]
         artifacts.append(derived_artifact("events", "audit_events", events))
-        required = ["structured_record", "invoice_original", "audit_events", "invoice_structure", "compliance_history", "tax_adjustments"]
+        required = ["structured_record", "audit_events", "invoice_structure", "compliance_history", "tax_adjustments", *funding_roles]
+        if originals:
+            required.append("invoice_original")
         settlement_snapshots: list[dict[str, Any]] = []
         documents = await conn.fetch("SELECT * FROM finance_expense_claim WHERE tenant_id=$1 AND legal_entity_id=$2 AND id=ANY($3::text[]) ORDER BY id", tenant, entity, aggregate_ids)
         document_snapshots = [{"id": d["id"], "version": d["version"], "status": d["status"], "amount": format(d["total"], ".2f"), "content": decode(d["content"])} for d in documents]

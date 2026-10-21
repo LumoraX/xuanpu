@@ -202,7 +202,7 @@ class ComplianceActionPreview(StrictModel):
     """税务、红字和归档目标独立于报销父单据。"""
 
     action: Literal["confirm_usage", "confirm_tax_entry", "confirm_red_letter", "archive", "audit_archive", "approve", "reject"]
-    target_type: Literal["invoice", "red_letter_case", "archive", "expense_claim", "payable", "action_plan"]
+    target_type: Literal["invoice", "red_letter_case", "archive", "expense_claim", "payable", "funding_case", "action_plan"]
     target_id: Identifier
     expected_version: Version
     parameters: ComplianceActionParameters
@@ -216,7 +216,7 @@ class ComplianceActionPreview(StrictModel):
         values = self.parameters.model_dump()
         if not required <= fields or not fields <= allowed or any(values[k] is None for k in fields):
             raise ValueError("合规动作参数缺失或不适用")
-        targets = {"confirm_usage": {"invoice"}, "confirm_tax_entry": {"invoice"}, "confirm_red_letter": {"red_letter_case"}, "archive": {"invoice", "expense_claim", "payable"}, "audit_archive": {"archive"}, "approve": {"action_plan"}, "reject": {"action_plan"}}
+        targets = {"confirm_usage": {"invoice"}, "confirm_tax_entry": {"invoice"}, "confirm_red_letter": {"red_letter_case"}, "archive": {"invoice", "expense_claim", "payable", "funding_case"}, "audit_archive": {"archive"}, "approve": {"action_plan"}, "reject": {"action_plan"}}
         if self.target_type not in targets[self.action]:
             raise ValueError("合规动作目标类型不适用")
         if self.action == "archive" and ((self.parameters.parent_manifest_hash is None) != (self.parameters.source_event_ids is None)):

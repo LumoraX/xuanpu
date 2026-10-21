@@ -1,0 +1,42 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_____________ test_cancel_materialization_terminates_actual_parser _____________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1377/test_cancel_materialization_te0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10ad01280>
+
+    async def test_cancel_materialization_terminates_actual_parser(tmp_path: Path,monkeypatch: Any) -> None:
+        """取消等待后PID必须退出，不能遗留持续运行且占用资源的解析线程。"""
+        monkeypatch.setattr(archive_checks,'check_parse',blocking_parse)
+        path=tmp_path/'parser-pid';objects=EncryptedLocalObjects(tmp_path/'objects',b'k'*32)
+        task=asyncio.create_task(archive_checks.materialize(probe_artifact(path),objects,None))
+        try:
+            async with asyncio.timeout(5):
+                while not path.exists():
+                    await asyncio.sleep(.02)
+            pid=int(path.read_text())
+>           assert pid!=os.getpid(),'解析不得在财务服务主进程运行'
+E           AssertionError: 解析不得在财务服务主进程运行
+E           assert 80883 != 80883
+E            +  where 80883 = <built-in function getpid>()
+E            +    where <built-in function getpid> = os.getpid
+
+packages/xuanpu-finance/tests/test_f5_parse_cancellation.py:38: AssertionError
+______________________ test_parse_deadline_is_fail_closed ______________________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1377/test_parse_deadline_is_fail_cl0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10ad01970>
+
+    async def test_parse_deadline_is_fail_closed(tmp_path: Path,monkeypatch: Any) -> None:
+        """长解析触及期限后拒绝封存并终止进程，不以租约健康当解析成功。"""
+        monkeypatch.setattr(archive_checks,'check_parse',blocking_parse)
+        monkeypatch.setattr(archive_checks,'PARSE_TIMEOUT_SECONDS',.2,raising=False)
+>       with pytest.raises(FinanceError,match='ARCHIVE_PARSE_TIMEOUT'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE FinanceError
+
+packages/xuanpu-finance/tests/test_f5_parse_cancellation.py:55: Failed
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f5_parse_cancellation.py::test_cancel_materialization_terminates_actual_parser
+FAILED packages/xuanpu-finance/tests/test_f5_parse_cancellation.py::test_parse_deadline_is_fail_closed
+2 failed in 32.11s

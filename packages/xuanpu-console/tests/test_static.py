@@ -19,7 +19,7 @@ def test_static_files_present() -> None:
     assert referenced == {
         "app.js", "identity.js", "reminders.js", "notification-alerts.js", "notification-center.js", "style.css",
         "?admin=1", "?", "workspace.css", "workspace.js", "workspace-forms.js",
-        "workspace-files.js", "workspace-chat.js", "proactive.js", "work-tasks.js", "finance.js", "finance_settlement.js", "finance_compliance.js", "finance_operations.js",
+        "workspace-files.js", "workspace-chat.js", "proactive.js", "work-tasks.js", "finance.js", "finance_settlement.js", "finance_compliance.js", "finance_operations.js", "finance_funding.js",
     }
 
 

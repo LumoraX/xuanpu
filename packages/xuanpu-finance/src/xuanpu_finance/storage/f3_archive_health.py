@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from xuanpu_finance.storage.common import decode
 from xuanpu_finance.storage.f3_evidence_closure import expand_invoice_ids
+from xuanpu_finance.storage.f5_archive import funding_family
 
 if TYPE_CHECKING:
     from xuanpu_finance.storage.business_base import Connection
@@ -27,7 +28,9 @@ async def archive_aggregate_ids(conn: Connection, tenant: str, entity: str, targ
     else:
         documents = [target_id]
         invoices = [r["invoice_id"] for r in await conn.fetch("SELECT DISTINCT invoice_id FROM finance_allocation WHERE tenant_id=$1 AND legal_entity_id=$2 AND document_id=$3", tenant, entity, target_id)]
-    invoices = await expand_invoice_ids(conn, tenant, entity, invoices)
+    documents = await funding_family(conn, tenant, entity, documents)
+    linked = await conn.fetch("SELECT DISTINCT invoice_id FROM finance_allocation WHERE tenant_id=$1 AND legal_entity_id=$2 AND document_id=ANY($3::text[])", tenant, entity, documents)
+    invoices = await expand_invoice_ids(conn, tenant, entity, sorted({*invoices, *(r["invoice_id"] for r in linked)}))
     frozen = snapshot["snapshots"].get("aggregate_ids", []) if snapshot is not None else []
     return sorted({target_id, *invoices, *documents, *frozen})
 

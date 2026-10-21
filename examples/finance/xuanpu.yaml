@@ -2,8 +2,8 @@ apiVersion: xuanpu/v1
 kind: Package
 metadata:
   name: finance
-  version: 0.5.0-f4
-  description: 独立财务F0-F4：轻量闭环、原生通知与运营核对，正式渠道未验收
+  version: 0.6.0-f5
+  description: 独立财务F0-F5：专用资金、原生通知与实际人工审批，正式渠道未验收
 spec:
   skills:
     entries:
@@ -138,6 +138,22 @@ spec:
     - name: readFinanceNotification
       effect: write
     - name: getFinanceOverview
+      effect: read
+    - name: createFundingCase
+      effect: write
+    - name: listFundingCases
+      effect: read
+    - name: getFundingCase
+      effect: read
+    - name: updateFundingCase
+      effect: write
+    - name: getFundingOptions
+      effect: read
+    - name: revokeFundingAuthority
+      effect: write
+    - name: importSupportingMaterials
+      effect: write
+    - name: getFundingMaterial
       effect: read
     contextAudience: xuanpu-finance
   - name: catalog

@@ -21,6 +21,7 @@ from xuanpu_finance.routes_f1 import router as f1_router
 from xuanpu_finance.routes_f2 import router as f2_router
 from xuanpu_finance.routes_f3 import router as f3_router
 from xuanpu_finance.routes_f4 import router as f4_router
+from xuanpu_finance.routes_f5 import router as f5_router
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
     from xuanpu_finance.compliance.provider import ComplianceRegistry
     from xuanpu_finance.invoices.worker import FinanceWorker
     from xuanpu_finance.notifications import NotificationsWorker
+    from xuanpu_finance.objects import OriginalObjects
     from xuanpu_finance.settlement.providers import ProviderRegistry
     from xuanpu_finance.settlement.worker import SettlementWorker
     from xuanpu_finance.storage import FinanceStore
@@ -155,12 +157,14 @@ def create_app(
     compliance_worker: SettlementWorker | None = None,
     compliance_providers: ComplianceRegistry | None = None,
     notification_worker: NotificationsWorker | None = None,
+    objects: OriginalObjects | None = None,
 ) -> FastAPI:
     """显式注入独立存储，不在平台进程中导入此应用。"""
     if mode not in MODES:
         raise ValueError("财务模块模式无效")
-    app = FastAPI(title="玄圃财务 F0–F4", version="2026.10.21.5", lifespan=_lifespan)
+    app = FastAPI(title="玄圃财务 F0–F5", version="2026.10.22.1", lifespan=_lifespan)
     app.state.store, app.state.auth, app.state.mode = store, auth, mode
+    app.state.objects = objects if objects is not None else worker.objects if worker is not None else None
     app.state.worker, app.state.start_worker, app.state.worker_error = worker, start_worker, None
     app.state.settlement_worker, app.state.settlement_providers = (
         settlement_worker,
@@ -181,6 +185,7 @@ def create_app(
     app.include_router(callback_router)
     app.include_router(f3_router)
     app.include_router(f4_router)
+    app.include_router(f5_router)
 
     @app.get("/health")
     async def health() -> JSONResponse:

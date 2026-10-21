@@ -37,6 +37,7 @@ class ImportStore(FinanceBase):
         *,
         source_exception_id: str | None = None,
         expected_exception_version: int | None = None,
+        purpose: str = "invoice",
     ) -> dict[str, Any]:
         """同键同内容返回已有操作，异内容拒绝，补件绑定持久异常版本。"""
         request = InvoiceImport(
@@ -47,7 +48,12 @@ class ImportStore(FinanceBase):
         )
         if not key or len(key) > 128:
             raise FinanceError("IDEMPOTENCY_KEY_INVALID", 422, "幂等键长度无效")
-        digest = request_digest(request.model_dump())
+        if purpose not in {"invoice", "supporting_material"} or (purpose != "invoice" and source_exception_id is not None):
+            raise FinanceError("IMPORT_PURPOSE_INVALID", 422, "材料用途或补件参数无效")
+        payload = request.model_dump()
+        if purpose == "supporting_material":
+            payload["purpose"] = purpose
+        digest = request_digest(payload)
         async with self.pool.acquire() as conn, conn.transaction():
             await self._role(conn, who, legal_entity_id)
             await conn.execute(
@@ -67,7 +73,7 @@ class ImportStore(FinanceBase):
             if source_exception_id is not None:
                 await self._import_supplement(conn, who, legal_entity_id, source_exception_id, expected_exception_version)
             row = await conn.fetchrow(
-                "INSERT INTO finance_operation(tenant_id,legal_entity_id,id,owner_id,idempotency_key,request_hash,trace_id,source_exception_id,expected_exception_version,source_simulation) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE((SELECT simulation FROM finance_compliance_mode WHERE singleton),(SELECT simulation FROM finance_settlement_mode WHERE singleton),false)) RETURNING *",
+                "INSERT INTO finance_operation(tenant_id,legal_entity_id,id,owner_id,idempotency_key,request_hash,trace_id,source_exception_id,expected_exception_version,source_simulation,purpose) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE((SELECT simulation FROM finance_compliance_mode WHERE singleton),(SELECT simulation FROM finance_settlement_mode WHERE singleton),false),$10) RETURNING *",
                 who.tenant_id,
                 legal_entity_id,
                 identifier(),
@@ -77,6 +83,7 @@ class ImportStore(FinanceBase):
                 identifier(),
                 source_exception_id,
                 expected_exception_version,
+                purpose,
             )
             assert row is not None
             for position, file in enumerate(files):
@@ -95,6 +102,12 @@ class ImportStore(FinanceBase):
                 {"files": len(files), "source_exception_id": source_exception_id},
             )
             return await self._snapshot(conn, row)
+
+    async def accept_supporting_materials(
+        self, who: FinancePrincipal, legal_entity_id: str, files: list[FileRef], key: str
+    ) -> dict[str, Any]:
+        """独立材料用途复用收件责任链，不把合同和付款凭据假装成发票。"""
+        return await self.accept_import(who, legal_entity_id, files, key, purpose="supporting_material")
 
     async def _import_supplement(self, conn: asyncpg.Connection | asyncpg.pool.PoolConnectionProxy, who: FinancePrincipal, entity: str, id: str, expected_version: int | None) -> None:
         """补件受理前锁定源异常并核对实际接收来源，旧正式材料不升级。"""

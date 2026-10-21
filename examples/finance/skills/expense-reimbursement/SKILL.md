@@ -1,7 +1,7 @@
 ---
 name: expense-reimbursement
 description: 根据费用事实准备本人报销记录与真实分票，查询进度、修订草稿及准备提交或撤回计划。
-version: 0.5.0-f4
+version: 0.6.0-f5
 entry: false
 type: composite
 tool_names:
@@ -19,6 +19,9 @@ tool_names:
 - api__catalog__listExpenseCategories
 - api__catalog__listCostCenters
 - api__catalog__getInvoiceAllocation
+- api__finance__getFundingCase
+- api__finance__listFundingCases
+- api__finance__getFundingOptions
 ---
 # 报销记录
 
@@ -30,3 +33,5 @@ internal_record一律不取得外部付款或记账资格，simulation也不例�
 网络结果不明用原幂等键、计划和getOperation恢复，再查原单据实际状态，不换键重复提交。
 
 F4原生提醒由listFinanceNotifications读取当前来源，未读计数独立于当前页；提醒已读不表示审批或渠道成功。模型不调用readFinanceNotification；待审/未知应恢复原目标和原计划，不从提醒正文代批或重发。站内提醒不等于飞书、企业微信或邮件送达。
+
+F5专用资金先读[资金规则](references/funding-rules.md)。材料先真实收件并读取source回执；申报不是核实，模型仅准备草稿/预检，实际决定交员工。资金业务使用funding-cases专用入口，不伪装普通应付。

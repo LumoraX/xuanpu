@@ -19,6 +19,8 @@ class ComplianceProviderConfig(ProviderConfig):
     @model_validator(mode="after")
     def capabilities(self) -> Self:
         """缺少安全恢复能力的配置不能启用正式或模拟动作。"""
+        if self.supported_funding_scenarios:
+            raise ValueError("合规通道不能声明付款记账专属资金场景能力")
         required: tuple[bool, ...] = (self.supports_idempotency, self.supports_query)
         if self.kind == "tax":
             required += (self.supports_state_revision,)
@@ -34,7 +36,7 @@ class ComplianceTarget(BaseModel):
 
     model_config = ConfigDict(extra="forbid", strict=True)
     id: str = Field(min_length=1, max_length=128)
-    type: Literal["invoice", "red_letter_case", "archive", "expense_claim", "payable"]
+    type: Literal["invoice", "red_letter_case", "archive", "expense_claim", "payable", "funding_case"]
     version: int = Field(ge=1)
 
 

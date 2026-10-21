@@ -83,7 +83,7 @@ class AllocationRequest(StrictModel):
     invoice_version: Version
     invoice_line_id: Identifier | None = None
     document_id: Identifier
-    document_kind: Literal["expense_claim", "payable"]
+    document_kind: Literal["expense_claim", "payable", "funding_case"]
     expected_document_version: Version
     amount: Money
     tax: Money
@@ -164,6 +164,7 @@ class ActionPreview(StrictModel):
     """预检只准备不可变计划，不产生审批事实。"""
 
     action: Literal[
+        "submit_funding_case",
         "submit_claim",
         "submit_payable",
         "approve",
@@ -173,7 +174,7 @@ class ActionPreview(StrictModel):
         "submit_posting",
         "reverse_posting",
     ]
-    target_type: Literal["expense_claim", "payable", "action_plan", "posting"]
+    target_type: Literal["expense_claim", "payable", "funding_case", "action_plan", "posting"]
     target_id: Identifier
     expected_version: Version
     parameters: ActionParameters
@@ -183,6 +184,7 @@ class ActionPreview(StrictModel):
         """严格执行动作参数矩阵。"""
         fields = self.parameters.model_fields_set
         required = {
+            "submit_funding_case": set(),
             "submit_claim": set(),
             "submit_payable": set(),
             "execute_payment": {"amount", "payee_ref"},
@@ -207,13 +209,14 @@ class ActionPreview(StrictModel):
         ):
             raise ValueError("动作参数缺失或不适用")
         targets = {
+            "submit_funding_case": {"funding_case"},
             "submit_claim": {"expense_claim"},
             "submit_payable": {"payable"},
-            "approve": {"expense_claim", "payable", "action_plan"},
-            "reject": {"expense_claim", "payable", "action_plan"},
-            "withdraw": {"expense_claim", "payable"},
-            "execute_payment": {"expense_claim", "payable"},
-            "submit_posting": {"expense_claim", "payable"},
+            "approve": {"expense_claim", "payable", "funding_case", "action_plan"},
+            "reject": {"expense_claim", "payable", "funding_case", "action_plan"},
+            "withdraw": {"expense_claim", "payable", "funding_case"},
+            "execute_payment": {"expense_claim", "payable", "funding_case"},
+            "submit_posting": {"expense_claim", "payable", "funding_case"},
             "reverse_posting": {"posting"},
         }
         if self.target_type not in targets[self.action]:

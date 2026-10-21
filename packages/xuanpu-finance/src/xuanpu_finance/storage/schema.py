@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS finance_operation (
  PRIMARY KEY(tenant_id,legal_entity_id,id), UNIQUE(id),
  UNIQUE(tenant_id,owner_id,idempotency_key),
  FOREIGN KEY(tenant_id,legal_entity_id) REFERENCES finance_company);
+ALTER TABLE finance_operation ADD COLUMN IF NOT EXISTS purpose text NOT NULL DEFAULT 'invoice' CHECK(purpose IN ('invoice','supporting_material'));
 CREATE TABLE IF NOT EXISTS finance_item (
  tenant_id text NOT NULL, legal_entity_id text NOT NULL, operation_id text NOT NULL,
  position integer NOT NULL, file_ref jsonb NOT NULL, state text NOT NULL DEFAULT 'pending',

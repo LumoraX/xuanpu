@@ -11,6 +11,7 @@ from xuanpu_finance.storage.common import decode
 from xuanpu_finance.storage.f3_catalog import ComplianceCatalogStore
 from xuanpu_finance.storage.f3_evidence_closure import expand_invoice_ids
 from xuanpu_finance.storage.f3_projection import invoice_projection, require_usable_projection
+from xuanpu_finance.storage.f5_archive import funding_family
 
 if TYPE_CHECKING:
     from xuanpu_finance.compliance.models import ComplianceActionPreview
@@ -59,11 +60,12 @@ class ComplianceTargetStore(ComplianceCatalogStore):
             data, state = decode(row["data"]), states[id]
             reds = [{"id": r["id"], "data": decode(r["data"]), "compliance": states[r["id"]], "simulation": r["source_simulation"]} for r in rows if r["id"] != id]
             return {"id": id, "type": kind, "tenant_id": row["tenant_id"], "legal_entity_id": row["legal_entity_id"], "owner_id": row["owner_id"], "version": state["version"], "content_version": data["version"], "compliance_version": state["version"], "simulation": row["source_simulation"], "data": data, "compliance": state, "linked_red_invoices": reds}
-        if kind in {"expense_claim", "payable"}:
+        if kind in {"expense_claim", "payable", "funding_case"}:
             row = await self._f3_document(conn, who, id, lock=lock)
             if row["document_kind"] != kind:
                 raise FinanceError("TARGET_KIND_MISMATCH", 422, "归档单据类型不符")
-            links = await conn.fetch("SELECT DISTINCT invoice_id FROM finance_allocation WHERE tenant_id=$1 AND legal_entity_id=$2 AND document_id=$3 AND state IN ('reserved','consumed') ORDER BY invoice_id", who.tenant_id, row["legal_entity_id"], id)
+            documents = await funding_family(conn, who.tenant_id, row["legal_entity_id"], [id]) if kind == "funding_case" else [id]
+            links = await conn.fetch("SELECT DISTINCT invoice_id FROM finance_allocation WHERE tenant_id=$1 AND legal_entity_id=$2 AND document_id=ANY($3::text[]) AND state IN ('reserved','consumed') ORDER BY invoice_id", who.tenant_id, row["legal_entity_id"], documents)
             invoices = []
             ids = await expand_invoice_ids(conn, who.tenant_id, row["legal_entity_id"], [link["invoice_id"] for link in links])
             invoice_rows = [await self._f3_invoice(conn, who, invoice_id, lock=lock) for invoice_id in ids]

@@ -45,3 +45,11 @@ def test_finance_operations_behavior() -> None:
     assert node is not None
     result = subprocess.run([node, str(Path(__file__).with_name('finance_operations_behavior.cjs')), str(static_dir())], capture_output=True, text=True, timeout=15)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_finance_funding_behavior() -> None:
+    """专用资金页面使用真实收件与受控账户，收尾不能再次付款。"""
+    node = shutil.which('node')
+    assert node is not None
+    result = subprocess.run([node, str(Path(__file__).with_name('finance_funding_behavior.cjs')), str(static_dir())], capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0, result.stdout + result.stderr
