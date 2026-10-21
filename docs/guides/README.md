@@ -34,3 +34,5 @@
 - [2026-10-20 主动业务助理发布验收](releases/2026-10-20-proactive-business.md)
 
 - [2026-10-21 R1办公交付验收](releases/2026-10-21-r1-acceptance.md)
+
+- [2026-10-21 R1生产部署与验收](releases/2026-10-21-r1-production.md)
