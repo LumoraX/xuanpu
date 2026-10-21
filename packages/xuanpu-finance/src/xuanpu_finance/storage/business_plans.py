@@ -104,6 +104,7 @@ class PlanStore(AllocationStore):
     def _action_effects(self, action: str) -> list[str]:
         """明确展示每种动作的业务影响，不声称付款或核销。"""
         return {
+            "submit_payable": ["预留发票额度并开始应付人工审批"],
             "submit_claim": ["预留发票额度并开始人工审批"],
             "approve": ["记录本人决定并推进审批；最后一步通过后形成报销批准，额度仍预留"],
             "reject": ["驳回报销、取消余下审批并释放预留额度"],
@@ -228,7 +229,7 @@ class PlanStore(AllocationStore):
     ) -> tuple[Any, list[Any]]:
         """单据后锁当前工作流，再按固定顺序读取步骤。"""
         workflow = await conn.fetchrow(
-            "SELECT * FROM finance_workflow WHERE tenant_id=$1 AND legal_entity_id=$2 AND document_id=$3 ORDER BY target_version DESC LIMIT 1"
+            "SELECT * FROM finance_workflow WHERE tenant_id=$1 AND legal_entity_id=$2 AND document_id=$3 AND target_type<>'action_plan' ORDER BY target_version DESC LIMIT 1"
             + (" FOR UPDATE" if lock else ""),
             claim["tenant_id"],
             claim["legal_entity_id"],

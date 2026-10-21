@@ -1,9 +1,9 @@
-# 完整闭环设计参考包；可执行F0/F1子集另见examples/finance。
+# 完整闭环设计参考包；已实现F0-F2子集见examples/finance，F3仍为设计。
 apiVersion: xuanpu/v1
 kind: Package
 metadata:
   name: finance
-  version: 0.1.0-design.1
+  version: 0.3.0-design.2
   description: 财务能力设计包：发票、报销、应付、审核、付款入账协同与档案证据
 spec:
   skills:
@@ -88,6 +88,18 @@ spec:
       effect: read
     - name: getArchive
       effect: read
+    - name: listPayables
+      effect: read
+    - name: listPayments
+      effect: read
+    - name: listPostings
+      effect: read
+    - name: listActionPlans
+      effect: read
+    - name: getSettlementOptions
+      effect: read
+    - name: reconcileOperation
+      effect: write
   - name: catalog
     transport: http
     openapi: apis/catalog.yaml

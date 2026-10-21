@@ -135,7 +135,7 @@ class BusinessBase(FinanceBase):
             "evidence": await self._claim_evidence(conn, row),
         }
         workflow = await conn.fetchrow(
-            "SELECT * FROM finance_workflow WHERE tenant_id=$1 AND legal_entity_id=$2 AND document_id=$3 ORDER BY target_version DESC LIMIT 1",
+            "SELECT * FROM finance_workflow WHERE tenant_id=$1 AND legal_entity_id=$2 AND document_id=$3 AND target_type<>'action_plan' ORDER BY target_version DESC LIMIT 1",
             row["tenant_id"],
             row["legal_entity_id"],
             row["id"],

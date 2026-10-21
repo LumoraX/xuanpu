@@ -1,7 +1,7 @@
 ---
 name: expense-reimbursement
-description: 根据事由、费用与可选发票准备本人报销记录，查询进度和修订草稿。
-version: 0.2.0-f1.1
+description: 根据费用事实准备本人报销记录与真实分票，查询进度、修订草稿及准备提交或撤回计划。
+version: 0.3.0-f2.1
 entry: false
 type: composite
 tool_names:
@@ -21,8 +21,9 @@ tool_names:
 ---
 # 报销记录
 
-先查询有权公司、分类及可选归属；只在公司/必需费用信息不明确时追问。金额必须是两位小数字符串，日期YYYY-MM-DD；身份、合计、状态由服务端确定。
-需要原件时委派invoice-intake，使用真实SourceReceipt作为evidence_ids，不把平台file_id当财务证据ID。PDF可留作内部记录附件，不能伪造结构化发票或验真。
-createExpenseClaim只建草稿；修订带最新expected_version。internal_record允许不分票；invoice_backed必须完整分配，任何模式存在分配都必须覆盖总额，预检不占额。
-可准备submit_claim/withdraw预检并解释金额、材料缺口、阻断、版本与影响；实际执行由员工进入人工页面确认。不要调用executeFinanceAction；模型来源即使工具确认也会拒绝。
-查询getOperation仅说明本地命令结果，再查getExpenseClaim了解真实审批状态。网络结果不明先用原幂等键/计划查询，不换键重新构造业务动作。
+先查询有权公司、费用分类及可选归属，只在必需事实不明确时追问。金额用两位小数字符串，日期YYYY-MM-DD；身份、合计、状态由服务端确定。
+原件交invoice-intake归集，附件evidence_ids只能用真实财务SourceReceipt，不能拿平台file_id替代。PDF可作内部附件，不能伪造结构化发票或验真。
+createExpenseClaim只建草稿；修订带最新expected_version。internal_record允许没有分票；invoice_backed及任何存在分配的单据都须完整覆盖总额，预检不占额，实际提交才原子保留。
+准备submit_claim/withdraw预检后，解释材料缺口、阻断、版本、金额及影响，交本人在人工入口决定，不调用executeFinanceAction。
+internal_record一律不取得外部付款或记账资格，simulation也不例外。业务approved仍不能替代外部专用批准；外部动作交posting-reconciliation准备。
+网络结果不明用原幂等键、计划和getOperation恢复，再查原单据实际状态，不换键重复提交。

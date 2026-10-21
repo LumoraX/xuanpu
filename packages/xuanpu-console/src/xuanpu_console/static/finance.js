@@ -11,7 +11,7 @@ function financeToken(){return {epoch:conn.epoch,generation:financeState.generat
 function financeCurrent(token){return conn.ready && token.epoch===conn.epoch && token.generation===financeState.generation && workspace.kind==="finance";}
 function financeInvalidate(){financeState.revision++;financeState.plan=null;financeState.execution=null;}
 async function financeCall(operation,arguments_={},confirmed=false,connector="finance") {
-  if(conn.apiKey || !conn.me?.user_id)throw new Error("请使用员工登录后操作报销。");
+  if(conn.apiKey || !conn.me?.user_id)throw new Error("请使用员工登录后操作财务记录。");
   const epoch=conn.epoch,controller=financeState.controller;
   const signals=[conn.controller.signal,controller.signal];
   if(typeof AbortSignal?.timeout==="function")signals.push(AbortSignal.timeout(30000));
@@ -50,6 +50,7 @@ async function renderFinanceList(generation,epoch) {
     const toolbar=$("workspace-toolbar"),select=financeSelect(toolbar,"所属公司",entities.items,financeState.entity);
     select.addEventListener("change",()=>{if(financeState.pending){financeShowPending();return;}financeState.entity=select.value;financeInvalidate();return refreshWorkspace();});
     select.disabled=!!financeState.pending;
+    if(typeof financeSettlementToolbar==="function")financeSettlementToolbar(toolbar);
     toolbar.append(wsButton("新建报销",financeEdit),wsButton("本人草稿",()=>{financeState.claimStatus="draft";return financeLoadClaims(token);}),wsButton("全部可看记录",()=>{financeState.claimStatus="";return financeLoadClaims(token);}),wsButton("待我审批",()=>financeLoadQueue(token)),wsButton("刷新",refreshWorkspace));
     if(financeState.pending)financeShowPending();
     else await financeLoadClaims(token);
@@ -74,7 +75,7 @@ async function financeLoadQueue(token=financeToken(),cursor="",append=false) {
   const page=await financeCall("listReviewQueue",args);if(!financeCurrent(token))return;
   financeState.queue=page.items;const box=$("workspace-content");if(!append)box.replaceChildren();
   financeFeedback("待我审批（"+page.total+"）");if(!page.items.length)box.append(wsText("p","没有分派给你的审批步骤。"));
-  for(const item of page.items){const card=wsText("article","","workspace-record");card.append(wsText("h3",item.summary),wsText("p","¥"+item.total+" · 单据版本 "+item.target_version),wsText("p",item.due_at?"审批期限："+item.due_at:"审批期限待服务确认"),wsText("p",(item.blockers||[]).map(text=>"阻断："+text).join("；")),wsButton("核对材料并审批",()=>financeDetail(item.target_id,item)));box.append(card);}
+  for(const item of page.items){const card=wsText("article","","workspace-record");card.append(wsText("h3",item.summary),wsText("p","¥"+item.total+" · 单据版本 "+item.target_version),wsText("p",item.due_at?"审批期限："+item.due_at:"审批期限待服务确认"),wsText("p",(item.blockers||[]).map(text=>"阻断："+text).join("；")),wsButton("核对材料并审批",()=>item.target_type==="action_plan"?financeSettlementPlan(item.target_id,item):item.target_type==="payable"?financePayableDetail(item.target_id,item):financeDetail(item.target_id,item)));box.append(card);}
   if(page.next_cursor)box.append(wsButton("加载更多",()=>financeLoadQueue(token,page.next_cursor,true)));
 }
 async function financeDetail(id,review=null) {
@@ -104,6 +105,7 @@ async function financeDetail(id,review=null) {
     for(const blocker of review.blockers||[])box.append(wsText("p","阻断："+blocker));
     const approve=wsButton("批准本步骤",()=>financePreview("approve",{workflow_step_id:review.workflow_step_id}));approve.disabled=!!review.blockers?.length;
     box.append(approve,wsButton("驳回",()=>financeReason("reject",review.workflow_step_id)));}
+  if(typeof financeSettlementSection==="function")await financeSettlementSection(box,claim);
   financeFeedback("请核对报销明细、票据依据和审批步骤；审批通过不表示已付款或入账。");
 }
 function financeEvidence(box,evidence=[]) {
@@ -143,11 +145,11 @@ async function financeEdit(claim=null) {
 }
 function financeAllocate(claim) {
   financeInvalidate();const box=$("workspace-content"),form=wsText("form","","workspace-form");box.replaceChildren(form);
-  form.append(wsText("h3","为“"+claim.content.reason+"”分配发票"),wsText("p","填写已有票据的标识和当前版本。建议在提交报销时才保留额度。"));
+  form.append(wsText("h3","为“"+claim.content.reason+"”分配发票"),wsText("p","填写已有票据的标识和当前版本。在提交单据时才保留额度。"));
   const invoice=financeField(form,"发票标识"),version=financeField(form,"发票当前版本","number"),amount=financeField(form,"本次分配金额（元）"),tax=financeField(form,"本次分配税额（元）","text","0.00");version.min="1";
   const save=wsButton("核对分配建议",()=>{},"");save.type="submit";form.append(save);
   form.addEventListener("input",financeInvalidate);
-  financeSubmit(form,async()=>{await financeConfirmWrite("createInvoiceAllocation",{body:{invoice_id:invoice.value.trim(),invoice_version:Number(version.value),document_id:claim.id,document_kind:"expense_claim",expected_document_version:claim.version,amount:financeMoney(amount.value),tax:financeMoney(tax.value)}},"确认保存该票据版本的分配建议？",()=>financeDetail(claim.id),form);});
+  financeSubmit(form,async()=>{await financeConfirmWrite("createInvoiceAllocation",{body:{invoice_id:invoice.value.trim(),invoice_version:Number(version.value),document_id:claim.id,document_kind:claim.kind==="payable"?"payable":"expense_claim",expected_document_version:claim.version,amount:financeMoney(amount.value),tax:financeMoney(tax.value)}},"确认保存该票据版本的分配建议？",()=>claim.kind==="payable"?financePayableDetail(claim.id):financeDetail(claim.id),form);});
 }
 function financeReason(action,step=null) {
   financeInvalidate();const box=$("workspace-content"),form=wsText("form","","workspace-form");box.append(form);
@@ -184,19 +186,20 @@ async function financeExecute() {
 }
 async function financeConfirmWrite(operation,args,label,onDone,form=null) {
   if(financeState.pending){financeShowPending();return;}
-  const token=financeToken(),snapshot=JSON.parse(JSON.stringify(args)),box=wsText("article","","workspace-record");
+  const token=financeToken(),revision=financeState.revision,snapshot=JSON.parse(JSON.stringify(args)),box=wsText("article","","workspace-record");
   box.append(wsText("p",label));
-  if(args.body?.draft||args.body?.lines){const draft=args.body.draft||args.body;box.append(wsText("p",draft.reason));for(const line of draft.lines)box.append(wsText("p",[line.reason,line.occurred_on,"¥"+line.amount].join(" · ")));}
+  if(args.body?.draft||args.body?.lines){const draft=args.body.draft||args.body;box.append(wsText("p",draft.reason));for(const line of draft.lines||[])box.append(wsText("p",[line.reason,line.occurred_on,"¥"+line.amount].join(" · ")));}
   if(args.body?.invoice_id)box.append(wsText("p","票据 "+args.body.invoice_id+" · 版本 "+args.body.invoice_version+" · 金额 ¥"+args.body.amount+" · 税额 ¥"+args.body.tax));
-  const confirm=wsButton("本人确认保存",async()=>{if(!financeCurrent(token)||confirm.disabled)return;confirm.disabled=true;
+  const confirm=wsButton("本人确认保存",async()=>{if(!financeCurrent(token)||revision!==financeState.revision||confirm.disabled)return;confirm.disabled=true;
     financeState.pending={operation,arguments:{...snapshot,"Idempotency-Key":crypto.randomUUID()},onDone};
     await financeSendPending(token);},"");box.append(confirm);(form||$("workspace-content")).append(box);
-  if(form)form.addEventListener("input",()=>{confirm.disabled=true;box.replaceChildren(wsText("p","内容已改变，请重新核对。"));},{once:true});
+  if(form)for(const event of ["input","change"])form.addEventListener(event,()=>{confirm.disabled=true;box.replaceChildren(wsText("p","内容已改变，请重新核对。"));},{once:true});
 }
 function financeShowPending() {
   const box=$("workspace-content");box.replaceChildren(wsText("p","上次操作结果尚未核实。请保持原请求，查询记录或重试同一操作。"),wsButton("按原请求核对并重试",()=>financeSendPending(financeToken())));
   const pending=financeState.pending;
-  if(pending?.target)box.append(wsButton("查询当前单据",()=>financeCheckPending(pending.target)));
+  if(pending?.check)box.append(wsButton("查询原行动计划",pending.check));
+  else if(pending?.target)box.append(wsButton("查询当前单据",()=>financeCheckPending(pending.target)));
 }
 async function financeCheckPending(id) {
   const token=financeToken(),claim=await financeCall("getExpenseClaim",{id});if(!financeCurrent(token))return;

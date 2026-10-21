@@ -83,7 +83,7 @@ class AllocationRequest(StrictModel):
     invoice_version: Version
     invoice_line_id: Identifier | None = None
     document_id: Identifier
-    document_kind: Literal["expense_claim"]
+    document_kind: Literal["expense_claim", "payable"]
     expected_document_version: Version
     amount: Money
     tax: Money
@@ -96,9 +96,57 @@ class AllocationRequest(StrictModel):
         return self
 
 
+class BusinessRef(StrictModel):
+    """来自受控目录的完整来源版本与摘要引用。"""
+
+    kind: Literal[
+        "contract", "order", "acceptance", "supplier", "employee_account", "supplier_account"
+    ]
+    source: Annotated[str, Field(min_length=1, max_length=128)]
+    id: Identifier
+    version: Annotated[str, Field(min_length=1, max_length=128)]
+    sha256: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
+
+
+class PayableDraft(StrictModel):
+    """原生应付仅声明事实，供应商与采购依据必须查受控目录。"""
+
+    legal_entity_id: Identifier
+    supplier_ref: BusinessRef
+    amount: Money
+    due_date: str
+    business_refs: Annotated[list[BusinessRef], Field(min_length=1, max_length=100)]
+    reason: Reason
+    evidence_ids: Annotated[list[Identifier], Field(max_length=100)] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_payable(self) -> Self:
+        """拒绝零金额、非供应商引用和非采购依据。"""
+        if Decimal(self.amount) <= 0 or self.supplier_ref.kind != "supplier":
+            raise ValueError("应付金额和供应商引用无效")
+        if any(ref.kind not in {"contract", "order", "acceptance"} for ref in self.business_refs):
+            raise ValueError("应付依据只能是合同、订单或验收")
+        if len({ref.model_dump_json() for ref in self.business_refs}) != len(self.business_refs):
+            raise ValueError("采购依据不能重复")
+        if len(self.evidence_ids) != len(set(self.evidence_ids)):
+            raise ValueError("证据不能重复")
+        ExpenseLine.canonical_date(self.due_date)
+        return self
+
+
+class PayableUpdate(StrictModel):
+    """保持公司和环境不变的应付完整修订。"""
+
+    expected_version: Version
+    draft: PayableDraft
+
+
 class ActionParameters(StrictModel):
     """四种F1动作专属参数，不接受身份或结果。"""
 
+    amount: Money | None = None
+    payee_ref: BusinessRef | None = None
+    accounting_period: Annotated[str, Field(pattern=r"^[0-9]{4}-(0[1-9]|1[0-2])$")] | None = None
     workflow_step_id: Identifier | None = None
     reason: Reason | None = None
     evidence_ids: Annotated[list[Identifier], Field(max_length=100)] | None = None
@@ -115,8 +163,17 @@ class ActionParameters(StrictModel):
 class ActionPreview(StrictModel):
     """预检只准备不可变计划，不产生审批事实。"""
 
-    action: Literal["submit_claim", "approve", "reject", "withdraw"]
-    target_type: Literal["expense_claim"]
+    action: Literal[
+        "submit_claim",
+        "submit_payable",
+        "approve",
+        "reject",
+        "withdraw",
+        "execute_payment",
+        "submit_posting",
+        "reverse_posting",
+    ]
+    target_type: Literal["expense_claim", "payable", "action_plan", "posting"]
     target_id: Identifier
     expected_version: Version
     parameters: ActionParameters
@@ -127,6 +184,10 @@ class ActionPreview(StrictModel):
         fields = self.parameters.model_fields_set
         required = {
             "submit_claim": set(),
+            "submit_payable": set(),
+            "execute_payment": {"amount", "payee_ref"},
+            "submit_posting": {"amount", "accounting_period"},
+            "reverse_posting": {"amount", "accounting_period", "reason"},
             "approve": {"workflow_step_id"},
             "reject": {"workflow_step_id", "reason"},
             "withdraw": {"reason"},
@@ -135,7 +196,7 @@ class ActionPreview(StrictModel):
             {"reason", "evidence_ids"}
             if self.action == "approve"
             else {"evidence_ids"}
-            if self.action == "reject"
+            if self.action in {"reject", "submit_posting", "reverse_posting"}
             else set()
         )
         values = self.parameters.model_dump()
@@ -145,6 +206,25 @@ class ActionPreview(StrictModel):
             or any(values[key] is None for key in fields)
         ):
             raise ValueError("动作参数缺失或不适用")
+        targets = {
+            "submit_claim": {"expense_claim"},
+            "submit_payable": {"payable"},
+            "approve": {"expense_claim", "payable", "action_plan"},
+            "reject": {"expense_claim", "payable", "action_plan"},
+            "withdraw": {"expense_claim", "payable"},
+            "execute_payment": {"expense_claim", "payable"},
+            "submit_posting": {"expense_claim", "payable"},
+            "reverse_posting": {"posting"},
+        }
+        if self.target_type not in targets[self.action]:
+            raise ValueError("动作目标类型不适用")
+        if self.parameters.amount is not None and Decimal(self.parameters.amount) <= 0:
+            raise ValueError("动作金额必须大于零")
+        if self.parameters.payee_ref is not None and self.parameters.payee_ref.kind not in {
+            "employee_account",
+            "supplier_account",
+        }:
+            raise ValueError("收款引用必须是员工或供应商账户")
         return self
 
 

@@ -15,3 +15,14 @@ def test_finance_behavior() -> None:
     result = subprocess.run([node, str(Path(__file__).with_name('finance_behavior.cjs')), str(static_dir())],
                             capture_output=True, text=True, timeout=15)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_finance_settlement_behavior() -> None:
+    """付款与记账使用专用人工计划；目录、受理和未知结果有明确边界。"""
+    node = shutil.which('node')
+    assert node is not None
+    result = subprocess.run(
+        [node, str(Path(__file__).with_name('finance_settlement_behavior.cjs')), str(static_dir())],
+        capture_output=True, text=True, timeout=15,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

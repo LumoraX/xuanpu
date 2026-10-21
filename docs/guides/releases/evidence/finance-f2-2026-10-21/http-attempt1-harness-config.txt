@@ -1,0 +1,87 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+___________ test_signed_hitl_payment_posting_reversal_over_real_http ___________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10aa282f0>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-816/test_signed_hitl_payment_posti0')
+
+    async def test_signed_hitl_payment_posting_reversal_over_real_http(store: FinanceStore, tmp_path: Path) -> None:
+        """受理不等于成功；停发时回调只唤起查单；付款与凭证及冲回分别落库。"""
+        _, payer, _, _, doc = await approved_payable(store)
+        async with provider_server() as (remote, origin), httpx.AsyncClient(trust_env=False) as network:
+>           config = await bind_provider(store, origin, tmp_path)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f2_http_e2e.py:126:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10aa282f0>
+origin = 'http://127.0.0.1:61515'
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-816/test_signed_hitl_payment_posti0')
+
+    async def bind_provider(store: FinanceStore, origin: str, tmp_path: Path) -> ProviderConfig:
+        """以新配置版本绑定真实测试端口，不修改既有不可变渠道版本。"""
+        policy = decode(await store.pool.fetchval("SELECT data FROM finance_settlement_policy_revision WHERE version=1"))
+        policy.update(version=2, payment_configuration_version=2, posting_configuration_version=2)
+        rows = await store.pool.fetch("SELECT data FROM finance_settlement_catalog_revision")
+        documents, accounts = [], []
+        for row in rows:
+            data = decode(row["data"])
+            if data["ref"]["kind"].endswith("_account"):
+                accounts.append(PayeeAccount.model_validate(data))
+            else:
+                documents.append(BusinessSnapshot.model_validate(data))
+        config = ProviderConfig(tenant_id="t", legal_entity_id="e", provider="test", configuration_version=2, adapter_version="http-v1", base_url=origin, token_file=tmp_path / "token", callback_secret_file=tmp_path / "callback", callback_key_id="key", simulation=True, supports_idempotency=True, supports_query=True)
+>       await store.configure_settlements([SettlementPolicy.model_validate(policy)], documents, accounts, [config.public_descriptor()], simulation=True)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for SettlementPolicy
+E       enabled
+E         Field required [type=missing, input_value={'version': 2, 'ledger_id...nfiguration_version': 2}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.13/v/missing
+
+packages/xuanpu-finance/tests/test_f2_http_e2e.py:97: ValidationError
+________ test_invalid_result_is_unknown_and_rebuilt_worker_only_queries ________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ac0b950>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-816/test_invalid_result_is_unknown0')
+
+    async def test_invalid_result_is_unknown_and_rebuilt_worker_only_queries(store: FinanceStore, tmp_path: Path) -> None:
+        """实际渠道回错金额时不认付款，重建worker也绝不第二次POST。"""
+        _, payer, _, _, doc = await approved_payable(store)
+        async with provider_server() as (remote, origin), httpx.AsyncClient(trust_env=False) as network:
+            remote.bad_payment = True
+>           config = await bind_provider(store, origin, tmp_path)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f2_http_e2e.py:172:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ac0b950>
+origin = 'http://127.0.0.1:61518'
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-816/test_invalid_result_is_unknown0')
+
+    async def bind_provider(store: FinanceStore, origin: str, tmp_path: Path) -> ProviderConfig:
+        """以新配置版本绑定真实测试端口，不修改既有不可变渠道版本。"""
+        policy = decode(await store.pool.fetchval("SELECT data FROM finance_settlement_policy_revision WHERE version=1"))
+        policy.update(version=2, payment_configuration_version=2, posting_configuration_version=2)
+        rows = await store.pool.fetch("SELECT data FROM finance_settlement_catalog_revision")
+        documents, accounts = [], []
+        for row in rows:
+            data = decode(row["data"])
+            if data["ref"]["kind"].endswith("_account"):
+                accounts.append(PayeeAccount.model_validate(data))
+            else:
+                documents.append(BusinessSnapshot.model_validate(data))
+        config = ProviderConfig(tenant_id="t", legal_entity_id="e", provider="test", configuration_version=2, adapter_version="http-v1", base_url=origin, token_file=tmp_path / "token", callback_secret_file=tmp_path / "callback", callback_key_id="key", simulation=True, supports_idempotency=True, supports_query=True)
+>       await store.configure_settlements([SettlementPolicy.model_validate(policy)], documents, accounts, [config.public_descriptor()], simulation=True)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for SettlementPolicy
+E       enabled
+E         Field required [type=missing, input_value={'version': 2, 'ledger_id...nfiguration_version': 2}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.13/v/missing
+
+packages/xuanpu-finance/tests/test_f2_http_e2e.py:97: ValidationError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f2_http_e2e.py::test_signed_hitl_payment_posting_reversal_over_real_http
+FAILED packages/xuanpu-finance/tests/test_f2_http_e2e.py::test_invalid_result_is_unknown_and_rebuilt_worker_only_queries
+2 failed in 1.16s

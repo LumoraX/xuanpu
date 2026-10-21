@@ -1,31 +1,31 @@
 ---
 name: expense-reimbursement
-description: 根据员工真实费用和发票建立本人报销草稿、费用分摊与金额分配，并在预检通过后提交或撤回。
-version: 0.1.0-design.1
+description: 根据费用事实准备本人报销记录与真实分票，查询进度、修订草稿及准备提交或撤回计划。
+version: 0.3.0-design.2
+entry: false
 type: composite
 tool_names:
-  - api__catalog__listExpenseCategories
-  - api__catalog__listCostCenters
-  - api__catalog__getInvoiceAllocation
-  - api__finance__getInvoice
-  - api__finance__getInvoiceEvidence
-  - api__finance__createExpenseClaim
-  - api__finance__getExpenseClaim
-  - api__finance__updateExpenseClaim
-  - api__finance__createInvoiceAllocation
-  - api__finance__releaseInvoiceAllocation
-  - api__finance__previewFinanceAction
-  - api__finance__executeFinanceAction
-  - api__finance__getOperation
+- api__finance__listLegalEntities
+- api__finance__createExpenseClaim
+- api__finance__listExpenseClaims
+- api__finance__getExpenseClaim
+- api__finance__updateExpenseClaim
+- api__finance__createInvoiceAllocation
+- api__finance__releaseInvoiceAllocation
+- api__finance__previewFinanceAction
+- api__finance__getActionPlan
+- api__finance__getOperation
+- api__catalog__listExpenseCategories
+- api__catalog__listCostCenters
+- api__catalog__getInvoiceAllocation
+- api__finance__getInvoice
+- api__finance__getInvoiceEvidence
 ---
-# 员工报销
+# 报销记录
 
-先读取[共用执行规则](references/execution-rules.md)。本人身份由服务端确定；不替用户编造消费事由、项目、部门或票据。
-先查询 listExpenseCategories／listCostCenters 取得真实分类和归属；重新进入用 getInvoiceAllocation 读取已有分配金额与版本。
-createExpenseClaim 只建草稿。费用分类可建议，缺少实际事由或受控分类标识时补问，不编造主数据。
-getExpenseClaim 取得当前版本后修改，InvoiceAllocation 仅提议分配；不要宣称草稿已经占用发票额度。
-
-提交使用 action=submit_claim，撤回用 withdraw，均预检后执行；服务端在提交事务内校验并占用额度。
-预检阻断时展示具体缺口；有权人批准另由 finance-review 处理。
-草稿分配可通过 releaseInvoiceAllocation 移除，已提交保留额度不能经此接口绕过撤回或驳回流程。
-报销通过不表示已付款，真实付款／凭证进度由 posting-reconciliation 核对。
+先查询有权公司、费用分类及可选归属，只在必需事实不明确时追问。金额用两位小数字符串，日期YYYY-MM-DD；身份、合计、状态由服务端确定。
+原件交invoice-intake归集，附件evidence_ids只能用真实财务SourceReceipt，不能拿平台file_id替代。PDF可作内部附件，不能伪造结构化发票或验真。
+createExpenseClaim只建草稿；修订带最新expected_version。internal_record允许没有分票；invoice_backed及任何存在分配的单据都须完整覆盖总额，预检不占额，实际提交才原子保留。
+准备submit_claim/withdraw预检后，解释材料缺口、阻断、版本、金额及影响，交本人在人工入口决定，不调用executeFinanceAction。
+internal_record一律不取得外部付款或记账资格，simulation也不例外。业务approved仍不能替代外部专用批准；外部动作交posting-reconciliation准备。
+网络结果不明用原幂等键、计划和getOperation恢复，再查原单据实际状态，不换键重复提交。

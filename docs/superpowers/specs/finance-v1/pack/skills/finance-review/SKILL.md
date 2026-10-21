@@ -1,29 +1,28 @@
 ---
 name: finance-review
-description: 查询本人有权审核的财务单据和异常，展示规则及证据，并执行明确授权的审核决定或异常处置。
-version: 0.1.0-design.1
+description: 读取本人实际分派的报销、应付和原行动计划审批，核对证据并准备本人决定。
+version: 0.3.0-design.2
+entry: false
 type: composite
 tool_names:
-  - api__finance__getActionPlan
-  - api__catalog__getInvoiceAllocation
-  - api__finance__listReviewQueue
-  - api__finance__getExpenseClaim
-  - api__finance__getPayable
-  - api__finance__getInvoice
-  - api__finance__getInvoiceEvidence
-  - api__finance__listExceptions
-  - api__finance__resolveException
-  - api__finance__previewFinanceAction
-  - api__finance__executeFinanceAction
-  - api__finance__getOperation
+- api__finance__listLegalEntities
+- api__finance__listReviewQueue
+- api__finance__getExpenseClaim
+- api__finance__getPayable
+- api__finance__getInvoice
+- api__finance__getInvoiceEvidence
+- api__finance__getInvoiceLines
+- api__finance__previewFinanceAction
+- api__finance__getActionPlan
+- api__finance__listExceptions
+- api__finance__getOperation
+- api__catalog__getInvoiceAllocation
+- api__finance__resolveException
 ---
-# 财务审核与异常
+# 实际人工审批
 
-先读取[共用执行规则](references/execution-rules.md)。从 listReviewQueue 读取实际授权待审步骤，不能根据职位称呼推定审批权。
-队列 target_type=action_plan 时用 getActionPlan 读取原计划，以 action_plan 为审核目标；不能把它当成报销单 ID。
-读取对应单据版本、发票证据和异常，分别展示硬阻断、制度阻断与可授权接受的告警。
-有权人明确决定后，以 workflow_step_id、目标版本和必要理由预检 approve／reject；执行仍由服务端验证职责分离。
-
-未获得具体业务决定时仅形成审核建议。调用确认卡不能代替经办人、主管或财务的业务审批。
-resolveException 可以附证据、接受可豁免告警或在事实条件满足后关闭；不得修改查验／支付／ERP 权威结果或接受不可豁免硬约束。
-“这批全部通过”仍需逐项取得版本和计划，报告部分拒绝／冲突，不把一项批准当作整批授权。
+listReviewQueue返回当前员工真正分派的步骤。按target_type读取报销、应付或原action_plan，并查询原证据；reviewer公司查看权不等于任意审批权，不能代他人或本人自审。
+业务单据使用队列的target_version；原action_plan始终expected_version=1，workflow_step_id来自当前步骤。准备approve/reject预检，驳回给出原因；不要对approve/reject计划再创建一轮批准。
+将当前金额、账户脱敏快照、账套/期间、材料缺口、blockers和原计划摘要交本人在人工入口决定。模型不调用executeFinanceAction，平台工具批准不形成财务业务决定。
+一步通过只推进当前工作流；业务单据批准不授权付款、记账或冲回，原外部计划还需其专用链。原计划失效/过期时重新预检，不复制旧决定、不延长旧计划“复活”授权。
+待办和决定保存在独立财务库；通知pending或会话退出不代表完成。simulation结果保持simulation=true，不能解释为真实资金或正式凭证。

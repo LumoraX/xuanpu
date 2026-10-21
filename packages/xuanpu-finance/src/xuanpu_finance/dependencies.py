@@ -36,5 +36,5 @@ def require_write(request: Request, *, cancel: bool = False) -> None:
     mode = request.app.state.mode
     if mode != "enabled" and not (cancel and mode == "draining"):
         raise FinanceError("module_read_only", 409, "当前财务模式不接收该业务操作")
-    if request.app.state.worker_error is not None:
+    if request.app.state.worker_error is not None or getattr(request.app.state, "settlement_worker_error", None) is not None:
         raise FinanceError("worker_unavailable", 503, "财务执行器待核对，暂停新受理")
