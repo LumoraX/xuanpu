@@ -16,7 +16,7 @@ async def test_f0_package_and_kernel_reference_read() -> None:
     assert report.ok, report.errors
     registry = await taifeng.FilesystemSkillRegistry.load(PACKAGE / "skills")
     snapshot = registry.snapshot()
-    assert {skill.id for skill in snapshot.skills} == {"finance-assistant", "invoice-intake"}
+    assert {skill.id for skill in snapshot.skills} == {"finance-assistant", "invoice-intake", "expense-reimbursement", "finance-review"}
     tool = taifeng.make_read_skill_tool()
     context = taifeng.ToolContext(
         call_id="test",
@@ -24,7 +24,7 @@ async def test_f0_package_and_kernel_reference_read() -> None:
         thread_id="test",
         extras={
             "skill_snapshot": snapshot,
-            "visible_skills": frozenset({"finance-assistant", "invoice-intake"}),
+            "visible_skills": frozenset({"finance-assistant", "invoice-intake", "expense-reimbursement", "finance-review"}),
         },
     )
     result = await tool.handler(

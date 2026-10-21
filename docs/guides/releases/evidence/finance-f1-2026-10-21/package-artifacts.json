@@ -1,0 +1,18 @@
+{
+  "xuanpu_console-2026.10.21.3-py3-none-any.whl": {
+    "sha256": "6ca270b774891a19ec867f71d3da3ba697428094ed92f8b5235377355b9a8619",
+    "required_entries": [
+      "xuanpu_console/static/finance.js",
+      "xuanpu_console/static/index.html"
+    ],
+    "present": true
+  },
+  "xuanpu_server-2026.10.21.5-py3-none-any.whl": {
+    "sha256": "1d170fa79afcdfa394da3cdc347c9364ab36527dcf99ecc7a010d6b2f2aa863a",
+    "required_entries": [
+      "xuanpu_server/manual_connectors.py",
+      "xuanpu_server/api/integration_actions.py"
+    ],
+    "present": true
+  }
+}

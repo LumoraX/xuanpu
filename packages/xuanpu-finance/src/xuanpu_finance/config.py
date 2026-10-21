@@ -8,6 +8,8 @@ from typing import Literal, Self
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from xuanpu_finance.expenses.models import ExpensePolicy  # noqa: TC001 — Pydantic运行时解析
+
 
 class StrictConfig(BaseModel):
     """拒绝配置拼写错误与未知凭据字段。"""
@@ -93,7 +95,7 @@ class GrantConfig(StrictConfig):
     tenant_id: str = Field(min_length=1, max_length=128)
     user_id: str = Field(min_length=1, max_length=128)
     legal_entity_id: str = Field(min_length=1, max_length=128)
-    role: Literal["collector", "reviewer"]
+    role: Literal["collector", "reviewer", "approver"]
 
 
 class FinanceConfig(StrictConfig):
@@ -108,6 +110,7 @@ class FinanceConfig(StrictConfig):
     objects: ObjectsConfig
     companies: list[CompanyConfig]
     grants: list[GrantConfig]
+    expense_policies: list[ExpensePolicy] = Field(default_factory=list)
     mode: Literal["enabled", "draining", "read_only", "disabled"] = "enabled"
     environment: Literal["production", "development", "test"] = "production"
     synthetic: bool = False
@@ -128,7 +131,33 @@ class FinanceConfig(StrictConfig):
         for grant in self.grants:
             if (grant.tenant_id, grant.legal_entity_id) not in companies:
                 raise ValueError("授权必须指向已配置公司")
+        self.validate_expense_links(companies)
         return self
+
+    def validate_expense_links(self, companies: set[tuple[str, str]]) -> None:
+        """报销制度和实际财务授权同域，不能配置不存在的审批资格。"""
+        policy_keys = [
+            (policy.tenant_id, policy.legal_entity_id) for policy in self.expense_policies
+        ]
+        if len(policy_keys) != len(set(policy_keys)):
+            raise ValueError("同公司报销制度不能重复")
+        grants = {
+            (item.tenant_id, item.legal_entity_id, item.user_id): item.role for item in self.grants
+        }
+        for policy in self.expense_policies:
+            scope = (policy.tenant_id, policy.legal_entity_id)
+            if scope not in companies:
+                raise ValueError("报销制度必须指向已配置公司")
+            if not policy.enabled:
+                continue
+            if grants.get((*scope, policy.exception_owner_user_id)) != "reviewer":
+                raise ValueError("异常负责人必须是本公司财务reviewer")
+            for step in policy.steps:
+                if grants.get((*scope, step.approver_user_id)) not in {"approver", "reviewer"}:
+                    raise ValueError("审批步骤必须指向本公司有效审批人")
+            for center in policy.cost_centers:
+                if any((*scope, user_id) not in grants for user_id in center.allowed_user_ids):
+                    raise ValueError("部门项目归属必须引用有公司授权的员工")
 
 
 def load_config(path: Path) -> FinanceConfig:

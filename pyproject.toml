@@ -20,6 +20,7 @@ xuanpu-finance = { workspace = true }
 dev = [
     "pytest>=8.0",
     "jsonschema>=4.23",
+    "types-jsonschema>=4.23",
     "pytest-asyncio>=0.23",
     "ruff>=0.5",
     "mypy>=1.10",

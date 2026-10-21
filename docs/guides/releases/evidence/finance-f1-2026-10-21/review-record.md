@@ -1,0 +1,7 @@
+# F1 独立复核
+
+规格审阅Approved，随后用户轻量内部记录delta追加审阅Approved。实现与规格核对发现passed状态、逾期审批、reserved票据复核、ExceptionCase响应、approved撤回及策略重启复活问题，均修复并回归后Approved。
+
+独立质量审阅发现批准blocker错误隐藏合法驳回入口，真实Node行为RED→GREEN修复后复核Approved with boundaries。授权generation墓碑增量复核通过，定向9项通过。主集成者真实浏览器发现预检尚未执行提示被已受理覆盖，追加行为RED→GREEN修复，重新加载页面验证。
+
+两类审阅均只针对代码与测试边界，不代表真实企业制度、vendor通道或生产部署验收。

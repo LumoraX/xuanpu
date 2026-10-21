@@ -1,6 +1,6 @@
 # 财务 F0 开发与接入
 
-当前源码与示例包用于原件归集、逐项进度、票面/字段/证据查询和持久补件。不是完整报销付款闭环。生产官方 XML 标准映射、真实模型使用、税务/支付/ERP/归档与生产环境验收分别记录在[验收记录](releases/2026-10-21-finance-f0-acceptance.md)。
+F0基座用于原件归集、逐项进度、票面/字段/证据查询和持久补件。当前示例包已扩展F1，报销与内部审批见[F1指南](finance-f1.md)；支付仍未实现。生产官方 XML 标准映射、真实模型使用、税务/支付/ERP/归档与生产环境验收分别记录在[验收记录](releases/2026-10-21-finance-f0-acceptance.md)。
 
 ## 已执行的本地验证
 
@@ -12,7 +12,7 @@ uv run xuanpu validate examples/finance
 uv run pytest packages/xuanpu-finance/tests/test_package.py --noconftest -q
 ```
 
-校验输出 `finance 0.1.0-f0.1：校验通过`；内核加载 finance-assistant → invoice-intake，并用真实 read_skill 工具读取 references/execution-rules.md。该项不代表真实模型已正确使用这些工具。
+校验输出 `finance 0.2.0-f1.1：校验通过`；内核加载finance-assistant及invoice-intake/expense-reimbursement/finance-review，并用真实 read_skill 工具读取 references/execution-rules.md。该项不代表真实模型已正确使用这些工具。
 
 财务数据库测试需要明确设置 FINANCE_TEST_DSN，连接后核对真实数据库名必须以 finance_test 开头；每个用例使用随机 schema，结束后清理。该地址必须指向独立测试 PG，不能指向平台或生产库。没有此变量会显式 skip，不能据 skip 声称数据库验证通过。
 

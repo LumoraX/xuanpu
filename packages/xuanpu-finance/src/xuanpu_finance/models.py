@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -16,6 +16,7 @@ class FinancePrincipal:
 
     tenant_id: str
     user_id: str
+    origin: Literal["agent", "human"] = "agent"
 
 
 class FileRef(BaseModel):

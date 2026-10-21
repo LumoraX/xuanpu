@@ -26,6 +26,7 @@ from xuanpu_server.api.file_bridge import file_bridge_router
 from xuanpu_server.api.history import history_router
 from xuanpu_server.api.identity import identity_router
 from xuanpu_server.api.instance import InstanceMiddleware
+from xuanpu_server.api.integration_actions import integration_actions_router
 from xuanpu_server.api.proactive import proactive_router
 from xuanpu_server.api.reminders import reminders_router
 from xuanpu_server.api.sse import frame, stream_turn
@@ -161,6 +162,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.include_router(file_bridge_router(platform))
     app.include_router(work_tasks_router(platform))
     app.include_router(proactive_router(platform))
+    app.include_router(integration_actions_router(platform))
 
     @app.get("/healthz")
     async def healthz() -> dict[str, Any]:

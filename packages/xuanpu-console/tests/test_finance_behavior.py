@@ -1,0 +1,17 @@
+"""实际脚本验证人工确认、版本冲突和不确定重试边界。"""
+from __future__ import annotations
+
+import shutil
+import subprocess
+from pathlib import Path
+
+from xuanpu_console import static_dir
+
+
+def test_finance_behavior() -> None:
+    """审批预检需独立本人确认；超时重试保持原计划和幂等键。"""
+    node = shutil.which('node')
+    assert node is not None
+    result = subprocess.run([node, str(Path(__file__).with_name('finance_behavior.cjs')), str(static_dir())],
+                            capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0, result.stdout + result.stderr

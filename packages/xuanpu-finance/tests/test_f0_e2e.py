@@ -41,6 +41,8 @@ class SignedClient:
         params: dict[str, str] | None = None,
         idem: str = "",
         user: str = WHO.user_id,
+        tenant: str = WHO.tenant_id,
+        origin: str = "agent",
     ) -> httpx.Response:
         """精确绑定查询参数、JSON 与幂等键。"""
         content_type = "application/json" if body is not None else ""
@@ -49,7 +51,8 @@ class SignedClient:
             "iss": "platform",
             "aud": "finance",
             "sub": user,
-            "tenant_id": WHO.tenant_id,
+            "tenant_id": tenant,
+            "origin": origin,
             "session_id": "session",
             "call_id": uuid4().hex,
             "iat": now,

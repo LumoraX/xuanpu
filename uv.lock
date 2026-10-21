@@ -29,6 +29,7 @@ dev = [
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-asyncio", specifier = ">=0.23" },
     { name = "ruff", specifier = ">=0.5" },
+    { name = "types-jsonschema", specifier = ">=4.23" },
     { name = "types-pyyaml", specifier = ">=6.0" },
     { name = "xuanpu-finance", editable = "packages/xuanpu-finance" },
     { name = "xuanpu-sdk-py", editable = "packages/xuanpu-sdk-py" },
@@ -1935,6 +1936,18 @@ requires-dist = [
 provides-extras = ["postgres", "pgvector", "redis", "dev"]
 
 [[package]]
+name = "types-jsonschema"
+version = "4.26.0.20261006"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "referencing" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/29/d2/1f742605f5a6d39f993134885b8de41c98af606871d3ebddaf3e776bd1eb/types_jsonschema-4.26.0.20261006.tar.gz", hash = "sha256:3eb7db61b6819d40addfdaac7173e749071a7d4a9a4394f0c844598ec84b2500", size = 16843, upload-time = "2026-10-06T08:16:07.318Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8b/a0/4f2e3c0dc3d5cad958006f2e0307065cc8fe4fbf0393ff0b69d55ee9bbe5/types_jsonschema-4.26.0.20261006-py3-none-any.whl", hash = "sha256:29301f4e65e3928540cdf5e23ad716e38bb0c0b416a48dada213edd3d70206ec", size = 16113, upload-time = "2026-10-06T08:16:06.355Z" },
+]
+
+[[package]]
 name = "types-pyyaml"
 version = "6.0.12.20260906"
 source = { registry = "https://pypi.org/simple" }
@@ -2112,7 +2125,7 @@ requires-dist = [
 
 [[package]]
 name = "xuanpu-console"
-version = "2026.10.21.2"
+version = "2026.10.21.3"
 source = { editable = "packages/xuanpu-console" }
 
 [[package]]
@@ -2122,7 +2135,7 @@ source = { virtual = "packages/xuanpu-desktop" }
 
 [[package]]
 name = "xuanpu-finance"
-version = "2026.10.21.1"
+version = "2026.10.21.2"
 source = { editable = "packages/xuanpu-finance" }
 dependencies = [
     { name = "anyio" },
@@ -2173,12 +2186,13 @@ requires-dist = [{ name = "httpx", specifier = ">=0.27" }]
 
 [[package]]
 name = "xuanpu-server"
-version = "2026.10.21.4"
+version = "2026.10.21.5"
 source = { editable = "packages/xuanpu-server" }
 dependencies = [
     { name = "cryptography" },
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "jsonschema" },
     { name = "prometheus-client" },
     { name = "pydantic" },
     { name = "pyjwt", extra = ["crypto"] },
@@ -2206,6 +2220,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=42" },
     { name = "fastapi", specifier = ">=0.110" },
     { name = "httpx", specifier = ">=0.27" },
+    { name = "jsonschema", specifier = ">=4.23" },
     { name = "prometheus-client", specifier = ">=0.20" },
     { name = "pydantic", specifier = ">=2.6" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10" },

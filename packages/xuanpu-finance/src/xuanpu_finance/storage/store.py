@@ -6,6 +6,8 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from xuanpu_finance.errors import FinanceError
+from xuanpu_finance.storage.business_exceptions import ExpenseStore
+from xuanpu_finance.storage.f1_schema import F1_SCHEMA
 from xuanpu_finance.storage.imports import ImportStore
 from xuanpu_finance.storage.queries import ReadStore
 from xuanpu_finance.storage.schema import SCHEMA
@@ -15,7 +17,7 @@ if TYPE_CHECKING:
     from xuanpu_finance.models import FinancePrincipal
 
 
-class FinanceStore(ImportStore, ReadStore, WorkerStore):
+class FinanceStore(ExpenseStore, ImportStore, ReadStore, WorkerStore):
     """显式注入连接池、全部业务状态独立持久化的财务存储。"""
 
     async def migrate(self) -> None:
@@ -23,6 +25,7 @@ class FinanceStore(ImportStore, ReadStore, WorkerStore):
         async with self.pool.acquire() as conn, conn.transaction():
             await conn.execute("SELECT pg_advisory_xact_lock(617472001)")
             await conn.execute(SCHEMA)
+            await conn.execute(F1_SCHEMA)
 
     async def seed_company(
         self, tenant_id: str, legal_entity_id: str, name: str, tax_id: str
@@ -40,15 +43,17 @@ class FinanceStore(ImportStore, ReadStore, WorkerStore):
         self, tenant_id: str, user_id: str, legal_entity_id: str, role: str = "collector"
     ) -> None:
         """配置公司内最小角色，禁止隐式平台管理员授权。"""
-        if role not in {"collector", "reviewer"}:
-            raise FinanceError("ROLE_INVALID", 422, "仅支持 collector/reviewer")
-        await self.pool.execute(
-            "INSERT INTO finance_grant VALUES($1,$2,$3,$4) ON CONFLICT(tenant_id,user_id,legal_entity_id) DO UPDATE SET role=EXCLUDED.role",
-            tenant_id,
-            user_id,
-            legal_entity_id,
-            role,
-        )
+        if role not in {"collector", "reviewer", "approver"}:
+            raise FinanceError("ROLE_INVALID", 422, "仅支持 collector/reviewer/approver")
+        async with self.pool.acquire() as conn, conn.transaction():
+            await conn.execute(
+                "INSERT INTO finance_grant VALUES($1,$2,$3,$4) ON CONFLICT(tenant_id,user_id,legal_entity_id) DO UPDATE SET role=EXCLUDED.role",
+                tenant_id,
+                user_id,
+                legal_entity_id,
+                role,
+            )
+            await self._sync_grant_epochs(conn)
 
     async def check_access(self, who: FinancePrincipal, legal_entity_id: str) -> None:
         """验证当前用户的显式公司授权。"""
@@ -110,7 +115,7 @@ class FinanceStore(ImportStore, ReadStore, WorkerStore):
         )
         valid_grants = all(
             set(entry) == {"tenant_id", "user_id", "legal_entity_id", "role"}
-            and entry["role"] in {"collector", "reviewer"}
+            and entry["role"] in {"collector", "reviewer", "approver"}
             and (entry["tenant_id"], entry["legal_entity_id"]) in company_keys
             and all(isinstance(value, str) and 0 < len(value) <= 128 for value in entry.values())
             for entry in grants
@@ -139,3 +144,4 @@ class FinanceStore(ImportStore, ReadStore, WorkerStore):
                     for entry in grants
                 ],
             )
+            await self._sync_grant_epochs(conn)

@@ -98,6 +98,14 @@ class ImportStore(FinanceBase):
     async def get_operation(self, who: FinancePrincipal, id: str) -> dict[str, Any]:
         """返回本人或授权 reviewer 可见的完整逐项进度。"""
         async with self.pool.acquire() as conn, conn.transaction(isolation="repeatable_read"):
+            if id.startswith("f1op_"):
+                business = await conn.fetchrow(
+                    "SELECT * FROM finance_business_operation WHERE tenant_id=$1 AND id=$2",
+                    who.tenant_id,
+                    id,
+                )
+                business = await self._authorize(conn, who, business)
+                return decode(business["data"])
             row = await conn.fetchrow(
                 "SELECT * FROM finance_operation WHERE tenant_id=$1 AND id=$2", who.tenant_id, id
             )
@@ -108,6 +116,9 @@ class ImportStore(FinanceBase):
         self, who: FinancePrincipal, id: str, expected_version: int, key: str
     ) -> dict[str, Any]:
         """事务取消未完成项，已提交票和原件回执保持可审计。"""
+        if id.startswith("f1op_"):
+            await self.get_operation(who, id)
+            raise FinanceError("OPERATION_TERMINAL", 409, "本地业务操作已完成，报销须显式撤回")
         digest = request_digest({"kind": "cancel", "id": id, "version": expected_version})
         if not key or len(key) > 128:
             raise FinanceError("IDEMPOTENCY_KEY_INVALID", 422, "幂等键长度无效")

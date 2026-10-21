@@ -6,6 +6,7 @@ import base64
 import binascii
 import json
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -114,7 +115,7 @@ class FinanceBase:
     ) -> str:
         """在业务库查公司角色，绝不默认信任平台管理员。"""
         role = await conn.fetchval(
-            "SELECT role FROM finance_grant WHERE tenant_id=$1 AND user_id=$2 AND legal_entity_id=$3",
+            "SELECT role FROM finance_grant WHERE tenant_id=$1 AND user_id=$2 AND legal_entity_id=$3 FOR SHARE",
             who.tenant_id,
             who.user_id,
             entity,
@@ -122,6 +123,21 @@ class FinanceBase:
         if role is None:
             raise FinanceError("COMPANY_FORBIDDEN", 403, "未获公司财务授权")
         return str(role)
+
+    async def _sync_grant_epochs(
+        self,
+        conn: asyncpg.Connection | asyncpg.pool.PoolConnectionProxy,
+    ) -> None:
+        """保留撤权墓碑，恢复同角色不能复活旧审批指派。"""
+        await conn.execute(
+            "INSERT INTO finance_grant_epoch(tenant_id,legal_entity_id,user_id,role) SELECT tenant_id,legal_entity_id,user_id,role FROM finance_grant ORDER BY tenant_id,legal_entity_id,user_id ON CONFLICT(tenant_id,legal_entity_id,user_id) DO UPDATE SET role=EXCLUDED.role,generation=CASE WHEN finance_grant_epoch.role IS DISTINCT FROM EXCLUDED.role THEN finance_grant_epoch.generation+1 ELSE finance_grant_epoch.generation END"
+        )
+        await conn.execute(
+            "UPDATE finance_grant_epoch e SET role=NULL,generation=generation+1 WHERE e.role IS NOT NULL AND NOT EXISTS(SELECT 1 FROM finance_grant g WHERE g.tenant_id=e.tenant_id AND g.legal_entity_id=e.legal_entity_id AND g.user_id=e.user_id)"
+        )
+        await conn.execute(
+            "UPDATE finance_execution_grant g SET active=false WHERE active AND EXISTS(SELECT 1 FROM finance_workflow_step s LEFT JOIN finance_grant_epoch e ON(e.tenant_id=s.tenant_id AND e.legal_entity_id=s.legal_entity_id AND e.user_id=s.approver_user_id) WHERE s.tenant_id=g.tenant_id AND s.legal_entity_id=g.legal_entity_id AND s.workflow_id=g.workflow_id AND (e.role IS NULL OR e.role NOT IN ('approver','reviewer') OR e.generation<>s.authority_generation))"
+        )
 
     async def _authorize(
         self,
@@ -136,6 +152,88 @@ class FinanceBase:
         if row["owner_id"] != who.user_id and role != "reviewer":
             raise FinanceError("RESOURCE_NOT_FOUND", 404, "资源不存在")
         return row
+
+    async def _authorize_invoice(
+        self,
+        conn: asyncpg.Connection | asyncpg.pool.PoolConnectionProxy,
+        who: FinancePrincipal,
+        row: Any,
+    ) -> Any:
+        """审批人仅看实际分派单据关联的票据，不能取得公司全票读权。"""
+        if row is None or row["tenant_id"] != who.tenant_id:
+            raise FinanceError("RESOURCE_NOT_FOUND", 404, "资源不存在")
+        role = await self._role(conn, who, row["legal_entity_id"])
+        assigned = await conn.fetchval(
+            "SELECT EXISTS(SELECT 1 FROM finance_allocation a JOIN finance_workflow w ON(w.tenant_id=a.tenant_id AND w.legal_entity_id=a.legal_entity_id AND w.document_id=a.document_id) JOIN finance_workflow_step s ON(s.tenant_id=w.tenant_id AND s.legal_entity_id=w.legal_entity_id AND s.workflow_id=w.id) WHERE a.tenant_id=$1 AND a.legal_entity_id=$2 AND a.invoice_id=$3 AND s.approver_user_id=$4)",
+            who.tenant_id,
+            row["legal_entity_id"],
+            row["id"],
+            who.user_id,
+        )
+        if (
+            row["owner_id"] != who.user_id
+            and role != "reviewer"
+            and not (role == "approver" and assigned)
+        ):
+            raise FinanceError("RESOURCE_NOT_FOUND", 404, "资源不存在")
+        return row
+
+    async def _invoice_snapshot(
+        self,
+        conn: asyncpg.Connection | asyncpg.pool.PoolConnectionProxy,
+        tenant: str,
+        entity: str,
+        value: Any,
+    ) -> dict[str, Any]:
+        """可用金额实时扣除reserved和consumed，永不覆盖票面或查验状态。"""
+        data = decode(value)
+        used = await conn.fetchval(
+            "SELECT COALESCE(sum(amount),0) FROM finance_allocation WHERE tenant_id=$1 AND legal_entity_id=$2 AND invoice_id=$3 AND state IN ('reserved','consumed')",
+            tenant,
+            entity,
+            data["id"],
+        )
+        data["available_amount"] = format(Decimal(data["gross"]) - used, ".2f")
+        return data
+
+    async def _exception_case(
+        self,
+        conn: asyncpg.Connection | asyncpg.pool.PoolConnectionProxy,
+        row: Any,
+    ) -> dict[str, Any]:
+        """异常写入和列表共用同一当前版本契约。"""
+        return {
+            "id": row["id"],
+            "version": row["version"],
+            "legal_entity_id": row["legal_entity_id"],
+            "rule_id": row["rule_id"],
+            "severity": row["severity"],
+            "status": row["status"],
+            "evidence": await self._exception_evidence(conn, row),
+        }
+
+    async def _exception_evidence(
+        self,
+        conn: asyncpg.Connection | asyncpg.pool.PoolConnectionProxy,
+        row: Any,
+    ) -> list[dict[str, Any]]:
+        """异常原始回执和后续追加材料分别保留同一未查验来源语义。"""
+        records = await conn.fetch(
+            "SELECT r.* FROM finance_receipt r WHERE r.tenant_id=$1 AND r.legal_entity_id=$2 AND (r.id=$3 OR EXISTS(SELECT 1 FROM finance_exception_evidence e WHERE e.tenant_id=r.tenant_id AND e.legal_entity_id=r.legal_entity_id AND e.receipt_id=r.id AND e.exception_id=$4)) ORDER BY r.id",
+            row["tenant_id"],
+            row["legal_entity_id"],
+            row["receipt_id"],
+            row["id"],
+        )
+        return [
+            {
+                "id": record["id"],
+                "kind": "source",
+                "sha256": record["sha256"],
+                "verification_state": "not_checked",
+            }
+            for record in records
+        ]
 
     async def _snapshot(
         self, conn: asyncpg.Connection | asyncpg.pool.PoolConnectionProxy, row: Any
