@@ -45,7 +45,7 @@ ________________________ test_every_route_is_documented ________________________
         ]
 >       assert missing == []
 E       AssertionError: assert ['GET /identity'] == []
-E         
+E
 E         Left contains one more item: 'GET /identity'
 E         Use -v to get more diff
 
@@ -58,7 +58,7 @@ _____________________ test_every_config_key_is_documented ______________________
         assert {"data_dir", "schema", "session_idle_seconds", "docker_env"} <= keys
 >       assert _missing(keys, _read("docs/guides/operations.md")) == []
 E       AssertionError: assert ['allowedAudi...ateKeySecret'] == []
-E         
+E
 E         Left contains 5 more items, first extra item: 'allowedAudiences'
 E         Use -v to get more diff
 
@@ -71,7 +71,7 @@ ___________________ test_every_manifest_field_is_documented ____________________
         assert {"apiVersion", "notContains", "timeoutSeconds", "baseUrl"} <= fields
 >       assert _missing(fields, _read("docs/architecture/package-spec.md")) == []
 E       AssertionError: assert ['contextAudience'] == []
-E         
+E
 E         Left contains one more item: 'contextAudience'
 E         Use -v to get more diff
 
