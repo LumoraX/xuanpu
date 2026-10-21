@@ -20,6 +20,7 @@ from xuanpu_finance.routes_callback import router as callback_router
 from xuanpu_finance.routes_f1 import router as f1_router
 from xuanpu_finance.routes_f2 import router as f2_router
 from xuanpu_finance.routes_f3 import router as f3_router
+from xuanpu_finance.routes_f4 import router as f4_router
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
     from xuanpu_finance.auth import FinanceAuthenticator
     from xuanpu_finance.compliance.provider import ComplianceRegistry
     from xuanpu_finance.invoices.worker import FinanceWorker
+    from xuanpu_finance.notifications import NotificationsWorker
     from xuanpu_finance.settlement.providers import ProviderRegistry
     from xuanpu_finance.settlement.worker import SettlementWorker
     from xuanpu_finance.storage import FinanceStore
@@ -96,9 +98,24 @@ async def _settlement_work(app: FastAPI, kind: str = "settlement") -> None:
         logger.error("财务外部核对执行器停止：%s", type(error).__name__)
 
 
+async def _notification_work(app: FastAPI) -> None:
+    """只在允许的模式刷新本地inbox，故障不伪装通知送达。"""
+    worker: NotificationsWorker = app.state.notification_worker
+    try:
+        while True:
+            if app.state.mode in ('enabled', 'draining'):
+                await worker.run_once()
+            await asyncio.sleep(1)
+    except asyncio.CancelledError:
+        raise
+    except Exception as error:
+        app.state.notification_worker_error = type(error).__name__
+        logger.error('财务站内通知停止：%s', type(error).__name__)
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """停止三个独立后台任务后，上层才关闭连接池与HTTP资源。"""
+    """停止四个独立后台任务后，上层才关闭连接池与HTTP资源。"""
     active = app.state.start_worker
     task = asyncio.create_task(_work(app)) if active and app.state.worker else None
     settlement = (
@@ -110,15 +127,17 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         asyncio.create_task(_settlement_work(app, "compliance"))
         if active and app.state.compliance_worker else None
     )
+    notification = asyncio.create_task(_notification_work(app)) if active and app.state.notification_worker else None
+    app.state.notification_task = notification
     app.state.worker_task, app.state.settlement_task = task, settlement
     app.state.compliance_task = compliance
     try:
         yield
     finally:
-        for current in (task, settlement, compliance):
+        for current in (task, settlement, compliance, notification):
             if current is not None:
                 current.cancel()
-        for current in (task, settlement, compliance):
+        for current in (task, settlement, compliance, notification):
             if current is not None:
                 with contextlib.suppress(asyncio.CancelledError):
                     await current
@@ -135,11 +154,12 @@ def create_app(
     settlement_providers: ProviderRegistry | None = None,
     compliance_worker: SettlementWorker | None = None,
     compliance_providers: ComplianceRegistry | None = None,
+    notification_worker: NotificationsWorker | None = None,
 ) -> FastAPI:
     """显式注入独立存储，不在平台进程中导入此应用。"""
     if mode not in MODES:
         raise ValueError("财务模块模式无效")
-    app = FastAPI(title="玄圃财务 F0–F3", version="2026.10.21.4", lifespan=_lifespan)
+    app = FastAPI(title="玄圃财务 F0–F4", version="2026.10.21.5", lifespan=_lifespan)
     app.state.store, app.state.auth, app.state.mode = store, auth, mode
     app.state.worker, app.state.start_worker, app.state.worker_error = worker, start_worker, None
     app.state.settlement_worker, app.state.settlement_providers = (
@@ -149,6 +169,7 @@ def create_app(
     app.state.settlement_worker_error, app.state.instance_lock_lost = None, False
     app.state.compliance_worker, app.state.compliance_providers = compliance_worker, compliance_providers
     app.state.compliance_worker_error = None
+    app.state.notification_worker, app.state.notification_worker_error = notification_worker, None
     _install_dispatch_guards(app)
     app.add_exception_handler(FinanceError, _finance_error)
     app.add_exception_handler(RequestValidationError, _invalid_request)
@@ -159,6 +180,7 @@ def create_app(
     app.include_router(f2_router)
     app.include_router(callback_router)
     app.include_router(f3_router)
+    app.include_router(f4_router)
 
     @app.get("/health")
     async def health() -> JSONResponse:

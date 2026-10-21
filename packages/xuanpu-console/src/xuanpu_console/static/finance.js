@@ -50,6 +50,7 @@ async function renderFinanceList(generation,epoch) {
     const toolbar=$("workspace-toolbar"),select=financeSelect(toolbar,"所属公司",entities.items,financeState.entity);
     select.addEventListener("change",()=>{if(financeState.pending){financeShowPending();return;}financeState.entity=select.value;financeInvalidate();return refreshWorkspace();});
     select.disabled=!!financeState.pending;
+    if(typeof financeOperationsToolbar==="function")financeOperationsToolbar(toolbar);
     if(typeof financeComplianceToolbar==="function")financeComplianceToolbar(toolbar);
     if(typeof financeSettlementToolbar==="function")financeSettlementToolbar(toolbar);
     toolbar.append(wsButton("新建报销",financeEdit),wsButton("本人草稿",()=>{financeState.claimStatus="draft";return financeLoadClaims(token);}),wsButton("全部可看记录",()=>{financeState.claimStatus="";return financeLoadClaims(token);}),wsButton("待我审批",()=>financeLoadQueue(token)),wsButton("刷新",refreshWorkspace));

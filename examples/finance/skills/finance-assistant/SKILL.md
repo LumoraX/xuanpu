@@ -1,7 +1,7 @@
 ---
 name: finance-assistant
 description: 处理发票、报销、采购应付、本人待审及付款记账结果查询；实际决定交真实员工人工入口。
-version: 0.4.0-f3
+version: 0.5.0-f4
 entry: true
 type: composite
 tool_names: []
@@ -22,3 +22,5 @@ child_skills:
 当前交付F0-F2通用可替换HTTP接口与隔离simulation闭环，尚未选定或上线真实支付/ERP供应商。正式动作仍需实际有效查验与专用批准；F3提供通用查验、红字和归档隔离闭环，真实供应商/官方标准/正式WORM尚未验收，正式能力保持关闭。
 
 查验、用途/税务入账、红字确认和档案检查读取 archive-audit。用途和税务入账确认独立于ERP入账；确认单已确认不等于红票已开具。
+
+F4原生提醒由listFinanceNotifications读取当前来源，未读计数独立于当前页；提醒已读不表示审批或渠道成功。模型不调用readFinanceNotification；待审/未知应恢复原目标和原计划，不从提醒正文代批或重发。站内提醒不等于飞书、企业微信或邮件送达。

@@ -1,0 +1,37 @@
+{
+  "environment": "isolated_same_host",
+  "production": false,
+  "result": "passed",
+  "counts": {
+    "finance_decision": 2,
+    "finance_action_plan": 4,
+    "finance_workflow": 2,
+    "finance_allocation": 1,
+    "finance_receipt": 1,
+    "finance_invoice": 2
+  },
+  "authenticated_objects": 1,
+  "complete_object_validation": true,
+  "manifest_hmac_present": true,
+  "actual_originals_decrypted": 1,
+  "same_original_requests": true,
+  "recovery_jobs": [
+    {
+      "kind": "finance_settlement_operation",
+      "mode": "query",
+      "request_sha256": "0136780b62fd6ace5977b2ad96701843b51b1bd3143d2afd130adc466fd42a70"
+    },
+    {
+      "kind": "finance_compliance_operation",
+      "mode": "query",
+      "request_sha256": "2e01064a67bbc0a74e3bb1478010bdd1f74c5be3fa6d0d40c4e75cdb0c0ade72"
+    }
+  ],
+  "workers_started_by_restore": false,
+  "external_dispatches": 0,
+  "actual_provider_get": false,
+  "isolated_elapsed_seconds": 1.947,
+  "formal_archive": false,
+  "off_host_disaster_recovery": false,
+  "cleanup": "dedicated_databases_and_temporary_secrets_removed"
+}

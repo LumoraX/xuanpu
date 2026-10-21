@@ -47,3 +47,5 @@ F1配置、API与人工页面见[使用指南](../../docs/guides/finance-f1.md)�
 F2执行与回执、独立模拟环境及渠道协议见[使用指南](../../docs/guides/finance-f2.md)。外部动作必须专用批准后由原经办人工确认；internal_record不取得外部执行资格。
 
 F3查验、红字、独立目标专用HITL和档案HTTP隔离闭环见[使用指南](../../docs/guides/finance-f3.md)。真实供应商和正式profile尚未验收，正式能力关闭；simulation逐版本锁不证明真实WORM。
+
+F4原生提醒、SQL权限分页、运营概览与local配套备份恢复见[使用指南](../../docs/guides/finance-f4.md)，完整范围见[缺口台账](../../docs/guides/finance-gap-register.md)。维护CLI不覆盖旧库，不启动业务worker；正式渠道和真实WORM未验收。

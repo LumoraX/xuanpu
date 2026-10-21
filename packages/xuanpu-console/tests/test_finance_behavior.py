@@ -37,3 +37,11 @@ def test_finance_compliance_behavior() -> None:
         capture_output=True, text=True, timeout=15,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_finance_operations_behavior() -> None:
+    """原生通知只由本人标记已读，打开原计划不执行且畸形计数不得归零。"""
+    node = shutil.which('node')
+    assert node is not None
+    result = subprocess.run([node, str(Path(__file__).with_name('finance_operations_behavior.cjs')), str(static_dir())], capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0, result.stdout + result.stderr

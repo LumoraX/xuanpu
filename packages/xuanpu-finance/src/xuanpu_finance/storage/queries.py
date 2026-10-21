@@ -13,6 +13,7 @@ from xuanpu_finance.storage.common import (
     position_cursor,
     timestamp_cursor,
 )
+from xuanpu_finance.storage.f4_integrations import configured_integrations
 
 if TYPE_CHECKING:
     from xuanpu_finance.models import FinancePrincipal
@@ -54,21 +55,11 @@ class ReadStore(FinanceBase):
             )
 
     async def list_integrations(self, who: FinancePrincipal, entity: str) -> dict[str, Any]:
-        """明确显示 F0 未配置的外部能力。"""
+        """按实际政策与渠道显示配置阶段，不声称网络或正式验收成功。"""
         async with self.pool.acquire() as conn:
             await self._role(conn, who, entity)
-        return {
-            "legal_entity_id": entity,
-            "items": [
-                {
-                    "id": f"{entity}:{kind}",
-                    "kind": kind,
-                    "status": "unconfigured",
-                    "capabilities": [],
-                }
-                for kind in ("erp", "payment", "tax", "archive", "approval")
-            ],
-        }
+            items = await configured_integrations(conn, who.tenant_id, entity)
+        return {"legal_entity_id": entity, "items": items}
 
     async def list_invoices(
         self,

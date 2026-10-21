@@ -9,6 +9,7 @@ from xuanpu_finance.operations import request_digest
 from xuanpu_finance.storage.common import decode, encode_cursor, page, timestamp_cursor
 from xuanpu_finance.storage.f2_plans import EXTERNAL_ACTIONS
 from xuanpu_finance.storage.f3_human import ComplianceHumanStore
+from xuanpu_finance.storage.f4_query_sql import action_candidates, review_candidates, review_record
 
 if TYPE_CHECKING:
     from xuanpu_finance.models import FinancePrincipal
@@ -25,12 +26,19 @@ class ComplianceWorkflowQueryStore(ComplianceHumanStore):
         async with self.pool.acquire() as conn, conn.transaction(isolation="repeatable_read"):
             if await self._role(conn, who, entity) not in {"reviewer", "approver"}:
                 return page([], 0, None)
-            old = await conn.fetch("SELECT c.*,s.id AS step_id,s.version AS step_version,s.approver_user_id,w.id AS workflow_id,w.version AS workflow_version,w.due_at,w.target_type,w.target_id AS workflow_target_id FROM finance_workflow_step s JOIN finance_workflow w ON(w.tenant_id=s.tenant_id AND w.legal_entity_id=s.legal_entity_id AND w.id=s.workflow_id) JOIN finance_expense_claim c ON(c.tenant_id=w.tenant_id AND c.legal_entity_id=w.legal_entity_id AND c.id=w.document_id) WHERE s.tenant_id=$1 AND s.legal_entity_id=$2 AND s.approver_user_id=$3 AND s.status='pending' AND w.status='under_review'", who.tenant_id, entity, who.user_id)
-            new = await conn.fetch("SELECT p.*,s.id AS step_id,s.version AS step_version,s.approver_user_id,w.id AS workflow_id,w.version AS workflow_version,p.expires_at AS due_at FROM finance_compliance_workflow_step s JOIN finance_compliance_workflow w ON(w.tenant_id=s.tenant_id AND w.legal_entity_id=s.legal_entity_id AND w.id=s.workflow_id) JOIN finance_compliance_plan p ON(p.tenant_id=w.tenant_id AND p.legal_entity_id=w.legal_entity_id AND p.id=w.plan_id) JOIN finance_grant_epoch e ON(e.tenant_id=s.tenant_id AND e.legal_entity_id=s.legal_entity_id AND e.user_id=s.approver_user_id AND e.generation=s.authority_generation AND e.role IN ('reviewer','approver')) WHERE s.tenant_id=$1 AND s.legal_entity_id=$2 AND s.approver_user_id=$3 AND s.status='pending' AND w.status='under_review'", who.tenant_id, entity, who.user_id)
-            all_rows = sorted([(r, False) for r in old] + [(r, True) for r in new], key=lambda pair: (pair[0]["created_at"], pair[0]["step_id"]))
-            selected = [(r, f3) for r, f3 in all_rows if stamp is None or (r["created_at"], r["step_id"]) > (stamp, last or "")][:limit + 1]
-            items = [await self._f3_review_item(conn, who, r) if f3 else await self._legacy_review_item(conn, who, r) for r, f3 in selected[:limit]]
-            return page(items, len(all_rows), encode_cursor(scope, [selected[limit - 1][0]["created_at"].isoformat(), selected[limit - 1][0]["step_id"]]) if len(selected) > limit else None)
+            query = review_candidates()
+            args = (who.tenant_id, entity, who.user_id)
+            total = await conn.fetchval(f"SELECT count(*) FROM ({query}) q", *args)
+            selected = await conn.fetch(
+                f"SELECT * FROM ({query}) q WHERE ($4::timestamptz IS NULL OR (stamp,id)>($4,$5::text)) ORDER BY stamp,id LIMIT $6",
+                *args, stamp, last, limit + 1)
+            items = []
+            for candidate in selected[:limit]:
+                row = await conn.fetchrow(review_record(legacy=not candidate["f3"]), who.tenant_id, entity, candidate["id"])
+                assert row is not None
+                items.append(await self._f3_review_item(conn, who, row) if candidate["f3"] else await self._legacy_review_item(conn, who, row))
+            next_cursor = encode_cursor(scope, [selected[limit - 1]["stamp"].isoformat(), selected[limit - 1]["id"]]) if len(selected) > limit else None
+            return page(items, total, next_cursor)
 
     async def _legacy_review_item(self, conn: Connection, who: FinancePrincipal, row: Any) -> dict[str, Any]:
         """保留旧业务和外部行动待办原语义。"""
@@ -69,11 +77,18 @@ class ComplianceWorkflowQueryStore(ComplianceHumanStore):
         scope = request_digest([who.tenant_id, who.user_id, entity, "plans", target_id])
         stamp, last = timestamp_cursor(cursor, scope, limit)
         async with self.pool.acquire() as conn, conn.transaction(isolation="repeatable_read"):
-            role = await self._role(conn, who, entity)
-            old = await conn.fetch("SELECT p.* FROM finance_action_plan p WHERE p.tenant_id=$1 AND p.legal_entity_id=$2 AND p.data->>'action'=ANY($3::text[]) AND ($4::text IS NULL OR p.target_id=$4 OR p.data->>'target_id'=$4) AND (p.owner_id=$5 OR $6::text='reviewer' OR ($6::text='approver' AND EXISTS(SELECT 1 FROM finance_workflow w JOIN finance_workflow_step s ON(s.tenant_id=w.tenant_id AND s.legal_entity_id=w.legal_entity_id AND s.workflow_id=w.id) WHERE w.tenant_id=p.tenant_id AND w.legal_entity_id=p.legal_entity_id AND w.target_type='action_plan' AND w.target_id=p.id AND s.approver_user_id=$5)))", who.tenant_id, entity, list(EXTERNAL_ACTIONS), target_id, who.user_id, role)
-            new = await conn.fetch("SELECT * FROM finance_compliance_plan WHERE tenant_id=$1 AND legal_entity_id=$2 AND target_type<>'action_plan' AND ($3::text IS NULL OR target_id=$3)", who.tenant_id, entity, target_id)
-            visible = [r for r in new if await self._f3_visible(conn, who, r, "plans")]
-            all_rows = sorted([(r, False) for r in old] + [(r, True) for r in visible], key=lambda pair: (pair[0]["expires_at"], pair[0]["id"]))
-            selected = [(r, f3) for r, f3 in all_rows if stamp is None or (r["expires_at"], r["id"]) > (stamp, last or "")][:limit + 1]
-            items = [await self._f3_plan_view(conn, who, r) if f3 else await self._plan_view(conn, who, r) for r, f3 in selected[:limit]]
-            return page(items, len(all_rows), encode_cursor(scope, [selected[limit - 1][0]["expires_at"].isoformat(), selected[limit - 1][0]["id"]]) if len(selected) > limit else None)
+            await self._role(conn, who, entity)
+            query = action_candidates()
+            args = (who.tenant_id, entity, who.user_id, target_id, list(EXTERNAL_ACTIONS))
+            total = await conn.fetchval(f"SELECT count(*) FROM ({query}) q", *args)
+            selected = await conn.fetch(
+                f"SELECT * FROM ({query}) q WHERE ($6::timestamptz IS NULL OR (stamp,id)>($6,$7::text)) ORDER BY stamp,id LIMIT $8",
+                *args, stamp, last, limit + 1)
+            items = []
+            for candidate in selected[:limit]:
+                table = "finance_compliance_plan" if candidate["f3"] else "finance_action_plan"
+                row = await conn.fetchrow(f"SELECT * FROM {table} WHERE tenant_id=$1 AND legal_entity_id=$2 AND id=$3 LIMIT 1", who.tenant_id, entity, candidate["id"])
+                assert row is not None
+                items.append(await self._f3_plan_view(conn, who, row) if candidate["f3"] else await self._plan_view(conn, who, row))
+            next_cursor = encode_cursor(scope, [selected[limit - 1]["stamp"].isoformat(), selected[limit - 1]["id"]]) if len(selected) > limit else None
+            return page(items, total, next_cursor)

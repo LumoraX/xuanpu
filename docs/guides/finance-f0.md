@@ -56,3 +56,5 @@ uv run python docker/finance/build_image.py
 ```
 
 [docker/finance/compose.yml](../../docker/finance/compose.yml) 是专属财务开发/预发布编排，使用财务 PG 和原件两个独立 volume，不改平台现有 Compose。启动前由操作员创建该目录下 runtime/config.yaml 与引用文件；db-password 与 database-dsn 中口令必须一致，DSN 主机为 finance-db。文件须可供镜像 UID10001读取。示例原件使用独立加密卷，S3 可按 config.py 的显式 endpoint/bucket/access_key_file/secret_key_file 切换。Compose 实际运行证据另见验收记录。
+
+当前F4已补原生站内提醒、SQL权限分页、配置/运营投影和local配套恢复，见[F4指南](finance-f4.md)与[剩余缺口台账](finance-gap-register.md)。历史阶段的工具数量以对应阶段为准，当前包61项API、7个Skill。
