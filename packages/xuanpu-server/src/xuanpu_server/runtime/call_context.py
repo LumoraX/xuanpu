@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.runtime.events import SessionRef
     from xuanpu_server.secrets import SecretVault
+    from xuanpu_server.tenancy import Principal
 
 _CALL: ContextVar[tuple[str | None, str] | None] = ContextVar("xuanpu_approved_call", default=None)
 
@@ -90,16 +91,28 @@ class CallContextSigner:
             or session.status != "active"
         ):
             raise PermissionDeniedError("调用签名需要同租户的活动员工会话")
+        return await self._encode(tenant_id=tenant_id, audience=audience, url=url, method=method,
+            query=query, body=body, idempotency_key=idempotency_key, content_type=content_type,
+            user_id=session.user_id, session_id=session.session_id, call_id=bound[1], origin="agent")
+
+    async def _encode(
+        self, *, tenant_id: str, audience: str, url: str, method: str,
+        query: Sequence[tuple[str, str]], body: Any, idempotency_key: str,
+        content_type: str, user_id: str, session_id: str, call_id: str, origin: str,
+    ) -> str:
+        """共享请求编码；来源由两个可信服务入口固定，绝不从请求参数读取。"""
+        self.require_audience(url, audience)
         now = int(self._now())
         parts = urlsplit(url)
         claims = {
             "iss": self._config.issuer,
             "aud": audience,
             "kid": self._config.key_id,
-            "sub": session.user_id,
+            "sub": user_id,
             "tenant_id": tenant_id,
-            "session_id": session.session_id,
-            "call_id": bound[1],
+            "session_id": session_id,
+            "call_id": call_id,
+            "origin": origin,
             "iat": now,
             "exp": now + 60,
             "jti": secrets.token_hex(16),
@@ -115,3 +128,42 @@ class CallContextSigner:
         except Exception:
             # 成熟库可能把密钥解析细节放进异常；不将原文传播到模型或日志。
             raise PermissionDeniedError("调用签名密钥不可用") from None
+
+
+class HumanContextSigner:
+    """为 cookie 人工交互签名；不查询或伪造模型持久会话。"""
+
+    def __init__(self, *, config: CallContextConfig, vault: SecretVault,
+                 now: Callable[[], float] = time.time) -> None:
+        """注入部署受众、租户密钥和时钟。"""
+        self._config, self._vault, self._now = config, vault, now
+
+    def bind(self, principal: Principal, session_id: str, call_id: str) -> _HumanRequestSigner:
+        """仅接受人工网关认证后的员工主体与服务端交互标识。"""
+        if (not principal.user_id or not principal.tenant_id or principal.key_id is not None
+                or principal.system is not None or principal.role == "platform_admin"):
+            raise PermissionDeniedError("人工操作需要员工登录")
+        if not session_id.startswith("interactive:") or not call_id:
+            raise PermissionDeniedError("人工交互标识不合法")
+        return _HumanRequestSigner(self, principal, session_id, call_id)
+
+
+class _HumanRequestSigner(CallContextSigner):
+    """单个已认证人工 HTTP 调用的不可变签名主体。"""
+
+    def __init__(self, parent: HumanContextSigner, principal: Principal,
+                 session_id: str, call_id: str) -> None:
+        """只初始化共享编码依赖，故意不携带模型会话库。"""
+        self._config, self._vault, self._now = parent._config, parent._vault, parent._now
+        self._principal, self._session_id, self._call_id = principal, session_id, call_id
+
+    async def sign(self, *, tenant_id: str, audience: str, url: str, method: str,
+                   query: Sequence[tuple[str, str]], body: Any, idempotency_key: str = "",
+                   content_type: str = "application/json") -> str:
+        """固定 human 来源并再次校验租户，签发最终实际请求。"""
+        if tenant_id != self._principal.tenant_id or not self._principal.user_id:
+            raise PermissionDeniedError("人工调用租户不匹配")
+        return await self._encode(tenant_id=tenant_id, audience=audience, url=url, method=method,
+            query=query, body=body, idempotency_key=idempotency_key, content_type=content_type,
+            user_id=self._principal.user_id, session_id=self._session_id,
+            call_id=self._call_id, origin="human")

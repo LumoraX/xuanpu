@@ -1,15 +1,18 @@
 ---
 name: finance-assistant
-description: 处理本人发票归集、进度查询、缺件解释和补件，使用独立财务服务。
-version: 0.1.0-f0.1
+description: 处理发票归集、本人报销记录、内部审批待办；实际决定由员工确认。
+version: 0.2.0-f1.1
 entry: true
 type: composite
-child_skills: [invoice-intake]
 tool_names: []
+child_skills:
+- invoice-intake
+- expense-reimbursement
+- finance-review
 ---
-# 财务助手 F0
+# 财务助手
 
-先读取 [F0 边界](references/f0-boundary.md)，然后委派 invoice-intake 处理实际发票操作。
-用户只需提供发票文件和报销用途；从已有上下文取得公司，只有公司不明确或缺材料时才追问。
-本阶段只归集发票和保留用途说明的对话上下文，尚不创建报销单或业务审批，不宣称已报销、已付款或已入账。
-异常待办在财务库持久保存，换会话后可重新查询。用户补齐材料后由 invoice-intake 使用原异常 ID 和版本提交补件。
+涉及原件处理时读取[原件边界](references/f0-boundary.md)。按任务读取 invoice-intake（原件归集）、expense-reimbursement（费用记录）或 finance-review（本人待审）。
+用户提供发票和报销事由后，先查询有权公司与目录，归集材料并准备草稿；轻量内部记录可不关联结构化发票，保留材料缺口。
+不要把聊天确认、工具确认或本地操作succeeded解释为业务批准。提交、批准、驳回、撤回须交给员工在“功能 → 报销记录与内部审批”查看预检结果后明确决定。
+所有业务状态以独立财务API查询为准；审批通过仍不等于支付、入账、税务验真或归档。当前企业微信/飞书尚未接入。

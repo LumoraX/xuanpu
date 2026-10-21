@@ -27,6 +27,7 @@ async def test_signer_uses_persisted_employee_and_rotating_key() -> None:
         claims = jwt.decode(token, env.key.public_key(), algorithms=['EdDSA'], audience='finance',
                             issuer='platform', leeway=5)
         assert claims['sub'] == 'u1' and claims['call_id'] == 'real-call'
+        assert claims['origin'] == 'agent'
         assert claims['exp'] - claims['iat'] == 60
         assert claims['kid'] == jwt.get_unverified_header(token)['kid'] == 'key1'
         with pytest.raises(PermissionDeniedError):

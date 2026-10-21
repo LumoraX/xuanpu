@@ -1,0 +1,3 @@
+最终回归后finance_test剩余随机schema=0；本任务xuanpu-finance-f1-test-pg及其匿名数据卷已移除。
+最终Compose临时project容器/卷/网络均0、临时runtime与密钥已删除，见compose-container-smoke.json。
+浏览器临时验收tab已关闭、loopback服务已停止；正式平台/原xuanpu工作区未修改。

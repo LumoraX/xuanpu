@@ -110,6 +110,8 @@ class FinanceAuthenticator:
                 value = claims[field]
                 if not isinstance(value, str) or not value.strip() or len(value) > 512:
                     raise ValueError("签名身份字段非法")
+            if claims.get("origin", "agent") not in ("agent", "human"):
+                raise ValueError("签名来源非法")
             issued, expires = claims["iat"], claims["exp"]
             if (
                 type(issued) is not int
@@ -156,11 +158,13 @@ class FinanceAuthenticator:
             raise FinanceError("invalid_request", 400, "请求 JSON 无效") from error
         if not hmac.compare_digest(str(claims["request_sha256"]), fingerprint):
             raise FinanceError("request_mismatch", 401, "请求与签名不匹配")
-        who = FinancePrincipal(claims["tenant_id"], claims["sub"])
+        who = FinancePrincipal(claims["tenant_id"], claims["sub"], claims.get("origin", "agent"))
         await self.store.claim_context(
             self.issuer,
             claims["jti"],
-            f"{who.tenant_id}:{who.user_id}",
+            json.dumps(
+                [who.tenant_id, who.user_id, who.origin], ensure_ascii=False, separators=(",", ":")
+            ),
             fingerprint,
             request.headers.get("idempotency-key", ""),
             float(claims["exp"]),

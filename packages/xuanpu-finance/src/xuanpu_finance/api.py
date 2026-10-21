@@ -1,4 +1,4 @@
-"""独立财务 F0 应用与后台工作生命周期。"""
+"""独立财务 F0/F1 应用与后台工作生命周期。"""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 from xuanpu_finance.errors import FinanceError
 from xuanpu_finance.limits import RequestBodyLimit
 from xuanpu_finance.routes import router
+from xuanpu_finance.routes_f1 import router as f1_router
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -98,7 +99,7 @@ def create_app(
     """显式注入独立存储，不在平台进程中导入此应用。"""
     if mode not in MODES:
         raise ValueError("财务模块模式无效")
-    app = FastAPI(title="玄圃财务 F0", version="2026.10.21.1", lifespan=_lifespan)
+    app = FastAPI(title="玄圃财务 F0/F1", version="2026.10.21.2", lifespan=_lifespan)
     app.state.store, app.state.auth, app.state.mode = store, auth, mode
     app.state.worker, app.state.start_worker, app.state.worker_error = worker, start_worker, None
     app.add_exception_handler(FinanceError, _finance_error)
@@ -106,6 +107,7 @@ def create_app(
     app.add_exception_handler(Exception, _unexpected)
     app.add_middleware(RequestBodyLimit)
     app.include_router(router)
+    app.include_router(f1_router)
 
     @app.get("/health")
     async def health() -> JSONResponse:

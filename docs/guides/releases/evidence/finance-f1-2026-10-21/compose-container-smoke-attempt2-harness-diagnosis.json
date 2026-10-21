@@ -1,0 +1,275 @@
+{
+  "started_at": "2026-10-21T08:31:33.662801+00:00",
+  "project": "finance-f1-smoke-1468a59662ff",
+  "result": "failed",
+  "image": "xuanpu-finance:2026.10.21.2",
+  "image_id_expected": "sha256:2a65786ae5347dd7470b877e8d6503da0230ec82ce73baaf5abd79977e39b33d",
+  "database_image_used": "postgres:16-alpine",
+  "official_compose_database_image": "postgres:17-alpine",
+  "identity_boundary": "Temporary authenticated online identity stub for synthetic owner/reviewer. Real EdDSA signatures, request binding, origin, PostgreSQL, API, image and container restart are exercised. No real platform cookie session, real invoice, tax verification, payment, posting, notification or production is claimed.",
+  "steps": [
+    {
+      "step": "container_health",
+      "http_status": 200,
+      "body": {
+        "status": "ok",
+        "mode": "enabled"
+      }
+    },
+    {
+      "step": "POST /v1/finance/expense-claims",
+      "actor": "owner",
+      "origin": "human",
+      "http_status": 201,
+      "response": {
+        "id": "ffd191d5b28d4d409005012c66834138",
+        "kind": "expense_claim",
+        "legal_entity_id": "smoke-company",
+        "version": 1,
+        "status": "draft",
+        "total": "123.45",
+        "owner_id": "owner",
+        "record_mode": "internal_record",
+        "content": {
+          "lines": [
+            {
+              "amount": "123.45",
+              "reason": "合成内部交通记录",
+              "category_id": "travel",
+              "occurred_on": "2026-10-21"
+            }
+          ],
+          "reason": "容器真实烟测内部记录",
+          "evidence_ids": [],
+          "legal_entity_id": "smoke-company"
+        },
+        "allocation_ids": [],
+        "evidence": []
+      }
+    },
+    {
+      "step": "POST /v1/finance/action-previews",
+      "actor": "owner",
+      "origin": "human",
+      "http_status": 201,
+      "response": {
+        "id": "807ea16f37b8460c941da2497c463c08",
+        "version": 1,
+        "legal_entity_id": "smoke-company",
+        "action": "submit_claim",
+        "target_type": "expense_claim",
+        "target_id": "ffd191d5b28d4d409005012c66834138",
+        "target_version": 1,
+        "parameters": {},
+        "expires_at": "2026-10-21T08:46:50.225033+00:00",
+        "required_approvals": [
+          "reviewer"
+        ],
+        "effects": [
+          "预留发票额度并开始人工审批",
+          "内部记录，未关联结构化发票时不代表付款、入账或验真"
+        ],
+        "digest": "caddd3be69bb23f8429bde814d357693a99da57c8a011b437a57b75e0c4a2e39",
+        "executable": true,
+        "blockers": []
+      }
+    },
+    {
+      "step": "POST /v1/finance/action-executions",
+      "actor": "owner",
+      "origin": "agent",
+      "http_status": 403,
+      "response": {
+        "code": "HUMAN_REQUIRED",
+        "message": "请本人在人工确认入口作出业务决定",
+        "trace_id": "ebf0d008e95744faa2d91d0622175b42",
+        "retryable": false
+      }
+    },
+    {
+      "step": "POST /v1/finance/action-executions",
+      "actor": "owner",
+      "origin": "human",
+      "http_status": 202,
+      "response": {
+        "id": "f1op_06f3ea4d6358447c84a790af74b1a11a",
+        "version": 1,
+        "status": "succeeded",
+        "business_result": "succeeded",
+        "trace_id": "675285eef2364f7a9221be2355c3f94c",
+        "items": [],
+        "result_refs": [],
+        "resources": [
+          {
+            "kind": "expense_claim",
+            "id": "ffd191d5b28d4d409005012c66834138"
+          }
+        ]
+      }
+    },
+    {
+      "step": "GET /v1/finance/expense-claims/ffd191d5b28d4d409005012c66834138",
+      "actor": "owner",
+      "origin": "human",
+      "http_status": 200,
+      "response": {
+        "id": "ffd191d5b28d4d409005012c66834138",
+        "kind": "expense_claim",
+        "legal_entity_id": "smoke-company",
+        "version": 2,
+        "status": "under_review",
+        "total": "123.45",
+        "owner_id": "owner",
+        "record_mode": "internal_record",
+        "content": {
+          "lines": [
+            {
+              "amount": "123.45",
+              "reason": "合成内部交通记录",
+              "category_id": "travel",
+              "occurred_on": "2026-10-21"
+            }
+          ],
+          "reason": "容器真实烟测内部记录",
+          "evidence_ids": [],
+          "legal_entity_id": "smoke-company"
+        },
+        "allocation_ids": [],
+        "evidence": [],
+        "workflow_id": "9e9877869e1f4164a7b69b089fd6f0ca",
+        "workflow_version": 1,
+        "due_at": "2026-10-24T08:31:50.242847+00:00",
+        "workflow": {
+          "id": "9e9877869e1f4164a7b69b089fd6f0ca",
+          "version": 1,
+          "status": "under_review",
+          "target_version": 2,
+          "policy_version": 1,
+          "due_at": "2026-10-24T08:31:50.242847+00:00",
+          "provider": "internal",
+          "current_step_id": "fc240ae92e064337af3a5ca7b9c54f51",
+          "steps": [
+            {
+              "id": "fc240ae92e064337af3a5ca7b9c54f51",
+              "version": 1,
+              "name": "人工审批",
+              "approver_user_id": "reviewer",
+              "status": "pending"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": "GET /v1/finance/review-queue",
+      "actor": "reviewer",
+      "origin": "human",
+      "http_status": 200,
+      "response": {
+        "items": [
+          {
+            "workflow_step_id": "fc240ae92e064337af3a5ca7b9c54f51",
+            "target_id": "ffd191d5b28d4d409005012c66834138",
+            "target_type": "expense_claim",
+            "target_version": 2,
+            "summary": "容器真实烟测内部记录",
+            "total": "123.45",
+            "evidence": [],
+            "workflow_id": "9e9877869e1f4164a7b69b089fd6f0ca",
+            "workflow_version": 1,
+            "step_version": 1,
+            "approver_user_id": "reviewer",
+            "status": "pending",
+            "due_at": "2026-10-24T08:31:50.242847+00:00",
+            "blockers": []
+          }
+        ],
+        "total": 1,
+        "next_cursor": null
+      }
+    }
+  ],
+  "image_id_actual": "sha256:2a65786ae5347dd7470b877e8d6503da0230ec82ce73baaf5abd79977e39b33d",
+  "image_user": "10001:10001",
+  "runtime_guards": {
+    "container_user": "10001:10001",
+    "read_only_root": true,
+    "cap_drop": [
+      "ALL"
+    ],
+    "security_opt": [
+      "no-new-privileges:true"
+    ],
+    "memory_bytes": 536870912,
+    "pids_limit": 64,
+    "network_mode": "finance-f1-smoke-1468a59662ff_finance"
+  },
+  "failure_type": "AssertionError",
+  "failure": "restart health timeout",
+  "failure_diagnostics": {
+    "api_state": {
+      "Status": "running",
+      "Running": true,
+      "Paused": false,
+      "Restarting": false,
+      "OOMKilled": false,
+      "Dead": false,
+      "Pid": 19918,
+      "ExitCode": 0,
+      "Error": "",
+      "StartedAt": "2026-10-21T08:31:50.729875836Z",
+      "FinishedAt": "2026-10-21T08:31:50.523766336Z",
+      "Health": {
+        "Status": "healthy",
+        "FailingStreak": 0,
+        "Log": [
+          {
+            "Start": "2026-10-21T08:31:49.487342294Z",
+            "End": "2026-10-21T08:31:49.693787377Z",
+            "ExitCode": 0,
+            "Output": ""
+          },
+          {
+            "Start": "2026-10-21T08:32:00.790420508Z",
+            "End": "2026-10-21T08:32:00.982689424Z",
+            "ExitCode": 0,
+            "Output": ""
+          },
+          {
+            "Start": "2026-10-21T08:32:10.988013804Z",
+            "End": "2026-10-21T08:32:11.176821304Z",
+            "ExitCode": 0,
+            "Output": ""
+          }
+        ]
+      }
+    },
+    "api_logs": "INFO:     Started server process [1]\nINFO:     Waiting for application startup.\nINFO:     Application startup complete.\nINFO:     Uvicorn running on http://0.0.0.0:8443 (Press CTRL+C to quit)\nINFO:     Shutting down\nINFO:     Waiting for application shutdown.\nINFO:     Application shutdown complete.\nINFO:     Finished server process [1]\nINFO:     Started server process [1]\nINFO:     Waiting for application startup.\nINFO:     Application startup complete.\nINFO:     Uvicorn running on http://0.0.0.0:8443 (Press CTRL+C to quit)\n",
+    "database_activity": "{\"state\" : \"idle\", \"wait_event_type\" : \"Client\", \"wait_event\" : \"ClientRead\", \"query\" : \"SELECT pg_advisory_unlock_all();\\nCLOSE ALL;\\nUNLISTEN *;\\nRESET ALL;\"}\n{\"state\" : \"idle\", \"wait_event_type\" : \"Client\", \"wait_event\" : \"ClientRead\", \"query\" : \"SELECT pg_backend_pid()\"}\n{\"state\" : \"active\", \"wait_event_type\" : null, \"wait_event\" : null, \"query\" : \"SELECT json_build_object('state',state,'wait_event_type',wait_event_type,'wait_event',wait_event,'query',query) FROM pg_stat_activity WHERE datname='finance';\"}\n"
+  },
+  "cleanup": {
+    "compose_down_exit_code": 0,
+    "remaining_containers": 0,
+    "remaining_volumes": 0,
+    "remaining_networks": 0,
+    "temporary_runtime_removed": true,
+    "temporary_signing_key_discarded": true,
+    "identity_stub_stopped": true,
+    "existing_test_pg_60031_untouched": true
+  },
+  "finished_at": "2026-10-21T08:32:22.316670+00:00",
+  "failure_classification": "smoke_harness_stale_dynamic_host_port",
+  "diagnosis": {
+    "before_restart_host_port": "62707",
+    "after_restart_host_port": "62815",
+    "same_container_after_restart_state": "running",
+    "same_container_after_restart_health": "healthy",
+    "rechecked_new_port_health_http_status": 200,
+    "rechecked_new_port_health": {
+      "status": "ok",
+      "mode": "enabled"
+    },
+    "product_source_changed": false,
+    "cause": "Docker dynamically reassigns an empty HostPort on restart; the smoke client kept polling the former host port."
+  }
+}

@@ -77,6 +77,7 @@ async def open_runtime(config: FinanceConfig) -> AsyncIterator[FastAPI]:
             [item.model_dump() for item in config.companies],
             [item.model_dump() for item in config.grants],
         )
+        await store.configure_expenses(config.expense_policies)
         client = await resources.enter_async_context(
             httpx.AsyncClient(
                 base_url=config.gateway.base_url,

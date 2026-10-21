@@ -1,0 +1,190 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 723B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.12-slim-bookworm
+#2 DONE 7.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 transferring context: 340.72kB done
+#4 DONE 0.0s
+
+#5 [1/7] FROM docker.io/library/python:3.12-slim-bookworm@sha256:5d9e6adc9abd558bc0ce05f9ab16cef71328916fc9728f6b81e337af86a737e2
+#5 resolve docker.io/library/python:3.12-slim-bookworm@sha256:5d9e6adc9abd558bc0ce05f9ab16cef71328916fc9728f6b81e337af86a737e2 done
+#5 sha256:41b2195c355367079ebad200f9591fe3c2cb886c3b1e67abaaf2090dc11c04d9 0B / 28.14MB 0.1s
+#5 sha256:6dfe482be830abb693354e048333452cb743eb7f9a37a752cc783a9a11184908 0B / 3.17MB 0.1s
+#5 sha256:b8b110093e775611e739245175eb733e7f95d4fd996ff7de9dcf09f4afe1a2d6 0B / 13.61MB 0.1s
+#5 sha256:5d9e6adc9abd558bc0ce05f9ab16cef71328916fc9728f6b81e337af86a737e2 6.55kB / 6.55kB done
+#5 sha256:c3729439afc4ec3f3e159e0c86aeabfadac8030ef46838a0256383d0511c5f5e 1.75kB / 1.75kB done
+#5 sha256:81c0aac584c3e136c75a8da272f5d08e45e1f2ae00701fbce768f490dd22164b 5.70kB / 5.70kB done
+#5 sha256:6dfe482be830abb693354e048333452cb743eb7f9a37a752cc783a9a11184908 1.05MB / 3.17MB 2.2s
+#5 sha256:6dfe482be830abb693354e048333452cb743eb7f9a37a752cc783a9a11184908 3.17MB / 3.17MB 2.6s done
+#5 sha256:242f8bca26124104b05036e9d98543d8f1f455eedcbd13de06023ff292c3ebe4 0B / 247B 2.6s
+#5 sha256:242f8bca26124104b05036e9d98543d8f1f455eedcbd13de06023ff292c3ebe4 247B / 247B 3.0s done
+#5 sha256:41b2195c355367079ebad200f9591fe3c2cb886c3b1e67abaaf2090dc11c04d9 2.10MB / 28.14MB 3.8s
+#5 sha256:b8b110093e775611e739245175eb733e7f95d4fd996ff7de9dcf09f4afe1a2d6 1.05MB / 13.61MB 4.0s
+#5 sha256:41b2195c355367079ebad200f9591fe3c2cb886c3b1e67abaaf2090dc11c04d9 6.29MB / 28.14MB 4.2s
+#5 sha256:41b2195c355367079ebad200f9591fe3c2cb886c3b1e67abaaf2090dc11c04d9 8.39MB / 28.14MB 4.7s
+#5 sha256:41b2195c355367079ebad200f9591fe3c2cb886c3b1e67abaaf2090dc11c04d9 10.49MB / 28.14MB 4.9s
+#5 sha256:41b2195c355367079ebad200f9591fe3c2cb886c3b1e67abaaf2090dc11c04d9 14.68MB / 28.14MB 5.4s
+#5 sha256:41b2195c355367079ebad200f9591fe3c2cb886c3b1e67abaaf2090dc11c04d9 16.78MB / 28.14MB 5.9s
+#5 sha256:b8b110093e775611e739245175eb733e7f95d4fd996ff7de9dcf09f4afe1a2d6 2.10MB / 13.61MB 5.9s
+#5 sha256:41b2195c355367079ebad200f9591fe3c2cb886c3b1e67abaaf2090dc11c04d9 20.97MB / 28.14MB 6.5s
+#5 sha256:41b2195c355367079ebad200f9591fe3c2cb886c3b1e67abaaf2090dc11c04d9 24.12MB / 28.14MB 7.0s
+#5 sha256:b8b110093e775611e739245175eb733e7f95d4fd996ff7de9dcf09f4afe1a2d6 3.15MB / 13.61MB 7.2s
+#5 sha256:41b2195c355367079ebad200f9591fe3c2cb886c3b1e67abaaf2090dc11c04d9 26.21MB / 28.14MB 7.3s
+#5 sha256:41b2195c355367079ebad200f9591fe3c2cb886c3b1e67abaaf2090dc11c04d9 28.14MB / 28.14MB 7.5s done
+#5 extracting sha256:41b2195c355367079ebad200f9591fe3c2cb886c3b1e67abaaf2090dc11c04d9 0.1s
+#5 extracting sha256:41b2195c355367079ebad200f9591fe3c2cb886c3b1e67abaaf2090dc11c04d9 0.6s done
+#5 extracting sha256:6dfe482be830abb693354e048333452cb743eb7f9a37a752cc783a9a11184908
+#5 extracting sha256:6dfe482be830abb693354e048333452cb743eb7f9a37a752cc783a9a11184908 0.1s done
+#5 sha256:b8b110093e775611e739245175eb733e7f95d4fd996ff7de9dcf09f4afe1a2d6 4.19MB / 13.61MB 8.8s
+#5 sha256:b8b110093e775611e739245175eb733e7f95d4fd996ff7de9dcf09f4afe1a2d6 5.24MB / 13.61MB 9.9s
+#5 sha256:b8b110093e775611e739245175eb733e7f95d4fd996ff7de9dcf09f4afe1a2d6 6.29MB / 13.61MB 11.3s
+#5 sha256:b8b110093e775611e739245175eb733e7f95d4fd996ff7de9dcf09f4afe1a2d6 7.34MB / 13.61MB 12.7s
+#5 sha256:b8b110093e775611e739245175eb733e7f95d4fd996ff7de9dcf09f4afe1a2d6 8.39MB / 13.61MB 13.8s
+#5 sha256:b8b110093e775611e739245175eb733e7f95d4fd996ff7de9dcf09f4afe1a2d6 9.44MB / 13.61MB 15.0s
+#5 sha256:b8b110093e775611e739245175eb733e7f95d4fd996ff7de9dcf09f4afe1a2d6 10.49MB / 13.61MB 16.1s
+#5 sha256:b8b110093e775611e739245175eb733e7f95d4fd996ff7de9dcf09f4afe1a2d6 11.53MB / 13.61MB 17.8s
+#5 sha256:b8b110093e775611e739245175eb733e7f95d4fd996ff7de9dcf09f4afe1a2d6 12.58MB / 13.61MB 19.2s
+#5 sha256:b8b110093e775611e739245175eb733e7f95d4fd996ff7de9dcf09f4afe1a2d6 13.61MB / 13.61MB 20.8s done
+#5 extracting sha256:b8b110093e775611e739245175eb733e7f95d4fd996ff7de9dcf09f4afe1a2d6 0.1s
+#5 extracting sha256:b8b110093e775611e739245175eb733e7f95d4fd996ff7de9dcf09f4afe1a2d6 0.3s done
+#5 extracting sha256:242f8bca26124104b05036e9d98543d8f1f455eedcbd13de06023ff292c3ebe4 done
+#5 DONE 21.2s
+
+#6 [2/7] RUN groupadd --gid 10001 finance && useradd --uid 10001 --gid 10001 --create-home finance     && mkdir -p /var/lib/finance/originals && chown -R finance:finance /var/lib/finance
+#6 DONE 0.3s
+
+#7 [3/7] COPY requirements.lock /build/requirements.lock
+#7 DONE 0.0s
+
+#8 [4/7] RUN pip install --no-cache-dir --require-hashes -r /build/requirements.lock
+#8 1.783 Collecting annotated-doc==0.0.5 (from -r /build/requirements.lock (line 3))
+#8 2.651   Downloading annotated_doc-0.0.5-py3-none-any.whl (5.3 kB)
+#8 2.993 Collecting annotated-types==0.8.0 (from -r /build/requirements.lock (line 7))
+#8 3.155   Downloading annotated_types-0.8.0-py3-none-any.whl (13 kB)
+#8 4.158 Collecting anyio==4.15.1 (from -r /build/requirements.lock (line 11))
+#8 4.314   Downloading anyio-4.15.1-py3-none-any.whl (132 kB)
+#8 5.917 Collecting asyncpg==0.31.0 (from -r /build/requirements.lock (line 18))
+#8 6.275   Downloading asyncpg-0.31.0-cp312-cp312-manylinux_2_28_aarch64.whl (3.4 MB)
+#8 9.557      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.4/3.4 MB 1.1 MB/s eta 0:00:00
+#8 10.83 Collecting boto3==1.43.106 (from -r /build/requirements.lock (line 53))
+#8 10.99   Downloading boto3-1.43.106-py3-none-any.whl (140 kB)
+#8 12.35 Collecting botocore==1.43.106 (from -r /build/requirements.lock (line 57))
+#8 12.71   Downloading botocore-1.43.106-py3-none-any.whl (16.0 MB)
+#8 31.11      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.0/16.0 MB 872.6 kB/s eta 0:00:00
+#8 31.84 Collecting certifi==2026.7.22 (from -r /build/requirements.lock (line 63))
+#8 32.00   Downloading certifi-2026.7.22-py3-none-any.whl (136 kB)
+#8 32.86 Collecting cffi==2.1.1 (from -r /build/requirements.lock (line 69))
+#8 33.03   Downloading cffi-2.1.1-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl (222 kB)
+#8 33.96 Collecting click==8.5.0 (from -r /build/requirements.lock (line 146))
+#8 34.13   Downloading click-8.5.0-py3-none-any.whl (125 kB)
+#8 35.34 Collecting cryptography==50.0.1 (from -r /build/requirements.lock (line 150))
+#8 35.49   Downloading cryptography-50.0.1-cp311-abi3-manylinux_2_34_aarch64.whl (4.7 MB)
+#8 42.50      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.7/4.7 MB 688.9 kB/s eta 0:00:00
+#8 42.67 Collecting defusedxml==0.7.1 (from -r /build/requirements.lock (line 194))
+#8 42.83   Downloading defusedxml-0.7.1-py2.py3-none-any.whl (25 kB)
+#8 43.41 Collecting fastapi==0.142.0 (from -r /build/requirements.lock (line 198))
+#8 43.58   Downloading fastapi-0.142.0-py3-none-any.whl (144 kB)
+#8 44.04 Collecting h11==0.16.0 (from -r /build/requirements.lock (line 202))
+#8 44.24   Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+#8 44.81 Collecting httpcore==1.0.9 (from -r /build/requirements.lock (line 208))
+#8 44.97   Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+#8 45.86 Collecting httpx==0.28.1 (from -r /build/requirements.lock (line 212))
+#8 46.01   Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+#8 47.17 Collecting idna==3.20 (from -r /build/requirements.lock (line 216))
+#8 47.33   Downloading idna-3.20-py3-none-any.whl (69 kB)
+#8 49.15 Collecting jmespath==1.1.0 (from -r /build/requirements.lock (line 222))
+#8 49.33   Downloading jmespath-1.1.0-py3-none-any.whl (20 kB)
+#8 51.61 Collecting opentelemetry-api==1.45.0 (from -r /build/requirements.lock (line 228))
+#8 51.77   Downloading opentelemetry_api-1.45.0-py3-none-any.whl (60 kB)
+#8 52.72 Collecting pycparser==3.0 (from -r /build/requirements.lock (line 232))
+#8 52.87   Downloading pycparser-3.0-py3-none-any.whl (48 kB)
+#8 60.52 Collecting pydantic==2.13.5 (from -r /build/requirements.lock (line 236))
+#8 60.68   Downloading pydantic-2.13.5-py3-none-any.whl (472 kB)
+#8 77.37 Collecting pydantic-core==2.46.5 (from -r /build/requirements.lock (line 243))
+#8 77.52   Downloading pydantic_core-2.46.5-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (2.0 MB)
+#8 85.69      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 254.4 kB/s eta 0:00:00
+#8 86.61 Collecting pyjwt==2.15.1 (from -r /build/requirements.lock (line 310))
+#8 86.76   Downloading pyjwt-2.15.1-py3-none-any.whl (33 kB)
+#8 87.53 Collecting python-dateutil==2.9.0.post0 (from -r /build/requirements.lock (line 314))
+#8 87.89   Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+#8 89.67 Collecting pyyaml==6.0.3 (from -r /build/requirements.lock (line 318))
+#8 89.83   Downloading pyyaml-6.0.3-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (775 kB)
+#8 92.38      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 775.1/775.1 kB 381.7 kB/s eta 0:00:00
+#8 92.63 Collecting s3transfer==0.19.2 (from -r /build/requirements.lock (line 361))
+#8 92.79   Downloading s3transfer-0.19.2-py3-none-any.whl (90 kB)
+#8 94.95 Collecting six==1.17.0 (from -r /build/requirements.lock (line 365))
+#8 95.11   Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+#8 95.74 Collecting starlette==1.7.0 (from -r /build/requirements.lock (line 369))
+#8 95.92   Downloading starlette-1.7.0-py3-none-any.whl (78 kB)
+#8 96.74 Collecting typing-extensions==4.16.0 (from -r /build/requirements.lock (line 373))
+#8 96.90   Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+#8 97.84 Collecting typing-inspection==0.4.4 (from -r /build/requirements.lock (line 384))
+#8 98.01   Downloading typing_inspection-0.4.4-py3-none-any.whl (14 kB)
+#8 98.35 Collecting urllib3==2.8.0 (from -r /build/requirements.lock (line 390))
+#8 98.50   Downloading urllib3-2.8.0-py3-none-any.whl (135 kB)
+#8 99.74 Collecting uvicorn==0.54.0 (from -r /build/requirements.lock (line 394))
+#8 99.90   Downloading uvicorn-0.54.0-py3-none-any.whl (87 kB)
+#8 100.5 Installing collected packages: urllib3, typing-extensions, six, pyyaml, pyjwt, pycparser, jmespath, idna, h11, defusedxml, click, certifi, asyncpg, annotated-types, annotated-doc, uvicorn, typing-inspection, python-dateutil, pydantic-core, opentelemetry-api, httpcore, cffi, anyio, starlette, pydantic, httpx, cryptography, botocore, s3transfer, fastapi, boto3
+#8 101.6 Successfully installed annotated-doc-0.0.5 annotated-types-0.8.0 anyio-4.15.1 asyncpg-0.31.0 boto3-1.43.106 botocore-1.43.106 certifi-2026.7.22 cffi-2.1.1 click-8.5.0 cryptography-50.0.1 defusedxml-0.7.1 fastapi-0.142.0 h11-0.16.0 httpcore-1.0.9 httpx-0.28.1 idna-3.20 jmespath-1.1.0 opentelemetry-api-1.45.0 pycparser-3.0 pydantic-2.13.5 pydantic-core-2.46.5 pyjwt-2.15.1 python-dateutil-2.9.0.post0 pyyaml-6.0.3 s3transfer-0.19.2 six-1.17.0 starlette-1.7.0 typing-extensions-4.16.0 typing-inspection-0.4.4 urllib3-2.8.0 uvicorn-0.54.0
+#8 101.6 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#8 104.0
+#8 104.0 [notice] A new release of pip is available: 25.0.1 -> 26.2.2
+#8 104.0 [notice] To update, run: pip install --upgrade pip
+#8 DONE 104.2s
+
+#9 [5/7] COPY packages/ /build/packages/
+#9 DONE 0.0s
+
+#10 [6/7] RUN pip install --no-cache-dir --no-deps /build/packages/xuanpu-spec '/build/packages/xuanpu-finance[s3]'     && pip check && rm -rf /build
+#10 0.738 Processing /build/packages/xuanpu-spec
+#10 0.739   Installing build dependencies: started
+#10 9.076   Installing build dependencies: finished with status 'done'
+#10 9.077   Getting requirements to build wheel: started
+#10 9.218   Getting requirements to build wheel: finished with status 'done'
+#10 9.219   Preparing metadata (pyproject.toml): started
+#10 9.416   Preparing metadata (pyproject.toml): finished with status 'done'
+#10 9.417 Processing /build/packages/xuanpu-finance
+#10 9.418   Installing build dependencies: started
+#10 13.06   Installing build dependencies: finished with status 'done'
+#10 13.06   Getting requirements to build wheel: started
+#10 13.20   Getting requirements to build wheel: finished with status 'done'
+#10 13.20   Preparing metadata (pyproject.toml): started
+#10 13.40   Preparing metadata (pyproject.toml): finished with status 'done'
+#10 13.40 Building wheels for collected packages: xuanpu-spec, xuanpu-finance
+#10 13.40   Building wheel for xuanpu-spec (pyproject.toml): started
+#10 13.46   Building wheel for xuanpu-spec (pyproject.toml): finished with status 'done'
+#10 13.46   Created wheel for xuanpu-spec: filename=xuanpu_spec-2026.10.21.1-py3-none-any.whl size=25633 sha256=89dc09d668ac43cf96155d7a1544a39e6af824f02fd813c3936b51cbda072752
+#10 13.46   Stored in directory: /tmp/pip-ephem-wheel-cache-ujm36dmg/wheels/05/80/34/85df0908a56563b99b8a9e526f9d5d9ef596477c4f4cdd5f81
+#10 13.46   Building wheel for xuanpu-finance (pyproject.toml): started
+#10 13.52   Building wheel for xuanpu-finance (pyproject.toml): finished with status 'done'
+#10 13.52   Created wheel for xuanpu-finance: filename=xuanpu_finance-2026.10.21.2-py3-none-any.whl size=84930 sha256=cedc411783bb09035329f29dd53186de9b5ca382e19c39a4ca03f3615a8614e9
+#10 13.52   Stored in directory: /tmp/pip-ephem-wheel-cache-ujm36dmg/wheels/00/77/d8/4c975941903f3b04ea00b53654d371cfcceabcbdf128d90800
+#10 13.52 Successfully built xuanpu-spec xuanpu-finance
+#10 13.52 Installing collected packages: xuanpu-spec, xuanpu-finance
+#10 13.56 Successfully installed xuanpu-finance-2026.10.21.2 xuanpu-spec-2026.10.21.1
+#10 13.56 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#10 15.25
+#10 15.25 [notice] A new release of pip is available: 25.0.1 -> 26.2.2
+#10 15.25 [notice] To update, run: pip install --upgrade pip
+#10 15.73 No broken requirements found.
+#10 DONE 15.8s
+
+#11 [7/7] WORKDIR /home/finance
+#11 DONE 0.0s
+
+#12 exporting to image
+#12 exporting layers
+#12 exporting layers 0.2s done
+#12 writing image sha256:2a65786ae5347dd7470b877e8d6503da0230ec82ce73baaf5abd79977e39b33d
+#12 writing image sha256:2a65786ae5347dd7470b877e8d6503da0230ec82ce73baaf5abd79977e39b33d done
+#12 naming to docker.io/library/xuanpu-finance:2026.10.21.2 done
+#12 DONE 0.2s

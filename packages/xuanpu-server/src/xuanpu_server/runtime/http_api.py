@@ -200,7 +200,7 @@ class HttpApiClient:
             content_type=prepared.headers.get("Content-Type", ""),
         )
 
-    async def call(self, operation: Operation, args: dict[str, Any]) -> tuple[str, bool]:
+    async def _perform(self, operation: Operation, args: dict[str, Any]) -> tuple[httpx.Response, bytes] | str:
         """调用一个 operation，返回 ``(给模型看的文本, 是否出错)``。
 
         4xx / 5xx 算出错但不抛异常：状态码与响应体对模型有用。
@@ -209,10 +209,10 @@ class HttpApiClient:
         try:
             method, url, query, headers, body = build_request(self._base_url, operation, args)
         except ValueError as exc:
-            return f"invalid_arguments: {exc}", True
+            return f"invalid_arguments: {exc}"
         auth_headers, auth_query = await self._credentials()
         if {name.lower() for name in headers} & {name.lower() for name in auth_headers}:
-            return "invalid_arguments: 工具头参数与平台凭据头冲突", True
+            return "invalid_arguments: 工具头参数与平台凭据头冲突"
         outgoing_headers = httpx.Headers({**headers, **auth_headers})
         if CONTEXT_HEADER in outgoing_headers:
             raise PermissionDeniedError("平台签名头不能由连接器凭据覆盖")
@@ -234,12 +234,42 @@ class HttpApiClient:
                     raw.extend(chunk)
                     if len(raw) > MAX_RESPONSE_BYTES:
                         break
-                return _render(response, bytes(raw)), response.status_code >= 400
+                return response, bytes(raw)
             finally:
                 await response.aclose()
         except httpx.HTTPError as exc:
             # 异常文本里可能带完整 URL（含查询参数里的凭据），只报类型
             raise ConnectorCallError(f"请求失败：{type(exc).__name__}") from exc
+
+    async def call(self, operation: Operation, args: dict[str, Any]) -> tuple[str, bool]:
+        """保留模型工具原有的文本响应契约。"""
+        result = await self._perform(operation, args)
+        if isinstance(result, str):
+            return result, True
+        response, raw = result
+        return _render(response, raw), response.status_code >= 400
+
+    async def call_structured(self, operation: Operation, args: dict[str, Any]) -> dict[str, Any]:
+        """人工辅助入口返回有界结构化结果，不把业务状态改写成操作成功。"""
+        result = await self._perform(operation, args)
+        if isinstance(result, str):
+            raise InvalidRequestError(result)
+        response, raw = result
+        truncated = len(raw) > MAX_RESPONSE_BYTES
+        content_type = response.headers.get("content-type", "").lower()
+        body: Any = None
+        if raw and not 300 <= response.status_code < 400:
+            if content_type.startswith(_TEXT_TYPES) or "json" in content_type:
+                body = raw[:MAX_RESPONSE_BYTES].decode(response.encoding or "utf-8", errors="replace")
+                if "json" in content_type and not truncated:
+                    try:
+                        body = json.loads(body)
+                    except ValueError:
+                        raise ConnectorCallError("响应 JSON 不合法") from None
+            else:
+                body = {"content_type": content_type, "bytes": min(len(raw), MAX_RESPONSE_BYTES)}
+        return {"status": response.status_code, "body": body,
+                "is_error": response.status_code >= 400, "truncated": truncated}
 
     async def close(self) -> None:
         """关闭连接。"""

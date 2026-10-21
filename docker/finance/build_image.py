@@ -22,7 +22,7 @@ def main() -> None:
                 shutil.copyfile(source / filename, target / filename)
             shutil.copytree(source / "src", target / "src",
                             ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-        subprocess.run(["docker", "build", "-t", "xuanpu-finance:2026.10.21.1", str(context)],
+        subprocess.run(["docker", "build", "-t", "xuanpu-finance:2026.10.21.2", str(context)],
                        check=True)
 
 

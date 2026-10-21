@@ -83,13 +83,13 @@ class ReadStore(FinanceBase):
         stamp, last = timestamp_cursor(cursor, scope, limit)
         async with self.pool.acquire() as conn, conn.transaction(isolation="repeatable_read"):
             role = await self._role(conn, who, entity)
-            args = (who.tenant_id, entity, who.user_id, role == "reviewer", number)
+            args = (who.tenant_id, entity, who.user_id, role, number)
             total = await conn.fetchval(
-                "SELECT count(*) FROM finance_invoice WHERE tenant_id=$1 AND legal_entity_id=$2 AND (owner_id=$3 OR $4) AND ($5::text IS NULL OR number=$5)",
+                "SELECT count(*) FROM finance_invoice WHERE tenant_id=$1 AND legal_entity_id=$2 AND (owner_id=$3 OR $4::text='reviewer' OR ($4::text='approver' AND EXISTS(SELECT 1 FROM finance_allocation a JOIN finance_workflow w ON(w.tenant_id=a.tenant_id AND w.legal_entity_id=a.legal_entity_id AND w.document_id=a.document_id) JOIN finance_workflow_step s ON(s.tenant_id=w.tenant_id AND s.legal_entity_id=w.legal_entity_id AND s.workflow_id=w.id) WHERE a.tenant_id=finance_invoice.tenant_id AND a.legal_entity_id=finance_invoice.legal_entity_id AND a.invoice_id=finance_invoice.id AND s.approver_user_id=$3))) AND ($5::text IS NULL OR number=$5)",
                 *args,
             )
             rows = await conn.fetch(
-                "SELECT data,received_at,id FROM finance_invoice WHERE tenant_id=$1 AND legal_entity_id=$2 AND (owner_id=$3 OR $4) AND ($5::text IS NULL OR number=$5) AND ($6::timestamptz IS NULL OR (received_at,id)>($6,$7::text)) ORDER BY received_at,id LIMIT $8",
+                "SELECT data,received_at,id FROM finance_invoice WHERE tenant_id=$1 AND legal_entity_id=$2 AND (owner_id=$3 OR $4::text='reviewer' OR ($4::text='approver' AND EXISTS(SELECT 1 FROM finance_allocation a JOIN finance_workflow w ON(w.tenant_id=a.tenant_id AND w.legal_entity_id=a.legal_entity_id AND w.document_id=a.document_id) JOIN finance_workflow_step s ON(s.tenant_id=w.tenant_id AND s.legal_entity_id=w.legal_entity_id AND s.workflow_id=w.id) WHERE a.tenant_id=finance_invoice.tenant_id AND a.legal_entity_id=finance_invoice.legal_entity_id AND a.invoice_id=finance_invoice.id AND s.approver_user_id=$3))) AND ($5::text IS NULL OR number=$5) AND ($6::timestamptz IS NULL OR (received_at,id)>($6,$7::text)) ORDER BY received_at,id LIMIT $8",
                 *args,
                 stamp,
                 last,
@@ -101,7 +101,14 @@ class ReadStore(FinanceBase):
                 if len(rows) > limit
                 else None
             )
-            return page([decode(row["data"]) for row in visible], total, next_cursor)
+            return page(
+                [
+                    await self._invoice_snapshot(conn, who.tenant_id, entity, row["data"])
+                    for row in visible
+                ],
+                total,
+                next_cursor,
+            )
 
     async def get_invoice(self, who: FinancePrincipal, id: str) -> dict[str, Any]:
         """读取本人或授权 reviewer 可见的票面快照。"""
@@ -109,8 +116,10 @@ class ReadStore(FinanceBase):
             row = await conn.fetchrow(
                 "SELECT * FROM finance_invoice WHERE tenant_id=$1 AND id=$2", who.tenant_id, id
             )
-            row = await self._authorize(conn, who, row)
-            return decode(row["data"])
+            row = await self._authorize_invoice(conn, who, row)
+            return await self._invoice_snapshot(
+                conn, who.tenant_id, row["legal_entity_id"], row["data"]
+            )
 
     async def list_invoice_lines(
         self, who: FinancePrincipal, id: str, cursor: str | None = None, limit: int = 50
@@ -134,7 +143,7 @@ class ReadStore(FinanceBase):
             row = await conn.fetchrow(
                 "SELECT * FROM finance_invoice WHERE tenant_id=$1 AND id=$2", who.tenant_id, id
             )
-            row = await self._authorize(conn, who, row)
+            row = await self._authorize_invoice(conn, who, row)
             args = (who.tenant_id, row["legal_entity_id"], id)
             if kind == "lines":
                 total = await conn.fetchval(
@@ -170,7 +179,7 @@ class ReadStore(FinanceBase):
             row = await conn.fetchrow(
                 "SELECT * FROM finance_invoice WHERE tenant_id=$1 AND id=$2", who.tenant_id, id
             )
-            row = await self._authorize(conn, who, row)
+            row = await self._authorize_invoice(conn, who, row)
             records = await conn.fetch(
                 "SELECT r.* FROM finance_receipt r JOIN finance_invoice_receipt l USING(tenant_id,legal_entity_id) WHERE l.invoice_id=$3 AND l.receipt_id=r.id AND r.tenant_id=$1 AND r.legal_entity_id=$2 ORDER BY r.id LIMIT 1000",
                 who.tenant_id,
@@ -220,18 +229,9 @@ class ReadStore(FinanceBase):
                     "version": record["version"],
                     "legal_entity_id": entity,
                     "rule_id": record["rule_id"],
-                    "severity": "hard_block",
+                    "severity": record["severity"],
                     "status": record["status"],
-                    "evidence": [
-                        {
-                            "id": record["receipt_id"],
-                            "kind": "source",
-                            "sha256": record["sha256"],
-                            "verification_state": "not_checked",
-                        }
-                    ]
-                    if record["receipt_id"]
-                    else [],
+                    "evidence": await self._exception_evidence(conn, record),
                 }
                 for record in visible
             ]

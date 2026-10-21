@@ -26,6 +26,7 @@ from xuanpu_server.identity.feishu import DEFAULT_TIMEOUT_SECONDS, FeishuClient
 from xuanpu_server.identity.listeners import CLOSE_SESSIONS, CloseUserSessions
 from xuanpu_server.identity.service import IdentityService
 from xuanpu_server.ids import new_id
+from xuanpu_server.manual_connectors import ManualConnectorService
 from xuanpu_server.metrics import PlatformMetrics
 from xuanpu_server.objectstore import LocalObjectStore
 from xuanpu_server.packages import PackageRegistry
@@ -40,7 +41,7 @@ from xuanpu_server.runtime.assembler import (
     RuntimeDefaults,
     StateBackendFactory,
 )
-from xuanpu_server.runtime.call_context import CallContextSigner
+from xuanpu_server.runtime.call_context import CallContextSigner, HumanContextSigner
 from xuanpu_server.runtime.connector_process import install_kernel_mcp_log_guard
 from xuanpu_server.runtime.events import SubmissionIndex
 from xuanpu_server.runtime.sessions import SessionManager
@@ -121,6 +122,7 @@ class Platform:
         lease_seconds: float = 60.0,
         shutdown_drain_seconds: float = 0.0,
         feishu_transport: httpx.AsyncBaseTransport | None = None,
+        manual_http_transport: httpx.AsyncBaseTransport | None = None,
         proactive_interval: float = 1800.0,
         proactive_scan_seconds: float = 60.0,
         now: Callable[[], float] = time.time,
@@ -210,6 +212,9 @@ class Platform:
         self.packages = PackageRegistry(
             store, self.audit, data_dir=data_dir, objects=self.objects, now=now
         )
+        self.manual_connectors = ManualConnectorService(packages=self.packages, vault=vault,
+            audit=self.audit, signer=None if call_context is None else HumanContextSigner(
+                config=call_context, vault=vault, now=now), transport=manual_http_transport)
         self.work_tasks = WorkTaskService(self.workspace, self.packages,
             process_owner=self.instance_id, now=now)
         submissions = SubmissionIndex()

@@ -1,0 +1,444 @@
+{
+  "started_at": "2026-10-21T08:32:45.978096+00:00",
+  "project": "finance-f1-smoke-be8e942fb71a",
+  "result": "passed",
+  "image": "xuanpu-finance:2026.10.21.2",
+  "image_id_expected": "sha256:2a65786ae5347dd7470b877e8d6503da0230ec82ce73baaf5abd79977e39b33d",
+  "database_image_used": "postgres:16-alpine",
+  "official_compose_database_image": "postgres:17-alpine",
+  "identity_boundary": "Temporary authenticated online identity stub for synthetic owner/reviewer. Real EdDSA signatures, request binding, origin, PostgreSQL, API, image and container restart are exercised. No real platform cookie session, real invoice, tax verification, payment, posting, notification or production is claimed.",
+  "steps": [
+    {
+      "step": "container_health",
+      "http_status": 200,
+      "body": {
+        "status": "ok",
+        "mode": "enabled"
+      }
+    },
+    {
+      "step": "POST /v1/finance/expense-claims",
+      "actor": "owner",
+      "origin": "human",
+      "http_status": 201,
+      "response": {
+        "id": "736b48e6a62c4382b477dbd1c57efd3b",
+        "kind": "expense_claim",
+        "legal_entity_id": "smoke-company",
+        "version": 1,
+        "status": "draft",
+        "total": "123.45",
+        "owner_id": "owner",
+        "record_mode": "internal_record",
+        "content": {
+          "lines": [
+            {
+              "amount": "123.45",
+              "reason": "合成内部交通记录",
+              "category_id": "travel",
+              "occurred_on": "2026-10-21"
+            }
+          ],
+          "reason": "容器真实烟测内部记录",
+          "evidence_ids": [],
+          "legal_entity_id": "smoke-company"
+        },
+        "allocation_ids": [],
+        "evidence": []
+      }
+    },
+    {
+      "step": "POST /v1/finance/action-previews",
+      "actor": "owner",
+      "origin": "human",
+      "http_status": 201,
+      "response": {
+        "id": "a9485699f8df40ab960e35055b0cdbc3",
+        "version": 1,
+        "legal_entity_id": "smoke-company",
+        "action": "submit_claim",
+        "target_type": "expense_claim",
+        "target_id": "736b48e6a62c4382b477dbd1c57efd3b",
+        "target_version": 1,
+        "parameters": {},
+        "expires_at": "2026-10-21T08:48:02.456953+00:00",
+        "required_approvals": [
+          "reviewer"
+        ],
+        "effects": [
+          "预留发票额度并开始人工审批",
+          "内部记录，未关联结构化发票时不代表付款、入账或验真"
+        ],
+        "digest": "6cf231224fd3a36ca1bb6208bf1869b5373ba0ce1d9e4e1a251288510d4c147e",
+        "executable": true,
+        "blockers": []
+      }
+    },
+    {
+      "step": "POST /v1/finance/action-executions",
+      "actor": "owner",
+      "origin": "agent",
+      "http_status": 403,
+      "response": {
+        "code": "HUMAN_REQUIRED",
+        "message": "请本人在人工确认入口作出业务决定",
+        "trace_id": "00d026b17e7846dc9c013f7b3290f0c1",
+        "retryable": false
+      }
+    },
+    {
+      "step": "POST /v1/finance/action-executions",
+      "actor": "owner",
+      "origin": "human",
+      "http_status": 202,
+      "response": {
+        "id": "f1op_7a115b7e174049dc83935066b5dd4b1a",
+        "version": 1,
+        "status": "succeeded",
+        "business_result": "succeeded",
+        "trace_id": "6197410e505a431192411e00f2814b67",
+        "items": [],
+        "result_refs": [],
+        "resources": [
+          {
+            "kind": "expense_claim",
+            "id": "736b48e6a62c4382b477dbd1c57efd3b"
+          }
+        ]
+      }
+    },
+    {
+      "step": "GET /v1/finance/expense-claims/736b48e6a62c4382b477dbd1c57efd3b",
+      "actor": "owner",
+      "origin": "human",
+      "http_status": 200,
+      "response": {
+        "id": "736b48e6a62c4382b477dbd1c57efd3b",
+        "kind": "expense_claim",
+        "legal_entity_id": "smoke-company",
+        "version": 2,
+        "status": "under_review",
+        "total": "123.45",
+        "owner_id": "owner",
+        "record_mode": "internal_record",
+        "content": {
+          "lines": [
+            {
+              "amount": "123.45",
+              "reason": "合成内部交通记录",
+              "category_id": "travel",
+              "occurred_on": "2026-10-21"
+            }
+          ],
+          "reason": "容器真实烟测内部记录",
+          "evidence_ids": [],
+          "legal_entity_id": "smoke-company"
+        },
+        "allocation_ids": [],
+        "evidence": [],
+        "workflow_id": "9f1b8813044a496ab9a2dd5c6fb889ee",
+        "workflow_version": 1,
+        "due_at": "2026-10-24T08:33:02.470385+00:00",
+        "workflow": {
+          "id": "9f1b8813044a496ab9a2dd5c6fb889ee",
+          "version": 1,
+          "status": "under_review",
+          "target_version": 2,
+          "policy_version": 1,
+          "due_at": "2026-10-24T08:33:02.470385+00:00",
+          "provider": "internal",
+          "current_step_id": "2fc99333dc414f31a82f9b42e53f3961",
+          "steps": [
+            {
+              "id": "2fc99333dc414f31a82f9b42e53f3961",
+              "version": 1,
+              "name": "人工审批",
+              "approver_user_id": "reviewer",
+              "status": "pending"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": "GET /v1/finance/review-queue",
+      "actor": "reviewer",
+      "origin": "human",
+      "http_status": 200,
+      "response": {
+        "items": [
+          {
+            "workflow_step_id": "2fc99333dc414f31a82f9b42e53f3961",
+            "target_id": "736b48e6a62c4382b477dbd1c57efd3b",
+            "target_type": "expense_claim",
+            "target_version": 2,
+            "summary": "容器真实烟测内部记录",
+            "total": "123.45",
+            "evidence": [],
+            "workflow_id": "9f1b8813044a496ab9a2dd5c6fb889ee",
+            "workflow_version": 1,
+            "step_version": 1,
+            "approver_user_id": "reviewer",
+            "status": "pending",
+            "due_at": "2026-10-24T08:33:02.470385+00:00",
+            "blockers": []
+          }
+        ],
+        "total": 1,
+        "next_cursor": null
+      }
+    },
+    {
+      "step": "GET /v1/finance/expense-claims/736b48e6a62c4382b477dbd1c57efd3b",
+      "actor": "owner",
+      "origin": "human",
+      "http_status": 200,
+      "response": {
+        "id": "736b48e6a62c4382b477dbd1c57efd3b",
+        "kind": "expense_claim",
+        "legal_entity_id": "smoke-company",
+        "version": 2,
+        "status": "under_review",
+        "total": "123.45",
+        "owner_id": "owner",
+        "record_mode": "internal_record",
+        "content": {
+          "lines": [
+            {
+              "amount": "123.45",
+              "reason": "合成内部交通记录",
+              "category_id": "travel",
+              "occurred_on": "2026-10-21"
+            }
+          ],
+          "reason": "容器真实烟测内部记录",
+          "evidence_ids": [],
+          "legal_entity_id": "smoke-company"
+        },
+        "allocation_ids": [],
+        "evidence": [],
+        "workflow_id": "9f1b8813044a496ab9a2dd5c6fb889ee",
+        "workflow_version": 1,
+        "due_at": "2026-10-24T08:33:02.470385+00:00",
+        "workflow": {
+          "id": "9f1b8813044a496ab9a2dd5c6fb889ee",
+          "version": 1,
+          "status": "under_review",
+          "target_version": 2,
+          "policy_version": 1,
+          "due_at": "2026-10-24T08:33:02.470385+00:00",
+          "provider": "internal",
+          "current_step_id": "2fc99333dc414f31a82f9b42e53f3961",
+          "steps": [
+            {
+              "id": "2fc99333dc414f31a82f9b42e53f3961",
+              "version": 1,
+              "name": "人工审批",
+              "approver_user_id": "reviewer",
+              "status": "pending"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": "GET /v1/finance/review-queue",
+      "actor": "reviewer",
+      "origin": "human",
+      "http_status": 200,
+      "response": {
+        "items": [
+          {
+            "workflow_step_id": "2fc99333dc414f31a82f9b42e53f3961",
+            "target_id": "736b48e6a62c4382b477dbd1c57efd3b",
+            "target_type": "expense_claim",
+            "target_version": 2,
+            "summary": "容器真实烟测内部记录",
+            "total": "123.45",
+            "evidence": [],
+            "workflow_id": "9f1b8813044a496ab9a2dd5c6fb889ee",
+            "workflow_version": 1,
+            "step_version": 1,
+            "approver_user_id": "reviewer",
+            "status": "pending",
+            "due_at": "2026-10-24T08:33:02.470385+00:00",
+            "blockers": []
+          }
+        ],
+        "total": 1,
+        "next_cursor": null
+      }
+    },
+    {
+      "step": "POST /v1/finance/action-previews",
+      "actor": "reviewer",
+      "origin": "human",
+      "http_status": 201,
+      "response": {
+        "id": "3117987b33454c64afd5e83a68c18c7f",
+        "version": 1,
+        "legal_entity_id": "smoke-company",
+        "action": "approve",
+        "target_type": "expense_claim",
+        "target_id": "736b48e6a62c4382b477dbd1c57efd3b",
+        "target_version": 2,
+        "parameters": {
+          "workflow_step_id": "2fc99333dc414f31a82f9b42e53f3961"
+        },
+        "expires_at": "2026-10-21T08:48:03.526058+00:00",
+        "required_approvals": [],
+        "effects": [
+          "记录本人决定并推进审批；最后一步通过后形成报销批准，额度仍预留",
+          "内部记录，未关联结构化发票时不代表付款、入账或验真"
+        ],
+        "workflow_id": "9f1b8813044a496ab9a2dd5c6fb889ee",
+        "digest": "66a86bd1b7c36193536165c20bd8dc994d0e9282587c8197245181bb127ed186",
+        "executable": true,
+        "blockers": []
+      }
+    },
+    {
+      "step": "POST /v1/finance/action-executions",
+      "actor": "reviewer",
+      "origin": "human",
+      "http_status": 202,
+      "response": {
+        "id": "f1op_a8f1cf767bcd4b65b0eb47d130895758",
+        "version": 1,
+        "status": "succeeded",
+        "business_result": "succeeded",
+        "trace_id": "592ca0ff1cb84f0aabbc6ac13afd4564",
+        "items": [],
+        "result_refs": [],
+        "resources": [
+          {
+            "kind": "expense_claim",
+            "id": "736b48e6a62c4382b477dbd1c57efd3b"
+          }
+        ]
+      }
+    },
+    {
+      "step": "GET /v1/finance/expense-claims/736b48e6a62c4382b477dbd1c57efd3b",
+      "actor": "owner",
+      "origin": "human",
+      "http_status": 200,
+      "response": {
+        "id": "736b48e6a62c4382b477dbd1c57efd3b",
+        "kind": "expense_claim",
+        "legal_entity_id": "smoke-company",
+        "version": 3,
+        "status": "approved",
+        "total": "123.45",
+        "owner_id": "owner",
+        "record_mode": "internal_record",
+        "content": {
+          "lines": [
+            {
+              "amount": "123.45",
+              "reason": "合成内部交通记录",
+              "category_id": "travel",
+              "occurred_on": "2026-10-21"
+            }
+          ],
+          "reason": "容器真实烟测内部记录",
+          "evidence_ids": [],
+          "legal_entity_id": "smoke-company"
+        },
+        "allocation_ids": [],
+        "evidence": [],
+        "workflow_id": "9f1b8813044a496ab9a2dd5c6fb889ee",
+        "workflow_version": 2,
+        "due_at": "2026-10-24T08:33:02.470385+00:00",
+        "workflow": {
+          "id": "9f1b8813044a496ab9a2dd5c6fb889ee",
+          "version": 2,
+          "status": "approved",
+          "target_version": 2,
+          "policy_version": 1,
+          "due_at": "2026-10-24T08:33:02.470385+00:00",
+          "provider": "internal",
+          "current_step_id": null,
+          "steps": [
+            {
+              "id": "2fc99333dc414f31a82f9b42e53f3961",
+              "version": 2,
+              "name": "人工审批",
+              "approver_user_id": "reviewer",
+              "status": "approved"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": "GET /v1/finance/review-queue",
+      "actor": "reviewer",
+      "origin": "human",
+      "http_status": 200,
+      "response": {
+        "items": [],
+        "total": 0,
+        "next_cursor": null
+      }
+    }
+  ],
+  "image_id_actual": "sha256:2a65786ae5347dd7470b877e8d6503da0230ec82ce73baaf5abd79977e39b33d",
+  "image_user": "10001:10001",
+  "runtime_guards": {
+    "container_user": "10001:10001",
+    "read_only_root": true,
+    "cap_drop": [
+      "ALL"
+    ],
+    "security_opt": [
+      "no-new-privileges:true"
+    ],
+    "memory_bytes": 536870912,
+    "pids_limit": 64,
+    "network_mode": "finance-f1-smoke-be8e942fb71a_finance"
+  },
+  "host_port_resolution": {
+    "dynamic_binding_reloaded_after_restart": true,
+    "before": "63343",
+    "after": "63453",
+    "host_ip": "127.0.0.1"
+  },
+  "restart": {
+    "same_container": true,
+    "started_before": "2026-10-21T08:32:51.687885795Z",
+    "started_after": "2026-10-21T08:33:02.86636555Z",
+    "claim_id_preserved": true,
+    "claim_version_preserved": true,
+    "workflow_id_preserved": true,
+    "workflow_step_id_preserved": true,
+    "queue_total_before": 1,
+    "queue_total_after": 1
+  },
+  "database_checks": {
+    "database": "finance",
+    "version_major": 16,
+    "claims": 1,
+    "approved": 1,
+    "decisions": 1,
+    "grant_scope": "expense_approved",
+    "grant_active": true,
+    "business_operations": 2,
+    "outbox_pending": 2,
+    "invoice_count": 0,
+    "allocation_count": 0,
+    "f0_import_count": 0
+  },
+  "identity_stub_requests": 12,
+  "cleanup": {
+    "compose_down_exit_code": 0,
+    "remaining_containers": 0,
+    "remaining_volumes": 0,
+    "remaining_networks": 0,
+    "temporary_runtime_removed": true,
+    "temporary_signing_key_discarded": true,
+    "identity_stub_stopped": true,
+    "existing_test_pg_60031_untouched": true
+  },
+  "finished_at": "2026-10-21T08:33:04.548630+00:00"
+}

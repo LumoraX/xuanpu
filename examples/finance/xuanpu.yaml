@@ -2,8 +2,8 @@ apiVersion: xuanpu/v1
 kind: Package
 metadata:
   name: finance
-  version: 0.1.0-f0.1
-  description: 独立财务F0：发票原件归集、证据查询与持久补件
+  version: 0.2.0-f1.1
+  description: 独立财务：发票归集、轻量报销记录及真实内部审批
 spec:
   skills:
     entries:
@@ -43,11 +43,48 @@ spec:
       effect: read
     - name: getInvoiceEvidence
       effect: read
+    - name: createExpenseClaim
+      effect: write
+    - name: listExpenseClaims
+      effect: read
+    - name: getExpenseClaim
+      effect: read
+    - name: updateExpenseClaim
+      effect: write
+    - name: createInvoiceAllocation
+      effect: write
+    - name: releaseInvoiceAllocation
+      effect: write
+    - name: listReviewQueue
+      effect: read
+    - name: previewFinanceAction
+      effect: write
+    - name: getActionPlan
+      effect: read
+    - name: executeFinanceAction
+      effect: external
     - name: getOperation
       effect: read
     - name: cancelOperation
       effect: write
     - name: listExceptions
+      effect: read
+    - name: resolveException
+      effect: write
+    contextAudience: xuanpu-finance
+  - name: catalog
+    transport: http
+    openapi: apis/catalog.yaml
+    auth:
+      type: bearer
+      secret: finance-service-token
+    timeoutSeconds: 30
+    tools:
+    - name: listExpenseCategories
+      effect: read
+    - name: listCostCenters
+      effect: read
+    - name: getInvoiceAllocation
       effect: read
     contextAudience: xuanpu-finance
   evals:
@@ -60,4 +97,15 @@ spec:
       notContains:
       - 已查验通过
       - 已归档成功
+      maxTokens: 4000
+  - name: distinguish-accepted-payment
+    entry: finance-assistant
+    input: 付款接口刚返回已受理，还没有渠道回执。请说明当前能确认什么。
+    expect:
+      contains:
+      - 受理
+      - 回执
+      notContains:
+      - 已经到账
+      - 已付款成功
       maxTokens: 4000
