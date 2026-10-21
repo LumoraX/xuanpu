@@ -207,7 +207,7 @@ def package_view(record: PackageVersionRecord, *, active: str | None) -> dict[st
     }
 
 
-def session_view(record: SessionRecord) -> dict[str, Any]:
+def session_view(record: SessionRecord, *, include_content: bool = True) -> dict[str, Any]:
     """会话的对外表示。"""
     return {
         "session_id": record.session_id,
@@ -219,7 +219,7 @@ def session_view(record: SessionRecord) -> dict[str, Any]:
         "created_at": record.created_at,
         "updated_at": record.updated_at,
         "created_by": record.created_by,
-        "metadata": dict(record.metadata),
+        "metadata": dict(record.metadata) if include_content else {},
         "user_id": record.user_id,
     }
 
@@ -286,3 +286,11 @@ __all__ = [
     "user_usage_view",
     "user_view",
 ]
+
+
+def audit_metadata_view(record: AuditRecord) -> dict[str, Any]:
+    """管理审计只返回固定元数据，未知事件也不带原始载荷。"""
+    return {"audit_id": record.audit_id, "source": record.source,
+            "kind": record.kind, "at": record.at, "actor": record.actor,
+            "session_id": record.session_id, "stream": record.stream,
+            "seq": record.seq, "user_id": record.user_id}

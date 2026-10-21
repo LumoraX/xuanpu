@@ -43,5 +43,5 @@ if [[ "$OUTPUT_MODE" == push ]]; then
     mv "$ENV_FILE.next" "$ENV_FILE"
     echo "镜像已发布：$IMAGE:$VERSION"
 else
-    echo "镜像已载入本地：$IMAGE:$VERSION；未更新服务器发布版本"
+    echo "镜像已载入本地：${IMAGE}:${VERSION}；未更新服务器发布版本"
 fi

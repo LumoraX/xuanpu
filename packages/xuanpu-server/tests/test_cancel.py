@@ -473,15 +473,14 @@ async def test_cancelling_a_queued_resume_is_not_a_backfill_failure(
         world.member, session.session_id, submission_id=second.submission_id
     )
     assert cancelled == [second.submission_id]
-    events = await read_turn(second, timeout=10)
-    assert [(e.msg.kind, e.msg.data.get("kind")) for e in events] == [("turn_failed", "cancelled")]
+    assert second.replayed and second.submission_id == first.submission_id
     gate.set()
     await asyncio.wait_for(first_task, 10)
 
     metrics = world.platform.metrics.render().decode("utf-8")
     assert 'xuanpu_gate_backfill_failures_total{stage="unconfirmed"} 0.0' in metrics
     assert not [r for r in caplog.records if r.levelname == "ERROR"]
-    assert any(second.submission_id in r.getMessage() for r in caplog.records)
+    assert first_events[-1].msg.data["end_reason"] == "cancelled"
     records = await world.platform.store.query_audit("acme", AuditQuery(source="gate"))
     assert [(r.data["call_id"], r.data["decision"]) for r in records] == [("c1", "rejected")]
 

@@ -16,7 +16,7 @@ import pytest
 import taifeng
 from xuanpu_server.audit import AuditLog, digest_arguments
 from xuanpu_server.controlplane import AuditQuery, AuditRecord, InMemoryControlPlane
-from xuanpu_server.errors import InvalidRequestError
+from xuanpu_server.errors import ConflictError, InvalidRequestError
 from xuanpu_server.runtime.connectors import ConnectorGate
 from xuanpu_server.runtime.events import SubmissionIndex
 from xuanpu_server.runtime.gate_audit import (
@@ -192,8 +192,10 @@ async def outcome(read_turn: Any, resuming: Any) -> Any:
     """一次送回的结局：读完的事件种类；平台按重复送回拒绝时是 ``"invalid_request"``。"""
     try:
         turn = await resuming
-    except InvalidRequestError:
+    except (InvalidRequestError, ConflictError):
         return "invalid_request"
+    if getattr(turn, "replayed", False):
+        return "replayed"
     return [event.msg.kind for event in await read_turn(turn, timeout=10)]
 
 
@@ -206,8 +208,8 @@ async def test_repeated_rejection_is_recorded_once(world: Any, step: Any, read_t
     await read_turn(
         await world.platform.sessions.resume(world.member, session.session_id, resolutions)
     )
-    with pytest.raises(InvalidRequestError, match="已经处理过"):
-        await world.platform.sessions.resume(world.member, session.session_id, resolutions)
+    replay = await world.platform.sessions.resume(world.member, session.session_id, resolutions)
+    assert replay.replayed
     assert [r.data["decision"] for r in await gate_records(world)] == ["rejected"]
 
 
@@ -227,7 +229,7 @@ async def test_quick_or_concurrent_repeats_are_recorded_once(
     first = await sessions.resume(world.member, sid, resolutions)
     second = await outcome(read_turn, sessions.resume(world.member, sid, resolutions))
     assert (await read_turn(first, timeout=10))[-1].msg.kind == "turn_completed"
-    assert second in ("invalid_request", ["suspension_resolve_rejected"])
+    assert second in ("invalid_request", "conflict", "replayed", ["suspension_resolve_rejected"])
     assert [r.data["call_id"] for r in await gate_records(world)] == ["c1"]
 
     session, _, pending = await suspend(
@@ -238,7 +240,7 @@ async def test_quick_or_concurrent_repeats_are_recorded_once(
         outcome(read_turn, sessions.resume(world.member, session.session_id, resolutions)),
         outcome(read_turn, sessions.resume(world.member, session.session_id, resolutions)),
     )
-    assert sum(1 for kinds in both if kinds != "invalid_request" and "turn_completed" in kinds) == 1
+    assert sum(1 for kinds in both if isinstance(kinds, list) and "turn_completed" in kinds) == 1
     assert [r.data["call_id"] for r in await gate_records(world)] == ["c1", "c2"]
 
 
@@ -260,7 +262,7 @@ async def test_concurrent_repeats_during_partial_resolution_are_recorded_once(
         outcome(read_turn, world.platform.sessions.resume(world.member, session.session_id, resolutions)),
         outcome(read_turn, world.platform.sessions.resume(world.member, session.session_id, resolutions)),
     )  # fmt: skip
-    assert all(kinds in ("invalid_request", ["suspension_partially_resolved"]) for kinds in both), (
+    assert all(kinds in ("invalid_request", "conflict", "replayed", ["suspension_partially_resolved"]) for kinds in both), (
         both
     )
     [record] = await gate_records(world)
@@ -327,7 +329,7 @@ async def test_partial_then_repeat_plus_new_rejection(
     )
     assert partial[-1].msg.kind == "suspension_partially_resolved"
     both = {by_call["c1"]: {"granted": False}, by_call["c2"]: {"granted": False}}
-    with pytest.raises(InvalidRequestError, match=by_call["c1"]):
+    with pytest.raises(ConflictError):
         await sessions.resume(world.member, sid, both)
     remaining = await sessions.pending(world.member, sid)
     assert [item["request_id"] for item in remaining] == [by_call["c2"]]
@@ -357,9 +359,9 @@ async def test_resending_a_settled_approval_is_refused(
     sessions, sid = world.platform.sessions, session.session_id
     await read_turn(await sessions.resume(world.member, sid, {by_call["c1"]: {"granted": True}}))
     again = {by_call["c1"]: {"granted": True}, by_call["c2"]: {"granted": False}}
-    with pytest.raises(InvalidRequestError, match="已经处理过") as caught:
+    with pytest.raises(ConflictError) as caught:
         await sessions.resume(world.member, sid, again)
-    assert caught.value.code == "invalid_request"
+    assert caught.value.code == "conflict"
     assert world.calls() == [{"name": "update_ticket", "arguments": {"id": "T-1"}}]
     assert [r.data["decision"] for r in await gate_records(world)] == ["allowed"]
 
@@ -454,9 +456,9 @@ async def test_incomplete_is_counted_only_after_the_resume_is_submitted(
     assert f"{stage} 0.0" in world.platform.metrics.render().decode("utf-8")
 
     monkeypatch.delattr(live.engine, "submit")
-    resumed = await sessions.resume(world.member, session.session_id, resolutions)
-    assert (await read_turn(resumed))[-1].msg.kind == "turn_completed"
-    assert f"{stage} 1.0" in world.platform.metrics.render().decode("utf-8")
+    with pytest.raises(ConflictError, match="核实"):
+        await sessions.resume(world.member, session.session_id, resolutions)
+    assert f"{stage} 0.0" in world.platform.metrics.render().decode("utf-8")
     assert await gate_records(world) == []
 
 

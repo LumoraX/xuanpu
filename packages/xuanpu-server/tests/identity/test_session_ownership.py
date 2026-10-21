@@ -264,8 +264,8 @@ async def test_disabled_owner_blocks_messages_and_resume(ident: Any, step: Any) 
             ("POST", "/resume", {"resolutions": {request_id: {"granted": True}}}),
         ):
             response = await call(ident, headers, operation, session_id)
-            assert response.status_code == 403, response.text
-            assert response.json()["error"]["code"] == "session_owner_disabled"
+            assert response.status_code == 404, response.text
+            assert response.json()["error"]["code"] == "not_found"
     assert len(ident.world.models.requests) == requests_before
     assert ident.world.calls() == []
     kinds = {"message_sent", "suspension_resolved_by"}
@@ -276,7 +276,7 @@ async def test_disabled_owner_blocks_messages_and_resume(ident: Any, step: Any) 
 
     admin_key = bearer(ident.world.admin_key)
     pending = await call(ident, admin_key, ("GET", "/pending", None), session_id)
-    assert [item["request_id"] for item in pending.json()["pending"]] == [request_id]
+    assert pending.status_code == 404
     stopped = await call(ident, admin_key, ("POST", "/cancel", None), session_id)
     assert (stopped.status_code, stopped.json()) == (200, {"cancelled": []})
     closed = await call(ident, admin_key, ("DELETE", "", None), session_id)
@@ -287,7 +287,7 @@ async def test_owner_status_is_read_on_every_request(ident: Any, step: Any) -> N
     """主人状态每次请求都查身份存储，不缓存：停用立即拦住，重新启用立即放行。"""
     alice = await ident.user(name="爱丽丝")
     session_id = (await create(ident, await cookie_of(ident, alice)))["session_id"]
-    admin_key = bearer(ident.world.admin_key)
+    admin_key = act_as(await ident.system_key(), alice)
     message = ("POST", "/messages", {"text": "你好"})
     ident.world.models.script(step(text="第一句"), step(text="第二句"))
     assert (await call(ident, admin_key, message, session_id)).status_code == 200
@@ -324,6 +324,6 @@ async def test_missing_owner_record_is_an_internal_error(caplog: Any) -> None:
         caplog.at_level(logging.ERROR, logger="xuanpu_server.runtime.ownership"),
         pytest.raises(PlatformError) as caught,
     ):
-        await ownership.writable(admin, "ses_1")
+        await ownership.writable(Principal("tenant_member", "acme", None, user_id="usr_ghost"), "ses_1")
     assert (caught.value.code, caught.value.status) == ("internal_error", 500)
     assert "usr_ghost" in caplog.text

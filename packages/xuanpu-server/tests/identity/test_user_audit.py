@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -69,7 +70,7 @@ async def test_session_records_belong_to_the_owner(ident: Any, step: Any, read_t
     记录，以及会话上的控制面操作。管理员的 key 在这个会话里批准、拒绝、发消息、关闭，``actor`` 是
     这把 key，``user_id`` 仍是会话主人。"""
     alice, who = await employee(ident, name="爱丽丝")
-    admin = ident.world.admin
+    admin = replace(ident.world.admin, user_id=alice.user_id)
     sessions = ident.world.platform.sessions
     session = await sessions.create(who, package="support-desk")
     ident.world.models.script(
@@ -104,7 +105,7 @@ async def test_session_records_belong_to_the_owner(ident: Any, step: Any, read_t
     control = [
         (record.kind, record.actor, record.user_id)
         for record in records
-        if record.source == "control"
+        if record.source == "control" and record.kind != "operation_settled"
     ]
     assert control == [
         ("session_created", who.actor, alice.user_id),
@@ -212,8 +213,8 @@ async def test_audit_query_filters_by_user(ident: Any, step: Any, read_turn: Any
     records = response.json()["records"]
     assert {record["user_id"] for record in records} == {alice.user_id}
     assert {record["source"] for record in records} == {"control", "engine"}
-    texts = [record["data"]["text"] for record in records if record["kind"] == "turn_text"]
-    assert texts == ["给爱丽丝"]
+    assert any(record["kind"] == "turn_text" for record in records)
+    assert all("data" not in record for record in records)
 
     everything = await ident.http.get("/v1/audit", headers=admin, params={"limit": "1000"})
     owners = {record["user_id"] for record in everything.json()["records"]}
@@ -229,14 +230,15 @@ async def test_audit_query_filters_by_actor(ident: Any, step: Any, read_turn: An
     """``GET /v1/audit?actor=``：查某个管理员在别人会话里做了什么——记录归会话主人，``actor``
     是他。"""
     alice, alice_who = await employee(ident, name="爱丽丝")
+    delegated = replace(ident.world.admin, user_id=alice.user_id)
     sessions = ident.world.platform.sessions
     session = await sessions.create(alice_who, package="support-desk")
     ident.world.models.script(step(text="爱丽丝的"), step(text="管理员的"))
     await read_turn(await sessions.send_message(alice_who, session.session_id, "你好"))
-    await read_turn(await sessions.send_message(ident.world.admin, session.session_id, "我来"))
-    await sessions.close(ident.world.admin, session.session_id)
+    await read_turn(await sessions.send_message(delegated, session.session_id, "我来"))
+    await sessions.close(delegated, session.session_id)
 
-    params = {"actor": ident.world.admin.actor, "user_id": alice.user_id}
+    params = {"actor": delegated.actor, "user_id": alice.user_id}
     response = await ident.http.get(
         "/v1/audit", headers=bearer(ident.world.admin_key), params=params
     )
@@ -244,9 +246,9 @@ async def test_audit_query_filters_by_actor(ident: Any, step: Any, read_turn: An
     records = response.json()["records"]
     assert [record["kind"] for record in records] == ["message_sent", "session_closed"]
     assert {(record["actor"], record["user_id"]) for record in records} == {
-        (ident.world.admin.actor, alice.user_id)
+        (delegated.actor, alice.user_id)
     }
-    assert records[0]["data"]["text"] == "我来"
+    assert all("data" not in record for record in records)
 
 
 def test_submission_index_remembers_the_owner() -> None:

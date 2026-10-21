@@ -2,7 +2,18 @@
 
 面向安全、合规与运营：平台记下了什么、没记什么，怎么查、怎么导出，用量怎么算。
 
-## 一条审计记录
+## 管理查询与原始底账
+
+`GET /v1/audit` 和控制台只返回 `audit_id/source/kind/at/actor/session_id/stream/seq/user_id`，
+省略任意事件 `data`。管理员默认不能读其他员工正文、工具参数、错误内容或自由 metadata。
+本人内容经受限 history/events/pending 获取；代员工调用继续需要显式授权。R0 不开放调查取证入口。
+Python SDK 的 `AuditRecord.data` 在本接口返回中为 `None`；分页游标仍使用原始 audit_id。
+
+以下示例与字段表描述数据库追加底账，不是管理接口的响应。底账仍保留用于已授权内部服务和审计，
+不可把直接读库作为产品权限绕过。审批 `operation_settled.state=applied` 表示决定已应用，
+不等于外部业务成功；提交不确定保留 `outcome_unknown`，禁止自动重发。
+
+## 一条原始审计记录
 
 ```json
 {
@@ -52,7 +63,7 @@
 | 其余与会话无关的控制面操作（签发 key、写密钥、发布业务包、退出登录等） | 调用者代表的员工：浏览器登录的员工，或代员工调用时被代的员工；用 API key、根凭据直接调的为空 |
 | 飞书登录的几种记录 | 认出的员工，见下文 |
 
-会话的主人是建会话时调用者代表的员工；API key 直接建的会话没有主人，会话里的记录 `user_id` 都为空。比如管理员用自己的 API key 批准了员工张三会话里的一次写操作：`suspension_resolved_by` 的 `actor` 是那把 key、`user_id` 是张三；随后执行的那次调用的过闸记录 `actor` 是 `engine`、`user_id` 也是张三——两条都是张三会话里的记录。所以按 `user_id=张三` 能看到他会话里的全部经过（包括别人在里面做的事）；要查「这个管理员在别人的会话里做了什么」，按 `actor` 查（见下文「查询」）。
+会话的主人是建会话时调用者代表的员工；API key 直接建的会话没有主人，会话里的记录 `user_id` 都为空。比如获准代员工调用的 API key 代张三批准了他会话里的一次写操作：`suspension_resolved_by` 的 `actor` 是那把 key、`user_id` 是张三；随后执行的那次调用的过闸记录 `actor` 是 `engine`、`user_id` 也是张三——两条都是张三会话里的记录。所以按 `user_id=张三` 能看到他会话里的全部经过（包括别人在里面做的事）；要查「这个管理员在别人的会话里做了什么」，按 `actor` 查（见下文「查询」）。
 
 ## 三个来源
 
@@ -103,6 +114,7 @@
 | `connector`、`transport`、`tool` | 哪个连接器的哪个工具，走的什么传输（`stdio`、`remote`、`http`） |
 | `effect` | 副作用分类：`read` / `write` / `external` |
 | `decision` | `allowed`：放行并已调用。`denied` 留给策略直接拒绝的情况。`rejected`：人工拒绝（送回审批时 `granted` 不为真），调用没有发出——这条由平台在内核确认核销了这次拒绝之后补记，只对连接器工具补（脚本、命令被拒绝没有过闸记录） |
+| `outcome` | `not_dispatched` / `completed` / `failed` / `outcome_unknown`。写或外部调用已发出而错误、中断时保守标记未知，不能等同未执行 |
 | `is_error`、`detail` | 调用是否出错；出错时的简述（超时是 `timeout`）。调用已经发出、结果回来之前这一轮被强行中止（关闭会话、持有权丢了之后强制收尾、停机时等不到在途对话跑完）的，`detail` 是 `cancelled`、`is_error` 为 `true`：外部系统可能已经执行了，结果平台不知道。人工拒绝的 `detail` 是 `rejected_by_user`，`is_error` 为 `false` |
 | `duration_ms` | 耗时；人工拒绝的为 0 |
 | `arguments_digest` | 调用参数的 SHA-256 摘要。闸门发起审批时就算好、放进待办的 `detail.arguments_digest`，人工拒绝的补记用的是同一个值 |

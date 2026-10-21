@@ -6,7 +6,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import dataclasses
+import logging
 import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -66,6 +68,7 @@ if TYPE_CHECKING:
     from xuanpu_server.identity.service import IdentitySettings
     from xuanpu_server.identity.store import IdentityStore
     from xuanpu_server.objectstore import ObjectStore
+    from xuanpu_server.runtime.instance_guard import InstanceGuard
     from xuanpu_server.runtime.models import ModelClientFactory
     from xuanpu_server.runtime.sandbox import SandboxProvider
     from xuanpu_server.secrets import SecretVault
@@ -79,6 +82,11 @@ class IssuedKey:
 
     key: str
     record: ApiKeyRecord
+
+
+from xuanpu_server.runtime.instance_guard import FileInstanceGuard
+
+logger = logging.getLogger(__name__)
 
 
 class Platform:
@@ -96,6 +104,7 @@ class Platform:
         data_dir: Path,
         root_key_hash: str,
         metrics_token_hash: str | None = None,
+        instance_guard: InstanceGuard | None = None,
         objects: ObjectStore | None = None,
         states: StateBackendFactory | None = None,
         defaults: RuntimeDefaults | None = None,
@@ -136,6 +145,12 @@ class Platform:
         # 内核 MCP 客户端会把连接器 stdout 上的非 JSON 行原样写进日志；平台装配时给这些
         # logger 挂上过滤器（只记长度、截断长参数，见 connector_process 模块说明）
         install_kernel_mcp_log_guard()
+        self._instance_guard = instance_guard or FileInstanceGuard(data_dir)
+        self._instance_guard.on_lost = self._ownership_lost
+        self._started = False
+        self._closed = False
+        self._close_lock = asyncio.Lock()
+        self._failure_cleanup: asyncio.Task[None] | None = None
         self.store = store
         self.vault = vault
         self.data_dir = data_dir
@@ -227,29 +242,69 @@ class Platform:
             now=self._now,
         )
 
+    @property
+    def available(self) -> bool:
+        """丢失持有权或关闭后，不接受新的HTTP工作。"""
+        return self._started and not self._closed and not self._instance_guard.lost
+
+    def _ownership_lost(self) -> None:
+        """同步停接单，再独立取消后台和在途工作；不能自动重连续跑。"""
+        self.sessions.stop_accepting()
+        if self._failure_cleanup is None:
+            self._failure_cleanup = asyncio.create_task(self.close())
+            self._failure_cleanup.add_done_callback(self._cleanup_finished)
+
+    @staticmethod
+    def _cleanup_finished(task: asyncio.Task[None]) -> None:
+        """异常清理的失败必须可见，不能变成无人观察的任务异常。"""
+        if not task.cancelled() and task.exception() is not None:
+            logger.error("持有权丢失后的清理失败", exc_info=task.exception())
+
     async def start(self) -> None:
-        """清掉上次进程留下的暂存残留，再启动后台任务（会话续期、身份域的周期清理）。"""
-        await self.packages.start()
-        await self.sessions.start()
-        self.identity.start()
-        self.reminders.start()
-        self.proactive_worker.start()
+        """先获得单实例持有权，再启动全部后台工作。"""
+        if self._started:
+            return
+        if self._closed:
+            raise RuntimeError("已关闭的平台不能重新启动")
+        await self._instance_guard.acquire()
+        try:
+            await self.packages.start()
+            if self._closed or self._instance_guard.lost:
+                raise RuntimeError("启动准备期间已关闭或丢失持有权")
+            await self.sessions.start()
+            self.identity.start()
+            self.reminders.start()
+            self.proactive_worker.start()
+            self._started = True
+        except BaseException:
+            await self.close()
+            raise
 
     async def close(self) -> None:
-        """先取消并等身份维护和对账结束，再等员工停用后的后台收尾（最多几秒，见 ``identity.disable``），
-        停止接单、等在途对话跑完、释放会话、关闭运行时，最后关掉飞书客户端的连接。
+        """全部后台、执行及审计清理后才释放持有权，重复关闭也等待同一次清理。"""
+        async with self._close_lock:
+            if self._closed:
+                return
+            self._closed = True
+            self.sessions.stop_accepting()
+            errors: list[BaseException] = []
+            actions = (self.proactive_worker.close, self.reminders.close,
+                       self.notification_sender.close, self.assistant.close,
+                       self.identity.maintenance.close, self.identity.disabling.close,
+                       self._shutdown_sessions, self.runtimes.close, self.identity.close)
+            for action in actions:
+                try:
+                    await action()
+                except BaseException as exc:
+                    errors.append(exc)
+            if errors:
+                # 无法证明工作已退场时保留持有权，必须由进程退出释放。
+                raise BaseExceptionGroup("平台清理失败（持有权保留，需进程退出）", errors)
+            await self._instance_guard.close()
 
-        后台收尾要关会话，所以排在释放会话之前：会话管理还完整的时候让它们跑完。
-        """
-        await self.proactive_worker.close()
-        await self.reminders.close()
-        await self.notification_sender.close()
-        await self.assistant.close()
-        await self.identity.maintenance.close()
-        await self.identity.disabling.close()
-        await self.sessions.shutdown(drain_seconds=self._drain_seconds)
-        await self.runtimes.close()
-        await self.identity.close()
+    async def _shutdown_sessions(self) -> None:
+        """丢锁时不等待业务排空，正常关闭按配置等待。"""
+        await self.sessions.shutdown(drain_seconds=0 if self._instance_guard.lost else self._drain_seconds)
 
     # --- 认证 ---
 

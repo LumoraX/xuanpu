@@ -1,3 +1,4 @@
+execution_mode: single_instance  # R0 仅支持一个服务进程
 # xuanpu 平台服务的配置示例（正式部署，可以多实例）。各项含义见 docs/guides/operations.md。
 # 单机试用的最小配置见 xuanpu.trial.yaml。
 #

@@ -116,14 +116,18 @@ class LocalStateBackends:
 
 
 async def _close_in_order(
-    key: RuntimeKey, steps: list[tuple[str, Callable[[], Awaitable[None]]]]
+    key: RuntimeKey, steps: list[tuple[str, Callable[[], Awaitable[None]]]], *, strict: bool = False
 ) -> None:
     """按顺序收尾。某一步失败只记日志，不影响后面的收尾。"""
+    errors: list[Exception] = []
     for name, closer in steps:
         try:
             await closer()
-        except Exception:
+        except Exception as exc:
+            errors.append(exc)
             logger.exception("关闭运行时 %s 的%s失败", key, name)
+    if strict and errors:
+        raise ExceptionGroup("运行时资源未完全关闭", errors)
 
 
 def _release_steps(
@@ -170,7 +174,7 @@ class TenantRuntime:
             [
                 ("引擎池", self.pool.close),
                 *_release_steps(self.connectors, self.connector_sandbox, self.sandbox),
-            ],
+            ], strict=True,
         )
 
 
@@ -424,8 +428,14 @@ class RuntimeAssembler:
     async def close(self) -> None:
         """关闭全部运行时。"""
         runtimes, self._runtimes = list(self._runtimes.values()), {}
+        errors: list[Exception] = []
         for runtime in runtimes:
-            await runtime.close()
+            try:
+                await runtime.close()
+            except Exception as exc:
+                errors.append(exc)
+        if errors:
+            raise ExceptionGroup("部分运行时清理失败", errors)
 
 
 __all__ = [

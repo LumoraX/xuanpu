@@ -20,6 +20,7 @@ from xuanpu_server.controlplane.models import (
     UsageRecord,
 )
 from xuanpu_server.controlplane.postgres_audit import PostgresAuditStore
+from xuanpu_server.controlplane.postgres_receipts import PostgresReceiptStore
 from xuanpu_server.controlplane.schema import DEFAULT_NAMESPACE, ensure_current
 from xuanpu_server.errors import (
     ConflictError,
@@ -93,6 +94,7 @@ class PostgresControlPlane:
         """
         self.reminder_store = PostgresReminderStore(pool, namespace=namespace)
         self.workspace_store = PostgresWorkspaceStore(pool, namespace=namespace)
+        self.operation_receipts = PostgresReceiptStore(pool, namespace)
         self._pool = pool
         self._namespace = namespace
         names = ("tenant", "api_key", "package_version", "package_active", "secret", "session")

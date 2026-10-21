@@ -52,7 +52,7 @@ def history_router(platform: Platform) -> APIRouter:
         session_id: str, who: Caller, query: Annotated[HistoryQuery, Query()]
     ) -> dict[str, Any]:
         """按原始记录页推进游标：被过滤的空页仍可继续，单次查询成本有界。"""
-        session = await platform.sessions.get(who, session_id)
+        session = await platform.sessions.content(who, session_id)
         records = await platform.store.query_audit(
             session.tenant_id,
             AuditQuery(session_id=session.session_id, after_id=query.after_id, limit=query.limit),

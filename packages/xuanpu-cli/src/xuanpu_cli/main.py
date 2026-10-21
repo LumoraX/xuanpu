@@ -197,6 +197,7 @@ def uvicorn_config(app: FastAPI, config: ServerConfig) -> uvicorn.Config:
         host=config.listen.host,
         port=config.listen.port,
         log_level="info",
+        workers=1,
         timeout_graceful_shutdown=math.ceil(config.shutdown_drain_seconds)
         + GRACEFUL_SHUTDOWN_MARGIN_SECONDS,
     )

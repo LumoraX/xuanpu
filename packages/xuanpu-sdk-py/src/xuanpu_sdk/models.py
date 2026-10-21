@@ -77,7 +77,7 @@ class PackageVersion:
 
 @dataclass(frozen=True)
 class AuditRecord:
-    """一条审计记录。"""
+    """一条审计元数据；data=None 表示接口没有提供正文载荷。"""
 
     audit_id: int
     source: str
@@ -87,7 +87,7 @@ class AuditRecord:
     session_id: str | None
     stream: str | None
     seq: int | None
-    data: dict[str, Any]
+    data: dict[str, Any] | None = None
     user_id: str | None = None
 
     @classmethod

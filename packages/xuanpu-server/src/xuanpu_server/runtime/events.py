@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any, NamedTuple
 from xuanpu_server.audit import SENSITIVE_KINDS, STREAMING_KINDS, sanitize
 from xuanpu_server.controlplane.models import AuditRecord
 from xuanpu_server.quota import usage_day
+from xuanpu_server.runtime.operation_status import operation_outcome
 from xuanpu_server.runtime.resolutions import RESOLUTION_KINDS, ResolutionLedger
 
 if TYPE_CHECKING:
@@ -111,7 +112,8 @@ def is_terminal(event: taifeng.EventMsg) -> bool:
     （``RESUME_ENDING_KINDS``，带的是那次送回的 submission）同样出现即结束。
     """
     kind = event.msg.kind
-    if kind == "turn_suspended" or kind in RESUME_ENDING_KINDS:
+    if (kind == "turn_suspended" or kind in RESUME_ENDING_KINDS
+            or (kind == "suspension_resolved" and event.msg.data.get("aborted") is True)):
         return True
     return kind in TERMINAL_KINDS and bool(event.msg.data.get("is_root", False))
 
@@ -124,16 +126,7 @@ def turn_outcome(event: taifeng.EventMsg) -> str:
     cancelled，否则是 failed。送回审批没有续跑的那一次单列：被拒是 resume_rejected，只核销了
     一部分是 resume_partial——它们不是一轮对话，用量里也不计一轮。
     """
-    kind, data = event.msg.kind, event.msg.data
-    if kind == "turn_suspended":
-        return "suspended"
-    if kind == "suspension_resolve_rejected":
-        return "resume_rejected"
-    if kind == "suspension_partially_resolved":
-        return "resume_partial"
-    if kind == "turn_completed":
-        return "cancelled" if data.get("end_reason") == "cancelled" else "completed"
-    return "cancelled" if data.get("kind") == "cancelled" else "failed"
+    return operation_outcome(event.msg.kind, event.msg.data)
 
 
 class TurnStream:
@@ -315,11 +308,13 @@ class EngineEventHub:
             self._on_turn_end(event.submission_id)
         outcome = turn_outcome(event)
         # 以取消结束、又没有结论的送回（排队中被停）内核没处理，不算等不到结论
-        self._resolutions.ended(event.submission_id, cancelled=outcome == "cancelled")
+        # 只有排队时的 turn_failed(cancelled) 证明根本没有开始应用决定。
+        await self._resolutions.ended(event.submission_id,
+            cancelled=event.msg.kind == "turn_failed" and outcome == "cancelled")
         self._metrics.turn_ended(outcome)
         text = "".join(self._texts.pop(event.submission_id, []))
         # 送回审批被拒或只核销了一部分：没有采样，不落回复全文、不计一轮
-        if event.msg.kind not in RESUME_ENDING_KINDS:
+        if event.msg.kind not in RESUME_ENDING_KINDS and outcome != "aborted":
             self._buffer.append(self._record("turn_text", event, {"text": text}, seq=None))
             await self._account(event)
         await self._flush()

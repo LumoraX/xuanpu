@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import functools
 import hashlib
 import json
 import logging
@@ -46,11 +45,17 @@ from xuanpu_server.errors import (
     RuntimeUnavailableError,
 )
 from xuanpu_server.ids import new_id
-from xuanpu_server.runtime.cancellation import cancel_in_flight, pick_targets
+from xuanpu_server.runtime.cancellation import (
+    CancellationRequest,
+    Preparation,
+    cancel_in_flight,
+    pick_targets,
+)
 from xuanpu_server.runtime.events import EngineEventHub, SubmissionIndex, TurnStream
 from xuanpu_server.runtime.gate_audit import RejectionAudit
 from xuanpu_server.runtime.leases import SessionKey, SessionLeases
 from xuanpu_server.runtime.ownership import SessionOwnership, require_active
+from xuanpu_server.runtime.receipt_watch import ReceiptWatch, ReplayedTurn
 from xuanpu_server.runtime.session_history import pending_requests, replay_turn
 from xuanpu_server.runtime.session_metadata import validate_metadata
 
@@ -151,6 +156,15 @@ class SessionManager:
         self._heartbeat: asyncio.Task[None] | None = None
         self._draining = False
         self._routing: dict[str, int] = {}
+        self._receipt_tasks: set[asyncio.Task[None]] = set()
+        self._preparations: dict[SessionKey, set[Preparation]] = {}
+
+    def stop_accepting(self) -> None:
+        """同步关闭计算入口，持有权丢失时不能继续受理。"""
+        self._draining = True
+        for preparations in self._preparations.values():
+            for intent in preparations:
+                intent.cancelled = True
 
     async def start(self) -> None:
         """启动租约续期。"""
@@ -274,6 +288,10 @@ class SessionManager:
     async def get(self, principal: Principal, session_id: str) -> SessionRecord:
         """取会话。别的租户的、调用者看不见的（见 ``ownership``），都按不存在处理。"""
         return await self._ownership.visible(principal, session_id)
+
+    async def content(self, principal: Principal, session_id: str) -> SessionRecord:
+        """读取本人可访问的内容会话，不授予管理员隐式正文权限。"""
+        return await self._ownership.content(principal, session_id)
 
     async def list_sessions(
         self,
@@ -447,7 +465,7 @@ class SessionManager:
         live: _LiveSession,
         op: Any,
         *,
-        make_watch: Callable[[], ResolutionWatch | None] | None = None,
+        make_watch: Callable[[str], ResolutionWatch | None] | None = None,
     ) -> Turn:
         """提交一个操作并登记它的事件流（送回审批时连同等内核结论的一方）。
 
@@ -457,7 +475,7 @@ class SessionManager:
         submission_id = await live.engine.submit(op)
         # 提交与登记之间不能有让出点，否则内核先发出的事件会漏掉
         stream = live.hub.open_stream(submission_id)
-        watch = make_watch() if make_watch is not None else None
+        watch = make_watch(submission_id) if make_watch is not None else None
         if watch is not None:
             live.hub.watch_resolution(submission_id, watch)
         live.in_flight.add(submission_id)
@@ -467,6 +485,26 @@ class SessionManager:
             live.record.tenant_id, live.record.session_id, at=self._now()
         )
         return Turn(live.record.session_id, submission_id, stream)
+
+    def _begin_preparation(self, record: SessionRecord) -> Preparation:
+        """登记准备窗口，不把未提交请求误认为内核在途。"""
+        if self._draining:
+            raise RuntimeUnavailableError("本实例正在关闭")
+        intent = Preparation(task=asyncio.current_task())
+        self._preparations.setdefault((record.tenant_id, record.session_id), set()).add(intent)
+        return intent
+
+    def _end_preparation(self, record: SessionRecord, intent: Preparation) -> None:
+        """清理请求级状态，不积累已结束会话的取消标记。"""
+        key = (record.tenant_id, record.session_id)
+        self._preparations[key].discard(intent)
+        if not self._preparations[key]:
+            del self._preparations[key]
+
+    def _check_preparation(self, intent: Preparation) -> None:
+        """提交前复核取消及停接单状态。"""
+        if intent.cancelled or self._draining:
+            raise ConflictError("准备中的对话已取消或平台正在关闭")
 
     async def send_message(
         self,
@@ -484,60 +522,83 @@ class SessionManager:
             raise InvalidRequestError(f"消息超过 {MAX_MESSAGE_CHARS} 个字符")
         await self._quota.check_new_turn(principal.require_tenant())
         await self._admit_turn(principal.require_tenant())
-        live = await self._active(principal, session_id)
-        turn = await self._submit(
-            live, taifeng.UserMessage(text=text, attachments=attachments or [])
-        )
-        # 用户说了什么不在内核事件里，审计要有它才完整（超长部分会被截断）
-        await self._audit.control(
-            principal,
-            live.record.tenant_id,
-            "message_sent",
-            {
-                "submission_id": turn.submission_id,
-                "text": text if audit_text is None else audit_text,
-            },
-            session=live.record,
-        )
-        return turn
+        record = await self._ownership.writable(principal, session_id)
+        intent = self._begin_preparation(record)
+        try:
+            live = await self._open(record)
+            async with self._lock_for((record.tenant_id, session_id)):
+                await self._ownership.writable(principal, session_id)
+                self._check_preparation(intent)
+                turn = await self._submit(live, taifeng.UserMessage(text=text, attachments=attachments or []))
+            # 用户说了什么不在内核事件里，审计要有它才完整（超长部分会被截断）
+            await self._audit.control(
+                principal,
+                live.record.tenant_id,
+                "message_sent",
+                {
+                    "submission_id": turn.submission_id,
+                    "text": text if audit_text is None else audit_text,
+                },
+                session=live.record,
+            )
+            return turn
+        finally:
+            self._end_preparation(record, intent)
+
+    def _track_receipt(self, work: Awaitable[None]) -> None:
+        """保存结算任务的强引用，关闭时等待，异常明确记录。"""
+        task = asyncio.ensure_future(work)
+        self._receipt_tasks.add(task)
+        def settled(done: asyncio.Task[None]) -> None:
+            self._receipt_tasks.discard(done)
+            if not done.cancelled() and done.exception() is not None:
+                logger.error("审批回执结算失败", exc_info=done.exception())
+        task.add_done_callback(settled)
 
     async def resume(
         self, principal: Principal, session_id: str, resolutions: dict[str, Any]
-    ) -> Turn:
-        """送回审批结果（或表单答案），让挂起的那一轮对话续跑。
-
-        人工拒绝的连接器调用走不到闸门，过闸记录由这里补（见 ``gate_audit``）。
-        """
+    ) -> Turn | ReplayedTurn:
+        """持久认领决定；重复请求回放原提交，不重新批准工具。"""
         if not resolutions:
             raise InvalidRequestError("resolutions 不能为空")
-        await self._admit_turn(principal.require_tenant())
         record = await self._ownership.writable(principal, session_id)
-        # 打开引擎之前就读：取到会话之后、提交之前不能有让出点，否则可能被当作空闲释放
-        rejected = await self._rejections.prepare(
-            record.tenant_id, session_id, resolutions, user_id=record.user_id
-        )
-        live = await self._open(record)
-        turn = await self._submit(
-            live,
-            taifeng.Resume(thread_id=live.engine.thread_id, resolutions=resolutions),
-            make_watch=functools.partial(
-                self._rejections.watch, rejected, live.runtime.connectors.describe
-            ),
-        )
-        await self._audit.control(
-            principal,
-            live.record.tenant_id,
-            "suspension_resolved_by",
-            {
-                "submission_id": turn.submission_id,
-                "decisions": {
-                    request_id: value.get("granted") if isinstance(value, dict) else None
-                    for request_id, value in resolutions.items()
-                },
-            },
-            session=live.record,
-        )
-        return turn
+        receipts = self._store.operation_receipts
+        intent = self._begin_preparation(record)
+        receipt = None
+        may_have_submitted = False
+        try:
+            receipt = await receipts.claim(record.tenant_id, session_id, resolutions, at=self._now())
+            if receipt.replay:
+                assert receipt.submission_id is not None
+                events = await replay_turn(self._store, record.tenant_id, session_id, receipt.submission_id)
+                return ReplayedTurn(session_id, receipt.submission_id, events)
+            await self._admit_turn(principal.require_tenant())
+            rejected = await self._rejections.prepare(record.tenant_id, session_id, resolutions, user_id=record.user_id)
+            live = await self._open(record)
+            async with self._lock_for((record.tenant_id, session_id)):
+                await self._ownership.writable(principal, session_id)
+                self._check_preparation(intent)
+                may_have_submitted = True
+                turn = await self._submit(live,
+                    taifeng.Resume(thread_id=live.engine.thread_id, resolutions=resolutions),
+                    make_watch=lambda submission: ReceiptWatch(receipts, record, receipt.operation_id,
+                        submission, self._rejections.watch(rejected, live.runtime.connectors.describe),
+                        self._track_receipt, self._now, frozenset(resolutions)))
+            await receipts.submitted(record.tenant_id, receipt.operation_id, turn.submission_id, at=self._now())
+            await self._audit.control(principal, record.tenant_id, "suspension_resolved_by",
+                {"submission_id": turn.submission_id,
+                 "decisions": {key: value.get("granted") if isinstance(value, dict) else None
+                               for key, value in resolutions.items()}}, session=record)
+            return turn
+        except BaseException:
+            if receipt is not None and not receipt.replay:
+                if may_have_submitted:
+                    await receipts.settle(record.tenant_id, receipt.operation_id, "outcome_unknown", None, at=self._now())
+                else:
+                    await receipts.release(record.tenant_id, receipt.operation_id)
+            raise
+        finally:
+            self._end_preparation(record, intent)
 
     async def cancel(
         self, principal: Principal, session_id: str, submission_id: str | None = None
@@ -553,12 +614,20 @@ class SessionManager:
                 ``InvalidRequestError``。
         """
         record = await self.get(principal, session_id)
-        live = self._live.get((record.tenant_id, session_id))
+        key = (record.tenant_id, session_id)
+        preparations = self._preparations.get(key, set())
+        preparing = bool(preparations) and submission_id is None
+        if preparing:
+            for intent in preparations:
+                intent.cancelled = True
+        live = self._live.get(key)
         if live is None:
             self._leases.ensure_not_held_elsewhere(record)
-            # 没有在途对话：没指定就是空列表，指定了就是它不在途
-            return pick_targets((), submission_id)
-        targets = await cancel_in_flight(live.engine, live.in_flight, submission_id)
+            return CancellationRequest(pick_targets((), submission_id), preparing=preparing)
+        async with self._lock_for(key):
+            targets = await cancel_in_flight(live.engine, live.in_flight, submission_id)
+        if isinstance(targets, CancellationRequest):
+            targets.preparing_cancelled = preparing
         if targets:
             await self._audit.control(
                 principal,
@@ -574,14 +643,14 @@ class SessionManager:
 
         以审计为准（各实例共享）：最近一次挂起里的请求，减去之后已经核销或到期的。
         """
-        record = await self.get(principal, session_id)
+        record = await self.content(principal, session_id)
         return await pending_requests(self._store, record.tenant_id, session_id)
 
     async def replay(
         self, principal: Principal, session_id: str, submission_id: str, *, after_seq: int = -1
     ) -> list[dict[str, Any]]:
         """回放一轮对话已经记入审计的事件（流式增量除外；回复全文在 ``turn_text`` 里）。"""
-        record = await self.get(principal, session_id)
+        record = await self.content(principal, session_id)
         return await replay_turn(
             self._store, record.tenant_id, session_id, submission_id, after_seq=after_seq
         )
@@ -675,7 +744,15 @@ class SessionManager:
                 logger.warning(
                     "停机等待 %.0f 秒后仍有 %d 轮对话在途，将被取消", drain_seconds, remaining
                 )
-        self._draining = True
+        self.stop_accepting()
+        # 准备窗口尚未进入 _live，必须在释放运行时与实例锁之前回收这些请求。
+        current = asyncio.current_task()
+        preparing = {intent.task for intents in self._preparations.values() for intent in intents
+                     if intent.task is not None and intent.task is not current}
+        for task in preparing:
+            task.cancel()
+        if preparing:
+            await asyncio.gather(*preparing, return_exceptions=True)
         if self._heartbeat is not None:
             self._heartbeat.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -685,6 +762,8 @@ class SessionManager:
             # 收尾是尽力而为，失败已在里面记日志；一个会话收不干净不影响释放其他会话
             async with self._lock_for(key):
                 await self._detach(key, force=True)
+        if self._receipt_tasks:
+            await asyncio.gather(*self._receipt_tasks, return_exceptions=True)
 
 
 __all__ = ["MAX_MESSAGE_CHARS", "SessionManager", "Turn"]

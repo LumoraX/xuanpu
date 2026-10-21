@@ -370,7 +370,10 @@ $("stop-btn").addEventListener("click", async () => {
     const body = await api("POST", `/v1/sessions/${target.sessionId}/cancel`, {
       json: { submission_id: target.submissionId },
     });
-    if (!body.cancelled.length) notStopped();
+    if (body.status === "unconfirmed") {
+      toast("停止尚未确认，请等待原回复状态或稍后重试。", "info");
+      $("stop-btn").disabled = false;
+    } else if (!body.cancelled.length && !body.preparing_cancelled) notStopped();
   } catch (error) {
     if (error.code === "invalid_request") {
       notStopped();
@@ -560,7 +563,7 @@ async function loadAudit(reset) {
       `<td class="mono">${record.audit_id}</td><td>${when(record.at)}</td>` +
       `<td><span class="tag">${escape(record.source)}</span></td><td class="mono">${escape(record.kind)}</td>` +
       `<td class="mono">${escape(record.actor)}</td><td class="mono">${escape(record.session_id || "")}</td>` +
-      `<td class="data">${escape(JSON.stringify(record.data))}</td>`;
+      `<td class="data">${escape(record.user_id || "—")}</td>`;
     rows.appendChild(row);
   }
   audit.after = body.next_after_id;

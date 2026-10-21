@@ -83,6 +83,18 @@ class ConflictError(PlatformError):
     status = 409
 
 
+class ApprovalConflictError(ConflictError):
+    """审批被认领或需核实，返回已有操作标识供关联排查。"""
+
+    def __init__(self, message: str, *, operation_id: str, state: str,
+                 submission_id: str | None = None) -> None:
+        """仅在会话内容授权后暴露该操作的回执元数据。"""
+        super().__init__(message)
+        self.operation_id = operation_id
+        self.state = state
+        self.submission_id = submission_id
+
+
 class SessionBusyError(ConflictError):
     """会话正由另一个实例持有。
 

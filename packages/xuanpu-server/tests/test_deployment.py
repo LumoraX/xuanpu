@@ -245,7 +245,7 @@ async def test_real_deployment_end_to_end(
             served = Served(create_app(platform))
             await served.start()
             try:
-                session_id = await _drive_first_instance(
+                session_id, owner_headers = await _drive_first_instance(
                     served.url, root_key, package_archive(tmp_path), fake
                 )
             finally:
@@ -259,7 +259,7 @@ async def test_real_deployment_end_to_end(
             served = Served(create_app(platform))
             await served.start()
             try:
-                await _drive_second_instance(served.url, root_key, session_id, fake)
+                await _drive_second_instance(served.url, root_key, session_id, fake, owner_headers)
             finally:
                 await served.stop()
         # 会话主存在库里：两个实例的数据目录里都没有会话文件
@@ -279,7 +279,7 @@ async def _tenant_admin(http: httpx.AsyncClient, root_key: str) -> dict[str, str
     return {"Authorization": f"Bearer {issued.json()['key']}"}
 
 
-async def _drive_first_instance(url: str, root_key: str, archive: bytes, fake: FakeGateway) -> str:
+async def _drive_first_instance(url: str, root_key: str, archive: bytes, fake: FakeGateway) -> tuple[str, dict[str, str]]:
     """第一个实例：开通租户、发布业务包、对话一轮。返回会话标识。"""
     async with httpx.AsyncClient(base_url=url, timeout=30) as http:
         assert (await http.get("/healthz")).json()["instance"] == "inst-a"
@@ -308,7 +308,7 @@ async def _drive_first_instance(url: str, root_key: str, archive: bytes, fake: F
     assert [request["model"] for request in fake.requests] == ["small-model"]
     assert fake.authorizations == ["Bearer sk-acme-tenant"]
     assert fake.requests[0]["messages"][-1] == {"role": "user", "content": "查一下订单"}
-    return session_id
+    return session_id, admin
 
 
 async def _check_database(pool: asyncpg.Pool, schema: str, session_id: str) -> None:
@@ -351,12 +351,12 @@ async def _check_database(pool: asyncpg.Pool, schema: str, session_id: str) -> N
 
 
 async def _drive_second_instance(
-    url: str, root_key: str, session_id: str, fake: FakeGateway
+    url: str, root_key: str, session_id: str, fake: FakeGateway, owner_headers: dict[str, str]
 ) -> None:
     """第二个实例接手会话：上下文还在，审计里两个实例的记录接得上。"""
     async with httpx.AsyncClient(base_url=url, timeout=30) as http:
         assert (await http.get("/healthz")).json()["instance"] == "inst-b"
-        admin = await _tenant_admin(http, root_key)
+        admin = owner_headers
         fake.replies.append("是 A-1024")
         reply = await http.post(
             f"/v1/sessions/{session_id}/messages", headers=admin, json={"text": "刚才的订单号？"}

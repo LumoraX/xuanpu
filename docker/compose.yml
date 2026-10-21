@@ -57,6 +57,9 @@ services:
       postgres: {condition: service_healthy}
 
   platform:
+    # R0：唯一平台副本、一个服务进程；同一控制面第二进程会在后台启动前被拒绝。
+    deploy:
+      replicas: 1
     <<: *platform
     restart: unless-stopped
     stop_grace_period: 90s

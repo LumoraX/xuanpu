@@ -24,6 +24,7 @@ if TYPE_CHECKING:
         UsageRecord,
     )
     from xuanpu_server.reminders.store import ReminderStore
+    from xuanpu_server.runtime.receipt_store import ReceiptStore
     from xuanpu_server.tenancy import ApiKeyRecord, Tenant
     from xuanpu_server.workspace.store import WorkspaceStore
 
@@ -40,6 +41,11 @@ class ControlPlaneStore(Protocol):
     @property
     def reminder_store(self) -> ReminderStore:
         """与控制面共享后端的提醒存储。"""
+        ...
+
+    @property
+    def operation_receipts(self) -> ReceiptStore:
+        """与控制面共享事务域的审批操作回执。"""
         ...
 
     # --- 租户与凭据 ---

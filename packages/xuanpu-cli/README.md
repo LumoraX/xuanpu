@@ -100,7 +100,7 @@ xuanpu migrate --config xuanpu.yaml
 xuanpu serve --config xuanpu.yaml
 ```
 
-启动平台服务，直到收到终止信号。控制台挂在 `/console/`。停机过程见[部署与运维](../../docs/guides/operations.md#停机与滚动升级)。
+启动平台服务，直到收到终止信号。控制台挂在 `/console/`。停机过程见[部署与运维](../../docs/guides/operations.md#单实例运行与停机)。
 
 ## 配置文件与环境变量
 

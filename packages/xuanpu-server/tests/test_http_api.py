@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 import httpx
 import pytest
 from xuanpu_server.api import create_app
+from xuanpu_server.controlplane.models import AuditQuery
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -149,7 +150,8 @@ async def test_full_flow_over_http(world: Any, step: Any, client: httpx.AsyncCli
     assert "globex-token" not in audit.text
 
     gate = await client.get("/v1/audit", headers=admin, params={"source": "gate"})
-    assert [record["data"]["tool"] for record in gate.json()["records"]] == ["update_ticket"]
+    assert [record["kind"] for record in gate.json()["records"]] == ["connector_call"]
+    assert all("data" not in record for record in gate.json()["records"])
 
     usage = await client.get(
         "/v1/usage", headers=admin, params={"since": "2000-01-01", "until": "2999-12-31"}
@@ -368,8 +370,8 @@ async def test_set_tenant_quota_over_http(world: Any, client: httpx.AsyncClient)
     audit = await client.get(
         "/v1/audit", headers=admin, params={"kind": "tenant_quota_changed", "limit": 10}
     )
-    changes = [record["data"]["after"]["max_active_sessions"] for record in audit.json()["records"]]
-    assert changes == [None, 1, None]
+    assert len(audit.json()["records"]) == 3
+    assert all("data" not in record for record in audit.json()["records"])
 
 
 async def test_unexpected_error_does_not_leak_details(
@@ -421,5 +423,7 @@ async def test_user_messages_are_audited(world: Any, step: Any, client: httpx.As
         "/v1/audit", headers=admin, params={"session_id": session_id, "kind": "message_sent"}
     )
     records = audit.json()["records"]
-    assert [record["data"]["text"] for record in records] == ["问题一"]
-    assert records[0]["data"]["submission_id"].startswith("sub")
+    assert len(records) == 1 and records[0]["kind"] == "message_sent"
+    assert "data" not in records[0]
+    persisted = await world.platform.store.query_audit("acme", AuditQuery(session_id=session_id, kind="message_sent"))
+    assert [record.data["text"] for record in persisted] == ["问题一"]

@@ -100,7 +100,7 @@ async def test_refused_ended_and_closed() -> None:
     await ledger.settle(
         event("sub_a", "suspension_resolve_rejected", reason="no_active_suspension")
     )
-    ledger.ended("sub_b", cancelled=False)
+    await ledger.ended("sub_b", cancelled=False)
     await ledger.settle(event("sub_d", "suspension_resolved"))
     await ledger.settle(event("sub_x", "suspension_resolved", request_ids=["r1"]))
     ledger.close()
@@ -118,10 +118,10 @@ async def test_cancelled_without_a_conclusion_is_dropped_not_abandoned(
     ledger = ResolutionLedger("ses_1")
     queued = Recorder()
     ledger.watch("sub_q", queued)
-    ledger.ended("sub_q", cancelled=True)
+    await ledger.ended("sub_q", cancelled=True)
     await ledger.settle(event("sub_q", "suspension_resolved", request_ids=["r1"]))
     ledger.close()
-    assert (queued.abandons, queued.resolved_ids, queued.refusals) == (0, [], [])
+    assert (queued.abandons, queued.resolved_ids, queued.refusals) == (0, [], ["cancelled_before_resolution"])
     [record] = caplog.records
     assert record.levelno == logging.INFO
     assert "sub_q" in record.getMessage()
@@ -188,3 +188,17 @@ async def test_hub_closing_before_the_kernel_answers_counts_as_unconfirmed() -> 
     assert stages == ["unconfirmed"]
     text = metrics.render().decode("utf-8")
     assert 'xuanpu_gate_backfill_failures_total{stage="unconfirmed"} 1.0' in text
+
+
+async def test_async_refusal_failure_does_not_stop_event_processing() -> None:
+    """拒绝落库故障不能杀死同一会话后续事件的消费。"""
+    class Broken(Recorder):
+        async def refused(self, reason: str) -> None:
+            raise RuntimeError("database unavailable")
+    ledger = ResolutionLedger("session")
+    ledger.watch("broken", Broken())
+    await ledger.settle(event("broken", "suspension_resolve_rejected", reason="unknown_request"))
+    healthy = Recorder()
+    ledger.watch("healthy", healthy)
+    await ledger.settle(event("healthy", "suspension_resolved", request_ids=["r1"]))
+    assert healthy.resolved_ids == [frozenset({"r1"})]

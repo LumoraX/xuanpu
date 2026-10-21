@@ -130,8 +130,8 @@ async def test_history_pagination(history: Any) -> None:
 
 
 async def test_history_safe_lifecycle_and_admin(history: Any) -> None:
-    """生命周期仅展示种类，管理员沿用现有归属校验读取成员会话。"""
-    ident, _, _, session_id = history
+    """生命周期仅展示种类，本人可读生命周期，未代人的系统 key 不可读。"""
+    ident, owner_headers, _, session_id = history
     platform = ident.world.platform
     for kind in ("turn_started", "turn_suspended", "turn_completed"):
         await platform.store.append_audit(
@@ -149,16 +149,16 @@ async def test_history_safe_lifecycle_and_admin(history: Any) -> None:
         )
     response = await ident.get(
         f"/v1/sessions/{session_id}/history",
-        headers={"Authorization": f"Bearer {ident.world.admin_key}"},
+        headers=owner_headers,
     )
     assert response.status_code == 200
     records = response.json()["records"]
     assert [r["kind"] for r in records[-3:]] == ["turn_started", "turn_suspended", "turn_completed"]
     assert all(r["data"] == {} for r in records[-3:])
     assert "private-key" not in response.text
-    # API key 沿用已有服务身份的租户内权限，不新增员工会话规则。
+    # 未代人的系统 key 不获得员工内容权限。
     response = await ident.get(
         f"/v1/sessions/{session_id}/history",
         headers={"Authorization": f"Bearer {ident.world.member_key}"},
     )
-    assert response.status_code == 200
+    assert response.status_code == 404

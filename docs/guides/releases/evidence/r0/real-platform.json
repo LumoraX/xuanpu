@@ -1,0 +1,210 @@
+{
+  "model": "gpt-5.6-luna",
+  "provider": "openai",
+  "database": "PostgreSQL temporary schema",
+  "external_notifications": 0,
+  "cases": [
+    {
+      "case": "meeting_missing_inputs",
+      "response": {
+        "session": null,
+        "message": "请先提供会议主题、开始和结束时间，以及参会人。",
+        "reminder_draft": null,
+        "open_reminders": false,
+        "workspace_draft": null,
+        "open_workspace": null,
+        "proposal_id": null,
+        "proactive_draft": null,
+        "open_proactive": false
+      },
+      "pass": true
+    },
+    {
+      "case": "meeting_confirm_once",
+      "draft": {
+        "session": null,
+        "message": "已整理好，请确认后保存到玄圃。",
+        "reminder_draft": null,
+        "open_reminders": false,
+        "workspace_draft": {
+          "kind": "event",
+          "data": {
+            "title": "R0验收会议",
+            "description": "地点：测试会议室。仅本人参加，不通知外部人员。",
+            "start_at": 1792634400.0,
+            "end_at": 1792638000.0,
+            "timezone": "Asia/Shanghai",
+            "matter_id": null
+          }
+        },
+        "open_workspace": null,
+        "proposal_id": "meeting-ready",
+        "proactive_draft": null,
+        "open_proactive": false
+      },
+      "saved": {
+        "state": "confirmed",
+        "result": {
+          "id": "ws_954f6812a8a2783207cb4857df8956eb",
+          "kind": "event",
+          "data": {
+            "title": "R0验收会议",
+            "description": "地点：测试会议室。仅本人参加，不通知外部人员。",
+            "start_at": 1792634400.0,
+            "end_at": 1792638000.0,
+            "timezone": "Asia/Shanghai",
+            "matter_id": null
+          },
+          "version": 1,
+          "created_at": 1792545146.336937,
+          "updated_at": 1792545146.336937,
+          "trashed_at": null
+        },
+        "proposal_id": "meeting-ready"
+      },
+      "event_count": 1,
+      "pass": true
+    },
+    {
+      "case": "proactive_real_model_and_native_actions",
+      "followup": {
+        "id": "pf_8df5d7215d7bce75c83f7a8220fb3a74",
+        "body": "根据已有记录，需要核实：用户明确承诺于2026年10月21日17:00前发送测试报价，当前尚未完成，并要求之后追问进度。",
+        "kind": "commitment",
+        "title": "发送测试报价给测试客户",
+        "reason": "用户明确承诺于2026年10月21日17:00前发送测试报价，当前尚未完成，并要求之后追问进度。",
+        "source": "proactive_followup",
+        "status": "awaiting_user",
+        "item_id": null,
+        "version": 1,
+        "certainty": "explicit",
+        "created_at": 1792545149.024988,
+        "generation": null,
+        "stable_key": "anchor_be1540cca450cd9f4a4d0f16fb1e221d",
+        "updated_at": 1792545149.024988,
+        "context_refs": [
+          "message:1"
+        ],
+        "item_version": null,
+        "review_stage": 0,
+        "evidence_refs": [
+          "message:1"
+        ],
+        "proposed_time": 1792573200.0,
+        "next_review_at": 1792573200.0,
+        "evidence_details": [
+          {
+            "at": 1792545146.364782,
+            "ref": "message:1",
+            "text": "我承诺今天下午五点之前把测试报价发给测试客户，当前还没完成，请之后追问进度。"
+          }
+        ],
+        "last_notified_at": 1792545149.024988,
+        "suggested_action": "set_reminder"
+      },
+      "waiting": {
+        "id": "pf_8df5d7215d7bce75c83f7a8220fb3a74",
+        "body": "已安排后续跟进，到时会再次核实进展。",
+        "kind": "commitment",
+        "title": "发送测试报价给测试客户",
+        "reason": "用户明确承诺于2026年10月21日17:00前发送测试报价，当前尚未完成，并要求之后追问进度。",
+        "source": "proactive_followup",
+        "status": "waiting",
+        "item_id": null,
+        "version": 2,
+        "certainty": "explicit",
+        "created_at": 1792545149.024988,
+        "generation": null,
+        "stable_key": "anchor_be1540cca450cd9f4a4d0f16fb1e221d",
+        "updated_at": 1792545149.041279,
+        "context_refs": [
+          "message:1"
+        ],
+        "item_version": null,
+        "review_stage": 0,
+        "evidence_refs": [
+          "message:1"
+        ],
+        "proposed_time": 1792573200.0,
+        "next_review_at": 1792545749.034554,
+        "evidence_details": [
+          {
+            "at": 1792545146.364782,
+            "ref": "message:1",
+            "text": "我承诺今天下午五点之前把测试报价发给测试客户，当前还没完成，请之后追问进度。"
+          }
+        ],
+        "last_notified_at": 1792545149.024988,
+        "suggested_action": "set_reminder",
+        "due_at": 1792545749.034554,
+        "reminder_id": "rem_475c1688673438ae0d20ff90",
+        "handled_at": 1792545149.041279
+      },
+      "completed": {
+        "id": "pf_8df5d7215d7bce75c83f7a8220fb3a74",
+        "body": "已安排后续跟进，到时会再次核实进展。",
+        "kind": "commitment",
+        "title": "发送测试报价给测试客户",
+        "due_at": 1792545749.034554,
+        "reason": "用户明确承诺于2026年10月21日17:00前发送测试报价，当前尚未完成，并要求之后追问进度。",
+        "source": "proactive_followup",
+        "status": "resolved",
+        "item_id": null,
+        "version": 3,
+        "certainty": "explicit",
+        "created_at": 1792545149.024988,
+        "generation": null,
+        "handled_at": 1792545149.058126,
+        "stable_key": "anchor_be1540cca450cd9f4a4d0f16fb1e221d",
+        "updated_at": 1792545149.058126,
+        "reminder_id": "rem_475c1688673438ae0d20ff90",
+        "context_refs": [
+          "message:1"
+        ],
+        "item_version": null,
+        "review_stage": 0,
+        "evidence_refs": [
+          "message:1"
+        ],
+        "proposed_time": 1792573200.0,
+        "next_review_at": 1792545749.034554,
+        "evidence_details": [
+          {
+            "at": 1792545146.364782,
+            "ref": "message:1",
+            "text": "我承诺今天下午五点之前把测试报价发给测试客户，当前还没完成，请之后追问进度。"
+          }
+        ],
+        "last_notified_at": 1792545149.024988,
+        "suggested_action": "set_reminder"
+      },
+      "pass": true
+    }
+  ],
+  "versions": {
+    "python": "3.13.9",
+    "packages": {
+      "taifeng": {
+        "version": "2026.10.1.11"
+      },
+      "taifeng-sandbox": {
+        "version": "2026.9.29.15"
+      },
+      "taifeng-stores": {
+        "version": "2026.9.29.15"
+      },
+      "xuanpu-server": {
+        "version": "2026.10.21.1"
+      }
+    },
+    "public_seams": {
+      "CommandExecutor": true,
+      "WorkspaceFS": true,
+      "LocalWorkspaceFS": true,
+      "EnginePool": true,
+      "make_shell_exec_tool": true,
+      "make_file_read_tool": true,
+      "make_file_write_tool": true
+    }
+  }
+}

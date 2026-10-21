@@ -1,0 +1,34 @@
+{
+  "image": "xuanpu-r0:2026.10.21.1",
+  "image_id": "sha256:69b54e88bea7c07513f7cd51d6523dd030ef548a21cbc3c5c2e09daa3c6a24de",
+  "os": "linux",
+  "architecture": "amd64",
+  "pushed": false,
+  "production_deployed": false,
+  "migration_applied": "已执行 0001_control_plane\n已执行 0002_tenant_concurrent_turns\n已执行 0003_session_metadata\n已执行 0004_identity\n已执行 0005_identity_optional_event_secrets\n已执行 0006_reminders\n已执行 0007_workspace\n已执行 0008_proactive\n已执行 0009_operation_receipts",
+  "migration_repeat": "表结构已是最新",
+  "first_health": {
+    "status": "ok",
+    "version": "2026.10.21.1",
+    "instance": "inst_d8040f1d9c493dbc0ecf428a"
+  },
+  "second_process": {
+    "exit_code": 3,
+    "reason": "same PostgreSQL control-plane instance lock"
+  },
+  "restart_health": {
+    "status": "ok",
+    "version": "2026.10.21.1",
+    "instance": "inst_20717d690278759d13bd1d98"
+  },
+  "packages": {
+    "taifeng": "2026.10.1.11",
+    "xuanpu-server": "2026.10.21.1",
+    "xuanpu-cli": "2026.10.21.1",
+    "xuanpu-sdk-py": "2026.10.21.1",
+    "xuanpu-console": "2026.10.21.1"
+  },
+  "source_files_verified": 164,
+  "source_manifest_sha256": "8f5054ec889effe151e6168bab9ed2c2eaf97904d50d26c7375bffeedda3a0ed",
+  "temporary_resources_removed": true
+}

@@ -551,9 +551,12 @@ POST /v1/sessions
 | 管理员：浏览器登录或被代调用，且生效角色是 `tenant_admin` | 本租户全部 |
 | 不带 `X-Xuanpu-Act-As` 的 API key（不论角色） | 本租户全部 |
 
-- 会话的每个接口——取、关、发消息、送审批、停止、回放、待办——都按这张表检查。看不见的会话与不存在的是同一个 `404 not_found`（同一句提示），不透露它是否存在。
-- 代员工调用按员工的可见范围生效，角色取 key 与员工中较低的那个：管理员的 key 代成员调用只看见这名成员的会话；成员的 key 代管理员调用，生效角色是成员，也只看见这名管理员自己的。
-- 不代表员工的 API key 看得见全部，是给后台系统用的；把成员的 key 交给员工本人用，他就能看见全租户的会话——员工请用浏览器登录，或由系统代他调用。
+上表仅表示管理元数据、停止与关闭权限。正文、自由文本 metadata、历史、事件回放、
+待办和继续执行另按内容权限检查：员工会话只有 `principal.user_id == session.user_id` 可访问；
+无员工主人的服务会话只有原创建 API key 可访问。管理员默认没有他人的内容权限。
+无权访问与不存在统一为 `404 not_found`。列表和单条元数据里的他人 `metadata` 返回 `{}`。
+代员工调用继续要求 key 已显式授权 `act_as_users`，保留 key 与员工双重 actor 审计。
+普通成员不能因 `mine=false` 或管理员列表接口取得他人内容。
 
 ### 主人停用之后
 
@@ -647,7 +650,16 @@ POST /v1/sessions/{id}/resume
 
 拒绝是 `{"granted": false, "reason": "…"}`。批准后被挂起的那次调用才真正执行；拒绝则不执行，模型收到被拒的结果后继续。`resolutions` 不能为空。会话的主人已停用时是 `403 session_owner_disabled`，什么也不提交（见[主人停用之后](#主人停用之后)）。
 
-`resolutions` 里有这次挂起中已经处理过的待办（之前送回过、已核销的）时，整次送回 `400 invalid_request`，消息里列出是哪几个，什么也不提交：只送回了一部分待办之后，内核会照样受理已经处理过的那几个、再做一遍，批准过的调用会再执行一次。平台按审计判断是否处理过，审计略有滞后，刚送回就紧跟着再送同一个时可能拦不住。提交之前读不到审计（库不可用）时，整次送回以 `500 internal_error` 失败，什么也没有提交给内核，可以原样重试。
+审批决定先按 `(tenant_id, session_id, request_id)` 持久认领整组，严格 JSON 指纹覆盖全部值。
+相同决定已提交则返回原 `X-Submission-Id` 的审计 SSE，附 `X-Xuanpu-Replayed: true`；
+回放为当前已落审计的快照，不含流式增量，也不表示原提交已结束，后续可调用 events 补读。
+整组仍认领中、改变决定、部分重叠或结果未知均 `409 conflict`，不重新提交；错误附 `operation_id/state/submission_id`（尚未提交为空），用于关联原操作和核实。
+最多 256 项，request_id 最长 256 字符，决定 JSON 不超过 1 MiB，非 JSON/NaN 拒绝。
+
+内核确认拒绝、证明未核销后可以修正答案。提交边界不能确定或外部已写入而回执失败时，
+保留认领并要求核实，不能通过超时自动重新执行。回执 `applied` 仅证明审批决定已核销，
+不证明外部写入成功；工具结果和过闸记录另行判断。普通人工答复的已核销 request_id 也由
+内核在 root/child/spawn 续跑前整次拒绝，纯内部过期哨兵保留只处理未核销集合的规则。
 
 不是每次送回都会续跑：
 
@@ -657,17 +669,26 @@ POST /v1/sessions/{id}/resume
 | 只送回了一部分待办 | `suspension_partially_resolved`：送回的已处理（批准的调用已执行），其余还在 `pending` 里等着；全部送回之后才续跑 |
 | 被内核拒绝（没有活跃的挂起、答复不合格、同一挂起正在处理等） | `suspension_resolve_rejected`，`data.reason` 说明原因；什么也没执行 |
 
-后两种没有采样，不记一轮用量，回放里也没有 `turn_text`。
+后两种没有采样，不记一轮用量，回放里也没有 `turn_text`。根系统挂起被中止时，
+`suspension_resolved.data.aborted=true` 就是本次操作结论，流随之结束，不记为成功或额外一轮用量。
+写连接器超时或未知错误会挂起核实，不把可自动重试的错误交给模型。批准执行过程中失败且
+不能确定结果的原决定保留未知回执，不能用同一批准重新执行。
 
 ### 停止生成
 
 ```
 POST /v1/sessions/{id}/cancel
 {"submission_id": "sub_…"}        # 可省略（整个请求体也可省略）：停掉会话里全部在途的对话
-→ {"cancelled": ["sub_…"]}
+→ {"cancelled": ["sub_…"], "request_id": "cancel_…", "status": "requested",
+   "requested": ["sub_…"], "preparing_cancelled": false, "unconfirmed": []}
 ```
 
-`cancelled` 是这次提交了取消的那几轮的 `submission_id`。平台先等内核受理了那一轮（最多约 1 秒）再提交取消：刚发出、内核还没接手的一轮会等它接手；等待期间已经收尾或挂起的、到点仍没受理的，不提交，也不出现在 `cancelled` 里。接口只是提交取消，不等那一轮收尾；被停的那一轮的事件流照常结束：
+`cancelled` 保留旧客户端兼容，含义仍是“已提交取消请求”，不证明已经停止。
+`request_id` 标识这次停止请求；`status=requested` 表示已受理，轮询内核受理到期但未确认时
+为 `unconfirmed`，目标列入 `unconfirmed`，调用方不能展示“已停止”。没有工作仍返回 `{"cancelled": []}`。
+不带 submission_id 的取消也覆盖冷启动准备窗口，`preparing_cancelled=true` 会阻止随后提交；
+提交前复核主人状态、会话状态和停止意图。已挂起的审批保留，通过内核公开选项避免运行转挂起竞态。
+真正取消须从原事件流或回放确认：
 
 | 被停时 | 事件流的最后一条 |
 | --- | --- |
@@ -676,12 +697,13 @@ POST /v1/sessions/{id}/cancel
 
 会话保持活动，可以接着发消息。被停的那一轮照样记一轮用量，排队中被停、没开始跑的那一轮也计一轮（token 为 0）；卡在半路的那次采样没有收尾，网关报不出它的 token，平台按上下文估算计入输入（审计里记一条 `usage_estimated`，见[审计与用量](../guides/audit-and-usage.md)）。
 
-看得见这个会话的调用者（见[可见范围](#可见范围)）都能停里面的对话，与 `resume` 一样不区分对话是谁发起的；审计里的 `turn_cancel_requested` 的 `actor` 记下是谁停的，`user_id` 与会话里别的记录一样是会话的主人。只想停自己发起的那一轮，就带上它的 `submission_id`。会话的主人已停用也能停。
+看得见这个会话的调用者（见[可见范围](#可见范围)）都能停里面的对话，这是管理权限；`resume` 另要求本人内容权限；审计里的 `turn_cancel_requested` 的 `actor` 记下是谁停的，`user_id` 与会话里别的记录一样是会话的主人。只想停自己发起的那一轮，就带上它的 `submission_id`。会话的主人已停用也能停。
 
 | 情况 | 响应 |
 | --- | --- |
 | 没有在途的对话（包括会话已关闭） | `200`，`cancelled` 为空列表 |
-| 这一轮还没开始（会话还在准备引擎，或内核约 1 秒内仍没接手） | `200`，`cancelled` 里没有它 |
+| 冷启动准备中 | `200`，不带 submission_id 时设置 `preparing_cancelled=true` |
+| 内核约 1 秒内仍没接手 | `200`，`status=unconfirmed`，不宣称已停止 |
 | 给了 `submission_id`，但它不在途（已经结束或不存在） | `400 invalid_request` |
 | `submission_id` 为空串或超过 64 个字符 | `400 invalid_request` |
 | 会话正由另一个实例持有 | `409 session_busy`，带 `owner` |
@@ -707,7 +729,7 @@ GET /v1/sessions/{id}/events?submission_id=sub_…&after_seq=13
 GET /v1/audit?session_id=&kind=&source=&since=&until=&user_id=&actor=&after_id=&limit=
 
 → {"records": [{"audit_id": 51, "source": "gate", "kind": "connector_call", "at": 1790753335.73,
-                "actor": "engine", "session_id": "ses_…", "stream": null, "seq": null, "data": {…},
+                "actor": "engine", "session_id": "ses_…", "stream": null, "seq": null,
                 "user_id": "usr_5f0c1b2e7d9a4c3b8e6f1a20"}],
    "next_after_id": null}
 ```
@@ -721,6 +743,10 @@ GET /v1/audit?session_id=&kind=&source=&since=&until=&user_id=&actor=&after_id=&
 | `actor` | 只看某个触发者的，精确匹配（如 `key:7a1c03d2e9f4`、`user:usr_…`；代员工调用是 `key:<key_id>/user:<员工标识>`，与那把 key 自己的 `key:<key_id>` 是两个值）。用来查「某个管理员或某把 key 在别人的会话里做了什么」，可以与 `user_id` 组合。这是低频的排查查询，审计表上没有为它建索引，记录多时会慢 |
 | `after_id` | 只返回编号更大的记录，默认 0 |
 | `limit` | 默认 100，最大 1000 |
+
+管理审计只返回固定元数据白名单，省略 `data`，未知事件也不例外；分页仍按原始 audit_id 推进。
+原始审计底账保留。本人正文通过受限 history/events 获取，R0 不提供管理员调查取证通道。
+Python SDK 的 `AuditRecord.data` 在省略时为 `None`，旧调用方应停止依赖该接口取得正文。
 
 记录按 `audit_id` 升序。`next_after_id` 不为 `null` 表示可能还有下一页。记录的 `user_id` 是它归到哪名员工名下，`actor` 是谁触发的：会话里的一切记录（内核事件、过闸记录、会话上的控制面操作）是会话的主人，不论是谁触发的；与会话无关的控制面操作是调用者代表的员工；与员工无关的为 `null`。员工查看自己的记录以后再开放，现在仍只有租户管理员能查。各字段与各种事件的含义见[审计与用量](../guides/audit-and-usage.md)。
 

@@ -20,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import logging
+import secrets
 import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -162,23 +163,30 @@ class ConnectorGate:
         extra = ctx.extras.get("submission_id")
         submission_id = extra if isinstance(extra, str) else None
         session = self._submissions.session_of(submission_id, ctx.thread_id)
-        await self._audit.gate(
-            self._tenant_id,
-            "connector_call",
-            gate_call_data(
-                self._info,
-                decision=decision,
-                is_error=is_error,
-                detail=detail,
-                call_id=ctx.call_id,
-                thread_id=ctx.thread_id,
-                arguments_digest=arguments_digest,
-                submission_id=submission_id,
-                duration_ms=int((time.monotonic() - started) * 1000),
-            ),
-            session_id=session.session_id,
-            user_id=session.user_id,
-        )
+        try:
+            await self._audit.gate(
+                self._tenant_id,
+                "connector_call",
+                gate_call_data(
+                    self._info,
+                    decision=decision,
+                    is_error=is_error,
+                    detail=detail,
+                    call_id=ctx.call_id,
+                    thread_id=ctx.thread_id,
+                    arguments_digest=arguments_digest,
+                    submission_id=submission_id,
+                    duration_ms=int((time.monotonic() - started) * 1000),
+                ),
+                session_id=session.session_id,
+                user_id=session.user_id,
+            )
+        except Exception:
+            if decision == "allowed" and self._info.effect != "read":
+                # 外部写入已发出：审计故障也必须穿透为挂起，不能被 runtime 转成可重试错误。
+                logger.exception("写连接器的结果审计未保存，暂停等待核实")
+                self._error("connector_audit_unavailable", "audit_unavailable", ctx, arguments_digest)
+            raise
 
     async def _record_cancelled(
         self, ctx: taifeng.ToolContext, arguments_digest: str, started: float
@@ -212,6 +220,23 @@ class ConnectorGate:
         self._cancel_writes.add(task)
         task.add_done_callback(self._cancel_writes.discard)
         await asyncio.shield(task)
+
+    def _error(self, text: str, reason: str, ctx: taifeng.ToolContext, digest: str) -> taifeng.ToolResult:
+        """写调用结果未确认时挂起，不能把可重试错误直接送回模型。"""
+        if self._info.effect == "read":
+            return taifeng.ToolResult.error(text, reason=reason)
+        raise taifeng.SuspendSignal(taifeng.PendingRequest(
+            request_id="unknown_" + secrets.token_hex(12),
+            reason=taifeng.SuspendReason.TOOL_OUTCOME_UNKNOWN,
+            related_call_id=ctx.call_id,
+            payload_schema={"type": "object", "properties": {
+                "action": {"type": "string", "enum": ["provide", "abort"]},
+                "output": {"type": "string"}, "is_error": {"type": "boolean"}},
+                "required": ["action"]},
+            detail={"connector": self._info.connector, "tool": self._info.tool,
+                    "kind": reason, "arguments_digest": digest, "call_id": ctx.call_id,
+                    "thread_id": ctx.thread_id},
+        ))
 
     async def __call__(self, args: dict[str, Any], ctx: taifeng.ToolContext) -> taifeng.ToolResult:
         """工具处理函数。"""
@@ -253,12 +278,12 @@ class ConnectorGate:
             await self._record(
                 ctx, digest, decision="allowed", started=started, is_error=True, detail="timeout"
             )
-            return taifeng.ToolResult.error("connector_timeout", reason="timeout")
+            return self._error("connector_timeout", "timeout", ctx, digest)
         except (taifeng.McpToolError, ConnectorCallError) as exc:
             await self._record(
                 ctx, digest, decision="allowed", started=started, is_error=True, detail=str(exc)
             )
-            return taifeng.ToolResult.error(f"connector_error: {exc}", reason="connector_error")
+            return self._error(f"connector_error: {exc}", "connector_error", ctx, digest)
         except PlatformError as exc:
             # 调用途中平台侧出了问题（比如密钥刚被删掉）：记下来，告诉模型这次调用没成
             await self._record(
@@ -282,10 +307,10 @@ class ConnectorGate:
             await self._record(
                 ctx, digest, decision="allowed", started=started, is_error=True, detail=kind
             )
-            return taifeng.ToolResult.error(f"connector_error: {kind}", reason="connector_error")
+            return self._error(f"connector_error: {kind}", "connector_error", ctx, digest)
         await self._record(ctx, digest, decision="allowed", started=started, is_error=is_error)
         if is_error:
-            return taifeng.ToolResult.error(text or "connector_error", reason="tool_error")
+            return self._error(text or "connector_error", "tool_error", ctx, digest)
         return taifeng.ToolResult.ok(text, connector=info.connector, tool=info.tool)
 
 

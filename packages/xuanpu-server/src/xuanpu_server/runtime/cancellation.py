@@ -18,8 +18,8 @@
 因此逐个目标先等它出现在内核的在飞表里再提交；等待期间它离开了平台的在途集合（已经
 收尾或挂起）就跳过；等到上限仍未受理也跳过并记警告。只返回真正提交了取消的目标。
 
-剩下的窗口要靠内核修：从确认受理到内核 actor 处理这条 ``CancelTurn``，中间还有约一个
-事件循环迭代；目标恰在这个窗口里挂起，挂起记录仍会被清掉（或恰好收尾，取消落空）。
+稳定内核的 preserve_suspension=True 在 actor 处理取消时再次判断状态；目标恰在窗口里
+挂起时保留待办，不追加核销 marker。等待超时仍只能报告未确认停止。
 
 两种收尾事件都带 ``is_root``，事件枢纽照常据此结束那一轮的事件流、移出在途集合。
 CancelTurn 自己那个 submission 上内核另发一条 ``engine_log``：平台不为它登记事件流、
@@ -30,6 +30,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import secrets
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import taifeng
@@ -49,6 +51,24 @@ _POLL_FIRST_SECONDS = 0.001
 _POLL_MAX_SECONDS = 0.05
 # 错误信息里最多显示 submission 标识的多少个字符
 _SHOWN_ID_CHARS = 64
+
+
+@dataclass(eq=False)
+class Preparation:
+    """尚未提交内核的请求，可以在准备窗口被取消。"""
+    cancelled: bool = False
+    task: asyncio.Task[object] | None = None
+
+
+class CancellationRequest(list[str]):
+    """兼容旧目标列表，同时明确请求受理和未确认的边界。"""
+    def __init__(self, targets: Collection[str] = (), *, preparing: bool = False,
+                 unconfirmed: Collection[str] = ()) -> None:
+        """列表只包含已提交取消的目标，不表示它们已经停止。"""
+        super().__init__(targets)
+        self.request_id = "cancel_" + secrets.token_hex(12)
+        self.preparing_cancelled = preparing
+        self.unconfirmed = list(unconfirmed)
 
 
 def pick_targets(in_flight: Collection[str], submission_id: str | None) -> list[str]:
@@ -83,7 +103,7 @@ async def cancel_in_flight(
         admitted = set(engine.introspect()["pending_submissions"])
         for target in list(waiting):
             if target in admitted:
-                await engine.submit(taifeng.CancelTurn(submission_id=target))
+                await engine.submit(taifeng.CancelTurn(submission_id=target, preserve_suspension=True))
                 submitted.append(target)
                 waiting.remove(target)
             elif target not in in_flight:
@@ -98,7 +118,7 @@ async def cancel_in_flight(
             break
         await asyncio.sleep(pause)
         pause = min(pause * 2, _POLL_MAX_SECONDS)
-    return submitted
+    return CancellationRequest(submitted, unconfirmed=[item for item in waiting if item in in_flight])
 
 
 __all__ = ["ADMISSION_WAIT_SECONDS", "cancel_in_flight", "pick_targets"]

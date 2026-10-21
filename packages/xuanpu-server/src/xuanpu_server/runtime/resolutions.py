@@ -20,7 +20,7 @@ import logging
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Awaitable, Mapping
 
     import taifeng
 
@@ -39,7 +39,7 @@ class ResolutionWatch(Protocol):
         """内核核销了这次送回里的这些待办（只含这一次新核销的）。"""
         ...
 
-    def refused(self, reason: str) -> None:
+    def refused(self, reason: str) -> Awaitable[None] | None:
         """内核整次拒绝了这次送回，什么都没核销。"""
         ...
 
@@ -73,7 +73,13 @@ class ResolutionLedger:
         watch = self._watches.pop(event.submission_id, None)
         if kind == "suspension_resolve_rejected":
             if watch is not None:
-                watch.refused(str(data.get("reason")))
+                try:
+                    refused = watch.refused(str(data.get("reason")))
+                    if refused is not None:
+                        await refused
+                except Exception:
+                    logger.exception("会话 %s 的拒绝回执处理失败", self._session_id)
+                    watch.abandoned()
             return
         newly = self._newly_settled(kind, data)
         if watch is None:
@@ -94,6 +100,7 @@ class ResolutionLedger:
                 self._session_id,
                 event.submission_id,
             )
+            watch.abandoned()
 
     def _newly_settled(self, kind: str, data: Mapping[str, object]) -> frozenset[str] | None:
         """这条核销事件新核销的待办；事件缺字段返回 None。"""
@@ -110,7 +117,7 @@ class ResolutionLedger:
         seen.update(newly)
         return newly
 
-    def ended(self, submission_id: str, *, cancelled: bool) -> None:
+    async def ended(self, submission_id: str, *, cancelled: bool) -> None:
         """一次提交结束了。它若还在等结论（没有结论事件就结束了）：
 
         - 以取消结束（``cancelled``，如在内核里排队时被停下）：内核没处理这次送回，什么都没
@@ -126,6 +133,13 @@ class ResolutionLedger:
                 self._session_id,
                 submission_id,
             )
+            try:
+                work = watch.refused("cancelled_before_resolution")
+                if work is not None:
+                    await work
+            except Exception:
+                logger.exception("排队审批的取消回执处理失败")
+                watch.abandoned()
             return
         watch.abandoned()
 

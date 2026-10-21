@@ -117,6 +117,9 @@ def gate_call_data(
         "decision": decision,
         "is_error": is_error,
         "detail": detail,
+        "outcome": ("not_dispatched" if decision != "allowed" else
+                    "outcome_unknown" if is_error and info.effect != "read" else
+                    "failed" if is_error else "completed"),
         "call_id": call_id,
         "thread_id": thread_id,
         "arguments_digest": arguments_digest,

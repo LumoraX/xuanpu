@@ -284,6 +284,7 @@ class ServerConfig(_Section):
     ``identity`` 段见 ``identity.config.IdentityConfig``。
     """
 
+    execution_mode: Literal["single_instance"] = "single_instance"
     data_dir: Path
     root_key_hash: str = Field(pattern=_SHA256_HEX)
     master_keys: dict[str, str] = Field(min_length=1)

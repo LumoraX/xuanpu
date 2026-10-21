@@ -62,7 +62,7 @@ def audit_usage_router(platform: Platform) -> APIRouter:
             ),
         )
         return {
-            "records": [schemas.audit_view(record) for record in records],
+            "records": [schemas.audit_metadata_view(record) for record in records],
             "next_after_id": records[-1].audit_id if len(records) == limit else None,
         }
 

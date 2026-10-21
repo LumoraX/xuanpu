@@ -162,7 +162,7 @@ class AssistantRouter:
             return await self._route(who, body)
         await p.workspace.require_employee(who)
         if body.session_id:
-            await p.sessions.get(who, body.session_id)
+            await p.sessions.content(who, body.session_id)
         request_id = body.request_id or secrets.token_hex(16)
         lock_key = f"{who.tenant_id}:{who.user_id}:{request_id}"
         lock = self._route_locks.setdefault(lock_key, asyncio.Lock())
@@ -233,7 +233,7 @@ class AssistantRouter:
         """结果回放仍校验会话归属，展示消息失败不改变权威结果。"""
         values = dict(saved)
         session_id = values.pop("session_id", None)
-        session = await self._platform.sessions.get(who, session_id) if session_id else None
+        session = await self._platform.sessions.content(who, session_id) if session_id else None
         return RouteOutcome(session=session, **values)
 
     async def close(self) -> None:
@@ -256,7 +256,7 @@ class AssistantRouter:
         """构造当前租户的有限上下文，验证选择后复用或新建本人会话。"""
         p = self._platform
         tenant = who.require_tenant()
-        current = await p.sessions.get(who, body.session_id) if body.session_id else None
+        current = await p.sessions.content(who, body.session_id) if body.session_id else None
         if claim is not None and "choice" in claim:
             return await self._resolve(
                 who,
@@ -415,7 +415,7 @@ class AssistantRouter:
         if await p.packages.active_version(tenant, match["package"]) != match["version"]:
             raise RuntimeUnavailableError("业务配置已更新，请重试")
         if current is not None:
-            current = await p.sessions.get(who, current.session_id)
+            current = await p.sessions.content(who, current.session_id)
             if current.status == "active" and (current.package, current.version, current.entry) == (
                 match["package"],
                 match["version"],

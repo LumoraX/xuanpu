@@ -16,6 +16,7 @@ from xuanpu_server.controlplane.models import (
 )
 from xuanpu_server.errors import ConflictError, NotFoundError, SessionBusyError
 from xuanpu_server.reminders.memory import InMemoryReminderStore
+from xuanpu_server.runtime.receipt_store import MemoryReceiptStore
 from xuanpu_server.workspace.memory import InMemoryWorkspaceStore
 
 if TYPE_CHECKING:
@@ -33,6 +34,10 @@ class InMemoryControlPlane:
     def __init__(self) -> None:
         """从空状态开始。"""
         self._lock = asyncio.Lock()
+        self.operation_receipts = MemoryReceiptStore(
+            lambda tenant, session: self._sessions.get((tenant, session)),
+            self._append_reminder_audit,
+        )
         self.workspace_store = InMemoryWorkspaceStore(self._append_workspace_audit)
         self.reminder_store = InMemoryReminderStore(
             lambda tenant_id: (

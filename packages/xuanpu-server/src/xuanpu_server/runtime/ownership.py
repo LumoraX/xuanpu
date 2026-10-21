@@ -14,9 +14,9 @@
 被代调用时生效角色取 key 与员工中较低的那个（``tenancy.lower_role``），所以管理员的 key 代成员调用、
 成员的 key 代管理员调用，都只看见被代的这名员工自己的会话。
 
-会话的每个入口——取、关、发消息、送审批、停止、回放、待办——都经 ``SessionOwnership.visible``
-取会话（继续对话的两个经 ``writable``，它先调 ``visible``），列会话经 ``list_sessions``。看不见的
-会话与不存在的是同一个 ``404``（同一个错误码、同一句提示），不透露它是否存在。
+管理元数据、关闭、停止使用 visible。正文、回放、待办使用 content，继续消息与审批
+使用 writable（先检查 content）：员工仅本人，无员工主人时仅原创建凭据可读写。
+管理员角色本身不授予正文权限；管理响应投影会移除他人的自由 metadata。
 
 **列会话**：普通成员总是只列自己的，``mine`` 被忽略——``mine=false`` 也只列自己的，不报错（控制台
 等调用方默认不带 ``mine``，拒绝它会让这些调用方对成员直接失效）。其余调用者 ``mine=true`` 时：代表
@@ -31,9 +31,8 @@
 
 已知限制（这条规则是兜底，收尾靠停用流水线的监听者关闭会话，见 ``identity.listeners``）：
 
-- 检查与提交之间有窗口：检查通过之后、这条消息或审批结果交给内核之前，主人被停用的，这一次照样
-  提交。会话已在本实例上（热会话）时这个窗口几乎为零；要先准备引擎的（冷会话：解包、组装运行时、
-  续接历史）窗口等于准备引擎的耗时。
+- 引擎准备后、提交前再次检查主人和会话状态；最后一次检查与内核提交之间仍有非事务窗口。
+  与正在进行的外部调用不能形成原子撤权。
 - 只拦经平台入口的继续：内核自己发起的到期裁决（审批超时后按 ``on_expire`` 续跑）不经过这里，
   主人停用之后仍可能续跑一次。
 """
@@ -55,6 +54,8 @@ if TYPE_CHECKING:
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.identity.store import IdentityStore
     from xuanpu_server.tenancy import Principal
+
+from xuanpu_server.runtime.content_access import can_read_content
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +99,13 @@ class SessionOwnership:
             raise NotFoundError(f"会话 {session_id!r} 不存在")
         return record
 
+    async def content(self, principal: Principal, session_id: str) -> SessionRecord:
+        """正文、审批与执行仅向本人或系统会话创建者开放。"""
+        record = await self.visible(principal, session_id)
+        if not can_read_content(principal, record):
+            raise NotFoundError(f"会话 {session_id!r} 不存在")
+        return record
+
     async def writable(self, principal: Principal, session_id: str) -> SessionRecord:
         """取一个可以继续对话（发消息、送审批结果）的会话：看得见、没关闭、主人没停用。
 
@@ -106,7 +114,7 @@ class SessionOwnership:
             ConflictError: 会话已关闭。
             SessionOwnerDisabledError: 会话的主人已停用。
         """
-        record = await self.visible(principal, session_id)
+        record = await self.content(principal, session_id)
         require_active(record)
         await self.require_owner_active(record)
         return record

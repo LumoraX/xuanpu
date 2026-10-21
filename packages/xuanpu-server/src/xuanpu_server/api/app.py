@@ -24,12 +24,15 @@ from xuanpu_server.api.auth import Caller, bearer
 from xuanpu_server.api.console import ConsoleStaticFiles
 from xuanpu_server.api.history import history_router
 from xuanpu_server.api.identity import identity_router
+from xuanpu_server.api.instance import InstanceMiddleware
 from xuanpu_server.api.proactive import proactive_router
 from xuanpu_server.api.reminders import reminders_router
-from xuanpu_server.api.sse import stream_turn
+from xuanpu_server.api.sse import frame, stream_turn
 from xuanpu_server.api.workspace import workspace_router
 from xuanpu_server.assistant_workspace import prepare_business_message
+from xuanpu_server.audit import SENSITIVE_KINDS
 from xuanpu_server.errors import (
+    ApprovalConflictError,
     AuthenticationError,
     InvalidRequestError,
     LoginSessionInvalidError,
@@ -39,6 +42,9 @@ from xuanpu_server.errors import (
     SessionBusyError,
 )
 from xuanpu_server.identity.cookies import clear_login_cookie
+from xuanpu_server.runtime.cancellation import CancellationRequest
+from xuanpu_server.runtime.content_access import can_read_content
+from xuanpu_server.runtime.receipt_watch import ReplayedTurn
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -82,6 +88,9 @@ def _install_error_handlers(app: FastAPI) -> None:
             extra["problems"] = list(exc.problems)
         if isinstance(exc, SessionBusyError):
             extra["owner"] = exc.owner
+        if isinstance(exc, ApprovalConflictError):
+            extra.update(operation_id=exc.operation_id, state=exc.state,
+                         submission_id=exc.submission_id)
         if exc.status >= 500:
             logger.error("请求失败：%s（%s）", exc.message, exc.code)
         response = _error(exc.status, exc.code, exc.message, **extra)
@@ -138,6 +147,8 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     )
     app.state.platform = platform
     _install_error_handlers(app)
+
+    app.add_middleware(InstanceMiddleware, platform=platform)
     app.include_router(identity_router(platform))
     app.include_router(audit_usage_router(platform))
     app.include_router(history_router(platform))
@@ -326,17 +337,19 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     ) -> dict[str, Any]:
         """列出调用者看得见的会话；``mine=true`` 只看自己的（普通成员总是只看自己的）。"""
         records = await platform.sessions.list_sessions(who, status=status, mine=mine, limit=limit)
-        return {"sessions": [schemas.session_view(record) for record in records]}
+        return {"sessions": [schemas.session_view(record, include_content=can_read_content(who, record)) for record in records]}
 
     @app.get("/v1/sessions/{session_id}")
     async def get_session(session_id: str, who: Caller) -> dict[str, Any]:
         """取会话。"""
-        return schemas.session_view(await platform.sessions.get(who, session_id))
+        record = await platform.sessions.get(who, session_id)
+        return schemas.session_view(record, include_content=can_read_content(who, record))
 
     @app.delete("/v1/sessions/{session_id}")
     async def close_session(session_id: str, who: Caller) -> dict[str, Any]:
         """关闭会话。进行中的对话会被取消。"""
-        return schemas.session_view(await platform.sessions.close(who, session_id))
+        record = await platform.sessions.close(who, session_id)
+        return schemas.session_view(record, include_content=can_read_content(who, record))
 
     @app.get("/v1/sessions/{session_id}/pending")
     async def pending_requests(session_id: str, who: Caller) -> dict[str, Any]:
@@ -359,7 +372,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
         session_id: str, body: schemas.MessageBody, who: Caller
     ) -> StreamingResponse:
         """发一条消息，响应是这一轮对话的事件流。"""
-        await platform.sessions.get(who, session_id)
+        await platform.sessions.content(who, session_id)
         text, attachments = await prepare_business_message(platform, who, body.text, body.attachments)
         return _turn_response(await platform.sessions.send_message(
             who, session_id, text, attachments=attachments, audit_text=body.text
@@ -370,7 +383,19 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
         session_id: str, body: schemas.ResumeBody, who: Caller
     ) -> StreamingResponse:
         """送回审批结果或表单答案，响应是续跑部分的事件流。"""
-        return _turn_response(await platform.sessions.resume(who, session_id, body.resolutions))
+        result = await platform.sessions.resume(who, session_id, body.resolutions)
+        if isinstance(result, ReplayedTurn):
+            async def replay_frames() -> AsyncIterator[bytes]:
+                """原提交的审计快照；未结束时继续用原标识补读。"""
+                yield frame("turn", {"session_id": result.session_id, "submission_id": result.submission_id, "replayed": True})
+                for event in result.events:
+                    if event["kind"] not in SENSITIVE_KINDS:
+                        yield frame(event["kind"], {"submission_id": result.submission_id, **event})
+                yield frame("end", {"submission_id": result.submission_id, "replayed": True})
+            return StreamingResponse(replay_frames(), media_type="text/event-stream",
+                headers={"X-Submission-Id": result.submission_id, "X-Xuanpu-Replayed": "true",
+                         "Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+        return _turn_response(result)
 
     @app.post("/v1/sessions/{session_id}/cancel")
     async def cancel_turns(
@@ -378,7 +403,13 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     ) -> dict[str, Any]:
         """停止生成：取消会话里在途的对话（请求体可省略），返回停了哪些 submission。"""
         submission_id = body.submission_id if body is not None else None
-        return {"cancelled": await platform.sessions.cancel(who, session_id, submission_id)}
+        targets = await platform.sessions.cancel(who, session_id, submission_id)
+        result: dict[str, Any] = {"cancelled": list(targets)}
+        if isinstance(targets, CancellationRequest) and (targets or targets.preparing_cancelled or targets.unconfirmed):
+            result.update(request_id=targets.request_id, status="requested" if targets or targets.preparing_cancelled else "unconfirmed",
+                          requested=list(targets), preparing_cancelled=targets.preparing_cancelled,
+                          unconfirmed=targets.unconfirmed)
+        return result
 
     if console_dir is not None:
         app.mount("/console", ConsoleStaticFiles(directory=str(console_dir), html=True), name="console")

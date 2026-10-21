@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from xuanpu_server.identity import IdentityStore
     from xuanpu_server.objectstore import ObjectStore
     from xuanpu_server.runtime import SandboxProvider, StateBackendFactory
+    from xuanpu_server.runtime.instance_guard import InstanceGuard
 
 
 def tenant_table_prefix(tenant_id: str) -> str:
@@ -147,6 +148,21 @@ async def _stores(
     return store, PostgresIdentityStore(pool, namespace=namespace)
 
 
+
+def instance_guard(config: ServerConfig) -> InstanceGuard:
+    """生产控制面使用不占业务池的专用咨询锁连接。"""
+    from xuanpu_server.runtime.instance_guard import FileInstanceGuard, PostgresInstanceGuard
+    if config.control_plane.backend == "memory":
+        return FileInstanceGuard(config.data_dir)
+    settings = config.control_plane.postgres
+    assert settings is not None
+    async def connect() -> asyncpg.Connection:
+        """凭据仅在已授权装配中使用，不输出配置。"""
+        import asyncpg
+        return await asyncpg.connect(settings.dsn, timeout=settings.connect_timeout_seconds,
+                                     command_timeout=settings.command_timeout_seconds)
+    return PostgresInstanceGuard(connect, f"{settings.schema_name}.xp_")
+
 async def _states(stack: AsyncExitStack, config: ServerConfig) -> StateBackendFactory:
     """状态面后端。"""
     if config.state.backend == "local":
@@ -249,6 +265,7 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
         )
         platform = Platform(
             store=store,
+            instance_guard=instance_guard(config),
             identity_store=identity_store,
             identity_settings=IdentitySettings.from_config(config.public_url, config.identity),
             vault=vault,

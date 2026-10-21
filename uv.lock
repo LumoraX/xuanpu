@@ -1846,7 +1846,7 @@ wheels = [
 
 [[package]]
 name = "taifeng"
-version = "2026.10.1.10"
+version = "2026.10.1.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1856,9 +1856,9 @@ dependencies = [
     { name = "rfc8785" },
     { name = "sniffio" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/97/6d/0552c47a5f1c6d64bb9b960c242c165ee111781b8817a93acda0537653e9/taifeng-2026.10.1.10.tar.gz", hash = "sha256:650a7a52d92ccc1590d38ec2c2afb7deecbb51ddc5dd1de6cc2b3a33a25e0a76", size = 3901837, upload-time = "2026-10-01T02:07:10.199Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/71/e2/49e09c14ab8f54bfba1f8c6512ca40dc9b657077ae727cce13bf63d35a83/taifeng-2026.10.1.11.tar.gz", hash = "sha256:9e0f596fa87bf10cdfef212cd13b7cce78c8ff6da6598fd4b2bd77ad1eae9c3a", size = 3906306, upload-time = "2026-10-21T01:10:10.376Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bc/a5/37325d953c73c89b4ca157c37596da5807531ca77d51a9fcfdf596cfcf4d/taifeng-2026.10.1.10-py3-none-any.whl", hash = "sha256:c077c3ae46fef0f227956a30ff2e2e7c7d5cf7c0c9fa028116b10765fbd2fe06", size = 1173571, upload-time = "2026-10-01T02:07:08.614Z" },
+    { url = "https://files.pythonhosted.org/packages/78/c3/35e0fcfed5d17818db7866c3a2242a1a0e87a5314f32b3899153ec16b1d0/taifeng-2026.10.1.11-py3-none-any.whl", hash = "sha256:cb279095e1c24d0dff1adb522ad75cfbd7843f40c6c238ce03b2fd39b6d1a183", size = 1173894, upload-time = "2026-10-21T01:10:08.639Z" },
 ]
 
 [[package]]
@@ -2067,7 +2067,7 @@ wheels = [
 
 [[package]]
 name = "xuanpu-cli"
-version = "2026.10.5.1"
+version = "2026.10.21.1"
 source = { editable = "packages/xuanpu-cli" }
 dependencies = [
     { name = "xuanpu-console" },
@@ -2086,7 +2086,7 @@ requires-dist = [
 
 [[package]]
 name = "xuanpu-console"
-version = "2026.10.20.1"
+version = "2026.10.21.1"
 source = { editable = "packages/xuanpu-console" }
 
 [[package]]
@@ -2096,7 +2096,7 @@ source = { virtual = "packages/xuanpu-desktop" }
 
 [[package]]
 name = "xuanpu-sdk-py"
-version = "2026.9.30.1"
+version = "2026.10.21.1"
 source = { editable = "packages/xuanpu-sdk-py" }
 dependencies = [
     { name = "httpx" },
@@ -2107,7 +2107,7 @@ requires-dist = [{ name = "httpx", specifier = ">=0.27" }]
 
 [[package]]
 name = "xuanpu-server"
-version = "2026.10.20.1"
+version = "2026.10.21.1"
 source = { editable = "packages/xuanpu-server" }
 dependencies = [
     { name = "cryptography" },
@@ -2142,7 +2142,7 @@ requires-dist = [
     { name = "prometheus-client", specifier = ">=0.20" },
     { name = "pydantic", specifier = ">=2.6" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "taifeng", specifier = ">=2026.10.1.10" },
+    { name = "taifeng", specifier = ">=2026.10.1.11" },
     { name = "taifeng-sandbox", editable = "../taifeng-sandbox" },
     { name = "taifeng-stores", editable = "../taifeng-stores" },
     { name = "taifeng-stores", extras = ["postgres"], marker = "extra == 'postgres'", editable = "../taifeng-stores" },

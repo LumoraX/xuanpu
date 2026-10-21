@@ -8,6 +8,7 @@ cookie 401、代调用 403、会话被关；只做前两步时，主人已停用
 from __future__ import annotations
 
 import time
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any, get_args
 
 import pytest
@@ -301,12 +302,12 @@ async def test_owner_disabled_rule_covers_unfinished_cleanup(ident: Any, step: A
     assert await status_of(ident, session_id) == "active"
     url = f"/v1/sessions/{session_id}/messages"
     blocked = await ident.http.post(url, headers=bearer(ident.world.admin_key), json={"text": "hi"})
-    assert (blocked.status_code, blocked.json()["error"]["code"]) == (403, "session_owner_disabled")
+    assert (blocked.status_code, blocked.json()["error"]["code"]) == (404, "not_found")
 
     assert await identity.disabling.notify("acme", alice.user_id, admin) == ()
     assert await status_of(ident, session_id) == "closed"
     closed = await ident.http.post(url, headers=bearer(ident.world.admin_key), json={"text": "hi"})
-    assert (closed.status_code, closed.json()["error"]["code"]) == (409, "conflict")
+    assert (closed.status_code, closed.json()["error"]["code"]) == (404, "not_found")
 
 
 # --- 会话被别的实例持有 ---
@@ -323,7 +324,7 @@ async def test_session_held_by_another_instance_is_marked_closed(
     other = world.sibling("inst-other", data_dir=(tmp_path / "data-other").resolve())
     try:
         world.models.script(step(text="在另一个实例上"))
-        await read_turn(await other.sessions.send_message(world.admin, session_id, "你好"))
+        await read_turn(await other.sessions.send_message(replace(world.admin, user_id=alice.user_id), session_id, "你好"))
         held = await world.platform.store.get_session("acme", session_id)
         assert held.owner == "inst-other"
 
@@ -336,7 +337,7 @@ async def test_session_held_by_another_instance_is_marked_closed(
         assert other.sessions.held_sessions() == 1
         await world.platform.identity.enable_user("acme", alice.user_id, world.admin)
         with pytest.raises(ConflictError, match="已关闭"):
-            await other.sessions.send_message(world.admin, session_id, "还在吗")
+            await other.sessions.send_message(replace(world.admin, user_id=alice.user_id), session_id, "还在吗")
     finally:
         await other.close()
 

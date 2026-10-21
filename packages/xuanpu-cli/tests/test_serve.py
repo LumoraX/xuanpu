@@ -205,3 +205,11 @@ def test_serve_end_to_end(served: tuple[str, str]) -> None:
         )
         kinds = [r["kind"] for r in http.get("/v1/audit", headers=admin).json()["records"]]
         assert kinds == ["tenant_created", "api_key_issued", "secret_written"]
+
+
+def test_service_entry_has_one_worker_even_when_environment_requests_more(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """受支持服务入口固定一个进程，外部 worker 环境值不能扩大执行面。"""
+    from fastapi import FastAPI
+    monkeypatch.setenv("WEB_CONCURRENCY", "3")
+    built = uvicorn_config(FastAPI(), server_config(tmp_path))
+    assert built.workers == 1
