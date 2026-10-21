@@ -3,7 +3,7 @@ name: office
 description: 整理指定个人材料，形成真实会议纪要或表格汇总成果
 type: composite
 entry: true
-version: 1.0.1
+version: 1.0.2
 child_skills: [meeting-minutes, table-summary]
 tool_names: [file_read, file_write, shell_exec]
 ---
@@ -17,4 +17,6 @@ tool_names: [file_read, file_write, shell_exec]
 不得调用对外连接器、访问其他目录或安装依赖；所有解析依赖已在办公执行镜像构建时锁定。
 清单格式：{"kind":"meeting_minutes或table_summary","artifacts":[{"path":"outputs/相对文件名","name":"展示名称含扩展名","role":"对应角色","mime_type":"正确MIME"}]}。
 会议角色须为 minutes(text/markdown)、actions(application/json)；表格角色须为 summary_csv(text/csv)、summary_xlsx(application/vnd.openxmlformats-officedocument.spreadsheetml.sheet)、report(text/markdown)、evidence(application/json)。
-子skill完成后读取并确认真实文件存在，不以文字回复代替清单。
+子skill完成后使用file_read读取outputs/manifest.json及必要成果来确认真实文件；不要为检查存在性调用shell_exec、test、cat或其他命令，否则会产生不必要的批准。不要改写脚本已生成的文件，不以文字回复代替清单。
+
+表格子skill的脚本参数以其SKILL.md声明为准。调用前读取该声明并使用其中完整JSON示例，不猜测input_path或inputs的数据形状。

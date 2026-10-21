@@ -424,6 +424,11 @@ class SessionManager:
         routing = sum(n for tenant, n in self._routing.items() if tenant_id in (None, tenant))
         return sum(len(live.in_flight) for live in lives) + routing
 
+    def ordinary_turns(self, tenant_id: str) -> int:
+        """后台准入只补普通轮次占用，避免把已持有的任务轮次重复计算。"""
+        return sum(len(live.in_flight) for key,live in self._live.items()
+            if key[0] == tenant_id and live.record.work_task_id is None) + self._routing.get(tenant_id,0)
+
     def held_sessions(self) -> int:
         """本实例当前持有（有引擎）的会话数。"""
         return len(self._live)
@@ -556,6 +561,9 @@ class SessionManager:
             raise InvalidRequestError("resolutions 不能为空")
         record = await self._ownership.writable(principal, session_id)
         require_task_executor(record, work_task_id)
+        from .task_recovery_guard import require_safe_resume
+
+        await require_safe_resume(self._store, record, resolutions)
         receipts = self._store.operation_receipts
         intent = self._begin_preparation(record)
         receipt = None

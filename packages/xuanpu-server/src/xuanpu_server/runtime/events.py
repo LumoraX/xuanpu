@@ -204,6 +204,9 @@ class EngineEventHub:
         """
         if user_id is not None and users is None:
             raise ValueError("会话有主人时要给身份存储，按员工的用量记在那里")
+        from xuanpu_server.work_tasks.execution_context import current_execution
+
+        self._task_accounted = current_execution.get() is not None
         self._on_turn_end = on_turn_end
         self._metrics = metrics
         self._engine = engine
@@ -342,6 +345,8 @@ class EngineEventHub:
 
         先记租户总量，记成了才记按员工的：租户那笔失败时员工那笔也不记，保证各员工之和不大于
         租户总量（员工那笔失败只让按员工的少算）。"""
+        if self._task_accounted:
+            return
         data = event.msg.data
         usage = data.get("subtree_usage") or data.get("usage") or {}
         if not isinstance(usage, dict):

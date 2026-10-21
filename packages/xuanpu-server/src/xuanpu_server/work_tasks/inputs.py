@@ -33,7 +33,7 @@ class InputSnapshotService:
         tenant, user = await self.workspace.require_employee(who)
         if (tenant, user) != (task.tenant_id, task.user_id):
             raise NotFoundError('工作任务不存在')
-        if not 1 <= len(task.inputs) <= 8:
+        if not (0 if task.execution_kind == 'capability' else 1) <= len(task.inputs) <= 8:
             raise InvalidRequestError('输入数量须为1至8个')
         contents: list[tuple[str, bytes]] = []
         total = 0
@@ -77,7 +77,8 @@ class InputSnapshotService:
 
     def directory(self, task: WorkTaskRecord) -> Path:
         """任务专属输入根可以在重启后确定，不包含客户端提供的路径。"""
-        scope = ExecutionScope(task.tenant_id, task.user_id, 'task:' + task.task_id)
+        scope = ExecutionScope(task.tenant_id, task.user_id, 'task:' + task.task_id +
+            (f':attempt:{task.attempt_no}' if task.recovery_policy_version == 2 else ''))
         return self.root / scope.storage_key()
 
     async def cleanup(self, task: WorkTaskRecord, *, keep_root: bool = False) -> None:

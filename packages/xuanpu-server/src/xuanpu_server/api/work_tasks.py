@@ -8,7 +8,10 @@ from fastapi import APIRouter, Query
 
 from xuanpu_server.api.auth import Caller  # noqa: TC001 — FastAPI解析
 from xuanpu_server.work_tasks.decisions import TaskDecision  # noqa: TC001 — FastAPI解析
-from xuanpu_server.work_tasks.models import WorkTaskInput  # noqa: TC001 — FastAPI解析
+from xuanpu_server.work_tasks.models import (  # noqa: TC001 — FastAPI解析
+    CapabilityTaskInput,
+    WorkTaskInput,
+)
 
 if TYPE_CHECKING:
     from xuanpu_server.platform import Platform
@@ -22,7 +25,12 @@ def work_tasks_router(platform: Platform) -> APIRouter:
     @router.post("", status_code=202)
     async def accept(body: WorkTaskInput, who: Caller) -> dict[str, Any]:
         """持久受理后返回任务标识，不能提前声称完成。"""
-        return (await service.accept(who, body)).model_dump(mode="json", exclude={"process_owner"})
+        return await service.public_record(who, await service.accept(who, body))
+
+    @router.post('/from-capability', status_code=202)
+    async def from_capability(body: CapabilityTaskInput, who: Caller) -> dict[str, Any]:
+        """无附件能力同样先受理，再由持久执行器完成。"""
+        return await service.public_record(who, await service.accept_capability(who, body))
 
     @router.get("")
     async def list_tasks(
@@ -30,12 +38,12 @@ def work_tasks_router(platform: Platform) -> APIRouter:
     ) -> dict[str, Any]:
         """稳定分页读取本人任务。"""
         tasks = await service.store.list(who, limit=limit, after_id=after_id)
-        return {"items": [task.model_dump(mode="json", exclude={"process_owner"}) for task in tasks]}
+        return {"items": [await service.public_record(who, task) for task in tasks]}
 
     @router.get("/{task_id}")
     async def get(task_id: str, who: Caller) -> dict[str, Any]:
         """刷新查询始终来自持久记录。"""
-        return (await service.store.get(who, task_id)).model_dump(mode="json", exclude={"process_owner"})
+        return await service.public_record(who, await service.store.get(who, task_id))
 
     @router.get("/{task_id}/events")
     async def events(
@@ -55,6 +63,6 @@ def work_tasks_router(platform: Platform) -> APIRouter:
     @router.post("/{task_id}/decisions")
     async def decide(task_id: str, body: TaskDecision, who: Caller) -> dict[str, Any]:
         """本人决定经服务层复核和幂等回执处理。"""
-        return (await service.decide(who, task_id, body)).model_dump(mode="json", exclude={"process_owner"})
+        return await service.public_record(who, await service.decide(who, task_id, body))
 
     return router

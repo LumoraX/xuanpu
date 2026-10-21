@@ -57,6 +57,7 @@ from xuanpu_server.tenancy import (
     verify_secret,
 )
 from xuanpu_server.work_tasks.artifacts import ArtifactService
+from xuanpu_server.work_tasks.config import DurableExecutionConfig
 from xuanpu_server.work_tasks.inputs import InputSnapshotService
 from xuanpu_server.work_tasks.proposals import ActionProposalService
 from xuanpu_server.work_tasks.registry import TaskRegistry
@@ -118,6 +119,7 @@ class Platform:
         lease_seconds: float = 60.0,
         shutdown_drain_seconds: float = 0.0,
         feishu_transport: httpx.AsyncBaseTransport | None = None,
+        durable_execution: DurableExecutionConfig | None = None,
         proactive_interval: float = 1800.0,
         proactive_scan_seconds: float = 60.0,
         now: Callable[[], float] = time.time,
@@ -206,8 +208,9 @@ class Platform:
         self.packages = PackageRegistry(
             store, self.audit, data_dir=data_dir, objects=self.objects, now=now
         )
+        durable = durable_execution or DurableExecutionConfig()
         self.work_tasks = WorkTaskService(self.workspace, self.packages,
-            process_owner=self.instance_id, now=now)
+            process_owner=self.instance_id, now=now, durable=durable)
         submissions = SubmissionIndex()
         self.runtimes = RuntimeAssembler(
             data_dir=data_dir,
@@ -228,7 +231,8 @@ class Platform:
             ArtifactService(self.workspace, self.work_tasks.store, now=now), self.task_actions)
         self.task_registry = TaskRegistry(self.work_tasks.store, self.task_runner,
             process_owner=self.instance_id, now=now, cleanup=self.task_runner.release,
-            close_resources=self.task_runner.close, recover=self.task_runner.recover, actions=self.task_actions)
+            close_resources=self.task_runner.close, recover=self.task_runner.recover, actions=self.task_actions, durable=durable,
+            ordinary_turns=self.sessions.ordinary_turns)
         self.work_tasks.executor = self.task_registry
         self.assistant = AssistantRouter(self, models, now=now)
         self.proactive = ProactiveService(workspace=self.workspace, control=store,

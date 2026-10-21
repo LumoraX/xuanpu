@@ -72,6 +72,7 @@ class WorkTaskStore:
         """注入同一工作区服务，生产后端和内存后端遵循相同原子契约。"""
         self.workspace = workspace
         self.max_tasks = 1000
+        self.durable_config: Any = None
 
     async def create_or_replay(
         self, who: Principal, task: WorkTaskRecord
@@ -92,12 +93,18 @@ class WorkTaskStore:
             if len(state.work_tasks) >= self.max_tasks:
                 raise ConflictError("个人工作任务数量已达上限")
             validate_sources(state, task)
+            if task.recovery_policy_version == 2:
+                from .execution_store import initialize
+
+                limits = self.durable_config
+                task = initialize(state, task, who, max_attempts=limits.max_attempts if limits else 3,
+                    recovery_seconds=limits.recovery_seconds if limits else 1800.)
             save_record(state, task, "accepted")
             return task, True
 
     async def get(self, who: Principal, task_id: str) -> WorkTaskRecord:
         """读取本人持久任务，包括已完成和中断记录。"""
-        async with self.workspace.transaction(who, "work-task:get") as state:
+        async with self.workspace.transaction(who, "work-task:one:" + task_id) as state:
             return require_task(state, task_id)
 
     async def find_request(self, who: Principal, request_id: str) -> WorkTaskRecord | None:
@@ -138,7 +145,7 @@ class WorkTaskStore:
         at: float, event_kind: str = "state_changed", **changes: Any,
     ) -> WorkTaskRecord:
         """员工锁内CAS更新任务、持久事件和审计，异常时整体回滚。"""
-        async with self.workspace.transaction(who, "work-task:transition") as state:
+        async with self.workspace.transaction(who, "work-task:one:" + task_id) as state:
             task = require_task(state, task_id)
             if task.state_version >= 256 and status in {"running", "waiting_user"}:
                 raise ConflictError("任务状态更新次数已达上限，请人工核实")
@@ -146,11 +153,18 @@ class WorkTaskStore:
             save_record(state, updated, event_kind)
             return updated
 
-    async def lifecycle_records(self, tenant: str, user: str) -> builtins.list[WorkTaskRecord]:
+    async def lifecycle_task(self, tenant: str, user: str, task_id: str) -> WorkTaskRecord:
+        """内部单项补领不装载员工全部任务。"""
+        async with self.workspace.store.transaction(tenant, user, _lifecycle_guard,
+                'work-task:one:' + task_id, allow_inactive=True) as state:
+            return require_task(state, task_id)
+
+    async def lifecycle_records(self, tenant: str, user: str, *, legacy_only: bool = False) -> builtins.list[WorkTaskRecord]:
         """内部收尾读取已停用员工的记录；不会赋予任何正文HTTP权限。"""
         async with self.workspace.store.transaction(tenant, user, _lifecycle_guard,
-                'work-task:pending', allow_inactive=True) as state:
-            return [parse_record(value) for value in state.work_tasks.values() if needs_recovery(value)]
+                'work-task:legacy-pending' if legacy_only else 'work-task:pending', allow_inactive=True) as state:
+            return [parse_record(value) for value in state.work_tasks.values() if needs_recovery(value)
+                and (not legacy_only or value.get('recovery_policy_version',1) == 1)]
 
     async def recover_artifact_index(self, task: WorkTaskRecord, receipts: tuple[ArtifactReceipt, ...],
                                      *, at: float) -> None:
@@ -170,6 +184,8 @@ class WorkTaskStore:
         async with self.workspace.store.transaction(task.tenant_id, task.user_id, _lifecycle_guard,
                 'work-task:lifecycle', allow_inactive=True) as state:
             current = require_task(state, task.task_id)
+            if task.recovery_policy_version == 2 and task.attempt_no != current.attempt_no:
+                raise ConflictError('旧attempt不能清理新执行的资源责任')
             if current.resources_recovered and not current.resources_pending:
                 return
             updated = current.model_copy(update={'resources_pending': False, 'resources_recovered': True,
@@ -178,6 +194,7 @@ class WorkTaskStore:
 
     async def settle_lifecycle(
         self, tenant: str, user: str, task_id: str, status: str, *, at: float, error_code: str,
+        expected_owner: str | None = None, expected_attempt: int | None = None, expected_epoch: int | None = None,
     ) -> WorkTaskRecord:
         """停用或进程关闭仍以同员工锁结算，只能进入终态，不发起新业务。"""
         from .models import TERMINAL
@@ -187,6 +204,13 @@ class WorkTaskStore:
         async with self.workspace.store.transaction(tenant, user, _lifecycle_guard,
                 'work-task:lifecycle', allow_inactive=True) as state:
             current = require_task(state, task_id)
+            if expected_epoch is not None:
+                dispatch = state.task_dispatch.get(task_id)
+                if dispatch is None or (dispatch['owner'],dispatch['epoch']) != (expected_owner,expected_epoch):
+                    raise ConflictError('stale_epoch：旧租约不能结算后续执行')
+            if (expected_owner is not None and (current.process_owner != expected_owner
+                    or current.attempt_no != expected_attempt)):
+                raise ConflictError('stale_epoch：旧attempt不能结算后续执行')
             if current.status in TERMINAL:
                 return current
             target = 'outcome_unknown' if current.unverified_write else status

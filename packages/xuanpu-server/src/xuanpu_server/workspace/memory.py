@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
@@ -33,9 +33,16 @@ class InMemoryWorkspaceStore:
         self._states: dict[tuple[str, str], WorkspaceState] = {}
         self._epochs: dict[tuple[str, str], int] = {}
         self._locks: dict[tuple[str, str], asyncio.Lock] = {}
+        self._tenant_locks: dict[str, asyncio.Lock] = {}
+        self._execution_lock = asyncio.Lock()
+        self._task_usage: Callable[[str, str, WorkspaceState, WorkspaceState], Callable[[], None]] | None = None
         self._notification_sink: (
             Callable[[str, str, WorkspaceState, WorkspaceState], Callable[[], None]] | None
         ) = None
+
+    def bind_task_usage(self, sink: Callable[[str, str, WorkspaceState, WorkspaceState], Callable[[], None]]) -> None:
+        """任务账本与原有用量同时原子提交。"""
+        self._task_usage = sink
 
     def disable_user(self, tenant: str, user: str, now: float) -> None:
         """身份停用同步关闭旧关注，并使已打开的事务快照失效。"""
@@ -127,15 +134,38 @@ class InMemoryWorkspaceStore:
         """绑定先准备后同步提交的统一通知存储。"""
         self._notification_sink = sink
 
+    async def durable_candidates(self, *, after: tuple[str, str] | None = None,
+                                 limit: int = 100, now: float) -> list[tuple[str, str, str]]:
+        """每员工最多一项，避免同一员工千条任务挤占候选批次。"""
+        if not 1 <= limit <= 100:
+            raise ValueError('派发候选最多100项')
+        candidates = []
+        for owner in sorted(self._states):
+            if after is not None and owner <= after:
+                continue
+            state = self._states[owner]
+            due = sorted((entry for entry in state.task_dispatch.values() if
+                state.work_tasks[entry['task_id']]['status'] in {'accepted','running','waiting_user'} and
+                (state.work_tasks[entry['task_id']].get('cancel_requested',False) or
+                 (entry['state'] in {'ready','retry_wait','paused_shutdown'} and entry['due_at'] <= now))),
+                key=lambda entry: (not state.work_tasks[entry['task_id']].get('cancel_requested',False),
+                                   entry['due_at'],entry['task_id']))
+            if due:
+                candidates.append((*owner, due[0]['task_id']))
+            if len(candidates) == limit:
+                break
+        return candidates
+
     async def task_owners(self, after: tuple[str, str] | None = None,
-                          limit: int = 100) -> list[tuple[str, str]]:
+                          limit: int = 100, *, legacy_only: bool = False) -> list[tuple[str, str]]:
         """内部恢复枚举任务所有者，包含已停用员工以完成中断结算。"""
         from xuanpu_server.work_tasks.models import needs_recovery
 
         if not 1 <= limit <= 100:
             raise ValueError('分页数量须为1至100')
         return sorted(owner for owner, state in self._states.items()
-            if (after is None or owner > after) and any(needs_recovery(value)
+            if (after is None or owner > after) and any(needs_recovery(value) and
+                (not legacy_only or value.get('recovery_policy_version',1) == 1)
                 for value in state.work_tasks.values()))[:limit]
 
     async def owners(
@@ -161,13 +191,22 @@ class InMemoryWorkspaceStore:
         from xuanpu_server.controlplane.models import AuditRecord
 
         owner = (tenant, user)
-        async with self.employee_lock(tenant, user):
+        async with AsyncExitStack() as locks:
+            if request_id and request_id.startswith('work-task:exec:'):
+                await locks.enter_async_context(self._execution_lock)
+            await locks.enter_async_context(self._tenant_locks.setdefault(tenant, asyncio.Lock()))
+            await locks.enter_async_context(self.employee_lock(tenant, user))
             if not allow_inactive:
                 await guard()
             epoch = self._epochs.get(owner, 0)
             original = self._states.get(owner, WorkspaceState())
             state = deepcopy(original)
             state.audits = []
+            state.execution_active = [
+                {**dispatch, 'tenant_id': owner[0], 'user_id': owner[1],
+                 'resources_pending': saved.work_tasks[identifier].get('resources_pending', False)}
+                for owner, saved in self._states.items() for identifier, dispatch in saved.task_dispatch.items()
+                if dispatch['state'] == 'leased']
             for item in state.items.values():
                 ensure_todo_progress(item)
             yield state
@@ -192,7 +231,10 @@ class InMemoryWorkspaceStore:
                 AuditRecord(tenant_id=tenant, user_id=user, source="control", **a)
                 for a in state.audits
             ]
+            commit_usage = self._task_usage(tenant, user, original, state) if self._task_usage else None
             self._audit(audits)
+            if commit_usage is not None:
+                commit_usage()
             if commit_notifications is not None:
                 commit_notifications()
             state.pending_notifications = []

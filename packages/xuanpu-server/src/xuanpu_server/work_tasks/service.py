@@ -4,12 +4,19 @@ from __future__ import annotations
 
 import hashlib
 import time
-from typing import TYPE_CHECKING, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from xuanpu_server.errors import ConflictError, InvalidRequestError, NotFoundError
 from xuanpu_server.ids import new_id
-from xuanpu_server.work_tasks.models import TERMINAL, InputSnapshot, WorkTaskInput, WorkTaskRecord
+from xuanpu_server.work_tasks.models import (
+    TERMINAL,
+    CapabilityTaskInput,
+    InputSnapshot,
+    WorkTaskInput,
+    WorkTaskRecord,
+)
 
+from .config import DurableExecutionConfig
 from .rules import input_fingerprint
 from .store import WorkTaskStore
 
@@ -50,13 +57,33 @@ class WorkTaskService:
 
     def __init__(
         self, workspace: WorkspaceService, packages: PackageRegistry, *, process_owner: str,
-        now: Callable[[], float] = time.time,
+        now: Callable[[], float] = time.time, durable: DurableExecutionConfig | None = None,
     ) -> None:
         """注入本人工作区、版本化能力登记、进程身份和时钟。"""
         self.workspace, self.packages = workspace, packages
         self.store = WorkTaskStore(workspace)
         self.process_owner, self._now = process_owner, now
         self.executor: TaskExecutor | None = None
+        self.durable = durable or DurableExecutionConfig()
+        self.store.durable_config = self.durable
+
+    async def public_record(self, who: Principal, task: WorkTaskRecord) -> dict[str, Any]:
+        """本人可见阶段及阻塞原因，内部执行凭据和私有对象键不外泄。"""
+        hidden = {'process_owner', 'grant_id', 'staging_objects', 'frozen_staging', 'unsafe_resume', 'pending_decision', 'resume_evidence'}
+        result = task.model_dump(mode='json', exclude=hidden)
+        receipt = result['result_receipt']
+        for group in ('read_receipts', 'tool_receipts'):
+            if group in receipt:
+                receipt[group] = [{key: value for key, value in entry.items() if key != 'epoch'}
+                                  for entry in receipt[group]]
+        if task.recovery_policy_version == 2:
+            from .execution_store import ExecutionStore
+
+            dispatch = await ExecutionStore(self.workspace).get(who, task.task_id)
+            result['execution'] = {'state': 'settled' if task.status in TERMINAL else dispatch.state,
+                'attempt_no': dispatch.attempt_no, 'phase': dispatch.checkpoint.phase,
+                'block_reason': dispatch.block_reason}
+        return result
 
     async def accept(self, who: Principal, request: WorkTaskInput) -> WorkTaskRecord:
         """同请求先回放，新的交办核对全部输入再原子受理。"""
@@ -68,6 +95,8 @@ class WorkTaskService:
                 raise ConflictError("同一请求标识对应的交办内容不同")
             return previous
         package = await self.packages.resolve(tenant, OFFICE_PACKAGE)
+        if self.durable.enabled and package.manifest.spec.policy.sandbox.network:
+            raise InvalidRequestError('持久任务只允许断网脚本，外部操作请使用平台连接器')
         inputs = await self._inputs(who, request)
         table_mimes = {'text/csv','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}
         modes = {entry.mime_type in table_mimes for entry in inputs}
@@ -80,7 +109,38 @@ class WorkTaskService:
             text=request.text, timezone=request.timezone, inputs=inputs,
             package=package.record.name, package_version=package.record.version,
             package_digest=package.record.digest.removeprefix("sha256:"),
-            process_owner=self.process_owner, accepted_at=now, updated_at=now, output_kind=output_kind)
+            process_owner=self.process_owner, accepted_at=now, updated_at=now, output_kind=output_kind,
+            recovery_policy_version=2 if self.durable.enabled else 1)
+        accepted, created = await self.store.create_or_replay(who, record)
+        if created and self.executor is not None:
+            self.executor.start(who, accepted)
+        return accepted
+
+    async def accept_capability(self, who: Principal, request: CapabilityTaskInput) -> WorkTaskRecord:
+        """目录项由实际发布包核对，不能上传脚本或指定宿主路径。"""
+        if not self.durable.enabled:
+            raise ConflictError('持久能力交办尚未开启')
+        tenant, user = await self.workspace.require_employee(who)
+        fingerprint = input_fingerprint(request)
+        previous = await self.store.find_request(who, request.request_id)
+        if previous is not None:
+            if previous.input_fingerprint != fingerprint:
+                raise ConflictError('同一请求标识对应的交办内容不同')
+            return previous
+        package = await self.packages.resolve(tenant, request.capability.package)
+        if request.capability.entry not in package.manifest.spec.skills.entries:
+            raise InvalidRequestError('该能力入口尚未发布')
+        if self.durable.enabled and package.manifest.spec.policy.sandbox.network:
+            raise InvalidRequestError('持久任务只允许断网脚本，外部操作请使用平台连接器')
+        inputs = await self._inputs(who, request)
+        now = self._now()
+        record = WorkTaskRecord(task_id=new_id('task'), tenant_id=tenant, user_id=user, actor=who.actor,
+            request_id=request.request_id, input_fingerprint=fingerprint, matter_id=request.matter_id,
+            text=request.text, timezone=request.timezone, inputs=inputs, package=package.record.name,
+            package_version=package.record.version, package_digest=package.record.digest.removeprefix('sha256:'),
+            entry=request.capability.entry, execution_kind='capability', completion_policy='capability_receipt',
+            output_kind='capability_result', recovery_policy_version=2, process_owner=self.process_owner,
+            accepted_at=now, updated_at=now)
         accepted, created = await self.store.create_or_replay(who, record)
         if created and self.executor is not None:
             self.executor.start(who, accepted)
@@ -119,8 +179,12 @@ class WorkTaskService:
     async def cancel(self, who: Principal, task_id: str) -> WorkTaskRecord:
         """先持久登记停止意图，再通知执行者；已结束任务保持原结论。"""
         task = await self.store.get(who, task_id)
-        if task.status in TERMINAL or task.cancel_requested:
+        if task.status in TERMINAL:
             return task
+        if task.cancel_requested:
+            if self.executor is not None:
+                await self.executor.cancel(who,task)
+            return await self.store.get(who,task_id)
         status = "cancelled" if task.status == "accepted" else task.status
         updated = await self.store.transition(who, task_id, status,
             expected_version=task.state_version, at=self._now(), cancel_requested=True,

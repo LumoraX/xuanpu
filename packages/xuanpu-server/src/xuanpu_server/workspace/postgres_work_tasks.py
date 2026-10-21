@@ -21,7 +21,15 @@ async def load_tasks(
     """普通工作区操作不加载任务正文；任务事务才读取有界任务索引。"""
     if request_id is None or not request_id.startswith("work-task:"):
         return
-    pending = " AND " + PENDING_TASKS if request_id == "work-task:pending" else ""
+    if request_id.startswith(('work-task:one:', 'work-task:exec:', 'work-task:budget:')):
+        rows = await conn.fetch(
+            f"SELECT task_id,record FROM {tables['work_task']} WHERE tenant_id=$1 AND user_id=$2 AND task_id=$3",
+            tenant, user, request_id.split(':', 2)[2])
+        state.work_tasks = {row['task_id']: json.loads(row['record']) for row in rows}
+        return
+    pending = " AND " + PENDING_TASKS if request_id in {"work-task:pending", "work-task:legacy-pending"} else ""
+    if request_id == 'work-task:legacy-pending':
+        pending += " AND COALESCE(record->>'recovery_policy_version','1')='1'"
     rows = await conn.fetch(
         f"SELECT task_id,record FROM {tables['work_task']} WHERE tenant_id=$1 AND user_id=$2" + pending,
         tenant, user,

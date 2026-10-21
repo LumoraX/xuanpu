@@ -84,6 +84,9 @@ def affected(status: str) -> int:
     return int(status.rsplit(" ", 1)[-1])
 
 
+from xuanpu_server.transaction_reads import read_connection
+
+
 class PostgresUserTables:
     """Postgres 里的用户与外部身份；也持有身份域全部表的表名与语句助手。"""
 
@@ -102,11 +105,17 @@ class PostgresUserTables:
 
     async def _fetch(self, sql: str, *args: Any) -> list[asyncpg.Record]:
         """取多行。"""
+        current = read_connection(self._pool,sql)
+        if current is not None:
+            return list(await current.fetch(sql,*args))
         async with self._pool.acquire() as conn:
             return list(await conn.fetch(sql, *args))
 
     async def _fetchrow(self, sql: str, *args: Any) -> asyncpg.Record | None:
         """取一行。"""
+        current = read_connection(self._pool,sql)
+        if current is not None:
+            return await current.fetchrow(sql,*args)  # type: ignore[no-any-return]
         async with self._pool.acquire() as conn:
             return await conn.fetchrow(sql, *args)
 

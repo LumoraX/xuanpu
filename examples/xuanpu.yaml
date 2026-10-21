@@ -135,3 +135,14 @@ shutdown_drain_seconds: 30   # 停机时给在途对话多少秒跑完，到期�
 # 主动业务使用既有模型配置；员工不填密钥。
 proactive_interval_seconds: 1800
 proactive_scan_seconds: 60
+
+# R2-A持久执行默认关闭；仅经模型上界和恢复验收后试点启用。
+durable_execution:
+  enabled: false
+  verified_text_bounds: false
+  max_attempts: 3
+  recovery_seconds: 1800
+  attempt_seconds: 600
+  lease_seconds: 60
+  renew_seconds: 20
+  stateless_http_tools: []

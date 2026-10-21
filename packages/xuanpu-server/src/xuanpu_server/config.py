@@ -272,6 +272,9 @@ class MetricsConfig(_Section):
     """抓取令牌的摘要，``xuanpu keygen metrics`` 生成。不给就不开指标端点（404）。"""
 
 
+from xuanpu_server.work_tasks.config import DurableExecutionConfig
+
+
 class ServerConfig(_Section):
     """平台服务的完整配置。
 
@@ -296,6 +299,7 @@ class ServerConfig(_Section):
     sandbox: SandboxConfig = SandboxConfig()
     object_store: ObjectStoreConfig = ObjectStoreConfig()
     limits: LimitsConfig = LimitsConfig()
+    durable_execution: DurableExecutionConfig = DurableExecutionConfig()
     audit: AuditConfig = AuditConfig()
     metrics: MetricsConfig = MetricsConfig()
     public_url: str | None = None

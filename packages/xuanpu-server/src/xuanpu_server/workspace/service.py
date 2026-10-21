@@ -64,6 +64,9 @@ class WorkspaceService:
         self._now = now
         self.quota_bytes, self.max_file_bytes = QUOTA_BYTES, MAX_FILE_BYTES
         self.max_versions = 10000
+        from .task_usage import bind_memory_usage
+
+        bind_memory_usage(store, control, identity)
 
     async def require_employee(self, who: Principal) -> tuple[str, str]:
         """拒绝机器身份、停用员工与暂停租户。"""
@@ -94,8 +97,18 @@ class WorkspaceService:
             """内存事务提交前重新验证当前身份。"""
             await self.require_employee(who)
 
+        from xuanpu_server.work_tasks.execution_context import current_execution
+        from xuanpu_server.work_tasks.execution_store import assert_lease
+
+        binding = current_execution.get()
         async with self.store.transaction(tenant, user, guard, request_id) as state:
+            if binding is not None:
+                if (tenant, user) != (binding.lease.tenant_id, binding.lease.user_id):
+                    raise PermissionDeniedError('执行身份不能跨员工或租户')
+                assert_lease(state, binding.lease, binding.at(state))
             yield state
+            if binding is not None:
+                assert_lease(state, binding.lease, binding.at(state))
 
     async def create(
         self,

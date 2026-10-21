@@ -9,7 +9,8 @@ from taifeng_sandbox import SandboxPolicyError, export_files
 
 from xuanpu_server.errors import ConflictError, InvalidRequestError
 
-from .artifact_rules import json_value, manifest_from
+from .artifact_rules import OutputManifest, json_value, manifest_from
+from .artifact_staging import ArtifactStaging
 from .formats import validate_content
 from .models import ArtifactIntent, ArtifactReceipt, InputFile
 
@@ -31,11 +32,18 @@ class ArtifactService:
                  now: Callable[[], float] = time.time) -> None:
         """注入相同员工工作区事务和时钟。"""
         self.workspace, self.store, self.now = workspace, store, now
+        self.staging = ArtifactStaging(workspace, store, now)
 
-    async def commit(self, who: Principal, task: WorkTaskRecord, handle: SandboxHandle
+    async def commit(self, who: Principal, task: WorkTaskRecord, handle: SandboxHandle,
+                     prepare: Callable[[list[dict[str, Any]]], Any] | None = None
                      ) -> tuple[tuple[ArtifactReceipt, ...], list[dict[str, Any]]]:
         """冻结实际容器全部进程，从明确绑定根导出；远端后端不得隐式兜底。"""
         await self.workspace.require_employee(who)
+        from .execution_context import current_execution
+
+        binding = current_execution.get()
+        if binding is not None:
+            await binding.store.checkpoint(binding.lease, 'freezing_outputs', now=self.now())
         await handle.freeze_outputs()
         try:
             raw = await export_files(handle.workspace, ['outputs/manifest.json'], max_total_bytes=65536)
@@ -50,15 +58,7 @@ class ArtifactService:
             files = await export_files(handle.workspace, [entry.path for entry in manifest.artifacts])
         except SandboxPolicyError as exc:
             raise InvalidRequestError('成果文件缺失、不安全或超过资源限制') from exc
-        actions: list[dict[str, Any]] = []
-        for entry in manifest.artifacts:
-            data = files[entry.path].content
-            if manifest.kind == 'table_summary' and current.output_hashes.get(entry.path) != files[entry.path].sha256:
-                raise InvalidRequestError('表格成果与实际脚本执行回执不符')
-            if entry.mime_type == 'application/json':
-                actions.extend(self._json_artifact(task, entry.role, data))
-            else:
-                validate_content(data, entry.mime_type)
+        actions = self._validate_files(task, current, manifest, files)
         current = await self.store.get(who, task.task_id)
         if current.cancel_requested or current.status != 'running':
             raise ConflictError('任务当前不能保存成果')
@@ -66,8 +66,13 @@ class ArtifactService:
             return current.artifacts, actions
         intents = tuple(ArtifactIntent(name=entry.name, role=entry.role, mime_type=entry.mime_type,
             size=files[entry.path].size, sha256=files[entry.path].sha256) for entry in manifest.artifacts)
+        if task.recovery_policy_version == 2:
+            if prepare is not None:
+                await prepare(actions)
+            await self.staging.stage(who, task, intents, [files[entry.path].content for entry in manifest.artifacts])
+            return await self.staging.commit(who, task), actions
         await self.store.transition(who, task.task_id, 'running', expected_version=current.state_version,
-            at=self.now(), event_kind='artifact_uploads_started', artifact_intents=intents,
+            at=self.now(), event_kind='artifact_uploads_started' , artifact_intents=intents,
             artifact_recovery_pending=True)
         folder = await self.workspace.create(who, "folder", {"name": "办公成果-" + task.task_id},
                                              f"artifact:{task.task_id}:folder")
@@ -86,6 +91,20 @@ class ArtifactService:
             expected_version=current.state_version, at=self.now(), event_kind='artifacts_saved',
             artifacts=tuple(receipts), outputs_verified=True, artifact_recovery_pending=False)
         return updated.artifacts, actions
+
+    def _validate_files(self, task: WorkTaskRecord, current: WorkTaskRecord,
+                        manifest: OutputManifest, files: dict[str, Any]) -> list[dict[str, Any]]:
+        """逐份验证格式及实际脚本摘要，校验完成前不建立上传意图。"""
+        actions: list[dict[str, Any]] = []
+        for entry in manifest.artifacts:
+            data = files[entry.path].content
+            if manifest.kind == 'table_summary' and current.output_hashes.get(entry.path) != files[entry.path].sha256:
+                raise InvalidRequestError('表格成果与实际脚本执行回执不符')
+            if entry.mime_type == 'application/json':
+                actions.extend(self._json_artifact(task, entry.role, data))
+            else:
+                validate_content(data, entry.mime_type)
+        return actions
 
     def _json_artifact(self, task: WorkTaskRecord, role: str, data: bytes) -> list[dict[str, Any]]:
         """验证证据与候选结构，不将候选内容直接写成原生记录。"""

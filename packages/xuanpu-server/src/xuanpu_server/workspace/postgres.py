@@ -12,6 +12,7 @@ from xuanpu_server.errors import PermissionDeniedError
 from xuanpu_server.workspace.models import SettingsData, WorkspaceState
 from xuanpu_server.workspace.postgres_proactive import load_proactive, save_proactive
 from xuanpu_server.workspace.postgres_reminders import save_reminders
+from xuanpu_server.workspace.postgres_task_execution import load_execution, save_execution
 from xuanpu_server.workspace.postgres_work_tasks import load_tasks, save_tasks
 from xuanpu_server.workspace.rules import ensure_todo_progress
 
@@ -48,13 +49,14 @@ class PostgresWorkspaceStore:
                 "work_task",
                 "work_task_input",
                 "work_task_event",
+                "task_grant", "task_dispatch", "task_attempt", "task_budget_reservation", "task_effect", "usage", "user_usage", "api_key",
             )
         }
 
-    async def _lock(self, conn: Any, tenant: str, user: str, *, allow_inactive: bool = False) -> None:
+    async def _lock(self, conn: Any, tenant: str, user: str, *, allow_inactive: bool = False, exclusive: bool = False) -> None:
         """统一先租户后员工，与身份停用和提醒事务同序。"""
         active_tenant = await conn.fetchval(
-            f"SELECT status FROM {self._t['tenant']} WHERE tenant_id=$1 FOR SHARE", tenant
+            f"SELECT status FROM {self._t['tenant']} WHERE tenant_id=$1 FOR " + ('UPDATE' if exclusive else 'SHARE'), tenant
         )
         active_user = await conn.fetchval(
             f"SELECT status FROM {self._t['user']} WHERE tenant_id=$1 AND user_id=$2 FOR UPDATE",
@@ -76,10 +78,25 @@ class PostgresWorkspaceStore:
     ) -> AsyncIterator[WorkspaceState]:
         """同一事务包含 CAS、关系、空间、幂等与审计写入。"""
         async with self._pool.acquire() as conn, conn.transaction():
-            await self._lock(conn, tenant, user, allow_inactive=allow_inactive)
+            if request_id and request_id.startswith('work-task:exec:'):
+                await conn.execute('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',
+                                   self._t['task_dispatch'])
+            await self._lock(conn, tenant, user, allow_inactive=allow_inactive,
+                             exclusive=bool(request_id and request_id.startswith(('work-task:budget:', 'work-task:exec:'))))
             state = await self._load(conn, tenant, user, request_id)
+            state.transaction_at = float(await conn.fetchval('SELECT EXTRACT(EPOCH FROM clock_timestamp())'))
             original = deepcopy(state)
-            yield state
+            from xuanpu_server.transaction_reads import transaction_reads
+
+            with transaction_reads(self._pool,conn):
+                yield state
+            from xuanpu_server.work_tasks.execution_context import current_execution
+            from xuanpu_server.work_tasks.execution_store import assert_lease
+
+            binding = current_execution.get()
+            if binding is not None and binding.store.database_clock and not allow_inactive:
+                at = float(await conn.fetchval('SELECT EXTRACT(EPOCH FROM clock_timestamp())'))
+                assert_lease(state, binding.lease, at)
             await self._save(conn, tenant, user, original, state)
         # 只有真实数据库提交成功才消费事务内队列；审计或提交失败时保留原内容。
         state.pending_notifications = []
@@ -137,6 +154,7 @@ class PostgresWorkspaceStore:
                     "result": json.loads(old["result"]),
                 }
         await load_tasks(conn, self._t, tenant, user, state, request_id)
+        await load_execution(conn, self._t, tenant, user, state, request_id)
         return state
 
     async def _save(
@@ -193,6 +211,7 @@ class PostgresWorkspaceStore:
         await save_reminders(conn, self._t, tenant, user, state)
         await save_proactive(conn, self._t, tenant, user, old, state)
         await save_tasks(conn, self._t, tenant, user, old, state)
+        await save_execution(conn, self._t, tenant, user, old, state)
         for audit in state.audits:
             await conn.execute(
                 f"INSERT INTO {self._t['audit']} (tenant_id,user_id,source,kind,at,actor,data) VALUES ($1,$2,'control',$3,$4,$5,$6::jsonb)",
@@ -204,8 +223,24 @@ class PostgresWorkspaceStore:
                 json.dumps(audit["data"]),
             )
 
+    async def durable_candidates(self, *, after: tuple[str, str] | None = None,
+                                 limit: int = 100, now: float) -> list[tuple[str, str, str]]:
+        """持久due索引只读候选标识，不装载员工全部任务正文。"""
+        if not 1 <= limit <= 100:
+            raise ValueError('派发候选最多100项')
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(f"SELECT DISTINCT ON (d.tenant_id,d.user_id) d.tenant_id,d.user_id,d.task_id "
+                f"FROM {self._t['task_dispatch']} d JOIN {self._t['work_task']} t USING(tenant_id,user_id,task_id) "
+                "WHERE t.status IN ('accepted','running','waiting_user') AND "
+                "((d.state IN ('ready','retry_wait','paused_shutdown') AND d.due_at<=$3) "
+                "OR COALESCE(t.record->>'cancel_requested','false')='true') "
+                "AND ($1::text IS NULL OR (d.tenant_id,d.user_id)>($1,$2)) "
+                "ORDER BY d.tenant_id,d.user_id,COALESCE(t.record->>'cancel_requested','false') DESC,d.due_at,d.task_id LIMIT $4",
+                *(after or (None,None)),now,limit)
+        return [(row['tenant_id'], row['user_id'], row['task_id']) for row in rows]
+
     async def task_owners(self, after: tuple[str, str] | None = None,
-                          limit: int = 100) -> list[tuple[str, str]]:
+                          limit: int = 100, *, legacy_only: bool = False) -> list[tuple[str, str]]:
         """内部恢复包含停用身份，记录数受每员工任务上限限制。"""
         from .postgres_work_tasks import PENDING_TASKS
 
@@ -213,7 +248,7 @@ class PostgresWorkspaceStore:
             raise ValueError('分页数量须为1至100')
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(f"SELECT DISTINCT tenant_id,user_id FROM {self._t['work_task']} "
-                "WHERE " + PENDING_TASKS + " AND ($1::text IS NULL OR (tenant_id,user_id)>($1,$2)) "
+                "WHERE " + PENDING_TASKS + (" AND COALESCE(record->>'recovery_policy_version','1')='1'" if legacy_only else '') + " AND ($1::text IS NULL OR (tenant_id,user_id)>($1,$2)) "
                 "ORDER BY tenant_id,user_id LIMIT $3", *(after or (None,None)), limit)
         return [(row['tenant_id'], row['user_id']) for row in rows]
 

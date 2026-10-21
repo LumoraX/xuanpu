@@ -51,6 +51,20 @@ class WorkTaskInput(FrozenModel):
         return timezone_name(value)
 
 
+class CapabilityReference(FrozenModel):
+    """租户已发布目录的入口引用，不接收任意可执行内容。"""
+
+    package: Identifier
+    entry: Identifier
+
+
+class CapabilityTaskInput(WorkTaskInput):
+    """通用能力允许无附件；预算、执行身份和版本仍由服务器冻结。"""
+
+    capability: CapabilityReference
+    input_files: tuple[InputFile, ...] = Field(default=(), max_length=8)
+
+
 class InputSnapshot(InputFile):
     """服务端固定的输入来源，不含对象键和宿主路径。"""
 
@@ -68,6 +82,16 @@ class ArtifactIntent(FrozenModel):
     sha256: Digest
     size: int = Field(ge=1, le=20 * 1024 * 1024)
     mime_type: str = Field(min_length=1, max_length=127)
+
+
+class StagedArtifact(ArtifactIntent):
+    """私有对象只依据意图回收，不向员工或执行器暴露对象键。"""
+
+    object_key: str = Field(min_length=1, max_length=512)
+    attempt_no: int = Field(ge=1)
+    created_at: Timestamp
+    verified: bool = False
+    deleted: bool = False
 
 
 class ArtifactReceipt(FrozenModel):
@@ -101,7 +125,15 @@ class WorkTaskRecord(FrozenModel):
     package: Identifier
     package_version: Identifier
     package_digest: Digest
-    output_kind: Literal["meeting_minutes", "table_summary"] = "meeting_minutes"
+    recovery_policy_version: Literal[1, 2] = 1
+    grant_id: Identifier | None = None
+    execution_kind: Literal['office', 'capability'] = 'office'
+    entry: Identifier | None = None
+    completion_policy: Literal['office_files', 'capability_receipt'] = 'office_files'
+    attempt_no: int = Field(default=0, ge=0)
+    result_summary: str = Field(default='', max_length=16000)
+    result_receipt: dict[str, Any] = Field(default_factory=dict, max_length=256)
+    output_kind: Literal["meeting_minutes", "table_summary", "capability_result"] = "meeting_minutes"
     output_hashes: dict[str, str] = Field(default_factory=dict, max_length=8)
     error_message: str | None = Field(default=None, max_length=1024)
     session_id: Identifier | None = None
@@ -114,6 +146,10 @@ class WorkTaskRecord(FrozenModel):
     error_code: str | None = Field(default=None, max_length=128)
     artifacts: tuple[ArtifactReceipt, ...] = ()
     artifact_intents: tuple[ArtifactIntent, ...] = Field(default=(), max_length=8)
+    staging_objects: tuple[StagedArtifact, ...] = Field(default=(), max_length=24)
+    frozen_staging: tuple[str, ...] = Field(default=(), max_length=8)
+    unsafe_resume: bool = False
+    resume_evidence: tuple[dict[str, Any], ...] = Field(default=(), max_length=128)
     artifact_recovery_pending: bool = False
     proposal_ids: tuple[Identifier, ...] = ()
     outputs_verified: bool = False
@@ -124,6 +160,7 @@ class WorkTaskRecord(FrozenModel):
     resources_recovered: bool = False
     unverified_write: bool = False
     unverified_calls: tuple[str, ...] = Field(default=(), max_length=256)
+    pending_decision: dict[str, Any] = Field(default_factory=dict, max_length=16)
     decision_fingerprints: dict[str, str] = Field(default_factory=dict, max_length=256)
     pending: tuple[dict[str, Any], ...] = Field(default=(), max_length=256)
     action_candidates: tuple[dict[str, Any], ...] = Field(default=(), max_length=32)
