@@ -289,7 +289,7 @@ class ExecutionStore:
                 raise ConflictError('stale_epoch：旧执行不能移交新派发')
             state.task_dispatch[lease.task_id] = DispatchRecord.model_validate({**dispatch.model_dump(),
                 'state': state_name, 'block_reason': block_reason, 'due_at': due_at if due_at is not None else now,
-                'expires_at': 0.0}).model_dump(mode='json')
+                'expires_at': 0.0, 'changed_at':now}).model_dump(mode='json')
             attempt = state.task_attempts.get(f'{lease.task_id}:{lease.attempt_no}')
             if attempt is not None:
                 attempt['finished_at'] = now

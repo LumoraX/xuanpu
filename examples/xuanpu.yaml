@@ -139,7 +139,9 @@ proactive_scan_seconds: 60
 # R2-A持久执行默认关闭；仅经模型上界和恢复验收后试点启用。
 durable_execution:
   enabled: false
+  tenant_ids: []  # 非空时仅这些租户可认领R2任务，其余保留R1策略
   verified_text_bounds: false
+  max_task_tokens: 150000  # 管理员单项上限，1–300000；仍受持久grant和租户额度约束
   max_attempts: 3
   recovery_seconds: 1800
   attempt_seconds: 600
@@ -150,5 +152,11 @@ durable_execution:
 # R2-B时间/可信事件安排默认关闭，启用还须durable_execution.enabled。
 task_triggers:
   enabled: false
+  tenant_ids: []  # 还须同时位于durable_execution灰度范围
   scan_seconds: 5
   eligibility_seconds: 60
+
+# R2-C工作动态复用统一通知，仅推有意义变化；本人已启用渠道仍由原通知流管理。
+task_activity:
+  enabled: false
+  tenant_ids: []

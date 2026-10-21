@@ -18,7 +18,7 @@ function workTaskCard(task){
 }
 function updateWorkTask(task){
   if(!task || !Number.isInteger(task.state_version) || typeof task.task_id!=="string")throw new Error("任务响应无效。");
-  const old=workTaskState.records.get(task.task_id);if(old && old.state_version>task.state_version)return;
+  const old=workTaskState.records.get(task.task_id);if(old && (old.state_version>task.state_version || (old.activity_cursor||0)>(task.activity_cursor||0)))return;
   workTaskState.records.set(task.task_id,task);
   for(const card of workTaskState.cards.get(task.task_id)||[]){if(card.isConnected)renderWorkTask(card,task);else workTaskState.cards.get(task.task_id).delete(card);}
   scheduleWorkTaskPoll();
@@ -55,12 +55,14 @@ function scheduleWorkTaskPoll(){
 }
 function renderWorkTask(card,task){
   if(card.taskVersion===task.state_version)return;card.taskVersion=task.state_version;card.replaceChildren();
-  card.append(wsText("h3",task.text),wsText("p",taskStates[task.status]||"状态待核实","tag"));
+  card.append(wsText("h3",task.text),wsText("p",task.block_reason?.includes("budget")?"模型额度不足":taskStates[task.status]||"状态待核实","tag"));
+  if(task.result_summary)card.append(wsText("p",task.result_summary,"work-task-result"));
   if(task.status==="accepted")card.append(wsText("p","已保存交办，等待开始。关闭页面后仍会继续。"));
   if(task.status==="running")card.append(wsText("p",task.cancel_requested?"已请求停止，正在核实退出与执行结果。":"正在处理固定版本的材料，完成后校验并保存成果。"));
   if(task.status==="outcome_unknown")card.append(wsText("p","执行结果尚待核实，请勿重复发起同一操作。"));
   if(task.status==="interrupted")card.append(wsText("p","任务已中断，原执行不会自动重跑。已保存成果仍可下载。"));
   if(task.status==="failed")card.append(wsText("p",task.error_message||"本次处理未完成。请检查材料格式、时间和文件权限后再交办。"));
+  appendWorkTaskExecution(card,task);
   const epoch=conn.epoch,generation=workTaskState.generation;
   for(const artifact of task.artifacts||[]){
     const button=wsButton("下载 "+artifact.name,async()=>{
@@ -120,10 +122,9 @@ function workTaskApprovalForm(task){
   const form=document.createElement("form"),rows=[];
   form.append(wsText("p","这一步需要你的明确决定。未决定的操作继续等待，不会自动批准。"));
   for(const pending of task.pending){
-    const label=wsText("label",{tool_use:"调用业务服务",shell_exec:"执行处理命令",script_exec:"运行材料处理",file_read:"读取材料",file_write:"保存处理结果"}[pending.detail?.scope]||"待确认操作");
+    const label=wsText("label",pending.summary||{tool_use:"调用业务服务",shell_exec:"执行处理命令",script_exec:"运行材料处理",file_read:"读取材料",file_write:"保存处理结果"}[pending.detail?.scope]||"待确认操作");
     const select=document.createElement("select");select.setAttribute("aria-label",label.textContent);
-    for(const [value,text] of [["","暂不决定"],["yes","允许"],["no","拒绝"]]){const option=wsText("option",text);option.value=value;select.append(option);}label.append(select);form.append(label);
-    const details=document.createElement("details");details.append(wsText("summary","查看操作内容"),wsText("pre",JSON.stringify({操作:pending.detail?.target,参数:pending.detail?.args,说明:pending.detail?.reason||pending.reason},null,2)));form.append(details);
+    for(const [value,text] of [["","暂不决定"],["yes","允许"],["no","拒绝"]]){const option=wsText("option",text);option.value=value;if(value==="yes"&&pending.can_approve===false)option.disabled=true;select.append(option);}label.append(select);form.append(label);
     rows.push({id:pending.request_id,select});
   }
   const submit=document.createElement("button");submit.type="submit";submit.textContent="提交所选决定";form.append(submit);
@@ -188,4 +189,24 @@ async function showWorkTaskCreate(){
     catch(error){if(!taskCurrent(epoch,generation))return;feedback.textContent=error.message;if(error.status && error.status<500){form.attempt=null;for(const node of form.querySelectorAll("input,textarea,button"))node.disabled=false;}else{feedback.textContent="受理结果尚未确认，材料和目标已固定；请重试同一交办。";button.disabled=false;button.textContent="重试同一交办";}}
     finally{form.sending=false;}
   });box.replaceChildren(form);goal.focus();
+}
+
+function appendWorkTaskExecution(card,task){
+  if(task.task_token_limit)card.append(wsText("p","单项工作模型额度上限："+task.task_token_limit+" tokens；未知用量仍按完整预留计入。","meta"));
+  const blocked={budget:"模型额度不足，等待核实或补充授权。",block_budget:"模型额度不足，等待核实或补充授权。",definition_paused:"执行安排已暂停。",source_invalid:"原材料或授权已失效。",block_resume:"原操作无法安全恢复，请先核实。"};
+  if(task.recovering){card.append(wsText("p","正在恢复 · 第 "+task.attempt_no+" 次尝试","tag"),wsText("p",task.recovery_mode==="save_artifacts"?"继续保存成果":task.recovery_mode==="await_decision"?"等待批准或核实":"重新执行"));}
+  if(task.block_reason)card.append(wsText("p",blocked[task.block_reason]||"执行已暂停，等待核对材料、权限或结果。","status"));
+  else if(task.next_run_at&&!taskTerminal.has(task.status))card.append(wsText("p","排队等待执行 · "+workspaceTime(task.next_run_at)));
+  if(task.source_occurrence)card.append(wsButton("查看原执行安排",()=>openWorkspace("definition")));
+  if(task.status==="failed"&&task.available_actions?.includes("create_followup"))card.append(wsButton("重新交办",()=>openWorkspace("task").then(()=>showWorkTaskCreate())));
+  for(const effect of task.effects||[])if(effect.can_reconcile)card.append(workTaskReconcileButton(task,effect));
+}
+function workTaskReconcileButton(task,effect){
+  const epoch=conn.epoch,generation=workTaskState.generation,payload={request_id:crypto.randomUUID(),expected_version:task.state_version};let sending=false;
+  const button=wsButton("查询权威回执",async()=>{
+    if(sending||!taskCurrent(epoch,generation))return;sending=true;button.disabled=true;
+    try{await api("POST","/v1/work-tasks/"+encodeURIComponent(task.task_id)+"/effects/"+encodeURIComponent(effect.action_id)+"/reconcile",{json:payload});if(taskCurrent(epoch,generation))await refreshWorkTask(task.task_id);}
+    catch(error){if(taskCurrent(epoch,generation)){button.textContent=error.status===409?"状态已变化，请刷新进展":"重试同一回执查询";if(!error.status||error.status>=500)button.disabled=false;}}
+    finally{sending=false;}
+  });return button;
 }

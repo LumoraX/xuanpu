@@ -5,16 +5,25 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import APIRouter, Query
+from pydantic import Field
 
 from xuanpu_server.api.auth import Caller  # noqa: TC001 — FastAPI解析
 from xuanpu_server.work_tasks.decisions import TaskDecision  # noqa: TC001 — FastAPI解析
 from xuanpu_server.work_tasks.models import (  # noqa: TC001 — FastAPI解析
     CapabilityTaskInput,
+    FrozenModel,
+    Identifier,
     WorkTaskInput,
 )
 
 if TYPE_CHECKING:
     from xuanpu_server.platform import Platform
+
+
+class ReconcileRequest(FrozenModel):
+    """本人只提交固定请求和CAS版本，不接受自由文本证明。"""
+    request_id: Identifier
+    expected_version: int = Field(ge=1)
 
 
 def work_tasks_router(platform: Platform) -> APIRouter:
@@ -53,6 +62,15 @@ def work_tasks_router(platform: Platform) -> APIRouter:
         """按持久游标补读，连接断开不取消任务。"""
         entries = await service.store.events(who, task_id, after_id=after_id, limit=limit)
         return {"items": [entry.model_dump(mode="json") for entry in entries]}
+
+    @router.post('/{task_id}/effects/{action_id}/reconcile')
+    async def reconcile(task_id: str,action_id: str,body: ReconcileRequest,who: Caller) -> dict[str,Any]:
+        """服务端登记权威查询后才能核实，原未知终态不重发。"""
+        receipt=await service.reconciliation.verify(who,task_id,action_id,
+            expected_version=body.expected_version,request_id=body.request_id)
+        return {'action_id':receipt.logical_action_id,'state':receipt.state,
+                'authority':receipt.authority,'evidence_digest':receipt.result_digest,
+                'verification_version':receipt.verification_version}
 
     @router.post("/{task_id}/cancel", status_code=202)
     async def cancel(task_id: str, who: Caller) -> dict[str, Any]:

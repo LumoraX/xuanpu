@@ -76,7 +76,7 @@ async def test_upgrade_from_version_3_keeps_data(
 ) -> None:
     """只迁到 0003 的库：落后于代码时报错；迁到最新后旧数据都在，新列为默认值，新表可用。"""
     pool, namespace = blank
-    assert latest_version() == 13
+    assert latest_version() == 14
     first_three = [m for m in load_migrations() if m.version <= 3]
     with monkeypatch.context() as patch:
         patch.setattr(schema_module, "load_migrations", lambda: first_three)
@@ -84,7 +84,7 @@ async def test_upgrade_from_version_3_keeps_data(
     assert [m.version for m in executed] == [1, 2, 3]
     await _seed_version_3(pool, namespace)
 
-    with pytest.raises(SchemaError, match="版本为 3，代码要求 13"):
+    with pytest.raises(SchemaError, match="版本为 3，代码要求 14"):
         await ensure_current(pool, namespace)
 
     upgraded = await apply_migrations(pool, namespace)
@@ -99,8 +99,9 @@ async def test_upgrade_from_version_3_keeps_data(
         (11, "task_execution"),
         (12, "task_effects"),
         (13, "task_triggers"),
+        (14, "task_activity"),
     ]
-    assert await current_version(pool, namespace) == 13
+    assert await current_version(pool, namespace) == 14
     assert await apply_migrations(pool, namespace) == []
 
     store = PostgresControlPlane(pool, namespace=namespace)
@@ -152,7 +153,7 @@ async def test_upgrade_eight_to_nine_keeps_existing_session(blank: tuple[asyncpg
         row = dict(await conn.fetchrow(f"SELECT * FROM {namespace.table('session')} WHERE tenant_id='acme' AND session_id='s1'"))
     row["metadata"] = json.loads(row["metadata"])
     before = SessionRecord(**row)
-    assert [item.version for item in await apply_migrations(pool, namespace)] == [9, 10, 11, 12, 13]
+    assert [item.version for item in await apply_migrations(pool, namespace)] == [9, 10, 11, 12, 13, 14]
     assert await store.get_session("acme", "s1") == before
     assert await apply_migrations(pool, namespace) == []
     receipt = await store.operation_receipts.claim("acme", "s1", {"r1": True}, at=5)

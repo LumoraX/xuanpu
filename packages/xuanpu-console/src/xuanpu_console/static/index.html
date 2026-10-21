@@ -47,6 +47,7 @@
       <div class="assistant-identity"><span class="assistant-mark">玄</span><div><strong id="assistant-name">玄圃助手</strong><p class="status">你的个人工作站</p></div></div>
       <nav id="workspace-nav" class="workspace-nav hidden" aria-label="我的工作">
         <button type="button" data-workspace="task">交办工作</button>
+        <button type="button" data-workspace="definition">执行安排</button>
         <button type="button" data-workspace="file">文件 <span data-count="file"></span></button>
         <button type="button" data-workspace="matter">事项 <span data-count="matter"></span></button>
         <button type="button" data-workspace="todo">待办 <span data-count="todo"></span></button>
@@ -137,6 +138,7 @@
   <section id="tab-functions" class="tab">
     <div class="functions-intro"><h1>功能</h1><p class="status">平时直接在对话里说出需求，也可以在这里查看记录、自己操作。</p></div>
     <div class="function-cards">
+      <article class="function-card"><h2>执行安排</h2><p>确认何时替你处理工作，查看、修改或停止本人安排。</p><button data-workspace="definition" type="button">查看执行安排</button></article>
       <article class="function-card"><h2>交办工作</h2><p>查看材料处理进展，确认行动项并下载成果。关闭页面后仍会继续处理。</p><button data-workspace="task" type="button">查看我的工作</button></article>
       <article class="function-card"><h2>我的文件</h2><p>文件夹、附件、版本和回收站，始终属于你的个人空间。</p><button data-workspace="file" type="button">打开文件</button></article>
       <article class="function-card"><h2>事项与待办</h2><p>查看进展、关联资料，记录下一步工作。</p><button data-workspace="matter" type="button">打开事项</button> <button data-workspace="todo" type="button" class="ghost">查看待办</button></article>
@@ -226,6 +228,7 @@
 <script src="workspace-files.js"></script>
 <script src="workspace-chat.js"></script>
 <script src="work-tasks.js"></script>
+<script src="task-definitions.js"></script>
 <script src="proactive.js"></script>
 <script src="identity.js"></script>
 </body>

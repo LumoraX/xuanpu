@@ -82,8 +82,18 @@ class _TaskSession:
         await self.inner.__aexit__(*exc)
 
     async def stream(self, request: taifeng.ApiRequest) -> AsyncIterator[Any]:
+        """平台记住预算阻塞，不依赖内核把异常文字原样传回。"""
+        try:
+            async for event in self._stream(request):yield event
+        except ConflictError as error:
+            if error.message.startswith('block_budget'):self.client.binding.stop_reason='block_budget'
+            raise
+
+    async def _stream(self, request: taifeng.ApiRequest) -> AsyncIterator[Any]:
         """未知响应保留上界；只有真实completed用量才核销。"""
         client, binding = self.client, self.client.binding
+        if binding.stop_reason=='block_budget':
+            raise ConflictError('block_budget：本次执行已因额度不足暂停')
         if not client.verified_text_bound:
             raise ConflictError('block_budget：该模型输入上界和输出限制尚未验收')
         value = request.model_dump(mode='json')
@@ -95,7 +105,7 @@ class _TaskSession:
         capped = request.model_copy(update={'max_output_tokens':maximum, 'reasoning_effort':'none'})
         value = capped.model_dump(mode='json')
         upper = text_request_bound(value) + maximum
-        budget = BudgetStore(binding.store)
+        budget = BudgetStore(binding.store,max_task_tokens=binding.max_task_tokens)
         identifier = 'model_' + secrets.token_hex(16)
         await budget.reserve(binding.lease, identifier, upper, now=binding.now())
         async for event in self.inner.stream(capped):

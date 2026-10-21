@@ -10,6 +10,7 @@ from xuanpu_server.errors import ConflictError, NotFoundError
 from xuanpu_server.runtime.effect_receipts import EffectReceipt
 from xuanpu_server.work_tasks.models import FrozenModel
 from xuanpu_server.work_tasks.store import require_task, save_record
+from xuanpu_server.workspace.rules import remember, replay
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -43,9 +44,15 @@ class EffectReconciliation:
         self.workspace, self.now = workspace, now
         self.adapters = dict(adapters or {})
 
-    async def verify(self, who: Principal, task_id: str, action_id: str, *, expected_version: int) -> EffectReceipt:
+    async def verify(self, who: Principal, task_id: str, action_id: str, *, expected_version: int, request_id: str | None = None) -> EffectReceipt:
         """查询在锁外，提交在本人事务CAS中；新后续任务须另行明确交办。"""
-        async with self.workspace.transaction(who, 'work-task:exec:' + task_id) as state:
+        transaction='work-task:reconcile-request:'+request_id if request_id else 'work-task:exec:'+task_id
+        key='reconcile:'+request_id if request_id else None
+        payload={'task_id':task_id,'action_id':action_id,'expected_version':expected_version}
+        async with self.workspace.transaction(who, transaction) as state:
+            old=replay(state,key,payload) if key else None
+            if old is not None:
+                return EffectReceipt.model_validate_json(json.dumps(old))
             task = require_task(state, task_id)
             if task.state_version != expected_version or task.status != 'outcome_unknown':
                 raise ConflictError('只能核实当前版本的未知终态')
@@ -57,7 +64,10 @@ class EffectReconciliation:
         if adapter is None:
             raise ConflictError('该连接器没有登记权威核实接口，请人工核实')
         proof = await adapter.verify(receipt)
-        async with self.workspace.transaction(who, 'work-task:exec:' + task_id) as state:
+        async with self.workspace.transaction(who, transaction) as state:
+            old=replay(state,key,payload) if key else None
+            if old is not None:
+                return EffectReceipt.model_validate_json(json.dumps(old))
             current = require_task(state, task_id)
             if current.state_version != expected_version or current.status != 'outcome_unknown':
                 raise ConflictError('核实期间任务版本已变化')
@@ -66,4 +76,5 @@ class EffectReconciliation:
             state.task_effects[action_id] = updated.model_dump(mode='json')
             save_record(state, current.model_copy(update={'state_version': current.state_version + 1,
                 'updated_at': max(self.now(), current.updated_at)}), 'effect_reconciled')
+            if key:remember(state,key,payload,updated.model_dump(mode='json'))
             return updated

@@ -56,6 +56,8 @@ class DurableWorker:
             if len(self.registry._active) >= 16:
                 break
             self.cursor = tenant, user
+            if not self.config.allows(tenant):
+                continue
             task = await self.registry.store.lifecycle_task(tenant, user, identifier)
             if task.cancel_requested:
                 from xuanpu_server.tenancy import Principal
@@ -73,7 +75,7 @@ class DurableWorker:
         """没有名额不认领，授权或次数阻塞在资源启动前结束。"""
         registry = self.registry
         key = task.tenant_id, task.user_id, task.task_id
-        if not self.config.enabled or (not task.frozen_staging and not await registry._admit(key)):
+        if not self.config.allows(task.tenant_id) or (not task.frozen_staging and not await registry._admit(key)):
             return None
         try:
             lease = await self.execution.claim(who, task.task_id, owner=registry.process_owner, now=registry.now())
@@ -100,7 +102,7 @@ class DurableWorker:
         if lease is None:
             return
         task = task.model_copy(update={'process_owner':lease.owner,'attempt_no':lease.attempt_no,'resources_pending':True})
-        binding = ExecutionBinding(lease, self.execution, registry.now)
+        binding = ExecutionBinding(lease, self.execution, registry.now,max_task_tokens=self.config.max_task_tokens)
         token = current_execution.set(binding)
         heartbeat = asyncio.create_task(self._heartbeat(binding, asyncio.current_task()))
         try:
@@ -218,8 +220,8 @@ class DurableWorker:
             task = require_task(state, task.task_id)
             dispatch = dispatch_of(state, task.task_id)
             grant = ExecutionGrant.model_validate_json(json.dumps(state.task_grants[dispatch.grant_id]))
-            valid = self.config.enabled and registry.now() < task.accepted_at + self.config.recovery_seconds
-            auth_reason = 'feature_disabled' if not self.config.enabled else 'recovery_window_expired'
+            valid = self.config.allows(task.tenant_id) and registry.now() < task.accepted_at + self.config.recovery_seconds
+            auth_reason = 'feature_disabled' if not self.config.allows(task.tenant_id) else 'recovery_window_expired'
             try:
                 await self.execution.authorize(grant, registry.now())
             except PermissionDeniedError:
@@ -246,7 +248,7 @@ class DurableWorker:
             await registry._settle(task, 'outcome_unknown', 'write_outcome_unverified')
         elif choice == 'fail_attempts':
             await registry._settle(task, 'failed', 'attempts_exhausted')
-        if (registry._accepting and target == 'ready' and self.config.enabled
+        if (registry._accepting and target == 'ready' and self.config.allows(task.tenant_id)
                 and (restart or dispatch.state in {'ready', 'retry_wait', 'paused_shutdown'})
                 and dispatch.due_at <= registry.now()):
             registry.start(grant.principal(), task)

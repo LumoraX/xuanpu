@@ -60,6 +60,7 @@ class DispatchRecord(FrozenModel):
     due_at: Timestamp
     block_reason: str | None = None
     checkpoint: Checkpoint
+    changed_at: Timestamp = 0.
 
 
 class TaskAttempt(FrozenModel):

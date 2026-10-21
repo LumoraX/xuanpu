@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from xuanpu_server.controlplane.models import AuditRecord
 
 DC = "notification_id,tenant_id,user_id,channel,status,attempts,next_attempt_at,lease_until,claim_token,error_code,first_attempt_at"
-NC = "notification_id,tenant_id,user_id,reminder_id,title,due_at,created_at,read_at,notification_key,source,body,proactive_check_id,proactive_followup_id,alert_after,task_definition_id"
+NC = "notification_id,tenant_id,user_id,reminder_id,title,due_at,created_at,read_at,notification_key,source,body,proactive_check_id,proactive_followup_id,alert_after,task_definition_id,work_task_id"
 
 
 class PostgresDeliveryStore:
@@ -40,6 +40,7 @@ class PostgresDeliveryStore:
                 "proactive_followup",
                 "workspace_item",
                 "task_definition",
+                "work_task", "task_dispatch",
             )
         }
 

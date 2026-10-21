@@ -23,6 +23,7 @@ from xuanpu_sdk.models import (
     WorkTask,
 )
 from xuanpu_sdk.sse import parse_sse
+from xuanpu_sdk.task_definitions import TaskDefinitionClient
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Sequence
@@ -385,7 +386,7 @@ class Admin:
         return [UserUsage.from_json(item) for item in body["usage"]]
 
 
-class XuanpuClient:
+class XuanpuClient(TaskDefinitionClient):
     """平台客户端。
 
     用法::

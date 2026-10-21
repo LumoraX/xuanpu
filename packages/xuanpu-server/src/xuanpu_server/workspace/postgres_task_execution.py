@@ -25,7 +25,7 @@ async def load_execution(conn: Any, tables: dict[str, str], tenant: str, user: s
         request_id = 'work-task:exec:' + binding.lease.task_id
     if request_id is None or not request_id.startswith('work-task:'):
         return
-    task_id = request_id.split(':', 2)[2] if request_id.startswith(('work-task:exec:', 'work-task:budget:')) else None
+    task_id = request_id.split(':', 2)[2] if request_id.startswith(('work-task:exec:', 'work-task:budget:', 'work-task:view:')) else None
     if request_id.startswith('work-task:exec:'):
         rows = await conn.fetch(f"SELECT d.tenant_id,d.user_id,d.record,t.record->>'resources_pending' AS resources "
             f"FROM {tables['task_dispatch']} d JOIN {tables['work_task']} t USING(tenant_id,user_id,task_id) "

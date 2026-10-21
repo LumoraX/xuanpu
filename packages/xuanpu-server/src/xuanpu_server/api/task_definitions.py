@@ -22,6 +22,20 @@ def task_definitions_router(platform: Platform) -> APIRouter:
     router=APIRouter(prefix='/v1/task-definitions')
     service=platform.task_definitions
 
+    @router.post('/preview')
+    async def preview(body: dict[str,Any],who: Caller) -> dict[str,Any]:
+        """材料与时间均重新解析，返回草稿不创建授权。"""
+        return await service.preview(who,body)
+
+    @router.get('/options')
+    async def options(who: Caller) -> dict[str,Any]:
+        """原生直接入口不需要模型，能力名称取真实发布目录。"""
+        tenant,_=await platform.workspace.require_employee(who)
+        entries=await platform.assistant._catalog(tenant)
+        return {'enabled':service.config.allows(tenant) and service.tasks.durable.allows(tenant),
+                'capabilities':[{'package':e['package'],'entry':e['entry'],
+                    'label':e['entry_description'] or e['description']} for e in entries if e['package']!='office-assistant']}
+
     @router.post('',status_code=202)
     async def create(body: DefinitionCreate,who: Caller) -> dict[str,Any]:
         """确认创建后返回已冻结范围。"""

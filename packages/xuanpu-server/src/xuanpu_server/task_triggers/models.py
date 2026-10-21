@@ -21,6 +21,18 @@ EventType = Literal['workspace.file_revision_committed','workspace.todo_complete
 class TriggerConfig(FrozenModel):
     """默认关闭；扫描只负责持久受理，不直接运行模型。"""
     enabled: bool = False
+    tenant_ids: tuple[str,...] = Field(default=(),max_length=1000)
+
+    @field_validator('tenant_ids',mode='before')
+    @classmethod
+    def immutable_tenants(cls,value: Any) -> Any:
+        """管理配置名单不依赖模型或员工输入。"""
+        return tuple(value) if isinstance(value,list) else value
+
+    def allows(self,tenant: str | None) -> bool:
+        """空名单保持显式全量开关的已有语义。"""
+        return self.enabled and (not self.tenant_ids or tenant in self.tenant_ids)
+
     scan_seconds: float = Field(default=5.,ge=.1,le=60.)
     eligibility_seconds: float = Field(default=60.,ge=1.,le=300.)
 

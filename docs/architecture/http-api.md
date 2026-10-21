@@ -914,3 +914,11 @@ input_policy默认fixed_revision，可确认latest_at_occurrence；misfire_polic
 max_executions默认3（1..100），max_attempts为每实例上限默认3（1..3），max_tokens为版本共享总预算默认300000（1..15000000）。
 valid_until必须明确且在未来，所有时间偏移须匹配timezone（默认Asia/Shanghai）。严格拒绝未知字段；没有confirmed=true不会受理。
 expected_version对state_version做CAS；配置version仅修改时增加。幂等键绑定操作、标识及完整请求，复用不同内容409；开关关闭仍回放成功回执。
+
+## R2-C 统一员工接口
+
+`GET /v1/work-tasks/{id}`及`/{id}/events`提供安全阶段与持久游标。`POST /v1/work-tasks/{id}/effects/{action}/reconcile`要求request_id与expected_version；只调用已登记的权威只读查询，持久回放原回执，不重发写操作，也不把outcome_unknown自动改成成功。
+
+`GET /v1/task-definitions/options`返回当前租户开关与已发布能力自然说明；`POST /v1/task-definitions/preview`只接受confirmed=false并重新验证材料、时间和能力，不保存定义/grant/task。确认创建仍用`POST /v1/task-definitions`与confirmed=true；修改PUT要求expected_version和重新确认；GET/list、pause/resume/cancel及occurrences沿用本人边界。机器身份403，其他员工及管理员以自己员工身份访问404。
+
+SDK提供TaskDefinition快照及对应原生方法；CLI的work-tasks/task-definitions使用私有credentials JSON（base_url/api_key/act_as_user），不会接受命令行租户/员工/host覆盖；body文件须保存稳定request_id，网络不确定时重用原文件。

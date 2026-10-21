@@ -42,6 +42,35 @@ class TaskDefinitionService:
         """生产PG复用事务时钟，显式注入时钟时保留确定性验收。"""
         return state.transaction_at if self.now is time.time and state.transaction_at is not None else self.now()
 
+    async def preview(self, who: Principal, body: dict[str, Any]) -> dict[str, Any]:
+        """只读核对范围，内部候选grant不保存，返回仍需明确确认的请求。"""
+        await self.workspace.require_employee(who)
+        if body.get('confirmed') is not False:
+            raise InvalidRequestError('执行预览不能代替本人确认')
+        self._require_enabled(who)
+        request=DefinitionCreate.model_validate({**body,'confirmed':True})
+        prepared=await prepare(self.tasks,who,request,self.now())
+        record,grant=self._new(who,request,prepared)
+        files=[]
+        for source in prepared.inputs:
+            item=await self.workspace.get(who,source.item_id)
+            files.append({'name':item['data']['name'],'item_id':source.item_id,'revision':source.revision})
+        subject_name=None
+        if request.trigger.kind=='event' and request.trigger.subject_id:
+            if request.trigger.event_type=='work_task.succeeded':
+                subject_name=(await self.tasks.store.get(who,request.trigger.subject_id)).text
+            else:
+                subject=await self.workspace.get(who,request.trigger.subject_id)
+                expected='file' if request.trigger.event_type=='workspace.file_revision_committed' else 'todo'
+                if subject['kind']!=expected or subject.get('trashed_at'):
+                    raise InvalidRequestError('事件来源类型无效或已移入回收站')
+                subject_name=subject['data'].get('name') or subject['data'].get('title')
+        package=await self.tasks.packages.resolve(prepared.tenant_id,prepared.package,prepared.package_version)
+        draft=request.model_dump(mode='json')
+        draft['confirmed']=False
+        return {'request':draft,'display':{'files':files,'capability':package.manifest.metadata.description,
+            'next_fire_at':record.next_fire_at,'expires_at':grant.expires_at,'event_subject':subject_name,'task_token_limit':self.tasks.durable.max_task_tokens}}
+
     async def create(self,who: Principal,body: DefinitionCreate | dict[str,Any]) -> TaskDefinition:
         """定义、独立grant与幂等回执原子提交，没有伪造任务。"""
         request=body if isinstance(body,DefinitionCreate) else DefinitionCreate.model_validate(body)
@@ -49,14 +78,14 @@ class TaskDefinitionService:
             old=replay(state,'trigger:'+request.request_id,request.model_dump(mode='json'))
             if old is not None:
                 return TaskDefinition.model_validate_json(json.dumps(old))
-        self._require_enabled()
+        self._require_enabled(who)
         prepared=await prepare(self.tasks,who,request,self.now())
         record,grant=self._new(who,request,prepared)
         async with self.workspace.transaction(who,'work-task:trigger-request:'+request.request_id) as state:
             old=replay(state,'trigger:'+request.request_id,request.model_dump(mode='json'))
             if old is not None:
                 return TaskDefinition.model_validate_json(json.dumps(old))
-            self._require_enabled()
+            self._require_enabled(who)
             check_enabled_capacity(state)
             if len(state.task_definitions)>=1000:
                 raise ConflictError('本人执行安排数量达到上限')
@@ -67,9 +96,9 @@ class TaskDefinitionService:
             audit(state,who.actor,'task_definition_confirmed',self.now(),{'id':record.definition_id,'kind':'task_definition'})
         return record
 
-    def _require_enabled(self) -> None:
+    def _require_enabled(self,who: Principal) -> None:
         """关闭开关仍可查询暂停取消，但不能产生新授权。"""
-        if not self.config.enabled or not self.tasks.durable.enabled:
+        if not self.config.allows(who.tenant_id) or not self.tasks.durable.allows(who.tenant_id):
             raise ConflictError('后台触发安排尚未启用')
 
     def _new(self,who: Principal,request: DefinitionCreate,prepared: Any) -> tuple[TaskDefinition,ExecutionGrant]:
@@ -114,7 +143,7 @@ class TaskDefinitionService:
             prior=replay(state,key,payload)
             if prior is not None:
                 return TaskDefinition.model_validate_json(json.dumps(prior))
-        self._require_enabled()
+        self._require_enabled(who)
         base=DefinitionCreate.model_validate(request.model_dump(exclude={'expected_version','stop_running'}))
         prepared=await prepare(self.tasks,who,base,self.now())
         fresh,grant=self._new(who,base,prepared)
@@ -122,7 +151,7 @@ class TaskDefinitionService:
             old=replay(state,key,payload)
             if old is not None:
                 return TaskDefinition.model_validate_json(json.dumps(old))
-            self._require_enabled()
+            self._require_enabled(who)
             current=definition(state,identifier)
             check_version(current,request.expected_version)
             if current.cancelled:
@@ -155,7 +184,7 @@ class TaskDefinitionService:
                 raise ConflictError('已取消安排不能恢复')
             enabled=action=='resume'
             if enabled:
-                self._require_enabled()
+                self._require_enabled(who)
                 self._resume(state,current)
             else:
                 stop_tasks(state,current,stop_running=request.stop_running or action=='cancel',now=self.now(),pause=action=='pause',all_versions=True)

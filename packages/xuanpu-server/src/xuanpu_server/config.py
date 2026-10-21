@@ -273,6 +273,7 @@ class MetricsConfig(_Section):
 
 
 from xuanpu_server.task_triggers.models import TriggerConfig
+from xuanpu_server.work_tasks.activity import ActivityConfig
 from xuanpu_server.work_tasks.config import DurableExecutionConfig
 
 
@@ -302,6 +303,7 @@ class ServerConfig(_Section):
     limits: LimitsConfig = LimitsConfig()
     durable_execution: DurableExecutionConfig = DurableExecutionConfig()
     task_triggers: TriggerConfig = TriggerConfig()
+    task_activity: ActivityConfig = ActivityConfig()
     audit: AuditConfig = AuditConfig()
     metrics: MetricsConfig = MetricsConfig()
     public_url: str | None = None

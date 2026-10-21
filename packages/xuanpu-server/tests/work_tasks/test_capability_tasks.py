@@ -118,3 +118,11 @@ async def test_ordinary_turn_capacity_does_not_spend_background_attempt(capabili
     await asyncio.wait_for(world.platform.task_registry.join(),15)
     current = await world.platform.work_tasks.store.get(world.employee,task.task_id)
     assert current.status == 'succeeded' and current.attempt_no == 1
+
+
+def test_capability_summary_consumes_public_kernel_text_event():
+    """真实内核发assistant_text/delta，不能误用网关text_delta协议。"""
+    from xuanpu_server.work_tasks.capability_runner import CapabilityEvidence
+    evidence=CapabilityEvidence()
+    evidence.observe('assistant_text',{'delta':'客户C-R2已验证'},'root-submission')
+    assert evidence.texts==['客户C-R2已验证']

@@ -50,7 +50,7 @@ async def save_proactive(
     validate_proactive(state)
     pending = validate_notifications(state)
     for source, identifier in invalidated_sources(old, state):
-        column = "proactive_check_id" if source == "proactive_check" else "proactive_followup_id"
+        column = {"proactive_check":"proactive_check_id","proactive_followup":"proactive_followup_id","work_task":"work_task_id"}[source]
         await conn.execute(
             f"UPDATE {tables['notification_delivery']} d SET status='skipped',claim_token=NULL,lease_until=0,error_code='source_resolved' "
             f"FROM {tables['notification']} n WHERE d.notification_id=n.notification_id "
@@ -85,8 +85,8 @@ async def save_proactive(
     for notification in pending:
         notification_id = await conn.fetchval(
             f"INSERT INTO {tables['notification']} "
-            "(tenant_id,user_id,notification_key,source,proactive_check_id,proactive_followup_id,title,body,due_at,created_at,alert_after,task_definition_id) "
-            "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) "
+            "(tenant_id,user_id,notification_key,source,proactive_check_id,proactive_followup_id,title,body,due_at,created_at,alert_after,task_definition_id,work_task_id) "
+            "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) "
             "ON CONFLICT DO NOTHING RETURNING notification_id",
             tenant,
             user,
@@ -100,6 +100,7 @@ async def save_proactive(
             notification.created_at,
             notification.alert_after,
             notification.task_definition_id,
+            notification.work_task_id,
         )
         if notification_id is not None:
             for channel in notification.channels:

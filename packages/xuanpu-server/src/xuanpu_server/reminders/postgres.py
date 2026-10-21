@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from taifeng_stores import SqlNamespace
 
 RC = "reminder_id,tenant_id,user_id,title,due_at,timezone,repeat,channels,status,version,request_id,created_at,updated_at,original_fingerprint"
-NC = "notification_id,tenant_id,user_id,reminder_id,title,due_at,created_at,read_at,notification_key,source,body,proactive_check_id,proactive_followup_id,alert_after,task_definition_id"
+NC = "notification_id,tenant_id,user_id,reminder_id,title,due_at,created_at,read_at,notification_key,source,body,proactive_check_id,proactive_followup_id,alert_after,task_definition_id,work_task_id"
 
 
 def reminder(row: asyncpg.Record) -> ReminderRecord:

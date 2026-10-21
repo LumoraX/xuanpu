@@ -12,6 +12,7 @@ from xuanpu_server.reminders.notification_state import (
     native_notification_current,
     proactive_notification_current,
 )
+from xuanpu_server.work_tasks.activity import ActivityConfig
 from xuanpu_server.workspace.models import WorkspaceState
 from xuanpu_server.workspace.notifications import validate_notifications, validate_proactive
 from xuanpu_server.workspace.reminders import synchronize_reminder_followups
@@ -30,6 +31,7 @@ class InMemoryWorkspaceStore:
     def __init__(self, audit: Callable[[list[AuditRecord]], None]) -> None:
         """注入同步批量审计，在提交前记录。"""
         self._audit = audit
+        self._activity_config = ActivityConfig()
         self._states: dict[tuple[str, str], WorkspaceState] = {}
         self._epochs: dict[tuple[str, str], int] = {}
         self._locks: dict[tuple[str, str], asyncio.Lock] = {}
@@ -90,6 +92,11 @@ class InMemoryWorkspaceStore:
                 if record.get("reminder_id") == notification.reminder_id
             ]
             return native_notification_current(notification, reminder_status, sources)
+        if notification.source=='work_task':
+            from xuanpu_server.work_tasks.activity import current
+
+            task_identifier=notification.work_task_id or ''
+            return current(state.work_tasks.get(task_identifier),state.task_dispatch.get(task_identifier,{}),notification.notification_key)
         if notification.source=='task_definition':
             record=state.task_definitions.get(notification.task_definition_id or '')
             return record is not None and not record['enabled']
@@ -136,6 +143,10 @@ class InMemoryWorkspaceStore:
     ) -> None:
         """绑定先准备后同步提交的统一通知存储。"""
         self._notification_sink = sink
+
+    def configure_activity(self, config: ActivityConfig) -> None:
+        """注入服务端工作动态灰度，员工请求不能改变此配置。"""
+        self._activity_config = config
 
     async def trigger_backlog(self) -> dict[str, int | float | None]:
         """只统计已提交投递；不做TTL清理或改变去重墓碑。"""
@@ -238,6 +249,9 @@ class InMemoryWorkspaceStore:
             from xuanpu_server.task_triggers.outbox import derive
 
             derive(original,state)
+            from xuanpu_server.work_tasks.activity import derive as derive_activity
+
+            derive_activity(original,state,enabled=self._activity_config.allows(tenant))
             validate_proactive(state)
             validate_notifications(state)
             commit_notifications = None

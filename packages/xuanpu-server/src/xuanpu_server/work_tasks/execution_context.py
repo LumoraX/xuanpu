@@ -21,6 +21,7 @@ class ExecutionBinding:
     store: ExecutionStore
     now: Callable[[], float]
     stop_reason: str | None = None
+    max_task_tokens: int = 150000
 
 
     def at(self, state: WorkspaceState) -> float:

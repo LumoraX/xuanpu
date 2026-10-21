@@ -36,6 +36,8 @@ class TriggerWorker:
             rows=await backend.trigger_candidates('time',limit=100,now=self.service.now())
         for tenant,user,identifier in rows:
             self.time_cursor=tenant,user,identifier
+            if not self.service.config.allows(tenant) or not self.service.tasks.durable.allows(tenant):
+                continue
             who=Principal(role='tenant_member',tenant_id=tenant,user_id=user,key_id=None)
             try:
                 await self.service.fire_time(who,identifier)
@@ -53,6 +55,8 @@ class TriggerWorker:
             rows=await backend.trigger_candidates('event',limit=100,now=self.service.now())
         for tenant,user,identifier in rows:
             self.event_cursor=tenant,user,identifier
+            if not self.service.config.allows(tenant) or not self.service.tasks.durable.allows(tenant):
+                continue
             who=Principal(role='tenant_member',tenant_id=tenant,user_id=user,key_id=None)
             try:
                 await self.service.deliver_event(who,identifier)
