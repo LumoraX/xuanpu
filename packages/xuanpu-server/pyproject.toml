@@ -1,6 +1,6 @@
 [project]
 name = "xuanpu-server"
-version = "2026.10.21.3"
+version = "2026.10.21.4"
 description = "xuanpu 平台服务 —— 运行时（引擎承载、会话、事件流、审批待办）与控制面（租户、业务包、密钥、配额、审计）"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -20,7 +20,7 @@ dependencies = [
     "taifeng>=2026.10.1.11",
     "taifeng-sandbox>=2026.10.21.1",
     "taifeng-stores",
-    "xuanpu-spec>=2026.10.2.7",
+    "xuanpu-spec>=2026.10.21.1",
     "pydantic>=2.6",
     "pyyaml>=6.0",
     # HTTP 接入层与密钥加密采用成熟组件（ADR 0003）
@@ -29,6 +29,7 @@ dependencies = [
     "httpx>=0.27",
     "uvicorn>=0.29",
     "cryptography>=42",
+    "PyJWT[crypto]>=2.10",
     # 指标端点的 Prometheus 文本格式
     "prometheus_client>=0.20",
 ]

@@ -9,6 +9,7 @@ from __future__ import annotations
 from importlib.metadata import version
 
 from xuanpu_spec.archive import archive_digest, pack_package, unpack_package
+from xuanpu_spec.call_context import request_fingerprint
 from xuanpu_spec.errors import ArchiveError, ManifestError, SpecError
 from xuanpu_spec.loader import (
     dump_manifest,
@@ -58,6 +59,7 @@ __all__ = [
     "manifest_json_schema",
     "pack_package",
     "parse_manifest",
+    "request_fingerprint",
     "parse_openapi",
     "split_tool_name",
     "unpack_package",

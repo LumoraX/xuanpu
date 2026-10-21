@@ -1,0 +1,63 @@
+apiVersion: xuanpu/v1
+kind: Package
+metadata:
+  name: finance
+  version: 0.1.0-f0.1
+  description: 独立财务F0：发票原件归集、证据查询与持久补件
+spec:
+  skills:
+    entries:
+    - finance-assistant
+  model:
+    tier: balanced
+  policy:
+    approval: standard
+    budget:
+      maxSessionTokens: 200000
+      maxIterations: 40
+    sandbox:
+      network: false
+      shell: false
+  connectors:
+  - name: finance
+    transport: http
+    openapi: apis/finance.yaml
+    auth:
+      type: bearer
+      secret: finance-service-token
+    timeoutSeconds: 30
+    tools:
+    - name: listLegalEntities
+      effect: read
+    - name: listIntegrations
+      effect: read
+    - name: importInvoices
+      effect: write
+    - name: listInvoices
+      effect: read
+    - name: getInvoice
+      effect: read
+    - name: getInvoiceLines
+      effect: read
+    - name: getInvoiceFields
+      effect: read
+    - name: getInvoiceEvidence
+      effect: read
+    - name: getOperation
+      effect: read
+    - name: cancelOperation
+      effect: write
+    - name: listExceptions
+      effect: read
+    contextAudience: xuanpu-finance
+  evals:
+  - name: explain-missing-original
+    entry: finance-assistant
+    input: 我只有一张发票截图，现在能直接证明查验通过并归档吗？
+    expect:
+      contains:
+      - 原件
+      notContains:
+      - 已查验通过
+      - 已归档成功
+      maxTokens: 4000

@@ -22,6 +22,7 @@ from xuanpu_server.api.assistant_actions import assistant_actions_router
 from xuanpu_server.api.audit_usage import audit_usage_router
 from xuanpu_server.api.auth import Caller, bearer
 from xuanpu_server.api.console import ConsoleStaticFiles
+from xuanpu_server.api.file_bridge import file_bridge_router
 from xuanpu_server.api.history import history_router
 from xuanpu_server.api.identity import identity_router
 from xuanpu_server.api.instance import InstanceMiddleware
@@ -157,6 +158,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.include_router(assistant_actions_router(platform))
     app.include_router(reminders_router(platform))
     app.include_router(workspace_router(platform))
+    app.include_router(file_bridge_router(platform))
     app.include_router(work_tasks_router(platform))
     app.include_router(proactive_router(platform))
 

@@ -11,6 +11,7 @@ members = [
     "xuanpu-cli",
     "xuanpu-console",
     "xuanpu-desktop",
+    "xuanpu-finance",
     "xuanpu-sdk-py",
     "xuanpu-server",
     "xuanpu-spec",
@@ -22,12 +23,14 @@ dev = [
     { name = "boto3", specifier = ">=1.34" },
     { name = "boto3-stubs", extras = ["s3"] },
     { name = "httpx", specifier = ">=0.27" },
+    { name = "jsonschema", specifier = ">=4.23" },
     { name = "moto", extras = ["server"], specifier = ">=5.0" },
     { name = "mypy", specifier = ">=1.10" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-asyncio", specifier = ">=0.23" },
     { name = "ruff", specifier = ">=0.5" },
     { name = "types-pyyaml", specifier = ">=6.0" },
+    { name = "xuanpu-finance", editable = "packages/xuanpu-finance" },
     { name = "xuanpu-sdk-py", editable = "packages/xuanpu-sdk-py" },
 ]
 
@@ -582,6 +585,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/63/8e/f1f955e0921dd2b6d22eae7e8d24a4c4b638d10735ffbf6a71f99eb0fcb8/cryptography-50.0.1-cp39-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:fd3718b960d0b5dd213cdf03f3bcb7000e69dda0de8b956061947ff6bcff5558", size = 4888413, upload-time = "2026-08-25T19:45:20.4Z" },
     { url = "https://files.pythonhosted.org/packages/1f/ab/89e2b798d2c3925f82e2bb72d5979f3d2f6da2dd22ef4a8cd8b70d920039/cryptography-50.0.1-cp39-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:2a93d05e34d5f67fba6f891fe85d929999baa7195e853923ea6d7576c9e68c5e", size = 5044355, upload-time = "2026-08-25T19:45:22.353Z" },
     { url = "https://files.pythonhosted.org/packages/99/89/87ef49ffe383ef4e147d27b7bf2088fb0b54ea409dd87b5a89442e5828a5/cryptography-50.0.1-cp39-abi3-win_amd64.whl", hash = "sha256:55d16b1ef3ee0958d893a977b19777887e546c9954ea81b200c3301a864013f2", size = 3875429, upload-time = "2026-08-25T19:45:24.418Z" },
+]
+
+[[package]]
+name = "defusedxml"
+version = "0.7.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0f/d5/c66da9b79e5bdb124974bfe172b4daf3c984ebd9c2a06e2b8a4dc7331c72/defusedxml-0.7.1.tar.gz", hash = "sha256:1bb3032db185915b62d7c6209c5a8792be6a32ab2fedacc84e01b52c51aa3e69", size = 75520, upload-time = "2021-03-08T10:59:26.269Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/6c/aa3f2f849e01cb6a001cd8554a88d4c77c5c1a31c95bdf1cf9301e6d9ef4/defusedxml-0.7.1-py2.py3-none-any.whl", hash = "sha256:a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61", size = 25604, upload-time = "2021-03-08T10:59:24.45Z" },
 ]
 
 [[package]]
@@ -1368,6 +1380,20 @@ wheels = [
 ]
 
 [[package]]
+name = "pyjwt"
+version = "2.15.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/43/ea/5194e52748b0da83d71e082d75496eaec6e58f419f5e184786ded517e6a9/pyjwt-2.15.1.tar.gz", hash = "sha256:4f259e80cdfb6b3fc18a7de51fd1ef9ec79652f25019bae68975ca2468a34df8", size = 121252, upload-time = "2026-09-28T18:40:42.598Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/50/ca/44de4e75f8aadc457f0634be3b542815078ded46dca30efb960edeecad6e/pyjwt-2.15.1-py3-none-any.whl", hash = "sha256:42d59d631f7768a1028a64c7ff581a9bf7519804daf91fc5b6c56e30eec5e193", size = 33860, upload-time = "2026-09-28T18:40:41.429Z" },
+]
+
+[package.optional-dependencies]
+crypto = [
+    { name = "cryptography" },
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.3.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2095,6 +2121,46 @@ version = "2026.10.6"
 source = { virtual = "packages/xuanpu-desktop" }
 
 [[package]]
+name = "xuanpu-finance"
+version = "2026.10.21.1"
+source = { editable = "packages/xuanpu-finance" }
+dependencies = [
+    { name = "anyio" },
+    { name = "asyncpg" },
+    { name = "cryptography" },
+    { name = "defusedxml" },
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "pyjwt", extra = ["crypto"] },
+    { name = "pyyaml" },
+    { name = "uvicorn" },
+    { name = "xuanpu-spec" },
+]
+
+[package.optional-dependencies]
+s3 = [
+    { name = "boto3" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anyio", specifier = ">=4" },
+    { name = "asyncpg", specifier = ">=0.29" },
+    { name = "boto3", marker = "extra == 's3'", specifier = ">=1.34" },
+    { name = "cryptography", specifier = ">=42" },
+    { name = "defusedxml", specifier = ">=0.7.1" },
+    { name = "fastapi", specifier = ">=0.110" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "pydantic", specifier = ">=2.6" },
+    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.9" },
+    { name = "pyyaml", specifier = ">=6" },
+    { name = "uvicorn", specifier = ">=0.29" },
+    { name = "xuanpu-spec", editable = "packages/xuanpu-spec" },
+]
+provides-extras = ["s3"]
+
+[[package]]
 name = "xuanpu-sdk-py"
 version = "2026.10.21.2"
 source = { editable = "packages/xuanpu-sdk-py" }
@@ -2107,7 +2173,7 @@ requires-dist = [{ name = "httpx", specifier = ">=0.27" }]
 
 [[package]]
 name = "xuanpu-server"
-version = "2026.10.21.3"
+version = "2026.10.21.4"
 source = { editable = "packages/xuanpu-server" }
 dependencies = [
     { name = "cryptography" },
@@ -2115,6 +2181,7 @@ dependencies = [
     { name = "httpx" },
     { name = "prometheus-client" },
     { name = "pydantic" },
+    { name = "pyjwt", extra = ["crypto"] },
     { name = "pyyaml" },
     { name = "taifeng" },
     { name = "taifeng-sandbox" },
@@ -2141,6 +2208,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "prometheus-client", specifier = ">=0.20" },
     { name = "pydantic", specifier = ">=2.6" },
+    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "taifeng", specifier = ">=2026.10.1.11" },
     { name = "taifeng-sandbox", editable = "../taifeng-sandbox" },
@@ -2153,7 +2221,7 @@ provides-extras = ["postgres", "s3"]
 
 [[package]]
 name = "xuanpu-spec"
-version = "2026.10.2.7"
+version = "2026.10.21.1"
 source = { editable = "packages/xuanpu-spec" }
 dependencies = [
     { name = "pydantic" },

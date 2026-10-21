@@ -1,4 +1,4 @@
-# 完整闭环设计包；尚无运行服务。F0 发布时只保留其已实现 Skill 和工具。
+# 完整闭环设计参考包；可执行F0子集另见 examples/finance，后续阶段工具尚未发布。
 apiVersion: xuanpu/v1
 kind: Package
 metadata:

@@ -1,0 +1,24 @@
+# 复制到 runtime/config.yaml，所有凭据另置文件；没有默认生产口令。
+environment: development
+synthetic: false
+mode: enabled
+host: 0.0.0.0
+port: 8443
+database_dsn_file: database-dsn
+service_token_file: service-token
+issuer: xuanpu
+audience: xuanpu-finance
+public_key_files:
+  platform-ed25519-1: platform-public.pem
+gateway:
+  base_url: http://host.docker.internal:8420
+  tenant_token_files:
+    acme: platform-api-key
+objects:
+  kind: local
+  root: /var/lib/finance/originals
+  key_file: originals-key.bin
+companies:
+  - {tenant_id: acme, legal_entity_id: company-a, name: 测试公司, tax_id: TEST_ONLY}
+grants:
+  - {tenant_id: acme, user_id: test-employee, legal_entity_id: company-a, role: collector}

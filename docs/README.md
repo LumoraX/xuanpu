@@ -13,4 +13,4 @@
 
 当前办公任务使用与验收见[办公交办](guides/work-tasks.md)、[任务架构](architecture/work-tasks.md)和[R1验收](guides/releases/2026-10-21-r1-acceptance.md)。
 
-财务业务闭环的待审阅设计与 Skill／API 契约见[财务能力设计](superpowers/specs/2026-10-21-finance-capability-design.md)，首个独立子项目为[F0 发票基座](superpowers/specs/2026-10-21-finance-f0-design.md)；这些材料不表示财务服务已实现或上线。
+财务 F0 当前实现见[架构](architecture/finance.md)、[接入指南](guides/finance-f0.md)和[分层验收记录](guides/releases/2026-10-21-finance-f0-acceptance.md)。后续闭环以[批准设计](superpowers/specs/2026-10-21-finance-capability-design.md)为准；F0 不代表报销、付款或官方查验已经上线。
