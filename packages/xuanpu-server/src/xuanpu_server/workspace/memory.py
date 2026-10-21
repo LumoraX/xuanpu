@@ -196,7 +196,7 @@ class InMemoryWorkspaceStore:
         if not 1 <= limit <= 100:
             raise ValueError('分页数量须为1至100')
         return sorted(owner for owner, state in self._states.items()
-            if (after is None or owner > after) and any(needs_recovery(value) and
+            if (after is None or owner > after) and any(needs_recovery(value,state.task_dispatch.get(value['task_id'])) and
                 (not legacy_only or value.get('recovery_policy_version',1) == 1)
                 for value in state.work_tasks.values()))[:limit]
 

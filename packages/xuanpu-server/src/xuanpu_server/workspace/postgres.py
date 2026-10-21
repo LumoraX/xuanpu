@@ -288,14 +288,14 @@ class PostgresWorkspaceStore:
     async def task_owners(self, after: tuple[str, str] | None = None,
                           limit: int = 100, *, legacy_only: bool = False) -> list[tuple[str, str]]:
         """内部恢复包含停用身份，记录数受每员工任务上限限制。"""
-        from .postgres_work_tasks import PENDING_TASKS
+        from .postgres_work_tasks import pending_tasks
 
         if not 1 <= limit <= 100:
             raise ValueError('分页数量须为1至100')
         async with self._pool.acquire() as conn:
-            rows = await conn.fetch(f"SELECT DISTINCT tenant_id,user_id FROM {self._t['work_task']} "
-                "WHERE " + PENDING_TASKS + (" AND COALESCE(record->>'recovery_policy_version','1')='1'" if legacy_only else '') + " AND ($1::text IS NULL OR (tenant_id,user_id)>($1,$2)) "
-                "ORDER BY tenant_id,user_id LIMIT $3", *(after or (None,None)), limit)
+            rows = await conn.fetch(f"SELECT DISTINCT t.tenant_id,t.user_id FROM {self._t['work_task']} t "
+                "WHERE " + pending_tasks(self._t) + (" AND COALESCE(t.record->>'recovery_policy_version','1')='1'" if legacy_only else '') + " AND ($1::text IS NULL OR (t.tenant_id,t.user_id)>($1,$2)) "
+                "ORDER BY t.tenant_id,t.user_id LIMIT $3", *(after or (None,None)), limit)
         return [(row['tenant_id'], row['user_id']) for row in rows]
 
     async def owners(

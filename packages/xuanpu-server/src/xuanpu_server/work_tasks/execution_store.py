@@ -287,6 +287,9 @@ class ExecutionStore:
             dispatch = dispatch_of(state, lease.task_id)
             if (dispatch.owner, dispatch.epoch) != (lease.owner, lease.epoch):
                 raise ConflictError('stale_epoch：旧执行不能移交新派发')
+            task=require_task(state,lease.task_id)
+            if task.status in TERMINAL and not task.resources_pending and not task.artifact_recovery_pending:
+                state_name,block_reason='settled',None
             state.task_dispatch[lease.task_id] = DispatchRecord.model_validate({**dispatch.model_dump(),
                 'state': state_name, 'block_reason': block_reason, 'due_at': due_at if due_at is not None else now,
                 'expires_at': 0.0, 'changed_at':now}).model_dump(mode='json')

@@ -189,8 +189,9 @@ class WorkTaskEvent(FrozenModel):
     source_occurrence: dict[str, Any] | None = None
 
 
-def needs_recovery(value: dict[str, Any]) -> bool:
-    """终态且资源及成果索引均已结算的记录不参与每秒后台扫描。"""
+def needs_recovery(value: dict[str, Any], dispatch: dict[str, Any] | None = None) -> bool:
+    """启动时也修复旧终态派发索引；正常执行仍只认领非终态。"""
     return (value['status'] not in TERMINAL or value.get('resources_pending', False)
         or value.get('artifact_recovery_pending', False) or (
-            value.get('error_code') == 'container_cleanup_unverified' and not value.get('resources_recovered', False)))
+            value.get('error_code') == 'container_cleanup_unverified' and not value.get('resources_recovered', False))
+        or (value.get('recovery_policy_version',1)==2 and dispatch is not None and dispatch['state']!='settled'))
