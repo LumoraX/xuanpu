@@ -14,11 +14,13 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 import taifeng
-from taifeng_sandbox import python_script_executor, shell_script_executor
 
+from xuanpu_server.errors import RuntimeCleanupRequiredError, RuntimeUnavailableError
 from xuanpu_server.runtime.approval import build_policy
 from xuanpu_server.runtime.connectors import ConnectorSet
+from xuanpu_server.runtime.execution_scope import ExecutionScope
 from xuanpu_server.runtime.sandbox import DEFAULT_BASE_ENV
+from xuanpu_server.runtime.script_executors import ScriptObserver, script_executors
 from xuanpu_server.tenancy import tenant_directory
 
 if TYPE_CHECKING:
@@ -36,7 +38,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-RuntimeKey = tuple[str, str, str]
+RuntimeKey = tuple[str, str, str, str]
 
 
 @dataclass(frozen=True)
@@ -119,15 +121,15 @@ async def _close_in_order(
     key: RuntimeKey, steps: list[tuple[str, Callable[[], Awaitable[None]]]], *, strict: bool = False
 ) -> None:
     """按顺序收尾。某一步失败只记日志，不影响后面的收尾。"""
-    errors: list[Exception] = []
+    errors: list[BaseException] = []
     for name, closer in steps:
         try:
             await closer()
-        except Exception as exc:
+        except BaseException as exc:
             errors.append(exc)
             logger.exception("关闭运行时 %s 的%s失败", key, name)
     if strict and errors:
-        raise ExceptionGroup("运行时资源未完全关闭", errors)
+        raise BaseExceptionGroup("运行时资源未完全关闭", errors)
 
 
 def _release_steps(
@@ -162,6 +164,8 @@ class TenantRuntime:
     connector_sandbox: SandboxHandle | None = None
     tool_effects: dict[str, Effect] = field(default_factory=dict)
     last_used: float = 0.0
+    retainers: int = 0
+    closing: bool = False
 
     def live_sessions(self) -> int:
         """引擎池里当前活着的会话数。"""
@@ -169,6 +173,7 @@ class TenantRuntime:
 
     async def close(self) -> None:
         """依次关闭引擎池、连接器、连接器沙盒、脚本沙盒。某一步失败不影响后面的收尾。"""
+        self.closing = True
         await _close_in_order(
             self.key,
             [
@@ -176,14 +181,6 @@ class TenantRuntime:
                 *_release_steps(self.connectors, self.connector_sandbox, self.sandbox),
             ], strict=True,
         )
-
-
-async def _close_unowned(store: taifeng.MessageStore) -> None:
-    """关掉建池失败后留在手里的会话主存。失败只记日志，不盖住建池失败的那个异常。"""
-    try:
-        await store.close()
-    except Exception:
-        logger.exception("建池失败后关闭会话主存也失败")
 
 
 class RuntimeAssembler:
@@ -225,6 +222,8 @@ class RuntimeAssembler:
         self._defaults = defaults or RuntimeDefaults()
         self._runtimes: dict[RuntimeKey, TenantRuntime] = {}
         self._locks: dict[RuntimeKey, asyncio.Lock] = {}
+        self._state_locks: dict[Path, asyncio.Lock] = {}
+        self._failed_closures: dict[RuntimeKey, list[tuple[str, Callable[[], Awaitable[None]]]]] = {}
 
     @property
     def defaults(self) -> RuntimeDefaults:
@@ -235,24 +234,42 @@ class RuntimeAssembler:
         """当前组装着（还没回收）的运行时数。"""
         return len(self._runtimes)
 
-    def _scoped(self, area: str, package: ResolvedPackage) -> Path:
+    def _scoped(self, area: str, package: ResolvedPackage, scope_key: str | None = None) -> Path:
         """某个运行时在数据目录下的专属目录。"""
         record = package.record
         tenant = tenant_directory(record.tenant_id)
-        return self._data_dir / area / tenant / record.name / record.version
+        root = self._data_dir / area / tenant / record.name / record.version
+        return root if scope_key is None else root / scope_key
 
-    async def get(self, package: ResolvedPackage) -> TenantRuntime:
+    async def get(
+        self, package: ResolvedPackage, scope: ExecutionScope | None = None, *, input_root: Path | None = None,
+        script_observer: ScriptObserver | None = None, contains_external_input: bool = False
+    ) -> TenantRuntime:
         """取运行时；尚未组装则组装。同一个运行时的并发请求只组装一次。"""
         record = package.record
-        key: RuntimeKey = (record.tenant_id, record.name, record.version)
+        chosen = scope or ExecutionScope(record.tenant_id, "service:assembly", "package:" + record.name)
+        if chosen.tenant_id != record.tenant_id:
+            raise ValueError("执行空间与业务包租户不匹配")
+        key: RuntimeKey = (record.tenant_id, record.name, record.version, chosen.storage_key())
+        if key in self._failed_closures:
+            raise RuntimeUnavailableError("执行空间上次装配尚未清理，不能重复启动")
         existing = self._runtimes.get(key)
+        if existing is not None and existing.closing:
+            raise RuntimeUnavailableError("执行空间尚未完成关闭，不能重复启动")
         if existing is None:
             lock = self._locks.setdefault(key, asyncio.Lock())
             async with lock:
+                if key in self._failed_closures:
+                    raise RuntimeUnavailableError("执行空间上次装配尚未清理，不能重复启动")
                 existing = self._runtimes.get(key)
                 if existing is None:
-                    existing = await self._assemble(key, package)
+                    if chosen.execution_id.startswith("task:") and input_root is None:
+                        raise RuntimeUnavailableError("任务运行时必须先固定输入只读挂载")
+                    existing = await self._assemble(key, package, input_root=input_root,
+                        contains_external_input=contains_external_input or input_root is not None or not chosen.owner_id.startswith("service:"), script_observer=script_observer)
                     self._runtimes[key] = existing
+        if existing.closing:
+            raise RuntimeUnavailableError("执行空间尚未完成关闭，不能重复启动")
         existing.last_used = self._now()
         return existing
 
@@ -277,7 +294,10 @@ class RuntimeAssembler:
             startup_timeout_seconds=self._defaults.connector_startup_seconds,
         )
 
-    async def _assemble(self, key: RuntimeKey, package: ResolvedPackage) -> TenantRuntime:
+    async def _assemble(
+        self, key: RuntimeKey, package: ResolvedPackage, *, input_root: Path | None = None,
+        contains_external_input: bool = False, script_observer: ScriptObserver | None = None,
+    ) -> TenantRuntime:
         """组装一个运行时。任何一步失败都会收回已经准备好的资源。
 
         清单里有 stdio 连接器时，先为它们开连接器沙盒（工作目录在
@@ -290,17 +310,29 @@ class RuntimeAssembler:
         try:
             if any(connector.transport == "stdio" for connector in spec.connectors):
                 connector_sandbox = await self._sandboxes.open_connectors(
-                    package, self._scoped("connectors", package)
+                    package, self._scoped("connectors", package, key[3])
                 )
             connectors = self._connector_set(package, connector_sandbox)
             effects: dict[str, Effect] = {}
             for connector in spec.connectors:
                 effects.update(await connectors.start(connector, package_root=package.root))
-            policy = build_policy(spec.policy.approval, effects)
-            sandbox = await self._sandboxes.open(package, self._scoped("workspaces", package))
-            pool = await self._create_pool(package, policy, sandbox, connectors)
-        except BaseException:
-            await _close_in_order(key, _release_steps(connectors, connector_sandbox, sandbox))
+            workspace = self._scoped("workspaces", package, key[3])
+            sandbox = (await self._sandboxes.open(package, workspace) if input_root is None
+                else await self._sandboxes.open(package, workspace, input_root=input_root))
+            policy = build_policy(spec.policy.approval, effects,
+                contains_external_input=contains_external_input,
+                workspace_root=sandbox.workspace_inside if input_root is not None else None)
+            pool = await self._create_pool(package, policy, sandbox, connectors, key=key, script_observer=script_observer)
+        except BaseException as original:
+            steps = self._failed_closures.setdefault(key, [])
+            if isinstance(original, RuntimeCleanupRequiredError):
+                steps.append(("未移交容器", original.cleanup))
+            steps.extend(_release_steps(connectors, connector_sandbox, sandbox))
+            try:
+                await _close_in_order(key, steps, strict=True)
+            except BaseException as cleanup:
+                raise BaseExceptionGroup("运行时装配失败且资源尚未清理", [original, cleanup]) from None
+            del self._failed_closures[key]
             raise
         return TenantRuntime(
             key=key,
@@ -321,6 +353,10 @@ class RuntimeAssembler:
     ) -> list[taifeng.ToolSpec]:
         """内核默认工具之外，平台额外开放的工具。"""
         tools = [tool.spec for tool in connectors.build_tools(policy)]
+        if package.record.name == "office-assistant":
+            from xuanpu_server.work_tasks.tools import office_tools
+
+            tools.extend(office_tools(sandbox, policy))
         if package.manifest.spec.policy.sandbox.shell:
             registry = taifeng.BackgroundTaskRegistry(executor=sandbox.executor)
             tools.append(
@@ -369,6 +405,8 @@ class RuntimeAssembler:
         policy: taifeng.PermissionPolicy,
         sandbox: SandboxHandle,
         connectors: ConnectorSet,
+        *,
+        key: RuntimeKey, script_observer: ScriptObserver | None = None,
     ) -> taifeng.EnginePool:
         """创建内核引擎池。"""
         tenant_id = package.record.tenant_id
@@ -380,15 +418,19 @@ class RuntimeAssembler:
         try:
             if states.message_store is not None:
                 store = states.message_store()
+            else:
+                # 多个scope共享既有消息位置；在第一次建索引时串行预热公开store接口。
+                storage = self._scoped("threads", package)
+                await asyncio.to_thread(storage.mkdir, parents=True, exist_ok=True)
+                async with self._state_locks.setdefault(storage, asyncio.Lock()):
+                    store = taifeng.JsonlMessageStore(storage)
+                    await store.list_threads(limit=1)
             options = await self._state_options(package, states, store)
             return await taifeng.EnginePool.create(
                 skills_dir=package.skills_dir,
                 model_client=await self._models.create(tenant_id, spec.model.tier),
                 extra_tools=self._extra_tools(package, policy, sandbox, connectors),
-                script_executors={
-                    "shell": shell_script_executor(sandbox.executor, env=sandbox.process_env()),
-                    "python": python_script_executor(sandbox.executor, env=sandbox.process_env()),
-                },
+                script_executors=script_executors(sandbox, script_observer),
                 permission_policy=policy,
                 # 业务包可以把预算调低，不能调高过平台上限
                 max_session_tokens=min(
@@ -403,39 +445,69 @@ class RuntimeAssembler:
                 file_input_policy=taifeng.FileInputPolicy(enabled=True, max_files=8, max_item_bytes=20*1024*1024, max_total_bytes=20*1024*1024),
                 **options,
             )
-        except BaseException:
+        except BaseException as original:
             # 池建成之前，注入的存储仍归我们（taifeng ADR 0111）：建池失败要自己关掉
             if store is not None:
-                await _close_unowned(store)
+                try:
+                    await store.close()
+                except BaseException as cleanup:
+                    self._failed_closures.setdefault(key, []).append(("未移交会话主存", store.close))
+                    raise BaseExceptionGroup("建池失败且主存尚未关闭", [original, cleanup]) from None
             raise
+
+    async def recover_scope(self, package: ResolvedPackage, scope: ExecutionScope) -> None:
+        """独占进程重启时回收固定Task目录的已知资源，不恢复执行。"""
+        key = scope.storage_key()
+        await self._sandboxes.close_workspace(self._scoped('workspaces', package, key))
+        await self._sandboxes.close_workspace(self._scoped('connectors', package, key))
+
+    async def release_scope(self, key: RuntimeKey) -> None:
+        """任务持有者退出后关闭该独立执行空间，失败仍保留资源责任。"""
+        async with self._locks.setdefault(key, asyncio.Lock()):
+            runtime = self._runtimes.get(key)
+            if runtime is None:
+                return
+            if runtime.retainers:
+                raise RuntimeUnavailableError("任务运行时仍被持有")
+            await runtime.close()
+            del self._runtimes[key]
 
     async def evict_idle(self) -> list[RuntimeKey]:
         """回收没有会话在用、且空闲超过 ``runtime_idle_seconds`` 的运行时，返回回收了哪些。"""
         deadline = self._now() - self._defaults.runtime_idle_seconds
         evicted: list[RuntimeKey] = []
         for key, runtime in list(self._runtimes.items()):
-            if runtime.last_used <= deadline and runtime.live_sessions() == 0:
+            if runtime.last_used <= deadline and runtime.live_sessions() == 0 and runtime.retainers == 0:
                 lock = self._locks.setdefault(key, asyncio.Lock())
                 async with lock:
                     # 拿到锁之后再核对一次：这期间可能刚有会话进来
                     current = self._runtimes.get(key)
-                    if current is runtime and runtime.live_sessions() == 0:
-                        del self._runtimes[key]
+                    if current is runtime and runtime.live_sessions() == 0 and runtime.retainers == 0:
+                        runtime.closing = True
                         await runtime.close()
+                        del self._runtimes[key]
                         evicted.append(key)
         return evicted
 
     async def close(self) -> None:
         """关闭全部运行时。"""
-        runtimes, self._runtimes = list(self._runtimes.values()), {}
-        errors: list[Exception] = []
-        for runtime in runtimes:
+        errors: list[BaseException] = []
+        for key, runtime in list(self._runtimes.items()):
             try:
                 await runtime.close()
-            except Exception as exc:
+            except BaseException as exc:
                 errors.append(exc)
+            else:
+                del self._runtimes[key]
+        for key, steps in list(self._failed_closures.items()):
+            try:
+                await _close_in_order(key, steps, strict=True)
+            except BaseException as exc:
+                errors.append(exc)
+            else:
+                del self._failed_closures[key]
         if errors:
-            raise ExceptionGroup("部分运行时清理失败", errors)
+            raise BaseExceptionGroup("部分运行时清理失败", errors)
 
 
 __all__ = [

@@ -76,3 +76,18 @@
   .workspace-header { padding: 12px; }
   .workspace-content { padding: 8px 12px; }
 }
+
+/* 办公进展和行动项沿用个人工作区卡片与表单，无固定宽度。 */
+.work-task-card{overflow-wrap:anywhere;min-width:0}
+.work-task-card>button{margin:.25rem .4rem .25rem 0;max-width:100%;white-space:normal}
+.work-task-card .tag{display:inline-block}
+.work-task-card form{display:grid;gap:.75rem;margin-top:.8rem}
+.work-task-card fieldset{min-width:0;border:1px solid var(--line,#dce3ea);border-radius:10px;padding:.85rem;display:grid;gap:.65rem}
+.work-task-card label{display:grid;gap:.35rem;min-width:0}
+.work-task-card input:not([type=checkbox]),.work-task-card textarea,.work-task-card select{width:100%;box-sizing:border-box;min-width:0}
+.work-task-card blockquote{margin:.3rem 0;padding:.6rem;border-left:3px solid var(--line,#dce3ea);white-space:pre-wrap}
+.work-task-card pre{max-width:100%;overflow:auto;white-space:pre-wrap}
+.work-task-card .row{flex-wrap:wrap}
+#workspace-content>form{display:grid;gap:.8rem}
+#workspace-content>form textarea{width:100%;min-height:90px;box-sizing:border-box}
+@media(max-width:480px){.work-task-card{padding:.85rem}.work-task-card .row{display:grid;grid-template-columns:1fr}.work-task-card input[type=datetime-local]{max-width:100%}}

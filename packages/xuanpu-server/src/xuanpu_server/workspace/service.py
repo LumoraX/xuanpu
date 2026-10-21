@@ -76,6 +76,14 @@ class WorkspaceService:
         return who.tenant_id, who.user_id
 
     @asynccontextmanager
+    async def transaction(
+        self, who: Principal, request_id: str | None = None
+    ) -> AsyncIterator[WorkspaceState]:
+        """向平台领域开放同员工原子事务，复用身份锁、关系检查和审计提交。"""
+        async with self._transaction(who, request_id) as state:
+            yield state
+
+    @asynccontextmanager
     async def _transaction(
         self, who: Principal, request_id: str | None = None
     ) -> AsyncIterator[WorkspaceState]:
@@ -106,7 +114,6 @@ class WorkspaceService:
             or any(k in data for k in ("size", "current_revision", "mime_type"))
         ):
             raise InvalidRequestError("文件正文请通过上传入口创建，链接仅接受名称和 HTTPS 地址")
-        payload = {"op": "create", "kind": kind, "data": checked}
         decision_key = None
         if proposal_id is not None:
             request_key(proposal_id)
@@ -114,27 +121,9 @@ class WorkspaceService:
             if request_id != proposal_id + ":create":
                 raise InvalidRequestError("建议创建请求标识不匹配")
         async with self._transaction(who, decision_key or request_id) as state:
-            if decision_key is not None:
-                decision = {"action": "confirm", "data": {"kind": kind, "data": checked}}
-                if replay(state, decision_key, decision) is None:
-                    remember(state, decision_key, decision, {})
-                    audit(state, who.actor, "proposal_reserved", self._now(), {})
-            old = replay(state, request_id, payload)
-            if old is not None:
-                if decision_key is not None:
-                    remember(state, decision_key, decision, {"state": "confirmed", "result": old})
-                return old
-            if len(state.items) >= 10000:
-                raise ConflictError("每人最多保存10000条工作台记录")
-            item = new_item(kind, checked, self._now())
-            check_relations(state, item)
-            state.items[item["id"]] = item
-            result = public(item)
-            remember(state, request_id, payload, result)
-            if decision_key is not None:
-                remember(state, decision_key, decision, {"state": "confirmed", "result": result})
-            audit(state, who.actor, "created", self._now(), item)
-            return result
+            from .creation import create_in_state
+
+            return create_in_state(state, who.actor, kind, checked, request_id, self._now(), proposal_id)
 
     async def list(
         self,
@@ -218,10 +207,11 @@ class WorkspaceService:
         mime_type: str,
         request_id: str,
         parent_id: str | None = None,
+        *, matter_id: str | None = None,
     ) -> dict[str, Any]:
         """保存第一版正本，名称不能成为对象存储路径。"""
         checked = validate_data(
-            "file", {"name": name, "parent_id": parent_id, "mime_type": mime_type}
+            "file", {"name": name, "parent_id": parent_id, "mime_type": mime_type, "matter_id": matter_id}
         )
         return await self._write_content(who, content, mime_type, request_id, checked=checked)
 
@@ -336,7 +326,12 @@ class WorkspaceService:
             )
             if chosen is None:
                 raise NotFoundError("文件版本不存在，外部链接请前往原地址")
-            content = await self.objects.get(chosen["object_key"])
+            from xuanpu_server.objectstore.base import ObjectTooLargeError
+
+            try:
+                content = await self.objects.get_limited(chosen["object_key"], max_bytes=self.max_file_bytes)
+            except ObjectTooLargeError as exc:
+                raise InvalidRequestError("文件正本超过大小限制") from exc
             return content, chosen["mime_type"], item["data"]["name"]
 
     @staticmethod

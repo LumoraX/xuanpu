@@ -151,3 +151,19 @@ __all__ = [
     "Usage",
     "UserUsage",
 ]
+
+
+@dataclass(frozen=True)
+class WorkTask:
+    """工作任务的服务端状态快照，受理和模型完成均不隐含业务成功。"""
+
+    task_id: str
+    status: str
+    state_version: int
+    record: dict[str, Any]
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> WorkTask:
+        """直接保留响应内容，不推断终态、回执或外部写入结果。"""
+        return cls(task_id=data['task_id'], status=data['status'],
+                   state_version=data['state_version'], record=dict(data))

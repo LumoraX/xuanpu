@@ -1,0 +1,25 @@
+apiVersion: xuanpu/v1
+kind: Package
+metadata:
+  name: office-assistant
+  version: 1.0.1
+  description: 本人材料的会议纪要、行动项候选与可追溯表格汇总
+spec:
+  skills:
+    entries: [office]
+  model:
+    tier: balanced
+  policy:
+    approval: standard
+    sandbox:
+      network: false
+      shell: true
+    budget:
+      maxSessionTokens: 200000
+      maxIterations: 40
+  evals:
+    - name: describe
+      entry: office
+      input: 你能处理哪些材料？
+      expect:
+        contains: ["会议", "表格"]

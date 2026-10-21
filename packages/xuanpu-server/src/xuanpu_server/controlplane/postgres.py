@@ -39,11 +39,11 @@ if TYPE_CHECKING:
 
 _SESSION_COLUMNS = (
     "tenant_id, session_id, package, version, entry, thread_id, status, owner, "
-    "lease_expires_at, created_at, updated_at, created_by, metadata::text AS metadata, user_id"
+    "lease_expires_at, created_at, updated_at, created_by, metadata::text AS metadata, user_id, work_task_id, contains_external_input"
 )
 _SESSION_INSERT_COLUMNS = (
     "tenant_id, session_id, package, version, entry, thread_id, status, owner, "
-    "lease_expires_at, created_at, updated_at, created_by, metadata, user_id"
+    "lease_expires_at, created_at, updated_at, created_by, metadata, user_id, work_task_id, contains_external_input"
 )
 
 
@@ -339,7 +339,7 @@ class PostgresControlPlane:
         try:
             await self._execute(
                 f"INSERT INTO {self._t['session']} ({_SESSION_INSERT_COLUMNS}) "
-                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::text::jsonb, $14)",
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::text::jsonb, $14, $15, $16)",
                 record.tenant_id,
                 record.session_id,
                 record.package,
@@ -354,6 +354,8 @@ class PostgresControlPlane:
                 record.created_by,
                 json.dumps(record.metadata, ensure_ascii=False),
                 record.user_id,
+                record.work_task_id,
+                record.contains_external_input,
             )
         except asyncpg.UniqueViolationError as exc:
             raise ConflictError("会话标识冲突") from exc

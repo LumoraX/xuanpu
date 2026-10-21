@@ -119,7 +119,7 @@ def _document_text(data: bytes, name: str) -> str:
         raise InvalidRequestError("此附件暂不能读取正文，请使用 UTF-8 文本、DOCX、PDF 或图片") from exc
 
 
-async def attachment_parts(platform: Platform, who: Principal, ids: list[str]) -> list[dict[str, Any]]:
+async def attachment_parts(platform: Platform, who: Principal, ids: list[str], *, office_metadata: bool = False) -> list[dict[str, Any]]:
     """权限先于正文读取；传给模型的是内联内容，绝不根据用户路径读本机文件。"""
     parts: list[dict[str, Any]] = []
     total = 0
@@ -129,6 +129,13 @@ async def attachment_parts(platform: Platform, who: Principal, ids: list[str]) -
             raise NotFoundError("附件不存在")
         if item["data"]["source_url"]:
             parts.append({"type": "text", "text": "外部文件引用（未读取正文）：" + json.dumps(item["data"], ensure_ascii=False)})
+            continue
+        if office_metadata and item['data']['mime_type'] in {
+            'text/plain','text/markdown','text/csv','application/pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}:
+            parts.append({'type':'text','text':'办公附件仅提供分流元数据，尚未读取正文：' + json.dumps(
+                {'name':item['data']['name'],'mime_type':item['data']['mime_type']}, ensure_ascii=False)})
             continue
         data, mime, name = await platform.workspace.download(who, item_id)
         total += len(data)
@@ -144,6 +151,8 @@ async def attachment_parts(platform: Platform, who: Principal, ids: list[str]) -
                     raise InvalidRequestError("PDF 文件格式无效")
                 part["filename"] = name
             parts.append(part)
+        elif mime == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+            parts.append({"type": "text", "text": "附件为XLSX表格正本，路由尚未读取行数据。需要核算时请选择已开通的办公能力。"})
         else:
             text = await asyncio.to_thread(_document_text, data, name)
             parts.append({"type": "text", "text": text[:16000] + ("\n[正文过长，以上为节选]" if len(text) > 16000 else "") or "[空文件]"})

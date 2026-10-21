@@ -27,8 +27,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import hashlib
-import json
 import logging
 import time
 from dataclasses import dataclass, field
@@ -58,6 +56,12 @@ from xuanpu_server.runtime.ownership import SessionOwnership, require_active
 from xuanpu_server.runtime.receipt_watch import ReceiptWatch, ReplayedTurn
 from xuanpu_server.runtime.session_history import pending_requests, replay_turn
 from xuanpu_server.runtime.session_metadata import validate_metadata
+from xuanpu_server.runtime.session_requests import (
+    check_request,
+    require_task_executor,
+    scope_for,
+    stable_session_id,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -180,6 +184,7 @@ class SessionManager:
         entry: str | None = None,
         metadata: dict[str, str] | None = None,
         request_id: str | None = None,
+        work_task_id: str | None = None,
     ) -> SessionRecord:
         """新建会话。版本在此钉死：之后业务包切换生效版本不影响这个会话。"""
         tenant_id = principal.require_tenant()
@@ -194,14 +199,9 @@ class SessionManager:
                 or not entry
             ):
                 raise InvalidRequestError("幂等会话需要员工、明确版本、入口和有效请求标识")
-            stable_id = (
-                "ses_"
-                + hashlib.sha256(
-                    json.dumps([tenant_id, principal.user_id, request_id]).encode()
-                ).hexdigest()[:32]
-            )
+            stable_id = stable_session_id(principal, request_id)
             existing = await self._request_session(
-                principal, stable_id, package, version, entry, labels
+                principal, stable_id, package, version, entry, labels, work_task_id
             )
             if existing is not None:
                 return existing
@@ -225,6 +225,8 @@ class SessionManager:
             created_by=principal.actor,
             metadata=labels,
             user_id=principal.user_id,
+            work_task_id=work_task_id,
+            contains_external_input=principal.user_id is not None or work_task_id is not None,
         )
         try:
             await self._store.create_session(record)
@@ -232,7 +234,7 @@ class SessionManager:
             if stable_id is None:
                 raise
             existing = await self._request_session(
-                principal, stable_id, package, version, entry, labels
+                principal, stable_id, package, version, entry, labels, work_task_id
             )
             if existing is None:
                 raise
@@ -253,13 +255,7 @@ class SessionManager:
 
     async def request_session(self, principal: Principal, request_id: str) -> SessionRecord | None:
         """查询该员工请求已创建的会话，供崩溃恢复判断副作用。"""
-        if not principal.user_id or not request_id.strip() or len(request_id) > 128:
-            raise InvalidRequestError("幂等会话查询需要员工和有效请求标识")
-        tenant = principal.require_tenant()
-        digest = hashlib.sha256(
-            json.dumps([tenant, principal.user_id, request_id]).encode()
-        ).hexdigest()[:32]
-        record = await self._store.get_session(tenant, "ses_" + digest)
+        record = await self._store.get_session(principal.require_tenant(), stable_session_id(principal, request_id))
         return await self.get(principal, record.session_id) if record is not None else None
 
     async def _request_session(
@@ -270,19 +266,13 @@ class SessionManager:
         version: str | None,
         entry: str | None,
         metadata: dict[str, str],
+        work_task_id: str | None = None,
     ) -> SessionRecord | None:
         """稳定会话标识仍核对本人及原版本入口，不能改请求重定向。"""
         record = await self._store.get_session(principal.require_tenant(), session_id)
         if record is None:
             return None
-        if (record.user_id, record.package, record.version, record.entry, record.metadata) != (
-            principal.user_id,
-            package,
-            version,
-            entry,
-            metadata,
-        ):
-            raise ConflictError("请求标识已用于不同的业务会话")
+        check_request(record, principal, package, version, entry, metadata, work_task_id)
         return await self.get(principal, session_id)
 
     async def get(self, principal: Principal, session_id: str) -> SessionRecord:
@@ -380,7 +370,7 @@ class SessionManager:
             held: 取得持有权时拿到的会话记录。
         """
         package = await self._packages.resolve(held.tenant_id, held.package, held.version)
-        runtime = await self._runtimes.get(package)
+        runtime = await self._runtimes.get(package, scope_for(held), contains_external_input=held.contains_external_input)
         # 组装运行时可能比租约还久：续接（可能回填悬空的工具调用、写进存储）之前先确认持有，
         # 并改用最新记录——这期间别的实例可能接手过（建了线程）或关闭了会话
         record = await self._leases.confirm(held)
@@ -514,6 +504,7 @@ class SessionManager:
         *,
         attachments: list[dict[str, Any]] | None = None,
         audit_text: str | None = None,
+        work_task_id: str | None = None,
     ) -> Turn:
         """发一条用户消息，开始一轮对话。"""
         if not text.strip():
@@ -523,6 +514,7 @@ class SessionManager:
         await self._quota.check_new_turn(principal.require_tenant())
         await self._admit_turn(principal.require_tenant())
         record = await self._ownership.writable(principal, session_id)
+        require_task_executor(record, work_task_id)
         intent = self._begin_preparation(record)
         try:
             live = await self._open(record)
@@ -556,12 +548,14 @@ class SessionManager:
         task.add_done_callback(settled)
 
     async def resume(
-        self, principal: Principal, session_id: str, resolutions: dict[str, Any]
+        self, principal: Principal, session_id: str, resolutions: dict[str, Any], *,
+        work_task_id: str | None = None,
     ) -> Turn | ReplayedTurn:
         """持久认领决定；重复请求回放原提交，不重新批准工具。"""
         if not resolutions:
             raise InvalidRequestError("resolutions 不能为空")
         record = await self._ownership.writable(principal, session_id)
+        require_task_executor(record, work_task_id)
         receipts = self._store.operation_receipts
         intent = self._begin_preparation(record)
         receipt = None
@@ -672,6 +666,34 @@ class SessionManager:
         del self._live[key]
         await self._retire(live)
         return True
+
+    async def release_task_runtime(self, tenant: str, user: str, session_id: str, task_id: str,
+                                   *, close_session: bool = False) -> None:
+        """内部托管者按固定关联退出；资源已收回的最终执行同时释放活动会话额度。"""
+        record = await self._store.get_session(tenant, session_id)
+        if record is None or record.user_id != user or record.work_task_id != task_id:
+            raise ConflictError("任务与会话执行关联不匹配")
+        key = tenant, session_id
+        async with self._lock_for(key):
+            await self._detach(key, force=True)
+            if close_session and record.status == 'active':
+                fresh = await self._store.get_session(tenant, session_id)
+                if fresh is None or fresh.owner is not None:
+                    raise ConflictError('任务执行尚未释放会话持有权')
+                await self._store.update_session(tenant, session_id, at=self._now(), status='closed')
+
+    async def recover_task_lease(self, tenant: str, user: str, session_id: str, task_id: str,
+                                 previous_owner: str) -> None:
+        """独占重启且已停旧容器后，释放固定任务旧租约，绝不接管其他会话。"""
+        record = await self._store.get_session(tenant, session_id)
+        if record is None or record.user_id != user or record.work_task_id != task_id:
+            raise ConflictError('恢复任务与会话关联不匹配')
+        if record.owner is None:
+            return
+        if record.owner != previous_owner:
+            raise ConflictError('任务会话已由其他执行者持有，请人工核查')
+        if not await self._store.release_lease(tenant, session_id, owner=previous_owner):
+            raise ConflictError('任务旧租约在恢复中发生变化')
 
     async def release_idle(self) -> list[str]:
         """释放空闲超过 ``session_idle_seconds`` 的会话的引擎，返回释放了哪些会话。

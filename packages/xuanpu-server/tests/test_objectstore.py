@@ -267,3 +267,13 @@ async def test_local_delete_through_a_file_is_not_an_error(tmp_path: Path) -> No
     await store.put("c", b"x")
     await store.delete("c/d")
     assert not await store.exists("c/d")
+
+
+async def test_bounded_get_rejects_oversized_body(objects: ObjectStore) -> None:
+    """流式读取必须在上限处拒绝，不相信数据库记录的文件大小。"""
+    from xuanpu_server.objectstore.base import ObjectTooLargeError
+
+    await objects.put("tenants/acme/bounded.bin", b"12345")
+    assert await objects.get_limited("tenants/acme/bounded.bin", max_bytes=5) == b"12345"
+    with pytest.raises(ObjectTooLargeError):
+        await objects.get_limited("tenants/acme/bounded.bin", max_bytes=4)

@@ -5,6 +5,23 @@
 
 ## 约定
 
+### 员工工作任务
+
+完整状态与输入固定规则见[工作任务](work-tasks.md)。本人任务接口前缀为 `/v1/work-tasks`：
+
+| 方法和路径 | 行为 |
+| --- | --- |
+| `POST /v1/work-tasks` | 严格请求包含request_id、text、input_files的item_id/revision，可选事项与IANA时区；持久受理后202返回task_id和真实状态 |
+| `GET /v1/work-tasks` | 本人任务分页，limit为1至100，after_id为上一页最后task_id |
+| `GET /{task_id}` | 前缀下读取本人任务、输入来源及成果回执，其他员工404 |
+| `GET /{task_id}/events` | 前缀下按after_id持久游标补读，每页最多100项 |
+| `POST /{task_id}/cancel` | 前缀下返回202与cancel_requested、实际status，不把受理停止当作外部未执行 |
+| `POST /{task_id}/decisions` | 前缀下提交tool_approval或office_actions的严格本人决定，包含request_id与state_version；版本冲突409 |
+
+额外身份、对象键、宿主路径、能力包及预算字段拒绝。相同request_id和输入回放同一任务，改内容409。
+机器凭据没有员工身份返回403；管理角色不扩大正文读取范围。写接口沿用CSRF，输入正本上限合计20MiB。
+刷新和关闭页面不取消已受理的托管执行；自动进程重启续跑不在R1范围。
+
 - 请求体与响应体都是 JSON（发布业务包的请求体除外）。请求体里多余的字段一律拒绝。
 - 时间都是 Unix 秒（浮点数）；用量的日期是 `YYYY-MM-DD`（UTC）。
 - 框架自动生成的接口描述（`/openapi.json`）与交互式文档页面（`/docs`、`/redoc`）都是关闭的（`404`）：它们不需要凭据，而且不含事件流的帧格式。接口以本文为准。

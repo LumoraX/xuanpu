@@ -81,6 +81,8 @@ class SessionRecord:
     lease_expires_at: float = 0.0
     metadata: dict[str, str] = field(default_factory=dict)
     user_id: str | None = None
+    work_task_id: str | None = None
+    contains_external_input: bool = False
 
     def held_elsewhere(self, instance_id: str, now: float) -> bool:
         """在 ``now`` 这一刻是否由 ``instance_id`` 之外的实例持有（租约未到期）。

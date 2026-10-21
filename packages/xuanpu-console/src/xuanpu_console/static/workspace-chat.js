@@ -29,10 +29,11 @@ function workspaceRouteExtras(text) {
   if(!conn.me?.user_id)return {};
   if(typeof dismissProactiveContext==="function")dismissProactiveContext();
   workspaceChat.loading++; // 新轮次使所有未完成的历史恢复失效，避免迟到快照覆盖回复。
+  const input_files=workspaceChat.attachments.filter(x=>x.data.current_revision>0 && !x.data.source_url).map(x=>({item_id:x.id,revision:x.data.current_revision}));
   const attachments=workspaceChat.attachments.map(x=>x.id),matter_id=workspaceChat.matter?.id || null;
-  const signature=JSON.stringify({text,attachments,matter_id,session:chat.sessionId});
+  const signature=JSON.stringify({text,attachments,input_files,matter_id,session:chat.sessionId});
   if(workspaceChat.request?.signature!==signature)workspaceChat.request={signature,id:crypto.randomUUID()};
-  return {request_id:workspaceChat.request.id,attachments,matter_id,...(workspace.settings?{timezone:workspace.settings.timezone}:{})};
+  return {request_id:workspaceChat.request.id,attachments,input_files,matter_id,...(workspace.settings?{timezone:workspace.settings.timezone}:{})};
 }
 function workspaceRouteAccepted() {
   workspaceChat.attachments=[];workspaceChat.request=null;renderAttachmentChips();
@@ -61,6 +62,7 @@ function renderWorkspaceHistory(records,files,target) {
     if(item.metadata?.proposal_id)node.dataset.proposalId=item.metadata.proposal_id;
     target.append(node);
     if(item.attachments?.length)renderMessageFileCards(files.filter(file=>item.attachments.includes(file.id)),target);
+    if(item.metadata?.route?.work_task_id)showWorkTaskCard(item.metadata.route.work_task_id,target).catch(fail);
     if(item.metadata?.route?.session_id)target.append(wsButton("查看业务对话",async()=>openSession(await api("GET","/v1/sessions/"+encodeURIComponent(item.metadata.route.session_id)))));
   }
 }

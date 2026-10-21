@@ -86,3 +86,14 @@ docker compose exec -T platform python - < sandbox_probe.py
 成功应输出 sandbox-isolated；该探针真实执行脚本，验证能写工作区、不能读平台配置与全部对象目录、隔离网络仅有 loopback。
 
 数据迁移核对、实际镜像 digest 与现场验收记录含服务器地址等部署细节，由部署者保存在本机私有目录（`~/.local/share/xuanpu/server-deploy/`），不进仓库；构建成功和健康检查不能替代真实登录、会话、文件及提醒测试。
+
+
+## R1办公执行的部署边界
+
+当前Compose使用本机bubblewrap隔离，不挂宿主Docker socket。R1办公任务当前仅启用DockerSandboxProvider，
+local后端明确拒绝，不以chmod冒充只读输入。服务/控制台候选镜像的wheel与版本验证，不等于在现有Compose上完成办公执行验收。
+
+R1本地验收由宿主平台进程调用Docker CLI，独立办公镜像使用`office-sandbox.Dockerfile`及带hash的依赖锁。
+生产办公部署还须单独配置受控Docker执行节点、平台Docker客户端及绑定目录的一致路径，重新验证身份、只读输入、
+资源收尾与真实办公场景；不能仅发布业务包便宣称现有生产员工可用，也不能通过直接授予宿主Docker socket绕过隔离约束。
+本次未修改生产Compose或执行部署，见[R1验收](releases/2026-10-21-r1-acceptance.md)。

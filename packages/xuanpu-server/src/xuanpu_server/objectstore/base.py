@@ -18,6 +18,10 @@ class ObjectNotFoundError(LookupError):
     """
 
 
+class ObjectTooLargeError(ValueError):
+    """对象实际内容超过调用者指定的读取上限。"""
+
+
 @runtime_checkable
 class ObjectStore(Protocol):
     """对象存储：文件内容与业务包归档放在这里（ADR 0009、ADR 0011 决策 8）。
@@ -33,6 +37,10 @@ class ObjectStore(Protocol):
 
     async def get(self, key: str) -> bytes:
         """读出整个对象。不存在抛 ``ObjectNotFoundError``。"""
+        ...
+
+    async def get_limited(self, key: str, *, max_bytes: int) -> bytes:
+        """最多读取上限加一字节，超限抛 ObjectTooLargeError。"""
         ...
 
     async def exists(self, key: str) -> bool:

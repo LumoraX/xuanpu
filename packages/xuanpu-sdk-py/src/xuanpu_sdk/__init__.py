@@ -14,6 +14,7 @@ from xuanpu_sdk.models import (
     Session,
     Usage,
     UserUsage,
+    WorkTask,
 )
 
 __all__ = [
@@ -24,6 +25,7 @@ __all__ = [
     "Session",
     "Usage",
     "UserUsage",
+    "WorkTask",
     "XuanpuClient",
     "XuanpuError",
     "XuanpuTransportError",

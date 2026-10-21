@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import secrets
 from typing import TYPE_CHECKING
 
@@ -75,7 +76,7 @@ async def test_upgrade_from_version_3_keeps_data(
 ) -> None:
     """只迁到 0003 的库：落后于代码时报错；迁到最新后旧数据都在，新列为默认值，新表可用。"""
     pool, namespace = blank
-    assert latest_version() == 9
+    assert latest_version() == 10
     first_three = [m for m in load_migrations() if m.version <= 3]
     with monkeypatch.context() as patch:
         patch.setattr(schema_module, "load_migrations", lambda: first_three)
@@ -83,7 +84,7 @@ async def test_upgrade_from_version_3_keeps_data(
     assert [m.version for m in executed] == [1, 2, 3]
     await _seed_version_3(pool, namespace)
 
-    with pytest.raises(SchemaError, match="版本为 3，代码要求 9"):
+    with pytest.raises(SchemaError, match="版本为 3，代码要求 10"):
         await ensure_current(pool, namespace)
 
     upgraded = await apply_migrations(pool, namespace)
@@ -94,8 +95,9 @@ async def test_upgrade_from_version_3_keeps_data(
         (7, "workspace"),
         (8, "proactive"),
         (9, "operation_receipts"),
+        (10, "work_tasks"),
     ]
-    assert await current_version(pool, namespace) == 9
+    assert await current_version(pool, namespace) == 10
     assert await apply_migrations(pool, namespace) == []
 
     store = PostgresControlPlane(pool, namespace=namespace)
@@ -135,7 +137,7 @@ async def test_upgrade_from_version_3_keeps_data(
 
 
 async def test_upgrade_eight_to_nine_keeps_existing_session(blank: tuple[asyncpg.Pool, SqlNamespace], monkeypatch: pytest.MonkeyPatch) -> None:
-    """R0 对当前0008库只执行0009，二次迁移无操作。"""
+    """从0008升级保留R0回执并接入R1任务，二次迁移无操作。"""
     pool, namespace = blank
     migrations = [item for item in load_migrations() if item.version <= 8]
     with monkeypatch.context() as patch:
@@ -143,8 +145,11 @@ async def test_upgrade_eight_to_nine_keeps_existing_session(blank: tuple[asyncpg
         await apply_migrations(pool, namespace)
     await _seed_version_3(pool, namespace)
     store = PostgresControlPlane(pool, namespace=namespace)
-    before = await store.get_session("acme", "s1")
-    assert [item.version for item in await apply_migrations(pool, namespace)] == [9]
+    async with pool.acquire() as conn:
+        row = dict(await conn.fetchrow(f"SELECT * FROM {namespace.table('session')} WHERE tenant_id='acme' AND session_id='s1'"))
+    row["metadata"] = json.loads(row["metadata"])
+    before = SessionRecord(**row)
+    assert [item.version for item in await apply_migrations(pool, namespace)] == [9, 10]
     assert await store.get_session("acme", "s1") == before
     assert await apply_migrations(pool, namespace) == []
     receipt = await store.operation_receipts.claim("acme", "s1", {"r1": True}, at=5)

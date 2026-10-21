@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
 
 class PlatformError(Exception):
     """平台异常的基类。
@@ -143,6 +148,15 @@ class RuntimeUnavailableError(PlatformError):
 
     code = "runtime_unavailable"
     status = 503
+
+
+class RuntimeCleanupRequiredError(RuntimeUnavailableError):
+    """启动失败但仍持有明确资源，宿主必须保留清理动作直到成功。"""
+
+    def __init__(self, message: str, cleanup: Callable[[], Awaitable[None]]) -> None:
+        """只暴露安全提示，回收动作作为内部所有权凭证保存。"""
+        super().__init__(message)
+        self.cleanup = cleanup
 
 
 class LeaseInterruptedError(RuntimeUnavailableError):

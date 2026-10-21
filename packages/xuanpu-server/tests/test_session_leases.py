@@ -242,7 +242,9 @@ async def test_lease_lost_while_starting_the_engine_is_not_used(
     slow = _slow_instance(world, clock)
     try:
         resolved = await slow.packages.resolve("acme", "support-desk", None)
-        runtime = await slow.runtimes.get(resolved)
+        from xuanpu_server.runtime.session_requests import scope_for
+
+        runtime = await slow.runtimes.get(resolved, scope_for(session))
         get_or_create = runtime.pool.get_or_create
 
         async def start_slowly(**kwargs: Any) -> Any:

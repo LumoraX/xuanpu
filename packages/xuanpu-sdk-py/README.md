@@ -151,3 +151,27 @@ async with XuanpuClient("http://localhost:8420", root_key) as root:
 ## 没有封装的接口
 
 列出租户、启停租户、列出本租户的 API key、用户管理、飞书配置与手工对账，客户端没有对应的方法，需要时直接调 HTTP 接口。飞书浏览器登录见[接入手册](../../docs/guides/feishu-login.md)。
+
+## 员工办公交办
+
+使用获准代本人调用的凭据构造 `XuanpuClient(..., act_as_user=employee_id)`。工作任务接口只接受本人材料的文件标识和固定版本；普通员工不能指定执行身份、能力包、宿主路径或预算。
+
+```python
+# 同一交办重试必须保留 request_id、目标和输入版本。
+task = await client.create_work_task(
+    "按部门汇总金额",
+    [{"item_id": file_id, "revision": 1}],
+    request_id="office-request-1", timezone="Asia/Shanghai",
+)
+current = await client.get_work_task(task.task_id)
+page = await client.list_work_tasks(limit=50)
+events = await client.work_task_events(task.task_id, after_id=0)
+stop = await client.cancel_work_task(task.task_id)
+# waiting_user 时读取当前状态版本，提交本人选择；决定 request_id 也必须固定。
+result = await client.decide_work_task(task.task_id, {
+    "kind": "office_actions", "request_id": "office-decision-1",
+    "state_version": current.state_version, "choices": [],
+})
+```
+
+`WorkTask` 直接映射服务端 `task_id/status/state_version`，完整响应保存在 `record`。`accepted` 表示已受理；`succeeded` 才表示成果与必要本人决定已完成。取消响应只说明已登记的停止状态，SDK不会推断停止成功，也不会重试未知结果的写操作。403、404、409照常抛出 `XuanpuError`。

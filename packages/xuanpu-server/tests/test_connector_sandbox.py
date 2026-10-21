@@ -96,13 +96,14 @@ def only_runtime(world: Any) -> TenantRuntime:
     return runtimes[0]
 
 
-async def invoke_connector(world: Any, step: Any, read_turn: Any, arguments: dict[str, Any]) -> str:
+async def invoke_connector(world: Any, step: Any, read_turn: Any, arguments: dict[str, Any], *, session: Any = None) -> str:
     """开一个会话，让模型调一次只读的连接器工具，返回事件里的工具输出（调用须成功）。
 
     事件里的工具输出只是预览，太长会被截断；假 server 会原样回显参数，参数很长的用例
     改看它写在工作目录里的探测结果（``probe_report``）。
     """
-    session = await world.platform.sessions.create(world.member, package="support-desk")
+    if session is None:
+        session = await world.platform.sessions.create(world.member, package="support-desk")
     world.models.script(
         step(calls=[("c1", "mcp__crm__search_customer", arguments)]), step(text="查到了")
     )
@@ -123,10 +124,14 @@ async def call_connector(
     return result
 
 
-def connector_workdir(world: Any, tenant_id: str = "acme") -> Path:
+def connector_workdir(world: Any, tenant_id: str = "acme", *, session: Any = None) -> Path:
     """样例业务包 1.0.0 在某个租户下的连接器工作目录。"""
     root: Path = world.data_dir / "connectors" / tenant_directory(tenant_id)
-    return root / "support-desk" / "1.0.0"
+    from xuanpu_server.runtime.session_requests import scope_for
+
+    scope = only_runtime(world).key[3] if session is None else scope_for(session).storage_key()
+    assert len(scope) == 64 and "/" not in scope
+    return root / "support-desk" / "1.0.0" / scope
 
 
 def probe_report(world: Any) -> dict[str, Any]:
@@ -224,7 +229,7 @@ async def test_connector_may_reach_network_while_scripts_follow_manifest(
     # 连接器沙盒的执行器外面包了一层记录进程的执行器
     assert runtime.connector_sandbox.executor.inner.policy.network is True  # type: ignore[attr-defined]
     assert runtime.package.manifest.spec.policy.sandbox.network is False
-    assert runtime.sandbox.executor.policy.network is False  # type: ignore[attr-defined]
+    assert runtime.sandbox.executor.inner.policy.network is False  # type: ignore[attr-defined]
 
 
 async def test_connector_cannot_read_other_tenants_or_script_workspace(
@@ -246,12 +251,13 @@ async def test_connector_cannot_read_other_tenants_or_script_workspace(
     await world.publish()
     package = await world.platform.packages.resolve("acme", "support-desk")
     package_file = package.root / "xuanpu.yaml"
-    own_file = connector_workdir(world) / "own.txt"
+    session = await world.platform.sessions.create(world.member, package="support-desk")
+    own_file = connector_workdir(world, session=session) / "own.txt"
     own_file.parent.mkdir(parents=True, exist_ok=True)
     own_file.write_text("own notes")
 
     paths = [str(path) for path in planted.values()] + [str(package_file), str(own_file)]
-    await invoke_connector(world, step, read_turn, {"name": "x", "read": paths})
+    await invoke_connector(world, step, read_turn, {"name": "x", "read": paths}, session=session)
 
     read = probe_report(world)["read"]
     assert {name: read[str(path)] for name, path in planted.items()} == dict.fromkeys(planted)

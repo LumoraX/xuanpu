@@ -1,0 +1,151 @@
+{
+  "recorded_at_utc": "2026-10-21T03:19:51.384259+00:00",
+  "scope": "R1开发与本地验收；未推送、未部署生产",
+  "versions": {
+    "xuanpu-server": "2026.10.21.2",
+    "xuanpu-console": "2026.10.21.2",
+    "xuanpu-sdk-py": "2026.10.21.2",
+    "xuanpu-cli": "2026.10.21.2",
+    "xuanpu-spec": "2026.10.2.7",
+    "taifeng": "2026.10.1.11",
+    "taifeng-sandbox": "2026.10.21.1",
+    "taifeng-stores": "2026.9.29.15"
+  },
+  "gates": {
+    "platform": {
+      "command": "uv run pytest",
+      "passed": 1834,
+      "skipped": 3,
+      "seconds": 169.16,
+      "failed": 0,
+      "skips": "memory后端的3项仅适用PostgreSQL约束测试；PostgreSQL对应项已执行"
+    },
+    "lint": {
+      "command": "uv run ruff check --select F,S108,I,TC packages",
+      "result": "All checks passed!"
+    },
+    "typing": {
+      "command": "uv run mypy packages/*/src",
+      "source_files": 164,
+      "result": "no issues found"
+    },
+    "lock": {
+      "command": "uv lock --check",
+      "resolved_packages": 103,
+      "result": "passed"
+    },
+    "sandbox": {
+      "commit": "36322dd",
+      "command": "uv run pytest",
+      "passed": 291,
+      "skipped": 17,
+      "xfailed": 1,
+      "seconds": 24.93,
+      "lint": "uv run ruff check --select F,S108,I,TC src tests: passed",
+      "typing": "uv run mypy src: passed (22 files)",
+      "limits": "平台/权限条件跳过；macOS Seatbelt无法隐藏同用户进程参数的既有严格xfail，见适配包ADR0005"
+    }
+  },
+  "source_consistency": {
+    "files": 178,
+    "aggregate_sha256": "2bbc90684e26e4b410e390f585ff487d0bfc6c8624f5ab08f9a432f351b2c4ea",
+    "matched": [
+      "current checkout",
+      "candidate service image"
+    ],
+    "real_model_startup": {
+      "exact_file_matches": 177,
+      "trailing_whitespace_only": [
+        "packages/xuanpu-console/src/xuanpu_console/static/work-tasks.js"
+      ],
+      "reconstructed_startup_sha256_verified": true
+    },
+    "post_whitespace_check": "6 console behavior/static tests passed; only trailing whitespace removed"
+  },
+  "local_candidate_images": [
+    {
+      "Id": "sha256:814184ecc27dbbb2961e0328826baf1607f962ecd24d850547c477d2276a7c58",
+      "Architecture": "amd64",
+      "Os": "linux",
+      "Created": "2026-10-21T03:21:38.769221222Z",
+      "tag": "xuanpu-server:r1-20261021",
+      "registry_digest": null
+    },
+    {
+      "Id": "sha256:d8d84ab3ddfa6e3d1f4be167851372bc52bb4f0ca535785c0bd3ff9333b81783",
+      "Architecture": "arm64",
+      "Os": "linux",
+      "Created": "2026-10-21T02:13:52.162853131Z",
+      "tag": "xuanpu-office:r1-20261021",
+      "registry_digest": null
+    }
+  ],
+  "office_dependencies": {
+    "openpyxl": "3.1.5",
+    "python-docx": "1.2.0",
+    "pypdf": "6.21.1",
+    "defusedxml": "0.7.1",
+    "lxml": "6.1.3",
+    "et-xmlfile": "2.0.0",
+    "typing-extensions": "4.16.0"
+  },
+  "office_package": {
+    "name": "office-assistant",
+    "version": "1.0.1",
+    "archive_sha256": "99a2abecb049807604815b1571853fad77d51b59ff3f4d5e7354bdb6fb4d70c1"
+  },
+  "real_model": {
+    "model": "gpt-5.6-luna",
+    "backend": "isolated PostgreSQL and Linux Docker; synthetic materials",
+    "csv": {
+      "sum": "15.50",
+      "source_rows_verified": true,
+      "downloads_sha256_verified": true
+    },
+    "xlsx": {
+      "sum": "15.50",
+      "source_rows_verified": true,
+      "independent_xml_verified": true
+    },
+    "meeting": {
+      "partial_confirm_counts": [
+        1,
+        1,
+        1
+      ],
+      "exact_source_quotes": true,
+      "unknown_date_preserved": true,
+      "other_employee_and_admin_content_404": true,
+      "models_disabled_native_update": true,
+      "models_disabled_download": true,
+      "production": false,
+      "external_notifications": 0
+    },
+    "same_decision_replay": "same state_version and record counts",
+    "model_disabled_cancel": "cancelled",
+    "raw_failed_attempts_retained": true
+  },
+  "browser": {
+    "desktop": "passed",
+    "narrow_viewport": {
+      "width": 375,
+      "scroll_width": 375
+    },
+    "partial_confirmation": "1 todo,1 event,1 inbox reminder; third unselected",
+    "original_tab_closed_task_continued": true,
+    "screenshots": "local-only evidence/r1/release-source/browser/"
+  },
+  "faults": {
+    "database_migration": "0009 to 0010, new schema, idempotent repeat",
+    "sigkill_recovery": "running, waiting-user reject and cold cancel; actual Docker+PostgreSQL; no automatic model replay",
+    "document_extraction": "real office image: DOCX, text PDF, no-text PDF rejection",
+    "matrix": "2026-10-21-r1-acceptance.md"
+  },
+  "production": {
+    "deployed": false,
+    "remote_push": false,
+    "registry_push": false,
+    "pending": "现有Compose使用local/bubblewrap且服务镜像没有Docker客户端；需独立受控执行节点/客户端和共享路径接线并现场验收，不挂宿主Docker socket"
+  },
+  "raw_evidence": "只保留本机，不提交公开源码或发布包"
+}

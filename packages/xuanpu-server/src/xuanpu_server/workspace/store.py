@@ -20,8 +20,14 @@ class WorkspaceStore(Protocol):
         user: str,
         guard: Callable[[], Awaitable[None]],
         request_id: str | None = None,
+        *, allow_inactive: bool = False,
     ) -> AbstractAsyncContextManager[WorkspaceState]:
         """同一员工串行写入；异常回滚元数据与审计。"""
+        ...
+
+    async def task_owners(self, after: tuple[str, str] | None = None,
+                          limit: int = 100) -> list[tuple[str, str]]:
+        """仅供进程生命周期恢复枚举任务所有者，含已停用员工。"""
         ...
 
     async def owners(

@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
 from xuanpu_server.config import ConfigError
-from xuanpu_server.objectstore.base import ObjectNotFoundError, validate_key
+from xuanpu_server.objectstore.base import ObjectNotFoundError, ObjectTooLargeError, validate_key
 
 if TYPE_CHECKING:
     from botocore.exceptions import ClientError
@@ -121,6 +121,29 @@ class S3ObjectStore:
         """取对象并读出全部内容。"""
         response = self._client.get_object(Bucket=self._bucket, Key=full)
         return response["Body"].read()
+
+    async def get_limited(self, key: str, *, max_bytes: int) -> bytes:
+        """有界读取实际内容，绝不按对象元数据分配无限内存。"""
+        if max_bytes < 0:
+            raise ValueError("读取上限不能为负")
+        full = self._full_key(key)
+        try:
+            return await asyncio.to_thread(self._read_limited, full, max_bytes)
+        except self._client_error as exc:
+            if _is_missing(exc):
+                raise ObjectNotFoundError(f"对象不存在：{key}") from exc
+            raise
+
+    def _read_limited(self, full: str, max_bytes: int) -> bytes:
+        """读取至上限加一字节并关闭底层流。"""
+        body = self._client.get_object(Bucket=self._bucket, Key=full)["Body"]
+        try:
+            content = body.read(max_bytes + 1)
+        finally:
+            body.close()
+        if len(content) > max_bytes:
+            raise ObjectTooLargeError("对象实际大小超过读取上限")
+        return content
 
     async def exists(self, key: str) -> bool:
         """对象是否存在（``head_object``）；404 返回 False，其他错误原样上抛。

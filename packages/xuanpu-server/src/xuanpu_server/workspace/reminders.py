@@ -41,7 +41,7 @@ def reminder_audit(state: WorkspaceState, record: ReminderRecord, action: str, n
     """协调创建和取消沿用原生提醒审计，正文不入审计。"""
     state.audits.append(
         {
-            "actor": "system:proactive",
+            "actor": state.pending_reminder_actors.get(record.reminder_id, "system:proactive"),
             "kind": "reminder." + action,
             "at": now,
             "data": {"reminder_id": record.reminder_id, "version": record.version},

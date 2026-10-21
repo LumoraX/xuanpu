@@ -256,4 +256,7 @@ class WorkspaceState:
     scan_state: dict[str, Any] = field(default_factory=dict)
     pending_notifications: list[dict[str, Any]] = field(default_factory=list)
     pending_reminders: list[dict[str, Any]] = field(default_factory=list)
+    pending_reminder_actors: dict[str, str] = field(default_factory=dict)
     pending_reminder_cancellations: list[str] = field(default_factory=list)
+    work_tasks: dict[str, dict[str, Any]] = field(default_factory=dict)
+    work_task_events: list[dict[str, Any]] = field(default_factory=list)

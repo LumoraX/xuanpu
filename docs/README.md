@@ -10,3 +10,5 @@
 | [superpowers/plans/](superpowers/plans/) | 实现计划、交接与进度快照；最近一份全局快照见[2026-10-07 实现现状](superpowers/plans/2026-10-07-implementation-status.md) | 开发平台的人 |
 
 各个包自己的说明在 `packages/<包名>/README.md`；可以直接运行的样例在 [`examples/`](../examples/)。
+
+当前办公任务使用与验收见[办公交办](guides/work-tasks.md)、[任务架构](architecture/work-tasks.md)和[R1验收](guides/releases/2026-10-21-r1-acceptance.md)。

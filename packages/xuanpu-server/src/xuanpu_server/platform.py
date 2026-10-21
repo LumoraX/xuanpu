@@ -56,6 +56,12 @@ from xuanpu_server.tenancy import (
     verify_root_key,
     verify_secret,
 )
+from xuanpu_server.work_tasks.artifacts import ArtifactService
+from xuanpu_server.work_tasks.inputs import InputSnapshotService
+from xuanpu_server.work_tasks.proposals import ActionProposalService
+from xuanpu_server.work_tasks.registry import TaskRegistry
+from xuanpu_server.work_tasks.runner import TaskRunner
+from xuanpu_server.work_tasks.service import WorkTaskService
 from xuanpu_server.workspace.service import WorkspaceService
 
 if TYPE_CHECKING:
@@ -200,6 +206,8 @@ class Platform:
         self.packages = PackageRegistry(
             store, self.audit, data_dir=data_dir, objects=self.objects, now=now
         )
+        self.work_tasks = WorkTaskService(self.workspace, self.packages,
+            process_owner=self.instance_id, now=now)
         submissions = SubmissionIndex()
         self.runtimes = RuntimeAssembler(
             data_dir=data_dir,
@@ -213,12 +221,22 @@ class Platform:
             now=now,
         )
         self.sessions = self._session_manager(submissions, lease_seconds)
+        self.task_actions = ActionProposalService(self.workspace, self.work_tasks.store,
+                                                 reminders=self.reminders, now=now)
+        self.task_runner = TaskRunner(self.work_tasks.store, self.packages, self.runtimes, self.sessions,
+            InputSnapshotService(self.workspace, data_dir / 'input-snapshots'),
+            ArtifactService(self.workspace, self.work_tasks.store, now=now), self.task_actions)
+        self.task_registry = TaskRegistry(self.work_tasks.store, self.task_runner,
+            process_owner=self.instance_id, now=now, cleanup=self.task_runner.release,
+            close_resources=self.task_runner.close, recover=self.task_runner.recover, actions=self.task_actions)
+        self.work_tasks.executor = self.task_registry
         self.assistant = AssistantRouter(self, models, now=now)
         self.proactive = ProactiveService(workspace=self.workspace, control=store,
             identity=identity_store, sample=self.assistant.sample_proactive, now=now,
             semantic_interval=proactive_interval, reminders=self.reminders)
         self.proactive_worker = ProactiveWorker(self.proactive, scan_seconds=proactive_scan_seconds)
         # 员工停用后关掉他名下的会话：身份域不依赖运行时，监听者在这里接上会话管理
+        self.identity.disabling.register("close_work_tasks", self.task_registry)
         self.identity.disabling.register(
             CLOSE_SESSIONS, CloseUserSessions(store=store, sessions=self.sessions)
         )
@@ -272,6 +290,7 @@ class Platform:
             if self._closed or self._instance_guard.lost:
                 raise RuntimeError("启动准备期间已关闭或丢失持有权")
             await self.sessions.start()
+            await self.task_registry.open()
             self.identity.start()
             self.reminders.start()
             self.proactive_worker.start()
@@ -288,7 +307,7 @@ class Platform:
             self._closed = True
             self.sessions.stop_accepting()
             errors: list[BaseException] = []
-            actions = (self.proactive_worker.close, self.reminders.close,
+            actions = (self.task_registry.close, self.proactive_worker.close, self.reminders.close,
                        self.notification_sender.close, self.assistant.close,
                        self.identity.maintenance.close, self.identity.disabling.close,
                        self._shutdown_sessions, self.runtimes.close, self.identity.close)

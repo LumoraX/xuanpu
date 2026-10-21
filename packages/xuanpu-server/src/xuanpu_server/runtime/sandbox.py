@@ -3,7 +3,7 @@
 业务包里的脚本和命令是模型驱动的，必须在隔离环境里运行（ADR 0002、ADR 0004 决策 3）。
 业务方只声明需求（要不要出网、要不要命令执行），用哪种隔离后端由部署方在平台配置里选。
 
-隔离范围：一个运行时（租户 + 业务包 + 版本）一个脚本沙盒，其下的会话共用同一个工作区。
+隔离范围：一个执行scope（租户 + 员工 + 任务或会话）一个脚本沙盒。
 业务包声明了 stdio 连接器时，再为连接器进程单独开一个连接器沙盒：同样只读业务包目录，
 只写连接器自己的工作目录，但允许出网——连接器就是去连外部系统的；脚本是否出网仍按清单。
 """
@@ -11,21 +11,25 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from taifeng_sandbox import SandboxPolicy, SandboxUnavailableError
+import taifeng
+from taifeng_sandbox import (
+    SandboxOperationOutcomeUnknownError,
+    SandboxPolicy,
+    SandboxUnavailableError,
+)
 from taifeng_sandbox.docker import DockerEnvironment, DockerSandboxConfig, Mount
 from taifeng_sandbox.local import create_local_executor
 
-from xuanpu_server.errors import RuntimeUnavailableError
+from xuanpu_server.errors import RuntimeCleanupRequiredError, RuntimeUnavailableError
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Mapping
     from pathlib import Path
-
-    import taifeng
 
     from xuanpu_server.packages import ResolvedPackage
 
@@ -62,6 +66,9 @@ class SandboxHandle:
     workspace_inside: str
     backend: str
     closer: Callable[[], Awaitable[None]] = field(default=_noop)
+    filesystem: taifeng.WorkspaceFS | None = None
+    freezer: Callable[[], Awaitable[None]] | None = None
+    frozen: bool = False
 
     def process_env(self, base: Mapping[str, str] | None = None) -> dict[str, str]:
         """沙盒里的进程拿到的环境变量：基础环境，加上指向工作区的几个约定变量。
@@ -76,6 +83,15 @@ class SandboxHandle:
             "WORKSPACE": self.workspace_inside,
         }
 
+    async def freeze_outputs(self) -> None:
+        """停止明确绑定容器的全部进程后才允许宿主安全导出，不做远端兜底。"""
+        if self.frozen:
+            return
+        if self.backend != "docker" or self.freezer is None:
+            raise RuntimeUnavailableError("该执行后端尚不支持成果冻结")
+        await self.freezer()
+        self.frozen = True
+
     async def close(self) -> None:
         """销毁沙盒。"""
         await self.closer()
@@ -85,7 +101,9 @@ class SandboxHandle:
 class SandboxProvider(Protocol):
     """沙盒供给方。"""
 
-    async def open(self, package: ResolvedPackage, workspace: Path) -> SandboxHandle:
+    async def open(
+        self, package: ResolvedPackage, workspace: Path, *, input_root: Path | None = None
+    ) -> SandboxHandle:
         """为业务包的脚本与命令准备沙盒。
 
         沙盒里的进程只能读业务包目录、只能写 ``workspace``；是否能出网取决于业务包的声明。
@@ -93,6 +111,10 @@ class SandboxProvider(Protocol):
         Raises:
             RuntimeUnavailableError: 隔离后端不可用。平台不会退回到无隔离执行。
         """
+        ...
+
+    async def close_workspace(self, workspace: Path) -> None:
+        """内部恢复时只回收与该明确工作目录绑定的已知资源。"""
         ...
 
     async def open_connectors(self, package: ResolvedPackage, workspace: Path) -> SandboxHandle:
@@ -126,6 +148,23 @@ class ProcessTrackingExecutor:
         self.inner = inner
         self._processes: list[taifeng.CommandProcess] = []
         self._closed = False
+        self._starting: set[asyncio.Future[None]] = set()
+        self._workers: set[asyncio.Task[taifeng.CommandProcess]] = set()
+        self._capture_errors: list[Exception] = []
+        self._close_lock = asyncio.Lock()
+
+    def _capture(self, worker: asyncio.Task[taifeng.CommandProcess]) -> None:
+        """底层启动一旦返回立即拥有进程，不依赖可能已取消的上层调用者。"""
+        self._workers.discard(worker)
+        if worker.cancelled() or worker.exception() is not None:
+            return
+        process = worker.result()
+        self._processes.append(process)
+        if self._closed:
+            try:
+                process.kill()
+            except Exception as exc:
+                self._capture_errors.append(exc)
 
     @property
     def processes(self) -> tuple[taifeng.CommandProcess, ...]:
@@ -140,21 +179,72 @@ class ProcessTrackingExecutor:
         """
         if self._closed:
             raise OSError("沙盒已关闭，不能再起进程")
-        process = await self.inner.start(spec)
-        self._processes.append(process)
-        return process
+        finished: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+        self._starting.add(finished)
+        starting = asyncio.create_task(self.inner.start(spec))
+        self._workers.add(starting)
+        starting.add_done_callback(self._capture)
+        try:
+            try:
+                process = await asyncio.shield(starting)
+            except asyncio.CancelledError:
+                # 底层创建进程不能因上层取消而失去所有者。
+                process = await asyncio.shield(starting)
+                process.kill()
+                await asyncio.wait_for(process.wait(), KILL_WAIT_SECONDS)
+                raise
+            if self._closed:
+                process.kill()
+                await asyncio.wait_for(process.wait(), KILL_WAIT_SECONDS)
+                raise OSError("沙盒关闭期间启动的进程已终止")
+            return process
+        finally:
+            self._starting.discard(finished)
+            if not finished.done():
+                finished.set_result(None)
 
     async def close(self) -> None:
         """强杀起过的全部进程，并等它们退出。之后不能再起进程。"""
-        self._closed = True
-        processes, self._processes = self._processes, []
-        for process in processes:
-            process.kill()
-        for process in processes:
+        async with self._close_lock:
+            self._closed = True
+            errors: list[BaseException] = list(self._capture_errors)
+            for process in self._processes:
+                try:
+                    process.kill()
+                except Exception as exc:
+                    errors.append(exc)
+            waiting: list[Awaitable[object]] = [*self._starting, *self._workers]
+            if waiting:
+                try:
+                    await asyncio.wait_for(asyncio.shield(asyncio.gather(*waiting, return_exceptions=True)), KILL_WAIT_SECONDS)
+                except BaseException as exc:
+                    errors.append(exc)
+            cleanup = asyncio.create_task(self._reap_known())
+            while not cleanup.done():
+                try:
+                    await asyncio.wait({cleanup})
+                except asyncio.CancelledError as exc:
+                    # 取消只能影响返回结论，不能跳过已启动进程的回收。
+                    errors.append(exc)
+            errors.extend(cleanup.result())
+            if errors:
+                if len(errors) == 1:
+                    raise errors[0]
+                raise BaseExceptionGroup("沙盒进程尚未全部退出", errors)
+            self._processes = []
+
+    async def _reap_known(self) -> list[Exception]:
+        """启动等待失败后仍终止并等待所有已知进程，错误交回关闭者统一处理。"""
+        errors: list[Exception] = []
+        for process in self._processes:
             try:
-                await asyncio.wait_for(process.wait(), timeout=KILL_WAIT_SECONDS)
-            except TimeoutError:
-                logger.error("沙盒里的进程强杀后 %s 秒仍未退出", KILL_WAIT_SECONDS)
+                process.kill()
+            except Exception as exc:
+                errors.append(exc)
+        waits = [asyncio.wait_for(process.wait(), KILL_WAIT_SECONDS) for process in self._processes]
+        results = await asyncio.gather(*waits, return_exceptions=True)
+        errors.extend(result for result in results if isinstance(result, Exception))
+        return errors
 
 
 class LocalSandboxProvider:
@@ -169,26 +259,29 @@ class LocalSandboxProvider:
         """
         self._connector_roots = connector_readable_roots
 
-    async def open(self, package: ResolvedPackage, workspace: Path) -> SandboxHandle:
+    async def open(
+        self, package: ResolvedPackage, workspace: Path, *, input_root: Path | None = None
+    ) -> SandboxHandle:
         """用受限读策略建脚本沙盒：平台数据目录里其他租户的文件对沙盒不可见。"""
+        if input_root is not None:
+            raise RuntimeUnavailableError("本机后端未提供办公输入只读挂载，请使用Docker")
         return await self._open(
             workspace,
             readable_roots=(package.root,),
             network=package.manifest.spec.policy.sandbox.network,
         )
 
+    async def close_workspace(self, workspace: Path) -> None:
+        """本机办公只读输入尚未启用，因此不会创建可跨进程遗留的办公资源。"""
+
     async def open_connectors(self, package: ResolvedPackage, workspace: Path) -> SandboxHandle:
         """用受限读策略建连接器沙盒：可读业务包目录与配置放开的目录，可出网。
 
         执行器记下起过的进程，沙盒关闭时全部强杀（见 ``ProcessTrackingExecutor``）。
         """
-        handle = await self._open(
+        return await self._open(
             workspace, readable_roots=(package.root, *self._connector_roots), network=True
         )
-        tracking = ProcessTrackingExecutor(handle.executor)
-        handle.executor = tracking
-        handle.closer = tracking.close
-        return handle
 
     @staticmethod
     async def _open(
@@ -203,12 +296,20 @@ class LocalSandboxProvider:
             executor = await asyncio.to_thread(create_local_executor, policy)
         except SandboxUnavailableError as exc:
             raise RuntimeUnavailableError(f"本机隔离后端不可用：{exc}") from exc
+        tracking = ProcessTrackingExecutor(executor)
         return SandboxHandle(
-            executor=executor,
+            executor=tracking,
             workspace=workspace,
             workspace_inside=str(workspace),
             backend="local",
+            closer=tracking.close,
+            filesystem=taifeng.LocalWorkspaceFS(workspace),
         )
+
+
+def _container_name(workspace: Path) -> str:
+    """目录含部署绝对路径及scope摘要，名称在启动前已知且与其他部署隔离。"""
+    return 'tfsb-' + hashlib.sha256(str(workspace.absolute()).encode()).hexdigest()[:48]
 
 
 class DockerSandboxProvider:
@@ -245,7 +346,9 @@ class DockerSandboxProvider:
         self._docker_binary = docker_binary
         self._labels = {} if labels is None else dict(labels)
 
-    async def open(self, package: ResolvedPackage, workspace: Path) -> SandboxHandle:
+    async def open(
+        self, package: ResolvedPackage, workspace: Path, *, input_root: Path | None = None
+    ) -> SandboxHandle:
         """拉起脚本容器：业务包目录按相同路径只读挂载，工作区可写挂载。"""
         return await self._launch(
             package,
@@ -253,7 +356,14 @@ class DockerSandboxProvider:
             image=self._image,
             network=package.manifest.spec.policy.sandbox.network,
             role="scripts",
+            input_root=input_root,
         )
+
+    async def close_workspace(self, workspace: Path) -> None:
+        """按包含部署路径的确定名称回收，不通过标签扫描无关容器。"""
+        config = DockerSandboxConfig(image=self._image, docker_binary=self._docker_binary,
+                                     docker_env=self._docker_env)
+        await DockerEnvironment.remove(config, _container_name(workspace))
 
     async def open_connectors(self, package: ResolvedPackage, workspace: Path) -> SandboxHandle:
         """拉起连接器容器：挂载方式与脚本容器相同，镜像用连接器镜像，允许出网。"""
@@ -273,6 +383,7 @@ class DockerSandboxProvider:
         image: str,
         network: bool,
         role: str,
+        input_root: Path | None = None,
     ) -> SandboxHandle:
         """拉起一个容器：业务包目录按相同路径只读挂载，``workspace`` 可写挂载。
 
@@ -280,10 +391,16 @@ class DockerSandboxProvider:
         事后按运行时查找与清理。
         """
         await asyncio.to_thread(workspace.mkdir, parents=True, exist_ok=True)
+        if input_root is not None:
+            for directory in ("inputs", "outputs", "scratch"):
+                await asyncio.to_thread((workspace / directory).mkdir, exist_ok=True)
+        mounts = [Mount(package.root, str(package.root))]
+        if input_root is not None:
+            mounts.append(Mount(input_root, "/workspace/inputs", read_only=True))
         config = DockerSandboxConfig(
             image=image,
             workspace_host_dir=workspace,
-            mounts=(Mount(package.root, str(package.root)),),
+            mounts=tuple(mounts),
             network=network,
             memory_mb=self._memory_mb,
             cpus=self._cpus,
@@ -297,16 +414,46 @@ class DockerSandboxProvider:
                 "xuanpu.role": role,
             },
         )
+        name = _container_name(workspace)
+
+        async def remove_unreturned() -> None:
+            """即使daemon未握手，宿主仍拥有这个确定名称的清理责任。"""
+            await DockerEnvironment.remove(config, name)
+
         try:
-            environment = await DockerEnvironment.create(config)
-        except SandboxUnavailableError as exc:
-            raise RuntimeUnavailableError(f"容器沙盒不可用：{exc}") from exc
+            environment = await DockerEnvironment.create(config, name=name)
+        except BaseException as original:
+            try:
+                await remove_unreturned()
+            except BaseException as cleanup:
+                raise RuntimeCleanupRequiredError("容器启动失败且尚未完成清理", remove_unreturned) from BaseExceptionGroup("启动与清理均失败", [original, cleanup])
+            if isinstance(original, SandboxOperationOutcomeUnknownError):
+                async def verify_unknown() -> None:
+                    """原创建请求未收到回执，删除尝试不能证明不会迟到，需运维核实。"""
+                    await remove_unreturned()
+                    raise RuntimeUnavailableError('容器启动请求结果待核实，清理责任保留')
+
+                raise RuntimeCleanupRequiredError('容器启动请求结果待核实', verify_unknown) from original
+            if isinstance(original, SandboxUnavailableError):
+                raise RuntimeUnavailableError(f"容器沙盒不可用：{original}") from original
+            raise
+        tracking = ProcessTrackingExecutor(environment.executor())
+
+        async def close() -> None:
+            """先终止任务全部生产进程，仍保留daemon用于冻结后的导出。"""
+            try:
+                await tracking.close()
+            finally:
+                await environment.close()
+
         return SandboxHandle(
-            executor=environment.executor(),
+            executor=tracking,
             workspace=workspace,
             workspace_inside=config.workdir,
             backend="docker",
-            closer=environment.close,
+            closer=close,
+            filesystem=environment.workspace(),
+            freezer=close,
         )
 
 

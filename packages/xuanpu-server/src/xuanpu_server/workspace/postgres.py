@@ -12,6 +12,7 @@ from xuanpu_server.errors import PermissionDeniedError
 from xuanpu_server.workspace.models import SettingsData, WorkspaceState
 from xuanpu_server.workspace.postgres_proactive import load_proactive, save_proactive
 from xuanpu_server.workspace.postgres_reminders import save_reminders
+from xuanpu_server.workspace.postgres_work_tasks import load_tasks, save_tasks
 from xuanpu_server.workspace.rules import ensure_todo_progress
 
 if TYPE_CHECKING:
@@ -44,10 +45,13 @@ class PostgresWorkspaceStore:
                 "notification",
                 "notification_delivery",
                 "reminder",
+                "work_task",
+                "work_task_input",
+                "work_task_event",
             )
         }
 
-    async def _lock(self, conn: Any, tenant: str, user: str) -> None:
+    async def _lock(self, conn: Any, tenant: str, user: str, *, allow_inactive: bool = False) -> None:
         """统一先租户后员工，与身份停用和提醒事务同序。"""
         active_tenant = await conn.fetchval(
             f"SELECT status FROM {self._t['tenant']} WHERE tenant_id=$1 FOR SHARE", tenant
@@ -57,7 +61,8 @@ class PostgresWorkspaceStore:
             tenant,
             user,
         )
-        if active_tenant != "active" or active_user != "active":
+        if (active_tenant is None or active_user is None
+            or (not allow_inactive and (active_tenant != "active" or active_user != "active"))):
             raise PermissionDeniedError("员工或租户不可用")
 
     @asynccontextmanager
@@ -67,10 +72,11 @@ class PostgresWorkspaceStore:
         user: str,
         guard: Callable[[], Awaitable[None]],
         request_id: str | None = None,
+        *, allow_inactive: bool = False,
     ) -> AsyncIterator[WorkspaceState]:
         """同一事务包含 CAS、关系、空间、幂等与审计写入。"""
         async with self._pool.acquire() as conn, conn.transaction():
-            await self._lock(conn, tenant, user)
+            await self._lock(conn, tenant, user, allow_inactive=allow_inactive)
             state = await self._load(conn, tenant, user, request_id)
             original = deepcopy(state)
             yield state
@@ -78,6 +84,7 @@ class PostgresWorkspaceStore:
         # 只有真实数据库提交成功才消费事务内队列；审计或提交失败时保留原内容。
         state.pending_notifications = []
         state.pending_reminders = []
+        state.pending_reminder_actors = {}
         state.pending_reminder_cancellations = []
 
     async def _load(
@@ -129,6 +136,7 @@ class PostgresWorkspaceStore:
                     "fingerprint": old["fingerprint"],
                     "result": json.loads(old["result"]),
                 }
+        await load_tasks(conn, self._t, tenant, user, state, request_id)
         return state
 
     async def _save(
@@ -184,6 +192,7 @@ class PostgresWorkspaceStore:
             )
         await save_reminders(conn, self._t, tenant, user, state)
         await save_proactive(conn, self._t, tenant, user, old, state)
+        await save_tasks(conn, self._t, tenant, user, old, state)
         for audit in state.audits:
             await conn.execute(
                 f"INSERT INTO {self._t['audit']} (tenant_id,user_id,source,kind,at,actor,data) VALUES ($1,$2,'control',$3,$4,$5,$6::jsonb)",
@@ -194,6 +203,19 @@ class PostgresWorkspaceStore:
                 audit["actor"],
                 json.dumps(audit["data"]),
             )
+
+    async def task_owners(self, after: tuple[str, str] | None = None,
+                          limit: int = 100) -> list[tuple[str, str]]:
+        """内部恢复包含停用身份，记录数受每员工任务上限限制。"""
+        from .postgres_work_tasks import PENDING_TASKS
+
+        if not 1 <= limit <= 100:
+            raise ValueError('分页数量须为1至100')
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(f"SELECT DISTINCT tenant_id,user_id FROM {self._t['work_task']} "
+                "WHERE " + PENDING_TASKS + " AND ($1::text IS NULL OR (tenant_id,user_id)>($1,$2)) "
+                "ORDER BY tenant_id,user_id LIMIT $3", *(after or (None,None)), limit)
+        return [(row['tenant_id'], row['user_id']) for row in rows]
 
     async def owners(
         self,

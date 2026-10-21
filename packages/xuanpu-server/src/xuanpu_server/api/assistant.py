@@ -39,6 +39,8 @@ def assistant_router(platform: Platform) -> APIRouter:
                 "proposal_id": result.proposal_id,
                 "proactive_draft": result.proactive_draft,
                 "open_proactive": result.open_proactive,
+                "work_task_id": result.work_task_id,
+                "preserve_input": result.preserve_input,
             }
         finally:
             # 普通HTTP请求的断连不会自动取消handler；显式取消采样并等待有界计量收尾。

@@ -8,7 +8,12 @@ import os
 import tempfile
 from typing import TYPE_CHECKING
 
-from xuanpu_server.objectstore.base import TEMP_PREFIX, ObjectNotFoundError, validate_key
+from xuanpu_server.objectstore.base import (
+    TEMP_PREFIX,
+    ObjectNotFoundError,
+    ObjectTooLargeError,
+    validate_key,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -76,6 +81,27 @@ class LocalObjectStore:
     def _read(self, key: str) -> bytes:
         """读文件内容。"""
         return self._path(key).read_bytes()
+
+    async def get_limited(self, key: str, *, max_bytes: int) -> bytes:
+        """有界读取实际内容，绝不按对象元数据分配无限内存。"""
+        if max_bytes < 0:
+            raise ValueError("读取上限不能为负")
+        validate_key(key)
+        try:
+            return await asyncio.to_thread(self._read_limited, key, max_bytes)
+        except (FileNotFoundError, IsADirectoryError, NotADirectoryError) as exc:
+            raise ObjectNotFoundError(f"对象不存在：{key}") from exc
+
+    def _read_limited(self, key: str, max_bytes: int) -> bytes:
+        """读取至上限加一字节并关闭底层流。"""
+        body = self._path(key).open("rb")
+        try:
+            content = body.read(max_bytes + 1)
+        finally:
+            body.close()
+        if len(content) > max_bytes:
+            raise ObjectTooLargeError("对象实际大小超过读取上限")
+        return content
 
     async def exists(self, key: str) -> bool:
         """对象是否存在。"""

@@ -1,6 +1,6 @@
 [project]
 name = "xuanpu-server"
-version = "2026.10.21.1"
+version = "2026.10.21.2"
 description = "xuanpu 平台服务 —— 运行时（引擎承载、会话、事件流、审批待办）与控制面（租户、业务包、密钥、配额、审计）"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -18,7 +18,7 @@ classifiers = [
 dependencies = [
     # 内核只用稳定层（红线 3）
     "taifeng>=2026.10.1.11",
-    "taifeng-sandbox",
+    "taifeng-sandbox>=2026.10.21.1",
     "taifeng-stores",
     "xuanpu-spec>=2026.10.2.7",
     "pydantic>=2.6",

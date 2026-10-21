@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Self
+from urllib.parse import quote
 
 import httpx
 
@@ -19,6 +20,7 @@ from xuanpu_sdk.models import (
     Session,
     Usage,
     UserUsage,
+    WorkTask,
 )
 from xuanpu_sdk.sse import parse_sse
 
@@ -417,6 +419,40 @@ class XuanpuClient:
         self.secrets = Secrets(self._http)
         self.admin = Admin(self._http)
 
+    async def create_work_task(self, text: str, input_files: Sequence[dict[str, Any]], *,
+                               request_id: str, timezone: str = 'Asia/Shanghai',
+                               matter_id: str | None = None) -> WorkTask:
+        """用固定请求和输入版本受理交办，返回实际服务端状态。"""
+        body = {'text':text, 'input_files':list(input_files), 'request_id':request_id,
+                'timezone':timezone, 'matter_id':matter_id}
+        return WorkTask.from_json(await self._http.request('POST','/v1/work-tasks',json=body))
+
+    async def get_work_task(self, task_id: str) -> WorkTask:
+        """读取本人任务；离开网页后仍可补读原记录。"""
+        return WorkTask.from_json(await self._http.request('GET', _task_path(task_id)))
+
+    async def list_work_tasks(self, *, limit: int = 100, after_id: str | None = None) -> list[WorkTask]:
+        """按服务端游标读取本人任务，不自行排序或重跑。"""
+        params: dict[str, Any] = {'limit':limit}
+        if after_id is not None:
+            params['after_id'] = after_id
+        body = await self._http.request('GET','/v1/work-tasks',params=params)
+        return [WorkTask.from_json(item) for item in body['items']]
+
+    async def work_task_events(self, task_id: str, *, after_id: int = 0, limit: int = 100) -> list[dict[str, Any]]:
+        """补读持久进度，查询不拥有执行生命周期。"""
+        body = await self._http.request('GET',_task_path(task_id)+'/events',
+                                        params={'after_id':after_id,'limit':limit})
+        return list(body['items'])
+
+    async def cancel_work_task(self, task_id: str) -> dict[str, Any]:
+        """提交停止意图，保留未知结果和未退出状态，不自动重试。"""
+        return await self._http.request('POST',_task_path(task_id)+'/cancel')
+
+    async def decide_work_task(self, task_id: str, decision: dict[str, Any]) -> WorkTask:
+        """提交带请求标识与状态版本的本人决定，SDK不扩充授权。"""
+        return WorkTask.from_json(await self._http.request('POST',_task_path(task_id)+'/decisions',json=decision))
+
     async def health(self) -> dict[str, Any]:
         """存活探测。"""
         return await self._http.request("GET", "/healthz")
@@ -444,3 +480,8 @@ class XuanpuClient:
 
 
 __all__ = ["DEFAULT_TIMEOUT_SECONDS", "Admin", "Packages", "Secrets", "Sessions", "XuanpuClient"]
+
+
+def _task_path(task_id: str) -> str:
+    """把标识当作单一路径段编码，不允许查询参数或路径拼接。"""
+    return '/v1/work-tasks/' + quote(task_id, safe='')

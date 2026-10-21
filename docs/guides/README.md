@@ -15,6 +15,7 @@
 | 平台管理员 / 试用者 | 在一台 Mac 上用真实模型、Postgres 和飞书登录持续试用（需要 Docker） | [本机开箱](local-trial.md) |
 | 平台管理员 / 运维 | 构建镜像、在 Linux 服务器上用 Docker Compose 部署单实例 | [Docker 部署](docker-deployment.md) |
 | 员工 / 平台管理员 | 安装 macOS 桌面客户端，或自己构建安装包 | [桌面客户端](desktop-client.md) |
+| 员工 / 应用开发者 | 交办会议与表格、确认行动项、下载成果和补读进展 | [办公交办](work-tasks.md) |
 | 安全 / 合规 | 审计里有什么、没有什么，怎么查、怎么导出，用量怎么算 | [审计与用量](audit-and-usage.md) |
 
 参考资料（查字段、查接口时用）：
@@ -31,3 +32,5 @@
 员工使用主动跟进见[主动业务助理](proactive-assistant.md)。
 
 - [2026-10-20 主动业务助理发布验收](releases/2026-10-20-proactive-business.md)
+
+- [2026-10-21 R1办公交付验收](releases/2026-10-21-r1-acceptance.md)

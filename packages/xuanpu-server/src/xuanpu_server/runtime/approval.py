@@ -89,7 +89,8 @@ def _rule(scope: str, pattern: str, mode: Mode, reason: str) -> taifeng.Permissi
 
 
 def build_policy(
-    level: ApprovalLevel, connector_tools: dict[str, Effect] | None = None
+    level: ApprovalLevel, connector_tools: dict[str, Effect] | None = None, *,
+    contains_external_input: bool = False, workspace_root: str | None = None,
 ) -> taifeng.PermissionPolicy:
     """按审批强度生成权限策略。
 
@@ -102,12 +103,20 @@ def build_policy(
         _rule("script_exec", "glob:*", _SCRIPT_MODE[level], f"审批强度 {level}：沙盒内脚本"),
         _rule("shell_exec", "glob:*", _SHELL_MODE[level], f"审批强度 {level}：沙盒内命令"),
     ]
+    if workspace_root is not None:
+        root = workspace_root.rstrip("/")
+        rules.extend([
+            _rule("file_read", "glob:" + root + "/*", "allow", "读取本执行空间"),
+            _rule("file_write", "glob:" + root + "/outputs/*", "allow", "保存交办成果"),
+            _rule("file_write", "glob:" + root + "/scratch/*", "allow", "任务临时文件"),
+            _rule("file_write", "glob:*", "deny", "仅允许成果和临时目录"),
+        ])
     for name, effect in sorted((connector_tools or {}).items()):
         rules.append(
             _rule(
                 "tool_use",
                 name,
-                connector_mode(level, effect),
+                "ask" if contains_external_input and effect in {"write", "external"} else connector_mode(level, effect),
                 f"审批强度 {level}：连接器工具（{effect}）",
             )
         )

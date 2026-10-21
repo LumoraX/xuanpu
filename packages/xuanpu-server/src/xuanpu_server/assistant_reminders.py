@@ -53,3 +53,5 @@ class RouteOutcome:
     proposal_id: str | None = None
     proactive_draft: dict[str, Any] | None = None
     open_proactive: bool = False
+    work_task_id: str | None = None
+    preserve_input: bool = False

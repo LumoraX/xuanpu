@@ -1,0 +1,5 @@
+# 仅安装进办公执行镜像，平台进程不加载这些文档处理库。
+openpyxl==3.1.5
+python-docx==1.2.0
+pypdf==6.21.1
+defusedxml==0.7.1

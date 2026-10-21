@@ -127,6 +127,17 @@ class InMemoryWorkspaceStore:
         """绑定先准备后同步提交的统一通知存储。"""
         self._notification_sink = sink
 
+    async def task_owners(self, after: tuple[str, str] | None = None,
+                          limit: int = 100) -> list[tuple[str, str]]:
+        """内部恢复枚举任务所有者，包含已停用员工以完成中断结算。"""
+        from xuanpu_server.work_tasks.models import needs_recovery
+
+        if not 1 <= limit <= 100:
+            raise ValueError('分页数量须为1至100')
+        return sorted(owner for owner, state in self._states.items()
+            if (after is None or owner > after) and any(needs_recovery(value)
+                for value in state.work_tasks.values()))[:limit]
+
     async def owners(
         self,
         after: tuple[str, str] | None = None,
@@ -144,13 +155,15 @@ class InMemoryWorkspaceStore:
         user: str,
         guard: Callable[[], Awaitable[None]],
         request_id: str | None = None,
+        *, allow_inactive: bool = False,
     ) -> AsyncIterator[WorkspaceState]:
         """复查身份且失败不替换原状态。"""
         from xuanpu_server.controlplane.models import AuditRecord
 
         owner = (tenant, user)
         async with self.employee_lock(tenant, user):
-            await guard()
+            if not allow_inactive:
+                await guard()
             epoch = self._epochs.get(owner, 0)
             original = self._states.get(owner, WorkspaceState())
             state = deepcopy(original)
@@ -158,7 +171,8 @@ class InMemoryWorkspaceStore:
             for item in state.items.values():
                 ensure_todo_progress(item)
             yield state
-            await guard()
+            if not allow_inactive:
+                await guard()
             if epoch != self._epochs.get(owner, 0):
                 raise ConflictError("员工身份已变化，请重新读取工作区")
             validate_proactive(state)
@@ -183,6 +197,7 @@ class InMemoryWorkspaceStore:
                 commit_notifications()
             state.pending_notifications = []
             state.pending_reminders = []
+            state.pending_reminder_actors = {}
             state.pending_reminder_cancellations = []
             state.audits = []
             self._states[owner] = deepcopy(state)
