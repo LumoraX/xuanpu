@@ -1,6 +1,6 @@
 # 财务设计审阅与契约校验记录
 
-日期：2026-10-21。运行基线：xuanpu `be36853`；本轮只新增财务设计与契约，修改文档入口。
+日期：2026-10-21。初轮运行基线：xuanpu `be36853`；初轮只新增财务设计与契约，修改文档入口。
 业务范围已确认，书面设计待用户审阅；独立审阅结论为可进入实施规划，不代表已实现财务服务。
 
 ## 1 来源保全
@@ -66,3 +66,19 @@ uv run python -c 'from pathlib import Path; import yaml; from openapi_spec_valid
 没有连接真实税务、支付、ERP 或归档通道；没有生成真实会计凭证、付款或不可变档案。
 没有真实财务原件／官方标准包验证或财务真实模型验收；[验收矩阵](acceptance-matrix.md)中的运行项仍为未执行。
 包里的评测用例仅声明，尚未对模型执行；关键验收依据是实际业务记录，不能只凭文字 contains 判断通过。
+
+## 6 用户确认后的设计补充
+
+用户明确采用 HITL，并要求财务存储完全独立。总设计、F0 和领域契约现明确：关键人工决定持久保存在财务工作流，
+批准后后台续办；独立 PostgreSQL 实例／数据库／账号、对象存储资源／桶／凭据、迁移和备份；
+成功收件后财务持有原件副本，模块启停保留在途核对责任，身份服务故障不阻断已发送操作的回执落库。
+增加 A34—A38 运行验收项；它们尚未执行。本节补充不改变 34 个 API 契约及设计包的 standard 调用确认策略。
+第 3 节测试数量属于初轮实际运行，不能直接当作本次补充后的重新运行结果。
+
+补充后的独立复审 Approved；在线授权仅约束新用户命令及新外部副作用，已发送操作的真实回执例外范围已收紧。
+本次实际重跑：`uv run pytest` 为 **1854 passed，3 skipped，180.83 秒**；
+`uv run ruff check --select F,S108,I,TC packages` 为 All checks passed；
+`uv run mypy packages/*/src` 为 Success: no issues found in 164 source files；
+`uv run xuanpu validate docs/superpowers/specs/finance-v1/pack` 校验通过。
+两份 OpenAPI 校验通过，23 个本地链接可解析，原规范副本摘要未变，`git diff --check` 无错误。
+这些是设计／契约与既有平台检查，A34—A38 的财务服务运行验收仍未执行。

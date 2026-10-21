@@ -8,6 +8,8 @@
 所有领域主键、外键、唯一索引与查询包含 `tenant_id`；公司业务另含 `legal_entity_id`。
 员工本人／部门／项目／财务岗位的可见范围由授权目录计算，不能仅检查同租户或公司。
 所有可变聚合有递增 `version`，修改执行 CAS；归档对象和事实事件不可变。
+上述数据及 Outbox／Inbox／工作队列均保存在独立财务数据库，原件与归档保存在独立财务对象存储，平台不得直接访问这些存储。
+引用平台员工或文件时保留稳定 ID 和必要来源快照，不建立跨库外键；平台文件移除不能删除已接收的财务正本。
 
 | 对象 | 关键字段 | 约束与来源 |
 | --- | --- | --- |
@@ -42,6 +44,8 @@ ApprovalWorkflow.document_id 可指业务单据或行动计划，另有 target_t
 不修改不可变计划内容或 version=1。ReviewItem 使用 target_type／target_id／target_version 表示这两类目标。
 审核行动计划的 approve／reject 预检只验证当前审核步骤及实际角色，不要求又有一套业务审批；原行动计划完成审批后才取得对应 grant。
 原行动计划若失效，审核请求返回 plan_expired／plan_invalidated，保留历史决定；原计划不可通过延长 expires_at 或复制批准“复活”。
+HITL 的待决定人、步骤、目标版本、证据、截止时间及决定状态以此工作流为准，独立于平台会话／模型生命周期；
+恢复或重复决定读取同一持久实例，不能另建工作流重复批准。缺材料进入 ExceptionCase，补件后按对应规则重新预检。
 getActionPlan 返回原参数、金额／账户等影响、目标版本、有效期和 workflow_id；重新进入会话由服务器查询，不依赖此前聊天。
 
 没有 XML 的收件有 SourceReceipt，但不能伪造非空 xml_object_key。解析失败不创建字段不全的已验真 Invoice。
