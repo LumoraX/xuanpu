@@ -135,3 +135,11 @@ shutdown_drain_seconds: 30   # 停机时给在途对话多少秒跑完，到期�
 # 主动业务使用既有模型配置；员工不填密钥。
 proactive_interval_seconds: 1800
 proactive_scan_seconds: 60
+
+# 可选进程外HTTP员工上下文签名；仅在配置可信接收方及租户保险库私钥后启用。
+# call_context:
+#   issuer: xuanpu
+#   keyId: platform-ed25519-1
+#   privateKeySecret: platform-signing-key
+#   allowedAudiences:
+#     https://finance.example: [xuanpu-finance]

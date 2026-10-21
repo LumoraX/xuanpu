@@ -884,3 +884,13 @@ xuanpu_connector_calls_total{decision="allowed",transport="http"} 1.0
 `POST /v1/proactive/{id}/actions` 接受 request_id、version、可选 item_version、action（complete/postpone/ignore_stage/set_reminder/progress）、due_at（UTC秒）、timezone、channels。版本冲突409，未知或他人记录404，普通登录沿用CSRF。
 
 路由响应可带 proactive_draft 或 open_proactive。模型只提出建议，不直接写入。统一通知附 source、body、proactive_check_id/proactive_followup_id、alert_after；原生提醒的关联通过 reminder_id 查找。
+
+## 通用集成身份与固定文件桥
+
+路由模块的相对路径为 `GET /identity` 与 `GET /files/{id}`，统一挂载到 `/v1/integration-gateway`。
+
+`GET /v1/integration-gateway/identity` 返回当前真实员工的 `tenant_id`、`user_id`、`active: true`。使用员工 Cookie 或获准 act-as 的租户 API key；调用时仍核对员工当前启用状态，root 和未代入员工的机器身份不能读取。
+
+`GET /v1/integration-gateway/files/{id}?revision=<整数>&sha256=<64位摘要>` 按本人文件权限返回指定不可变修订的原字节。必须显式绑定版本和摘要，错误引用或无权访问失败关闭，不接受任意URL或存储对象key。响应包含安全 `Content-Disposition` 和原始 MIME；不缓存。本桥要求与工作台相同的身份与文件授权，不能绕过撤回、停用员工或跨租户限制。
+
+此桥不含业务规则。集成服务只持有受限 API 凭据，不取得平台数据库或对象存储凭据；独立业务系统保存自己的材料副本及责任回执。

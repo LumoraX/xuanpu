@@ -3,7 +3,8 @@ info:
   title: 玄圃财务业务 API 设计契约
   version: 0.1.0-design.1
   description: |
-    设计草案，服务尚未实现；服务器地址为保留域名，不能据此声称接口可执行。
+    完整闭环设计契约；已实现的 F0 子集发布于 examples/finance，其余阶段尚未实现。
+    本设计包服务器地址为保留域名，不能据此声称全部接口可执行。
     全部接口验证服务身份及平台签名上下文，身份不由模型参数传入。
     每项 x-delivery-phase 指定首次交付阶段。所有写接口要求 Idempotency-Key。
     金额为 CNY 两位小数字符串；业务动作必须通过预检、实际业务批准和执行资格校验。
@@ -12,7 +13,7 @@ servers:
 security:
   - serviceBearer: []
     actorContext: []
-x-design-status: awaiting-written-review
+x-design-status: approved-reference-f0-subset-implemented
 x-trusted-context: X-Xuanpu-Context 由可信平台出口签名注入，不开放给工具参数
 paths:
   /v1/finance/legal-entities:
@@ -366,12 +367,15 @@ components:
         revision: {$ref: '#/components/schemas/Version'}
         sha256: {$ref: '#/components/schemas/Digest'}
     InvoiceImport:
+      description: 补件时 source_exception_id 与 expected_exception_version 必须同时提供；成功解析同事务关联关闭原异常，失败保留待办。
       type: object
       additionalProperties: false
       required: [legal_entity_id, files]
       properties:
         legal_entity_id: {$ref: '#/components/schemas/Id'}
         files: {type: array, minItems: 1, maxItems: 100, uniqueItems: true, items: {$ref: '#/components/schemas/FileRef'}}
+        source_exception_id: {$ref: '#/components/schemas/Id'}
+        expected_exception_version: {$ref: '#/components/schemas/Version'}
     VersionRequest:
       type: object
       additionalProperties: false

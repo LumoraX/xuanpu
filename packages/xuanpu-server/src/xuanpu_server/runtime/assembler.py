@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 
     from xuanpu_server.audit import AuditLog
     from xuanpu_server.packages import ResolvedPackage
+    from xuanpu_server.runtime.call_context import CallContextSigner
     from xuanpu_server.runtime.events import SubmissionIndex
     from xuanpu_server.runtime.models import ModelClientFactory
     from xuanpu_server.runtime.sandbox import SandboxHandle, SandboxProvider
@@ -197,6 +198,7 @@ class RuntimeAssembler:
         audit: AuditLog,
         submissions: SubmissionIndex,
         defaults: RuntimeDefaults | None = None,
+        context_signer: CallContextSigner | None = None,
         now: Callable[[], float] = time.time,
     ) -> None:
         """
@@ -209,10 +211,12 @@ class RuntimeAssembler:
             audit: 审计写入口。
             submissions: submission → 会话的对照表。
             defaults: 平台默认参数。
+            context_signer: 可选的通用调用签名器，由平台注入。
             now: 取当前时间的函数，测试时可替换。
         """
         self._now = now
         self._submissions = submissions
+        self._context_signer = context_signer
         self._data_dir = data_dir
         self._models = models
         self._sandboxes = sandboxes
@@ -292,6 +296,7 @@ class RuntimeAssembler:
             base_env=base if connector_sandbox is None else connector_sandbox.process_env(base),
             call_timeout_seconds=self._defaults.connector_timeout_seconds,
             startup_timeout_seconds=self._defaults.connector_startup_seconds,
+            context_signer=self._context_signer,
         )
 
     async def _assemble(

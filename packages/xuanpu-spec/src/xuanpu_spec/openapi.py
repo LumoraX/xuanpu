@@ -26,7 +26,7 @@ _MAX_REF_DEPTH = 32
 _IDENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
 _SLUG = re.compile(r"[^A-Za-z0-9]+")
 # 请求方自己会放的头，不允许 OpenAPI 参数覆盖
-_RESERVED_HEADERS = frozenset({"authorization", "host", "content-length", "content-type"})
+_RESERVED_HEADERS = frozenset({"authorization", "host", "content-length", "content-type", "x-xuanpu-context"})
 
 
 class OpenApiError(SpecError):
@@ -135,6 +135,8 @@ def _parameter(raw: Any, where: str) -> Parameter | None:
     """解析一个参数；不支持的位置（cookie）跳过。"""
     if not isinstance(raw, dict) or "name" not in raw or "in" not in raw:
         raise OpenApiError(f"{where}：参数缺少 name 或 in")
+    if str(raw["name"]).lower() == "x-xuanpu-context":
+        raise OpenApiError(f"{where}：平台签名头不能作为工具参数")
     location = str(raw["in"])
     if location == "cookie":
         return None
@@ -176,12 +178,24 @@ def _operation(method: str, path: str, raw: dict[str, Any], shared: list[Paramet
     operation_id = str(raw.get("operationId") or _slug(method, path))
     if not _IDENT.match(operation_id):
         raise OpenApiError(f"{where}：operationId {operation_id!r} 不是合法的标识符")
+    shared_headers = [p.name.lower() for p in shared if p.location == "header"]
+    if len(shared_headers) != len(set(shared_headers)):
+        raise OpenApiError(f"{where}：路径级头参数重复声明")
+    operation_headers: set[str] = set()
     merged: dict[tuple[str, str], Parameter] = {(p.location, p.name): p for p in shared}
     for item in raw.get("parameters") or []:
         parameter = _parameter(item, where)
         if parameter is not None:
+            if parameter.location == "header":
+                lowered = parameter.name.lower()
+                if lowered in operation_headers:
+                    raise OpenApiError(f"{where}：头参数重复声明")
+                operation_headers.add(lowered)
             merged[(parameter.location, parameter.name)] = parameter
     parameters = tuple(merged.values())
+    header_names = [p.name.lower() for p in parameters if p.location == "header"]
+    if len(set(header_names)) != len(header_names):
+        raise OpenApiError(f"{where}：头参数大小写不敏感，不能重复声明")
     names = [parameter.name for parameter in parameters]
     if len(set(names)) != len(names):
         raise OpenApiError(f"{where}：不同位置的参数重名，无法平铺成工具参数")

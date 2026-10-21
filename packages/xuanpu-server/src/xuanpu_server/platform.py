@@ -40,6 +40,7 @@ from xuanpu_server.runtime.assembler import (
     RuntimeDefaults,
     StateBackendFactory,
 )
+from xuanpu_server.runtime.call_context import CallContextSigner
 from xuanpu_server.runtime.connector_process import install_kernel_mcp_log_guard
 from xuanpu_server.runtime.events import SubmissionIndex
 from xuanpu_server.runtime.sessions import SessionManager
@@ -70,6 +71,7 @@ if TYPE_CHECKING:
 
     import httpx
 
+    from xuanpu_server.config import CallContextConfig
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.identity.service import IdentitySettings
     from xuanpu_server.identity.store import IdentityStore
@@ -110,6 +112,7 @@ class Platform:
         data_dir: Path,
         root_key_hash: str,
         metrics_token_hash: str | None = None,
+        call_context: CallContextConfig | None = None,
         instance_guard: InstanceGuard | None = None,
         objects: ObjectStore | None = None,
         states: StateBackendFactory | None = None,
@@ -137,6 +140,7 @@ class Platform:
             root_key_hash: 平台根凭据的摘要。
             metrics_token_hash: 指标抓取令牌的摘要；None 不开指标端点。指标本身总在计，
                 只是不对外。
+            call_context: 可选的部署级 HTTP 调用签名配置；None 不为连接器签发身份。
             objects: 对象存储，业务包归档的正本放在这里；None 用 ``<data_dir>/objects``
                 下的本机目录（只适合单机试用，多实例必须注入共用的对象存储）。
             states: 状态面后端工厂；None 用内核的本机默认实现。
@@ -217,6 +221,8 @@ class Platform:
             vault=vault,
             audit=self.audit,
             submissions=submissions,
+            context_signer=None if call_context is None else CallContextSigner(
+                config=call_context, store=store, vault=vault, now=now),
             defaults=defaults,
             now=now,
         )

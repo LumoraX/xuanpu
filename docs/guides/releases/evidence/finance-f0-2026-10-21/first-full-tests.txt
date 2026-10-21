@@ -1,0 +1,86 @@
+........................................................................ [  3%]
+.......................................................................F [  7%]
+.FF..................................................................... [ 10%]
+........................................................................ [ 14%]
+........................................................................ [ 18%]
+........................................................................ [ 21%]
+........................................................................ [ 25%]
+........................................................................ [ 29%]
+........................................................................ [ 32%]
+........................................................................ [ 36%]
+........................................................................ [ 40%]
+....................................s................................... [ 43%]
+........................................................................ [ 47%]
+........................................................................ [ 51%]
+........................................................................ [ 54%]
+........................................................................ [ 58%]
+........................................................................ [ 62%]
+........................................................................ [ 65%]
+........................................................................ [ 69%]
+........................................................................ [ 72%]
+........................................................................ [ 76%]
+........................................................................ [ 80%]
+........................................................................ [ 83%]
+........................................................................ [ 87%]
+..............................................s......s.................. [ 91%]
+........................................................................ [ 94%]
+........................................................................ [ 98%]
+.............................                                            [100%]
+=================================== FAILURES ===================================
+________________________ test_every_route_is_documented ________________________
+
+    def test_every_route_is_documented() -> None:
+        """HTTP 接口文档覆盖全部路由：``api/app.py`` 里的，以及挂上去的各个路由模块里的。"""
+        source = "\n".join(
+            path.read_text(encoding="utf-8") for path in sorted((SERVER_SRC / "api").glob("*.py"))
+        )
+        routes = re.findall(r'@(?:app|router)\.(get|post|put|delete)\("([^"]+)"', source)
+        assert len(routes) >= 26
+        assert ("get", "/v1/me") in routes
+        document = re.sub(r"\{[a-z_]+\}", "{}", _read("docs/architecture/http-api.md"))
+        missing = [
+            f"{method.upper()} {path}"
+            for method, path in routes
+            if f"{method.upper()} {re.sub(r'\{[a-z_]+\}', '{}', path)}" not in document
+        ]
+>       assert missing == []
+E       AssertionError: assert ['GET /identity'] == []
+E         
+E         Left contains one more item: 'GET /identity'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:195: AssertionError
+_____________________ test_every_config_key_is_documented ______________________
+
+    def test_every_config_key_is_documented() -> None:
+        """运维手册覆盖全部配置项，配置示例也都给出了（哪怕是注释掉的）。"""
+        keys = _field_names(ServerConfig)
+        assert {"data_dir", "schema", "session_idle_seconds", "docker_env"} <= keys
+>       assert _missing(keys, _read("docs/guides/operations.md")) == []
+E       AssertionError: assert ['allowedAudi...ateKeySecret'] == []
+E         
+E         Left contains 5 more items, first extra item: 'allowedAudiences'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:215: AssertionError
+___________________ test_every_manifest_field_is_documented ____________________
+
+    def test_every_manifest_field_is_documented() -> None:
+        """业务包规范覆盖清单的全部字段。"""
+        fields = _field_names(PackageManifest)
+        assert {"apiVersion", "notContains", "timeoutSeconds", "baseUrl"} <= fields
+>       assert _missing(fields, _read("docs/architecture/package-spec.md")) == []
+E       AssertionError: assert ['contextAudience'] == []
+E         
+E         Left contains one more item: 'contextAudience'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:223: AssertionError
+=========================== short test summary info ============================
+SKIPPED [1] packages/xuanpu-server/tests/reminders/test_postgres_order.py:21: 本用例验证真实PostgreSQL行锁与事务
+SKIPPED [1] packages/xuanpu-server/tests/workspace/test_proactive_store.py:453: 仅数据库约束需要直接连接
+SKIPPED [1] packages/xuanpu-server/tests/workspace/test_proactive_store.py:562: 数据库身份行锁已由共享通知锁测试覆盖
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_every_route_is_documented
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_every_config_key_is_documented
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_every_manifest_field_is_documented
+3 failed, 1967 passed, 3 skipped in 211.37s (0:03:31)

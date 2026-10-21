@@ -663,3 +663,25 @@ lsof -nP -d cwd | grep '<data_dir>/cache/packages'
 指标不带租户标签；租户级排查使用审计的 `identity_reconciled`。缺状态本身暂无独立指标。
 
 升级已有身份数据库时，先执行包含 `0005` 的迁移，并将所有服务实例升级，再保存空事件密钥引用；旧版本不能读取这种配置。
+
+## 可选 HTTP 调用身份签名
+
+`call_context` 默认为空。只有需要真实员工上下文的进程外 HTTP 连接器才启用；旧连接器继续原有行为。字段如下：
+
+| 配置项 | 含义 |
+| --- | --- |
+| `issuer` | JWT签发者，必须与接收服务固定值一致 |
+| `keyId` | JWT头/载荷的密钥标识，对应接收方公钥目录 |
+| `privateKeySecret` | 租户保险库中的Ed25519 PEM私钥名称；不得写入业务包 |
+| `allowedAudiences` | 目标HTTP origin到允许audience列表的映射；scheme/host/port必须匹配 |
+
+```yaml
+call_context:
+  issuer: xuanpu
+  keyId: platform-ed25519-1
+  privateKeySecret: platform-signing-key
+  allowedAudiences:
+    https://finance.example: [xuanpu-finance]
+```
+
+租户私钥每次签发从保险库读取，轮换时接收方先配置新kid公钥再切换签发配置，保留旧公钥至在途短令牌过期。服务签名最长60秒，接收方允许5秒时钟差；运维须保证时钟同步。请求签名绑定实际HTTP报文，工具审批通过后才签发，不可作为财务业务批准。无真实员工会话或不在origin/audience许可表内的调用拒绝，不回退为任意身份。独立财务实例配置与验收见[财务F0指南](finance-f0.md)。
