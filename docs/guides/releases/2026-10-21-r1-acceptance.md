@@ -21,15 +21,15 @@
 ## 场景与证据
 
 原始1.0.0办公包中，CSV成功，XLSX因模型重新追问已给出的列名而没有真实成果，平台正确判失败。
-该失败及授权历史保留在[初轮记录](evidence/r1/real-office-v100-initial.json)。补入XLSX表头检查脚本及完整目标传递后，
+该失败及授权历史保留在初轮记录（本机私有路径：`evidence/r1/real-office-v100-initial.json`）。补入XLSX表头检查脚本及完整目标传递后，
 普通办公包1.0.1的CSV、XLSX分别得到A=12.50、B=3.00、总计15.50；下载后重新校验摘要、来源行号和独立XML解析XLSX。
 
 会议材料同时包含明确本人承诺、明确日程/站内提醒、不确定日期、讨论日期与其他同事任务。模型先保存纪要与行动项JSON，
 本人编辑第一条标题、仅确认前两项，权威记录为待办1、日程1、站内提醒1；第三项未创建，未替其他同事分派。
 引用区间逐字符核对原文，不确定日期保持null；讨论日期未被当成交付截止日期。
 
-初轮1.0.1原始记录见[real-office.json](evidence/r1/real-office.json)，本人确认后的HTTP权威记录及独立判断见
-[meeting-confirmed.json](evidence/r1/meeting-confirmed.json)，用量见[owner-usage.json](evidence/r1/owner-usage.json)。
+初轮1.0.1原始记录见real-office.json（本机私有路径：`evidence/r1/real-office.json`），本人确认后的HTTP权威记录及独立判断见
+meeting-confirmed.json（本机私有路径：`evidence/r1/meeting-confirmed.json`），用量见owner-usage.json（本机私有路径：`evidence/r1/owner-usage.json`）。
 中间复验记录保存到`evidence/r1/final-source/`；最终冻结源码另存`evidence/r1/release-source/`，其中source_sha256逐文件固定实际启动的源码，避免覆盖初轮证据。
 
 ![部分确认后的桌面结果](evidence/r1/release-source/browser/confirmed-desktop.png)
@@ -82,7 +82,7 @@
 见`evidence/r1/anchor-rejected-source/real-office.json`及原始文件。修复后仅由服务端为唯一完整引用确定位置；
 不存在或歧义引用仍拒绝。原始模型产物不覆盖，确认卡使用独立核对后的引用；相应双后端失败回归已覆盖。
 
-最终冻结复验的[权威记录](evidence/r1/release-source/meeting-confirmed.json)独立解析原文日期和时区，核对实际待办截止、日程起止与提醒时间；同一决定重放后数量不变。
+最终冻结复验的权威记录（本机私有路径：`evidence/r1/release-source/meeting-confirmed.json`）独立解析原文日期和时区，核对实际待办截止、日程起止与提醒时间；同一决定重放后数量不变。
 DOCX正文、文字PDF实际提取及无文字PDF拒绝另由办公镜像测试覆盖；不把这三项称为额外真实模型验收。
 
 ## 最终门禁

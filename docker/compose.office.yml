@@ -1,0 +1,10 @@
+# 与compose.yml合并使用；独立rootless执行服务不与其他应用共享Docker管理权限。
+services:
+  platform:
+    security_opt: !override ["no-new-privileges:true"]
+    volumes:
+      - type: bind
+        source: ${EXECUTOR_SOCKET_DIR:?需要独立rootless EXECUTOR_SOCKET_DIR}
+        target: /run/xuanpu-executor
+        bind:
+          create_host_path: false

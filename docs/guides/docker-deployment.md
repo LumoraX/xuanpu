@@ -90,10 +90,63 @@ docker compose exec -T platform python - < sandbox_probe.py
 
 ## R1办公执行的部署边界
 
-当前Compose使用本机bubblewrap隔离，不挂宿主Docker socket。R1办公任务当前仅启用DockerSandboxProvider，
-local后端明确拒绝，不以chmod冒充只读输入。服务/控制台候选镜像的wheel与版本验证，不等于在现有Compose上完成办公执行验收。
+默认Compose仍用local/bubblewrap；R1办公启用独立Docker rootless服务，local后端明确拒绝办公任务。
+平台不接宿主rootful Docker socket。使用现成Docker/systemd能力，不自建远程文件传输协议。
 
-R1本地验收由宿主平台进程调用Docker CLI，独立办公镜像使用`office-sandbox.Dockerfile`及带hash的依赖锁。
-生产办公部署还须单独配置受控Docker执行节点、平台Docker客户端及绑定目录的一致路径，重新验证身份、只读输入、
-资源收尾与真实办公场景；不能仅发布业务包便宣称现有生产员工可用，也不能通过直接授予宿主Docker socket绕过隔离约束。
-本次未修改生产Compose或执行部署，见[R1验收](releases/2026-10-21-r1-acceptance.md)。
+### 独立执行服务
+
+Ubuntu24.04需官方docker-ce-rootless-extras、uidmap、slirp4netns及systemd用户总线。
+将[安装器](../../docker/install_office_executor.py)同步到部署目录，以root执行：
+
+```bash
+python3 install_office_executor.py --deploy-dir <部署目录>
+```
+
+安装器创建无登录用户xuanpu-executor，UID/GID10002；平台仍为10001，冲突时拒绝。部署根必须root独占0700。
+仅cache、workspaces、input-snapshots经systemd mount units绑定到宿主`/var/lib/xuanpu`同名子目录，
+不绑定objects、配置、秘密或数据库。平台和daemon因此看到相同绝对路径及inode。
+用户服务由linger开机恢复；不另给daemon增加PID namespace，以便兑现systemd容器资源控制；任务容器仍使用Docker默认独立PID namespace。
+
+总额度在root管理的user-10002.slice：6GiB、2CPU、4096进程，覆盖daemon及全部容器scope。
+任务单独限额仍生效。只限制docker.service无法覆盖兄弟容器scope，不能作为总额证明。
+rootless不提供容器AppArmor；保留user namespace、默认seccomp、无capability、只读根和受限挂载。
+
+专用Unix接口目录`/run/xuanpu-executor`由tmpfiles创建并只向平台10001授予命名ACL和默认ACL，API不开放TCP。
+绑定整个专用目录使daemon重建socket后平台仍可重连；不绑定单个socket文件，也不暴露用户总线。
+官方默认用户socket仅供该账户管理。用户家目录内配置由安装器降权写入，root不跟随其中的链接或chown。
+
+### 接入和核对
+
+独立daemon加载linux/amd64办公镜像后，以实际image ID固定sandbox.image。
+服务镜像只增加固定官方摘要的Docker CLI，不含dockerd。保留既有JSON全部身份、模型和秘密，仅修改sandbox：
+
+```json
+{"sandbox":{"backend":"docker","image":"sha256:<办公镜像ID>","memory_mb":512,"cpus":1,
+"docker_env":{"PATH":"/usr/local/bin:/usr/bin:/bin","DOCKER_HOST":"unix:///run/xuanpu-executor/docker.sock"}}}
+```
+
+同步[办公Compose覆盖](../../docker/compose.office.yml)，在.env设置：
+
+```text
+COMPOSE_FILE=compose.yml:compose.office.yml
+EXECUTOR_SOCKET_DIR=/run/xuanpu-executor
+```
+
+覆盖文件恢复平台默认seccomp/AppArmor/systempaths，不再继承bubblewrap的额外放行。
+按上文停写、备份、迁移和部署后运行[真实办公探针](../../docker/office_probe.py)：
+
+```bash
+docker compose exec -T platform python - < office_probe.py
+```
+
+探针拒绝rootful或不兑现systemd/cgroup v2资源限额的执行端，真实验证只读输入、断网、
+配置/对象/socket不可见、512MiB/1CPU/256进程限制及容器停止后的安全导出。
+另须保持平台容器不重建，重启执行daemon并验证新任务；平台重启只结算中断，不自动重放。
+最后完成真实模型的会议、CSV和XLSX链路，核对本人确认、原生记录及下载摘要，不能用健康检查替代。
+
+参考[Docker rootless](https://docs.docker.com/engine/security/rootless/)和
+[systemd/cgroup要求](https://docs.docker.com/engine/security/rootless/tips/)。
+
+共享目录使用Linux原生idmapped mounts（内核及util-linux需支持）：保持同一设备/inode和内容，挂载视图将平台UID/GID10001映射为执行UID/GID10002，新产物在底层仍属平台10001。不递归chown生产数据，不使用FUSE或放宽输入权限。安装器实际校验inode及映射属主，不支持时拒绝启动。
+
+身份映射使用[Linux内核idmapped mounts](https://www.kernel.org/doc/html/latest/filesystems/idmappings.html)。`/run/xuanpu-executor`的命名ACL只允许10001平台访问API，不能改为所有人可写；tmpfiles在重启后恢复相同ACL。安装器会重启执行服务，必须先停写并等在途任务收尾，不在运行中重跑安装器。
