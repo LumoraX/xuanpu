@@ -5,13 +5,19 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any
 
-PENDING_TASKS = ("(status IN ('accepted','running','waiting_user') "
-    "OR record->>'resources_pending'='true' OR record->>'artifact_recovery_pending'='true' "
-    "OR (record->>'error_code'='container_cleanup_unverified' "
-    "AND COALESCE(record->>'resources_recovered','false')='false'))")
-
 if TYPE_CHECKING:
     from xuanpu_server.workspace.models import WorkspaceState
+
+
+def pending_tasks(tables: dict[str,str]) -> str:
+    """限定外层t别名，启动恢复包含旧版本遗留的非settled终态索引。"""
+    return ("(t.status IN ('accepted','running','waiting_user') "
+        "OR t.record->>'resources_pending'='true' OR t.record->>'artifact_recovery_pending'='true' "
+        "OR (t.record->>'error_code'='container_cleanup_unverified' "
+        "AND COALESCE(t.record->>'resources_recovered','false')='false') "
+        "OR (t.record->>'recovery_policy_version'='2' AND EXISTS (SELECT 1 FROM "
+        +tables['task_dispatch']+" d WHERE d.tenant_id=t.tenant_id AND d.user_id=t.user_id "
+        "AND d.task_id=t.task_id AND d.state<>'settled')))" )
 
 
 async def load_tasks(
@@ -37,11 +43,11 @@ async def load_tasks(
                 tenant,user,request_id.split(':',2)[2])
             state.work_task_events=[{**json.loads(r['data']),'event_id':r['event_id']} for r in entries]
         return
-    pending = " AND " + PENDING_TASKS if request_id in {"work-task:pending", "work-task:legacy-pending"} else ""
+    pending = " AND " + pending_tasks(tables) if request_id in {"work-task:pending", "work-task:legacy-pending"} else ""
     if request_id == 'work-task:legacy-pending':
         pending += " AND COALESCE(record->>'recovery_policy_version','1')='1'"
     rows = await conn.fetch(
-        f"SELECT task_id,record FROM {tables['work_task']} WHERE tenant_id=$1 AND user_id=$2" + pending,
+        f"SELECT t.task_id,t.record FROM {tables['work_task']} t WHERE t.tenant_id=$1 AND t.user_id=$2" + pending,
         tenant, user,
     )
     state.work_tasks = {row["task_id"]: json.loads(row["record"]) for row in rows}

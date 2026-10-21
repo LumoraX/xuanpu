@@ -221,3 +221,5 @@ Platform在guard和task registry就绪后启动唯一TriggerWorker，关闭先�
 三个开关分别支持tenant_ids；非空只准入名单内租户，空名单保留管理员显式全量enabled语义。关闭认领后兼容reader、查询、暂停、取消仍工作；不删除新账本或将新JSON交旧R1 reader。
 
 模型包装器在平台ExecutionBinding中保存预算阻塞原因，即使内核把异常转为turn_failed，也由任务runner交回唯一派发器持久保存block_budget；不将额度不足误结算为普通失败。管理员max_task_tokens默认150000且最高300000，独立grant与租户上限继续同时校验。
+
+终态且资源与成果索引均已清理时，原生确认和取消在同一事务结清非leased派发；leased派发仍由原epoch释放，旧owner不可越过栅栏。启动枚举同步补读旧版本遗留的终态派发，只修复索引，不新建attempt、模型调用或通知。

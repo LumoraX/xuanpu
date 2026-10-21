@@ -4,11 +4,13 @@ from __future__ import annotations
 import asyncio
 import json
 
+import pytest
 from xuanpu_server.work_tasks.decisions import OfficeActionsDecision
 from xuanpu_server.work_tasks.models import WorkTaskInput
 
 
-async def test_native_confirmation_survives_rebuild_without_model(recovery_world,step):
+@pytest.mark.parametrize('choice',['confirm','empty','cancel'])
+async def test_native_confirmation_survives_rebuild_without_model(recovery_world,step,choice):
     """纪要、引用和本人选择都有真实回执，重复确认只创建一次。"""
     h = recovery_world
     platform,who = h.platform,h.who
@@ -43,10 +45,17 @@ async def test_native_confirmation_survives_rebuild_without_model(recovery_world
     h.platform.runtimes._models = Forbidden()
     decision = OfficeActionsDecision.model_validate({'kind':'office_actions','request_id':'select-once',
         'state_version':current.state_version,'choices':[{'action_id':current.action_candidates[0]['action_id'],
-            'accepted':True,'title':'本人已编辑的需求任务'}]})
-    result = await h.platform.work_tasks.decide(who,task.task_id,decision)
-    repeated = await h.platform.work_tasks.decide(who,task.task_id,decision)
-    assert result == repeated and result.status == 'succeeded'
+            'accepted':True,'title':'本人已编辑的需求任务'}] if choice=='confirm' else []})
+    if choice=='cancel':
+        result=await h.platform.work_tasks.cancel(who,task.task_id)
+        repeated=await h.platform.work_tasks.cancel(who,task.task_id)
+    else:
+        result = await h.platform.work_tasks.decide(who,task.task_id,decision)
+        repeated = await h.platform.work_tasks.decide(who,task.task_id,decision)
+    dispatch=await h.platform.task_registry.durable.execution.get(who,task.task_id)
+    assert dispatch.state=='settled' and dispatch.expires_at==0
+    assert result == repeated and result.status == ('cancelled' if choice=='cancel' else 'succeeded')
     todos = await h.platform.workspace.list(who,kind='todo')
-    assert len(todos) == 1 and todos[0]['data']['title'] == '本人已编辑的需求任务'
+    assert len(todos) == (1 if choice=='confirm' else 0)
+    if todos:assert todos[0]['data']['title'] == '本人已编辑的需求任务'
     assert len(h.world.models.requests) == calls

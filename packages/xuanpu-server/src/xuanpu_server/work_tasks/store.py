@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from xuanpu_server.errors import ConflictError, InvalidRequestError, NotFoundError
 from xuanpu_server.work_tasks.models import (
+    TERMINAL,
     ArtifactReceipt,
     WorkTaskEvent,
     WorkTaskRecord,
@@ -56,6 +57,11 @@ def validate_sources(state: WorkspaceState, task: WorkTaskRecord) -> None:
 def save_record(state: WorkspaceState, task: WorkTaskRecord, event_kind: str) -> None:
     """记录与单条有界进展在同一员工事务中更新，不写正文审计。"""
     state.work_tasks[task.task_id] = task.model_dump(mode="json")
+    dispatch=state.task_dispatch.get(task.task_id)
+    if (task.status in TERMINAL and not task.resources_pending and not task.artifact_recovery_pending
+            and dispatch is not None and dispatch['state']!='leased'):
+        # 活跃epoch留给原worker释放；原生取消/确认则与终态同事务结清索引。
+        dispatch.update(state='settled',expires_at=0.0,block_reason=None,changed_at=task.updated_at)
     state.work_task_events.append(WorkTaskEvent(
         event_id=max((int(entry["event_id"]) for entry in state.work_task_events), default=0) + 1,
         task_id=task.task_id, state_version=task.state_version, at=task.updated_at,
@@ -163,7 +169,7 @@ class WorkTaskStore:
         """内部收尾读取已停用员工的记录；不会赋予任何正文HTTP权限。"""
         async with self.workspace.store.transaction(tenant, user, _lifecycle_guard,
                 'work-task:legacy-pending' if legacy_only else 'work-task:pending', allow_inactive=True) as state:
-            return [parse_record(value) for value in state.work_tasks.values() if needs_recovery(value)
+            return [parse_record(value) for value in state.work_tasks.values() if needs_recovery(value,state.task_dispatch.get(value['task_id']))
                 and (not legacy_only or value.get('recovery_policy_version',1) == 1)]
 
     async def recover_artifact_index(self, task: WorkTaskRecord, receipts: tuple[ArtifactReceipt, ...],
