@@ -1,0 +1,82 @@
+# 完整闭环设计包；尚无运行服务。F0 发布时只保留其已实现 Skill 和工具。
+apiVersion: xuanpu/v1
+kind: Package
+metadata:
+  name: finance
+  version: 0.1.0-design.1
+  description: 财务能力设计包：发票、报销、应付、审核、付款入账协同与档案证据
+spec:
+  skills:
+    entries: [finance-assistant]
+  model:
+    tier: balanced
+  policy:
+    approval: standard
+    budget:
+      maxSessionTokens: 200000
+      maxIterations: 40
+    sandbox:
+      network: false
+      shell: false
+  connectors:
+    - name: finance
+      transport: http
+      openapi: apis/finance.yaml
+      auth: {type: bearer, secret: finance-service-token}
+      timeoutSeconds: 30
+      tools:
+        - {name: listLegalEntities, effect: read}
+        - {name: listIntegrations, effect: read}
+        - {name: importInvoices, effect: write}
+        - {name: listInvoices, effect: read}
+        - {name: getInvoice, effect: read}
+        - {name: getInvoiceLines, effect: read}
+        - {name: getInvoiceFields, effect: read}
+        - {name: getInvoiceEvidence, effect: read}
+        - {name: verifyInvoice, effect: external}
+        - {name: createExpenseClaim, effect: write}
+        - {name: getExpenseClaim, effect: read}
+        - {name: updateExpenseClaim, effect: write}
+        - {name: createPayable, effect: write}
+        - {name: getPayable, effect: read}
+        - {name: updatePayable, effect: write}
+        - {name: createInvoiceAllocation, effect: write}
+        - {name: releaseInvoiceAllocation, effect: write}
+        - {name: listReviewQueue, effect: read}
+        - {name: previewFinanceAction, effect: write}
+        - {name: getActionPlan, effect: read}
+        - {name: executeFinanceAction, effect: external}
+        - {name: getOperation, effect: read}
+        - {name: cancelOperation, effect: write}
+        - {name: listExceptions, effect: read}
+        - {name: resolveException, effect: write}
+        - {name: getPayment, effect: read}
+        - {name: getPosting, effect: read}
+        - {name: getRedLetterCase, effect: read}
+        - {name: getArchive, effect: read}
+    - name: catalog
+      transport: http
+      openapi: apis/catalog.yaml
+      auth: {type: bearer, secret: finance-service-token}
+      timeoutSeconds: 30
+      tools:
+        - {name: listExpenseCategories, effect: read}
+        - {name: listCostCenters, effect: read}
+        - {name: listBusinessDocuments, effect: read}
+        - {name: listPayeeAccounts, effect: read}
+        - {name: getInvoiceAllocation, effect: read}
+  evals:
+    - name: explain-missing-original
+      entry: finance-assistant
+      input: 我只有一张发票截图，现在能直接证明查验通过并归档吗？
+      expect:
+        contains: [原件]
+        notContains: [已查验通过, 已归档成功]
+        maxTokens: 4000
+    - name: distinguish-accepted-payment
+      entry: finance-assistant
+      input: 付款接口刚返回已受理，还没有渠道回执。请说明当前能确认什么。
+      expect:
+        contains: [受理, 回执]
+        notContains: [已经到账, 已付款成功]
+        maxTokens: 4000
