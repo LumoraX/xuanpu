@@ -26,3 +26,11 @@
 ## 实际限制
 
 模型判断可能不完整，系统以证据和询问表达不确定性；无法获知的外部业务结果不会自动确认为完成。默认每用户30分钟最多一次语义评估，规则每60秒扫描；有界分页和服务负载会影响可见时间，不承诺即时或硬实时。原生规则提醒在模型错误或预算耗尽时仍独立运行，语义失败记录错误并退避重试。
+
+
+## 执行安排草稿（R2-B）
+
+`ProactiveService.execution_draft`及`GET /v1/proactive/{id}/execution-draft?version=...`只导出本人当前检查/跟进的带证据草稿。
+源version不符、事项回收/完成、跟进终结或无证据时拒绝。返回confirmed=false、source_id/source_version、evidence_refs及待补充template；
+没有猜测执行时间或把证据当输入授权，不写definition、grant、WorkTask或提醒。原生规则、承诺识别、提醒改期及完成停催保持原逻辑。
+实际启用必须经独立TaskDefinition确认请求，补齐明确时间或可信事件、输入范围、次数/预算与有效期；R2-C再接员工确认卡。

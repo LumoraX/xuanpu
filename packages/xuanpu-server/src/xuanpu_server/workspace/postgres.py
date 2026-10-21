@@ -49,9 +49,33 @@ class PostgresWorkspaceStore:
                 "work_task",
                 "work_task_input",
                 "work_task_event",
+                "task_definition", "task_definition_version", "task_definition_input", "task_occurrence", "task_occurrence_input", "task_domain_event", "task_event_delivery",
                 "task_grant", "task_dispatch", "task_attempt", "task_budget_reservation", "task_effect", "usage", "user_usage", "api_key",
             )
         }
+
+    async def trigger_backlog(self) -> dict[str, int | float | None]:
+        """数据库聚合积压，只暴露数量和最老时间供内部运维观测。"""
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(f"SELECT COUNT(*) AS unsettled,MIN(e.occurred_at) AS oldest_at "
+                f"FROM {self._t['task_event_delivery']} d JOIN {self._t['task_domain_event']} e "
+                "USING(tenant_id,user_id,event_id) WHERE d.status!='settled'")
+        assert row is not None
+        return {'unsettled': row['unsettled'], 'oldest_at': row['oldest_at']}
+
+    async def trigger_candidates(self,kind: str, *, after: tuple[str,str,str] | None=None,limit: int=100,now: float) -> list[tuple[str,str,str]]:
+        """时间和事件查询均受服务端批次上限。"""
+        from xuanpu_server.task_triggers.postgres import candidates
+
+        if kind not in {'time','event'} or not 1<=limit<=100:
+            raise ValueError('触发候选参数无效')
+        return await candidates(self._pool,self._t,kind,after=after,limit=limit,now=now)
+
+    async def trigger_occurrences(self,tenant: str,user: str,identifier: str, *, after: str | None=None,limit: int=100) -> list[dict[str,Any]]:
+        """本人历史分页，调用者先经领域身份检查。"""
+        from xuanpu_server.task_triggers.postgres import occurrences
+
+        return await occurrences(self._pool,self._t,tenant,user,identifier,after,limit)
 
     async def _lock(self, conn: Any, tenant: str, user: str, *, allow_inactive: bool = False, exclusive: bool = False) -> None:
         """统一先租户后员工，与身份停用和提醒事务同序。"""
@@ -97,6 +121,9 @@ class PostgresWorkspaceStore:
             if binding is not None and binding.store.database_clock and not allow_inactive:
                 at = float(await conn.fetchval('SELECT EXTRACT(EPOCH FROM clock_timestamp())'))
                 assert_lease(state, binding.lease, at)
+            from xuanpu_server.task_triggers.outbox import derive
+
+            derive(original,state)
             await self._save(conn, tenant, user, original, state)
         # 只有真实数据库提交成功才消费事务内队列；审计或提交失败时保留原内容。
         state.pending_notifications = []
@@ -142,6 +169,8 @@ class PostgresWorkspaceStore:
                 keys.append(request_id.removeprefix("proposal:") + ":create")
             elif request_id.endswith(":create"):
                 keys.append("proposal:" + request_id.removesuffix(":create"))
+            if request_id.startswith('work-task:trigger-request:'):
+                keys.append('trigger:'+request_id.removeprefix('work-task:trigger-request:'))
             requests = await conn.fetch(
                 f"SELECT request_id,fingerprint,result FROM {self._t['workspace_request']} WHERE tenant_id=$1 AND user_id=$2 AND request_id=ANY($3::text[])",
                 tenant,
@@ -153,6 +182,9 @@ class PostgresWorkspaceStore:
                     "fingerprint": old["fingerprint"],
                     "result": json.loads(old["result"]),
                 }
+        from xuanpu_server.task_triggers.postgres import load as load_triggers
+
+        await load_triggers(conn,self._t,tenant,user,state,request_id)
         await load_tasks(conn, self._t, tenant, user, state, request_id)
         await load_execution(conn, self._t, tenant, user, state, request_id)
         return state
@@ -212,6 +244,9 @@ class PostgresWorkspaceStore:
         await save_proactive(conn, self._t, tenant, user, old, state)
         await save_tasks(conn, self._t, tenant, user, old, state)
         await save_execution(conn, self._t, tenant, user, old, state)
+        from xuanpu_server.task_triggers.postgres import save as save_triggers
+
+        await save_triggers(conn,self._t,tenant,user,old,state)
         for audit in state.audits:
             await conn.execute(
                 f"INSERT INTO {self._t['audit']} (tenant_id,user_id,source,kind,at,actor,data) VALUES ($1,$2,'control',$3,$4,$5,$6::jsonb)",

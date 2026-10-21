@@ -1,0 +1,186 @@
+{
+  "date": "2026-10-21T15:47:00.911356+00:00",
+  "base_commit": "69a4c21e6d937cdc3d20411ec3eb70f09f742931",
+  "versions": {
+    "xuanpu-server": "2026.10.21.5",
+    "taifeng": "2026.10.1.11",
+    "taifeng-sandbox": "2026.10.21.1",
+    "taifeng-stores": "2026.9.29.15"
+  },
+  "checks": {
+    "full": {
+      "summary": "================= 2012 passed, 7 skipped in 299.91s (0:04:59) ==================",
+      "log_sha256": "58c0c979eb8759748de84deaa7564b7fdff2f524860f092fad4f5393b4d82f34"
+    },
+    "triggers": {
+      "summary": "80 passed, 2 skipped in 75.51s (0:01:15)",
+      "log_sha256": "ca82488721a362e70b9d996d1e7d06f6689eb21f8a6871a180179067897238d0"
+    },
+    "docs": {
+      "summary": "129 passed in 1.99s",
+      "log_sha256": "4cb7369266689956539836fee45ee7f172bbe481d561148e1d167ffcbdb19025"
+    },
+    "lint": {
+      "summary": "All checks passed!",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    "mypy": {
+      "summary": "Success: no issues found in 198 source files",
+      "log_sha256": "744692d85e5a8e097ce9949aa1b21b9740f3ad5fc6077e0acc8256abc61d09d8"
+    },
+    "trigger_and_claim_complexity": {
+      "summary": "All checks passed!",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    "management_race": {
+      "summary": "8 passed in 4.30s",
+      "log_sha256": "df29859084bec52d0a728b2ebfbe160f361cc380584b0c1d7fee6bc29e21c0d8"
+    },
+    "real_model": {
+      "summary": "2 passed in 52.89s",
+      "log_sha256": "7e43ea37525577faadcf189c6f458a8511e702e41730b9af8e10d0e646b45083"
+    },
+    "wheel": {
+      "summary": "Successfully built .codex/evidence/r2b-20261021/dist/xuanpu_server-2026.10.21.5-py3-none-any.whl",
+      "log_sha256": "74802af9d4278012815ab191ca3c58bd1fcd79b4d580aab8ed366f15711e2d97"
+    }
+  },
+  "wheel": {
+    "name": "xuanpu_server-2026.10.21.5-py3-none-any.whl",
+    "sha256": "23b6cd5e5972de602030098f4adc8a77a8729474f21485a7c513b9967ff486db",
+    "trigger_module_count": 15,
+    "matched_source_files": 195,
+    "migration_0013_matches_source": true
+  },
+  "models": {
+    "time": {
+      "usage": {
+        "input_tokens": 13178,
+        "output_tokens": 605,
+        "total_tokens": 13783
+      },
+      "reasoning_tokens": 0,
+      "model": "gpt-5.6-luna",
+      "model_calls": 6,
+      "calls_after_replay": 6,
+      "attempt_no": 1,
+      "artifact_count": 4,
+      "fixed_revision": 1,
+      "independent_xlsx_cells": {
+        "D2": "12.50",
+        "D3": "3.00",
+        "D4": "15.50",
+        "E4": 2
+      },
+      "artifact_sha256": {
+        "汇总报告.md": "f9a657307bffd7d7f9de4639fb98caf2a808df4ff8020f3c981a19ada10cfae2",
+        "来源行证据.json": "7c14afcdbe0164deb40d4d2e3ea7ba7b03f9fda5f842d31adc55facc6f21c58d",
+        "汇总.csv": "54c2639a3ec799dcfc81d5df71735a5a101ec06f1c27738bd97466025f7e4a5b",
+        "汇总.xlsx": "60e07b42dac5df605fd269562bfb012d40b9c3eaf870b0bab4f1231f9536b45e"
+      },
+      "assessment_sha256": "289fd8a4afdf1a6c790b3b6e21720e2924e5e2018ddef780d85c5359533c68e0",
+      "raw_protocol_sha256": "4a46f855ad6bc99b6352006e99042e7327370e29c688c2f686f08bdcdbf2f1d7"
+    },
+    "event": {
+      "usage": {
+        "input_tokens": 17182,
+        "output_tokens": 857,
+        "total_tokens": 18039
+      },
+      "reasoning_tokens": 0,
+      "model": "gpt-5.6-luna",
+      "model_calls": 7,
+      "calls_after_replay": 7,
+      "attempt_no": 1,
+      "artifact_count": 4,
+      "fixed_revision": 2,
+      "independent_xlsx_cells": {
+        "D2": "12.50",
+        "D3": "3.00",
+        "D4": "15.50",
+        "E4": 2
+      },
+      "artifact_sha256": {
+        "汇总报告.md": "f9a657307bffd7d7f9de4639fb98caf2a808df4ff8020f3c981a19ada10cfae2",
+        "来源行证据.json": "7c14afcdbe0164deb40d4d2e3ea7ba7b03f9fda5f842d31adc55facc6f21c58d",
+        "汇总.csv": "54c2639a3ec799dcfc81d5df71735a5a101ec06f1c27738bd97466025f7e4a5b",
+        "汇总.xlsx": "7ced6e4b50f7f515f4e7b0df4ed02d908880a4ab580aedf05ee4d36591d0a320"
+      },
+      "assessment_sha256": "71aadeb99bc727f2b244451c646403a0b2da8fdd38da67144d26c4e72b0e71c4",
+      "raw_protocol_sha256": "6fd509c0bf447b9af0b4a4d25d2607e5368d65629ff4975cc087212db0fb296a"
+    }
+  },
+  "source_sha256": {
+    "examples/xuanpu.yaml": "74b368cc82358363fe33437a22a4d42c130a1171c7b0c4000963a00ea34fdb1f",
+    "packages/xuanpu-server/pyproject.toml": "2b243acfac2c01e717c2f7e47afbd87e3b5db1dce04093f2115ea0047cf2be86",
+    "packages/xuanpu-server/src/xuanpu_server/api/app.py": "a9089d212d22799a7ce40c3787bdfd39852e0506d1b352bfc9d47d59933380e0",
+    "packages/xuanpu-server/src/xuanpu_server/api/proactive.py": "bf77beaf1cfccace8829ba90bfec4e7f0ec2238c295930466ab955ad2fefcb0c",
+    "packages/xuanpu-server/src/xuanpu_server/api/task_definitions.py": "903e1b82a5179ab6c54d2f242e414e67516055bc7ef5f3e8754d4175a3abcef7",
+    "packages/xuanpu-server/src/xuanpu_server/bootstrap.py": "e69f323b51d22aa0cf5b4500253e70901762078b2f74543c3ef2f5d37d2ef1e5",
+    "packages/xuanpu-server/src/xuanpu_server/config.py": "559924a10d84de69d7e226e53e36f19f8f6fac4077cfed0a543b199fcfefcdbc",
+    "packages/xuanpu-server/src/xuanpu_server/controlplane/migrations/0013_task_triggers.sql": "f529ac29d9485a179e172b54e687097d70b6f3e73b61f6be667b686c66910b49",
+    "packages/xuanpu-server/src/xuanpu_server/platform.py": "582127ec7e8d7721673d16d70c56334a05180b466328105207434e2e6a45af9c",
+    "packages/xuanpu-server/src/xuanpu_server/proactive/service.py": "3516ef33ee10471486ac41663631cfff4c4cab65221a75e9c5bf398791416629",
+    "packages/xuanpu-server/src/xuanpu_server/reminders/models.py": "34daafaffa21c85347fb9eb4190d83707fe9ce3f9f1b5832c80d5b4d562da433",
+    "packages/xuanpu-server/src/xuanpu_server/reminders/postgres.py": "6020f69297f0960bb231d24debe47ff7529cb290649706a7b74c870aac7a68f4",
+    "packages/xuanpu-server/src/xuanpu_server/reminders/postgres_delivery.py": "6399e3f0452711a4d0b52ce225a4a304b5767eb7e145c8bcfc85093c4efea068",
+    "packages/xuanpu-server/src/xuanpu_server/reminders/postgres_notifications.py": "27c1af824a225c6dcec69a8d266186c88a6cb42f00071c9a590226aa603330a3",
+    "packages/xuanpu-server/src/xuanpu_server/task_triggers/__init__.py": "93cf3388c66431b3fddd60513060ed04572cb8546111d3ec36fbd1d4f37f743c",
+    "packages/xuanpu-server/src/xuanpu_server/task_triggers/calendar.py": "5a275ed5b2d61ed8b55dc0735623933e07318891e55fe156603fcab24ddbfd8c",
+    "packages/xuanpu-server/src/xuanpu_server/task_triggers/eligibility.py": "e9d22e6a8d8ddadc2bf958551f5a64e913d5abb08b808b0a3fdc04af36ac00a5",
+    "packages/xuanpu-server/src/xuanpu_server/task_triggers/event_service.py": "a543c6452f23c3c668e61349f562130734fd286a387d790976eccaf331c60c1f",
+    "packages/xuanpu-server/src/xuanpu_server/task_triggers/events.py": "faa546a633c346dce512a0e959681baeb259a8c2e84b4d4af06811ae549d6e40",
+    "packages/xuanpu-server/src/xuanpu_server/task_triggers/materialization.py": "fd24937bd9e5337d2e3b46c51e5c4d201c93bf56ab258d31e4eaecae02b1401f",
+    "packages/xuanpu-server/src/xuanpu_server/task_triggers/memory.py": "6481cfe02a6212505b9d028252d0589b86c0765888b0654004296f65d225287c",
+    "packages/xuanpu-server/src/xuanpu_server/task_triggers/models.py": "7067ab75eee35f5dfe268d1d3fa572964521cad45c02e6355bdb5da2e666fee5",
+    "packages/xuanpu-server/src/xuanpu_server/task_triggers/outbox.py": "b0f1ea99161613f8adcfec89cc072c275f6b88ab20b1a6a675350eb2770adcd3",
+    "packages/xuanpu-server/src/xuanpu_server/task_triggers/postgres.py": "22fbe29dfe0a6fa23cddbf4f25dfd73096ff8802b70312ccc18f629fa1a669b6",
+    "packages/xuanpu-server/src/xuanpu_server/task_triggers/preparation.py": "2cafd8ce7dcb5c65ed29a57bb2aead018a33c34d30142d0806d6ce269a14a6d9",
+    "packages/xuanpu-server/src/xuanpu_server/task_triggers/service.py": "2020c896550f9eff024a65e721d4403772645e16588789aea0b99897b9a4b27d",
+    "packages/xuanpu-server/src/xuanpu_server/task_triggers/store.py": "73b584b3403d3435bcdfde8a035b37fd992a14da994dbdb336185020db944300",
+    "packages/xuanpu-server/src/xuanpu_server/task_triggers/time_service.py": "79a20a6535c31733769057f276ff7dd06b2bb6e8da17b69e3e411533778782e3",
+    "packages/xuanpu-server/src/xuanpu_server/task_triggers/worker.py": "13c0b27ffe372e16a9956e87f5d328b47deb9232446c325d0bfdeba160bb03fd",
+    "packages/xuanpu-server/src/xuanpu_server/work_tasks/execution_models.py": "900408b584cefdb1258e2735d907d3b256f88bbafdffb0513ec82d1c4869eb06",
+    "packages/xuanpu-server/src/xuanpu_server/work_tasks/execution_store.py": "f463160da514692722c274403146445ce30260484a36c7560bc1fe0d51e4184d",
+    "packages/xuanpu-server/src/xuanpu_server/work_tasks/models.py": "8aaba68177fdaa757225e1584f16a0285efb5a0f1fc54b050133caab77769b5a",
+    "packages/xuanpu-server/src/xuanpu_server/work_tasks/proposals.py": "dbc5c0121ab669183f9062a9b668531ed96ceac6ae8466e79d6fba8eb1c95c6a",
+    "packages/xuanpu-server/src/xuanpu_server/work_tasks/rules.py": "ebd3383433b48835f532a7a6b2f9676da07c415c139a83eb1e0d07c6cf818156",
+    "packages/xuanpu-server/src/xuanpu_server/work_tasks/worker.py": "d56524128c502c1d3e73581a79d0c223e9f18f2f33aa0ab0b3ef2a2461881cff",
+    "packages/xuanpu-server/src/xuanpu_server/workspace/memory.py": "634fdd2fc563beba7413850ffeeda1541831797151700eb4d70362d20ccec43d",
+    "packages/xuanpu-server/src/xuanpu_server/workspace/models.py": "96c4aaa5196e345643c68b59d8821dedfbea4f7586e266281f2b3d48b80c04b2",
+    "packages/xuanpu-server/src/xuanpu_server/workspace/notifications.py": "aed40bd2b0580c9d31358f2e1aaa348848b9497d43641511d9eafe946a6a33d3",
+    "packages/xuanpu-server/src/xuanpu_server/workspace/postgres.py": "fc25aabde57e990509d67de8866dd55c90fb3521b30699168b64ff4619047e5a",
+    "packages/xuanpu-server/src/xuanpu_server/workspace/postgres_proactive.py": "a8839767ec999755b10fe500f458fef1a867c3f69b03b9709901fbe83d7f85f9",
+    "packages/xuanpu-server/src/xuanpu_server/workspace/postgres_work_tasks.py": "6e9870889f4d95c44bee79ca824d0a3bd37bae987ed8229a75bd2984e3bbeb3c",
+    "packages/xuanpu-server/src/xuanpu_server/workspace/store.py": "5f906283716fb56f80e0ad92f59f5b910fc827ce478679b9fecceafaa7cc0da8",
+    "packages/xuanpu-server/tests/task_triggers/conftest.py": "001a9c9e9ec9292c9643cdb4414f143eb5c04264ac2eb3324361ddd0054c81aa",
+    "packages/xuanpu-server/tests/task_triggers/test_api.py": "aff839aab17d1844e52c3b29a479da5ebc2ac987830bea4be5f425a385341aaf",
+    "packages/xuanpu-server/tests/task_triggers/test_calendar.py": "502aa1bf7aa6d5aee31e8871c811446e69b796627757fd1846bd4e6024137abb",
+    "packages/xuanpu-server/tests/task_triggers/test_capability_trigger.py": "b4a09ad30cf86554b523a978e50cca198216524a70db315f8fb0e62a4ebb64bd",
+    "packages/xuanpu-server/tests/task_triggers/test_cycles.py": "bb367c012138f8e715b8db65a9f735e973fc99e7ef8ddf0eee44971538a0da00",
+    "packages/xuanpu-server/tests/task_triggers/test_definitions.py": "b0856bcddd21a9f0c793c2a3555bcbecb4c4769f72928daa030b985d5248a531",
+    "packages/xuanpu-server/tests/task_triggers/test_event_occurrences.py": "2a797b368c1f23f0bd504be67e15e9584dd8eb70d224e2cab0c55933c3fab8be",
+    "packages/xuanpu-server/tests/task_triggers/test_management_race.py": "d2f4e451fcd4e1c2ef5b409aa8f5218a2fc2c0666263cb49e0ff1337e9b0b436",
+    "packages/xuanpu-server/tests/task_triggers/test_outbox_order.py": "e244dca7a6782e5d38da8b3adab46e2659a3e69b8a4f999d8e2a040d2c432fda",
+    "packages/xuanpu-server/tests/task_triggers/test_proactive_bridge.py": "2fea610d9fd09d03bbb2af9e7e142368f05d8b676ebfa4a96cd34c6cdd0df39d",
+    "packages/xuanpu-server/tests/task_triggers/test_real_model_acceptance.py": "41d2755adef06ae72c8be9d3f892d0aaa69735b85837d91e9cca24cc0869caeb",
+    "packages/xuanpu-server/tests/task_triggers/test_recovery_authorization.py": "622dfc4b008f4de6708790d9c3edbc182329b298ce2d3b2a531fb16504a53c96",
+    "packages/xuanpu-server/tests/task_triggers/test_review_regressions.py": "1144031952a9e61c51ff83ae3baa8baf93169d7abc6c78d82f1bd16ef22db770",
+    "packages/xuanpu-server/tests/task_triggers/test_time_occurrences.py": "cc2315fc6cdc2a92ac15bfbadd34f8edd029abc15d0625f4df7cc2ea78512f7e",
+    "packages/xuanpu-server/tests/task_triggers/test_worker_lifecycle.py": "11ccf6f7e3d8f5c715ed0a765db3242444ab39bbbc02e850f1af99278168b8b5",
+    "packages/xuanpu-server/tests/test_controlplane_migrations.py": "fe11910c85759db62b11db3d36e868bb505213c6701fb6adec2ca5daba6186a0",
+    "packages/xuanpu-server/tests/test_optional_identity_store.py": "0ba8d6342eb68aaff7bc01ed5da724eb42be44c4cba82a6b045c0cc1abf894a2",
+    "uv.lock": "62afae509ee08f23583b68ce0474673a54164ce932391a63380668b719098609"
+  },
+  "scope": {
+    "production_deployed": false,
+    "service_image_built": false,
+    "browser_acceptance": false,
+    "task_triggers_enabled_by_default": false,
+    "r2c_implemented": false
+  },
+  "review": {
+    "independent_read_only": "final no new confirmed defects",
+    "baseline_complexity_note": "proactive._followup C901=11 unchanged from base, verified by AST; new trigger and claim C901 pass"
+  }
+}

@@ -42,8 +42,11 @@ def initialize(state: WorkspaceState, task: WorkTaskRecord, who: Principal, *,
         if existing is None:
             raise NotFoundError('引用的执行授权不存在')
         grant = ExecutionGrant.model_validate_json(json.dumps(existing))
-        if (grant.actor != who.actor or grant.package_digest != task.package_digest
-                or not set(source.sha256 for source in task.inputs).issubset(grant.input_digests)):
+        inputs_valid = (set(source.item_id for source in task.inputs).issubset(grant.input_file_ids)
+            if grant.input_policy=='latest_at_occurrence' else
+            set(source.sha256 for source in task.inputs).issubset(grant.input_digests))
+        if (not grant.accepting_new_tasks or grant.actor != who.actor or grant.package_digest != task.package_digest
+                or not inputs_valid):
             raise ConflictError('任务超出原执行授权范围')
     dispatch = DispatchRecord(task_id=task.task_id, grant_id=grant.grant_id,
         due_at=task.accepted_at, checkpoint=Checkpoint(at=task.accepted_at))
@@ -67,6 +70,23 @@ def assert_lease(state: WorkspaceState, lease: AttemptLease, now: float) -> Disp
             or dispatch.attempt_no != lease.attempt_no or dispatch.expires_at <= now):
         raise ConflictError('stale_epoch：执行所有权已失效')
     return dispatch
+
+
+def definition_ready(state: WorkspaceState,task: WorkTaskRecord,dispatch: DispatchRecord) -> bool:
+    """暂停仅阻止新认领，已经取得的租约仍可按原策略完成收尾。"""
+    if task.definition_id is None:
+        return True
+    definition=state.task_definitions.get(task.definition_id)
+    if definition is not None and definition['enabled']:
+        return True
+    state.task_dispatch[task.task_id]=dispatch.model_copy(update={
+        'state':'blocked','block_reason':'definition_paused'}).model_dump(mode='json')
+    return False
+
+
+def live_attempt(task: WorkTaskRecord, dispatch: DispatchRecord, now: float) -> bool:
+    """仍有效或资源尚未清理的执行不能由重复扫描更改。"""
+    return dispatch.state == 'leased' and (dispatch.expires_at > now or task.resources_pending)
 
 
 class ExecutionStore:
@@ -135,6 +155,10 @@ class ExecutionStore:
             await self.authorize(grant, now)
             if task.status in TERMINAL or task.cancel_requested or dispatch.due_at > now:
                 return None
+            if live_attempt(task, dispatch, now):
+                return None
+            if not definition_ready(state,task,dispatch):
+                return None
             try:
                 validate_sources(state, task)
             except (ConflictError, InvalidRequestError, NotFoundError):
@@ -143,14 +167,12 @@ class ExecutionStore:
                 return None
             if dispatch.state in {'blocked', 'waiting_user', 'settled'}:
                 return None
-            if dispatch.state == 'leased' and (dispatch.expires_at > now or task.resources_pending):
-                return None
             effects = [entry for entry in state.task_effects.values() if entry['task_id'] == task_id]
             if task.unverified_write or (effects and not task.frozen_staging and not task.pending_decision):
                 state.task_dispatch[task_id] = dispatch.model_copy(update={
                     'state': 'blocked', 'block_reason': 'block_unknown' if task.unverified_write else 'block_resume'}).model_dump(mode='json')
                 return None
-            if not task.frozen_staging and grant.attempts_used >= min(grant.max_attempts, self.max_attempts):
+            if not task.frozen_staging and (grant.attempts_used >= grant.max_attempts or task.attempt_no >= min(self.max_attempts,grant.task_attempt_limit)):
                 state.task_dispatch[task_id] = dispatch.model_copy(update={
                     'state': 'blocked', 'block_reason': 'attempts_exhausted'}).model_dump(mode='json')
                 return None

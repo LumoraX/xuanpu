@@ -40,6 +40,9 @@ async def notification_current(
             if row["record"] is not None
         ]
         return native_notification_current(notification, status, sources)
+    if notification.source=='task_definition':
+        return bool(await conn.fetchval(f"SELECT NOT enabled FROM {tables['task_definition']} WHERE tenant_id=$1 AND user_id=$2 AND definition_id=$3",
+                                       tenant,user,notification.task_definition_id))
     if notification.source not in ("proactive_check", "proactive_followup"):
         return False
     table, key, identifier = (

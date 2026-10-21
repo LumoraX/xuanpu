@@ -43,6 +43,9 @@ from xuanpu_server.runtime.assembler import (
 from xuanpu_server.runtime.connector_process import install_kernel_mcp_log_guard
 from xuanpu_server.runtime.events import SubmissionIndex
 from xuanpu_server.runtime.sessions import SessionManager
+from xuanpu_server.task_triggers.models import TriggerConfig
+from xuanpu_server.task_triggers.service import TaskDefinitionService
+from xuanpu_server.task_triggers.worker import TriggerWorker
 from xuanpu_server.tenancy import (
     ApiKeyRecord,
     Principal,
@@ -120,6 +123,7 @@ class Platform:
         shutdown_drain_seconds: float = 0.0,
         feishu_transport: httpx.AsyncBaseTransport | None = None,
         durable_execution: DurableExecutionConfig | None = None,
+        task_triggers: TriggerConfig | None = None,
         proactive_interval: float = 1800.0,
         proactive_scan_seconds: float = 60.0,
         now: Callable[[], float] = time.time,
@@ -234,6 +238,8 @@ class Platform:
             close_resources=self.task_runner.close, recover=self.task_runner.recover, actions=self.task_actions, durable=durable,
             ordinary_turns=self.sessions.ordinary_turns)
         self.work_tasks.executor = self.task_registry
+        self.task_definitions=TaskDefinitionService(self.work_tasks,now=now,config=task_triggers or TriggerConfig())
+        self.trigger_worker=TriggerWorker(self.task_definitions)
         self.assistant = AssistantRouter(self, models, now=now)
         self.proactive = ProactiveService(workspace=self.workspace, control=store,
             identity=identity_store, sample=self.assistant.sample_proactive, now=now,
@@ -241,6 +247,7 @@ class Platform:
         self.proactive_worker = ProactiveWorker(self.proactive, scan_seconds=proactive_scan_seconds)
         # 员工停用后关掉他名下的会话：身份域不依赖运行时，监听者在这里接上会话管理
         self.identity.disabling.register("close_work_tasks", self.task_registry)
+        self.identity.disabling.register("close_task_triggers", self.task_definitions)
         self.identity.disabling.register(
             CLOSE_SESSIONS, CloseUserSessions(store=store, sessions=self.sessions)
         )
@@ -295,6 +302,7 @@ class Platform:
                 raise RuntimeError("启动准备期间已关闭或丢失持有权")
             await self.sessions.start()
             await self.task_registry.open()
+            self.trigger_worker.start()
             self.identity.start()
             self.reminders.start()
             self.proactive_worker.start()
@@ -311,7 +319,7 @@ class Platform:
             self._closed = True
             self.sessions.stop_accepting()
             errors: list[BaseException] = []
-            actions = (self.task_registry.close, self.proactive_worker.close, self.reminders.close,
+            actions = (self.trigger_worker.close, self.task_registry.close, self.proactive_worker.close, self.reminders.close,
                        self.notification_sender.close, self.assistant.close,
                        self.identity.maintenance.close, self.identity.disabling.close,
                        self._shutdown_sessions, self.runtimes.close, self.identity.close)

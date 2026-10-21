@@ -265,6 +265,11 @@ class WorkspaceState:
     task_attempts: dict[str, dict[str, Any]] = field(default_factory=dict)
     task_reservations: dict[str, dict[str, Any]] = field(default_factory=dict)
     task_effects: dict[str, dict[str, Any]] = field(default_factory=dict)
+    task_definitions: dict[str, dict[str, Any]] = field(default_factory=dict)
+    task_definition_versions: dict[str, dict[str, Any]] = field(default_factory=dict)
+    task_occurrences: dict[str, dict[str, Any]] = field(default_factory=dict)
+    task_domain_events: dict[str, dict[str, Any]] = field(default_factory=dict)
+    task_event_deliveries: dict[str, dict[str, Any]] = field(default_factory=dict)
     transaction_at: float | None = None
     execution_active: list[dict[str, Any]] = field(default_factory=list)
     tenant_reserved: int = 0

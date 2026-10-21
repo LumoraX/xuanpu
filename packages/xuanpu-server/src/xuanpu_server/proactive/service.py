@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
-from xuanpu_server.errors import NotFoundError, PermissionDeniedError
+from xuanpu_server.errors import ConflictError, NotFoundError, PermissionDeniedError
 from xuanpu_server.proactive.inputs import commit_cursors, context_current, prepare_context
 from xuanpu_server.proactive.models import absolute_time
 from xuanpu_server.proactive.rules import TERMINAL, alert_time, enabled, stable_id, todo_check
@@ -74,6 +74,28 @@ class ProactiveService:
             if record is None:
                 raise NotFoundError('业务跟进不存在')
             return self.view(record, state)
+
+    async def execution_draft(self, who: Principal, record_id: str, version: int) -> dict[str, Any]:
+        """带证据的只读草稿不创建授权；时间、输入和范围须另行本人确认。"""
+        tenant, user = await self.workspace.require_employee(who)
+        async with self.transaction(tenant, user) as state:
+            record = state.checks.get(record_id) or state.followups.get(record_id)
+            if record is None:
+                raise NotFoundError('业务跟进不存在')
+            if type(version) is not int or record['version'] != version or record['status'] in TERMINAL:
+                raise ConflictError('跟进已变化或结束，请重新读取')
+            item = state.items.get(record.get('item_id', ''))
+            if item and (item['trashed_at'] is not None or item['data'].get('status') == 'done'):
+                raise ConflictError('来源事项已经结束')
+            evidence = list(record.get('evidence_refs', []))
+            if item:
+                evidence.append(f"item:{item['id']}:{item['version']}")
+            if not evidence:
+                raise ConflictError('执行草稿缺少可核查依据')
+            title = item['data'].get('title', record['title']) if item else record['title']
+            return {'confirmed': False, 'source_id': record_id, 'source_version': version,
+                    'evidence_refs': list(dict.fromkeys(evidence)), 'title': title,
+                    'template': {'kind': 'office', 'text': title, 'input_files': []}}
 
     @staticmethod
     def view(record: dict[str, Any], state: WorkspaceState) -> dict[str, Any]:

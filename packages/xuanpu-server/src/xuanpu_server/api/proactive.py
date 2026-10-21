@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from xuanpu_server.api.auth import Caller  # noqa: TC001
 from xuanpu_server.proactive.models import ActionInput  # noqa: TC001
@@ -27,6 +27,11 @@ def proactive_router(platform: Platform) -> APIRouter:
     async def read(record_id: str, who: Caller) -> dict[str, Any]:
         """刷新后恢复本人的处理状态。"""
         return await platform.proactive.get(who, record_id)
+
+    @router.get('/{record_id}/execution-draft')
+    async def execution_draft(record_id: str, who: Caller, version: int = Query(ge=1)) -> dict[str, Any]:
+        """只导出本人当前证据草稿，不把提醒转换为执行授权。"""
+        return await platform.proactive.execution_draft(who, record_id, version)
 
     @router.post('/{record_id}/actions')
     async def act(record_id: str, body: ActionInput, who: Caller) -> dict[str, Any]:

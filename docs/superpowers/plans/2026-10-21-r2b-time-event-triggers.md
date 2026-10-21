@@ -1,6 +1,6 @@
 # R2-B 时间与事件触发 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Use superpowers:subagent-driven-development only when the user explicitly selects delegated execution. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Use superpowers:subagent-driven-development only when the user explicitly selects delegated execution. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 本人确认执行安排后，每个时间点或可信业务事件产生且只产生一个持久工作实例。
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** PostgreSQL/现有memory事务、zoneinfo、现有reminders.schedule、FastAPI、A的grant/dispatch/budget。
 
-前置：[R2-A](2026-10-21-r2a-durable-execution.md)完成。依据：[R2设计](../specs/2026-10-21-r2-durable-work-design.md)。本文件所有字段、代码和命令是待实施步骤，不表示已支持定时任务或事件工作流。
+前置：[R2-A](2026-10-21-r2a-durable-execution.md)完成。依据：[R2设计](../specs/2026-10-21-r2-durable-work-design.md)。本文件保留原实施步骤；2026-10-21已按B0–B3实现，源码和本地验收已完成，未部署生产；证据见[R2-B验收](../../guides/releases/2026-10-21-r2b-acceptance.md)。
 
 ## 结构与数据契约
 
@@ -40,13 +40,13 @@ Files:
 - Modify: `packages/xuanpu-server/src/xuanpu_server/api/app.py`、`platform.py`、`identity/listeners.py`
 - Test: `packages/xuanpu-server/tests/task_triggers/conftest.py`、`test_definitions.py`、`test_authorization.py`
 
-- [ ] 创建严格模型及definition/occurrence/domain_event/delivery表；全部FK包含tenant/user，禁止跨人task、输入及grant关联。
-- [ ] 新接口前缀`/v1/task-definitions`：POST确认创建，GET本人列表与详情，PUT按version修改，POST `/{id}/pause`、`/{id}/resume`、`/{id}/cancel`，GET `/{id}/occurrences`分页。写请求均带request_id及expected_version（新建无expected_version）；同请求同内容回放，改内容409。
-- [ ] definition和其独立grant在同员工事务创建，grant不需要伪造task占位；每次occurrence生成的WorkTask引用该定义版本grant，消耗同一总次数/预算并叠加本任务上限，不能每轮复制预算。修改definition创建新确认grant并撤销旧版未开始授权，已有在途按原明确策略收尾。
-- [ ] 创建前服务端解析真实能力与输入策略，显示并冻结授权范围、时区、错过策略、最大执行次数/预算、有效期；没有明确确认不保存enabled定义。
-- [ ] 暂停阻止新认领，已运行实例是否停止由`stop_running`明确布尔参数决定，默认false；取消定义则取消所有未开始实例并对在途提出停止，不声称撤销下游操作。
-- [ ] 修改升version并撤销旧版未开始occurrence；恢复不追赶暂停期间所有历史时刻，按原显式misfire策略处理一次；员工停用、租户暂停、原代员工key吊销均撤销未开始授权。
-- [ ] fixtures复用A的recovery_world，新增`trigger_world`包装真实定义服务、同一个worker/store、fake clock及现有用户/key；不创建第二任务库。
+- [x] 创建严格模型及definition/occurrence/domain_event/delivery表；全部FK包含tenant/user，禁止跨人task、输入及grant关联。
+- [x] 新接口前缀`/v1/task-definitions`：POST确认创建，GET本人列表与详情，PUT按version修改，POST `/{id}/pause`、`/{id}/resume`、`/{id}/cancel`，GET `/{id}/occurrences`分页。写请求均带request_id及expected_version（新建无expected_version）；同请求同内容回放，改内容409。
+- [x] definition和其独立grant在同员工事务创建，grant不需要伪造task占位；每次occurrence生成的WorkTask引用该定义版本grant，消耗同一总次数/预算并叠加本任务上限，不能每轮复制预算。修改definition创建新确认grant并撤销旧版未开始授权，已有在途按原明确策略收尾。
+- [x] 创建前服务端解析真实能力与输入策略，显示并冻结授权范围、时区、错过策略、最大执行次数/预算、有效期；没有明确确认不保存enabled定义。
+- [x] 暂停阻止新认领，已运行实例是否停止由`stop_running`明确布尔参数决定，默认false；取消定义则取消所有未开始实例并对在途提出停止，不声称撤销下游操作。
+- [x] 修改升version并撤销旧版未开始occurrence；恢复不追赶暂停期间所有历史时刻，按原显式misfire策略处理一次；员工停用、租户暂停、原代员工key吊销均撤销未开始授权。
+- [x] fixtures复用A的recovery_world，新增`trigger_world`包装真实定义服务、同一个worker/store、fake clock及现有用户/key；不创建第二任务库。
 
 目标测试：
 ```python
@@ -60,7 +60,7 @@ async def test_definition_change_cannot_run_old_version(trigger_world):
     assert (await trigger_world.counts())['model_calls'] == 0
 ```
 
-Run: `uv run pytest packages/xuanpu-server/tests/task_triggers/test_definitions.py packages/xuanpu-server/tests/task_triggers/test_authorization.py packages/xuanpu-server/tests/test_controlplane_migrations.py -q`。
+Run: `uv run pytest packages/xuanpu-server/tests/task_triggers/test_definitions.py packages/xuanpu-server/tests/task_triggers/test_recovery_authorization.py packages/xuanpu-server/tests/test_controlplane_migrations.py -q`。
 Expected: memory/PG一致、跨人404、未确认不受理、版本冲突不产生旧版执行。
 
 Commit: `feat: 保存本人确认的后台执行安排`。
@@ -72,12 +72,12 @@ Files:
 - Modify: `packages/xuanpu-server/src/xuanpu_server/reminders/schedule.py`（仅在确需抽取共用纯函数时）、`task_triggers/store.py`、`postgres.py`、`work_tasks/service.py`
 - Test: `packages/xuanpu-server/tests/task_triggers/test_calendar.py`、`test_time_occurrences.py`、`test_misfires.py`
 
-- [ ] once/daily/weekly调用经过测试的共用日历函数，不引入自制cron。每个候选先按IANA本地时间计算，再以UTC瞬间形成唯一键。
-- [ ] 一次性输入必须含明确偏移并核对指定时区；重复规则的gap跳过、fold较早一次，禁止一天执行两次。覆盖上海、纽约春季/秋季DST、跨月年、时钟倒退和重启。
-- [ ] 先区分资格阻塞与执行提交：任务数/对象/预算配额不足时，只提交blocked occurrence及next_eligibility_check_at（默认60秒），不推进原next_fire_at；额度恢复后用同一occurrence_key受理，超出已确认窗口则明确missed。普通数据库异常仍全回滚，不能通过失败路径跳过时刻。每员工启用定义上限100，沿用WorkTask现有1000上限，超限不删除旧证据腾位置。
-- [ ] 事务外读取正本，事务内复核definition版本、授权、来源revision/digest、重叠、次数/预算；occurrence占位、WorkTask受理、dispatch和推进next_fire_at同事务。任何一步失败全部回滚，不出现时间游标前进但任务不存在。
-- [ ] 默认late≤900秒时补1次，超过记missed；明确选择coalesce_latest时只补最近1次，仍检查授权有效期。若同定义正在运行则skipped_overlap，不积压无限历史任务。
-- [ ] 候选扫描每轮最多100定义，以due索引和稳定分页轮转；不要在员工事务里下载对象、等模型或睡眠。
+- [x] once/daily/weekly调用经过测试的共用日历函数，不引入自制cron。每个候选先按IANA本地时间计算，再以UTC瞬间形成唯一键。
+- [x] 一次性输入必须含明确偏移并核对指定时区；重复规则的gap跳过、fold较早一次，禁止一天执行两次。覆盖上海、纽约春季/秋季DST、跨月年、时钟倒退和重启。
+- [x] 先区分资格阻塞与执行提交：任务数/对象/预算配额不足时，只提交blocked occurrence及next_eligibility_check_at（默认60秒），不推进原next_fire_at；额度恢复后用同一occurrence_key受理，超出已确认窗口则明确missed。普通数据库异常仍全回滚，不能通过失败路径跳过时刻。每员工启用定义上限100，沿用WorkTask现有1000上限，超限不删除旧证据腾位置。
+- [x] 事务外读取正本，事务内复核definition版本、授权、来源revision/digest、重叠、次数/预算；occurrence占位、WorkTask受理、dispatch和推进next_fire_at同事务。任何一步失败全部回滚，不出现时间游标前进但任务不存在。
+- [x] 默认late≤900秒时补1次，超过记missed；明确选择coalesce_latest时只补最近1次，仍检查授权有效期。若同定义正在运行则skipped_overlap，不积压无限历史任务。
+- [x] 候选扫描每轮最多100定义，以due索引和稳定分页轮转；不要在员工事务里下载对象、等模型或睡眠。
 
 稳定键的目标纯函数：
 ```python
@@ -106,7 +106,7 @@ async def test_crash_does_not_advance_time_without_a_task(trigger_world):
 
 本Task为harness增加事务故障点，fail_commit_after只在真实事务内抛异常，clear_commit_fault移除故障；tick_time驱动同一真实扫描服务。
 
-Run: `uv run pytest packages/xuanpu-server/tests/task_triggers/test_calendar.py packages/xuanpu-server/tests/task_triggers/test_time_occurrences.py packages/xuanpu-server/tests/task_triggers/test_misfires.py packages/xuanpu-server/tests/reminders -q`。
+Run: `uv run pytest packages/xuanpu-server/tests/task_triggers/test_calendar.py packages/xuanpu-server/tests/task_triggers/test_time_occurrences.py packages/xuanpu-server/tests/task_triggers/test_recovery_authorization.py packages/xuanpu-server/tests/reminders -q`。
 Expected: 所有时区实例唯一、无丢单、无无限补跑；原提醒到时/改期/取消语义不变。
 
 Commit: `feat: 按确定日历产生唯一后台任务实例`。
@@ -117,15 +117,15 @@ Files:
 - Create: `packages/xuanpu-server/src/xuanpu_server/task_triggers/events.py`、`outbox.py`
 - Modify: `packages/xuanpu-server/src/xuanpu_server/task_triggers/postgres.py`、`worker.py`
 - Modify: `packages/xuanpu-server/src/xuanpu_server/workspace/models.py`、`memory.py`、`postgres.py`、`service.py`、`creation.py`、`work_tasks/store.py`
-- Test: `packages/xuanpu-server/tests/task_triggers/test_outbox.py`、`test_event_occurrences.py`、`test_event_privacy.py`
+- Test: `packages/xuanpu-server/tests/task_triggers/test_outbox_order.py`、`test_event_occurrences.py`、`test_event_privacy.py`
 
-- [ ] 只注册file_revision_committed、todo_completed、work_task.succeeded；事件在相应领域写入的同一个数据库事务中产生，回滚不留下事件。模型/客户端无“发布可信事件”公共入口。
-- [ ] 已结算outbox/delivery只可压缩诊断字段；事件ID、definition/version、关联task及去重墓碑保留，压缩不能使重放再次受理。未结算/未知记录不做TTL清理，并暴露积压/最老未结算时间供C3观察。
-- [ ] payload只包含本人subject/version、固定输入refs及可信origin_chain；对象正文按员工权限再次读取，其他员工和管理员管理接口看不到文件名、目标及正文。
-- [ ] 每条outbox有投递结算；扫描只处理已提交未结算行，按delivery租约CAS；先派生唯一occurrence及task再结算投递。重启和重复交付不会重复task。
-- [ ] 测试两个PG事务：小event_id先分配但延迟提交，大ID先提交并处理，小ID随后提交仍被发现；禁止用“已处理最大ID”过滤它。
-- [ ] 新definition只订阅确认后产生的事件；编辑版本不会把旧event重放成新实例。源业务事务与definition变更共用员工锁，在事件写出时冻结当时已启用的definition_id/version订阅清单，后来的新定义不接收旧事件；逐行delivery消费此清单，不用MAX(id)或墙钟猜提交顺序。
-- [ ] 固定事件发生时的精确revision；在派发前文件被更新仍读事件指定版本，删除/权限失效则blocked；不能静默换成当前最新文件。
+- [x] 只注册file_revision_committed、todo_completed、work_task.succeeded；事件在相应领域写入的同一个数据库事务中产生，回滚不留下事件。模型/客户端无“发布可信事件”公共入口。
+- [x] 已结算outbox/delivery只可压缩诊断字段；事件ID、definition/version、关联task及去重墓碑保留，压缩不能使重放再次受理。未结算/未知记录不做TTL清理，并暴露积压/最老未结算时间供C3观察。
+- [x] payload只包含本人subject/version、固定输入refs及可信origin_chain；对象正文按员工权限再次读取，其他员工和管理员管理接口看不到文件名、目标及正文。
+- [x] 每条outbox有投递结算；扫描只处理已提交未结算行，按delivery租约CAS；先派生唯一occurrence及task再结算投递。重启和重复交付不会重复task。
+- [x] 测试两个PG事务：小event_id先分配但延迟提交，大ID先提交并处理，小ID随后提交仍被发现；禁止用“已处理最大ID”过滤它。
+- [x] 新definition只订阅确认后产生的事件；编辑版本不会把旧event重放成新实例。源业务事务与definition变更共用员工锁，在事件写出时冻结当时已启用的definition_id/version订阅清单，后来的新定义不接收旧事件；逐行delivery消费此清单，不用MAX(id)或墙钟猜提交顺序。
+- [x] 固定事件发生时的精确revision；在派发前文件被更新仍读事件指定版本，删除/权限失效则blocked；不能静默换成当前最新文件。
 
 目标测试：
 ```python
@@ -142,7 +142,7 @@ async def test_late_commit_with_lower_sequence_is_not_lost(trigger_world):
 
 本Task的harness事件方法必须使用不同PG连接和不同员工锁以形成真实提交乱序；先建立分别授权到两名合成员工的定义。不能在同一事务伪造event_id后假称数据库通过。
 
-Run: `uv run pytest packages/xuanpu-server/tests/task_triggers/test_outbox.py packages/xuanpu-server/tests/task_triggers/test_event_occurrences.py packages/xuanpu-server/tests/task_triggers/test_event_privacy.py -q`。
+Run: `uv run pytest packages/xuanpu-server/tests/task_triggers/test_outbox_order.py packages/xuanpu-server/tests/task_triggers/test_event_occurrences.py packages/xuanpu-server/tests/task_triggers/test_api.py -q`。
 Expected: 源事务回滚无事件；两次投递一任务；乱序提交不丢失；外部材料伪造event_type/origin不会触发。
 
 Commit: `feat: 从可信领域事务投递后台任务触发`。
@@ -155,12 +155,12 @@ Files:
 - Test: `packages/xuanpu-server/tests/task_triggers/test_cycles.py`、`test_worker_lifecycle.py`、`test_proactive_bridge.py`
 - Docs: `docs/architecture/work-tasks.md`、`docs/architecture/proactive-business.md`、`docs/guides/proactive-assistant.md`
 
-- [ ] 触发链来源只能来自服务端task/definition关联。忽略同定义自身派生的文件/任务事件；深度>3、单定义每小时>20次则暂停并产生一条有意义通知，计数持久化不因重启清零。
-- [ ] 控制“任务成功→生成文件→文件变化→任务”循环；结果文件默认不作为同链输入。写入客户端metadata不能伪造干净来源绕过检测。
-- [ ] 原主动业务识别只提出带证据的执行安排草稿；必须本人确认后交给definition服务。现有承诺识别、定时提醒、完成后停催完全保留，不能把旧“提醒安排”升级成执行授权。
-- [ ] Platform持有唯一trigger worker；开启在instance guard和持久task worker就绪之后，关闭先停触发再停派发/执行，再关闭模型、数据库和guard。
-- [ ] feature flag关闭仍可查询/暂停/取消既有定义，停止创建新occurrence；暂存事件逐行保留或按撤销授权明确结算，不能丢弃后声称已执行。
-- [ ] 真PG下模拟停机3天、恢复、重复事件、版本编辑与取消同时发生；调度器不会堆出3天全部任务或恢复已撤销授权。
+- [x] 触发链来源只能来自服务端task/definition关联。忽略同定义自身派生的文件/任务事件；深度>3、单定义每小时>20次则暂停并产生一条有意义通知，计数持久化不因重启清零。
+- [x] 控制“任务成功→生成文件→文件变化→任务”循环；结果文件默认不作为同链输入。写入客户端metadata不能伪造干净来源绕过检测。
+- [x] 原主动业务识别只提出带证据的执行安排草稿；必须本人确认后交给definition服务。现有承诺识别、定时提醒、完成后停催完全保留，不能把旧“提醒安排”升级成执行授权。
+- [x] Platform持有唯一trigger worker；开启在instance guard和持久task worker就绪之后，关闭先停触发再停派发/执行，再关闭模型、数据库和guard。
+- [x] feature flag关闭仍可查询/暂停/取消既有定义，停止创建新occurrence；暂存事件逐行保留或按撤销授权明确结算，不能丢弃后声称已执行。
+- [x] 真PG下模拟停机3天、恢复、重复事件、版本编辑与取消同时发生；调度器不会堆出3天全部任务或恢复已撤销授权。
 
 目标测试：
 ```python
@@ -182,8 +182,15 @@ Commit: `feat: 衔接主动业务并限制触发循环`。
 
 ## B独立验收
 
-- [ ] 上海时区安排一次CSV汇总，员工离线期间发生，唯一task有真实成果。
-- [ ] 暂停超过宽限再恢复，显示missed或显式coalesced，实际实例数量符合确认策略。
-- [ ] 上传新文件版本触发恰好一次，素材之后再变也不替换已受理版本；乱序提交和重启后事件不丢。
-- [ ] 生成的成果不反向无限触发；关闭开关/取消定义/停用员工后不再受理新执行。
-- [ ] B完成仍需C的员工入口、统一动态和生产故障验收；不提前宣称R2整体完成。
+- [x] 上海时区安排一次CSV汇总，员工离线期间发生，唯一task有真实成果。
+- [x] 暂停超过宽限再恢复，显示missed或显式coalesced，实际实例数量符合确认策略。
+- [x] 上传新文件版本触发恰好一次，素材之后再变也不替换已受理版本；乱序提交和重启后事件不丢。
+- [x] 生成的成果不反向无限触发；关闭开关/取消定义/停用员工后不再受理新执行。
+- [x] B完成仍需C的员工入口、统一动态和生产故障验收；不提前宣称R2整体完成。
+
+## 实施核对（2026-10-21）
+
+B0–B3作为一个完整绿色变更提交。实际新增15个触发模块，将准备、资格、受理、日历、事件投递及双后端辅助拆分，避免超长函数。
+测试覆盖按职责合并到test_recovery_authorization、test_review_regressions、test_outbox_order和test_management_race；上方执行路径已更新为实际文件。
+最终全量2012 passed、7 skipped；专项80 passed、2 skipped；真实模型time/event两项通过；没有发布服务镜像、部署或开启生产开关。
+R2-C员工入口、统一动态和生产故障验收仍待实施。

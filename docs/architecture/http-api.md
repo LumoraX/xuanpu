@@ -889,3 +889,28 @@ xuanpu_connector_calls_total{decision="allowed",transport="http"} 1.0
 `POST /v1/proactive/{id}/actions` 接受 request_id、version、可选 item_version、action（complete/postpone/ignore_stage/set_reminder/progress）、due_at（UTC秒）、timezone、channels。版本冲突409，未知或他人记录404，普通登录沿用CSRF。
 
 路由响应可带 proactive_draft 或 open_proactive。模型只提出建议，不直接写入。统一通知附 source、body、proactive_check_id/proactive_followup_id、alert_after；原生提醒的关联通过 reminder_id 查找。
+
+
+## 本人执行安排（R2-B）
+
+所有写入复用员工认证及CSRF，机器key必须明确代员工；本人分页最大100，跨人/跨租户标识404，不返回grant、owner或内部准备记录。
+
+| 接口 | 输入与结果 |
+| --- | --- |
+| POST /v1/task-definitions | 202，request_id、confirmed=true、title、template、trigger、timezone、valid_until及有限次数/预算；定义和独立grant原子创建 |
+| GET /v1/task-definitions | items本人列表，after_id、limit |
+| GET /v1/task-definitions/{id} | 已确认范围、version、state_version、下次时刻、启用状态及暂停原因 |
+| PUT /v1/task-definitions/{id} | 创建字段加expected_version（当前state_version）、stop_running=false；重新确认新配置版本及grant |
+| POST /v1/task-definitions/{id}/pause | request_id、expected_version、stop_running=false，默认保留在途 |
+| POST /v1/task-definitions/{id}/resume | request_id、expected_version，复核开关、原有效授权及启用数量上限 |
+| POST /v1/task-definitions/{id}/cancel | request_id、expected_version，停止全部版本未开始实例，并对在途提出停止 |
+| GET /v1/task-definitions/{id}/occurrences | items本人发生历史，after_id、limit；包含关联task_id及精确输入refs |
+| GET /v1/proactive/{id}/execution-draft | version必填，只读带证据草稿，confirmed=false，无执行授权 |
+
+`template={kind:office|capability,text,input_files:[{item_id,revision}],capability?:{package,entry},matter_id?}`。
+`trigger={kind:time,repeat:once|daily|weekly,at:带偏移ISO时间}`，或`{kind:event,event_type,subject_id?}`。
+event_type仅workspace.file_revision_committed、workspace.todo_completed、work_task.succeeded；没有公开发布事件接口。
+input_policy默认fixed_revision，可确认latest_at_occurrence；misfire_policy默认skip，可确认coalesce_latest；overlap_policy只支持skip。
+max_executions默认3（1..100），max_attempts为每实例上限默认3（1..3），max_tokens为版本共享总预算默认300000（1..15000000）。
+valid_until必须明确且在未来，所有时间偏移须匹配timezone（默认Asia/Shanghai）。严格拒绝未知字段；没有confirmed=true不会受理。
+expected_version对state_version做CAS；配置version仅修改时增加。幂等键绑定操作、标识及完整请求，复用不同内容409；开关关闭仍回放成功回执。

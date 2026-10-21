@@ -28,6 +28,7 @@ from xuanpu_server.api.instance import InstanceMiddleware
 from xuanpu_server.api.proactive import proactive_router
 from xuanpu_server.api.reminders import reminders_router
 from xuanpu_server.api.sse import frame, stream_turn
+from xuanpu_server.api.task_definitions import task_definitions_router
 from xuanpu_server.api.work_tasks import work_tasks_router
 from xuanpu_server.api.workspace import workspace_router
 from xuanpu_server.assistant_workspace import prepare_business_message
@@ -158,6 +159,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.include_router(reminders_router(platform))
     app.include_router(workspace_router(platform))
     app.include_router(work_tasks_router(platform))
+    app.include_router(task_definitions_router(platform))
     app.include_router(proactive_router(platform))
 
     @app.get("/healthz")

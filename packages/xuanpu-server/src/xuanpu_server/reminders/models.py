@@ -101,6 +101,7 @@ class NotificationRecord:
     proactive_check_id: str | None = None
     proactive_followup_id: str | None = None
     alert_after: float = 0.0
+    task_definition_id: str | None = None
 
 
 @dataclass(frozen=True)

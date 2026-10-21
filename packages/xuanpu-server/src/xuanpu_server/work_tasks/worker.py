@@ -233,7 +233,7 @@ class DurableWorker:
                 unknown_effect=task.unverified_write or any(e['state'] == 'dispatch_intent' for e in effects),
                 any_effect=bool(effects), frozen=dispatch.checkpoint.phase == 'artifacts_staged',
                 waiting=bool(task.pending) and not task.outputs_verified,
-                pending_http_safe=safe_pending, attempts_exhausted=grant.attempts_used >= min(grant.max_attempts, self.config.max_attempts)))
+                pending_http_safe=safe_pending, attempts_exhausted=grant.attempts_used >= grant.max_attempts or task.attempt_no >= min(self.config.max_attempts,grant.task_attempt_limit)))
             attempt = state.task_attempts.get(f'{task.task_id}:{dispatch.attempt_no}')
             from .recovery import dispatch_plan
 

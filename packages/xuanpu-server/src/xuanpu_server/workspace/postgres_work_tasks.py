@@ -19,6 +19,11 @@ async def load_tasks(
     request_id: str | None,
 ) -> None:
     """普通工作区操作不加载任务正文；任务事务才读取有界任务索引。"""
+    from xuanpu_server.work_tasks.execution_context import current_execution
+
+    binding=current_execution.get()
+    if binding is not None:
+        request_id='work-task:one:'+binding.lease.task_id
     if request_id is None or not request_id.startswith("work-task:"):
         return
     if request_id.startswith(('work-task:one:', 'work-task:exec:', 'work-task:budget:')):

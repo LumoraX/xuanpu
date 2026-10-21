@@ -90,6 +90,9 @@ class InMemoryWorkspaceStore:
                 if record.get("reminder_id") == notification.reminder_id
             ]
             return native_notification_current(notification, reminder_status, sources)
+        if notification.source=='task_definition':
+            record=state.task_definitions.get(notification.task_definition_id or '')
+            return record is not None and not record['enabled']
         if notification.source not in ("proactive_check", "proactive_followup"):
             return False
         records = state.checks if notification.source == "proactive_check" else state.followups
@@ -133,6 +136,24 @@ class InMemoryWorkspaceStore:
     ) -> None:
         """绑定先准备后同步提交的统一通知存储。"""
         self._notification_sink = sink
+
+    async def trigger_backlog(self) -> dict[str, int | float | None]:
+        """只统计已提交投递；不做TTL清理或改变去重墓碑。"""
+        times = [state.task_domain_events[d['event_id']]['occurred_at'] for state in self._states.values()
+                 for d in state.task_event_deliveries.values() if d['status'] != 'settled']
+        return {'unsettled': len(times), 'oldest_at': min(times) if times else None}
+
+    async def trigger_candidates(self,kind: str, *, after: tuple[str,str,str] | None=None,limit: int=100,now: float) -> list[tuple[str,str,str]]:
+        """内存与PG同样只返回有界已提交候选。"""
+        from xuanpu_server.task_triggers.memory import candidates
+
+        return candidates(self._states,kind,after=after,limit=limit,now=now)
+
+    async def trigger_occurrences(self,tenant: str,user: str,identifier: str, *, after: str | None=None,limit: int=100) -> list[dict[str,Any]]:
+        """只返回本员工已提交发生记录的独立副本。"""
+        state=self._states.get((tenant,user),WorkspaceState())
+        return deepcopy([value for key,value in sorted(state.task_occurrences.items()) if value['definition_id']==identifier
+                         and (after is None or key>after)][:limit])
 
     async def durable_candidates(self, *, after: tuple[str, str] | None = None,
                                  limit: int = 100, now: float) -> list[tuple[str, str, str]]:
@@ -214,6 +235,9 @@ class InMemoryWorkspaceStore:
                 await guard()
             if epoch != self._epochs.get(owner, 0):
                 raise ConflictError("员工身份已变化，请重新读取工作区")
+            from xuanpu_server.task_triggers.outbox import derive
+
+            derive(original,state)
             validate_proactive(state)
             validate_notifications(state)
             commit_notifications = None

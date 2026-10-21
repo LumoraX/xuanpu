@@ -18,9 +18,10 @@ class PendingNotification(BaseModel):
 
     model_config = ConfigDict(strict=True, extra="forbid", allow_inf_nan=False)
     notification_key: str = Field(min_length=1, max_length=512)
-    source: Literal["proactive_check", "proactive_followup"]
+    source: Literal["proactive_check", "proactive_followup", "task_definition"]
     proactive_check_id: str | None = None
     proactive_followup_id: str | None = None
+    task_definition_id: str | None = None
     title: str = Field(min_length=1, max_length=500)
     body: str = Field(max_length=4000)
     due_at: float | None = None
@@ -31,10 +32,10 @@ class PendingNotification(BaseModel):
     @model_validator(mode="after")
     def valid_source(self) -> PendingNotification:
         """每条主动通知恰好关联一种对应的业务来源。"""
-        if (self.source == "proactive_check") != (self.proactive_check_id is not None) or (
-            self.source == "proactive_followup"
-        ) != (self.proactive_followup_id is not None):
-            raise ValueError("通知来源和关联记录不一致")
+        sources={'proactive_check':self.proactive_check_id,'proactive_followup':self.proactive_followup_id,
+                 'task_definition':self.task_definition_id}
+        if sources[self.source] is None or sum(value is not None for value in sources.values())!=1:
+            raise ValueError('通知来源和关联记录不一致')
         if "inbox" not in self.channels or len(self.channels) != len(set(self.channels)):
             raise ValueError("必须包含站内信且渠道不能重复")
         return self
@@ -58,8 +59,8 @@ def validate_notifications(state: WorkspaceState) -> list[PendingNotification]:
         raise InvalidRequestError("主动通知字段无效") from exc
     enabled_channels = state.settings.get("proactive_channels", ["inbox"])
     for pending in found:
-        records = state.checks if pending.source == "proactive_check" else state.followups
-        source_id = pending.proactive_check_id or pending.proactive_followup_id
+        records = {"proactive_check":state.checks,"proactive_followup":state.followups,"task_definition":state.task_definitions}[pending.source]
+        source_id = pending.proactive_check_id or pending.proactive_followup_id or pending.task_definition_id
         if source_id not in records:
             raise InvalidRequestError("主动通知来源不存在或不属于当前员工")
         if any(channel not in enabled_channels for channel in pending.channels):

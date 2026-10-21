@@ -174,3 +174,38 @@ R2-A将已验证的全部文件先写私有暂存意图，再put并核对完整�
 
 本期只支持立即交办后的持久恢复。定时、事件触发和完整工作动态属于R2-B/R2-C，尚未实现。
 验收范围见[R2-A验收记录](../guides/releases/2026-10-21-r2a-acceptance.md)。
+
+
+## R2-B 本人确认的时间与事件安排
+
+`task_triggers`在原工作区员工事务上增加TaskDefinition、不可变确认版本、Occurrence、可信领域事件及逐条Delivery。
+迁移0013保存这些事实和精确输入外键；任务受理、dispatch、实例及时间游标同事务提交。定义的内部准备记录不落成伪造WorkTask。
+每个版本有独立ExecutionGrant，实例共享该版本的总次数/预算，另受每实例最多3次attempt限制。次数或预算不会在每次触发时重置。
+
+创建和修改必须`confirmed=true`，服务端解析已发布包及固定输入，并冻结有效期、总执行次数、tokens上限、IANA时区和策略。
+`fixed_revision`保持原输入；`latest_at_occurrence`只允许明确枚举的文件ID，事件触发读取事件指定的精确revision。
+本人最多100个启用定义、1000个全部定义；创建、恢复及修改在同一员工事务复核启用上限。
+管理接口的`expected_version`比较`state_version`，配置修改才升`version`，暂停/恢复不创造新授权范围。
+同request_id和相同内容回放已提交结果，功能关闭后仍可补读回执。
+
+时间只支持once/daily/weekly，复用reminders.schedule，首次时间须含明确偏移并匹配IANA时区。
+重复规则DST gap跳过，fold取较早一次，首次重复锚点拒绝晚侧偏移；UTC整秒构成稳定发生键。
+默认迟到900秒内补1次，超过记missed；明确coalesce_latest时最多补最近1次。重叠记录skipped_overlap。
+任务/对象/预算不足只提交blocked及默认60秒资格复查，不推进原next_fire_at；额度恢复沿用原稳定键。
+数据库提交异常全部回滚。候选每次最多100项、稳定分页轮转；不在事务里下载对象或调用模型。
+
+可信事件只来自文件revision提交、原生todo完成和WorkTask成功的原领域事务。源回滚无事件；源事务按当时已启用定义冻结订阅版本。
+后来确认的定义不接收旧事件，编辑不把旧事件转成新版实例。每条Delivery有owner/epoch/lease，逐条结算；sequence_id仅诊断，不能作为提交水位。
+较小序号晚提交仍可被下一轮扫描发现。生产PG投递租约使用事务时钟。
+事件只含subject/version、精确输入refs及服务器origin_chain，大小不超过8KiB；没有公开发布可信事件接口。
+已结算去重墓碑不删，未结算/未知投递不做TTL清理。内部`WorkspaceStore.trigger_backlog()`提供unsettled数量与oldest_at，不返回员工或材料。
+
+origin_chain由真实任务、成果及原生行动项关联传播，客户端不能改写。自身链事件记same_origin_chain；超过3层或同定义一小时超过20次则持久暂停，
+同版本/原因只产生一条站内通知。新模型采样仍由R2-A唯一TaskRegistry持有。
+暂停默认保留在途租约但阻止下一attempt；`stop_running=true`明确要求停止。取消覆盖全部版本的排队/在途责任与grant，不能撤销已发出的外部操作。
+员工停用、租户暂停、原key撤销或角色收缩会阻止后续受理/认领；员工停用回调覆盖暂停定义及全部历史授权。
+Platform在guard和task registry就绪后启动唯一TriggerWorker，关闭先停触发再停执行。
+
+`task_triggers.enabled`默认false，且必须同时开启durable_execution.enabled。关闭后读/暂停/取消及已提交回执可用，不能新受理；
+开关在事件读取中途关闭会保留blocked/feature_disabled投递，恢复后按原授权复查，不假记为definition_changed。
+本阶段提供服务/API和验收，员工确认入口、统一工作动态和生产发布属于后续R2-C。

@@ -85,8 +85,8 @@ async def save_proactive(
     for notification in pending:
         notification_id = await conn.fetchval(
             f"INSERT INTO {tables['notification']} "
-            "(tenant_id,user_id,notification_key,source,proactive_check_id,proactive_followup_id,title,body,due_at,created_at,alert_after) "
-            "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) "
+            "(tenant_id,user_id,notification_key,source,proactive_check_id,proactive_followup_id,title,body,due_at,created_at,alert_after,task_definition_id) "
+            "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) "
             "ON CONFLICT DO NOTHING RETURNING notification_id",
             tenant,
             user,
@@ -99,6 +99,7 @@ async def save_proactive(
             notification.due_at,
             notification.created_at,
             notification.alert_after,
+            notification.task_definition_id,
         )
         if notification_id is not None:
             for channel in notification.channels:

@@ -146,3 +146,9 @@ durable_execution:
   lease_seconds: 60
   renew_seconds: 20
   stateless_http_tools: []
+
+# R2-B时间/可信事件安排默认关闭，启用还须durable_execution.enabled。
+task_triggers:
+  enabled: false
+  scan_seconds: 5
+  eligibility_seconds: 60
