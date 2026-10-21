@@ -102,6 +102,7 @@ class NotificationRecord:
     proactive_followup_id: str | None = None
     alert_after: float = 0.0
     task_definition_id: str | None = None
+    work_task_id: str | None = None
 
 
 @dataclass(frozen=True)

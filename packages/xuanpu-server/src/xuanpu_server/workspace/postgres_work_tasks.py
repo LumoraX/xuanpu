@@ -26,11 +26,16 @@ async def load_tasks(
         request_id='work-task:one:'+binding.lease.task_id
     if request_id is None or not request_id.startswith("work-task:"):
         return
-    if request_id.startswith(('work-task:one:', 'work-task:exec:', 'work-task:budget:')):
+    if request_id.startswith(('work-task:one:', 'work-task:exec:', 'work-task:budget:', 'work-task:view:')):
         rows = await conn.fetch(
             f"SELECT task_id,record FROM {tables['work_task']} WHERE tenant_id=$1 AND user_id=$2 AND task_id=$3",
             tenant, user, request_id.split(':', 2)[2])
         state.work_tasks = {row['task_id']: json.loads(row['record']) for row in rows}
+        if request_id.startswith('work-task:view:'):
+            entries=await conn.fetch(f"SELECT event_id,data FROM {tables['work_task_event']} "
+                "WHERE tenant_id=$1 AND user_id=$2 AND task_id=$3 ORDER BY event_id DESC LIMIT 1",
+                tenant,user,request_id.split(':',2)[2])
+            state.work_task_events=[{**json.loads(r['data']),'event_id':r['event_id']} for r in entries]
         return
     pending = " AND " + PENDING_TASKS if request_id in {"work-task:pending", "work-task:legacy-pending"} else ""
     if request_id == 'work-task:legacy-pending':

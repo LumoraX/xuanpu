@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
     from contextlib import AbstractAsyncContextManager
 
+    from xuanpu_server.work_tasks.activity import ActivityConfig
     from xuanpu_server.workspace.models import WorkspaceState
 
 
@@ -23,6 +24,10 @@ class WorkspaceStore(Protocol):
         *, allow_inactive: bool = False,
     ) -> AbstractAsyncContextManager[WorkspaceState]:
         """同一员工串行写入；异常回滚元数据与审计。"""
+        ...
+
+    def configure_activity(self, config: ActivityConfig) -> None:
+        """仅平台启动配置工作动态开关与灰度范围。"""
         ...
 
     async def trigger_backlog(self) -> dict[str, int | float | None]:

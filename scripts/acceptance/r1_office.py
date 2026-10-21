@@ -47,7 +47,7 @@ class Acceptance:
     def __init__(self, config: dict, output: Path) -> None:
         """认证配置不会写入证据，只保留合成材料、回执与评估。"""
         self.http = httpx.AsyncClient(base_url=config['url'],headers={
-            'Authorization':'Bearer '+config['api_key'],'X-Xuanpu-Act-As':config['act_as_user']},timeout=120)
+            'Authorization':'Bearer '+config['api_key'],'X-Xuanpu-Act-As':config['act_as_user']},timeout=120,trust_env=False)
         self.output = output
         self.evidence = {'model':config['model'],'database':'isolated PostgreSQL schema',
                          'backend':'Linux Docker office image','external_notifications':0,'cases':[],

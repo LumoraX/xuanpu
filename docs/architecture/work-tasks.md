@@ -209,3 +209,15 @@ Platform在guard和task registry就绪后启动唯一TriggerWorker，关闭先�
 `task_triggers.enabled`默认false，且必须同时开启durable_execution.enabled。关闭后读/暂停/取消及已提交回执可用，不能新受理；
 开关在事件读取中途关闭会保留blocked/feature_disabled投递，恢复后按原授权复查，不假记为definition_changed。
 本阶段提供服务/API和验收，员工确认入口、统一工作动态和生产发布属于后续R2-C。
+
+## R2-C 员工视图和执行安排
+
+本人任务响应由白名单序列化：保留原八种status，另给execution_stage、attempt_no、next_run_at、block_reason、recovering、recovery_mode、source_occurrence和持久activity_cursor。原始工具参数、宿主路径、owner/epoch、grant及暂存对象键不返回。真实批准仍使用request_id；HTTP操作说明取固定发布版本的OpenAPI，无法核定说明的操作不能在简略卡片批准。
+
+调度阶段变化同步推进state_version并写原WorkTask事件，保留每任务每版本唯一约束。task_activity默认关闭，仅等待决定、预算/授权阻塞与终态使用稳定语义键在同一员工事务生成通知；沿用本人已启用渠道，发送前复核来源，过时投递在事务内取消。
+
+对话仅返回只读task_definition_draft；服务端以本人真实材料和已发布能力重新预览。确认按钮才调用同一个TaskDefinitionService。直接“执行安排”入口支持分页、修改、暂停、恢复、取消和每次发生补读；网络结果不确定时冻结同一request_id与完整载荷，409要求读取最新范围重新确认。
+
+三个开关分别支持tenant_ids；非空只准入名单内租户，空名单保留管理员显式全量enabled语义。关闭认领后兼容reader、查询、暂停、取消仍工作；不删除新账本或将新JSON交旧R1 reader。
+
+模型包装器在平台ExecutionBinding中保存预算阻塞原因，即使内核把异常转为turn_failed，也由任务runner交回唯一派发器持久保存block_budget；不将额度不足误结算为普通失败。管理员max_task_tokens默认150000且最高300000，独立grant与租户上限继续同时校验。

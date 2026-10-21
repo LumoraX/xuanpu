@@ -80,3 +80,26 @@ async def test_pdf_without_text_is_rejected_without_fake_ocr(office_worker):
     )
     assert result.code != 0
     assert "OCR" in result.stderr or "文字" in result.stderr
+
+
+async def test_exact_unicode_quote_offsets_are_computed_inside_office_image(office_worker):
+    """由固定正本计算唯一原文区间，拒绝重复或不存在的引文。"""
+    text='会议🙂。\n我负责归档资料。\n未定日期。'
+    result=await office_worker('meeting-minutes/scripts/cite.py',{'input_1.txt':text.encode()},['input_1.txt','我负责归档资料。'])
+    assert result.code==0,result.stderr
+    assert json.loads(result.stdout)=={'input_name':'input_1.txt','start':5,'end':13,'quote':'我负责归档资料。'}
+    repeated=await office_worker('meeting-minutes/scripts/cite.py',{'input_1.txt':'重复。重复。'.encode()},['input_1.txt','重复。'])
+    assert repeated.code!=0
+    overlap=await office_worker('meeting-minutes/scripts/cite.py',{'input_1.txt':'哈哈哈'.encode()},['input_1.txt','哈哈'])
+    assert overlap.code!=0
+
+
+async def test_meeting_timestamp_uses_real_timezone_and_rejects_dst_gap(office_worker):
+    """给定墙钟时间准确换算UTC秒，DST缺口与歧义不猜测。"""
+    result=await office_worker('meeting-minutes/scripts/timestamp.py',{},['2026-10-24T17:00:00','Asia/Shanghai'])
+    assert result.code==0,result.stderr
+    from datetime import UTC, datetime
+    assert datetime.fromtimestamp(json.loads(result.stdout)['timestamp'],UTC).isoformat()=='2026-10-24T09:00:00+00:00'
+    for wall in ('2026-03-29T02:30:00','2026-10-25T02:30:00'):
+        ambiguous=await office_worker('meeting-minutes/scripts/timestamp.py',{},[wall,'Europe/Paris'])
+        assert ambiguous.code!=0

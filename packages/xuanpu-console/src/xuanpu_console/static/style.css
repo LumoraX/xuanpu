@@ -171,3 +171,12 @@ main { padding: 16px; }
 #proactive-draft details { margin: 10px 0; }
 #proactive-draft summary { cursor: pointer; }
 .notification-reason { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }
+
+.definition-card,.definition-form {min-width:0;overflow-wrap:anywhere;}
+.definition-card button {margin:0.35rem 0.35rem 0.35rem 0;}
+.definition-form label {display:grid;gap:0.4rem;min-width:0;}
+.definition-form input,.definition-form select,.definition-form textarea {max-width:100%;min-width:0;box-sizing:border-box;}
+.definition-card :focus-visible,.definition-form :focus-visible {outline:2px solid var(--accent,#3268d8);outline-offset:3px;}
+@media(max-width:600px){.definition-card button{width:100%;white-space:normal}.definition-form{grid-template-columns:1fr}.definition-card{padding:0.8rem}}
+
+.work-task-result {white-space:pre-wrap;overflow-wrap:anywhere;}

@@ -66,23 +66,26 @@ class WorkTaskService:
         self.executor: TaskExecutor | None = None
         self.durable = durable or DurableExecutionConfig()
         self.store.durable_config = self.durable
+        from xuanpu_server.runtime.effect_reconciliation import EffectReconciliation
+
+        self.reconciliation = EffectReconciliation(workspace, now=now)
 
     async def public_record(self, who: Principal, task: WorkTaskRecord) -> dict[str, Any]:
         """本人可见阶段及阻塞原因，内部执行凭据和私有对象键不外泄。"""
-        hidden = {'process_owner', 'grant_id', 'staging_objects', 'frozen_staging', 'unsafe_resume', 'pending_decision', 'resume_evidence'}
-        result = task.model_dump(mode='json', exclude=hidden)
-        receipt = result['result_receipt']
-        for group in ('read_receipts', 'tool_receipts'):
-            if group in receipt:
-                receipt[group] = [{key: value for key, value in entry.items() if key != 'epoch'}
-                                  for entry in receipt[group]]
-        if task.recovery_policy_version == 2:
-            from .execution_store import ExecutionStore
+        from .store import require_task
+        from .views import serialize
 
-            dispatch = await ExecutionStore(self.workspace).get(who, task.task_id)
-            result['execution'] = {'state': 'settled' if task.status in TERMINAL else dispatch.state,
-                'attempt_no': dispatch.attempt_no, 'phase': dispatch.checkpoint.phase,
-                'block_reason': dispatch.block_reason}
+        async with self.workspace.transaction(who, 'work-task:view:' + task.task_id) as state:
+            current=require_task(state,task.task_id)
+            effects=[e for e in state.task_effects.values() if e['task_id']==task.task_id]
+            result=serialize(current,state.task_dispatch.get(task.task_id),effects,set(self.reconciliation.adapters))
+            result['task_token_limit']=self.durable.max_task_tokens if current.recovery_policy_version==2 else None
+            result['activity_cursor']=max((e['event_id'] for e in state.work_task_events if e['task_id']==task.task_id),default=0)
+        if current.pending:
+            from .approval_views import approval_labels
+
+            labels=await approval_labels(self.packages,current)
+            for pending in result['pending']:pending.update(labels[pending['request_id']])
         return result
 
     async def accept(self, who: Principal, request: WorkTaskInput) -> WorkTaskRecord:
@@ -95,7 +98,7 @@ class WorkTaskService:
                 raise ConflictError("同一请求标识对应的交办内容不同")
             return previous
         package = await self.packages.resolve(tenant, OFFICE_PACKAGE)
-        if self.durable.enabled and package.manifest.spec.policy.sandbox.network:
+        if self.durable.allows(tenant) and package.manifest.spec.policy.sandbox.network:
             raise InvalidRequestError('持久任务只允许断网脚本，外部操作请使用平台连接器')
         inputs = await self._inputs(who, request)
         table_mimes = {'text/csv','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}
@@ -110,7 +113,7 @@ class WorkTaskService:
             package=package.record.name, package_version=package.record.version,
             package_digest=package.record.digest.removeprefix("sha256:"),
             process_owner=self.process_owner, accepted_at=now, updated_at=now, output_kind=output_kind,
-            recovery_policy_version=2 if self.durable.enabled else 1)
+            recovery_policy_version=2 if self.durable.allows(tenant) else 1)
         accepted, created = await self.store.create_or_replay(who, record)
         if created and self.executor is not None:
             self.executor.start(who, accepted)
@@ -118,9 +121,9 @@ class WorkTaskService:
 
     async def accept_capability(self, who: Principal, request: CapabilityTaskInput) -> WorkTaskRecord:
         """目录项由实际发布包核对，不能上传脚本或指定宿主路径。"""
-        if not self.durable.enabled:
-            raise ConflictError('持久能力交办尚未开启')
         tenant, user = await self.workspace.require_employee(who)
+        if not self.durable.allows(tenant):
+            raise ConflictError('持久能力交办尚未开启')
         fingerprint = input_fingerprint(request)
         previous = await self.store.find_request(who, request.request_id)
         if previous is not None:
@@ -130,7 +133,7 @@ class WorkTaskService:
         package = await self.packages.resolve(tenant, request.capability.package)
         if request.capability.entry not in package.manifest.spec.skills.entries:
             raise InvalidRequestError('该能力入口尚未发布')
-        if self.durable.enabled and package.manifest.spec.policy.sandbox.network:
+        if self.durable.allows(tenant) and package.manifest.spec.policy.sandbox.network:
             raise InvalidRequestError('持久任务只允许断网脚本，外部操作请使用平台连接器')
         inputs = await self._inputs(who, request)
         now = self._now()

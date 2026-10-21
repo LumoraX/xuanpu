@@ -40,6 +40,13 @@ async def notification_current(
             if row["record"] is not None
         ]
         return native_notification_current(notification, status, sources)
+    if notification.source=='work_task':
+        from xuanpu_server.work_tasks.activity import current
+
+        row=await conn.fetchrow(f"SELECT t.record,d.record AS dispatch FROM {tables['work_task']} t "
+            f"LEFT JOIN {tables['task_dispatch']} d USING(tenant_id,user_id,task_id) "
+            "WHERE t.tenant_id=$1 AND t.user_id=$2 AND t.task_id=$3",tenant,user,notification.work_task_id)
+        return row is not None and current(json.loads(row['record']),json.loads(row['dispatch']) if row['dispatch'] else {},notification.notification_key)
     if notification.source=='task_definition':
         return bool(await conn.fetchval(f"SELECT NOT enabled FROM {tables['task_definition']} WHERE tenant_id=$1 AND user_id=$2 AND definition_id=$3",
                                        tenant,user,notification.task_definition_id))

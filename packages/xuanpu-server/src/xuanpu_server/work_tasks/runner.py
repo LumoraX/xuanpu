@@ -13,6 +13,7 @@ from xuanpu_server.errors import ConflictError, InvalidRequestError
 from xuanpu_server.runtime.execution_scope import ExecutionScope
 
 from .event_mapping import TaskExecutionError, cleanup_uncertain, stage_outcome
+from .execution_context import current_execution
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -237,6 +238,9 @@ class TaskRunner:
                 await self._acknowledge(who, task, data)
             self._pending(pending, kind, data)
             terminal = stage_outcome(kind, data) or terminal
+        binding=current_execution.get()
+        if binding is not None and binding.stop_reason=='block_budget':
+            raise ConflictError('block_budget：本次执行额度不足，保留原有预留等待处理')
         if terminal is None:
             raise ConflictError('任务事件流中断，尚无根轮结论')
         if terminal == 'waiting_user':

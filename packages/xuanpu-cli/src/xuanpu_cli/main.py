@@ -301,6 +301,9 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--version", help="版本；缺省用生效版本")
     evaluate.add_argument("--case", action="append", help="只跑这些用例，可重复")
     evaluate.set_defaults(handler=cmd_eval)
+    from xuanpu_cli.work_commands import add_work_commands
+
+    add_work_commands(commands)
     return parser
 
 

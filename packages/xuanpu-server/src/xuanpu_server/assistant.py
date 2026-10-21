@@ -15,13 +15,19 @@ from weakref import WeakValueDictionary
 from zoneinfo import ZoneInfo
 
 import taifeng
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from xuanpu_server.assistant_reminders import (
     REMINDER_ENTRIES,
     REMINDER_PACKAGE,
     ReminderProposal,
     RouteOutcome,
+)
+from xuanpu_server.assistant_task_definitions import (
+    TASK_DEFINITION_ENTRIES,
+    TASK_DEFINITION_PROMPT,
+    TaskDefinitionProposal,
+    resolve_definition,
 )
 from xuanpu_server.assistant_workspace import (
     MODULES,
@@ -121,6 +127,14 @@ class Choice(BaseModel):
     reminder: ReminderProposal | None = None
     workspace_draft: WorkspaceProposal | None = None
     proactive: ProactiveProposal | None = None
+    task_definition: TaskDefinitionProposal | None = None
+
+    @model_validator(mode='after')
+    def valid_schedule(self) -> Choice:
+        """未来执行建议不能混入立即交办分支。"""
+        if self.task_definition is not None and self.package!='@task-definitions':
+            raise ValueError('执行草稿不能作为立即交办')
+        return self
 
 
 class AssistantRouter:
@@ -195,7 +209,7 @@ class AssistantRouter:
                         saved = dict(prior["metadata"]["route"])
                     else:
                         result = await self._route(who, body, request_id=request_id, claim=claim)
-                        if result.workspace_draft or result.reminder_draft or result.proactive_draft:
+                        if result.workspace_draft or result.reminder_draft or result.proactive_draft or result.task_definition_draft:
                             result = replace(result, proposal_id=request_id)
                         saved = {
                             "session_id": result.session.session_id if result.session else None,
@@ -209,6 +223,8 @@ class AssistantRouter:
                             "open_proactive": result.open_proactive,
                             "work_task_id": result.work_task_id,
                             "preserve_input": result.preserve_input,
+                            "task_definition_draft": result.task_definition_draft,
+                            "open_task_definitions": result.open_task_definitions,
                         }
                     await p.workspace.complete_route(who, request_id, claim["token"], saved)
                 result = await self._saved_outcome(who, saved)
@@ -274,11 +290,12 @@ class AssistantRouter:
                 current,
                 body.matter_id,
                 request_id,
+                body.input_files,
             )
         await p.quota.check_new_turn(tenant)
         catalog = await self._catalog(tenant)
         if who.user_id:
-            catalog = [*WORKSPACE_ENTRIES, *REMINDER_ENTRIES, *PROACTIVE_ENTRIES, *catalog]
+            catalog = [*WORKSPACE_ENTRIES, *REMINDER_ENTRIES, *PROACTIVE_ENTRIES, *TASK_DEFINITION_ENTRIES, *catalog]
         if not catalog:
             return RouteOutcome(message="当前企业尚未开通可用业务，请联系管理员。")
         history = await self._history(current) if current else []
@@ -316,7 +333,7 @@ class AssistantRouter:
             )
         if choice.package == "office-assistant":
             return await accept_office_route(p, who, body, choice.entry, request_id)
-        outcome = await self._resolve(who, choice, catalog, current, body.matter_id, request_id)
+        outcome = await self._resolve(who, choice, catalog, current, body.matter_id, request_id, body.input_files)
         if body.attachments and choice.package is None and not any(item["package"] == "office-assistant" for item in catalog):
             outcome = replace(outcome, preserve_input=True)
         return outcome
@@ -329,9 +346,12 @@ class AssistantRouter:
         current: SessionRecord | None,
         matter_id: str | None = None,
         request_id: str | None = None,
+        input_files: list[InputFile] | tuple[InputFile,...] = (),
     ) -> RouteOutcome:
         """解析后的选择仍须验证能力范围；模型建议不直接执行提醒。"""
         p = self._platform
+        if choice.package=='@task-definitions':
+            return await resolve_definition(p,who,choice.entry,choice.task_definition,input_files,matter_id,request_id)
         if choice.package == "@proactive":
             if not who.user_id or choice.message is not None or choice.reminder or choice.workspace_draft:
                 raise ValueError("业务跟进建议无效")
@@ -510,7 +530,7 @@ class AssistantRouter:
             request = taifeng.ApiRequest.model_validate(
                 {
                     "model": "fast",
-                    "system_prompt": [system_prompt or (_PROMPT + WORKSPACE_PROMPT + PROACTIVE_ROUTING)],
+                    "system_prompt": [system_prompt or (_PROMPT + WORKSPACE_PROMPT + TASK_DEFINITION_PROMPT + PROACTIVE_ROUTING)],
                     "input_items": [
                         {
                             "type": "message",
@@ -578,7 +598,7 @@ class AssistantRouter:
         estimated = not usage
         values = usage or {
             "input_tokens": len(payload)
-            + len(prompt or (_PROMPT + WORKSPACE_PROMPT + PROACTIVE_ROUTING))
+            + len(prompt or (_PROMPT + WORKSPACE_PROMPT + TASK_DEFINITION_PROMPT + PROACTIVE_ROUTING))
             + self._attachment_estimate(parts),
             "output_tokens": len(output),
         }

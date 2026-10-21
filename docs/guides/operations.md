@@ -698,3 +698,13 @@ lsof -nP -d cwd | grep '<data_dir>/cache/packages'
 排查实例看reason_code：feature_disabled、definition_paused可按原权限恢复；task_quota/object_quota/budget_unavailable等待额度；
 grant_revoked须重新明确确认；misfire_window_expired是错过记录；same_origin_chain跳过自身来源；chain_depth/hourly_limit需核实安排后恢复。
 取消不是外部回滚；保留原任务、版本授权、occurrence、delivery及效应回执供审计，不将新表记录交给旧R1执行者。
+
+## R2 日常观测与验收
+
+观察可运行最老任务、排队/blocked原因、租户公平性、attempt上限、held预算、unknown效应、执行容器残留、重复或漏触发、语义通知计数。至少两个实际调度扫描周期及一个主动扫描周期的证据，不能以healthz 200代替。
+
+验收工具为scripts/acceptance/r2_durable.py（显式credentials/evidence/mode）及r2_effect_server.py（明确私网/回环监听、SQLite持久合成计数）。每次运行使用新证据目录；production模式仍只允许独立r2-acceptance-租户。凭据私有保存，原始模型产物与业务评估分开；关闭测试定义、提醒、用户、key和登录，遵守末位管理员保护，保留证据。
+
+R2配置中的`task_activity.enabled`控制工作动态通知，默认false；`task_activity.tenant_ids`、`task_triggers.tenant_ids`与`durable_execution.tenant_ids`分别限制灰度租户。非空名单须同时满足相关开关的范围，员工请求不能修改名单；空名单仅在管理员显式enabled=true时全量生效。
+
+`durable_execution.max_task_tokens`为管理员配置的单项任务累计上限，默认150000，允许1–300000；即使调大也仍同时受员工已确认的grant总额与租户额度限制。请求须在发送前覆盖完整保守上界，不能只按历史平均用量放行。额度不足保存blocked/block_budget，原生查询与取消可用；确认卡展示单项和累计两个限制。

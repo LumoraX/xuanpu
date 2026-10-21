@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from xuanpu_server.controlplane.schema import DEFAULT_NAMESPACE
 from xuanpu_server.errors import PermissionDeniedError
+from xuanpu_server.work_tasks.activity import ActivityConfig
 from xuanpu_server.workspace.models import SettingsData, WorkspaceState
 from xuanpu_server.workspace.postgres_proactive import load_proactive, save_proactive
 from xuanpu_server.workspace.postgres_reminders import save_reminders
@@ -29,6 +30,7 @@ class PostgresWorkspaceStore:
     def __init__(self, pool: asyncpg.Pool, *, namespace: SqlNamespace = DEFAULT_NAMESPACE) -> None:
         """表名来自已验证的 SqlNamespace，用户数据全为绑定参数。"""
         self._pool = pool
+        self._activity_config = ActivityConfig()
         self._t = {
             name: namespace.table(name)
             for name in (
@@ -53,6 +55,10 @@ class PostgresWorkspaceStore:
                 "task_grant", "task_dispatch", "task_attempt", "task_budget_reservation", "task_effect", "usage", "user_usage", "api_key",
             )
         }
+
+    def configure_activity(self, config: ActivityConfig) -> None:
+        """注入服务端工作动态灰度，员工请求不能改变此配置。"""
+        self._activity_config = config
 
     async def trigger_backlog(self) -> dict[str, int | float | None]:
         """数据库聚合积压，只暴露数量和最老时间供内部运维观测。"""
@@ -124,6 +130,9 @@ class PostgresWorkspaceStore:
             from xuanpu_server.task_triggers.outbox import derive
 
             derive(original,state)
+            from xuanpu_server.work_tasks.activity import derive as derive_activity
+
+            derive_activity(original,state,enabled=self._activity_config.allows(tenant))
             await self._save(conn, tenant, user, original, state)
         # 只有真实数据库提交成功才消费事务内队列；审计或提交失败时保留原内容。
         state.pending_notifications = []
@@ -169,6 +178,8 @@ class PostgresWorkspaceStore:
                 keys.append(request_id.removeprefix("proposal:") + ":create")
             elif request_id.endswith(":create"):
                 keys.append("proposal:" + request_id.removesuffix(":create"))
+            if request_id.startswith('work-task:reconcile-request:'):
+                keys.append('reconcile:'+request_id.removeprefix('work-task:reconcile-request:'))
             if request_id.startswith('work-task:trigger-request:'):
                 keys.append('trigger:'+request_id.removeprefix('work-task:trigger-request:'))
             requests = await conn.fetch(
@@ -241,8 +252,8 @@ class PostgresWorkspaceStore:
                 json.dumps(message),
             )
         await save_reminders(conn, self._t, tenant, user, state)
-        await save_proactive(conn, self._t, tenant, user, old, state)
         await save_tasks(conn, self._t, tenant, user, old, state)
+        await save_proactive(conn, self._t, tenant, user, old, state)
         await save_execution(conn, self._t, tenant, user, old, state)
         from xuanpu_server.task_triggers.postgres import save as save_triggers
 

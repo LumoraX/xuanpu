@@ -50,4 +50,5 @@ async function uncertainDecisionRetriesExactPayload() {
   assert.equal(writes[0].choices[0].title,'用户编辑的标题');
   assert(!find(h.node('host'),n=>n.tag==='img'),'任务内容只能作为文本展示');
 }
-(async()=>{await lateResponseAfterIdentityChangeIsDiscarded();await uncertainDecisionRetriesExactPayload();console.log('work task behavior passed');})().catch(error=>{console.error(error);process.exitCode=1;});
+module.exports={harness,find};
+if(require.main===module)(async()=>{await lateResponseAfterIdentityChangeIsDiscarded();await uncertainDecisionRetriesExactPayload();console.log('work task behavior passed');})().catch(error=>{console.error(error);process.exitCode=1;});

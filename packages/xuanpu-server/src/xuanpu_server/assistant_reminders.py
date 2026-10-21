@@ -55,3 +55,5 @@ class RouteOutcome:
     open_proactive: bool = False
     work_task_id: str | None = None
     preserve_input: bool = False
+    task_definition_draft: dict[str, Any] | None = None
+    open_task_definitions: bool = False

@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 async def claim(service: TaskDefinitionService,who: Principal,identifier: str) -> tuple[Delivery,DomainEvent] | None:
     """员工锁内逐条认领，未提交的较小序号行会在以后扫描仍被发现。"""
-    if not service.config.enabled or not service.tasks.durable.enabled:
+    if not service.config.allows(who.tenant_id) or not service.tasks.durable.allows(who.tenant_id):
         return None
     async with service.workspace.transaction(who,'work-task:trigger-event:'+identifier) as state:
         value=state.task_event_deliveries.get(identifier)
@@ -64,7 +64,7 @@ async def deliver(service: TaskDefinitionService,who: Principal,identifier: str)
             occurrence_key=key,scheduled_at=event.occurred_at,source_event_id=event.event_id,created_at=now)
         if record.cancelled or record.version!=lease.definition_version:
             reason='definition_changed'
-        elif not service.config.enabled or not service.tasks.durable.enabled:
+        elif not service.config.allows(who.tenant_id) or not service.tasks.durable.allows(who.tenant_id):
             reason='feature_disabled'
         elif not record.enabled:
             reason='definition_paused'

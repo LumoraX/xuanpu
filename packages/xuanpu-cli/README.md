@@ -112,3 +112,11 @@ xuanpu serve --config xuanpu.yaml
 | --- | --- |
 | 配置文件里 `${…}` 引用到的任何变量 | `migrate`、`serve` |
 | `XUANPU_API_KEY` | `eval`，没给 `--key` 时 |
+
+## 本人后台工作和执行安排
+
+`xuanpu work-tasks`、`xuanpu task-definitions`使用组参数`--credentials`读取私有JSON，字段为`base_url`、`api_key`、`act_as_user`。该文件含凭据，应仅本人可读；命令行没有覆盖租户或员工身份的参数。默认输出本人摘要，不能依靠管理员身份查看其他员工私有任务。
+
+work-tasks提供list/get/events/create/capability/cancel/decide/reconcile；task-definitions提供list/get/create/update/pause/resume/cancel/occurrences。写操作的`--body`指向严格请求JSON，保留原request_id和版本；网络结果不确定时重发同一文件，不生成新标识。分页使用`--limit`及`--after`，按服务端游标继续补读。安排创建/修改须confirmed=true；模型草稿不能充当确认。回执核实只接受已登记的权威查询，不重试原写操作。
+
+两个组的`--help`及各子命令`--help`可直接查看当前参数，无需模型或网络。CLI仅在原生HTTP接口上封装操作，关闭R2后读取、暂停、取消和已有成果仍使用兼容reader。

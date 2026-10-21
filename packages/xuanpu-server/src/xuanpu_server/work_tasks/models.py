@@ -180,6 +180,13 @@ class WorkTaskEvent(FrozenModel):
     event_kind: str
     status: Status
     error_code: str | None = None
+    execution_stage: str | None = None
+    attempt_no: int = 0
+    next_run_at: Timestamp | None = None
+    block_reason: str | None = None
+    recovering: bool = False
+    recovery_mode: str | None = None
+    source_occurrence: dict[str, Any] | None = None
 
 
 def needs_recovery(value: dict[str, Any]) -> bool:

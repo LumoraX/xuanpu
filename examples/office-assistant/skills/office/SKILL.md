@@ -20,3 +20,7 @@ tool_names: [file_read, file_write, shell_exec]
 子skill完成后使用file_read读取outputs/manifest.json及必要成果来确认真实文件；不要为检查存在性调用shell_exec、test、cat或其他命令，否则会产生不必要的批准。不要改写脚本已生成的文件，不以文字回复代替清单。
 
 表格子skill的脚本参数以其SKILL.md声明为准。调用前读取该声明并使用其中完整JSON示例，不猜测input_path或inputs的数据形状。
+
+会议子skill完成后也须核对manifest字段为artifacts且每项含path/name/role/mime_type，缺失或错误先让子skill修正，不把无效清单宣称为完成。行动项的source区间必须来自cite脚本的真实返回，不能用模型估算Unicode位置。
+
+会议行动项所有明确时间的UTC秒必须来自timestamp脚本，核对返回的local_time与原文，禁止心算时间戳。

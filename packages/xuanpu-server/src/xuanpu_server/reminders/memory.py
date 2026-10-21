@@ -131,7 +131,7 @@ class InMemoryReminderStore:
             for record in self._notifications.values()
             if (record.tenant_id, record.user_id) == (tenant, user)
             and (
-                (record.source, record.proactive_check_id or record.proactive_followup_id)
+                (record.source, record.proactive_check_id or record.proactive_followup_id or record.work_task_id)
                 in sources
                 or record.reminder_id is not None
                 and record.reminder_id in cancellations

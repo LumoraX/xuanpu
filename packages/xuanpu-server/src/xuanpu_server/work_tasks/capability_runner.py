@@ -21,9 +21,9 @@ class CapabilityEvidence:
 
     def observe(self, kind: str, data: dict[str, Any], submission_id: str | None) -> None:
         """保留有限摘要和调用引用；未知或错误结果不标记完成。"""
-        if kind == 'text_delta' and isinstance(data.get('text'), str):
+        if kind == 'assistant_text' and isinstance(data.get('delta'), str):
             if sum(len(text) for text in self.texts) < 16000:
-                self.texts.append(data['text'][:16000])
+                self.texts.append(data['delta'][:16000])
         if kind in {'tool_call_started', 'tool_call_completed'}:
             name = data.get('tool_name') or data.get('name') or data.get('tool', '')
             if isinstance(name, str) and name and not name.startswith(('api__', 'mcp__')):

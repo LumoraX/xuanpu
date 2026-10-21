@@ -22,6 +22,16 @@ from xuanpu_server.tenancy import Principal
 from xuanpu_server.work_tasks.config import DurableExecutionConfig
 
 
+async def write_ready(platform,who,config,models,phase):
+    """从实际阶段读取证据，不在测试准备器中构造完成结论。"""
+    current=await platform.work_tasks.store.get(who,config['task'])
+    contexts=list(platform.task_runner._contexts.values())
+    Path(config['ready']).write_text(json.dumps({'phase':phase,'task':current.task_id,
+        'attempt_no':current.attempt_no,'session_id':current.session_id,
+        'inputs':[entry.model_dump() for entry in current.inputs],'model_calls':len(models.requests),
+        'container':_container_name(contexts[0].runtime.sandbox.workspace) if contexts else None}))
+
+
 async def main():
     """故障注入只包装平台检查点，实际事务、容器与模型协议均照常执行。"""
     config = json.loads(Path(sys.argv[1]).read_text())
@@ -64,18 +74,24 @@ async def main():
                 async with asyncio.timeout(10):
                     while not models.requests:
                         await asyncio.sleep(.01)
-            current = await platform.work_tasks.store.get(who, config['task'])
-            contexts = list(platform.task_runner._contexts.values())
-            Path(config['ready']).write_text(json.dumps({'phase':target, 'task':current.task_id,
-                'attempt_no':current.attempt_no, 'session_id':current.session_id,
-                'inputs':[entry.model_dump() for entry in current.inputs], 'model_calls':len(models.requests),
-                'container':_container_name(contexts[0].runtime.sandbox.workspace) if contexts else None}))
+            await write_ready(platform,who,config,models,target)
             await asyncio.Event().wait()
     platform.task_registry.durable.execution.checkpoint = pause
     stopping = asyncio.Event()
     asyncio.get_running_loop().add_signal_handler(signal.SIGTERM,stopping.set)
+    if config['phase']=='accepted':
+        current=await platform.work_tasks.store.get(who,config['task'])
+        Path(config['ready']).write_text(json.dumps({'phase':'accepted','task':current.task_id,
+            'attempt_no':current.attempt_no,'inputs':[entry.model_dump() for entry in current.inputs],
+            'model_calls':0,'session_id':None,'container':None}))
+        await asyncio.Event().wait()
     await platform.start()
     while not stopping.is_set():
+        if config['phase']=='script_running':
+            contexts=list(platform.task_runner._contexts.values())
+            if contexts and (contexts[0].runtime.sandbox.workspace/'scratch/hold-ready').exists():
+                await write_ready(platform,who,config,models,'script_running')
+                await asyncio.Event().wait()
         task = await platform.work_tasks.store.get(who, config['task'])
         if task.status in {'failed','succeeded','interrupted','outcome_unknown','cancelled'}:
             raise AssertionError(task.model_dump())

@@ -140,3 +140,23 @@ async def test_approval_handoff_survives_commit_before_launch(http_world, step, 
     assert len(world.counts) == 1
     await world.platform.work_tasks.decide(world.employee,task.task_id,decision)
     assert len(world.counts) == 1
+
+
+async def test_kernel_caught_budget_failure_stays_blocked_and_native_cancel_works(http_world):
+    """实际租户额度拒绝采样，即使内核转成turn_failed仍保存预算阻塞。"""
+    from dataclasses import replace
+
+    from xuanpu_server.tenancy import QuotaLimits
+    world=http_world
+    tenant=await world.platform.store.get_tenant('acme')
+    await world.platform.store.update_tenant(replace(tenant,quota=QuotaLimits(max_daily_tokens=1)))
+    task=await world.platform.work_tasks.accept_capability(world.employee,CapabilityTaskInput.model_validate({
+        'request_id':'actual-budget-denial','text':'读取客户','capability':{'package':'http-recovery','entry':'query'}}))
+    await world.platform.task_registry.join()
+    current=await world.platform.work_tasks.store.get(world.employee,task.task_id)
+    dispatch=await world.platform.task_registry.durable.execution.get(world.employee,task.task_id)
+    assert current.status=='running' and dispatch.state=='blocked' and dispatch.block_reason=='block_budget'
+    assert not world.models.requests and not world.counts and not current.resources_pending
+    await world.platform.work_tasks.cancel(world.employee,task.task_id)
+    await world.platform.task_registry.join()
+    assert (await world.platform.work_tasks.store.get(world.employee,task.task_id)).status=='cancelled'

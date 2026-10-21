@@ -65,7 +65,7 @@ function addNotificationAlert(item, unreadCount = null) {
   const node=reminderNode("article","","notification-alert");
   node.dataset.notificationId=String(key);
   const heading=reminderNode("div","","notification-alert-heading");
-  heading.appendChild(reminderNode("strong",item ? (["proactive_check","proactive_followup"].includes(item.source)?"有一项业务需要跟进":"提醒时间到了") : "你有未读通知"));
+  heading.appendChild(reminderNode("strong",item ? (item.source==="work_task"?"交办工作有新进展":["proactive_check","proactive_followup"].includes(item.source)?"有一项业务需要跟进":"提醒时间到了") : "你有未读通知"));
   const close=reminderNode("button","×","notification-alert-close");close.type="button";
   close.setAttribute("aria-label","关闭通知提示");
   close.addEventListener("click",()=>{if(generation===reminderState.generation) dismissNotificationAlert(key);});

@@ -150,3 +150,9 @@ docker compose exec -T platform python - < office_probe.py
 共享目录使用Linux原生idmapped mounts（内核及util-linux需支持）：保持同一设备/inode和内容，挂载视图将平台UID/GID10001映射为执行UID/GID10002，新产物在底层仍属平台10001。不递归chown生产数据，不使用FUSE或放宽输入权限。安装器实际校验inode及映射属主，不支持时拒绝启动。
 
 身份映射使用[Linux内核idmapped mounts](https://www.kernel.org/doc/html/latest/filesystems/idmappings.html)。`/run/xuanpu-executor`的命名ACL只允许10001平台访问API，不能改为所有人可写；tmpfiles在重启后恢复相同ACL。安装器会重启执行服务，必须先停写并等在途任务收尾，不在运行中重跑安装器。
+
+## R2 灰度与前向回退
+
+先停新流量并等待执行租约归零，停写备份PG、全部data、配置、Compose、rootless服务和旧镜像完整层归档，实际校验SHA。候选先在独立预发布库运行增量迁移与故障矩阵。上线以三个开关关闭开始，再对合成租户逐项启用tenant_ids名单；每次重建后复核UID、socket、idmapped共享和资源限制。
+
+关闭task_triggers与durable_execution的新认领后，保留R2兼容镜像提供查询、暂停、取消及成果下载；保留effect、usage、occurrence账本。已有正式写入时不可盲目恢复快照；数据库/文件恢复也不撤销外部业务效应。实际版本、备份、演练和未验项见发布验收记录。

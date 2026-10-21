@@ -122,6 +122,10 @@ async function refreshReminders() {
         }
       }); row.appendChild(cancel);
     }
+    if(item.source==="work_task" && item.work_task_id){
+      const taskButton=reminderNode("button","查看工作进展","ghost");taskButton.type="button";
+      taskButton.addEventListener("click",async()=>{if(generation!==reminderState.generation)return;await openWorkspace("task");if(generation===reminderState.generation)await showWorkTaskCard(item.work_task_id,$("workspace-content"));});row.appendChild(taskButton);
+    }
     list.appendChild(row);
   }
   if (!body.items.length) list.appendChild(reminderNode("li", status === "active" ? "暂无待办提醒。可以在对话里告诉助手，也可以从功能页新建。" : "还没有此类提醒。", "meta"));
@@ -153,6 +157,10 @@ async function refreshNotifications() {
       read.addEventListener("click", async () => { if(generation!==reminderState.generation)return;read.disabled=true; try { await api("POST", `/v1/notifications/${item.notification_id}/read`); if(generation===reminderState.generation)await refreshNotifications(); } catch(error) {if(generation===reminderState.generation){read.disabled=false; fail(error);}} });
       row.appendChild(read);
     } else row.appendChild(reminderNode("span", "已读", "meta"));
+    if(item.source==="work_task" && item.work_task_id){
+      const taskButton=reminderNode("button","查看工作进展","ghost");taskButton.type="button";
+      taskButton.addEventListener("click",async()=>{if(generation!==reminderState.generation)return;await openWorkspace("task");if(generation===reminderState.generation)await showWorkTaskCard(item.work_task_id,$("workspace-content"));});row.appendChild(taskButton);
+    }
     list.appendChild(row);
     if(typeof appendProactiveNotificationAction==="function")associations.push(appendProactiveNotificationAction(item,row,
       ()=>generation===reminderState.generation && request===reminderState.notificationApplied && row.parentNode===list));

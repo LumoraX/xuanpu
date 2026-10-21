@@ -53,7 +53,9 @@ async function loadMainConversation() {
   $("chat-head").textContent=(workspace.settings?.assistant_name || "玄圃助手")+" · 主对话";
   const proactive=records.slice().reverse().find(x=>x.metadata?.route?.proactive_draft);
   if(proactive && !chat.routing)await restoreProactiveDraft(proactive.metadata.route.proactive_draft);
-  const pending=records.slice().reverse().find(x=>x.metadata?.route?.proposal_id && !x.metadata.route.proactive_draft);
+  const scheduled=records.slice().reverse().find(x=>x.metadata?.route?.task_definition_draft);
+  if(scheduled && !chat.routing)await restoreTaskDefinitionDraft(scheduled.metadata.route.task_definition_draft);
+  const pending=records.slice().reverse().find(x=>x.metadata?.route?.proposal_id && !x.metadata.route.proactive_draft && !x.metadata.route.task_definition_draft);
   if(pending && !chat.routing)await restoreWorkspaceProposal(pending.metadata.route.proposal_id);
 }
 function renderWorkspaceHistory(records,files,target) {

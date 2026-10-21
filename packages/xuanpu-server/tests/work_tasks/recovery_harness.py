@@ -102,7 +102,8 @@ class RecoveryWorld:
             sandboxes=old.runtimes._sandboxes, data_dir=self.world.data_dir, objects=self.world.objects,
             root_key_hash='0'*64, instance_id='r2-after-crash',
             now=(lambda: time.time()+advance_seconds) if advance_seconds else time.time,
-            durable_execution=DurableExecutionConfig(enabled=True, verified_text_bounds=True))
+            durable_execution=DurableExecutionConfig(enabled=True, verified_text_bounds=True),
+            task_activity=old.store.workspace_store._activity_config)
         self.world.platform = self.platform
         await self.platform.start()
 
@@ -135,6 +136,16 @@ class RecoveryWorld:
         """文件数读取本人正本；调用次数来自协议边界。"""
         files = await self.platform.workspace.list(self.who, kind='file')
         return {'artifact_files':len(files)-1,'model_calls':self.model_calls}
+
+    async def notifications(self,task_id):
+        """从真实通知存储补读本人队列，不维护测试替身列表。"""
+        records=await self.platform.store.reminder_store.notifications(self.who.tenant_id,self.who.user_id,0,100)
+        return [n for n in records if n.work_task_id==task_id]
+
+    async def reconcile_again(self):
+        """驱动原唯一执行器再次补读，证明事件与通知幂等。"""
+        await self.platform.task_registry.reconcile()
+        await self.platform.task_registry.join()
 
     async def close(self):
         """失败用例也清理明确属于自己的子进程和平台资源。"""

@@ -59,6 +59,7 @@ from xuanpu_server.tenancy import (
     verify_root_key,
     verify_secret,
 )
+from xuanpu_server.work_tasks.activity import ActivityConfig
 from xuanpu_server.work_tasks.artifacts import ArtifactService
 from xuanpu_server.work_tasks.config import DurableExecutionConfig
 from xuanpu_server.work_tasks.inputs import InputSnapshotService
@@ -124,6 +125,7 @@ class Platform:
         feishu_transport: httpx.AsyncBaseTransport | None = None,
         durable_execution: DurableExecutionConfig | None = None,
         task_triggers: TriggerConfig | None = None,
+        task_activity: ActivityConfig | None = None,
         proactive_interval: float = 1800.0,
         proactive_scan_seconds: float = 60.0,
         now: Callable[[], float] = time.time,
@@ -208,6 +210,7 @@ class Platform:
             store=store.workspace_store, control=store, identity=identity_store,
             objects=self.objects, now=now,
         )
+        store.workspace_store.configure_activity(task_activity or ActivityConfig())
         self.quota = QuotaGuard(store, now=now)
         self.packages = PackageRegistry(
             store, self.audit, data_dir=data_dir, objects=self.objects, now=now

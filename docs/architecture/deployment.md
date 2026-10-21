@@ -37,3 +37,9 @@ Ubuntu 24.04 的全局非特权 user namespace 限制保持开启。仅对玄圃
 安装、探针和回滚步骤见[办公执行部署](../guides/docker-deployment.md#r1办公执行的部署边界)。
 
 共享目录使用Linux原生idmapped mounts（内核及util-linux需支持）：保持同一设备/inode和内容，挂载视图将平台UID/GID10001映射为执行UID/GID10002，新产物在底层仍属平台10001。不递归chown生产数据，不使用FUSE或放宽输入权限。安装器实际校验inode及映射属主，不支持时拒绝启动。
+
+## R2-C 兼容发布
+
+控制面最新增量迁移为0014_task_activity；0011–0013既有日志和墓碑保留。durable_execution、task_triggers、task_activity均默认enabled=false，分别有tenant_ids白名单。先部署兼容reader并核对旧对象，再仅给隔离合成租户开放；关闭触发和认领是前向回退，不是把有R2 JSON的数据库回退到R1进程。
+
+平台UID10001和独立executor UID10002、idmapped共享、Unix socket目录及资源上限不随R2变更。daemon重启、平台重建、宿主整机重启分别留证；仅容器重启不能签收宿主重启。实时签收见R2验收记录。

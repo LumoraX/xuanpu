@@ -143,6 +143,8 @@ class UserUsage(Usage):
 __all__ = [
     "RESUME_ENDING_KINDS",
     "TERMINAL_KINDS",
+    "TaskDefinition",
+    "WorkTask",
     "AuditRecord",
     "Event",
     "IssuedKey",
@@ -167,3 +169,19 @@ class WorkTask:
         """直接保留响应内容，不推断终态、回执或外部写入结果。"""
         return cls(task_id=data['task_id'], status=data['status'],
                    state_version=data['state_version'], record=dict(data))
+
+
+@dataclass(frozen=True)
+class TaskDefinition:
+    """执行安排快照，保留服务端确认范围与管理CAS，不推断授权有效性。"""
+    definition_id: str
+    version: int
+    state_version: int
+    enabled: bool
+    record: dict[str, Any]
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> TaskDefinition:
+        """严格读取必要身份与版本，未知展示字段保留于本人快照。"""
+        return cls(definition_id=data['definition_id'],version=data['version'],
+                   state_version=data['state_version'],enabled=data['enabled'],record=dict(data))

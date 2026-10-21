@@ -47,7 +47,7 @@ async def snapshots(service: TaskDefinitionService,who: Principal,record: TaskDe
 
 async def fire_time(service: TaskDefinitionService,who: Principal,identifier: str) -> Occurrence | None:
     """数据库异常全部回滚；明确资格不足单独提交blocked而不推进原时刻。"""
-    if not service.config.enabled or not service.tasks.durable.enabled:
+    if not service.config.allows(who.tenant_id) or not service.tasks.durable.allows(who.tenant_id):
         return None
     captured=await service.get(who,identifier)
     now=service.now()
@@ -64,7 +64,7 @@ async def fire_time(service: TaskDefinitionService,who: Principal,identifier: st
         reason='source_unavailable'
     async with service.workspace.transaction(who,'work-task:trigger-fire:'+oid) as state:
         current=definition(state,identifier)
-        if (not service.config.enabled or not service.tasks.durable.enabled or not current.enabled or current.version!=captured.version
+        if (not service.config.allows(who.tenant_id) or not service.tasks.durable.allows(who.tenant_id) or not current.enabled or current.version!=captured.version
                 or current.next_fire_at!=captured.next_fire_at):
             return None
         old=state.task_occurrences.get(oid)
