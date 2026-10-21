@@ -6,6 +6,10 @@ import hashlib
 import json
 from typing import TYPE_CHECKING, Any
 
+import anyio
+from anyio import to_process
+
+from xuanpu_finance.compliance.document_formats import check_document
 from xuanpu_finance.errors import FinanceError
 from xuanpu_finance.invoices.parser import _tree
 from xuanpu_finance.operations import request_digest
@@ -17,6 +21,7 @@ if TYPE_CHECKING:
     from xuanpu_finance.objects import OriginalObjects
 
 SIMULATION_PROFILE = "simulation-archive-v1"
+PARSE_TIMEOUT_SECONDS = 10
 
 
 def canonical(value: object) -> bytes:
@@ -42,6 +47,8 @@ def check_parse(raw: bytes, media_type: str, kind: str | None = None) -> None:
     if media_type == "application/octet-stream" and kind in {"tax_receipt", "settlement_raw_receipt"}:
         # 空HTTP错误体仍是可精确恢复的原始证据，不推断任何业务成功。
         return
+    elif media_type in {"application/pdf", "image/png", "image/jpeg"}:
+        check_document(raw,media_type)
     elif media_type in {"application/xml", "text/xml"}:
         _tree(raw)
     elif media_type == "application/json":
@@ -70,7 +77,10 @@ async def materialize(artifact: ArchiveArtifact, objects: OriginalObjects,
     if len(raw) != artifact.size or hashlib.sha256(raw).hexdigest() != artifact.sha256:
         raise FinanceError("ARCHIVE_MATERIAL_MISMATCH", 409, "归档材料大小或摘要不符")
     try:
-        check_parse(raw, artifact.media_type, artifact.kind)
+        with anyio.fail_after(PARSE_TIMEOUT_SECONDS):
+            await to_process.run_sync(check_parse,raw,artifact.media_type,artifact.kind,cancellable=True)
+    except TimeoutError as error:
+        raise FinanceError("ARCHIVE_PARSE_TIMEOUT",409,"归档格式解析超过执行期限，未取得可用性结论") from error
     except (ValueError, UnicodeDecodeError, RecursionError) as error:
         raise FinanceError("ARCHIVE_PARSE_FAILED", 409, "归档材料解析失败") from error
     return raw

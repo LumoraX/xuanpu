@@ -24,6 +24,7 @@ from xuanpu_finance.routes import (  # noqa: TC001 — FastAPI运行时解析
     Limit,
     VersionRequest,
 )
+from xuanpu_finance.routes_f5 import funding_action_target
 
 router = APIRouter()
 ClaimStatus = Annotated[
@@ -148,7 +149,8 @@ async def preview(
     request: Request, body: ActionPreview | ComplianceActionPreview, key: IdempotencyKey, who: FinanceCaller
 ) -> dict[str, Any]:
     """只生成固定版本计划，不占额度或产生批准。"""
-    require_write(request, cancel=body.action in {"approve", "reject", "withdraw"})
+    funding = await funding_action_target(request, who, body.target_type, body.target_id)
+    require_write(request, cancel=body.action in ({"reject", "withdraw"} if funding else {"approve", "reject", "withdraw"}))
     return await get_store(request).preview_finance_action(who, body, key)
 
 
@@ -166,7 +168,8 @@ async def execute(
     if who.origin != "human":
         raise FinanceError("HUMAN_REQUIRED", 403, "请本人在人工确认入口作出业务决定")
     plan = await get_store(request).get_action_plan(who, body.plan_id)
-    require_write(request, cancel=plan["action"] in {"approve", "reject", "withdraw"})
+    funding = await funding_action_target(request, who, plan["target_type"], plan["target_id"])
+    require_write(request, cancel=plan["action"] in ({"reject", "withdraw"} if funding else {"approve", "reject", "withdraw"}))
     return await get_store(request).execute_finance_action(who, body, key)
 
 

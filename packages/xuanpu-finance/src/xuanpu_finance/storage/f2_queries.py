@@ -246,7 +246,7 @@ class SettlementQueryStore(SettlementExecutionStore, ImportStore, ReadStore):
             role = await self._role(conn, who, entity)
             if document_id is not None:
                 await self._claim_row(conn, who, document_id)
-            where = "r.tenant_id=$1 AND r.legal_entity_id=$2 AND ($3::text IS NULL OR r.document_id=$3) AND (c.owner_id=$4 OR $5::text='reviewer' OR ($5::text='approver' AND EXISTS(SELECT 1 FROM finance_workflow w JOIN finance_workflow_step s ON(s.tenant_id=w.tenant_id AND s.legal_entity_id=w.legal_entity_id AND s.workflow_id=w.id) WHERE w.tenant_id=c.tenant_id AND w.legal_entity_id=c.legal_entity_id AND w.document_id=c.id AND s.approver_user_id=$4)))"
+            where = "r.tenant_id=$1 AND r.legal_entity_id=$2 AND ($3::text IS NULL OR r.document_id=$3) AND (c.owner_id=$4 OR $5::text='reviewer' OR ($5::text='approver' AND EXISTS(SELECT 1 FROM finance_workflow w JOIN finance_workflow_step s ON(s.tenant_id=w.tenant_id AND s.legal_entity_id=w.legal_entity_id AND s.workflow_id=w.id) WHERE w.tenant_id=c.tenant_id AND w.legal_entity_id=c.legal_entity_id AND w.document_id=c.id AND s.approver_user_id=$4" + self._legacy_assignment_visibility_sql() + ")))"
             joins = f" FROM {table} r JOIN finance_expense_claim c ON(c.tenant_id=r.tenant_id AND c.legal_entity_id=r.legal_entity_id AND c.id=r.document_id) WHERE "
             args = (who.tenant_id, entity, document_id, who.user_id, role)
             total = await conn.fetchval("SELECT count(*)" + joins + where, *args)

@@ -32,7 +32,7 @@ class ComplianceResultStore(ComplianceExecutionStore):
 
     async def _f3_lock_subject(self, conn: Connection, tenant: str, entity: str, kind: str, id: str) -> None:
         """只按固定目标锁数据，不以当前员工授权拒绝保存既有外部事实。"""
-        if kind in {"expense_claim", "payable"}:
+        if kind in {"expense_claim", "payable", "funding_case"}:
             await conn.fetchrow("SELECT id FROM finance_expense_claim WHERE tenant_id=$1 AND legal_entity_id=$2 AND id=$3 FOR UPDATE", tenant, entity, id)
             rows = await conn.fetch("SELECT DISTINCT invoice_id FROM finance_allocation WHERE tenant_id=$1 AND legal_entity_id=$2 AND document_id=$3 ORDER BY invoice_id", tenant, entity, id)
             ids = [r["invoice_id"] for r in rows]

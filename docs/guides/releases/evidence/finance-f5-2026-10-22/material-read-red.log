@@ -1,0 +1,21 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_______________ test_original_bytes_current_assignment_and_epoch _______________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x109cafec0>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1367/test_original_bytes_current_as0')
+
+    async def test_original_bytes_current_assignment_and_epoch(store: Any,tmp_path: Path) -> None:
+        """原平台可离线，当前分派人按固定摘要读取原件，旧epoch恢复不能读旧单据。"""
+        owner,tax,approver,doc,objects,raw=await real_funding_source(store,tmp_path)
+>       assert importlib.util.find_spec('xuanpu_finance.funding.materials') is not None,'缺少HITL真实材料读取'
+E       AssertionError: 缺少HITL真实材料读取
+E       assert None is not None
+E        +  where None = <function find_spec at 0x102dce160>('xuanpu_finance.funding.materials')
+E        +    where <function find_spec at 0x102dce160> = <module 'importlib.util' (frozen)>.find_spec
+E        +      where <module 'importlib.util' (frozen)> = importlib.util
+
+packages/xuanpu-finance/tests/test_f5_material_read.py:22: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f5_material_read.py::test_original_bytes_current_assignment_and_epoch
+1 failed in 0.47s

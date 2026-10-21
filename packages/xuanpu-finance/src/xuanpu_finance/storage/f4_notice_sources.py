@@ -2,18 +2,31 @@
 
 from __future__ import annotations
 
+from xuanpu_finance.storage.f5_notice_sql import FUNDING_DUE_SQL
+
 # 与F3当前档案补包闭包一致，仅读真实未补事件；审计ID集合代表真实健康历史。
 ARCHIVE_STATE_SQL = """
 LEFT JOIN LATERAL (
- WITH invoices AS (
-  SELECT a.target_id AS id WHERE a.target_type='invoice'
-  UNION SELECT x.invoice_id FROM finance_allocation x WHERE x.tenant_id=a.tenant_id AND x.legal_entity_id=a.legal_entity_id AND a.target_type<>'invoice' AND x.document_id=a.target_id
+ WITH RECURSIVE funding_links(a_id,b_id) AS (
+  SELECT document_id,source_case_id FROM finance_funding_case WHERE tenant_id=a.tenant_id AND legal_entity_id=a.legal_entity_id AND source_case_id IS NOT NULL
+  UNION SELECT source_case_id,document_id FROM finance_funding_case WHERE tenant_id=a.tenant_id AND legal_entity_id=a.legal_entity_id AND source_case_id IS NOT NULL
+ ), documents(id) AS (
+  SELECT a.target_id WHERE a.target_type<>'invoice'
+  UNION SELECT x.document_id FROM finance_allocation x WHERE x.tenant_id=a.tenant_id AND x.legal_entity_id=a.legal_entity_id AND a.target_type='invoice' AND x.invoice_id=a.target_id
+ ), family(id) AS (
+  SELECT id FROM documents
+  UNION SELECT l.b_id FROM funding_links l JOIN family f ON(l.a_id=f.id)
+ ), invoice_roots(id) AS (
+  SELECT a.target_id WHERE a.target_type='invoice'
+  UNION SELECT x.invoice_id FROM finance_allocation x WHERE x.tenant_id=a.tenant_id AND x.legal_entity_id=a.legal_entity_id AND x.document_id IN (SELECT id FROM family)
+ ), invoices(id) AS (
+  SELECT id FROM invoice_roots
+  UNION SELECT l.red_invoice_id FROM finance_red_letter_link l JOIN invoices i ON(l.blue_invoice_id=i.id) WHERE l.tenant_id=a.tenant_id AND l.legal_entity_id=a.legal_entity_id
  ), aggregates AS (
   SELECT a.target_id AS id
   UNION SELECT jsonb_array_elements_text(a.snapshot->'snapshots'->'aggregate_ids')
   UNION SELECT id FROM invoices
-  UNION SELECT x.document_id FROM finance_allocation x WHERE x.tenant_id=a.tenant_id AND x.legal_entity_id=a.legal_entity_id AND a.target_type='invoice' AND x.invoice_id=a.target_id
-  UNION SELECT l.red_invoice_id FROM finance_red_letter_link l WHERE l.tenant_id=a.tenant_id AND l.legal_entity_id=a.legal_entity_id AND l.blue_invoice_id IN (SELECT id FROM invoices)
+  UNION SELECT id FROM family
  )
  SELECT count(*) AS change_count,md5(COALESCE(string_agg(e.sequence::text,',' ORDER BY e.sequence),'')) AS fingerprint
  FROM finance_event e WHERE e.tenant_id=a.tenant_id AND e.legal_entity_id=a.legal_entity_id AND e.aggregate_id IN (SELECT id FROM aggregates)
@@ -40,19 +53,21 @@ WITH candidates AS (
  concat(s.version,':',w.version,':',s.authority_generation,':',w.due_at<now()),s.approver_user_id,
  CASE WHEN w.due_at<now() THEN 'approval_overdue' ELSE 'approval_pending' END,
  CASE WHEN w.due_at<now() THEN '财务审批已逾期，请核对原流程' ELSE '有财务事项等待您审批' END,
- CASE WHEN w.target_type='action_plan' THEN 'action_plan' WHEN d.document_kind='payable' THEN 'payable' ELSE 'expense_claim' END,
+ CASE WHEN w.target_type='action_plan' THEN 'action_plan' ELSE d.document_kind END,
  CASE WHEN w.target_type='action_plan' THEN w.target_id ELSE w.document_id END,
  CASE WHEN w.due_at<now() THEN 'overdue' ELSE 'pending' END
  FROM finance_workflow_step s JOIN finance_workflow w ON(w.tenant_id=s.tenant_id AND w.legal_entity_id=s.legal_entity_id AND w.id=s.workflow_id)
  JOIN finance_expense_claim d ON(d.tenant_id=w.tenant_id AND d.legal_entity_id=w.legal_entity_id AND d.id=w.document_id)
  JOIN finance_grant_epoch g ON(g.tenant_id=s.tenant_id AND g.legal_entity_id=s.legal_entity_id AND g.user_id=s.approver_user_id AND g.generation=s.authority_generation AND g.role IN ('approver','reviewer'))
  LEFT JOIN finance_expense_policy p ON(p.tenant_id=w.tenant_id AND p.legal_entity_id=w.legal_entity_id)
+ LEFT JOIN finance_funding_policy fp ON(fp.tenant_id=w.tenant_id AND fp.legal_entity_id=w.legal_entity_id)
  LEFT JOIN finance_settlement_policy sp ON(sp.tenant_id=w.tenant_id AND sp.legal_entity_id=w.legal_entity_id)
  LEFT JOIN finance_action_plan ap ON(ap.tenant_id=w.tenant_id AND ap.legal_entity_id=w.legal_entity_id AND ap.id=w.target_id)
  WHERE s.status='pending' AND w.status='under_review'
  AND NOT EXISTS(SELECT 1 FROM finance_workflow_step prev WHERE prev.tenant_id=s.tenant_id AND prev.legal_entity_id=s.legal_entity_id AND prev.workflow_id=s.workflow_id AND prev.position<s.position AND prev.status<>'approved')
- AND ((w.target_type<>'action_plan' AND d.version=w.target_version AND d.status='under_review' AND p.enabled AND p.version=w.policy_version AND p.generation=w.policy_generation)
+ AND ((w.target_type<>'action_plan' AND d.version=w.target_version AND d.status='under_review' AND ((d.document_kind='funding_case' AND fp.enabled AND fp.version=w.policy_version AND fp.generation=w.policy_generation) OR (d.document_kind<>'funding_case' AND p.enabled AND p.version=w.policy_version AND p.generation=w.policy_generation)))
  OR (w.target_type='action_plan' AND ap.digest=w.target_digest AND sp.enabled AND sp.version=w.policy_version AND sp.generation=w.policy_generation AND (ap.data->'bindings'->>'document_version')::integer=d.version
+ AND (d.document_kind<>'funding_case' OR (fp.enabled AND fp.version=(ap.data#>>'{bindings,business,funding,policy,version}')::integer AND fp.generation=(ap.data#>>'{bindings,business,funding,policy,generation}')::integer))
  AND EXISTS(SELECT 1 FROM finance_settlement_provider v WHERE v.provider=ap.data->'bindings'->'provider'->>'provider' AND v.configuration_version=(ap.data->'bindings'->'provider'->>'configuration_version')::integer AND v.tenant_id=ap.tenant_id AND v.legal_entity_id=ap.legal_entity_id AND v.enabled AND v.generation=(ap.data->'bindings'->'provider'->>'generation')::integer)))
  UNION ALL
  SELECT s.tenant_id,s.legal_entity_id,'compliance_step',s.id,
@@ -97,6 +112,9 @@ WITH candidates AS (
  JOIN finance_grant g ON(g.tenant_id=a.tenant_id AND g.legal_entity_id=a.legal_entity_id AND g.role='reviewer' AND p.data->'archive_executor_user_ids' ? g.user_id)
  WHERE c.enabled AND p.data->>'archive_enabled'='true'
  AND (h.supplement_required OR h.last_audit_status IN ('failed','unavailable') OR changes.change_count>0)
+"""
+    + FUNDING_DUE_SQL
+    + """
 )
 SELECT c.*,jsonb_build_array(c.source_type,c.tenant_id,c.legal_entity_id,c.source_id,c.recipient_id)::text AS scan_key
 FROM candidates c JOIN finance_grant g ON(g.tenant_id=c.tenant_id AND g.legal_entity_id=c.legal_entity_id AND g.user_id=c.recipient_id)
@@ -109,7 +127,7 @@ EXISTS(SELECT 1 FROM finance_grant g WHERE g.tenant_id=o.tenant_id AND g.legal_e
 AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(o.data->'resources') resource
 WHERE NOT (
 (g.role='reviewer') OR
-(resource->>'kind' IN ('expense_claim','payable') AND EXISTS(
+(resource->>'kind' IN ('expense_claim','payable','funding_case') AND EXISTS(
  SELECT 1 FROM finance_expense_claim d WHERE d.tenant_id=o.tenant_id AND d.legal_entity_id=o.legal_entity_id AND d.id=resource->>'id'
  AND (d.owner_id=o.owner_id OR (g.role='approver' AND EXISTS(
  SELECT 1 FROM finance_workflow w JOIN finance_workflow_step st ON(st.tenant_id=w.tenant_id AND st.legal_entity_id=w.legal_entity_id AND st.workflow_id=w.id)

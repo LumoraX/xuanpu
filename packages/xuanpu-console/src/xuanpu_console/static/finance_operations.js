@@ -1,6 +1,6 @@
 // 原生财务提醒与运行概览；通知只恢复原事项，不代表业务决定。
 "use strict";
-const financeNoticeStatuses={awaiting_confirmation:"等待本方确认",expired_pending_check:"本地期限已过，等待权威核对",pending:"等待审批",overdue:"审批已逾期",outcome_unknown:"结果待核对",attention_required:"需要核对",open:"等待补充材料",investigating:"核对中",recorded:"已记录",succeeded:"已完成",failed:"未完成",accepted:"已受理",cancelled:"已取消"};
+const financeNoticeStatuses={awaiting_invoice:"到票或余款待核对",awaiting_confirmation:"等待本方确认",expired_pending_check:"本地期限已过，等待权威核对",pending:"等待审批",overdue:"审批已逾期",outcome_unknown:"结果待核对",attention_required:"需要核对",open:"等待补充材料",investigating:"核对中",recorded:"已记录",succeeded:"已完成",failed:"未完成",accepted:"已受理",cancelled:"已取消"};
 const financeIntegrationStates={configured_internal:"内部审批已配置",configured_simulation:"隔离通道已配置",formal_unverified:"正式能力尚未验收",unconfigured:"尚未配置",disabled:"已关闭",ready:"已配置",degraded:"需要核对"};
 function financeOperationsToolbar(toolbar){toolbar.append(wsButton("财务提醒",()=>financeNotifications()),wsButton("运行概览",()=>financeOverview()));}
 function financeCount(value){if(!Number.isSafeInteger(value)||value<0)throw new Error("财务计数响应无效，请刷新核对。");return value;}
@@ -13,7 +13,7 @@ async function financeNotifications(cursor="",append=false){
 async function financeOpenNotice(item){
   if(financeState.pending){financeShowPending();return;}financeInvalidate();
   const review=["approval_pending","approval_overdue"].includes(item.kind)?await financeNoticeReview(item):null;
-  const handlers={action_plan:()=>financeSettlementPlan(item.target_id,review),expense_claim:()=>financeDetail(item.target_id,review),payable:()=>financePayableDetail(item.target_id,review),operation:()=>financeSettlementOperation(item.target_id),red_letter_case:()=>financeComplianceCase(item.target_id),archive:()=>financeComplianceArchive(item.target_id),exception:()=>financeNoticeException(item.target_id)};
+  const handlers={funding_case:()=>financeFundingDetail(item.target_id,review),action_plan:()=>financeSettlementPlan(item.target_id,review),expense_claim:()=>financeDetail(item.target_id,review),payable:()=>financePayableDetail(item.target_id,review),operation:()=>financeSettlementOperation(item.target_id),red_letter_case:()=>financeComplianceCase(item.target_id),archive:()=>financeComplianceArchive(item.target_id),exception:()=>financeNoticeException(item.target_id)};
   if(!handlers[item.target_type])throw new Error("提醒目标类型无法识别，请联系财务核对。");await handlers[item.target_type]();
 }
 async function financeNoticeReview(item){

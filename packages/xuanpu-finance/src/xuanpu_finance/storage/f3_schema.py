@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS finance_compliance_plan (
  target_id text NOT NULL, target_version integer NOT NULL, digest text NOT NULL,
  expires_at timestamptz NOT NULL, data jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(tenant_id,legal_entity_id,id), UNIQUE(id),
- CHECK(target_type IN ('invoice','red_letter_case','archive','expense_claim','payable','action_plan')),
+ CHECK(target_type IN ('invoice','red_letter_case','archive','expense_claim','payable','funding_case','action_plan')),
  FOREIGN KEY(tenant_id,legal_entity_id) REFERENCES finance_company);
 CREATE TABLE IF NOT EXISTS finance_compliance_workflow (
  tenant_id text NOT NULL, legal_entity_id text NOT NULL, id text NOT NULL,
@@ -156,6 +156,11 @@ CREATE TABLE IF NOT EXISTS finance_compliance_exception (
  operation_id text, rule_id text NOT NULL, data jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(tenant_id,legal_entity_id,id));
 CREATE INDEX IF NOT EXISTS finance_compliance_pending ON finance_compliance_operation(status,next_query_at,lease_until,created_at);
+"""
+
+F3_SCHEMA += """
+ALTER TABLE finance_compliance_plan DROP CONSTRAINT IF EXISTS finance_compliance_plan_target_type_check;
+ALTER TABLE finance_compliance_plan ADD CONSTRAINT finance_compliance_plan_target_type_check CHECK(target_type IN ('invoice','red_letter_case','archive','expense_claim','payable','funding_case','action_plan'));
 """
 
 IMMUTABLE_TABLES = (

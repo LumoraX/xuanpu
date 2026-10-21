@@ -20,7 +20,7 @@ from xuanpu_finance.routes_f1 import ClaimStatus  # noqa: TC001
 
 router = APIRouter()
 DocumentId = Annotated[str | None, Query(min_length=1, max_length=128)]
-DocumentKind = Annotated[Literal["expense_claim", "payable"], Query()]
+DocumentKind = Annotated[Literal["expense_claim", "payable", "funding_case"], Query()]
 BusinessKind = Annotated[Literal["supplier", "contract", "order", "acceptance"], Query()]
 Search = Annotated[str | None, Query(max_length=128)]
 

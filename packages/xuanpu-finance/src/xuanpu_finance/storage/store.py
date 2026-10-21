@@ -9,18 +9,17 @@ from xuanpu_finance.errors import FinanceError
 from xuanpu_finance.storage.f1_schema import F1_SCHEMA
 from xuanpu_finance.storage.f2_schema import F2_INBOX_SCHEMA, F2_SCHEMA
 from xuanpu_finance.storage.f3_schema import F3_SCHEMA, immutable_schema
-from xuanpu_finance.storage.f4_notices import NotificationStore
-from xuanpu_finance.storage.f4_overview import OverviewStore
 from xuanpu_finance.storage.f4_query_schema import F4_QUERY_SCHEMA
 from xuanpu_finance.storage.f4_schema import F4_SCHEMA
+from xuanpu_finance.storage.f5_schema import F5_SCHEMA
+from xuanpu_finance.storage.f5_settlement import FundingStore
 from xuanpu_finance.storage.schema import SCHEMA
-from xuanpu_finance.storage.worker import WorkerStore
 
 if TYPE_CHECKING:
     from xuanpu_finance.models import FinancePrincipal
 
 
-class FinanceStore(OverviewStore, NotificationStore, WorkerStore):
+class FinanceStore(FundingStore):
     """显式注入连接池、全部业务状态独立持久化的财务存储。"""
 
     async def migrate(self) -> None:
@@ -35,6 +34,7 @@ class FinanceStore(OverviewStore, NotificationStore, WorkerStore):
             await conn.execute(F4_SCHEMA)
             await conn.execute(F4_QUERY_SCHEMA)
             await conn.execute(immutable_schema())
+            await conn.execute(F5_SCHEMA)
 
     async def seed_company(
         self, tenant_id: str, legal_entity_id: str, name: str, tax_id: str

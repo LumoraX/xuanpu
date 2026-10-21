@@ -91,6 +91,7 @@ async def configure_store(pool: asyncpg.Pool, config: FinanceConfig) -> FinanceS
         [item.public_descriptor() for item in config.settlement_providers],
         simulation=config.execution_simulation,
     )
+    await store.configure_funding(config.funding_policies)
     await store.configure_compliance(config.compliance_policies,
         [item.public_descriptor() for item in config.compliance_providers],
         simulation=config.execution_simulation)

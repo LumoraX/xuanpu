@@ -12,6 +12,8 @@ from xuanpu_finance.compliance.models import CompliancePolicy  # noqa: TC001
 from xuanpu_finance.compliance.protocol import ComplianceProviderConfig  # noqa: TC001
 from xuanpu_finance.compliance_config import validate_compliance_config
 from xuanpu_finance.expenses.models import ExpensePolicy  # noqa: TC001 — Pydantic运行时解析
+from xuanpu_finance.funding.models import FundingPolicy  # noqa: TC001
+from xuanpu_finance.funding_config import validate_funding_config
 from xuanpu_finance.settlement.models import (  # noqa: TC001
     BusinessSnapshot,
     PayeeAccount,
@@ -121,6 +123,7 @@ class FinanceConfig(StrictConfig):
     companies: list[CompanyConfig]
     grants: list[GrantConfig]
     expense_policies: list[ExpensePolicy] = Field(default_factory=list)
+    funding_policies: list[FundingPolicy] = Field(default_factory=list)
     execution_simulation: bool = False
     settlement_policies: list[SettlementPolicy] = Field(default_factory=list)
     business_documents: list[BusinessSnapshot] = Field(default_factory=list)
@@ -151,6 +154,7 @@ class FinanceConfig(StrictConfig):
         self.validate_expense_links(companies)
         validate_settlement_config(self)
         validate_compliance_config(self)
+        validate_funding_config(self)
         return self
 
     def validate_expense_links(self, companies: set[tuple[str, str]]) -> None:

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 from xuanpu_finance.errors import FinanceError
 from xuanpu_finance.models import FinancePrincipal
 from xuanpu_finance.operations import request_digest
-from xuanpu_finance.storage.common import identifier
+from xuanpu_finance.storage.common import decode, identifier
 from xuanpu_finance.storage.imports import validate_source_environment
 from xuanpu_finance.storage.originals import OriginalStore
 
@@ -312,6 +312,25 @@ class WorkerStore(OriginalStore):
             ],
         )
 
+    async def finish_supporting_item(self, claim: dict[str, Any], position: int) -> None:
+        """租约和固定摘要均有效才完成材料收件，不形成发票或材料核实事实。"""
+        async with self.pool.acquire() as conn, conn.transaction():
+            row = await self._locked_claim(conn, claim)
+            await self._role(conn, FinancePrincipal(row["tenant_id"], row["owner_id"]), row["legal_entity_id"])
+            if row["purpose"] != "supporting_material":
+                raise FinanceError("IMPORT_PURPOSE_INVALID", 409, "当前请求不是材料收件")
+            item = await conn.fetchrow(
+                "SELECT * FROM finance_item WHERE tenant_id=$1 AND legal_entity_id=$2 AND operation_id=$3 AND position=$4 FOR UPDATE", row["tenant_id"], row["legal_entity_id"], row["id"], position
+            )
+            assert item is not None
+            if item["state"] == "material_received":
+                return
+            if item["state"] != "received" or item["receipt_id"] is None or item["actual_sha256"] != decode(item["file_ref"])["sha256"]:
+                raise FinanceError("MATERIAL_NOT_RECEIVED", 409, "固定版本材料尚未完整接收")
+            await conn.execute("UPDATE finance_item SET state='material_received' WHERE tenant_id=$1 AND legal_entity_id=$2 AND operation_id=$3 AND position=$4", row["tenant_id"], row["legal_entity_id"], row["id"], position)
+            await conn.execute("UPDATE finance_operation SET version=version+1 WHERE tenant_id=$1 AND legal_entity_id=$2 AND id=$3", row["tenant_id"], row["legal_entity_id"], row["id"])
+            await self._event(conn, row, "material.received", {"position": position, "receipt_id": item["receipt_id"]})
+
     async def complete_import(self, claim: dict[str, Any]) -> None:
         """处理完全部项后区分生命周期结束与业务部分失败。"""
         async with self.pool.acquire() as conn, conn.transaction():
@@ -321,6 +340,8 @@ class WorkerStore(OriginalStore):
             if summary["pending"]:
                 raise FinanceError("IMPORT_PENDING", 409, "尚有未处理原件")
             good = summary["parsed"] + summary["duplicate_linked"]
+            if row["purpose"] == "supporting_material":
+                good += summary["materials"]
             result = "succeeded" if good == summary["total"] else "partial" if good else "failed"
             await conn.execute(
                 "UPDATE finance_operation SET status=CASE WHEN $2='failed' THEN 'failed' ELSE 'succeeded' END,business_result=$2,version=version+1,lease_token=NULL,lease_until=NULL WHERE id=$1",

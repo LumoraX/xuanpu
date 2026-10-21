@@ -1,5 +1,7 @@
 # 财务 F1 轻量报销记录与内部审批
 
+当前专用资金能力与最新包契约入口见[F5指南](finance-f5.md)（finance `0.6.0-f5`、69项API、7个Skill）。本页保留本阶段操作说明、历史版本和验证证据；当前最终门禁、制品与运行状态见[F5验收记录](releases/2026-10-22-finance-f5-acceptance.md)。
+
 F1在F0独立原件基座上提供费用记录、可选附件/分票、版本修订、真实人员审批、驳回/撤回及持久待办。当前没有预置正式企业报销制度；先配置最小分类和一名实际审批人即可用内部记录模式。源码与样例包可运行，部署和验收边界见[F1验收记录](releases/2026-10-21-finance-f1-acceptance.md)。
 
 ## 员工使用
@@ -22,7 +24,7 @@ invoice_backed模式要求完整分配、票据正常和默认查验passed；当
 
 ## Skill 与 API
 
-F1新增操作在当前F2发布包中继续兼容；当前F3包共58项操作、7个Skill，见[后续F2指南](finance-f2.md)。模型可创建/修订草稿与生成计划，工具签名始终origin=agent。executeFinanceAction只接受origin=human，不能靠模型参数或工具批准升级来源。
+F1新增操作在后续包中继续兼容；F3阶段包为58项操作、7个Skill，付款与记账见[F2指南](finance-f2.md)。模型可创建/修订草稿与生成计划，工具签名始终origin=agent。executeFinanceAction只接受origin=human，不能靠模型参数或工具批准升级来源。
 
 人工页面经通用平台接口POST /v1/integration-actions/{package}/{connector}/{operation}，请求为{arguments,confirmed}。写操作必须confirmed=true；只允许当前员工cookie与CSRF，拒绝root、API key、act-as和混合凭据。平台只访问当前租户已安装、生效包中显式声明的HTTP操作，按最终报文签名，服务密钥不进入浏览器；不会调用模型或加载财务业务代码。
 
@@ -36,4 +38,4 @@ previewFinanceAction返回不可变计划及实时blockers；executeFinanceActio
 
 企业微信/飞书未来可作为通知、展示或审批执行适配器；公司只能选择一个审批权威。外部实例、人员映射、回执及验签单独记录，不能用一个“已通过”字符串覆盖内部状态。本期尚未实现这两个适配器，真实支付、ERP、税务和正式归档尚未接入；通用付款/记账接口及隔离执行见[F2指南](finance-f2.md)。
 
-当前F4已补原生站内提醒、SQL权限分页、配置/运营投影和local配套恢复，见[F4指南](finance-f4.md)与[剩余缺口台账](finance-gap-register.md)。历史阶段的工具数量以对应阶段为准，当前包61项API、7个Skill。
+当前F4已补原生站内提醒、SQL权限分页、配置/运营投影和local配套恢复，见[F4指南](finance-f4.md)与[剩余缺口台账](finance-gap-register.md)。F4阶段为61项API、7个Skill；当前F5为69项API、7个Skill，专用资金见[F5指南](finance-f5.md)。

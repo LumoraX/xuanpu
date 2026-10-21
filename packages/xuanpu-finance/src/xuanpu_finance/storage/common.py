@@ -152,6 +152,10 @@ class FinanceBase:
             raise FinanceError("RESOURCE_NOT_FOUND", 404, "资源不存在")
         return row
 
+    def _legacy_assignment_visibility_sql(self) -> str:
+        """领域可收紧既有步骤关联读取，默认保持普通财务原有权限语义。"""
+        return ""
+
     async def _authorize_invoice(
         self,
         conn: asyncpg.Connection | asyncpg.pool.PoolConnectionProxy,
@@ -163,7 +167,7 @@ class FinanceBase:
             raise FinanceError("RESOURCE_NOT_FOUND", 404, "资源不存在")
         role = await self._role(conn, who, row["legal_entity_id"])
         assigned = await conn.fetchval(
-            "SELECT EXISTS(SELECT 1 FROM finance_allocation a JOIN finance_workflow w ON(w.tenant_id=a.tenant_id AND w.legal_entity_id=a.legal_entity_id AND w.document_id=a.document_id) JOIN finance_workflow_step s ON(s.tenant_id=w.tenant_id AND s.legal_entity_id=w.legal_entity_id AND s.workflow_id=w.id) WHERE a.tenant_id=$1 AND a.legal_entity_id=$2 AND a.invoice_id=$3 AND s.approver_user_id=$4)",
+            "SELECT EXISTS(SELECT 1 FROM finance_allocation a JOIN finance_workflow w ON(w.tenant_id=a.tenant_id AND w.legal_entity_id=a.legal_entity_id AND w.document_id=a.document_id) JOIN finance_workflow_step s ON(s.tenant_id=w.tenant_id AND s.legal_entity_id=w.legal_entity_id AND s.workflow_id=w.id) WHERE a.tenant_id=$1 AND a.legal_entity_id=$2 AND a.invoice_id=$3 AND s.approver_user_id=$4" + self._legacy_assignment_visibility_sql() + ")",
             who.tenant_id,
             row["legal_entity_id"],
             row["id"],

@@ -29,6 +29,9 @@ def operation_snapshot(row: Any, items: list[Any]) -> dict[str, Any]:
         0,
     )
     result_items: list[dict[str, Any]] = []
+    supporting = row.get("purpose") == "supporting_material"
+    if supporting:
+        counts["materials"] = 0
     resources = []
     refs = []
     for item in items:
@@ -40,7 +43,8 @@ def operation_snapshot(row: Any, items: list[Any]) -> dict[str, Any]:
             if item[name] is not None:
                 entry[name] = item[name]
         result_items.append(entry)
-        counts["pending" if item["state"] == "received" else item["state"]] += 1
+        state = "materials" if supporting and item["state"] == "material_received" else item["state"]
+        counts["pending" if state == "received" else state] += 1
         if item["invoice_id"]:
             resources.append({"kind": "invoice", "id": item["invoice_id"]})
         if item["exception_id"]:
@@ -55,7 +59,7 @@ def operation_snapshot(row: Any, items: list[Any]) -> dict[str, Any]:
                     "source_version": str(ref["revision"]),
                 }
             )
-    return {
+    result = {
         "id": row["id"],
         "version": row["version"],
         "status": row["status"],
@@ -66,3 +70,6 @@ def operation_snapshot(row: Any, items: list[Any]) -> dict[str, Any]:
         "resources": resources[:100],
         "summary": {"total": len(items), **counts},
     }
+    if supporting:
+        result["purpose"] = "supporting_material"
+    return result

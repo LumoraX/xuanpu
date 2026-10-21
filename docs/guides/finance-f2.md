@@ -1,5 +1,7 @@
 # 财务 F2 应付、付款及记账接口
 
+当前专用资金能力与最新包契约入口见[F5指南](finance-f5.md)（finance `0.6.0-f5`、69项API、7个Skill）。本页保留本阶段操作说明、历史版本和验证证据；当前最终门禁、制品与运行状态见[F5验收记录](releases/2026-10-22-finance-f5-acceptance.md)。
+
 F2保持财务服务、数据库、原件、密钥及备份独立。玄圃提供身份、对话和人工入口；财务保存业务规则、审批、执行计划、结果和证据。首期没有选定付款或记账供应商，采用可替换HTTP协议，正式执行默认关闭。企业微信/飞书报销适配器尚未实现。
 
 ## 员工与财务人员
@@ -44,8 +46,8 @@ F2保持财务服务、数据库、原件、密钥及备份独立。玄圃提供
 
 ## Skill 与API边界
 
-F2交付38项操作和6个Skill；当前F3发布包扩至58项操作和7个Skill，见[F3指南](finance-f3.md)；新增`accounts-payable`与`posting-reconciliation`。模型可准备外部计划、查询付款和凭证，但所有Skill均不拥有`executeFinanceAction`工具。该操作仍在连接器显式声明，供已确认的人工cookie+CSRF入口调用；财务验签再次要求origin=human。
+F2交付38项操作和6个Skill；F3阶段包扩至58项操作和7个Skill，见[F3指南](finance-f3.md)；新增`accounts-payable`与`posting-reconciliation`。模型可准备外部计划、查询付款和凭证，但所有Skill均不拥有`executeFinanceAction`工具。该操作仍在连接器显式声明，供已确认的人工cookie+CSRF入口调用；财务验签再次要求origin=human。
 
 `getSettlementOptions`返回当前员工可用的账簿、开放期间及动作许可，目录查询只返回受权资料和脱敏账户。`listActionPlans`可恢复原执行计划。`reconcileOperation`和取消均要求expected_version、幂等键和真实人工。正式业务、真实供应商及上线证据见独立验收记录，不以接口200或模型回答代替。
 
-当前F4已补原生站内提醒、SQL权限分页、配置/运营投影和local配套恢复，见[F4指南](finance-f4.md)与[剩余缺口台账](finance-gap-register.md)。历史阶段的工具数量以对应阶段为准，当前包61项API、7个Skill。
+当前F4已补原生站内提醒、SQL权限分页、配置/运营投影和local配套恢复，见[F4指南](finance-f4.md)与[剩余缺口台账](finance-gap-register.md)。F4阶段为61项API、7个Skill；当前F5为69项API、7个Skill，专用资金见[F5指南](finance-f5.md)。

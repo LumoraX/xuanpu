@@ -124,6 +124,7 @@ class NotificationStore(ComplianceStore):
         tables = {
             "expense_claim": "finance_expense_claim",
             "payable": "finance_expense_claim",
+            "funding_case": "finance_expense_claim",
             "exception": "finance_exception",
             "action_plan": "finance_action_plan",
         }

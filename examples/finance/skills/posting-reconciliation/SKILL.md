@@ -1,7 +1,7 @@
 ---
 name: posting-reconciliation
 description: 为已批准报销或应付准备付款、记账和冲回计划，恢复专用审批并按真实回执解释未知结果。
-version: 0.5.0-f4
+version: 0.6.0-f5
 entry: false
 type: composite
 tool_names:
@@ -22,6 +22,9 @@ tool_names:
 - api__finance__listPostings
 - api__finance__getPosting
 - api__catalog__listPayeeAccounts
+- api__finance__getFundingCase
+- api__finance__listFundingCases
+- api__finance__getFundingOptions
 ---
 # 付款、记账与结果核对
 
@@ -34,3 +37,5 @@ accepted/awaiting_provider不是成功；outcome_unknown仍占金额，不能换
 simulation=true只属于隔离测试单据与回执，不能写入正式记录；当前无真实供应商上线，不声称到账、正式入账、税务确认或归档。
 
 F4原生提醒由listFinanceNotifications读取当前来源，未读计数独立于当前页；提醒已读不表示审批或渠道成功。模型不调用readFinanceNotification；待审/未知应恢复原目标和原计划，不从提醒正文代批或重发。站内提醒不等于飞书、企业微信或邮件送达。
+
+F5专用资金先读[资金规则](references/funding-rules.md)。材料先真实收件并读取source回执；申报不是核实，模型仅准备草稿/预检，实际决定交员工。资金业务使用funding-cases专用入口，不伪装普通应付。
