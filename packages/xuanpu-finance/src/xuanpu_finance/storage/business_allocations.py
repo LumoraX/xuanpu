@@ -39,6 +39,8 @@ class AllocationStore(ClaimStore):
         request = body.model_dump(mode="json", exclude_none=True)
         async with self.pool.acquire() as conn, conn.transaction():
             claim = await self._claim_row(conn, who, body.document_id, lock=True)
+            if body.document_kind != claim["document_kind"]:
+                raise FinanceError("TARGET_KIND_MISMATCH", 422, "分配单据类型不符")
             entity = claim["legal_entity_id"]
             previous = await self._business_previous(
                 conn, who, entity, "createInvoiceAllocation", key, request
@@ -257,7 +259,7 @@ class AllocationStore(ClaimStore):
     ) -> None:
         """批准前重新检查已预留票证，不让新预检洗白已作废或失败的票。"""
         rows = await conn.fetch(
-            "SELECT * FROM finance_allocation WHERE tenant_id=$1 AND legal_entity_id=$2 AND document_id=$3 AND state='reserved' ORDER BY invoice_id,id",
+            "SELECT * FROM finance_allocation WHERE tenant_id=$1 AND legal_entity_id=$2 AND document_id=$3 AND state IN ('reserved','consumed') ORDER BY invoice_id,id",
             claim["tenant_id"],
             claim["legal_entity_id"],
             claim["id"],

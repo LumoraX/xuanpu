@@ -66,7 +66,7 @@ class CatalogStore(BusinessBase):
                     policy.enabled,
                 )
             await conn.execute(
-                "UPDATE finance_execution_grant g SET active=false WHERE active AND NOT EXISTS(SELECT 1 FROM finance_expense_policy p JOIN finance_expense_policy_revision r USING(tenant_id,legal_entity_id,version) WHERE p.tenant_id=g.tenant_id AND p.legal_entity_id=g.legal_entity_id AND p.enabled AND p.version=g.policy_version AND r.digest=g.policy_digest AND p.generation=g.policy_generation)"
+                "UPDATE finance_execution_grant g SET active=false WHERE active AND scope='expense_approved' AND NOT EXISTS(SELECT 1 FROM finance_expense_policy p JOIN finance_expense_policy_revision r USING(tenant_id,legal_entity_id,version) WHERE p.tenant_id=g.tenant_id AND p.legal_entity_id=g.legal_entity_id AND p.enabled AND p.version=g.policy_version AND r.digest=g.policy_digest AND p.generation=g.policy_generation)"
             )
 
     async def _validate_policy_roles(self, conn: Connection, policy: ExpensePolicy) -> None:

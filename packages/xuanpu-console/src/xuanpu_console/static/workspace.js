@@ -1,7 +1,7 @@
 // 原生个人工作区：所有模块使用同一权限、数据与版本规则。
 "use strict";
 const workspace = {kind:null, generation:0, parent:null, trashed:false, search:"", items:[], settings:null, summary:null, matter:null, picking:false};
-const workspaceNames = {file:"我的文件",folder:"文件夹",matter:"我的事项",todo:"我的待办",event:"我的日程",skill:"个人能力",settings:"助手设置",proactive:"业务跟进",task:"我的工作",finance:"报销与审批"};
+const workspaceNames = {file:"我的文件",folder:"文件夹",matter:"我的事项",todo:"我的待办",event:"我的日程",skill:"个人能力",settings:"助手设置",proactive:"业务跟进",task:"我的工作",finance:"财务记录与审批"};
 const workspaceBase = "/v1/workspace";
 function wsButton(text, action, kind="ghost") {
   const button=document.createElement("button"); button.type="button"; button.className=kind; button.textContent=text;

@@ -60,7 +60,7 @@ class WorkflowStore(PlanStore):
         due = datetime.now(UTC) + timedelta(hours=policy.get("approval_due_hours", 72))
         workflow_id = identifier()
         await conn.execute(
-            "INSERT INTO finance_workflow(tenant_id,legal_entity_id,id,document_id,target_version,status,policy_version,policy_digest,due_at,policy_generation) VALUES($1,$2,$3,$4,$5,'under_review',$6,$7,$8,$9)",
+            "INSERT INTO finance_workflow(tenant_id,legal_entity_id,id,document_id,target_version,status,policy_version,policy_digest,due_at,policy_generation,target_type) VALUES($1,$2,$3,$4,$5,'under_review',$6,$7,$8,$9,$10)",
             who.tenant_id,
             claim["legal_entity_id"],
             workflow_id,
@@ -70,6 +70,7 @@ class WorkflowStore(PlanStore):
             policy["digest"],
             due,
             policy["generation"],
+            claim["document_kind"],
         )
         for position, step in enumerate(steps):
             await conn.execute(
@@ -278,7 +279,7 @@ class WorkflowStore(PlanStore):
         """待办展示实时制度阻断和原始证据，不因超时自动作出决定。"""
         body = ActionPreview(
             action="approve",
-            target_type="expense_claim",
+            target_type=row["document_kind"],
             target_id=row["id"],
             expected_version=row["version"],
             parameters=ActionParameters(workflow_step_id=row["step_id"]),
@@ -287,7 +288,7 @@ class WorkflowStore(PlanStore):
         return {
             "workflow_step_id": row["step_id"],
             "target_id": row["id"],
-            "target_type": "expense_claim",
+            "target_type": row["document_kind"],
             "target_version": row["version"],
             "summary": decode_content(row)["reason"],
             "total": money(row["total"]),

@@ -1,0 +1,64 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___ test_configured_integrations_and_unsent_deferred_records_match_contract ____
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10c7a3530>
+
+    async def test_configured_integrations_and_unsent_deferred_records_match_contract(store: Any) -> None:
+        """实际通道额外字段及身份服务暂不可用时的running明细也须符合发布契约。"""
+        from .test_expense_domain import execute
+        from .test_f2_domain import action_plan, approved_payable
+
+        _, payer, accountant, approver, doc = await approved_payable(store)
+>       validate_schema("IntegrationList", await store.list_integrations(payer, "e"))
+
+packages/xuanpu-finance/tests/test_package.py:279:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+packages/xuanpu-finance/tests/test_package.py:55: in validate_schema
+    ).validate(value)
+      ^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Draft4Validator(schema={'$ref': '#/components...tegrationList', 'components': {'parameters': {'Cursor': {'in': 'query'...y'}, 'serviceBearer': {'description': '独立服务凭据，不能单独代表员工身份', 'scheme': 'bearer', 'type': 'http'}}}}, format_checker=None)
+args = ({'legal_entity_id': 'e', 'items': [{'id': 'e:erp', 'kind': 'erp', 'status': 'ready', 'capabilities': ['simulation', '...gured', 'capabilities': []}, {'id': 'e:approval', 'kind': 'approval', 'status': 'unconfigured', 'capabilities': []}]},)
+kwargs = {}
+
+    def validate(self, *args, **kwargs):
+        for error in self.iter_errors(*args, **kwargs):
+>           raise error
+E           jsonschema.exceptions.ValidationError: Additional properties are not allowed ('provider', 'simulation' were unexpected)
+E
+E           Failed validating 'additionalProperties' in schema['properties']['items']['items']:
+E               {'type': 'object',
+E                'additionalProperties': False,
+E                'required': ['id', 'kind', 'status', 'capabilities'],
+E                'properties': {'id': {'$ref': '#/components/schemas/Id'},
+E                               'kind': {'type': 'string',
+E                                        'enum': ['erp',
+E                                                 'payment',
+E                                                 'tax',
+E                                                 'archive',
+E                                                 'approval']},
+E                               'status': {'type': 'string',
+E                                          'enum': ['ready',
+E                                                   'unconfigured',
+E                                                   'degraded',
+E                                                   'disabled']},
+E                               'capabilities': {'type': 'array',
+E                                                'uniqueItems': True,
+E                                                'maxItems': 50,
+E                                                'items': {'type': 'string',
+E                                                          'maxLength': 128}}}}
+E
+E           On instance['items'][0]:
+E               {'id': 'e:erp',
+E                'kind': 'erp',
+E                'status': 'ready',
+E                'capabilities': ['simulation', 'idempotency', 'query'],
+E                'provider': 'test',
+E                'simulation': True}
+
+.venv/lib/python3.12/site-packages/jsonschema/validators.py:450: ValidationError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_package.py::test_configured_integrations_and_unsent_deferred_records_match_contract
+1 failed, 17 deselected in 0.76s

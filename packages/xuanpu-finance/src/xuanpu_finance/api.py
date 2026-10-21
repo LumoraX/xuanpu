@@ -1,4 +1,4 @@
-"""独立财务 F0/F1 应用与后台工作生命周期。"""
+"""独立财务 F0/F1/F2 应用与后台工作生命周期。"""
 
 from __future__ import annotations
 
@@ -16,13 +16,17 @@ from fastapi.responses import JSONResponse
 from xuanpu_finance.errors import FinanceError
 from xuanpu_finance.limits import RequestBodyLimit
 from xuanpu_finance.routes import router
+from xuanpu_finance.routes_callback import router as callback_router
 from xuanpu_finance.routes_f1 import router as f1_router
+from xuanpu_finance.routes_f2 import router as f2_router
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from xuanpu_finance.auth import FinanceAuthenticator
     from xuanpu_finance.invoices.worker import FinanceWorker
+    from xuanpu_finance.settlement.providers import ProviderRegistry
+    from xuanpu_finance.settlement.worker import SettlementWorker
     from xuanpu_finance.storage import FinanceStore
 
 logger = logging.getLogger(__name__)
@@ -74,18 +78,43 @@ async def _work(app: FastAPI) -> None:
         logger.error("财务 worker 停止：%s", type(error).__name__)
 
 
+async def _settlement_work(app: FastAPI) -> None:
+    """独立外部队列在只读或停用时继续只读核对，不发新请求。"""
+    worker: SettlementWorker = app.state.settlement_worker
+    try:
+        while True:
+            dispatch = app.state.mode == "enabled" and app.state.worker_error is None
+            if await worker.run_once(allow_dispatch=dispatch):
+                continue
+            await asyncio.sleep(0.2)
+    except asyncio.CancelledError:
+        raise
+    except Exception as error:
+        app.state.settlement_worker_error = type(error).__name__
+        logger.error("财务外部核对执行器停止：%s", type(error).__name__)
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """停止后台后，上层才关闭独立数据库与对象资源。"""
-    task = asyncio.create_task(_work(app)) if app.state.start_worker and app.state.worker else None
-    app.state.worker_task = task
+    """停止两个独立后台任务后，上层才关闭连接池与HTTP资源。"""
+    active = app.state.start_worker
+    task = asyncio.create_task(_work(app)) if active and app.state.worker else None
+    settlement = (
+        asyncio.create_task(_settlement_work(app))
+        if active and app.state.settlement_worker
+        else None
+    )
+    app.state.worker_task, app.state.settlement_task = task, settlement
     try:
         yield
     finally:
-        if task is not None:
-            task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
+        for current in (task, settlement):
+            if current is not None:
+                current.cancel()
+        for current in (task, settlement):
+            if current is not None:
+                with contextlib.suppress(asyncio.CancelledError):
+                    await current
 
 
 def create_app(
@@ -95,24 +124,40 @@ def create_app(
     worker: FinanceWorker | None = None,
     mode: str = "enabled",
     start_worker: bool = True,
+    settlement_worker: SettlementWorker | None = None,
+    settlement_providers: ProviderRegistry | None = None,
 ) -> FastAPI:
     """显式注入独立存储，不在平台进程中导入此应用。"""
     if mode not in MODES:
         raise ValueError("财务模块模式无效")
-    app = FastAPI(title="玄圃财务 F0/F1", version="2026.10.21.2", lifespan=_lifespan)
+    app = FastAPI(title="玄圃财务 F0/F1/F2", version="2026.10.21.3", lifespan=_lifespan)
     app.state.store, app.state.auth, app.state.mode = store, auth, mode
     app.state.worker, app.state.start_worker, app.state.worker_error = worker, start_worker, None
+    app.state.settlement_worker, app.state.settlement_providers = (
+        settlement_worker,
+        settlement_providers,
+    )
+    app.state.settlement_worker_error, app.state.instance_lock_lost = None, False
+    if settlement_worker is not None:
+        settlement_worker.dispatch_allowed = lambda: (
+            app.state.mode == "enabled"
+            and app.state.worker_error is None
+            and app.state.settlement_worker_error is None
+            and not app.state.instance_lock_lost
+        )
     app.add_exception_handler(FinanceError, _finance_error)
     app.add_exception_handler(RequestValidationError, _invalid_request)
     app.add_exception_handler(Exception, _unexpected)
     app.add_middleware(RequestBodyLimit)
     app.include_router(router)
     app.include_router(f1_router)
+    app.include_router(f2_router)
+    app.include_router(callback_router)
 
     @app.get("/health")
     async def health() -> JSONResponse:
         """健康状态不表示任何票据已验真或业务已完成。"""
-        failed = app.state.worker_error is not None
+        failed = app.state.worker_error is not None or app.state.settlement_worker_error is not None
         return JSONResponse(
             status_code=503 if failed else 200,
             content={"status": "unavailable" if failed else "ok", "mode": app.state.mode},

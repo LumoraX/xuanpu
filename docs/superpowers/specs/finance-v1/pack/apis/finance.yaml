@@ -1,18 +1,5 @@
 openapi: 3.0.3
-info:
-  title: 玄圃财务业务 API 设计契约
-  version: 0.1.0-design.1
-  description: '完整闭环设计契约；已实现的 F0/F1 子集发布于 examples/finance，其余阶段尚未实现。
-
-    本设计包服务器地址为保留域名，不能据此声称全部接口可执行。
-
-    全部接口验证服务身份及平台签名上下文，身份不由模型参数传入。
-
-    每项 x-delivery-phase 指定首次交付阶段。所有写接口要求 Idempotency-Key。
-
-    金额为 CNY 两位小数字符串；业务动作必须通过预检、实际业务批准和执行资格校验。
-
-    '
+info: {title: 玄圃财务业务 API 设计契约, version: 0.3.0-design.2, description: 完整财务设计参考；F0-F2与examples/finance已实现子集同步，F3仍是待实现设计，非供应商上线或生产验收证明。}
 servers: [{url: 'https://finance.invalid'}]
 security: [{serviceBearer: [], actorContext: []}]
 x-design-status: approved-reference-f0-f1-subset-implemented
@@ -45,11 +32,7 @@ paths:
       operationId: listInvoices
       summary: 按权限和过滤条件查询发票及独立总数
       x-delivery-phase: F0
-      parameters:
-      - {$ref: '#/components/parameters/LegalEntity'}
-      - {$ref: '#/components/parameters/Cursor'}
-      - {$ref: '#/components/parameters/Limit'}
-      - {name: invoice_number, in: query, schema: {type: string, maxLength: 64}}
+      parameters: [{$ref: '#/components/parameters/LegalEntity'}, {$ref: '#/components/parameters/Cursor'}, {$ref: '#/components/parameters/Limit'}, {name: invoice_number, in: query, schema: {type: string, maxLength: 64}}]
       responses: {'200': {description: 发票分页, content: {application/json: {schema: {$ref: '#/components/schemas/InvoicePage'}}}}, default: {$ref: '#/components/responses/Error'}}
   /v1/finance/invoices/{id}:
     parameters: [{$ref: '#/components/parameters/Id'}]
@@ -102,11 +85,7 @@ paths:
       operationId: listExpenseClaims
       summary: 按当前权限恢复草稿与报销记录
       x-delivery-phase: F1
-      parameters:
-      - {$ref: '#/components/parameters/LegalEntity'}
-      - {$ref: '#/components/parameters/Cursor'}
-      - {$ref: '#/components/parameters/Limit'}
-      - {name: status, in: query, schema: {type: string, enum: [draft, submitted, under_review, approved, rejected, withdrawn]}}
+      parameters: [{$ref: '#/components/parameters/LegalEntity'}, {$ref: '#/components/parameters/Cursor'}, {$ref: '#/components/parameters/Limit'}, {name: status, in: query, schema: {type: string, enum: [draft, submitted, under_review, approved, rejected, withdrawn]}}]
       responses: {'200': {description: 有权单据及独立总数, content: {application/json: {schema: {$ref: '#/components/schemas/ExpenseClaimPage'}}}}, default: {$ref: '#/components/responses/Error'}}
   /v1/finance/expense-claims/{id}:
     parameters: [{$ref: '#/components/parameters/Id'}]
@@ -125,25 +104,31 @@ paths:
   /v1/finance/payables:
     post:
       operationId: createPayable
-      summary: 根据真实采购依据创建应付草稿
+      summary: 建立本人应付草稿，固定受控供应商与采购依据
       x-delivery-phase: F2
       parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/PayableDraft'}}}}
-      responses: {'201': {$ref: '#/components/responses/Document'}, default: {$ref: '#/components/responses/Error'}}
+      responses: {'201': {description: 受权业务查询结果, content: {application/json: {schema: {$ref: '#/components/schemas/BusinessDocument'}}}}, default: {$ref: '#/components/responses/Error'}}
+    get:
+      operationId: listPayables
+      summary: 查询有权应付、状态及过滤后独立总数
+      x-delivery-phase: F2
+      parameters: [{$ref: '#/components/parameters/LegalEntity'}, {$ref: '#/components/parameters/Cursor'}, {$ref: '#/components/parameters/Limit'}, {name: status, in: query, required: false, schema: {type: string, enum: [draft, submitted, under_review, approved, rejected, withdrawn]}}]
+      responses: {'200': {description: 受权业务查询结果, content: {application/json: {schema: {$ref: '#/components/schemas/PayablePage'}}}}, default: {$ref: '#/components/responses/Error'}}
   /v1/finance/payables/{id}:
     parameters: [{$ref: '#/components/parameters/Id'}]
     get:
       operationId: getPayable
-      summary: 查询应付业务、分期计划和匹配依据
+      summary: 读取实际应付和独立审批、资金、入账维度
       x-delivery-phase: F2
-      responses: {'200': {$ref: '#/components/responses/Document'}, default: {$ref: '#/components/responses/Error'}}
+      responses: {'200': {description: 受权业务查询结果, content: {application/json: {schema: {$ref: '#/components/schemas/BusinessDocument'}}}}, default: {$ref: '#/components/responses/Error'}}
     put:
       operationId: updatePayable
-      summary: 以版本替换应付草稿内容
+      summary: 以当前版本完整修订应付草稿，不接收审批结果
       x-delivery-phase: F2
       parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/PayableUpdate'}}}}
-      responses: {'200': {$ref: '#/components/responses/Document'}, default: {$ref: '#/components/responses/Error'}}
+      responses: {'200': {description: 受权业务查询结果, content: {application/json: {schema: {$ref: '#/components/schemas/BusinessDocument'}}}}, default: {$ref: '#/components/responses/Error'}}
   /v1/finance/invoice-allocations:
     post:
       operationId: createInvoiceAllocation
@@ -172,7 +157,7 @@ paths:
     post:
       operationId: previewFinanceAction
       summary: 固定目标版本及影响，生成有期限的不可变行动计划
-      description: 不付款、不入账、不占票额度。action 的实际阶段取主设计中的 F1—F3 限制；未交付动作返回 action_unavailable。
+      description: F0-F2契约与examples/finance同步；F3税务、红字、归档仍为设计范围，实际阶段及动作限制见领域契约。预检不等于执行。
       x-delivery-phase: F1
       parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ActionPreviewRequest'}}}}
@@ -188,7 +173,7 @@ paths:
     post:
       operationId: executeFinanceAction
       summary: 在服务端复核权限、批准、计划、版本和额度后执行
-      description: plan_digest 必须来自原预检；审批操作核实真实审批角色，后续执行要求其专用授权。换 key 不能重复执行同计划。
+      description: 仅真实员工cookie人工网关调用；员工及批准人当前资格、原计划摘要/版本和专用授权均须有效。202只代表持久受理，不能声称实际资金或凭证成功。模型Skill不声明本工具。
       x-delivery-phase: F1
       parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ActionExecution'}}}}
@@ -229,16 +214,16 @@ paths:
     parameters: [{$ref: '#/components/parameters/Id'}]
     get:
       operationId: getPayment
-      summary: 查询付款订单、交易结果和脱敏回单引用
+      summary: 核对父单据权限后读取渠道资金交易回执
       x-delivery-phase: F2
-      responses: {'200': {description: 付款, content: {application/json: {schema: {$ref: '#/components/schemas/Payment'}}}}, default: {$ref: '#/components/responses/Error'}}
+      responses: {'200': {description: 受权业务查询结果, content: {application/json: {schema: {$ref: '#/components/schemas/Payment'}}}}, default: {$ref: '#/components/responses/Error'}}
   /v1/finance/postings/{id}:
     parameters: [{$ref: '#/components/parameters/Id'}]
     get:
       operationId: getPosting
-      summary: 查询真实账套凭证及入账回执
+      summary: 核对父单据权限后读取渠道账套期间凭证回执
       x-delivery-phase: F2
-      responses: {'200': {description: 入账记录, content: {application/json: {schema: {$ref: '#/components/schemas/Posting'}}}}, default: {$ref: '#/components/responses/Error'}}
+      responses: {'200': {description: 受权业务查询结果, content: {application/json: {schema: {$ref: '#/components/schemas/Posting'}}}}, default: {$ref: '#/components/responses/Error'}}
   /v1/finance/red-letter-cases/{id}:
     parameters: [{$ref: '#/components/parameters/Id'}]
     get:
@@ -253,6 +238,44 @@ paths:
       summary: 查询不可变归档包清册、检测和锁定证据
       x-delivery-phase: F3
       responses: {'200': {description: 档案, content: {application/json: {schema: {$ref: '#/components/schemas/Archive'}}}}, default: {$ref: '#/components/responses/Error'}}
+  /v1/finance/payments:
+    get:
+      operationId: listPayments
+      summary: 按单据与权限查询付款明细，total独立于本页
+      x-delivery-phase: F2
+      parameters: [{$ref: '#/components/parameters/LegalEntity'}, {$ref: '#/components/parameters/Cursor'}, {$ref: '#/components/parameters/Limit'}, {name: document_id, in: query, required: false, schema: {type: string, minLength: 1, maxLength: 128}}]
+      responses: {'200': {description: 受权业务查询结果, content: {application/json: {schema: {$ref: '#/components/schemas/PaymentPage'}}}}, default: {$ref: '#/components/responses/Error'}}
+  /v1/finance/postings:
+    get:
+      operationId: listPostings
+      summary: 按单据与权限查询入账及冲回明细，total独立于本页
+      x-delivery-phase: F2
+      parameters: [{$ref: '#/components/parameters/LegalEntity'}, {$ref: '#/components/parameters/Cursor'}, {$ref: '#/components/parameters/Limit'}, {name: document_id, in: query, required: false, schema: {type: string, minLength: 1, maxLength: 128}}]
+      responses: {'200': {description: 受权业务查询结果, content: {application/json: {schema: {$ref: '#/components/schemas/PostingPage'}}}}, default: {$ref: '#/components/responses/Error'}}
+  /v1/finance/action-plans:
+    get:
+      operationId: listActionPlans
+      summary: 恢复持久外部行动计划及其专用审批工作流
+      x-delivery-phase: F2
+      parameters: [{$ref: '#/components/parameters/LegalEntity'}, {$ref: '#/components/parameters/Cursor'}, {$ref: '#/components/parameters/Limit'}, {name: target_id, in: query, required: false, schema: {type: string, minLength: 1, maxLength: 128}}]
+      responses: {'200': {description: 受权业务查询结果, content: {application/json: {schema: {$ref: '#/components/schemas/ActionPlanPage'}}}}, default: {$ref: '#/components/responses/Error'}}
+  /v1/finance/settlement-options:
+    get:
+      operationId: getSettlementOptions
+      summary: 读取本人经办资格及公司开放期间，不授予执行权限
+      x-delivery-phase: F2
+      parameters: [{$ref: '#/components/parameters/LegalEntity'}]
+      responses: {'200': {description: 受权业务查询结果, content: {application/json: {schema: {$ref: '#/components/schemas/SettlementOptions'}}}}, default: {$ref: '#/components/responses/Error'}}
+  /v1/finance/operations/{id}/reconcile:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    post:
+      operationId: reconcileOperation
+      summary: 请求原请求号只读查单，禁止重新付款或手填成功
+      x-delivery-phase: F2
+      description: 仅真实员工cookie人工网关可调用；模型工具批准不能代替human来源。
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/VersionRequest'}}}}
+      responses: {'202': {description: 受权业务查询结果, content: {application/json: {schema: {$ref: '#/components/schemas/Operation'}}}}, default: {$ref: '#/components/responses/Error'}}
 components:
   securitySchemes:
     serviceBearer: {type: http, scheme: bearer, description: 独立服务凭据，不能单独代表员工身份}
@@ -273,478 +296,54 @@ components:
     SignedMoney: {type: string, pattern: '^-?(0|[1-9][0-9]{0,15})\.[0-9]{2}$', example: '-100.00'}
     Version: {type: integer, minimum: 1}
     Digest: {type: string, pattern: '^[a-f0-9]{64}$'}
-    Error:
-      type: object
-      additionalProperties: false
-      required: [code, message, trace_id, retryable]
-      properties: {code: {type: string, maxLength: 128}, message: {type: string, maxLength: 2000}, trace_id: {$ref: '#/components/schemas/Id'}, retryable: {type: boolean}}
-    FileRef:
-      type: object
-      additionalProperties: false
-      required: [file_id, revision, sha256]
-      properties: {file_id: {$ref: '#/components/schemas/Id'}, revision: {$ref: '#/components/schemas/Version'}, sha256: {$ref: '#/components/schemas/Digest'}}
-    InvoiceImport:
-      description: 补件时 source_exception_id 与 expected_exception_version 必须同时提供；成功解析同事务关联关闭原异常，失败保留待办。
-      type: object
-      additionalProperties: false
-      required: [legal_entity_id, files]
-      properties:
-        legal_entity_id: {$ref: '#/components/schemas/Id'}
-        files: {type: array, minItems: 1, maxItems: 100, uniqueItems: true, items: {$ref: '#/components/schemas/FileRef'}}
-        source_exception_id: {$ref: '#/components/schemas/Id'}
-        expected_exception_version: {$ref: '#/components/schemas/Version'}
+    Error: {type: object, additionalProperties: false, required: [code, message, trace_id, retryable], properties: {code: {type: string, maxLength: 128}, message: {type: string, maxLength: 2000}, trace_id: {$ref: '#/components/schemas/Id'}, retryable: {type: boolean}}}
+    FileRef: {type: object, additionalProperties: false, required: [file_id, revision, sha256], properties: {file_id: {$ref: '#/components/schemas/Id'}, revision: {$ref: '#/components/schemas/Version'}, sha256: {$ref: '#/components/schemas/Digest'}}}
+    InvoiceImport: {description: 补件时 source_exception_id 与 expected_exception_version 必须同时提供；成功解析同事务关联关闭原异常，失败保留待办。, type: object, additionalProperties: false, required: [legal_entity_id, files], properties: {legal_entity_id: {$ref: '#/components/schemas/Id'}, files: {type: array, minItems: 1, maxItems: 100, uniqueItems: true, items: {$ref: '#/components/schemas/FileRef'}}, source_exception_id: {$ref: '#/components/schemas/Id'}, expected_exception_version: {$ref: '#/components/schemas/Version'}}}
     VersionRequest: {type: object, additionalProperties: false, required: [expected_version], properties: {expected_version: {$ref: '#/components/schemas/Version'}}}
-    EvidenceRef:
-      type: object
-      additionalProperties: false
-      required: [id, kind, sha256, verification_state]
-      properties:
-        id: {$ref: '#/components/schemas/Id'}
-        kind: {type: string, enum: [source, verification, business, approval, payment, posting, archive, detection, event]}
-        sha256: {$ref: '#/components/schemas/Digest'}
-        verification_state: {type: string, enum: [not_checked, verified, failed, unavailable]}
-        source_version: {type: string, maxLength: 128}
-    EvidenceBundle:
-      type: object
-      additionalProperties: false
-      required: [invoice_id, evidence, gaps]
-      properties:
-        invoice_id: {$ref: '#/components/schemas/Id'}
-        evidence: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/EvidenceRef'}}
-        gaps: {type: array, maxItems: 1000, items: {type: string, maxLength: 500}}
-    InvoiceLine:
-      type: object
-      additionalProperties: false
-      required: [id, line_no, name, amount, tax]
-      properties:
-        id: {$ref: '#/components/schemas/Id'}
-        line_no: {type: integer, minimum: 1}
-        name: {type: string, maxLength: 1000}
-        amount: {$ref: '#/components/schemas/SignedMoney'}
-        tax: {$ref: '#/components/schemas/SignedMoney'}
-        tax_rate: {type: string, pattern: '^(0|[1-9][0-9]{0,2})(\.[0-9]{1,6})?$'}
-        source_path: {type: string, maxLength: 1000}
-    Invoice:
-      type: object
-      additionalProperties: false
-      required:
-      - id
-      - legal_entity_id
-      - version
-      - number
-      - issue_date
-      - seller_tax_id
-      - buyer_tax_id
-      - currency
-      - gross
-      - tax
-      - net
-      - line_count
-      - is_red
-      - parser_profile
-      - verification_status
-      - ticket_status
-      - authority_status
-      - posting_status
-      - tax_entry_status
-      - usage_status
-      - archive_status
-      - available_amount
-      properties:
-        id: {$ref: '#/components/schemas/Id'}
-        legal_entity_id: {$ref: '#/components/schemas/Id'}
-        version: {$ref: '#/components/schemas/Version'}
-        number: {type: string, minLength: 1, maxLength: 64}
-        issue_date: {type: string, format: date}
-        seller_tax_id: {type: string, maxLength: 64}
-        buyer_tax_id: {type: string, maxLength: 64}
-        currency: {type: string, enum: [CNY]}
-        gross: {$ref: '#/components/schemas/SignedMoney'}
-        tax: {$ref: '#/components/schemas/SignedMoney'}
-        available_amount: {$ref: '#/components/schemas/Money'}
-        net: {$ref: '#/components/schemas/SignedMoney'}
-        line_count: {type: integer, minimum: 0, maximum: 100000}
-        is_red: {type: boolean}
-        parser_profile: {type: string, maxLength: 256}
-        verification_status: {type: string, enum: [not_checked, pending, passed, failed, unavailable, stale]}
-        ticket_status: {type: string, enum: [normal, red_locked, partially_red, fully_red, abnormal]}
-        authority_status: {type: string, enum: [unverified, verified, stale]}
-        posting_status: {type: string, enum: [not_posted, partially_posted, posted, partially_reversed, reversed]}
-        tax_entry_status: {type: string, enum: [not_confirmed, pending, confirmed, adjustment_pending, adjusted]}
-        usage_status: {type: string, enum: [not_confirmed, pending, confirmed, adjustment_pending, adjusted]}
-        archive_status: {type: string, enum: [not_archived, pending, archived, exception]}
-    ExpenseLine:
-      type: object
-      additionalProperties: false
-      required: [category_id, amount, occurred_on, reason]
-      properties:
-        category_id: {$ref: '#/components/schemas/Id'}
-        amount: {$ref: '#/components/schemas/Money'}
-        occurred_on: {type: string, format: date}
-        reason: {type: string, minLength: 1, maxLength: 1000}
-        department_id: {$ref: '#/components/schemas/Id'}
-        project_id: {$ref: '#/components/schemas/Id'}
-    ExpenseDraft:
-      type: object
-      additionalProperties: false
-      required: [legal_entity_id, reason, lines]
-      properties:
-        legal_entity_id: {$ref: '#/components/schemas/Id'}
-        reason: {type: string, minLength: 1, maxLength: 2000}
-        lines: {type: array, minItems: 1, maxItems: 100, items: {$ref: '#/components/schemas/ExpenseLine'}}
-        evidence_ids: {type: array, maxItems: 100, uniqueItems: true, items: {$ref: '#/components/schemas/Id'}}
-    ExpenseUpdate:
-      type: object
-      additionalProperties: false
-      required: [expected_version, draft]
-      properties: {expected_version: {$ref: '#/components/schemas/Version'}, draft: {$ref: '#/components/schemas/ExpenseDraft'}}
-    BusinessRef:
-      type: object
-      additionalProperties: false
-      required: [kind, source, id, version, sha256]
-      properties:
-        kind: {type: string, enum: [contract, order, acceptance, supplier, employee_account, supplier_account]}
-        source: {type: string, minLength: 1, maxLength: 128}
-        id: {$ref: '#/components/schemas/Id'}
-        version: {type: string, minLength: 1, maxLength: 128}
-        sha256: {$ref: '#/components/schemas/Digest'}
-    PayableDraft:
-      type: object
-      additionalProperties: false
-      required: [legal_entity_id, supplier_ref, amount, due_date, business_refs, reason]
-      properties:
-        legal_entity_id: {$ref: '#/components/schemas/Id'}
-        supplier_ref: {$ref: '#/components/schemas/BusinessRef'}
-        amount: {$ref: '#/components/schemas/Money'}
-        due_date: {type: string, format: date}
-        business_refs: {type: array, minItems: 1, maxItems: 100, items: {$ref: '#/components/schemas/BusinessRef'}}
-        reason: {type: string, minLength: 1, maxLength: 2000}
-    PayableUpdate:
-      type: object
-      additionalProperties: false
-      required: [expected_version, draft]
-      properties: {expected_version: {$ref: '#/components/schemas/Version'}, draft: {$ref: '#/components/schemas/PayableDraft'}}
-    BusinessDocument:
-      type: object
-      additionalProperties: false
-      required: [id, kind, legal_entity_id, version, status, total, allocation_ids, evidence, content, owner_id]
-      properties:
-        id: {$ref: '#/components/schemas/Id'}
-        kind: {type: string, enum: [expense_claim, payable]}
-        legal_entity_id: {$ref: '#/components/schemas/Id'}
-        version: {$ref: '#/components/schemas/Version'}
-        status: {type: string, enum: [draft, submitted, under_review, approved, rejected, withdrawn]}
-        total: {$ref: '#/components/schemas/Money'}
-        owner_id: {$ref: '#/components/schemas/Id'}
-        content: {oneOf: [{$ref: '#/components/schemas/ExpenseDraft'}, {$ref: '#/components/schemas/PayableDraft'}]}
-        allocation_ids: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/Id'}}
-        evidence: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/EvidenceRef'}}
-        record_mode: {type: string, enum: [invoice_backed, internal_record]}
-        workflow_id: {$ref: '#/components/schemas/Id'}
-        workflow_version: {$ref: '#/components/schemas/Version'}
-        due_at: {type: string, format: date-time}
-        workflow: {$ref: '#/components/schemas/ExpenseWorkflow'}
-    AllocationRequest:
-      type: object
-      additionalProperties: false
-      required: [invoice_id, invoice_version, document_id, document_kind, expected_document_version, amount, tax]
-      properties:
-        invoice_id: {$ref: '#/components/schemas/Id'}
-        invoice_version: {$ref: '#/components/schemas/Version'}
-        invoice_line_id: {$ref: '#/components/schemas/Id'}
-        document_id: {$ref: '#/components/schemas/Id'}
-        document_kind: {type: string, enum: [expense_claim, payable]}
-        expected_document_version: {$ref: '#/components/schemas/Version'}
-        amount: {$ref: '#/components/schemas/Money'}
-        tax: {$ref: '#/components/schemas/Money'}
-    Allocation:
-      type: object
-      additionalProperties: false
-      required: [id, version, invoice_id, document_id, amount, tax, state]
-      properties:
-        id: {$ref: '#/components/schemas/Id'}
-        version: {$ref: '#/components/schemas/Version'}
-        invoice_id: {$ref: '#/components/schemas/Id'}
-        document_id: {$ref: '#/components/schemas/Id'}
-        amount: {$ref: '#/components/schemas/Money'}
-        tax: {$ref: '#/components/schemas/Money'}
-        state: {type: string, enum: [proposed, reserved, consumed, released]}
-    ActionPreviewRequest:
-      type: object
-      additionalProperties: false
-      required: [action, target_type, target_id, expected_version, parameters]
-      properties:
-        action:
-          type: string
-          enum: [submit_claim, submit_payable, approve, reject, withdraw, execute_payment, submit_posting, reverse_posting, confirm_usage, confirm_tax_entry, confirm_red_letter, archive]
-        target_type: {type: string, enum: [expense_claim, payable, invoice, payment, posting, red_letter_case, action_plan]}
-        target_id: {$ref: '#/components/schemas/Id'}
-        expected_version: {$ref: '#/components/schemas/Version'}
-        parameters: {$ref: '#/components/schemas/ActionParameters'}
-    ActionParameters:
-      type: object
-      additionalProperties: false
-      description: 服务端按动作校验必需字段并拒绝不适用字段，规则见领域契约的动作参数矩阵；不能通过本对象指定身份或成功状态。
-      properties:
-        amount: {$ref: '#/components/schemas/Money'}
-        payee_ref: {$ref: '#/components/schemas/BusinessRef'}
-        accounting_period: {type: string, pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'}
-        workflow_step_id: {$ref: '#/components/schemas/Id'}
-        reason: {type: string, minLength: 1, maxLength: 2000}
-        confirmation_id: {$ref: '#/components/schemas/Id'}
-        evidence_ids: {type: array, maxItems: 100, uniqueItems: true, items: {$ref: '#/components/schemas/Id'}}
-    ActionPlan:
-      type: object
-      additionalProperties: false
-      required: [id, version, legal_entity_id, digest, action, target_type, target_id, target_version, parameters, expires_at, executable, blockers, required_approvals, effects]
-      properties:
-        id: {$ref: '#/components/schemas/Id'}
-        digest: {$ref: '#/components/schemas/Digest'}
-        action: {type: string, maxLength: 64}
-        version: {type: integer, enum: [1]}
-        legal_entity_id: {$ref: '#/components/schemas/Id'}
-        target_type: {type: string, enum: [expense_claim, payable, invoice, payment, posting, red_letter_case, action_plan]}
-        parameters: {$ref: '#/components/schemas/ActionParameters'}
-        workflow_id: {$ref: '#/components/schemas/Id'}
-        target_id: {$ref: '#/components/schemas/Id'}
-        target_version: {$ref: '#/components/schemas/Version'}
-        expires_at: {type: string, format: date-time}
-        executable: {type: boolean}
-        blockers: {type: array, maxItems: 100, items: {type: string, maxLength: 500}}
-        required_approvals: {type: array, maxItems: 100, items: {type: string, maxLength: 500}}
-        effects: {type: array, maxItems: 100, items: {type: string, maxLength: 1000}}
-    ActionExecution:
-      type: object
-      additionalProperties: false
-      required: [plan_id, plan_digest]
-      properties: {plan_id: {$ref: '#/components/schemas/Id'}, plan_digest: {$ref: '#/components/schemas/Digest'}}
-    ImportItemResult:
-      type: object
-      additionalProperties: false
-      required: [file_id, state]
-      properties:
-        file_id: {$ref: '#/components/schemas/Id'}
-        state: {type: string, enum: [pending, received, awaiting_original, quarantined, parsed, duplicate_linked, failed, cancelled]}
-        invoice_id: {$ref: '#/components/schemas/Id'}
-        exception_id: {$ref: '#/components/schemas/Id'}
-        error_code: {type: string, maxLength: 128}
-    Operation:
-      type: object
-      additionalProperties: false
-      required: [id, version, status, business_result, trace_id, items, result_refs, resources]
-      description: 导入操作必须返回 summary，pending 包含尚在 received 的项，各分类计数之和等于 total；非导入操作 items 为空。
-      properties:
-        id: {$ref: '#/components/schemas/Id'}
-        version: {$ref: '#/components/schemas/Version'}
-        status: {type: string, enum: [accepted, waiting_approval, running, dispatching, awaiting_provider, succeeded, failed, cancelled, outcome_unknown]}
-        business_result: {type: string, enum: [pending, succeeded, partial, failed, cancelled, unknown]}
-        trace_id: {$ref: '#/components/schemas/Id'}
-        items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/ImportItemResult'}}
-        result_refs: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/EvidenceRef'}}
-        resources: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/ResourceRef'}}
-        summary: {$ref: '#/components/schemas/ImportSummary'}
-        error: {$ref: '#/components/schemas/Error'}
-    ExceptionResolution:
-      type: object
-      additionalProperties: false
-      required: [expected_version, disposition, reason, evidence_ids]
-      properties:
-        expected_version: {$ref: '#/components/schemas/Version'}
-        disposition: {type: string, enum: [attach_evidence, accept_warning, resolve]}
-        reason: {type: string, minLength: 1, maxLength: 2000}
-        evidence_ids: {type: array, maxItems: 100, uniqueItems: true, items: {$ref: '#/components/schemas/Id'}}
-    ExceptionCase:
-      type: object
-      additionalProperties: false
-      required: [id, version, legal_entity_id, rule_id, severity, status, evidence]
-      properties:
-        id: {$ref: '#/components/schemas/Id'}
-        version: {$ref: '#/components/schemas/Version'}
-        legal_entity_id: {$ref: '#/components/schemas/Id'}
-        rule_id: {type: string, maxLength: 128}
-        severity: {type: string, enum: [hard_block, policy_block, warning]}
-        status: {type: string, enum: [open, investigating, accepted, resolved]}
-        evidence: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/EvidenceRef'}}
-    ReviewItem:
-      type: object
-      additionalProperties: false
-      required: [workflow_step_id, target_id, target_type, target_version, summary, evidence]
-      properties:
-        workflow_step_id: {$ref: '#/components/schemas/Id'}
-        target_id: {$ref: '#/components/schemas/Id'}
-        target_type: {type: string, enum: [expense_claim, payable, action_plan]}
-        target_version: {$ref: '#/components/schemas/Version'}
-        summary: {type: string, maxLength: 2000}
-        total: {$ref: '#/components/schemas/Money'}
-        evidence: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/EvidenceRef'}}
-        workflow_id: {$ref: '#/components/schemas/Id'}
-        workflow_version: {$ref: '#/components/schemas/Version'}
-        step_version: {$ref: '#/components/schemas/Version'}
-        approver_user_id: {$ref: '#/components/schemas/Id'}
-        status: {type: string, enum: [pending]}
-        due_at: {type: string, format: date-time}
-        blockers: {type: array, items: {type: string}}
-    LegalEntity:
-      type: object
-      additionalProperties: false
-      required: [id, name, tax_id]
-      properties: {id: {$ref: '#/components/schemas/Id'}, name: {type: string, maxLength: 256}, tax_id: {type: string, maxLength: 64}}
-    Integration:
-      type: object
-      additionalProperties: false
-      required: [id, kind, status, capabilities]
-      properties:
-        id: {$ref: '#/components/schemas/Id'}
-        kind: {type: string, enum: [erp, payment, tax, archive, approval]}
-        status: {type: string, enum: [ready, unconfigured, degraded, disabled]}
-        capabilities: {type: array, uniqueItems: true, maxItems: 50, items: {type: string, maxLength: 128}}
-    IntegrationList:
-      type: object
-      additionalProperties: false
-      required: [legal_entity_id, items]
-      properties: {legal_entity_id: {$ref: '#/components/schemas/Id'}, items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/Integration'}}}
-    Payment:
-      type: object
-      additionalProperties: false
-      required: [id, status, amount, currency, evidence]
-      properties:
-        id: {$ref: '#/components/schemas/Id'}
-        status: {type: string, enum: [pending, partially_paid, paid, returned, outcome_unknown, failed]}
-        amount: {$ref: '#/components/schemas/Money'}
-        currency: {type: string, enum: [CNY]}
-        external_order_id: {type: string, maxLength: 256}
-        external_transaction_id: {type: string, maxLength: 256}
-        evidence: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/EvidenceRef'}}
-    Posting:
-      type: object
-      additionalProperties: false
-      required: [id, status, ledger_id, accounting_period, amount, evidence]
-      properties:
-        id: {$ref: '#/components/schemas/Id'}
-        status: {type: string, enum: [pending, posted, reversed, outcome_unknown, failed]}
-        ledger_id: {$ref: '#/components/schemas/Id'}
-        accounting_period: {type: string, pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'}
-        amount: {$ref: '#/components/schemas/Money'}
-        voucher_id: {type: string, maxLength: 256}
-        voucher_number: {type: string, maxLength: 256}
-        evidence: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/EvidenceRef'}}
-    RedLetterCase:
-      type: object
-      additionalProperties: false
-      required: [id, version, blue_invoice_id, state, amount, tax, evidence]
-      properties:
-        id: {$ref: '#/components/schemas/Id'}
-        version: {$ref: '#/components/schemas/Version'}
-        blue_invoice_id: {$ref: '#/components/schemas/Id'}
-        state: {type: string, enum: [initiated, awaiting_confirmation, confirmed, expired_pending_check, expired, issued, cancelled, abnormal]}
-        amount: {$ref: '#/components/schemas/Money'}
-        tax: {$ref: '#/components/schemas/Money'}
-        confirmation_id: {type: string, maxLength: 256}
-        authority_deadline: {type: string, format: date-time}
-        evidence: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/EvidenceRef'}}
-    Archive:
-      type: object
-      additionalProperties: false
-      required: [id, status, manifest_hash, evidence]
-      properties:
-        id: {$ref: '#/components/schemas/Id'}
-        status: {type: string, enum: [pending, archived, exception]}
-        manifest_hash: {$ref: '#/components/schemas/Digest'}
-        retention_class: {type: string, maxLength: 128}
-        locked_until: {type: string, format: date-time}
-        evidence: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/EvidenceRef'}}
-    ResourceRef:
-      type: object
-      additionalProperties: false
-      required: [kind, id]
-      properties: {kind: {type: string, enum: [invoice, expense_claim, payable, payment, posting, red_letter_case, archive, exception]}, id: {$ref: '#/components/schemas/Id'}}
-    ImportSummary:
-      type: object
-      additionalProperties: false
-      required: [total, pending, parsed, duplicate_linked, awaiting_original, quarantined, failed, cancelled]
-      properties:
-        total: {type: integer, minimum: 1, maximum: 100}
-        pending: {type: integer, minimum: 0, maximum: 100}
-        parsed: {type: integer, minimum: 0, maximum: 100}
-        duplicate_linked: {type: integer, minimum: 0, maximum: 100}
-        awaiting_original: {type: integer, minimum: 0, maximum: 100}
-        quarantined: {type: integer, minimum: 0, maximum: 100}
-        failed: {type: integer, minimum: 0, maximum: 100}
-        cancelled: {type: integer, minimum: 0, maximum: 100}
-    InvoiceField:
-      type: object
-      additionalProperties: false
-      required: [name, raw_value, normalized_value, source_path, source_receipt_id, data_type, mapping_state]
-      properties:
-        name: {type: string, maxLength: 256}
-        raw_value: {type: string, maxLength: 2000}
-        normalized_value: {type: string, maxLength: 2000}
-        source_path: {type: string, maxLength: 1000}
-        source_receipt_id: {$ref: '#/components/schemas/Id'}
-        data_type: {type: string, enum: [string, decimal, date, enum, boolean]}
-        mapping_state: {type: string, enum: [unverified, standard_mapped, extension]}
-        standard_id: {type: string, maxLength: 128}
-        standard_version: {type: string, maxLength: 128}
-        element_id: {type: string, maxLength: 256}
-    InvoiceLinePage:
-      type: object
-      additionalProperties: false
-      required: [items, total, next_cursor]
-      properties: {items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/InvoiceLine'}}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}
-    InvoiceFieldPage:
-      type: object
-      additionalProperties: false
-      required: [items, total, next_cursor]
-      properties: {items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/InvoiceField'}}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}
-    LegalEntityPage:
-      type: object
-      additionalProperties: false
-      required: [items, total, next_cursor]
-      properties: {items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/LegalEntity'}}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}
-    InvoicePage:
-      type: object
-      additionalProperties: false
-      required: [items, total, next_cursor]
-      properties: {items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/Invoice'}}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}
-    ExceptionPage:
-      type: object
-      additionalProperties: false
-      required: [items, total, next_cursor]
-      properties: {items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/ExceptionCase'}}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}
-    ReviewPage:
-      type: object
-      additionalProperties: false
-      required: [items, total, next_cursor]
-      properties: {items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/ReviewItem'}}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}
-    ExpenseWorkflow:
-      type: object
-      additionalProperties: false
-      required: [id, version, status, target_version, policy_version, provider, current_step_id, steps, due_at]
-      properties:
-        id: {$ref: '#/components/schemas/Id'}
-        version: {$ref: '#/components/schemas/Version'}
-        status: {type: string, enum: [under_review, approved, rejected, withdrawn]}
-        target_version: {$ref: '#/components/schemas/Version'}
-        policy_version: {$ref: '#/components/schemas/Version'}
-        provider: {type: string, enum: [internal]}
-        current_step_id: {type: string, nullable: true}
-        due_at: {type: string, format: date-time}
-        steps: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/ExpenseWorkflowStep'}}
-    ExpenseWorkflowStep:
-      type: object
-      additionalProperties: false
-      required: [id, version, name, approver_user_id, status]
-      properties:
-        id: {$ref: '#/components/schemas/Id'}
-        version: {$ref: '#/components/schemas/Version'}
-        name: {type: string, maxLength: 256}
-        approver_user_id: {$ref: '#/components/schemas/Id'}
-        status: {type: string, enum: [waiting, pending, approved, rejected, cancelled]}
-    ExpenseClaimPage:
-      type: object
-      additionalProperties: false
-      required: [items, total, next_cursor]
-      properties:
-        items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/BusinessDocument'}}
-        total: {type: integer, minimum: 0}
-        next_cursor: {type: string, nullable: true}
+    EvidenceRef: {type: object, additionalProperties: false, required: [id, kind, sha256, verification_state], properties: {id: {$ref: '#/components/schemas/Id'}, kind: {type: string, enum: [source, verification, business, approval, payment, posting, archive, detection, event]}, sha256: {$ref: '#/components/schemas/Digest'}, verification_state: {type: string, enum: [not_checked, verified, failed, unavailable]}, source_version: {type: string, maxLength: 128}}}
+    EvidenceBundle: {type: object, additionalProperties: false, required: [invoice_id, evidence, gaps], properties: {invoice_id: {$ref: '#/components/schemas/Id'}, evidence: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/EvidenceRef'}}, gaps: {type: array, maxItems: 1000, items: {type: string, maxLength: 500}}}}
+    InvoiceLine: {type: object, additionalProperties: false, required: [id, line_no, name, amount, tax], properties: {id: {$ref: '#/components/schemas/Id'}, line_no: {type: integer, minimum: 1}, name: {type: string, maxLength: 1000}, amount: {$ref: '#/components/schemas/SignedMoney'}, tax: {$ref: '#/components/schemas/SignedMoney'}, tax_rate: {type: string, pattern: '^(0|[1-9][0-9]{0,2})(\.[0-9]{1,6})?$'}, source_path: {type: string, maxLength: 1000}}}
+    Invoice: {type: object, additionalProperties: false, required: [id, legal_entity_id, version, number, issue_date, seller_tax_id, buyer_tax_id, currency, gross, tax, net, line_count, is_red, parser_profile, verification_status, ticket_status, authority_status, posting_status, tax_entry_status, usage_status, archive_status, available_amount], properties: {id: {$ref: '#/components/schemas/Id'}, legal_entity_id: {$ref: '#/components/schemas/Id'}, version: {$ref: '#/components/schemas/Version'}, number: {type: string, minLength: 1, maxLength: 64}, issue_date: {type: string, format: date}, seller_tax_id: {type: string, maxLength: 64}, buyer_tax_id: {type: string, maxLength: 64}, currency: {type: string, enum: [CNY]}, gross: {$ref: '#/components/schemas/SignedMoney'}, tax: {$ref: '#/components/schemas/SignedMoney'}, available_amount: {$ref: '#/components/schemas/Money'}, net: {$ref: '#/components/schemas/SignedMoney'}, line_count: {type: integer, minimum: 0, maximum: 100000}, is_red: {type: boolean}, parser_profile: {type: string, maxLength: 256}, verification_status: {type: string, enum: [not_checked, pending, passed, failed, unavailable, stale]}, ticket_status: {type: string, enum: [normal, red_locked, partially_red, fully_red, abnormal]}, authority_status: {type: string, enum: [unverified, verified, stale]}, posting_status: {type: string, enum: [not_posted, partially_posted, posted, partially_reversed, reversed]}, tax_entry_status: {type: string, enum: [not_confirmed, pending, confirmed, adjustment_pending, adjusted]}, usage_status: {type: string, enum: [not_confirmed, pending, confirmed, adjustment_pending, adjusted]}, archive_status: {type: string, enum: [not_archived, pending, archived, exception]}}}
+    ExpenseLine: {type: object, additionalProperties: false, required: [category_id, amount, occurred_on, reason], properties: {category_id: {$ref: '#/components/schemas/Id'}, amount: {$ref: '#/components/schemas/Money'}, occurred_on: {type: string, format: date}, reason: {type: string, minLength: 1, maxLength: 1000}, department_id: {$ref: '#/components/schemas/Id'}, project_id: {$ref: '#/components/schemas/Id'}}}
+    ExpenseDraft: {type: object, additionalProperties: false, required: [legal_entity_id, reason, lines], properties: {legal_entity_id: {$ref: '#/components/schemas/Id'}, reason: {type: string, minLength: 1, maxLength: 2000}, lines: {type: array, minItems: 1, maxItems: 100, items: {$ref: '#/components/schemas/ExpenseLine'}}, evidence_ids: {type: array, maxItems: 100, uniqueItems: true, items: {$ref: '#/components/schemas/Id'}}}}
+    ExpenseUpdate: {type: object, additionalProperties: false, required: [expected_version, draft], properties: {expected_version: {$ref: '#/components/schemas/Version'}, draft: {$ref: '#/components/schemas/ExpenseDraft'}}}
+    BusinessRef: {type: object, additionalProperties: false, required: [kind, source, id, version, sha256], properties: {kind: {type: string, enum: [contract, order, acceptance, supplier, employee_account, supplier_account]}, source: {type: string, minLength: 1, maxLength: 128}, id: {$ref: '#/components/schemas/Id'}, version: {type: string, minLength: 1, maxLength: 128}, sha256: {$ref: '#/components/schemas/Digest'}}}
+    PayableDraft: {type: object, additionalProperties: false, required: [legal_entity_id, supplier_ref, amount, due_date, business_refs, reason], properties: {legal_entity_id: {$ref: '#/components/schemas/Id'}, supplier_ref: {allOf: [{$ref: '#/components/schemas/BusinessRef'}, {properties: {kind: {enum: [supplier]}}}]}, amount: {allOf: [{$ref: '#/components/schemas/Money'}], not: {enum: ['0.00']}}, due_date: {type: string, format: date}, business_refs: {type: array, minItems: 1, maxItems: 100, items: {allOf: [{$ref: '#/components/schemas/BusinessRef'}, {properties: {kind: {enum: [contract, order, acceptance]}}}]}, uniqueItems: true}, reason: {type: string, minLength: 1, maxLength: 2000}, evidence_ids: {type: array, items: {$ref: '#/components/schemas/Id'}, maxItems: 100, uniqueItems: true}}}
+    PayableUpdate: {type: object, additionalProperties: false, required: [expected_version, draft], properties: {expected_version: {$ref: '#/components/schemas/Version'}, draft: {$ref: '#/components/schemas/PayableDraft'}}}
+    BusinessDocument: {type: object, additionalProperties: false, required: [id, kind, legal_entity_id, version, status, total, allocation_ids, evidence, content, owner_id, simulation, payment_status, paid_amount, payment_pending_amount, posting_status, posted_amount, reversed_amount, posting_pending_amount], properties: {id: {$ref: '#/components/schemas/Id'}, kind: {type: string, enum: [expense_claim, payable]}, legal_entity_id: {$ref: '#/components/schemas/Id'}, version: {$ref: '#/components/schemas/Version'}, status: {type: string, enum: [draft, submitted, under_review, approved, rejected, withdrawn]}, total: {$ref: '#/components/schemas/Money'}, owner_id: {$ref: '#/components/schemas/Id'}, content: {oneOf: [{$ref: '#/components/schemas/ExpenseDraft'}, {$ref: '#/components/schemas/PayableDraft'}]}, allocation_ids: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/Id'}}, evidence: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/EvidenceRef'}}, record_mode: {type: string, enum: [invoice_backed, internal_record]}, workflow_id: {$ref: '#/components/schemas/Id'}, workflow_version: {$ref: '#/components/schemas/Version'}, due_at: {type: string, format: date-time}, workflow: {$ref: '#/components/schemas/ExpenseWorkflow'}, simulation: {type: boolean}, payment_status: {type: string, enum: [not_requested, pending, partially_paid, paid, outcome_unknown]}, posting_status: {type: string, enum: [not_posted, partially_posted, posted, partially_reversed, reversed]}, paid_amount: {$ref: '#/components/schemas/Money'}, payment_pending_amount: {$ref: '#/components/schemas/Money'}, posted_amount: {$ref: '#/components/schemas/Money'}, reversed_amount: {$ref: '#/components/schemas/Money'}, posting_pending_amount: {$ref: '#/components/schemas/Money'}}}
+    AllocationRequest: {type: object, additionalProperties: false, required: [invoice_id, invoice_version, document_id, document_kind, expected_document_version, amount, tax], properties: {invoice_id: {$ref: '#/components/schemas/Id'}, invoice_version: {$ref: '#/components/schemas/Version'}, invoice_line_id: {$ref: '#/components/schemas/Id'}, document_id: {$ref: '#/components/schemas/Id'}, document_kind: {type: string, enum: [expense_claim, payable]}, expected_document_version: {$ref: '#/components/schemas/Version'}, amount: {$ref: '#/components/schemas/Money'}, tax: {$ref: '#/components/schemas/Money'}}}
+    Allocation: {type: object, additionalProperties: false, required: [id, version, invoice_id, document_id, amount, tax, state], properties: {id: {$ref: '#/components/schemas/Id'}, version: {$ref: '#/components/schemas/Version'}, invoice_id: {$ref: '#/components/schemas/Id'}, document_id: {$ref: '#/components/schemas/Id'}, amount: {$ref: '#/components/schemas/Money'}, tax: {$ref: '#/components/schemas/Money'}, state: {type: string, enum: [proposed, reserved, consumed, released]}}}
+    ActionPreviewRequest: {type: object, additionalProperties: false, required: [action, target_type, target_id, expected_version, parameters], properties: {action: {type: string, enum: [submit_claim, submit_payable, approve, reject, withdraw, execute_payment, submit_posting, reverse_posting, confirm_usage, confirm_tax_entry, confirm_red_letter, archive]}, target_type: {type: string, enum: [expense_claim, payable, invoice, payment, posting, red_letter_case, action_plan]}, target_id: {$ref: '#/components/schemas/Id'}, expected_version: {$ref: '#/components/schemas/Version'}, parameters: {$ref: '#/components/schemas/ActionParameters'}}}
+    ActionParameters: {type: object, additionalProperties: false, description: 服务端按动作校验必需字段并拒绝不适用字段，规则见领域契约的动作参数矩阵；不能通过本对象指定身份或成功状态。, properties: {amount: {$ref: '#/components/schemas/Money'}, payee_ref: {$ref: '#/components/schemas/BusinessRef'}, accounting_period: {type: string, pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'}, workflow_step_id: {$ref: '#/components/schemas/Id'}, reason: {type: string, minLength: 1, maxLength: 2000}, confirmation_id: {$ref: '#/components/schemas/Id'}, evidence_ids: {type: array, maxItems: 100, uniqueItems: true, items: {$ref: '#/components/schemas/Id'}}}}
+    ActionPlan: {type: object, additionalProperties: false, required: [id, version, legal_entity_id, digest, action, target_type, target_id, target_version, parameters, expires_at, executable, blockers, required_approvals, effects], properties: {id: {$ref: '#/components/schemas/Id'}, digest: {$ref: '#/components/schemas/Digest'}, action: {type: string, maxLength: 64}, version: {type: integer, enum: [1]}, legal_entity_id: {$ref: '#/components/schemas/Id'}, target_type: {type: string, enum: [expense_claim, payable, invoice, payment, posting, red_letter_case, action_plan]}, parameters: {$ref: '#/components/schemas/ActionParameters'}, workflow_id: {$ref: '#/components/schemas/Id'}, target_id: {$ref: '#/components/schemas/Id'}, target_version: {$ref: '#/components/schemas/Version'}, expires_at: {type: string, format: date-time}, executable: {type: boolean}, blockers: {type: array, maxItems: 100, items: {type: string, maxLength: 500}}, required_approvals: {type: array, maxItems: 100, items: {type: string, maxLength: 500}}, effects: {type: array, maxItems: 100, items: {type: string, maxLength: 1000}}, prepared_by: {$ref: '#/components/schemas/Id'}, payee: {type: object, additionalProperties: false, required: [ref, account_name, masked_account], properties: {ref: {$ref: '#/components/schemas/BusinessRef'}, account_name: {type: string}, masked_account: {type: string}}}, ledger_id: {$ref: '#/components/schemas/Id'}, accounting_period: {type: string, pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'}, workflow: {$ref: '#/components/schemas/ExpenseWorkflow'}, owner_id: {$ref: '#/components/schemas/Id'}, simulation: {type: boolean}}}
+    ActionExecution: {type: object, additionalProperties: false, required: [plan_id, plan_digest], properties: {plan_id: {$ref: '#/components/schemas/Id'}, plan_digest: {$ref: '#/components/schemas/Digest'}}}
+    ImportItemResult: {type: object, additionalProperties: false, required: [file_id, state], properties: {file_id: {$ref: '#/components/schemas/Id'}, state: {type: string, enum: [pending, received, awaiting_original, quarantined, parsed, duplicate_linked, failed, cancelled]}, invoice_id: {$ref: '#/components/schemas/Id'}, exception_id: {$ref: '#/components/schemas/Id'}, error_code: {type: string, maxLength: 128}}}
+    Operation: {type: object, additionalProperties: false, required: [id, version, status, business_result, trace_id, items, result_refs, resources], description: F2外部操作accepted/dispatching/awaiting_provider/outcome_unknown均不表示付款或入账成功；未知按原外部请求号查单，not_found不能安全重发。F0导入仍返回summary，F1本地命令成功不替代实际审批。, properties: {id: {$ref: '#/components/schemas/Id'}, version: {$ref: '#/components/schemas/Version'}, status: {type: string, enum: [accepted, waiting_approval, running, dispatching, awaiting_provider, succeeded, failed, cancelled, outcome_unknown]}, business_result: {type: string, enum: [pending, succeeded, partial, failed, cancelled, unknown, not_completed]}, trace_id: {$ref: '#/components/schemas/Id'}, items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/ImportItemResult'}}, result_refs: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/EvidenceRef'}}, resources: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/ResourceRef'}}, summary: {$ref: '#/components/schemas/ImportSummary'}, error: {$ref: '#/components/schemas/Error'}, action: {type: string, enum: [submit_claim, submit_payable, approve, reject, withdraw, execute_payment, submit_posting, reverse_posting, confirm_usage, confirm_tax_entry, confirm_red_letter, archive]}, simulation: {type: boolean}, provider: {$ref: '#/components/schemas/Id'}, external_request_id: {$ref: '#/components/schemas/Id'}, plan_id: {$ref: '#/components/schemas/Id'}}}
+    ExceptionResolution: {type: object, additionalProperties: false, required: [expected_version, disposition, reason, evidence_ids], properties: {expected_version: {$ref: '#/components/schemas/Version'}, disposition: {type: string, enum: [attach_evidence, accept_warning, resolve]}, reason: {type: string, minLength: 1, maxLength: 2000}, evidence_ids: {type: array, maxItems: 100, uniqueItems: true, items: {$ref: '#/components/schemas/Id'}}}}
+    ExceptionCase: {type: object, additionalProperties: false, required: [id, version, legal_entity_id, rule_id, severity, status, evidence], properties: {id: {$ref: '#/components/schemas/Id'}, version: {$ref: '#/components/schemas/Version'}, legal_entity_id: {$ref: '#/components/schemas/Id'}, rule_id: {type: string, maxLength: 128}, severity: {type: string, enum: [hard_block, policy_block, warning]}, status: {type: string, enum: [open, investigating, accepted, resolved]}, evidence: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/EvidenceRef'}}}}
+    ReviewItem: {type: object, additionalProperties: false, required: [workflow_step_id, target_id, target_type, target_version, summary, evidence], properties: {workflow_step_id: {$ref: '#/components/schemas/Id'}, target_id: {$ref: '#/components/schemas/Id'}, target_type: {type: string, enum: [expense_claim, payable, action_plan]}, target_version: {$ref: '#/components/schemas/Version'}, summary: {type: string, maxLength: 2000}, total: {$ref: '#/components/schemas/Money'}, evidence: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/EvidenceRef'}}, workflow_id: {$ref: '#/components/schemas/Id'}, workflow_version: {$ref: '#/components/schemas/Version'}, step_version: {$ref: '#/components/schemas/Version'}, approver_user_id: {$ref: '#/components/schemas/Id'}, status: {type: string, enum: [pending]}, due_at: {type: string, format: date-time}, blockers: {type: array, items: {type: string}}}}
+    LegalEntity: {type: object, additionalProperties: false, required: [id, name, tax_id], properties: {id: {$ref: '#/components/schemas/Id'}, name: {type: string, maxLength: 256}, tax_id: {type: string, maxLength: 64}}}
+    Integration: {type: object, additionalProperties: false, required: [id, kind, status, capabilities], properties: {id: {$ref: '#/components/schemas/Id'}, kind: {type: string, enum: [erp, payment, tax, archive, approval]}, status: {type: string, enum: [ready, unconfigured, degraded, disabled]}, capabilities: {type: array, uniqueItems: true, maxItems: 50, items: {type: string, maxLength: 128}}, provider: {$ref: '#/components/schemas/Id'}, simulation: {type: boolean}}}
+    IntegrationList: {type: object, additionalProperties: false, required: [legal_entity_id, items], properties: {legal_entity_id: {$ref: '#/components/schemas/Id'}, items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/Integration'}}}}
+    Payment: {type: object, additionalProperties: false, required: [id, legal_entity_id, document_id, operation_id, version, document_kind, status, simulation, amount, created_at, payee_ref, account_name, masked_account], properties: {id: {$ref: '#/components/schemas/Id'}, legal_entity_id: {$ref: '#/components/schemas/Id'}, document_id: {$ref: '#/components/schemas/Id'}, operation_id: {$ref: '#/components/schemas/Id'}, version: {$ref: '#/components/schemas/Version'}, document_kind: {type: string, enum: [expense_claim, payable]}, status: {type: string, enum: [pending, awaiting_provider, outcome_unknown, succeeded, failed, cancelled, running]}, simulation: {type: boolean}, amount: {$ref: '#/components/schemas/Money'}, created_at: {type: string, format: date-time}, payee_ref: {$ref: '#/components/schemas/BusinessRef'}, account_name: {type: string}, masked_account: {type: string}, external_order_id: {$ref: '#/components/schemas/Id'}, transaction_id: {$ref: '#/components/schemas/Id'}, evidence: {type: array, items: {$ref: '#/components/schemas/ProviderEvidence'}}}, description: 首期CNY；pending与unknown不能视为已付。成功保留外部订单、实际transaction_id和证据，不暴露渠道账户令牌。}
+    Posting: {type: object, additionalProperties: false, required: [id, legal_entity_id, document_id, operation_id, version, document_kind, status, simulation, amount, created_at, ledger_id, accounting_period, kind, original_posting_id, reversal_available_amount, reversal_pending_amount], properties: {id: {$ref: '#/components/schemas/Id'}, legal_entity_id: {$ref: '#/components/schemas/Id'}, document_id: {$ref: '#/components/schemas/Id'}, operation_id: {$ref: '#/components/schemas/Id'}, version: {$ref: '#/components/schemas/Version'}, document_kind: {type: string, enum: [expense_claim, payable]}, status: {type: string, enum: [pending, awaiting_provider, outcome_unknown, succeeded, failed, cancelled, running]}, simulation: {type: boolean}, amount: {$ref: '#/components/schemas/Money'}, created_at: {type: string, format: date-time}, ledger_id: {$ref: '#/components/schemas/Id'}, accounting_period: {type: string, pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'}, kind: {type: string, enum: [posting, reversal]}, original_posting_id: {type: string, nullable: true}, voucher_id: {$ref: '#/components/schemas/Id'}, evidence: {type: array, items: {$ref: '#/components/schemas/ProviderEvidence'}}, reversal_available_amount: {$ref: '#/components/schemas/Money'}, reversal_pending_amount: {$ref: '#/components/schemas/Money'}}, description: 首期CNY；成功须匹配账套/期间并有voucher_id。冲回是独立关联记录，不覆盖原凭证。}
+    RedLetterCase: {type: object, additionalProperties: false, required: [id, version, blue_invoice_id, state, amount, tax, evidence], properties: {id: {$ref: '#/components/schemas/Id'}, version: {$ref: '#/components/schemas/Version'}, blue_invoice_id: {$ref: '#/components/schemas/Id'}, state: {type: string, enum: [initiated, awaiting_confirmation, confirmed, expired_pending_check, expired, issued, cancelled, abnormal]}, amount: {$ref: '#/components/schemas/Money'}, tax: {$ref: '#/components/schemas/Money'}, confirmation_id: {type: string, maxLength: 256}, authority_deadline: {type: string, format: date-time}, evidence: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/EvidenceRef'}}}}
+    Archive: {type: object, additionalProperties: false, required: [id, status, manifest_hash, evidence], properties: {id: {$ref: '#/components/schemas/Id'}, status: {type: string, enum: [pending, archived, exception]}, manifest_hash: {$ref: '#/components/schemas/Digest'}, retention_class: {type: string, maxLength: 128}, locked_until: {type: string, format: date-time}, evidence: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/EvidenceRef'}}}}
+    ResourceRef: {type: object, additionalProperties: false, required: [kind, id], properties: {kind: {type: string, enum: [invoice, expense_claim, payable, payment, posting, red_letter_case, archive, exception, action_plan]}, id: {$ref: '#/components/schemas/Id'}}}
+    ImportSummary: {type: object, additionalProperties: false, required: [total, pending, parsed, duplicate_linked, awaiting_original, quarantined, failed, cancelled], properties: {total: {type: integer, minimum: 1, maximum: 100}, pending: {type: integer, minimum: 0, maximum: 100}, parsed: {type: integer, minimum: 0, maximum: 100}, duplicate_linked: {type: integer, minimum: 0, maximum: 100}, awaiting_original: {type: integer, minimum: 0, maximum: 100}, quarantined: {type: integer, minimum: 0, maximum: 100}, failed: {type: integer, minimum: 0, maximum: 100}, cancelled: {type: integer, minimum: 0, maximum: 100}}}
+    InvoiceField: {type: object, additionalProperties: false, required: [name, raw_value, normalized_value, source_path, source_receipt_id, data_type, mapping_state], properties: {name: {type: string, maxLength: 256}, raw_value: {type: string, maxLength: 2000}, normalized_value: {type: string, maxLength: 2000}, source_path: {type: string, maxLength: 1000}, source_receipt_id: {$ref: '#/components/schemas/Id'}, data_type: {type: string, enum: [string, decimal, date, enum, boolean]}, mapping_state: {type: string, enum: [unverified, standard_mapped, extension]}, standard_id: {type: string, maxLength: 128}, standard_version: {type: string, maxLength: 128}, element_id: {type: string, maxLength: 256}}}
+    InvoiceLinePage: {type: object, additionalProperties: false, required: [items, total, next_cursor], properties: {items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/InvoiceLine'}}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}}
+    InvoiceFieldPage: {type: object, additionalProperties: false, required: [items, total, next_cursor], properties: {items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/InvoiceField'}}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}}
+    LegalEntityPage: {type: object, additionalProperties: false, required: [items, total, next_cursor], properties: {items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/LegalEntity'}}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}}
+    InvoicePage: {type: object, additionalProperties: false, required: [items, total, next_cursor], properties: {items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/Invoice'}}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}}
+    ExceptionPage: {type: object, additionalProperties: false, required: [items, total, next_cursor], properties: {items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/ExceptionCase'}}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}}
+    ReviewPage: {type: object, additionalProperties: false, required: [items, total, next_cursor], properties: {items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/ReviewItem'}}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}}
+    ExpenseWorkflow: {type: object, additionalProperties: false, required: [id, version, status, target_version, policy_version, provider, current_step_id, steps, due_at], properties: {id: {$ref: '#/components/schemas/Id'}, version: {$ref: '#/components/schemas/Version'}, status: {type: string, enum: [under_review, approved, rejected, withdrawn]}, target_version: {$ref: '#/components/schemas/Version'}, policy_version: {$ref: '#/components/schemas/Version'}, provider: {type: string, enum: [internal]}, current_step_id: {type: string, nullable: true}, due_at: {type: string, format: date-time}, steps: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/ExpenseWorkflowStep'}}}}
+    ExpenseWorkflowStep: {type: object, additionalProperties: false, required: [id, version, name, approver_user_id, status], properties: {id: {$ref: '#/components/schemas/Id'}, version: {$ref: '#/components/schemas/Version'}, name: {type: string, maxLength: 256}, approver_user_id: {$ref: '#/components/schemas/Id'}, status: {type: string, enum: [waiting, pending, approved, rejected, cancelled]}}}
+    ExpenseClaimPage: {type: object, additionalProperties: false, required: [items, total, next_cursor], properties: {items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/BusinessDocument'}}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}}
+    ProviderEvidence: {type: object, additionalProperties: false, required: [id, sha256, media_type, object_ref], properties: {id: {$ref: '#/components/schemas/Id'}, sha256: {$ref: '#/components/schemas/Digest'}, media_type: {type: string, maxLength: 128}, object_ref: {type: string, maxLength: 2048}}, description: 渠道声明的证据引用及摘要；原始回执由独立财务库保全，不自动访问任意URL。}
+    SettlementOptions: {type: object, additionalProperties: false, required: [legal_entity_id, simulation, open_periods, ledger_id, payment_allowed, posting_allowed, reversal_allowed], properties: {legal_entity_id: {$ref: '#/components/schemas/Id'}, simulation: {type: boolean}, open_periods: {type: array, items: {type: string, pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'}}, ledger_id: {type: string, nullable: true}, payment_allowed: {type: boolean}, posting_allowed: {type: boolean}, reversal_allowed: {type: boolean}}}
+    PayablePage: {type: object, additionalProperties: false, required: [items, total, next_cursor], properties: {items: {type: array, items: {$ref: '#/components/schemas/BusinessDocument'}, maxItems: 100}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}}
+    PaymentPage: {type: object, additionalProperties: false, required: [items, total, next_cursor], properties: {items: {type: array, items: {$ref: '#/components/schemas/Payment'}, maxItems: 100}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}}
+    PostingPage: {type: object, additionalProperties: false, required: [items, total, next_cursor], properties: {items: {type: array, items: {$ref: '#/components/schemas/Posting'}, maxItems: 100}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}}
+    ActionPlanPage: {type: object, additionalProperties: false, required: [items, total, next_cursor], properties: {items: {type: array, items: {$ref: '#/components/schemas/ActionPlan'}, maxItems: 100}, total: {type: integer, minimum: 0}, next_cursor: {type: string, nullable: true}}}

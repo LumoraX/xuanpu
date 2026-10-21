@@ -1,0 +1,19 @@
+{
+  "environment": "isolated_simulation",
+  "image": "xuanpu-finance:2026.10.21.3",
+  "production": false,
+  "before_restart_status": "outcome_unknown",
+  "posts_before_restart": 1,
+  "paid_amount": "600.00",
+  "posted_amount": "750.00",
+  "reversed_amount": "250.00",
+  "payment_posts": 1,
+  "total_posts": 3,
+  "queries": 1,
+  "receipts": 4,
+  "simulation": true,
+  "image_id": "sha256:ea79dfdab958b825989f845f36fad482a8f0e3c10aae20649d047a6fc5a798cf",
+  "uid": "10001",
+  "result": "passed",
+  "cleanup": "dedicated_project_volumes_removed"
+}

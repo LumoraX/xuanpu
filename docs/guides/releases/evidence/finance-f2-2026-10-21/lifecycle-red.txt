@@ -1,0 +1,136 @@
+FFFFFFFF                                                                 [100%]
+=================================== FAILURES ===================================
+___________ test_signed_callback_queues_query_in_all_modes[enabled] ____________
+
+mode = 'enabled'
+
+    @pytest.mark.parametrize('mode',['enabled','draining','read_only','disabled'])
+    async def test_signed_callback_queues_query_in_all_modes(mode: str) -> None:
+        """实际原字节HMAC在业务停用时仍核验并持久接收，不直接推进成功。"""
+        store=Store()
+        raw=json.dumps({'tenant_id':'t','legal_entity_id':'co','provider':'demo','configuration_version':1,'simulation':True,'external_request_id':'request1'}).encode()
+        stamp=str(int(time.time()))
+        headers={'X-Finance-Timestamp':stamp,'X-Finance-Event-Id':'event1','X-Finance-Key-Id':'k','X-Finance-Signature':'sha256='+hmac.new(b'secret',stamp.encode()+b'.event1.'+raw,hashlib.sha256).hexdigest()}
+        async with httpx.AsyncClient() as upstream:
+            registry=ProviderRegistry([config()],upstream,tokens={('demo',1):'token'},callback_secrets={('demo',1):'secret'})
+>           app=create_app(store=store,auth=NoEmployeeAuth(),mode=mode,start_worker=False,settlement_providers=registry)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           TypeError: create_app() got an unexpected keyword argument 'settlement_providers'
+
+packages/xuanpu-finance/tests/test_f2_lifecycle_api.py:42: TypeError
+___________ test_signed_callback_queues_query_in_all_modes[draining] ___________
+
+mode = 'draining'
+
+    @pytest.mark.parametrize('mode',['enabled','draining','read_only','disabled'])
+    async def test_signed_callback_queues_query_in_all_modes(mode: str) -> None:
+        """实际原字节HMAC在业务停用时仍核验并持久接收，不直接推进成功。"""
+        store=Store()
+        raw=json.dumps({'tenant_id':'t','legal_entity_id':'co','provider':'demo','configuration_version':1,'simulation':True,'external_request_id':'request1'}).encode()
+        stamp=str(int(time.time()))
+        headers={'X-Finance-Timestamp':stamp,'X-Finance-Event-Id':'event1','X-Finance-Key-Id':'k','X-Finance-Signature':'sha256='+hmac.new(b'secret',stamp.encode()+b'.event1.'+raw,hashlib.sha256).hexdigest()}
+        async with httpx.AsyncClient() as upstream:
+            registry=ProviderRegistry([config()],upstream,tokens={('demo',1):'token'},callback_secrets={('demo',1):'secret'})
+>           app=create_app(store=store,auth=NoEmployeeAuth(),mode=mode,start_worker=False,settlement_providers=registry)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           TypeError: create_app() got an unexpected keyword argument 'settlement_providers'
+
+packages/xuanpu-finance/tests/test_f2_lifecycle_api.py:42: TypeError
+__________ test_signed_callback_queues_query_in_all_modes[read_only] ___________
+
+mode = 'read_only'
+
+    @pytest.mark.parametrize('mode',['enabled','draining','read_only','disabled'])
+    async def test_signed_callback_queues_query_in_all_modes(mode: str) -> None:
+        """实际原字节HMAC在业务停用时仍核验并持久接收，不直接推进成功。"""
+        store=Store()
+        raw=json.dumps({'tenant_id':'t','legal_entity_id':'co','provider':'demo','configuration_version':1,'simulation':True,'external_request_id':'request1'}).encode()
+        stamp=str(int(time.time()))
+        headers={'X-Finance-Timestamp':stamp,'X-Finance-Event-Id':'event1','X-Finance-Key-Id':'k','X-Finance-Signature':'sha256='+hmac.new(b'secret',stamp.encode()+b'.event1.'+raw,hashlib.sha256).hexdigest()}
+        async with httpx.AsyncClient() as upstream:
+            registry=ProviderRegistry([config()],upstream,tokens={('demo',1):'token'},callback_secrets={('demo',1):'secret'})
+>           app=create_app(store=store,auth=NoEmployeeAuth(),mode=mode,start_worker=False,settlement_providers=registry)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           TypeError: create_app() got an unexpected keyword argument 'settlement_providers'
+
+packages/xuanpu-finance/tests/test_f2_lifecycle_api.py:42: TypeError
+___________ test_signed_callback_queues_query_in_all_modes[disabled] ___________
+
+mode = 'disabled'
+
+    @pytest.mark.parametrize('mode',['enabled','draining','read_only','disabled'])
+    async def test_signed_callback_queues_query_in_all_modes(mode: str) -> None:
+        """实际原字节HMAC在业务停用时仍核验并持久接收，不直接推进成功。"""
+        store=Store()
+        raw=json.dumps({'tenant_id':'t','legal_entity_id':'co','provider':'demo','configuration_version':1,'simulation':True,'external_request_id':'request1'}).encode()
+        stamp=str(int(time.time()))
+        headers={'X-Finance-Timestamp':stamp,'X-Finance-Event-Id':'event1','X-Finance-Key-Id':'k','X-Finance-Signature':'sha256='+hmac.new(b'secret',stamp.encode()+b'.event1.'+raw,hashlib.sha256).hexdigest()}
+        async with httpx.AsyncClient() as upstream:
+            registry=ProviderRegistry([config()],upstream,tokens={('demo',1):'token'},callback_secrets={('demo',1):'secret'})
+>           app=create_app(store=store,auth=NoEmployeeAuth(),mode=mode,start_worker=False,settlement_providers=registry)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           TypeError: create_app() got an unexpected keyword argument 'settlement_providers'
+
+packages/xuanpu-finance/tests/test_f2_lifecycle_api.py:42: TypeError
+____________ test_background_query_survives_disabled_modes[enabled] ____________
+
+mode = 'enabled'
+
+    @pytest.mark.parametrize('mode',['enabled','draining','read_only','disabled'])
+    async def test_background_query_survives_disabled_modes(mode: str) -> None:
+        """停用禁止新dispatch，但后台查询仍运行；退出后任务真正结束。"""
+        worker=Worker()
+>       app=create_app(store=Store(),auth=NoEmployeeAuth(),mode=mode,settlement_worker=worker)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: create_app() got an unexpected keyword argument 'settlement_worker'
+
+packages/xuanpu-finance/tests/test_f2_lifecycle_api.py:69: TypeError
+___________ test_background_query_survives_disabled_modes[draining] ____________
+
+mode = 'draining'
+
+    @pytest.mark.parametrize('mode',['enabled','draining','read_only','disabled'])
+    async def test_background_query_survives_disabled_modes(mode: str) -> None:
+        """停用禁止新dispatch，但后台查询仍运行；退出后任务真正结束。"""
+        worker=Worker()
+>       app=create_app(store=Store(),auth=NoEmployeeAuth(),mode=mode,settlement_worker=worker)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: create_app() got an unexpected keyword argument 'settlement_worker'
+
+packages/xuanpu-finance/tests/test_f2_lifecycle_api.py:69: TypeError
+___________ test_background_query_survives_disabled_modes[read_only] ___________
+
+mode = 'read_only'
+
+    @pytest.mark.parametrize('mode',['enabled','draining','read_only','disabled'])
+    async def test_background_query_survives_disabled_modes(mode: str) -> None:
+        """停用禁止新dispatch，但后台查询仍运行；退出后任务真正结束。"""
+        worker=Worker()
+>       app=create_app(store=Store(),auth=NoEmployeeAuth(),mode=mode,settlement_worker=worker)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: create_app() got an unexpected keyword argument 'settlement_worker'
+
+packages/xuanpu-finance/tests/test_f2_lifecycle_api.py:69: TypeError
+___________ test_background_query_survives_disabled_modes[disabled] ____________
+
+mode = 'disabled'
+
+    @pytest.mark.parametrize('mode',['enabled','draining','read_only','disabled'])
+    async def test_background_query_survives_disabled_modes(mode: str) -> None:
+        """停用禁止新dispatch，但后台查询仍运行；退出后任务真正结束。"""
+        worker=Worker()
+>       app=create_app(store=Store(),auth=NoEmployeeAuth(),mode=mode,settlement_worker=worker)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: create_app() got an unexpected keyword argument 'settlement_worker'
+
+packages/xuanpu-finance/tests/test_f2_lifecycle_api.py:69: TypeError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f2_lifecycle_api.py::test_signed_callback_queues_query_in_all_modes[enabled]
+FAILED packages/xuanpu-finance/tests/test_f2_lifecycle_api.py::test_signed_callback_queues_query_in_all_modes[draining]
+FAILED packages/xuanpu-finance/tests/test_f2_lifecycle_api.py::test_signed_callback_queues_query_in_all_modes[read_only]
+FAILED packages/xuanpu-finance/tests/test_f2_lifecycle_api.py::test_signed_callback_queues_query_in_all_modes[disabled]
+FAILED packages/xuanpu-finance/tests/test_f2_lifecycle_api.py::test_background_query_survives_disabled_modes[enabled]
+FAILED packages/xuanpu-finance/tests/test_f2_lifecycle_api.py::test_background_query_survives_disabled_modes[draining]
+FAILED packages/xuanpu-finance/tests/test_f2_lifecycle_api.py::test_background_query_survives_disabled_modes[read_only]
+FAILED packages/xuanpu-finance/tests/test_f2_lifecycle_api.py::test_background_query_survives_disabled_modes[disabled]
+8 failed in 0.27s

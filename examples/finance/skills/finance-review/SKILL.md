@@ -1,13 +1,14 @@
 ---
 name: finance-review
-description: 查询实际分派的内部审批待办和证据，准备审核计划供本人决定。
-version: 0.2.0-f1.1
+description: 读取本人实际分派的报销、应付和原行动计划审批，核对证据并准备本人决定。
+version: 0.3.0-f2.1
 entry: false
 type: composite
 tool_names:
 - api__finance__listLegalEntities
 - api__finance__listReviewQueue
 - api__finance__getExpenseClaim
+- api__finance__getPayable
 - api__finance__getInvoice
 - api__finance__getInvoiceEvidence
 - api__finance__getInvoiceLines
@@ -16,9 +17,10 @@ tool_names:
 - api__finance__listExceptions
 - api__finance__getOperation
 ---
-# 内部审批
+# 实际人工审批
 
-从listReviewQueue获取当前员工实际分派的步骤，查询单据、证据和流程版本。不能替他人审批，不能自审；reviewer公司查看权不是任意审批权。
-只针对当前workflow_step_id与target_version准备approve/reject预检，驳回须有明确原因。展示缺材料/not_checked/unverified、计划blockers与金额，不补造制度或批准结论。
-将计划交给当前员工在“功能 → 报销记录与内部审批”查看并决定。禁止模型执行executeFinanceAction，禁止把平台工具批准写成财务审批。
-一步批准只推进下一步，全部实际步骤通过才approved；待办重启后仍在独立财务库。超过时限或通知未派送不会自动批准。
+listReviewQueue返回当前员工真正分派的步骤。按target_type读取报销、应付或原action_plan，并查询原证据；reviewer公司查看权不等于任意审批权，不能代他人或本人自审。
+业务单据使用队列的target_version；原action_plan始终expected_version=1，workflow_step_id来自当前步骤。准备approve/reject预检，驳回给出原因；不要对approve/reject计划再创建一轮批准。
+将当前金额、账户脱敏快照、账套/期间、材料缺口、blockers和原计划摘要交本人在人工入口决定。模型不调用executeFinanceAction，平台工具批准不形成财务业务决定。
+一步通过只推进当前工作流；业务单据批准不授权付款、记账或冲回，原外部计划还需其专用链。原计划失效/过期时重新预检，不复制旧决定、不延长旧计划“复活”授权。
+待办和决定保存在独立财务库；通知pending或会话退出不代表完成。simulation结果保持simulation=true，不能解释为真实资金或正式凭证。

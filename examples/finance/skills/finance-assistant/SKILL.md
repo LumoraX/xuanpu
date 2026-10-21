@@ -1,7 +1,7 @@
 ---
 name: finance-assistant
-description: 处理发票归集、本人报销记录、内部审批待办；实际决定由员工确认。
-version: 0.2.0-f1.1
+description: 处理发票、报销、采购应付、本人待审及付款记账结果查询；实际决定交真实员工人工入口。
+version: 0.3.0-f2.1
 entry: true
 type: composite
 tool_names: []
@@ -9,10 +9,13 @@ child_skills:
 - invoice-intake
 - expense-reimbursement
 - finance-review
+- accounts-payable
+- posting-reconciliation
 ---
 # 财务助手
 
-涉及原件处理时读取[原件边界](references/f0-boundary.md)。按任务读取 invoice-intake（原件归集）、expense-reimbursement（费用记录）或 finance-review（本人待审）。
-用户提供发票和报销事由后，先查询有权公司与目录，归集材料并准备草稿；轻量内部记录可不关联结构化发票，保留材料缺口。
-不要把聊天确认、工具确认或本地操作succeeded解释为业务批准。提交、批准、驳回、撤回须交给员工在“功能 → 报销记录与内部审批”查看预检结果后明确决定。
-所有业务状态以独立财务API查询为准；审批通过仍不等于支付、入账、税务验真或归档。当前企业微信/飞书尚未接入。
+按用户目标读取 invoice-intake（原件）、expense-reimbursement（报销）、accounts-payable（应付）、finance-review（实际待审）或 posting-reconciliation（付款、入账与核对）。原件解释见[边界](references/f0-boundary.md)。
+先查有权公司与真实受控目录，再准备记录或计划。单据、行动计划、人工待办及结果均由独立财务API恢复；重新会话不重建批准、不换键重放付款。
+提交、批准、驳回、撤回、外部执行及人工核对，交员工在“功能 → 财务”查看原计划与证据后明确决定。聊天确认或工具批准不会把模型来源升级为human。
+业务批准、付款、记账是独立维度。202/accepted只是受理；outcome_unknown保留在途金额，只查原请求号。成功须分别有实际交易或账套期间凭证及证据。
+当前交付F0-F2通用可替换HTTP接口与隔离simulation闭环，尚未选定或上线真实支付/ERP供应商。正式动作仍需实际有效查验与专用批准；税务、红字和正式归档属于F3，不能宣称已经交付。

@@ -2,8 +2,8 @@ apiVersion: xuanpu/v1
 kind: Package
 metadata:
   name: finance
-  version: 0.2.0-f1.1
-  description: 独立财务：发票归集、轻量报销记录及真实内部审批
+  version: 0.3.0-f2.1
+  description: 独立财务F0-F2：发票、报销、应付、人工审批与隔离HTTP付款记账结果闭环
 spec:
   skills:
     entries:
@@ -71,6 +71,28 @@ spec:
       effect: read
     - name: resolveException
       effect: write
+    - name: createPayable
+      effect: write
+    - name: listPayables
+      effect: read
+    - name: getPayable
+      effect: read
+    - name: updatePayable
+      effect: write
+    - name: listPayments
+      effect: read
+    - name: getPayment
+      effect: read
+    - name: listPostings
+      effect: read
+    - name: getPosting
+      effect: read
+    - name: listActionPlans
+      effect: read
+    - name: getSettlementOptions
+      effect: read
+    - name: reconcileOperation
+      effect: write
     contextAudience: xuanpu-finance
   - name: catalog
     transport: http
@@ -85,6 +107,10 @@ spec:
     - name: listCostCenters
       effect: read
     - name: getInvoiceAllocation
+      effect: read
+    - name: listBusinessDocuments
+      effect: read
+    - name: listPayeeAccounts
       effect: read
     contextAudience: xuanpu-finance
   evals:

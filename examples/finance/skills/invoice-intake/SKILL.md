@@ -1,28 +1,26 @@
 ---
 name: invoice-intake
-description: 使用受权固定版本发票原件，归集、查询持久进度并处理补件待办。
-version: 0.1.0-f0.1
+description: 归集受权固定版本发票原件，查询持久进度并为报销或应付处理补件。
+version: 0.3.0-f2.1
+entry: false
 type: composite
 tool_names:
-  - api__finance__listLegalEntities
-  - api__finance__listIntegrations
-  - api__finance__importInvoices
-  - api__finance__getOperation
-  - api__finance__cancelOperation
-  - api__finance__listInvoices
-  - api__finance__getInvoice
-  - api__finance__getInvoiceLines
-  - api__finance__getInvoiceFields
-  - api__finance__getInvoiceEvidence
-  - api__finance__listExceptions
+- api__finance__listLegalEntities
+- api__finance__listIntegrations
+- api__finance__importInvoices
+- api__finance__getOperation
+- api__finance__cancelOperation
+- api__finance__listInvoices
+- api__finance__getInvoice
+- api__finance__getInvoiceLines
+- api__finance__getInvoiceFields
+- api__finance__getInvoiceEvidence
+- api__finance__listExceptions
 ---
 # 发票归集与补件
 
-先读取 [执行规则](references/execution-rules.md)。只使用用户可访问文件的 file_id、revision、sha256，明确公司后调用 importInvoices。
-202 表示已持久受理；继续 getOperation，按每项 parsed/duplicate_linked/awaiting_original/quarantined/failed/cancelled 汇报。
-summary 各分类合计必须等于 total；partial 应明确成功项和未完成项，不能概括为全部完成。
-票面、明细、原始字段和证据分别调用对应接口，分页跟随 next_cursor；total 是过滤后的总数。
-只有 PDF、OFD 或图片时保留待补件，说明需要合适原件；不能生成 XML 冒充原件。
-补件先 listExceptions 取得当前 open 异常 ID/version，再调用 importInvoices，同传 source_exception_id、expected_exception_version 和新文件引用。
-失败时原待办仍存在；成功解析后服务负责关联并关闭，不调用不存在的“通过审批”工具。
-用户取消时先 getOperation 取得当前 version，用独立幂等键取消；已完成项仍保留。
+先读[执行规则](references/execution-rules.md)。只用用户有权文件的file_id、revision、sha256；明确公司后importInvoices，不生成XML冒充原件。
+202表示持久受理；getOperation按项汇报parsed、duplicate_linked、awaiting_original、quarantined、failed、cancelled。summary合计等于total，partial应说明各项缺口。分页跟随next_cursor，total是过滤后的总数。
+票面、明细、原始字段和证据分别查询；仅PDF/OFD/图片时保留待补原件。解析成功不等于not_checked已变查验passed。
+补件先listExceptions取得open异常ID/version，importInvoices同时携带source_exception_id、expected_exception_version和新固定文件引用。失败保留待办，成功由服务关联关闭。
+用户取消F0导入时，先getOperation取得version，再取消未完成项；已完成原件和票据仍保留。f2op_付款/记账操作的取消与核对必须由真实员工在人工入口发起，本Skill不代办。

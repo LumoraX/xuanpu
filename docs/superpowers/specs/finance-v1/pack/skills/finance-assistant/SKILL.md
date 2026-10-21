@@ -1,30 +1,29 @@
 ---
 name: finance-assistant
-description: 办理企业发票、报销、应付、财务审核、付款入账协同及档案查询，按业务目标路由到财务子能力。
-version: 0.1.0-design.1
-type: composite
+description: 处理发票、报销、采购应付、本人待审及付款记账结果查询；实际决定交真实员工人工入口。
+version: 0.3.0-design.2
 entry: true
-child_skills: [invoice-intake, expense-reimbursement, accounts-payable, finance-review, posting-reconciliation, archive-audit]
+type: composite
 tool_names:
-  - api__finance__getActionPlan
-  - api__finance__listLegalEntities
-  - api__finance__listIntegrations
-  - api__finance__getOperation
-  - api__finance__cancelOperation
+- api__finance__getActionPlan
+- api__finance__listLegalEntities
+- api__finance__listIntegrations
+- api__finance__getOperation
+- api__finance__cancelOperation
+child_skills:
+- invoice-intake
+- expense-reimbursement
+- finance-review
+- accounts-payable
+- posting-reconciliation
+- archive-audit
 ---
-# 财务助理
+# 财务助手
 
-先读取[共用执行规则](references/execution-rules.md)，再按实际业务使用子 Skill。
-这是一份尚未接入运行服务的设计包；不能对外声称已支付、入账或归档。
+按用户目标读取 invoice-intake（原件）、expense-reimbursement（报销）、accounts-payable（应付）、finance-review（实际待审）或 posting-reconciliation（付款、入账与核对）。原件解释见[边界](references/f0-boundary.md)。
+先查有权公司与真实受控目录，再准备记录或计划。单据、行动计划、人工待办及结果均由独立财务API恢复；重新会话不重建批准、不换键重放付款。
+提交、批准、驳回、撤回、外部执行及人工核对，交员工在“功能 → 财务”查看原计划与证据后明确决定。聊天确认或工具批准不会把模型来源升级为human。
+业务批准、付款、记账是独立维度。202/accepted只是受理；outcome_unknown保留在途金额，只查原请求号。成功须分别有实际交易或账套期间凭证及证据。
+当前交付F0-F2通用可替换HTTP接口与隔离simulation闭环，尚未选定或上线真实支付/ERP供应商。正式动作仍需实际有效查验与专用批准；税务、红字和正式归档属于F3，不能宣称已经交付。
 
-- 归集原件、查票或补票：invoice-intake。
-- 员工报销、费用分摊、补正：expense-reimbursement。
-- 合同采购、验收、应付、付款计划：accounts-payable。
-- 待审单据、异常判断及有权人的审核决定：finance-review。
-- 付款、ERP 凭证、税务确认和结果核对：posting-reconciliation。
-- 归档、四性报告与审计证据：archive-audit。
-
-沿用已有公司、文件和业务标识，缺少关键目标时只追问影响执行的内容。
-付款与记账／税务能力先查询实际集成状态；未接入时仍可起草、解释证据缺口，不能构造成功记录。
-用户查询进度时读持久 operation；用户要求取消时先读版本，再请求取消，按实际结果解释未处理项与外部在途项。
-普通员工不用选择子 Skill；保留目标、单据和操作标识贯穿整个任务。
+参考包另含archive-audit，税务/红字/正式归档仍为F3设计，仅在对应能力实际交付后适用。

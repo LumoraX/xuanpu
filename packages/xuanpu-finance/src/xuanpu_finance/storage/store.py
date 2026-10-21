@@ -6,10 +6,9 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from xuanpu_finance.errors import FinanceError
-from xuanpu_finance.storage.business_exceptions import ExpenseStore
 from xuanpu_finance.storage.f1_schema import F1_SCHEMA
-from xuanpu_finance.storage.imports import ImportStore
-from xuanpu_finance.storage.queries import ReadStore
+from xuanpu_finance.storage.f2_inbox import SettlementStore
+from xuanpu_finance.storage.f2_schema import F2_INBOX_SCHEMA, F2_SCHEMA
 from xuanpu_finance.storage.schema import SCHEMA
 from xuanpu_finance.storage.worker import WorkerStore
 
@@ -17,7 +16,7 @@ if TYPE_CHECKING:
     from xuanpu_finance.models import FinancePrincipal
 
 
-class FinanceStore(ExpenseStore, ImportStore, ReadStore, WorkerStore):
+class FinanceStore(SettlementStore, WorkerStore):
     """显式注入连接池、全部业务状态独立持久化的财务存储。"""
 
     async def migrate(self) -> None:
@@ -26,6 +25,8 @@ class FinanceStore(ExpenseStore, ImportStore, ReadStore, WorkerStore):
             await conn.execute("SELECT pg_advisory_xact_lock(617472001)")
             await conn.execute(SCHEMA)
             await conn.execute(F1_SCHEMA)
+            await conn.execute(F2_SCHEMA)
+            await conn.execute(F2_INBOX_SCHEMA)
 
     async def seed_company(
         self, tenant_id: str, legal_entity_id: str, name: str, tax_id: str

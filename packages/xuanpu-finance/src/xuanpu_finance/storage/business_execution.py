@@ -55,7 +55,7 @@ class ExecutionStore(WorkflowStore):
             payload = decode(plan["data"])
             await self._apply_action(conn, who, claim, payload)
             result = await self._business_operation(
-                conn, who, entity, "expense_claim", claim["id"], plan_id=plan["id"]
+                conn, who, entity, claim["document_kind"], claim["id"], plan_id=plan["id"]
             )
             return await self._business_remember(
                 conn, who, entity, "executeFinanceAction", key, request, result

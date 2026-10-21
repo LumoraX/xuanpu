@@ -1,0 +1,107 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+__________ test_deeply_nested_response_keeps_raw_and_becomes_invalid ___________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-869/test_deeply_nested_response_ke0')
+
+    async def test_deeply_nested_response_keeps_raw_and_becomes_invalid(tmp_path: Any) -> None:
+        """字节有界但嵌套超深也应保全回执，不能击停整个查单worker。"""
+        raw = b"[" * 10000 + b"0" + b"]" * 10000
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(200, content=raw))) as client:
+            with pytest.raises(ProviderResponseError) as error:
+>               await registry(configuration(tmp_path), client).query(request_body())
+
+packages/xuanpu-finance/tests/provider/test_provider_http.py:401:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+packages/xuanpu-finance/src/xuanpu_finance/settlement/provider.py:114: in query
+    return await self._exchange(request, submit=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/settlement/provider.py:155: in _exchange
+    return self._validated_result(request, content), content
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/settlement/provider.py:161: in _validated_result
+    json.loads(raw, object_pairs_hook=_unique_object)
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/json/__init__.py:359: in loads
+    return cls(**kw).decode(s)
+           ^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/json/decoder.py:338: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <json.decoder.JSONDecoder object at 0x107d1bbc0>
+s = '[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[...]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]'
+idx = 0
+
+    def raw_decode(self, s, idx=0):
+        """Decode a JSON document from ``s`` (a ``str`` beginning with
+        a JSON document) and return a 2-tuple of the Python
+        representation and the index in ``s`` where the document ended.
+
+        This can be used to decode a JSON document from a string that may
+        have extraneous data at the end.
+
+        """
+        try:
+>           obj, end = self.scan_once(s, idx)
+                       ^^^^^^^^^^^^^^^^^^^^^^
+E           RecursionError: maximum recursion depth exceeded while decoding a JSON array from a unicode string
+
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/json/decoder.py:354: RecursionError
+____________ test_deeply_nested_signed_callback_is_controlled_error ____________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-869/test_deeply_nested_signed_call0')
+
+    def test_deeply_nested_signed_callback_is_controlled_error(tmp_path: Any) -> None:
+        """合法签名不能使过深JSON逃逸为未处理异常。"""
+        from xuanpu_finance.errors import FinanceError
+        raw = b"[" * 10000 + b"0" + b"]" * 10000
+        timestamp = str(int(time.time()))
+        signature = hmac.new(b"secret", timestamp.encode() + b".deep." + raw, hashlib.sha256).hexdigest()
+        headers = {"X-Finance-Timestamp":timestamp,"X-Finance-Event-Id":"deep","X-Finance-Key-Id":"key1","X-Finance-Signature":"sha256="+signature}
+        with httpx.Client() as unused:
+            # 构造只检查认证，绝不触发同步网络。
+            del unused
+        client = httpx.AsyncClient()
+        with pytest.raises(FinanceError):
+>           registry(configuration(tmp_path), client).authenticate_callback("test-bank",1,headers,raw)
+
+packages/xuanpu-finance/tests/provider/test_provider_http.py:417:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+packages/xuanpu-finance/src/xuanpu_finance/settlement/provider.py:202: in authenticate_callback
+    return event, self._callback_body(config, raw)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/settlement/provider.py:207: in _callback_body
+    body: Any = json.loads(raw, object_pairs_hook=_unique_object)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/json/__init__.py:359: in loads
+    return cls(**kw).decode(s)
+           ^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/json/decoder.py:338: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <json.decoder.JSONDecoder object at 0x107d66ea0>
+s = '[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[...]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]'
+idx = 0
+
+    def raw_decode(self, s, idx=0):
+        """Decode a JSON document from ``s`` (a ``str`` beginning with
+        a JSON document) and return a 2-tuple of the Python
+        representation and the index in ``s`` where the document ended.
+
+        This can be used to decode a JSON document from a string that may
+        have extraneous data at the end.
+
+        """
+        try:
+>           obj, end = self.scan_once(s, idx)
+                       ^^^^^^^^^^^^^^^^^^^^^^
+E           RecursionError: maximum recursion depth exceeded while decoding a JSON array from a unicode string
+
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/json/decoder.py:354: RecursionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/provider/test_provider_http.py::test_deeply_nested_response_keeps_raw_and_becomes_invalid
+FAILED packages/xuanpu-finance/tests/provider/test_provider_http.py::test_deeply_nested_signed_callback_is_controlled_error
+2 failed, 28 deselected in 0.45s

@@ -37,7 +37,7 @@ class ClaimStore(CatalogStore):
             await self._validate_receipts(conn, who, entity, body.evidence_ids)
             total = sum((Decimal(line.amount) for line in body.lines), Decimal(0))
             row = await conn.fetchrow(
-                "INSERT INTO finance_expense_claim(tenant_id,legal_entity_id,id,owner_id,version,status,total,content,record_mode) VALUES($1,$2,$3,$4,1,'draft',$5,$6::jsonb,$7) RETURNING *",
+                "INSERT INTO finance_expense_claim(tenant_id,legal_entity_id,id,owner_id,version,status,total,content,record_mode,simulation) VALUES($1,$2,$3,$4,1,'draft',$5,$6::jsonb,$7,COALESCE((SELECT simulation FROM finance_settlement_mode WHERE singleton),false)) RETURNING *",
                 who.tenant_id,
                 entity,
                 identifier(),
@@ -66,6 +66,8 @@ class ClaimStore(CatalogStore):
             )
             if previous is not None:
                 return previous
+            if row["document_kind"] != "expense_claim":
+                raise FinanceError("RESOURCE_NOT_FOUND", 404, "报销不存在")
             self._owner_edit(who, row, body.expected_version)
             if body.draft.legal_entity_id != entity:
                 raise FinanceError("COMPANY_IMMUTABLE", 422, "报销公司不能更换")
@@ -101,6 +103,8 @@ class ClaimStore(CatalogStore):
         """本人、当前reviewer和历史实际分派者可恢复同一单据。"""
         async with self.pool.acquire() as conn, conn.transaction(isolation="repeatable_read"):
             row = await self._claim_row(conn, who, id)
+            if row["document_kind"] != "expense_claim":
+                raise FinanceError("RESOURCE_NOT_FOUND", 404, "报销不存在")
             return await self._claim_snapshot(conn, row)
 
     async def list_expense_claims(
@@ -126,7 +130,7 @@ class ClaimStore(CatalogStore):
         stamp, last = timestamp_cursor(cursor, scope, limit)
         async with self.pool.acquire() as conn, conn.transaction(isolation="repeatable_read"):
             role = await self._role(conn, who, entity)
-            where = "c.tenant_id=$1 AND c.legal_entity_id=$2 AND (c.owner_id=$3 OR $4::text='reviewer' OR ($4::text='approver' AND EXISTS(SELECT 1 FROM finance_workflow w JOIN finance_workflow_step s ON(s.tenant_id=w.tenant_id AND s.legal_entity_id=w.legal_entity_id AND s.workflow_id=w.id) WHERE w.tenant_id=c.tenant_id AND w.legal_entity_id=c.legal_entity_id AND w.document_id=c.id AND s.approver_user_id=$3))) AND ($5::text IS NULL OR c.status=$5)"
+            where = "c.document_kind='expense_claim' AND c.tenant_id=$1 AND c.legal_entity_id=$2 AND (c.owner_id=$3 OR $4::text='reviewer' OR ($4::text='approver' AND EXISTS(SELECT 1 FROM finance_workflow w JOIN finance_workflow_step s ON(s.tenant_id=w.tenant_id AND s.legal_entity_id=w.legal_entity_id AND s.workflow_id=w.id) WHERE w.tenant_id=c.tenant_id AND w.legal_entity_id=c.legal_entity_id AND w.document_id=c.id AND s.approver_user_id=$3))) AND ($5::text IS NULL OR c.status=$5)"
             args = (who.tenant_id, entity, who.user_id, role, status)
             total = await conn.fetchval(
                 "SELECT count(*) FROM finance_expense_claim c WHERE " + where, *args
