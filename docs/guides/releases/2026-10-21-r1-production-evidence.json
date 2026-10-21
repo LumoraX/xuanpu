@@ -1,0 +1,206 @@
+{
+  "checked_at": "2026-10-21",
+  "production": true,
+  "source_commit": "b7a3105",
+  "versions": {
+    "xuanpu-server": "2026.10.21.3",
+    "xuanpu-console": "2026.10.21.2",
+    "xuanpu-sdk-py": "2026.10.21.2",
+    "xuanpu-cli": "2026.10.21.2",
+    "xuanpu-spec": "2026.10.2.7",
+    "taifeng": "2026.10.1.11",
+    "taifeng-sandbox": "2026.10.21.1",
+    "taifeng-stores": "2026.9.29.15"
+  },
+  "installed_source_sha256_matches": 178,
+  "image": {
+    "tag": "registry.cn-shanghai.aliyuncs.com/krasuschen/xuanpu:2026.10.21.3.r1-production",
+    "registry_digest": "sha256:4a598dea1b21c4cce2072a8835575419b9f01590573b19766712ae3adf5d67ec"
+  },
+  "office_package": {
+    "version": "1.0.1",
+    "digest": "sha256:99a2abecb049807604815b1571853fad77d51b59ff3f4d5e7354bdb6fb4d70c1",
+    "existing_packages_preserved": true
+  },
+  "cutover_preservation": {
+    "counts_equal": true,
+    "original_files": 15,
+    "changed_files": []
+  },
+  "backup_sha256": {
+    "postgres.dump": "ce7433dc53ddff85aec08081bd8aab50b9613f92e439f7f59aa9c85cfe77fafa",
+    "data.tar.gz": "d9056ddcc01b97a36e1d72b5eb81208c4ce27f85d2629127e8b3cd5a7ca1248d",
+    "previous-image-verified.tar.gz": "b2431f090dbfbf19812cb3c7df6b9039b498a4d176e2d471aa5acbfdc6682dd8"
+  },
+  "rootless_probe_after_service_recreate": {
+    "daemon_version": "29.6.2",
+    "rootless": true,
+    "cgroup_driver": "systemd",
+    "isolation": {
+      "input_read_only": true,
+      "network": "loopback only",
+      "memory_max": "536870912",
+      "cpu_max": [
+        "100000",
+        "100000"
+      ],
+      "pids_max": "256",
+      "secrets_and_sockets_absent": true
+    },
+    "export_sha256": "cc8fd4a073f8ae660bfb3e7c392ef9f6bffacef005e01cc57e2a708aaf57f32c"
+  },
+  "actual_model": "gpt-5.6-luna",
+  "office_cases": [
+    {
+      "input_format": "csv",
+      "input_sha256": "fad90a6d94fc7846011dfcfb6f50783d21c951c2447fdd47473c4913c412b5c3",
+      "assessment": {
+        "totals": true,
+        "rows": true,
+        "download_sha256": true,
+        "xlsx_independent_xml": true
+      },
+      "artifact_sha256": [
+        "4b3e9fb4e7b78acbf43f29e5f83fe3075eb51f6152cf0a7054272458082d9c14",
+        "92c47223a92c7dafbbaba8f5396fd8b1b4e675f895a15791dbeaa35a02589255",
+        "f2469b5fd3a03cc43665cc39848a7119a916598a4fda41c444983e830888d278",
+        "8533050712fac1b821d59d427823989bfbe86688411462583eace26e2153c570"
+      ]
+    },
+    {
+      "input_format": "xlsx",
+      "input_sha256": "cbf1373371df46006b9e2f066438bb3b8e8bc36b701a84cfbf7df8a9d7662db7",
+      "assessment": {
+        "totals": true,
+        "rows": true,
+        "download_sha256": true,
+        "xlsx_independent_xml": true
+      },
+      "artifact_sha256": [
+        "4b3e9fb4e7b78acbf43f29e5f83fe3075eb51f6152cf0a7054272458082d9c14",
+        "0aff46beb8605568f3d216843c9b1e883863c4ee0d6f242d37552065a5ef5833",
+        "f2469b5fd3a03cc43665cc39848a7119a916598a4fda41c444983e830888d278",
+        "ca96edf547b45784aaba541520ef205f579b2765bfeca8032e75a19605f0e5ec"
+      ]
+    },
+    {
+      "input_format": "txt",
+      "input_sha256": "aa1f1c0b21e341b7114974226abab643903d0d920533a1d1819bb5f18c1d5897",
+      "assessment": {
+        "files_saved": true,
+        "awaiting_user": true,
+        "native_records_created": false,
+        "discussion_date": "2026-10-22",
+        "explicit_deadline": "2026-10-23",
+        "browser_confirmation_completed": true,
+        "phase": "before_browser_confirmation"
+      },
+      "artifact_sha256": [
+        "1ce4f3fb8375377b0757e02baff5a92522ff029ec5156a7e8abce4c57e8c5435",
+        "2662942b0c4d2b99e1c3b4bd4345a98a6f458d90518c5aa614c123444437402b"
+      ],
+      "after_browser_confirmation": {
+        "status": "succeeded",
+        "todos": 1,
+        "events": 1,
+        "inbox_reminders": 1,
+        "unselected_created": 0
+      }
+    }
+  ],
+  "native_records": {
+    "todos": 1,
+    "events": 1,
+    "inbox_reminders": 1,
+    "unselected_created": 0,
+    "quote_ranges_verified": true,
+    "unknown_deadline_preserved": true,
+    "same_decision_replay_no_duplicates": true,
+    "another_employee_and_admin_content": 404
+  },
+  "https_auth": {
+    "anonymous": 401,
+    "invalid_key": 401,
+    "valid_cookie": 200,
+    "forged_origin": 403,
+    "machine_personal_content": 403
+  },
+  "cancel": {
+    "status": "cancelled",
+    "resources_pending": false,
+    "executor_containers_remaining": 0,
+    "http_task_cancel_phase": "accepted before session creation",
+    "running_sandbox_process": {
+      "observed_before_kill": true,
+      "exit_code": -9,
+      "container_removed": true
+    },
+    "running_work_task_http_cancel_verified": true,
+    "running_task_container_observed": true,
+    "total_cancelled_work_tasks": 2,
+    "running_task_resources_pending_after_cancel": false
+  },
+  "service_recreate": {
+    "container_id_changed": true,
+    "successful_tasks_preserved": 3,
+    "cancelled_tasks_preserved": 1,
+    "download_sha256_verified": 10,
+    "native_records_preserved": true
+  },
+  "existing_business": {
+    "actual_model": true,
+    "read_only_getTicket": true,
+    "sla_script_success": true,
+    "sla_hours": 24,
+    "write_tools": 0,
+    "closed": true,
+    "task": "T-1001",
+    "external_notifications": 0
+  },
+  "browser": {
+    "backend": "production HTTPS via loopback-only acceptance proxy",
+    "identity": "synthetic member cookie",
+    "reopen_and_partial_confirmation": true,
+    "fresh_feishu_login_verified": false,
+    "proxy_stopped": true
+  },
+  "cleanup": {
+    "fixture_members_disabled": 2,
+    "last_admin_retained_per_guard": true,
+    "fixture_tenant_suspended": true,
+    "temporary_key_revoked": true,
+    "fixture_login_sessions_remaining": 0,
+    "future_reminders_cancelled": 1,
+    "fixture_active_sessions": 0
+  },
+  "runtime_log_error_counts_after_recreate": {
+    "Traceback": 0,
+    "cycle_failed": 0,
+    "cleanup_failed": 0,
+    "ERROR": 0
+  },
+  "limits": {
+    "full_host_reboot_verified": false,
+    "snapshot_restore_executed": false,
+    "auto_resume_after_process_restart": false,
+    "external_notifications": 0,
+    "global_model_disabled": false
+  },
+  "verification": {
+    "pre_deploy_pytest": {
+      "passed": 1821,
+      "skipped": 3
+    },
+    "ruff": "passed",
+    "mypy_source_files": 164,
+    "uv_lock": "passed",
+    "final_pytest": {
+      "passed": 1842,
+      "skipped": 3,
+      "duration_seconds": 170.16
+    },
+    "final_document_checks": 122,
+    "review": "independent read-only review passed"
+  },
+  "original_tenants_unchanged": 7
+}
