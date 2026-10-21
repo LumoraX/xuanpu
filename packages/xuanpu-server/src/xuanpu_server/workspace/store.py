@@ -25,8 +25,13 @@ class WorkspaceStore(Protocol):
         """同一员工串行写入；异常回滚元数据与审计。"""
         ...
 
+    async def durable_candidates(self, *, after: tuple[str, str] | None = None,
+                                 limit: int = 100, now: float) -> list[tuple[str, str, str]]:
+        """按员工轮转读取有界due候选，不返回任务正文。"""
+        ...
+
     async def task_owners(self, after: tuple[str, str] | None = None,
-                          limit: int = 100) -> list[tuple[str, str]]:
+                          limit: int = 100, *, legacy_only: bool = False) -> list[tuple[str, str]]:
         """仅供进程生命周期恢复枚举任务所有者，含已停用员工。"""
         ...
 

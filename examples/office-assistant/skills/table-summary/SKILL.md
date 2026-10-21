@@ -1,7 +1,7 @@
 ---
 name: table-summary
 description: 对CSV或XLSX原始记录按部门与币种做Decimal精确汇总并保留行证据
-version: 1.0.1
+version: 1.0.2
 type: composite
 scripts:
   - name: inspect_headers
@@ -38,3 +38,12 @@ CSV仅支持UTF-8。XLSX只读常量，公式、宏和外部链接一律拒绝�
 脚本生成 outputs/summary.csv、summary.xlsx、report.md、evidence.json 和 manifest.json。
 CSV按分组行加每币种合计行输出；XLSX金额保存为精确十进制文本，防止Excel浮点精度丢失，自由文本强制字符串防公式执行。
 只有包含实际脚本证据与行级evidence.json的数值才能称已核算。完成后告知成果已进入校验保存，不能提前承诺业务成功。
+
+
+调用参数示例（固定输入为`inputs/input_1.csv`，用户明确分组列“部门”、金额列“金额”，没有币种列）：
+```json
+{"skill_id":"table-summary","script_name":"summarize","args":{"inputs":"[\"input_1.csv\"]","group_column":"部门","amount_column":"金额","currency_column":""}}
+```
+`inputs`必须是JSON数组的字符串，数组元素是`input_1.csv`这样的文件名，不能加`inputs/`前缀；
+脚本会自行在只读inputs目录解析。不要传Python对象字符串、原生数组、对象列表、input_path或null币种。
+XLSX同样传`"[\"input_1.xlsx\"]"`；多个输入用同一个JSON数组字符串列出全部固定文件名。

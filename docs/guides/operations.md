@@ -663,3 +663,25 @@ lsof -nP -d cwd | grep '<data_dir>/cache/packages'
 指标不带租户标签；租户级排查使用审计的 `identity_reconciled`。缺状态本身暂无独立指标。
 
 升级已有身份数据库时，先执行包含 `0005` 的迁移，并将所有服务实例升级，再保存空事件密钥引用；旧版本不能读取这种配置。
+
+
+## R2-A持久任务配置
+
+`durable_execution`默认关闭。仅对新v2任务生效；已有R1记录不自动改写恢复策略。
+生产要求PostgreSQL、持久对象存储与已验收Docker执行环境，并继续采用single_instance。
+
+| 字段 | 默认 | 行为 |
+| --- | --- | --- |
+| `enabled` | false | 新交办启用持久派发；关闭时既有R2恢复阻塞 |
+| `verified_text_bounds` | false | 部署者验收模型纯文本上界和输出限制后方可开启；不透明推理/多模态仍阻塞 |
+| `max_attempts` | 3 | 每项计算最大次数，配置只能缩小到1或2 |
+| `recovery_seconds` | 1800 | 恢复窗口，最大1800秒 |
+| `attempt_seconds` | 600 | 每次活动执行上限，最大600秒 |
+| `lease_seconds` | 60 | 执行租约，最大60秒 |
+| `renew_seconds` | 20 | 续约间隔，最大20秒；部署时应显著小于租约 |
+| `stateless_http_tools` | [] | 仅登记已经过无文件/无进程内状态冷恢复验收的HTTP工具完整名称 |
+
+首期任务模型强制`reasoning_effort=none`和每次最多4096输出tokens，出现不可核定provider状态即阻塞。
+预算未知预留不会自动退款。外部写入默认无权威验证器，HTTP成功也不能单独解除未知屏障。
+升级迁移0011/0012为新增表；回滚应用时保留这些表和v2记录，不将其交给旧R1执行者。
+发布前应核对[工作任务恢复机制](../architecture/work-tasks.md)和[R2-A验收边界](releases/2026-10-21-r2a-acceptance.md)。

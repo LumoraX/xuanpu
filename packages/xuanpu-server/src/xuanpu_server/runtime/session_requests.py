@@ -40,5 +40,10 @@ def require_task_executor(record: SessionRecord, work_task_id: str | None) -> No
 
 def scope_for(record: SessionRecord) -> ExecutionScope:
     """从持久服务端字段构造执行空间，不解释客户端metadata。"""
+    from xuanpu_server.work_tasks.execution_context import current_execution
+
+    binding = current_execution.get()
     execution = ("task:" + record.work_task_id) if record.work_task_id else ("session:" + record.session_id)
+    if binding is not None and record.work_task_id == binding.lease.task_id:
+        execution += f':attempt:{binding.lease.attempt_no}'
     return ExecutionScope(record.tenant_id, record.user_id or "service:" + record.created_by, execution)

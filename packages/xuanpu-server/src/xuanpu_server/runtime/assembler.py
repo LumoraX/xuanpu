@@ -322,6 +322,14 @@ class RuntimeAssembler:
             policy = build_policy(spec.policy.approval, effects,
                 contains_external_input=contains_external_input,
                 workspace_root=sandbox.workspace_inside if input_root is not None else None)
+            from xuanpu_server.runtime.task_policy import TaskPermissionPolicy
+            from xuanpu_server.work_tasks.execution_context import current_execution
+
+            binding = current_execution.get()
+            if binding is not None:
+                if spec.policy.sandbox.network:
+                    raise RuntimeUnavailableError('持久任务脚本必须断网')
+                policy = TaskPermissionPolicy(policy, binding)
             pool = await self._create_pool(package, policy, sandbox, connectors, key=key, script_observer=script_observer)
         except BaseException as original:
             steps = self._failed_closures.setdefault(key, [])
@@ -426,9 +434,17 @@ class RuntimeAssembler:
                     store = taifeng.JsonlMessageStore(storage)
                     await store.list_threads(limit=1)
             options = await self._state_options(package, states, store)
+            from xuanpu_server.runtime.task_model_budget import TaskModelClient
+            from xuanpu_server.work_tasks.execution_context import current_execution
+
+            model_client = await self._models.create(tenant_id, spec.model.tier)
+            binding = current_execution.get()
+            if binding is not None:
+                model_client = TaskModelClient(model_client, binding,
+                    verified_text_bound=binding.store.verified_text_bounds)
             return await taifeng.EnginePool.create(
                 skills_dir=package.skills_dir,
-                model_client=await self._models.create(tenant_id, spec.model.tier),
+                model_client=model_client,
                 extra_tools=self._extra_tools(package, policy, sandbox, connectors),
                 script_executors=script_executors(sandbox, script_observer),
                 permission_policy=policy,

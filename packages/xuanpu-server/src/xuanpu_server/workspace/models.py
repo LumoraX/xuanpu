@@ -260,3 +260,12 @@ class WorkspaceState:
     pending_reminder_cancellations: list[str] = field(default_factory=list)
     work_tasks: dict[str, dict[str, Any]] = field(default_factory=dict)
     work_task_events: list[dict[str, Any]] = field(default_factory=list)
+    task_grants: dict[str, dict[str, Any]] = field(default_factory=dict)
+    task_dispatch: dict[str, dict[str, Any]] = field(default_factory=dict)
+    task_attempts: dict[str, dict[str, Any]] = field(default_factory=dict)
+    task_reservations: dict[str, dict[str, Any]] = field(default_factory=dict)
+    task_effects: dict[str, dict[str, Any]] = field(default_factory=dict)
+    transaction_at: float | None = None
+    execution_active: list[dict[str, Any]] = field(default_factory=list)
+    tenant_reserved: int = 0
+    employee_reserved: int = 0

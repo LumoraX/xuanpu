@@ -285,6 +285,7 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
                 session_idle_seconds=config.limits.session_idle_seconds,
                 runtime_idle_seconds=config.limits.runtime_idle_seconds,
             ),
+            durable_execution=config.durable_execution,
             instance_id=config.instance_id,
             lease_seconds=config.lease_seconds,
             shutdown_drain_seconds=config.shutdown_drain_seconds,

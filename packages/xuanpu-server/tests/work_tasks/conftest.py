@@ -163,3 +163,32 @@ async def office_world(identity_stores, world_opener, office_image):
         display_name='办公员工', created_at=time.time()))
     world.office_user = Principal(role='tenant_member', tenant_id='acme', user_id='usr_office', key_id=None)
     return world
+
+
+@pytest.fixture
+async def recovery_world(identity_stores, world_opener, office_image, tmp_path, request):
+    """真实PG强杀和memory契约共享业务、身份与对象存储。"""
+    from pathlib import Path
+
+    from xuanpu_server.runtime.sandbox import DockerSandboxProvider
+    from xuanpu_server.work_tasks.config import DurableExecutionConfig
+    from xuanpu_spec import pack_package
+
+    from .recovery_harness import RecoveryWorld
+
+    control, identity = identity_stores
+    provider = DockerSandboxProvider(image=office_image, memory_mb=512,
+        docker_env={'PATH':'/usr/local/bin:/usr/bin:/bin','HOME':str(Path.home())},
+        labels={'xuanpu.test':'r2-recovery'})
+    world = await world_opener(store=control, identity_store=identity, sandboxes=provider,
+        durable_execution=DurableExecutionConfig(enabled=True, verified_text_bounds=True))
+    await world.platform.packages.publish(world.admin,
+        pack_package(Path(__file__).resolve().parents[4]/'examples/office-assistant'), activate=True)
+    await identity.create_user(UserRecord(tenant_id='acme',user_id='usr_recovery',display_name='员工',created_at=1.))
+    world.office_user = Principal(role='tenant_member',tenant_id='acme',user_id='usr_recovery',key_id=None)
+    dsn = request.getfixturevalue('postgres_dsn') if hasattr(control, '_namespace') else None
+    harness = RecoveryWorld(world, tmp_path, dsn)
+    try:
+        yield harness
+    finally:
+        await harness.close()

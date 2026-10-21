@@ -12,15 +12,20 @@
 | 方法和路径 | 行为 |
 | --- | --- |
 | `POST /v1/work-tasks` | 严格请求包含request_id、text、input_files的item_id/revision，可选事项与IANA时区；持久受理后202返回task_id和真实状态 |
+| `POST /v1/work-tasks/from-capability` | R2-A开关启用后受理已发布只读能力；request_id、text、capability={package,entry}，input_files可省略；服务端冻结版本及授权 |
 | `GET /v1/work-tasks` | 本人任务分页，limit为1至100，after_id为上一页最后task_id |
 | `GET /{task_id}` | 前缀下读取本人任务、输入来源及成果回执，其他员工404 |
 | `GET /{task_id}/events` | 前缀下按after_id持久游标补读，每页最多100项 |
 | `POST /{task_id}/cancel` | 前缀下返回202与cancel_requested、实际status，不把受理停止当作外部未执行 |
 | `POST /{task_id}/decisions` | 前缀下提交tool_approval或office_actions的严格本人决定，包含request_id与state_version；版本冲突409 |
 
-额外身份、对象键、宿主路径、能力包及预算字段拒绝。相同request_id和输入回放同一任务，改内容409。
+额外身份、对象键、宿主路径、任意脚本、版本及预算字段拒绝。普通办公受理不能指定能力包；
+from-capability仅接受目录中的package/entry引用，不接受客户端执行内容。相同request_id和输入回放同一任务，改内容409。
 机器凭据没有员工身份返回403；管理角色不扩大正文读取范围。写接口沿用CSRF，输入正本上限合计20MiB。
-刷新和关闭页面不取消已受理的托管执行；自动进程重启续跑不在R1范围。
+刷新和关闭页面不取消已受理的托管执行。R1不自动进程重启续跑；R2-A显式启用后仅新v2任务按安全检查点恢复。
+本人任务响应增加execution={state,phase,attempt_no,block_reason}（v2），及execution_kind、completion_policy、
+result_summary/result_receipt。只读能力成功依赖当前执行的真实工具回执；未知写入不自动重发。
+grant/owner/epoch、私有暂存key、pending决定正文和宿主证据路径不在公开投影中。
 
 - 请求体与响应体都是 JSON（发布业务包的请求体除外）。请求体里多余的字段一律拒绝。
 - 时间都是 Unix 秒（浮点数）；用量的日期是 `YYYY-MM-DD`（UTC）。

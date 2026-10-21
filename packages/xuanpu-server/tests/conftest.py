@@ -464,6 +464,7 @@ async def open_world(
     metrics_token_hash: str | None = None,
     identity_store: IdentityStore | None = None,
     identity_settings: IdentitySettings | None = None,
+    durable_execution: Any = None,
 ) -> World:
     """在 ``tmp_path`` 下装配并启动一个平台，开通一个租户、两把凭据、一条密钥。
 
@@ -499,6 +500,7 @@ async def open_world(
         objects=objects,
         states=states,
         metrics_token_hash=metrics_token_hash,
+        durable_execution=durable_execution,
     )
     await platform.start()
     try:

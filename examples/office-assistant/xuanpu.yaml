@@ -2,7 +2,7 @@ apiVersion: xuanpu/v1
 kind: Package
 metadata:
   name: office-assistant
-  version: 1.0.1
+  version: 1.0.2
   description: 本人材料的会议纪要、行动项候选与可追溯表格汇总
 spec:
   skills:

@@ -53,6 +53,9 @@ if TYPE_CHECKING:
     from xuanpu_server.runtime.mcp_connectors import Invoke, McpRun, McpTool
     from xuanpu_server.secrets import SecretVault
 
+    from .effect_receipts import EffectReceipt
+    from .effect_store import EffectStore
+
 logger = logging.getLogger(__name__)
 
 # 副作用分类 → 内核的 effect 分类（崩溃恢复时据此决定能否安全重发）
@@ -133,6 +136,10 @@ class ConnectorGate:
         timeout_seconds: float,
     ) -> None:
         """绑定一个工具。"""
+        from xuanpu_server.work_tasks.execution_context import current_execution
+
+        self._task_execution = current_execution.get()
+        self._read_receipts: set[str] = set()
         self._invoke = invoke
         self._info = info
         self._tenant_id = tenant_id
@@ -238,6 +245,62 @@ class ConnectorGate:
                     "thread_id": ctx.thread_id},
         ))
 
+    async def _task_intent(self, ctx: taifeng.ToolContext, digest: str) -> tuple[EffectStore | None, EffectReceipt | None]:
+        """工具网络派发前先完成持久写屏障。"""
+        info = self._info
+        receipt = None
+        effect_store = None
+        if self._task_execution is not None and info.effect != 'read':
+            from xuanpu_server.runtime.effect_store import EffectStore
+
+            effect_store = EffectStore(self._task_execution)
+            receipt = await effect_store.begin(call_id=ctx.call_id, tool=self.full_name,
+                arguments_digest=digest.removeprefix("sha256:"), submission_id=ctx.extras.get('submission_id'))
+        return effect_store,receipt
+
+    async def _task_receipt(self, ctx: taifeng.ToolContext, digest: str, text: str,
+                            effect_store: EffectStore | None, receipt: EffectReceipt | None) -> None:
+        """真实只读回执或权威写回执先于模型继续；默认不确认外部写入。"""
+        info = self._info
+        if effect_store is not None and receipt is not None:
+            try:
+                verifier = effect_store.binding.store.effect_verifiers.get(self.full_name)
+                if verifier is None:
+                    self._error('external_receipt_requires_authority', 'authority_unverified', ctx, digest)
+                    return
+                proof = await verifier.verify_response(receipt, text)
+                if proof.state != 'confirmed_success':
+                    self._error('external_receipt_not_confirmed', 'authority_unverified', ctx, digest)
+                    return
+                await effect_store.confirm(receipt, text, authority=proof.authority)
+            except asyncio.CancelledError:
+                raise
+            except taifeng.SuspendSignal:
+                raise
+            except Exception:
+                self._error('external_receipt_not_saved','authority_unverified',ctx,digest)
+                return
+        if self._task_execution is not None and info.effect == 'read':
+            from xuanpu_server.tenancy import Principal
+            from xuanpu_server.work_tasks.store import require_task, save_record
+
+            binding, lease = self._task_execution, self._task_execution.lease
+            who = Principal(role='tenant_member', tenant_id=lease.tenant_id, user_id=lease.user_id, key_id=None)
+            async with binding.store.workspace.transaction(who, 'work-task:exec:' + lease.task_id) as state:
+                task = require_task(state, lease.task_id)
+                receipts = list(task.result_receipt.get('read_receipts', []))
+                if len(receipts) >= 256:
+                    raise RuntimeUnavailableError('能力工具回执超过上限')
+                import hashlib
+
+                receipts.append({'call_id': ctx.call_id, 'tool': self.full_name,
+                    'attempt_no':lease.attempt_no,'epoch':lease.epoch,'session_id':task.session_id,
+                    'arguments_digest': digest, 'result_digest': hashlib.sha256(text.encode()).hexdigest(),
+                    'submission_id': ctx.extras.get('submission_id')})
+                save_record(state, task.model_copy(update={'result_receipt': {'read_receipts': receipts},
+                    'state_version': task.state_version + 1, 'updated_at': max(binding.now(), task.updated_at)}),
+                    'read_receipt_saved')
+
     async def __call__(self, args: dict[str, Any], ctx: taifeng.ToolContext) -> taifeng.ToolResult:
         """工具处理函数。"""
         started = time.monotonic()
@@ -272,6 +335,7 @@ class ConnectorGate:
             return taifeng.ToolResult.error(
                 f"permission_denied: {decision.reason}", reason="permission_denied"
             )
+        effect_store, receipt = await self._task_intent(ctx,digest)
         try:
             text, is_error = await asyncio.wait_for(self._invoke(args), timeout=self._timeout)
         except TimeoutError:
@@ -289,7 +353,7 @@ class ConnectorGate:
             await self._record(
                 ctx, digest, decision="allowed", started=started, is_error=True, detail=exc.code
             )
-            return taifeng.ToolResult.error(f"{exc.code}: {exc.message}", reason=exc.code)
+            return self._error(f"{exc.code}: {exc.message}", exc.code, ctx, digest)
         except taifeng.SuspendSignal:
             # 挂起信号不是失败：照常穿透，由内核停下本轮
             raise
@@ -308,6 +372,8 @@ class ConnectorGate:
                 ctx, digest, decision="allowed", started=started, is_error=True, detail=kind
             )
             return self._error(f"connector_error: {kind}", "connector_error", ctx, digest)
+        if not is_error:
+            await self._task_receipt(ctx, digest, text, effect_store, receipt)
         await self._record(ctx, digest, decision="allowed", started=started, is_error=is_error)
         if is_error:
             return self._error(text or "connector_error", "tool_error", ctx, digest)

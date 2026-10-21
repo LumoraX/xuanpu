@@ -37,14 +37,20 @@ def advance(
     protected = {"task_id", "tenant_id", "user_id", "actor", "request_id", "input_fingerprint",
                  "inputs", "package", "package_version", "package_digest", "contains_external_input",
                  "accepted_at", "state_version", "status", "finished_at", "updated_at",
-                 "text", "timezone", "matter_id", "output_kind"}
+                 "text", "timezone", "matter_id", "output_kind", "grant_id", "execution_kind", "entry",
+                 "completion_policy", "recovery_policy_version"}
     if protected.intersection(changes):
         raise ConflictError("任务身份、输入与能力版本不可修改")
     updated = WorkTaskRecord.model_validate({**record.model_dump(), **changes, "status": status,
         "state_version": expected_version + 1, "updated_at": at,
         "finished_at": at if status in TERMINAL else None})
     if status == "succeeded" and (
-        not updated.artifacts or not updated.outputs_verified or not updated.decisions_complete
+        (updated.completion_policy == 'office_files' and not updated.artifacts)
+        or (updated.completion_policy == 'capability_receipt' and (
+            updated.result_receipt.get('verified') is not True
+            or not updated.result_receipt.get('submission_id')
+            or updated.result_receipt.get('session_id') != updated.session_id))
+        or updated.unverified_write or not updated.outputs_verified or not updated.decisions_complete
         or updated.cancel_requested
     ):
         raise ConflictError("成果尚未保存核验、本人决定未完成或已请求取消")

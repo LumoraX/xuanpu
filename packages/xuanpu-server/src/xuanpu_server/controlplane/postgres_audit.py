@@ -35,6 +35,9 @@ def _audit(row: asyncpg.Record) -> AuditRecord:
     return AuditRecord(**fields)
 
 
+from xuanpu_server.transaction_reads import read_connection
+
+
 class PostgresAuditStore:
     """Postgres 里的审计与用量存储。"""
 
@@ -51,11 +54,17 @@ class PostgresAuditStore:
 
     async def _fetch(self, sql: str, *args: Any) -> list[asyncpg.Record]:
         """取多行。"""
+        current = read_connection(self._pool,sql)
+        if current is not None:
+            return list(await current.fetch(sql,*args))
         async with self._pool.acquire() as conn:
             return list(await conn.fetch(sql, *args))
 
     async def _fetchrow(self, sql: str, *args: Any) -> asyncpg.Record | None:
         """取一行。"""
+        current = read_connection(self._pool,sql)
+        if current is not None:
+            return await current.fetchrow(sql,*args)  # type: ignore[no-any-return]
         async with self._pool.acquire() as conn:
             return await conn.fetchrow(sql, *args)
 
