@@ -1,0 +1,26 @@
+{
+  "environment": "isolated_same_host",
+  "production": false,
+  "result": "passed",
+  "archive_bundles": [
+    {
+      "sha256": "7dd04044880299fec0b37d8f2f6d71065a84c4fdc72101a923feb116dc3d64b6",
+      "zip_members": 12
+    },
+    {
+      "sha256": "44d9bdb898da5f049b731b6948a88a68da067c278e01c3003792ca9b71a85689",
+      "zip_members": 22
+    }
+  ],
+  "archive_cached_objects_decrypted": 31,
+  "authenticated_objects": 33,
+  "complete_object_validation": true,
+  "original_bytes_equal": true,
+  "request_and_status_rows_equal": true,
+  "workers_started_by_restore": false,
+  "external_dispatches_by_restore": 0,
+  "source_fixture": "actual_signed_pg_loopback_http_F3_archive_and_supplement",
+  "formal_archive": false,
+  "off_host_disaster_recovery": false,
+  "cleanup": "dedicated_databases_and_temporary_secrets_removed"
+}

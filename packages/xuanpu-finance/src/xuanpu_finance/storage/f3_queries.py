@@ -10,6 +10,7 @@ from xuanpu_finance.operations import request_digest
 from xuanpu_finance.storage.common import decode, encode_cursor, page, timestamp_cursor
 from xuanpu_finance.storage.f3_archive_health import archive_source_changes
 from xuanpu_finance.storage.f3_worker import ComplianceWorkerStore
+from xuanpu_finance.storage.f4_visibility import visibility
 
 if TYPE_CHECKING:
     from xuanpu_finance.models import FinancePrincipal
@@ -168,12 +169,18 @@ class ComplianceQueryStore(ComplianceWorkerStore):
             if company is not None:
                 await self._role(conn, who, company)
             parent_field = "invoice_id" if name == "verifications" else "archive_id"
-            where_parent = f" AND {parent_field}=$3" if parent_id is not None else " AND $3::text IS NULL"
-            rows = await conn.fetch(f"SELECT * FROM {table} WHERE tenant_id=$1 AND ($2::text IS NULL OR legal_entity_id=$2)" + where_parent + " ORDER BY created_at,id", who.tenant_id, company, parent_id)
-            visible = [r for r in rows if await self._f3_visible(conn, who, r, name)]
-            selected = [r for r in visible if stamp is None or (r["created_at"], r["id"]) > (stamp, last or "")][:limit + 1]
+            where_parent = f" AND r.{parent_field}=$3" if parent_id is not None else " AND $3::text IS NULL"
+            condition = ("r.tenant_id=$1 AND ($2::text IS NULL OR r.legal_entity_id=$2)"
+                         + where_parent + " AND " + visibility(name))
+            args = (who.tenant_id, company, parent_id, who.user_id)
+            total = await conn.fetchval(f"SELECT count(*) FROM {table} r WHERE {condition}", *args)
+            selected = await conn.fetch(
+                f"SELECT r.* FROM {table} r WHERE {condition} "
+                "AND ($5::timestamptz IS NULL OR (r.created_at,r.id)>($5,$6::text)) "
+                "ORDER BY r.created_at,r.id LIMIT $7", *args, stamp, last, limit + 1)
             items = [await self._f3_record_view(conn, who, r, name) for r in selected[:limit]]
-            return page(items, len(visible), encode_cursor(scope, [selected[limit - 1]["created_at"].isoformat(), selected[limit - 1]["id"]]) if len(selected) > limit else None)
+            next_cursor = encode_cursor(scope, [selected[limit - 1]["created_at"].isoformat(), selected[limit - 1]["id"]]) if len(selected) > limit else None
+            return page(items, total, next_cursor)
 
     async def get_operation(self, who: FinancePrincipal, id: str) -> dict[str, Any]:
         """F3任务按前缀恢复，旧任务继续原实现。"""

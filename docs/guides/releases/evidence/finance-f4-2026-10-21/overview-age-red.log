@@ -1,0 +1,29 @@
+..F                                                                      [100%]
+=================================== FAILURES ===================================
+___________ test_old_completed_operation_does_not_age_current_queue ____________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10a163dd0>
+
+    async def test_old_completed_operation_does_not_age_current_queue(store: Any) -> None:
+        """早期终态只计历史数量，最早积压取真正仍待处理的操作。"""
+        from .test_f3_domain import fresh_snapshot, result_for
+        owner,tax,_=await configured(store)
+        await invoice(store)
+        first=await store.verify_invoice(owner,'blue',1,'old')
+        job=await store.claim_compliance();await result_for(store,job,fresh_snapshot())
+        await store.pool.execute("UPDATE finance_compliance_operation SET created_at=now()-interval '10 years' WHERE id=$1",first['id'])
+        second=await store.verify_invoice(owner,'blue',2,'new')
+        created=await store.pool.fetchval('SELECT created_at FROM finance_compliance_operation WHERE id=$1',second['id'])
+        overview=await store.get_finance_overview(tax,'e')
+>       assert overview['queues']['compliance']['oldest_created_at']==created.isoformat()
+E       AssertionError: assert '2016-10-21T1....867003+00:00' == '2026-10-21T1....867898+00:00'
+E         
+E         - 2026-10-21T15:25:31.867898+00:00
+E         ?   ^                    ^^^
+E         + 2016-10-21T15:25:31.867003+00:00
+E         ?   ^                    ^^^
+
+packages/xuanpu-finance/tests/test_f4_overview.py:51: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f4_overview.py::test_old_completed_operation_does_not_age_current_queue
+1 failed, 2 passed in 0.99s

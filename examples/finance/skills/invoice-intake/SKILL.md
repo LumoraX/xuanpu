@@ -1,10 +1,11 @@
 ---
 name: invoice-intake
 description: 归集受权固定版本发票原件，查询持久进度并为报销或应付处理补件。
-version: 0.4.0-f3
+version: 0.5.0-f4
 entry: false
 type: composite
 tool_names:
+- api__finance__listFinanceNotifications
 - api__finance__verifyInvoice
 - api__finance__getInvoiceCompliance
 - api__finance__listInvoiceVerifications
@@ -30,3 +31,5 @@ tool_names:
 用户取消F0导入时，先getOperation取得version，再取消未完成项；已完成原件和票据仍保留。f2op_付款/记账操作的取消与核对必须由真实员工在人工入口发起，本Skill不代办。
 
 F3查验和税务动作使用getInvoiceCompliance.version，原getInvoice.version仍是票面内容/分配版本。verifyInvoice只受理实际外查；pending/过期/不可用不是passed。F3原action_plan仍按当前实际步骤预检，实际审批及执行交人工入口。
+
+F4原生提醒由listFinanceNotifications读取当前来源，未读计数独立于当前页；提醒已读不表示审批或渠道成功。模型不调用readFinanceNotification；待审/未知应恢复原目标和原计划，不从提醒正文代批或重发。站内提醒不等于飞书、企业微信或邮件送达。

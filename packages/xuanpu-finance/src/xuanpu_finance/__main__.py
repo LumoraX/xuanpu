@@ -25,7 +25,7 @@ async def serve(config: FinanceConfig) -> None:
 
 def main() -> None:
     """解析显式配置路径；配置检查不连接数据库或执行财务动作。"""
-    parser = argparse.ArgumentParser(description="玄圃独立财务 F0/F1/F2")
+    parser = argparse.ArgumentParser(description="玄圃独立财务 F0–F4")
     parser.add_argument("--config", required=True, type=Path)
     parser.add_argument("--check-config", action="store_true")
     args = parser.parse_args()

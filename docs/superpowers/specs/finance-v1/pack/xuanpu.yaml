@@ -2,8 +2,8 @@ apiVersion: xuanpu/v1
 kind: Package
 metadata:
   name: finance
-  version: 0.4.0-f3
-  description: 独立财务F0-F3：报销应付、实际HITL、通用税务红字与可核验归档隔离闭环
+  version: 0.5.0-f4
+  description: 独立财务F0-F4：轻量闭环、原生通知与运营核对，正式渠道未验收
 spec:
   skills:
     entries:
@@ -132,6 +132,12 @@ spec:
     - name: auditArchive
       effect: read
     - name: getArchiveAudits
+      effect: read
+    - name: listFinanceNotifications
+      effect: read
+    - name: readFinanceNotification
+      effect: write
+    - name: getFinanceOverview
       effect: read
     contextAudience: xuanpu-finance
   - name: catalog

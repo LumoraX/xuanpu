@@ -1,0 +1,27 @@
+.....F                                                                   [100%]
+=================================== FAILURES ===================================
+_______________ test_manifest_rewrite_cannot_hide_modified_dump ________________
+
+maintenance_database = (<xuanpu_finance.storage.store.FinanceStore object at 0x10ca2ade0>, [MaintenanceOptions(database_dsn_file=PosixPath('/...d5694d94351aa', 'postgresql://postgres:finance_test@127.0.0.1:60034/finance_restore_7ed2c8f2796e42ccb7040a46957988f1'])
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1118/test_manifest_rewrite_cannot_h0')
+
+    async def test_manifest_rewrite_cannot_hide_modified_dump(maintenance_database,tmp_path: Path) -> None:
+        """不能同时改文件和清册hash绕过备份完整性认证。"""
+        store,options,_=maintenance_database
+        await source_original(store,options[0].object_root)
+        dump,load=pg_tools(tmp_path);output=tmp_path/'backup'
+        await backup(options[0],output,pg_dump=str(dump))
+        manifest=json.loads((output/'manifest.json').read_text())
+        path=output/'database.dump';path.write_bytes(path.read_bytes()+b'tamper')
+        for entry in manifest['files']:
+            if entry['path']=='database.dump':
+                entry.update(size=path.stat().st_size,sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+        (output/'manifest.json').write_text(json.dumps(manifest))
+>       with pytest.raises(MaintenanceError,match='BACKUP_CORRUPT'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE MaintenanceError
+
+packages/xuanpu-finance/tests/test_f4_maintenance.py:171: Failed
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f4_maintenance.py::test_manifest_rewrite_cannot_hide_modified_dump
+1 failed, 5 passed in 5.49s

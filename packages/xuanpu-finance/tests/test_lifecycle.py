@@ -106,5 +106,6 @@ async def test_lost_instance_lock_disables_old_runtime(store: FinanceStore, tmp_
             assert (await c.get("/health")).status_code == 503
         assert app.state.mode == "disabled"
         assert app.state.worker_task is None or app.state.worker_task.cancelling()
+        assert app.state.notification_task is None or app.state.notification_task.cancelling()
         async with open_runtime(config):
             pass

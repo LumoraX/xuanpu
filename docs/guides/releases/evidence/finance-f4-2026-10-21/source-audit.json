@@ -1,0 +1,94 @@
+{
+  "source_files": 22,
+  "issues": [],
+  "files": [
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/__main__.py",
+      "lines": 40
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/api.py",
+      "lines": 209
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+      "lines": 152
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py",
+      "lines": 36
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_files.py",
+      "lines": 74
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_objects.py",
+      "lines": 92
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py",
+      "lines": 94
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/notifications.py",
+      "lines": 25
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/routes_f4.py",
+      "lines": 45
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/runtime.py",
+      "lines": 208
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_queries.py",
+      "lines": 236
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_workflow_queries.py",
+      "lines": 94
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f4_integrations.py",
+      "lines": 34
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f4_notice_sources.py",
+      "lines": 136
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f4_notices.py",
+      "lines": 267
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f4_overview.py",
+      "lines": 43
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f4_query_schema.py",
+      "lines": 20
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f4_query_sql.py",
+      "lines": 57
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f4_schema.py",
+      "lines": 23
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f4_visibility.py",
+      "lines": 62
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/queries.py",
+      "lines": 234
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/store.py",
+      "lines": 156
+    }
+  ]
+}

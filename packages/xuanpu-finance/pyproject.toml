@@ -1,6 +1,6 @@
 [project]
 name = "xuanpu-finance"
-version = "2026.10.21.4"
+version = "2026.10.21.5"
 description = "玄圃进程外财务：原件报销、实际HITL、付款记账与税务红字档案通用接口"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -11,6 +11,7 @@ s3 = ["boto3>=1.34"]
 
 [project.scripts]
 xuanpu-finance = "xuanpu_finance.__main__:main"
+xuanpu-finance-maintenance = "xuanpu_finance.maintenance_cli:main"
 
 [build-system]
 requires = ["hatchling>=1.24"]

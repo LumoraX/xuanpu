@@ -1,10 +1,11 @@
 ---
 name: archive-audit
 description: 查询发票查验、税务确认、红字和档案证据，准备受控税务或归档计划并核对审计缺口。
-version: 0.4.0-f3
+version: 0.5.0-f4
 entry: false
 type: composite
 tool_names:
+- api__finance__listFinanceNotifications
 - api__finance__listLegalEntities
 - api__finance__getInvoice
 - api__finance__getInvoiceEvidence
@@ -43,3 +44,5 @@ verifyInvoice绑定当前合规version发起实际查验；按getOperation及查
 受理/dispatching/outcome_unknown均不是完成。未知结果只查原请求，不能换键重发。getArchiveManifest/Tests/Evidence核对全部成员具体版本、真实字节摘要、保留锁与独立封存证明；auditArchive只读核对，失败追加健康告警，历史包不会改写。新付款/红冲/调整后supplement_required须另建补包。
 
 当前simulation-archive-v1只验证隔离协议，四性报告有明确范围；不能解释成官方标准材料、真实税务效力、正式WORM或法定归档认证。
+
+F4原生提醒由listFinanceNotifications读取当前来源，未读计数独立于当前页；提醒已读不表示审批或渠道成功。模型不调用readFinanceNotification；待审/未知应恢复原目标和原计划，不从提醒正文代批或重发。站内提醒不等于飞书、企业微信或邮件送达。

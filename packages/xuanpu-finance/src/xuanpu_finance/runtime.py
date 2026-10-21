@@ -18,6 +18,7 @@ from xuanpu_finance.compliance.queue import ComplianceQueueAdapter
 from xuanpu_finance.errors import FinanceError
 from xuanpu_finance.gateway import PlatformGateway
 from xuanpu_finance.invoices.worker import FinanceWorker
+from xuanpu_finance.notifications import NotificationsWorker
 from xuanpu_finance.objects import EncryptedLocalObjects, EncryptedS3Objects
 from xuanpu_finance.settlement.providers import ProviderRegistry
 from xuanpu_finance.settlement.worker import SettlementWorker
@@ -169,6 +170,7 @@ async def open_runtime(config: FinanceConfig) -> AsyncIterator[FastAPI]:
             settlement_providers=providers,
             compliance_worker=compliance_worker,
             compliance_providers=compliance,
+            notification_worker=NotificationsWorker(store),
         )
         app.state.finance_store, app.state.finance_objects = store, objects
         app.state.lock_pid = await lock.fetchval("SELECT pg_backend_pid()")
@@ -178,7 +180,7 @@ async def open_runtime(config: FinanceConfig) -> AsyncIterator[FastAPI]:
             app.state.worker_error = "InstanceLockLost"
             app.state.instance_lock_lost = True
             app.state.mode = "disabled"
-            for name in ("worker_task", "settlement_task", "compliance_task"):
+            for name in ("worker_task", "settlement_task", "compliance_task", "notification_task"):
                 task = getattr(app.state, name, None)
                 if task is not None:
                     task.cancel()

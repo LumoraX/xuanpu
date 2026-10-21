@@ -1,0 +1,28 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________ test_actual_signed_notification_read_and_overview _______________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10c8c8ec0>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1143/test_actual_signed_notificatio0')
+
+    async def test_actual_signed_notification_read_and_overview(store: Any,tmp_path: Any) -> None:
+        """agent只查，已读须human且不代表审批；概览拒绝collector。"""
+        await configured(store)
+        raw=b'%PDF-1.4 original requiring structured source'
+        gateway=Gateway({'missing':raw});key=Ed25519PrivateKey.generate()
+        app=app_for(store,EncryptedLocalObjects(tmp_path/'objects',b'k'*32),gateway,key)
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app),base_url='http://finance') as client:
+            signed=SignedClient(client,key)
+            response=await signed.call('POST','/v1/finance/invoice-imports',tenant='t',user='owner',origin='human',body={'legal_entity_id':'e','files':[ref('missing',raw).model_dump()]},idem='import')
+            assert response.status_code==202,response.text
+            await app.state.worker.run_once();await store.refresh_finance_notifications()
+            result=await signed.call('GET','/v1/finance/notifications',tenant='t',user='owner',origin='agent',params={'legal_entity_id':'e'})
+>           assert result.status_code==200,result.text
+E           AssertionError: {"detail":"Not Found"}
+E           assert 404 == 200
+E            +  where 404 = <Response [404 Not Found]>.status_code
+
+packages/xuanpu-finance/tests/test_f4_api.py:27: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f4_api.py::test_actual_signed_notification_read_and_overview
+1 failed in 0.54s
