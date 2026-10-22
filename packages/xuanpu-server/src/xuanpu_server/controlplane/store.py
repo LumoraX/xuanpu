@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from xuanpu_server.connections.store import ConnectionStore
     from xuanpu_server.controlplane.models import (
         AuditQuery,
         AuditRecord,
@@ -32,6 +33,11 @@ if TYPE_CHECKING:
 @runtime_checkable
 class ControlPlaneStore(Protocol):
     """控制面存储。"""
+
+    @property
+    def connection_store(self) -> ConnectionStore:
+        """与控制面同后端的员工连接与内部凭据存储。"""
+        ...
 
     @property
     def workspace_store(self) -> WorkspaceStore:

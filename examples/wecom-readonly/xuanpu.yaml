@@ -1,0 +1,26 @@
+apiVersion: xuanpu/v1
+kind: Package
+metadata:
+  name: wecom-readonly
+  version: 1.0.0
+  description: 本人明确授权后的企业微信基础资料只读核对
+spec:
+  skills:
+    entries: [read]
+  model:
+    tier: balanced
+  policy:
+    approval: standard
+    sandbox:
+      network: false
+      shell: false
+    budget:
+      maxSessionTokens: 10000
+      maxIterations: 8
+  connectors:
+    - name: wecom
+      transport: http
+      openapi: api.yaml
+      timeoutSeconds: 30
+      tools:
+        - {name: self_profile, effect: read}

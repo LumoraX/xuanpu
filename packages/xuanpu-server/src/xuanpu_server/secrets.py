@@ -140,6 +140,14 @@ class EncryptedVault:
         except InvalidTag as exc:
             raise SecretCorruptedError(f"密钥 {name!r} 的密文校验失败") from exc
 
+    def seal_scoped(self, tenant_id: str, scope: str, value: str) -> bytes:
+        """复用主密钥与轮换格式，为内部域的完整AAD作用域封装密文。"""
+        return self._seal(tenant_id, scope, value)
+
+    def open_scoped(self, tenant_id: str, scope: str, blob: bytes) -> str:
+        """内部域必须提供原始作用域，跨员工或修订挪用会校验失败。"""
+        return self._open(tenant_id, scope, blob)
+
     async def put(self, tenant_id: str, name: str, value: str, *, actor: str) -> None:
         """写入或覆盖。"""
         validate_secret_name(name)

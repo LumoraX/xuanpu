@@ -114,6 +114,7 @@ class TaskDefinitionService:
         identifier,grant_id=new_id('definition'),new_id('grant')
         grant=ExecutionGrant(grant_id=grant_id,tenant_id=prepared.tenant_id,user_id=prepared.user_id,actor=who.actor,
             role='tenant_admin' if who.role=='tenant_admin' else 'tenant_member',key_id=who.key_id,
+            connection_refs=prepared.connection_refs,
             package_digest=prepared.package_digest,input_digests=tuple(i.sha256 for i in prepared.inputs),
             input_file_ids=tuple(i.item_id for i in prepared.inputs),input_policy=request.input_policy,
             created_at=now,expires_at=deadline,task_attempt_limit=request.max_attempts,max_attempts=request.max_attempts*request.max_executions,max_tokens=request.max_tokens)

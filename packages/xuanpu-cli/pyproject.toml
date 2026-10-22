@@ -1,6 +1,6 @@
 [project]
 name = "xuanpu-cli"
-version = "2026.10.22.1"
+version = "2026.10.22.2"
 description = "xuanpu 命令行 —— 业务包校验与打包、本地运行、启动平台服务"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -17,9 +17,9 @@ classifiers = [
 ]
 dependencies = [
     "xuanpu-spec",
-    "xuanpu-server>=2026.10.22.1",
-    "xuanpu-sdk-py>=2026.10.22.1",
-    "xuanpu-console>=2026.10.22.1",
+    "xuanpu-server>=2026.10.22.3",
+    "xuanpu-sdk-py>=2026.10.22.2",
+    "xuanpu-console>=2026.10.22.2",
 ]
 
 [project.scripts]

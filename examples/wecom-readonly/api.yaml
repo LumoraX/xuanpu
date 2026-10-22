@@ -1,0 +1,13 @@
+openapi: 3.0.3
+info:
+  title: 企微本人只读资料（由玄圃托管认证）
+  version: 1.0.0
+servers:
+  - url: https://qyapi.weixin.qq.com
+paths:
+  /cgi-bin/user/get:
+    get:
+      operationId: self_profile
+      summary: 核对当前已绑定员工本人的基础资料；供应商缺失字段须说明
+      responses:
+        '200': {description: 平台按员工同意校验后的最小资料投影}

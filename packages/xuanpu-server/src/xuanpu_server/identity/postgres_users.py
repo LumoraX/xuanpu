@@ -97,6 +97,7 @@ class PostgresUserTables:
             namespace: 表所在的 schema 与表名前缀（与控制面相同）。
         """
         self._tenant_table = namespace.table("tenant")
+        self._connection_table = namespace.table("connection_record")
         self._proactive_tables = [namespace.table(name) for name in ("proactive_check", "proactive_followup")]
         self._reminder_table = namespace.table("reminder")
         self._delivery_table = namespace.table("notification_delivery")

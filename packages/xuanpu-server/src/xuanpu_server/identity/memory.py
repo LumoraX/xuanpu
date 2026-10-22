@@ -315,6 +315,41 @@ class InMemoryIdentityStore:
 
     # --- 登录会话 ---
 
+    async def complete_external_login(self, identity: ExternalIdentity, session: LoginSession, *,
+                                      bind: bool, required_login_hash: str | None = None,
+                                      connection_id: str | None = None, connection_version: int | None = None) -> None:
+        """锁内原子完成链接和登录，任何验证失败都不留下部分身份。"""
+        from xuanpu_server.errors import AuthenticationError
+
+        if (identity.tenant_id,identity.user_id)!=(session.tenant_id,session.user_id):
+            raise ValueError('身份与登录会话不一致')
+        async with self._lock:
+            company=await self._control_plane.get_tenant(identity.tenant_id)
+            user=self._require_user(identity.tenant_id,identity.user_id)
+            if company is None or company.status!='active' or user.status!='active':
+                raise AuthenticationError('企业登录身份不可用')
+            if connection_id is not None:
+                async with self._control_plane.connection_store.transaction(identity.tenant_id) as state:
+                    install=state.records.get(connection_id,{})
+                    if install.get('status')!='active' or install.get('version')!=connection_version:
+                        raise ConflictError('应用配置已变化，请重新登录')
+            if bind:
+                old=self._logins.get(required_login_hash or '')
+                if old is None or (old.tenant_id,old.user_id)!=(identity.tenant_id,identity.user_id) or old.expires_at<=session.created_at:
+                    raise AuthenticationError('绑定期间原登录已失效')
+            existing=self._identities.get((identity.tenant_id,identity.provider,identity.subject))
+            if existing is not None and existing.user_id!=identity.user_id:
+                raise ConflictError('企业身份已绑定其他员工')
+            if existing is None and not bind:
+                raise AuthenticationError('企业身份尚未预配')
+            if session.token_hash in self._logins:
+                raise ConflictError('登录令牌冲突')
+            if existing is None:
+                self._store_identity(identity)
+            self._logins[session.token_hash]=session
+            if required_login_hash is not None:
+                self._logins.pop(required_login_hash,None)
+
     async def create_login_session(self, session: LoginSession) -> None:
         """登记登录会话。"""
         async with self._lock:

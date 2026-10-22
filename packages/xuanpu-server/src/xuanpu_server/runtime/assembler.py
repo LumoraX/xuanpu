@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from xuanpu_spec.manifest import Effect
 
     from xuanpu_server.audit import AuditLog
+    from xuanpu_server.connections.managed_http import ManagedHttpTools
     from xuanpu_server.packages import ResolvedPackage
     from xuanpu_server.runtime.events import SubmissionIndex
     from xuanpu_server.runtime.models import ModelClientFactory
@@ -197,6 +198,7 @@ class RuntimeAssembler:
         audit: AuditLog,
         submissions: SubmissionIndex,
         defaults: RuntimeDefaults | None = None,
+        managed_connections: ManagedHttpTools | None = None,
         now: Callable[[], float] = time.time,
     ) -> None:
         """
@@ -211,6 +213,7 @@ class RuntimeAssembler:
             defaults: 平台默认参数。
             now: 取当前时间的函数，测试时可替换。
         """
+        self._managed_connections=managed_connections
         self._now = now
         self._submissions = submissions
         self._data_dir = data_dir
@@ -285,6 +288,8 @@ class RuntimeAssembler:
         base = DEFAULT_BASE_ENV if configured is None else configured
         return ConnectorSet(
             tenant_id=package.record.tenant_id,
+            managed_connections=self._managed_connections,
+            package_digest=package.record.digest.removeprefix('sha256:'),
             vault=self._vault,
             audit=self._audit,
             submissions=self._submissions,

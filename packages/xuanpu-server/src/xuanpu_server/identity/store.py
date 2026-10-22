@@ -236,6 +236,12 @@ class IdentityStore(Protocol):
 
     # --- 登录会话 ---
 
+    async def complete_external_login(self, identity: ExternalIdentity, session: LoginSession, *,
+                                      bind: bool, required_login_hash: str | None = None,
+                                      connection_id: str | None = None, connection_version: int | None = None) -> None:
+        """当前员工、原绑定会话、外部身份和新会话同事务检查/提交；登出后不可重新绑定。"""
+        ...
+
     async def create_login_session(self, session: LoginSession) -> None:
         """登记一个登录会话。
 

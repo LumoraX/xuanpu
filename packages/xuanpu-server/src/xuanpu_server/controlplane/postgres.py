@@ -96,6 +96,9 @@ class PostgresControlPlane:
             namespace: 表所在的 schema 与表名前缀。
         """
         self.reminder_store = PostgresReminderStore(pool, namespace=namespace)
+        from xuanpu_server.connections.postgres import PostgresConnectionStore
+
+        self.connection_store = PostgresConnectionStore(pool,namespace)
         self.workspace_store = PostgresWorkspaceStore(pool, namespace=namespace)
         self.operation_receipts = PostgresReceiptStore(pool, namespace)
         self._pool = pool

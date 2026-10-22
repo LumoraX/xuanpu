@@ -46,6 +46,7 @@ function applyPermissions() {
 
 // 先取消旧请求并递增代际，再清除可见的身份数据；旧响应不能把上一位员工的数据填回来。
 function resetIdentity() {
+  if (typeof resetConnections === "function") resetConnections();
   resetReminders();
   if (typeof resetWorkspace === "function") resetWorkspace();
   conn.controller.abort();
@@ -96,7 +97,7 @@ function resetIdentity() {
 // 姓名代表个人身份；租户代码和后台凭据不能冒充已登录员工。
 function identityStatus(me) {
   if (me.key_id) return "后台凭据已连接 · 非个人登录";
-  return "已登录 · " + (me.display_name || "飞书用户") + "（飞书）";
+  return "已登录 · " + (me.display_name || "企业用户");
 }
 
 async function connectIdentity({ automatic = false } = {}) {
@@ -123,6 +124,7 @@ async function connectIdentity({ automatic = false } = {}) {
     if (epoch !== conn.epoch) return false;
     conn.ready = true;
     applyPermissions();
+    if (typeof openConnections === "function" && new URLSearchParams(location.search).get("connections") === "1") openConnections().catch(fail);
     startReminders().catch(fail);
     if (typeof startWorkspace === "function") startWorkspace().catch(fail);
     return epoch === conn.epoch;

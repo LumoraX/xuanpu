@@ -22,6 +22,7 @@ from pydantic import (
     model_validator,
 )
 
+from xuanpu_server.connections.models import ConnectionConfig
 from xuanpu_server.identity.config import IdentityConfig, normalize_origin
 
 if TYPE_CHECKING:
@@ -304,6 +305,7 @@ class ServerConfig(_Section):
     durable_execution: DurableExecutionConfig = DurableExecutionConfig()
     task_triggers: TriggerConfig = TriggerConfig()
     task_activity: ActivityConfig = ActivityConfig()
+    connections: ConnectionConfig = ConnectionConfig()
     audit: AuditConfig = AuditConfig()
     metrics: MetricsConfig = MetricsConfig()
     public_url: str | None = None

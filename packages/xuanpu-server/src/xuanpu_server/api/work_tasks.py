@@ -83,4 +83,12 @@ def work_tasks_router(platform: Platform) -> APIRouter:
         """本人决定经服务层复核和幂等回执处理。"""
         return await service.public_record(who, await service.decide(who, task_id, body))
 
+    @router.post('/{task_id}/connection-authorization')
+    async def connection_authorization(task_id: str,body: ReconcileRequest,who: Caller) -> dict[str,Any]:
+        """本人原生确认新连接引用，不自动替代工具批准。"""
+        from xuanpu_server.connections.models import RevokeInput
+        from xuanpu_server.connections.task_resume import resume
+        task=await resume(service,who,task_id,RevokeInput(**body.model_dump()))
+        return await service.public_record(who,task)
+
     return router

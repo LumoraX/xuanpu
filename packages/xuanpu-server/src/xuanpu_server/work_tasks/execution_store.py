@@ -35,6 +35,7 @@ def initialize(state: WorkspaceState, task: WorkTaskRecord, who: Principal, *,
     grant = ExecutionGrant(grant_id=task.grant_id or 'grant_' + secrets.token_hex(12),
         tenant_id=task.tenant_id, user_id=task.user_id, actor=who.actor, role='tenant_admin' if who.role == 'tenant_admin' else 'tenant_member',
         key_id=who.key_id, package_digest=task.package_digest,
+        connection_refs=task.connection_refs,
         input_digests=tuple(source.sha256 for source in task.inputs),
         created_at=task.accepted_at, expires_at=task.accepted_at + recovery_seconds, max_attempts=max_attempts)
     if task.grant_id is not None:
@@ -46,7 +47,7 @@ def initialize(state: WorkspaceState, task: WorkTaskRecord, who: Principal, *,
             if grant.input_policy=='latest_at_occurrence' else
             set(source.sha256 for source in task.inputs).issubset(grant.input_digests))
         if (not grant.accepting_new_tasks or grant.actor != who.actor or grant.package_digest != task.package_digest
-                or not inputs_valid):
+                or not inputs_valid or task.connection_refs!=grant.connection_refs):
             raise ConflictError('任务超出原执行授权范围')
     dispatch = DispatchRecord(task_id=task.task_id, grant_id=grant.grant_id,
         due_at=task.accepted_at, checkpoint=Checkpoint(at=task.accepted_at))
@@ -288,6 +289,12 @@ class ExecutionStore:
             if (dispatch.owner, dispatch.epoch) != (lease.owner, lease.epoch):
                 raise ConflictError('stale_epoch：旧执行不能移交新派发')
             task=require_task(state,lease.task_id)
+            if task.status not in TERMINAL and block_reason=='connection_reauthorization_required':
+                from .store import save_record
+
+                task=task.model_copy(update={'pending':(),'pending_decision':{},
+                    'state_version':task.state_version+1,'updated_at':max(now,task.updated_at)})
+                save_record(state,task,'connection_authorization_required')
             if task.status in TERMINAL and not task.resources_pending and not task.artifact_recovery_pending:
                 state_name,block_reason='settled',None
             state.task_dispatch[lease.task_id] = DispatchRecord.model_validate({**dispatch.model_dump(),

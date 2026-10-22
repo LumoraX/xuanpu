@@ -922,3 +922,5 @@ expected_version对state_version做CAS；配置version仅修改时增加。幂�
 `GET /v1/task-definitions/options`返回当前租户开关与已发布能力自然说明；`POST /v1/task-definitions/preview`只接受confirmed=false并重新验证材料、时间和能力，不保存定义/grant/task。确认创建仍用`POST /v1/task-definitions`与confirmed=true；修改PUT要求expected_version和重新确认；GET/list、pause/resume/cancel及occurrences沿用本人边界。机器身份403，其他员工及管理员以自己员工身份访问404。
 
 SDK提供TaskDefinition快照及对应原生方法；CLI的work-tasks/task-definitions使用私有credentials JSON（base_url/api_key/act_as_user），不会接受命令行租户/员工/host覆盖；body文件须保存稳定request_id，网络不确定时重用原文件。
+
+企业只读连接与员工同意接口见[企业连接架构](connections.md)。

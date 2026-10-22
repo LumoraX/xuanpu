@@ -225,6 +225,7 @@ class AssistantRouter:
                             "preserve_input": result.preserve_input,
                             "task_definition_draft": result.task_definition_draft,
                             "open_task_definitions": result.open_task_definitions,
+                            "open_connections": result.open_connections,
                         }
                     await p.workspace.complete_route(who, request_id, claim["token"], saved)
                 result = await self._saved_outcome(who, saved)
@@ -296,6 +297,9 @@ class AssistantRouter:
         catalog = await self._catalog(tenant)
         if who.user_id:
             catalog = [*WORKSPACE_ENTRIES, *REMINDER_ENTRIES, *PROACTIVE_ENTRIES, *TASK_DEFINITION_ENTRIES, *catalog]
+            if self._platform.connections.config.allows(who.require_tenant()):
+                catalog.append({"package":"@connections","version":"1","entry":"manage",
+                    "description":"本人企业只读连接","entry_description":"绑定企业微信、查看本人授权、同意或撤销授权；由员工在原生页面确认"})
         if not catalog:
             return RouteOutcome(message="当前企业尚未开通可用业务，请联系管理员。")
         history = await self._history(current) if current else []
@@ -352,6 +356,8 @@ class AssistantRouter:
         p = self._platform
         if choice.package=='@task-definitions':
             return await resolve_definition(p,who,choice.entry,choice.task_definition,input_files,matter_id,request_id)
+        if choice.package == '@connections' and who.user_id and self._platform.connections.config.allows(who.require_tenant()):
+            return RouteOutcome(message='请在本人连接页查看应用范围并确认；也可以直接撤销已有授权。',open_connections=True)
         if choice.package == "@proactive":
             if not who.user_id or choice.message is not None or choice.reminder or choice.workspace_draft:
                 raise ValueError("业务跟进建议无效")

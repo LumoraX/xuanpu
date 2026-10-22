@@ -17,4 +17,4 @@
 
 R2已交付持久执行、时间与事件触发、工作动态及员工入口，生产版本2026.10.22.2；实际共享宿主整机重启也已完成验收。设计和实施过程见[持久执行设计](superpowers/specs/2026-10-21-r2-durable-work-design.md)及[详细实施总计划](superpowers/plans/2026-10-21-r2-delivery.md)，能力与未验边界以[R2验收记录](guides/releases/2026-10-21-r2-acceptance.md)为准。
 
-R3的[设计提案](superpowers/specs/2026-10-22-r3-enterprise-collaboration-design.md)与[详细实施总计划](superpowers/plans/2026-10-22-r3-delivery.md)已拆解为五段，首先推进[企业微信只读连接](superpowers/plans/2026-10-22-r3a-connections-wecom.md)，随后建设组织岗位、共享事项、交接审批及统一体验。当前仅完成规划，未表示R3功能已实现或上线；总计划链接各段的任务、依赖与验收标准。
+R3的[设计提案](superpowers/specs/2026-10-22-r3-enterprise-collaboration-design.md)与[详细实施总计划](superpowers/plans/2026-10-22-r3-delivery.md)已拆解为五段，首先推进[企业微信只读连接](superpowers/plans/2026-10-22-r3a-connections-wecom.md)，随后建设组织岗位、共享事项、交接审批及统一体验。R3-A已实现连接安装、本人同意/撤销、企微客户端身份绑定与受控只读；代码和合成协议验收见[记录](guides/releases/2026-10-22-r3a-acceptance.md)。真实企业微信应用验收仍待管理员配置，生产未启用本期功能；其余R3阶段仍按总计划推进。

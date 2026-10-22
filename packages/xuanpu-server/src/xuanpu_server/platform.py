@@ -15,6 +15,11 @@ from typing import TYPE_CHECKING
 
 from xuanpu_server.assistant import AssistantRouter
 from xuanpu_server.audit import AuditLog
+from xuanpu_server.connections.broker import CredentialBroker
+from xuanpu_server.connections.managed_http import ManagedHttpTools
+from xuanpu_server.connections.providers.wecom import WeComClient
+from xuanpu_server.connections.service import ConnectionService
+from xuanpu_server.connections.tokens import TokenBroker
 from xuanpu_server.errors import (
     AuthenticationError,
     ConflictError,
@@ -25,6 +30,7 @@ from xuanpu_server.evals import EvalRunner
 from xuanpu_server.identity.feishu import DEFAULT_TIMEOUT_SECONDS, FeishuClient
 from xuanpu_server.identity.listeners import CLOSE_SESSIONS, CloseUserSessions
 from xuanpu_server.identity.service import IdentityService
+from xuanpu_server.identity.wecom_login import WeComLogin
 from xuanpu_server.ids import new_id
 from xuanpu_server.metrics import PlatformMetrics
 from xuanpu_server.objectstore import LocalObjectStore
@@ -75,6 +81,7 @@ if TYPE_CHECKING:
 
     import httpx
 
+    from xuanpu_server.connections.models import ConnectionConfig
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.identity.service import IdentitySettings
     from xuanpu_server.identity.store import IdentityStore
@@ -126,6 +133,7 @@ class Platform:
         durable_execution: DurableExecutionConfig | None = None,
         task_triggers: TriggerConfig | None = None,
         task_activity: ActivityConfig | None = None,
+        connections: ConnectionConfig | None = None,
         proactive_interval: float = 1800.0,
         proactive_scan_seconds: float = 60.0,
         now: Callable[[], float] = time.time,
@@ -206,6 +214,12 @@ class Platform:
             store=store.reminder_store, control=store, identity=identity_store,
             audit=self.audit, sender=self.notification_sender, now=now,
         )
+        self.connections = ConnectionService(store.connection_store,store,identity_store,
+                                             config=connections,now=now)
+        self.wecom_provider = WeComClient()
+        self.connection_tokens = TokenBroker(self.connections,vault,self.wecom_provider)
+        self.connection_broker = CredentialBroker(self.connections,self.connection_tokens,self.wecom_provider)
+        self.wecom_login = WeComLogin(self.connections,self.connection_tokens,self.wecom_provider,identity_settings)
         self.workspace = WorkspaceService(
             store=store.workspace_store, control=store, identity=identity_store,
             objects=self.objects, now=now,
@@ -215,10 +229,12 @@ class Platform:
         self.packages = PackageRegistry(
             store, self.audit, data_dir=data_dir, objects=self.objects, now=now
         )
+        self.connections.packages=self.packages
         durable = durable_execution or DurableExecutionConfig()
         self.work_tasks = WorkTaskService(self.workspace, self.packages,
             process_owner=self.instance_id, now=now, durable=durable)
         submissions = SubmissionIndex()
+        self.managed_connections=ManagedHttpTools(self.connection_broker,store,submissions)
         self.runtimes = RuntimeAssembler(
             data_dir=data_dir,
             models=models,
@@ -227,6 +243,7 @@ class Platform:
             vault=vault,
             audit=self.audit,
             submissions=submissions,
+            managed_connections=self.managed_connections,
             defaults=defaults,
             now=now,
         )
@@ -240,6 +257,8 @@ class Platform:
             process_owner=self.instance_id, now=now, cleanup=self.task_runner.release,
             close_resources=self.task_runner.close, recover=self.task_runner.recover, actions=self.task_actions, durable=durable,
             ordinary_turns=self.sessions.ordinary_turns)
+        self.work_tasks.connections=self.connections
+        self.task_registry.connections=self.connections
         self.work_tasks.executor = self.task_registry
         self.task_definitions=TaskDefinitionService(self.work_tasks,now=now,config=task_triggers or TriggerConfig())
         self.trigger_worker=TriggerWorker(self.task_definitions)
@@ -325,7 +344,7 @@ class Platform:
             actions = (self.trigger_worker.close, self.task_registry.close, self.proactive_worker.close, self.reminders.close,
                        self.notification_sender.close, self.assistant.close,
                        self.identity.maintenance.close, self.identity.disabling.close,
-                       self._shutdown_sessions, self.runtimes.close, self.identity.close)
+                       self._shutdown_sessions, self.runtimes.close, self.identity.close, self.wecom_provider.close)
             for action in actions:
                 try:
                     await action()
