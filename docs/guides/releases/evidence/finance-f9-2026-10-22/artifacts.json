@@ -1,0 +1,61 @@
+{
+  "finance": {
+    "source_files": 135,
+    "wheel_and_sdist_equal": true
+  },
+  "business_pack": {
+    "files": 20,
+    "published_files": 20,
+    "design_files": 24,
+    "zip_equals_published": true,
+    "published_files_equal": true,
+    "design_extra_files": [
+      "skills/archive-audit/references/execution-rules.md",
+      "skills/expense-reimbursement/references/execution-rules.md",
+      "skills/finance-assistant/references/execution-rules.md",
+      "skills/finance-review/references/execution-rules.md"
+    ],
+    "design_extra_files_baseline": "16875fb; bytes unchanged"
+  },
+  "artifacts": [
+    {
+      "name": "finance-0.10.0-f9.zip",
+      "bytes": 53568,
+      "sha256": "e5dfe14e73083554c3498df26a30eced8a1fb35fe4ee16c309d755655fcd5c6d"
+    },
+    {
+      "name": "xuanpu_console-2026.10.22.5-py3-none-any.whl",
+      "bytes": 107948,
+      "sha256": "8b2b39d6e332d810d9182844c304b08a00bdfa12178a5d640456c638fbbcb2c4"
+    },
+    {
+      "name": "xuanpu_console-2026.10.22.5.tar.gz",
+      "bytes": 128576,
+      "sha256": "247614840c60909dd81945c94eb77b789f9fb194c39951ed7a77024bd59312c4"
+    },
+    {
+      "name": "xuanpu_finance-2026.10.22.6-py3-none-any.whl",
+      "bytes": 333843,
+      "sha256": "14feb365be1a5a434d61a7fc4fe036bf40babb32c06998b9552d9fd902046946"
+    },
+    {
+      "name": "xuanpu_finance-2026.10.22.6.tar.gz",
+      "bytes": 399310,
+      "sha256": "5a5dc3c8bde1d1ad42b4a00fea5c39a1cc623519db9e24e392067c498952fe36"
+    }
+  ],
+  "production_status": "not_verified",
+  "image": {
+    "tag": "xuanpu-finance:2026.10.22.6",
+    "id": "sha256:2e1c41ef01ac990e7f9cf4bab3548ee9780ea5186fb037979dc2ed9e1ca5ed74",
+    "uid": 10001,
+    "version": "2026.10.22.6",
+    "source_files": 135,
+    "source_equal": true
+  },
+  "console": {
+    "source_files": 23,
+    "wheel_and_sdist_equal": true
+  },
+  "independent_quality_audit": "artifact-quality.json"
+}

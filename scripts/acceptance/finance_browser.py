@@ -167,7 +167,7 @@ async def open_browser_platform(directory: Path, origin: str, resources: AsyncEx
     )
     resources.push_async_callback(platform.close)
     await platform.start()
-    await platform.create_tenant(ROOT_PRINCIPAL, tenant_id='acme', name='F8隔离验收租户')
+    await platform.create_tenant(ROOT_PRINCIPAL, tenant_id='acme', name='F9隔离验收租户')
     issued = await platform.issue_key(
         ROOT_PRINCIPAL, tenant_id='acme', name='browser-admin', role='tenant_admin',
     )
@@ -197,7 +197,7 @@ async def configure_finance(
     ident: Any, people: dict[str, Any],
 ) -> FinanceConfig:
     """使用现有test-only进程夹具构造财务配置，不连接外部供应商。"""
-    from xuanpu_finance.config import GrantConfig
+    from xuanpu_finance.config import FinanceConfig, GrantConfig
     from xuanpu_finance.expenses.models import ApprovalStep, ExpenseCategory, ExpensePolicy
 
     process = importlib.import_module('packages.xuanpu-finance.tests.test_process')
@@ -209,7 +209,7 @@ async def configure_finance(
     config.gateway.tenant_token_files = {'acme': token_file}
     token_file.write_text(await ident.system_key(role='tenant_member'))
     config.companies[0].tenant_id = 'acme'
-    config.companies[0].name = 'F8隔离验收公司'
+    config.companies[0].name = 'F9隔离验收公司'
     roles: dict[str, Literal['collector', 'approver', 'reviewer']] = {
         'owner': 'collector', 'manager': 'approver', 'finance': 'reviewer',
     }
@@ -230,7 +230,8 @@ async def configure_finance(
     for file in (directory / 'finance').iterdir():
         if file.is_file():
             file.chmod(0o600)
-    return config
+    config.profile = 'internal_records'
+    return FinanceConfig.model_validate(config.model_dump())
 
 
 async def configure_gateway(platform: Any, admin: Any, directory: Path, finance_url: str,
@@ -303,7 +304,7 @@ def create_fixtures(directory: Path) -> list[str]:
         path = directory / name
         writer = PdfWriter()
         writer.add_blank_page(width=240, height=120)
-        writer.add_metadata({'/Title': 'F8格式有效测试附件，非真实税务发票：' + name})
+        writer.add_metadata({'/Title': 'F9格式有效测试附件，非真实税务发票：' + name})
         writer.write(path)
         fixtures.append(str(path))
     return fixtures
@@ -342,6 +343,7 @@ async def announce_ready(ready_file: Path, payload: dict[str, Any],
 async def assemble(directory: Path, dsn: str, ready_file: Path, resources: AsyncExitStack) -> None:
     """隔离开发夹具只装配测试身份，业务流量仍经过真实TCP与签名认证。"""
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from xuanpu_finance.readiness.offline import preflight
     from xuanpu_finance.runtime import open_runtime
     from xuanpu_server.api import create_app
 
@@ -352,6 +354,10 @@ async def assemble(directory: Path, dsn: str, ready_file: Path, resources: Async
     world, ident, people, cookies, blocker = await bootstrap_people(directory, origin, resources)
     key = Ed25519PrivateKey.generate()
     config = await configure_finance(directory, dsn, origin, finance_port, key, ident, people)
+    offline = await preflight(config)
+    if offline['status'] != 'not_verified' or any(
+            item['status'] != 'passed' for item in offline['checks']):
+        raise RuntimeError('BROWSER_ACCEPTANCE_PREFLIGHT_BLOCKED')
     await configure_gateway(world.platform, world.admin, directory, finance_url, key)
     app = create_app(world.platform, console_dir=(
         ROOT / 'packages/xuanpu-console/src/xuanpu_console/static'
@@ -365,6 +371,7 @@ async def assemble(directory: Path, dsn: str, ready_file: Path, resources: Async
         'logins': {actor: origin + '/__acceptance__/login/' + actor for actor in people},
         'fixtures': create_fixtures(directory),
         'environment': 'isolated_loopback_test', 'models': 'disabled',
+        'profile': config.profile, 'preflight': offline,
     }
     await announce_ready(ready_file, payload, resources)
 
@@ -376,7 +383,7 @@ async def run(dsn: str, ready_file: Path) -> None:
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, stopped.set)
     try:
-        with tempfile.TemporaryDirectory(prefix='xuanpu-finance-f8-browser-') as raw:
+        with tempfile.TemporaryDirectory(prefix='xuanpu-finance-f9-browser-') as raw:
             directory = Path(raw)
             directory.chmod(0o700)
             async with AsyncExitStack() as resources:

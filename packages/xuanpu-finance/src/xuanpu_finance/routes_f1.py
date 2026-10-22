@@ -17,6 +17,7 @@ from xuanpu_finance.expenses.models import (  # noqa: TC001 — FastAPI运行时
     ExpenseDraft,
     ExpenseUpdate,
 )
+from xuanpu_finance.internal_profile import guard_internal_target
 from xuanpu_finance.routes import (  # noqa: TC001 — FastAPI运行时解析
     Company,
     Cursor,
@@ -149,6 +150,7 @@ async def preview(
     request: Request, body: ActionPreview | ComplianceActionPreview, key: IdempotencyKey, who: FinanceCaller
 ) -> dict[str, Any]:
     """只生成固定版本计划，不占额度或产生批准。"""
+    await guard_internal_target(request, who, body.target_type, body.target_id, body.action)
     funding = await funding_action_target(request, who, body.target_type, body.target_id)
     require_write(request, cancel=body.action in ({"reject", "withdraw"} if funding else {"approve", "reject", "withdraw"}))
     return await get_store(request).preview_finance_action(who, body, key)
@@ -157,7 +159,9 @@ async def preview(
 @router.get("/v1/finance/action-plans/{id}", operation_id="getActionPlan")
 async def action_plan(request: Request, id: str, who: FinanceCaller) -> dict[str, Any]:
     """查询原计划及实时可执行性，不延长原有效期。"""
-    return await get_store(request).get_action_plan(who, id)
+    plan = await get_store(request).get_action_plan(who, id)
+    await guard_internal_target(request, who, plan["target_type"], plan["target_id"], plan["action"])
+    return plan
 
 
 @router.post("/v1/finance/action-executions", status_code=202, operation_id="executeFinanceAction")
@@ -168,6 +172,7 @@ async def execute(
     if who.origin != "human":
         raise FinanceError("HUMAN_REQUIRED", 403, "请本人在人工确认入口作出业务决定")
     plan = await get_store(request).get_action_plan(who, body.plan_id)
+    await guard_internal_target(request, who, plan["target_type"], plan["target_id"], plan["action"])
     funding = await funding_action_target(request, who, plan["target_type"], plan["target_id"])
     require_write(request, cancel=plan["action"] in ({"reject", "withdraw"} if funding else {"approve", "reject", "withdraw"}))
     return await get_store(request).execute_finance_action(who, body, key)

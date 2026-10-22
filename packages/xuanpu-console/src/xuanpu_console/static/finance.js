@@ -1,12 +1,12 @@
 // 财务辅助页：普通员工可无模型完成草稿、分票与逐步审批，真实规则始终由业务服务裁定。
 "use strict";
-const financeState={generation:0,controller:new AbortController(),entity:null,current:null,plan:null,execution:null,pending:null,queue:[],categories:[],centers:[],claimStatus:"",revision:0,materialForm:null};
+const financeState={generation:0,controller:new AbortController(),entity:null,current:null,plan:null,execution:null,pending:null,queue:[],categories:[],centers:[],claimStatus:"",claimView:"mine",claimQuery:"",listRequest:0,capabilities:null,claimFilters:null,revision:0,materialForm:null};
 const financeActions={submit_claim:"提交",approve:"批准本步骤",reject:"驳回",withdraw:"撤回"};
 const financeStatuses={draft:"草稿",submitted:"已提交",under_review:"审批中",approved:"审批通过",rejected:"已驳回",withdrawn:"已撤回"};
 function resetFinance() {
   if(typeof financeFundingReleaseDownloads==="function")financeFundingReleaseDownloads();
   financeState.controller.abort();financeState.controller=new AbortController();financeState.generation++;
-  Object.assign(financeState,{entity:null,current:null,plan:null,execution:null,pending:null,queue:[],categories:[],centers:[],claimStatus:"",materialForm:null});
+  Object.assign(financeState,{entity:null,current:null,plan:null,execution:null,pending:null,queue:[],categories:[],centers:[],claimStatus:"",claimView:"mine",claimQuery:"",listRequest:0,capabilities:null,claimFilters:null,materialForm:null});
 }
 function financeToken(){return {epoch:conn.epoch,generation:financeState.generation};}
 function financeCurrent(token){return conn.ready && token.epoch===conn.epoch && token.generation===financeState.generation && workspace.kind==="finance";}
@@ -39,26 +39,38 @@ function financeSelect(form,label,items,value="",optional=false) {
 function financeSubmit(form,handler){form.addEventListener("submit",event=>{event.preventDefault();return Promise.resolve().then(handler).catch(error=>{financeFeedback(error.message);fail(error);});});}
 function financeMoney(value){if(!/^\d+(\.\d{1,2})?$/.test(value.trim()))throw new Error("金额请填写最多两位小数的非负数。");const [whole,fraction=""]=value.trim().split(".");return BigInt(whole).toString()+"."+fraction.padEnd(2,"0");}
 function financeFeedback(text){$("workspace-feedback").textContent=text;}
+function financeInternalRecords(){return financeState.capabilities?.profile==="internal_records";}
+function financeValidateCapabilities(value) {
+  const fields=["profile","mode","service_version","internal_records_only"];
+  if(!value||typeof value!=="object"||Array.isArray(value)||Object.keys(value).length!==fields.length||fields.some(key=>!Object.hasOwn(value,key))||!["general","internal_records"].includes(value.profile)||!["enabled","read_only","disabled","draining"].includes(value.mode)||typeof value.service_version!=="string"||!value.service_version.trim()||typeof value.internal_records_only!=="boolean"||value.internal_records_only!==(value.profile==="internal_records"))throw new Error("财务能力响应无效，请重新加载或联系管理员核对。");
+  return value;
+}
 async function renderFinanceList(generation,epoch) {
-  financeState.generation++;if(!financeState.pending)financeInvalidate();financeState.current=null;
+  financeState.generation++;if(!financeState.pending)financeInvalidate();financeState.current=null;financeState.capabilities=null;
   if(conn.apiKey){financeFeedback("报销与审批需要员工登录；请退出管理凭据模式。");return;}
   const token=financeToken();
   try {
+    const capabilities=await financeCall("getFinanceCapabilities");
+    if(!financeCurrent(token)||!workspaceCurrent(generation,epoch))return;
+    financeState.capabilities=financeValidateCapabilities(capabilities);
     const entities=await financeCall("listLegalEntities",{limit:100});
     if(!financeCurrent(token)||!workspaceCurrent(generation,epoch))return;
     if(!entities.items?.length){financeFeedback("当前没有授权公司，报销功能未启用。");return;}
-    if(!entities.items.some(x=>x.id===financeState.entity))financeState.entity=entities.items[0].id;
+    if(!entities.items.some(x=>x.id===financeState.entity)){financeState.entity=entities.items[0].id;financeState.claimView="mine";financeState.claimStatus="";financeState.claimQuery="";}
     const toolbar=$("workspace-toolbar"),select=financeSelect(toolbar,"所属公司",entities.items,financeState.entity);
-    select.addEventListener("change",()=>{if(financeState.pending){financeShowPending();return;}financeState.entity=select.value;financeInvalidate();return refreshWorkspace();});
+    select.addEventListener("change",()=>{if(financeState.pending){select.value=financeState.entity;financeShowPending();return;}financeState.entity=select.value;financeState.capabilities=null;financeState.claimView="mine";financeState.claimStatus="";financeState.claimQuery="";financeInvalidate();return refreshWorkspace();});
     select.disabled=!!financeState.pending;
     if(typeof financeMaterialsToolbar==="function")financeMaterialsToolbar(toolbar);
     if(typeof financeOperationsToolbar==="function")financeOperationsToolbar(toolbar);
-    const auxiliary=wsText("div",""),more=wsButton("更多财务功能",()=>{auxiliary.hidden=!auxiliary.hidden;more.setAttribute("aria-expanded",String(!auxiliary.hidden));});auxiliary.hidden=true;more.setAttribute("aria-expanded","false");
-    if(typeof financeComplianceToolbar==="function")financeComplianceToolbar(auxiliary);
-    if(typeof financeFundingToolbar==="function")financeFundingToolbar(auxiliary);
-    if(typeof financeSettlementToolbar==="function")financeSettlementToolbar(auxiliary);
-    toolbar.append(wsButton("新建报销",financeEdit),wsButton("本人草稿",()=>{financeState.claimStatus="draft";return financeLoadClaims(token);}),wsButton("全部可看记录",()=>{financeState.claimStatus="";return financeLoadClaims(token);}),wsButton("待我审批",()=>financeLoadQueue(token)),wsButton("刷新",refreshWorkspace));
-    toolbar.append(more,auxiliary);
+    toolbar.append(wsButton("新建报销",financeEdit),wsButton("本人记录",()=>financeFilterClaims({view:"mine",status:""})),wsButton("本人草稿",()=>financeFilterClaims({view:"mine",status:"draft"})),wsButton("全部可看记录",()=>financeFilterClaims({view:"visible",status:""})),wsButton("待我审批",()=>financeLoadQueue(token)),wsButton("刷新",refreshWorkspace));
+    financeClaimsFilters(toolbar);
+    if(!financeInternalRecords()){
+      const auxiliary=wsText("div",""),more=wsButton("更多财务功能",()=>{auxiliary.hidden=!auxiliary.hidden;more.setAttribute("aria-expanded",String(!auxiliary.hidden));});auxiliary.hidden=true;more.setAttribute("aria-expanded","false");
+      if(typeof financeComplianceToolbar==="function")financeComplianceToolbar(auxiliary);
+      if(typeof financeFundingToolbar==="function")financeFundingToolbar(auxiliary);
+      if(typeof financeSettlementToolbar==="function")financeSettlementToolbar(auxiliary);
+      toolbar.append(more,auxiliary);
+    }
     if(financeState.pending)financeShowPending();
     else await financeLoadClaims(token);
   } catch(error) {
@@ -66,17 +78,45 @@ async function renderFinanceList(generation,epoch) {
     financeFeedback(error.status===404?"报销功能未启用，请联系管理员安装财务业务包。":error.message);
   }
 }
+function financeClaimsFilters(toolbar) {
+  const status=financeSelect(toolbar,"记录状态",[{id:"",name:"全部状态"},...Object.entries(financeStatuses).map(([id,name])=>({id,name}))],financeState.claimStatus);
+  const query=financeField(toolbar,"单号或事由","search",financeState.claimQuery,false);query.maxLength=256;
+  financeState.claimFilters={status,query};
+  status.addEventListener("change",()=>financeFilterClaims({status:status.value}).catch(error=>{financeFeedback(error.message);fail(error);}));
+  toolbar.append(wsButton("查询记录",()=>financeFilterClaims({q:query.value})));
+}
+async function financeFilterClaims(filters) {
+  const controls=financeState.claimFilters;
+  if(financeState.pending){if(controls){controls.status.value=financeState.claimStatus;controls.query.value=financeState.claimQuery;}financeShowPending();return;}
+  const q=(filters.q??financeState.claimQuery).trim();
+  if([...q].length>128)throw new Error("单号或事由最多填写128个字符。");
+  Object.assign(financeState,{claimView:filters.view??financeState.claimView,claimStatus:filters.status??financeState.claimStatus,claimQuery:q});
+  if(controls){controls.status.value=financeState.claimStatus;controls.query.value=q;}
+  return financeLoadClaims();
+}
+function financeValidateSummaryPage(page,args) {
+  const keys=["id","legal_entity_id","owner_id","version","status","total","reason","created_at","record_mode"],nonempty=value=>typeof value==="string"&&!!value.trim();
+  if(!page||!Array.isArray(page.items)||page.items.length>args.limit||!Number.isSafeInteger(page.total)||page.total<page.items.length||!(page.next_cursor===null||nonempty(page.next_cursor)))throw new Error("报销摘要响应不完整，请重新读取。");
+  const seen=new Set();
+  for(const item of page.items){
+    if(!item||typeof item!=="object"||Object.keys(item).length!==keys.length||keys.some(key=>!Object.hasOwn(item,key))||!nonempty(item.id)||seen.has(item.id)||item.legal_entity_id!==args.legal_entity_id||!nonempty(item.owner_id)||(args.view==="mine"&&item.owner_id!==conn.me.user_id)||!Number.isSafeInteger(item.version)||item.version<1||!Object.hasOwn(financeStatuses,item.status)||(args.status&&item.status!==args.status)||typeof item.total!=="string"||!/^\d+\.\d{2}$/.test(item.total)||typeof item.reason!=="string"||[...item.reason].length<1||[...item.reason].length>2000||!nonempty(item.created_at)||!Number.isFinite(Date.parse(item.created_at))||!["internal_record","invoice_backed"].includes(item.record_mode))throw new Error("报销摘要响应无效，请重新读取。");
+    seen.add(item.id);
+  }
+  return page;
+}
 async function financeLoadClaims(token=financeToken(),cursor="",append=false) {
-  if(financeState.pending){financeShowPending();return;}if(!append)financeInvalidate();const revision=financeState.revision;
-  const args={legal_entity_id:financeState.entity,limit:1};if(cursor)args.cursor=cursor;if(financeState.claimStatus)args.status=financeState.claimStatus;
-  const page=await financeCall("listExpenseClaims",args);if(!financeCurrent(token)||revision!==financeState.revision)return;
+  if(financeState.pending){financeShowPending();return;}if(!append)financeInvalidate();const revision=financeState.revision;let request=++financeState.listRequest;
+  const args={legal_entity_id:financeState.entity,view:financeState.claimView,limit:20};if(cursor)args.cursor=cursor;if(financeState.claimStatus)args.status=financeState.claimStatus;if(financeState.claimQuery)args.q=financeState.claimQuery;
+  if(!args.legal_entity_id)throw new Error("请先选择所属公司后查询报销记录。");
   const box=$("workspace-content");if(!append)box.replaceChildren();
-  financeFeedback("可查看的报销（"+page.total+"）");
-  if(!page.items.length)box.append(wsText("p","还没有报销，点击新建即可保存本人草稿。"));
+  const current=()=>financeCurrent(token)&&revision===financeState.revision&&request===financeState.listRequest&&args.legal_entity_id===financeState.entity;
+  let response;try{response=await financeCall("listExpenseClaimSummaries",args);}catch(error){if(!current())return;throw error;}if(!current())return;
+  const page=financeValidateSummaryPage(response,args);financeFeedback("可查看的报销（"+page.total+"）");
+  if(!page.items.length&&!append)box.append(wsText("p","还没有报销，点击新建即可保存本人草稿。"));
   for(const item of page.items){const card=wsText("article","","workspace-record");
-    card.append(wsText("h3",item.content.reason),wsText("p","¥"+item.total+" · "+(financeStatuses[item.status]||item.status)+" · 版本 "+item.version),wsButton("查看详情",()=>financeDetail(item.id)));
+    card.append(wsText("h3",item.reason),wsText("p","¥"+item.total+" · "+financeStatuses[item.status]+" · 版本 "+item.version),wsText("p","单号："+item.id),wsButton("查看详情",()=>financeDetail(item.id)));
     box.append(card);}
-  if(page.next_cursor)box.append(wsButton("加载更多",()=>financeLoadClaims(token,page.next_cursor,true)));
+  if(page.next_cursor){const more=wsButton("加载更多",async()=>{if(more.disabled||!current())return;more.disabled=true;try{const loading=financeLoadClaims(token,page.next_cursor,true);request=financeState.listRequest;await loading;more.hidden=true;}catch(error){if(current())more.disabled=false;throw error;}});box.append(more);}
 }
 async function financeLoadQueue(token=financeToken(),cursor="",append=false) {
   if(financeState.pending){financeShowPending();return;}if(!append)financeInvalidate();const revision=financeState.revision;

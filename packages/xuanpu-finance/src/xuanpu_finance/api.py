@@ -14,6 +14,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from xuanpu_finance.errors import FinanceError
+from xuanpu_finance.internal_profile import PROFILES, include_finance_routers
 from xuanpu_finance.limits import RequestBodyLimit
 from xuanpu_finance.routes import router
 from xuanpu_finance.routes_callback import router as callback_router
@@ -25,6 +26,7 @@ from xuanpu_finance.routes_f5 import router as f5_router
 from xuanpu_finance.routes_f6 import router as f6_router
 from xuanpu_finance.routes_f7 import router as f7_router
 from xuanpu_finance.routes_f8 import router as f8_router
+from xuanpu_finance.routes_f9 import router as f9_router
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -154,6 +156,7 @@ def create_app(
     auth: FinanceAuthenticator,
     worker: FinanceWorker | None = None,
     mode: str = "enabled",
+    profile: str = "general",
     start_worker: bool = True,
     settlement_worker: SettlementWorker | None = None,
     settlement_providers: ProviderRegistry | None = None,
@@ -165,7 +168,14 @@ def create_app(
     """显式注入独立存储，不在平台进程中导入此应用。"""
     if mode not in MODES:
         raise ValueError("财务模块模式无效")
-    app = FastAPI(title="玄圃财务 F0–F8", version="2026.10.22.5", lifespan=_lifespan)
+    if profile not in PROFILES:
+        raise ValueError("财务运行profile无效")
+    if profile == "internal_records" and any((settlement_worker, settlement_providers, compliance_worker, compliance_providers)):
+        raise ValueError("内部记录不能装配外部执行器或供应商")
+    if profile == "internal_records" and worker is not None and worker.synthetic:
+        raise ValueError("内部记录不能装配合成材料worker")
+    app = FastAPI(title="玄圃财务 F0–F9", version="2026.10.22.6", lifespan=_lifespan)
+    app.state.profile = profile
     app.state.store, app.state.auth, app.state.mode = store, auth, mode
     app.state.objects = objects if objects is not None else worker.objects if worker is not None else None
     app.state.worker, app.state.start_worker, app.state.worker_error = worker, start_worker, None
@@ -182,16 +192,8 @@ def create_app(
     app.add_exception_handler(RequestValidationError, _invalid_request)
     app.add_exception_handler(Exception, _unexpected)
     app.add_middleware(RequestBodyLimit)
-    app.include_router(router)
-    app.include_router(f1_router)
-    app.include_router(f2_router)
-    app.include_router(callback_router)
-    app.include_router(f3_router)
-    app.include_router(f4_router)
-    app.include_router(f5_router)
-    app.include_router(f6_router)
-    app.include_router(f7_router)
-    app.include_router(f8_router)
+    include_finance_routers(app, [router, f1_router, f2_router, callback_router, f3_router,
+                                  f4_router, f5_router, f6_router, f7_router, f8_router, f9_router])
 
     @app.get("/health")
     async def health() -> JSONResponse:

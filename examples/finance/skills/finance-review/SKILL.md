@@ -1,10 +1,11 @@
 ---
 name: finance-review
 description: 读取本人实际分派的报销、应付和原行动计划审批，核对证据、准备本人决定，或由公司复核人只读检查接入准备。
-version: 0.9.0-f8
+version: 0.10.0-f9
 entry: false
 type: composite
 tool_names:
+- api__finance__getFinanceCapabilities
 - api__finance__getFinanceReadiness
 - api__finance__getFinanceOverview
 - api__finance__listFinanceNotifications
@@ -28,6 +29,16 @@ tool_names:
 - api__finance__getFundingOptions
 ---
 # 实际人工审批
+
+先调用getFinanceCapabilities；读取失败或字段非法时停止并说明。profile=internal_records时只处理内部收件元数据、普通报销草稿、记录查询和人工动作预检；不调用应付、资金、支付、记账、查验、红字、正式档案或通用接入检查接口。实例能力不是个人授权、审批或上线验收。
+
+## internal_records 分支
+
+profile=internal_records：listReviewQueue只处理expense_claim，读取getExpenseClaim与listExpenseClaimHistory核对原文、原意见和版本；其他target_type说明实例不支持并停止。用当前target_version/workflow_step_id准备approve/reject预检，驳回需理由。提交实际决定交当前分派员工在人工入口确认，不能自审/代审或调用executeFinanceAction。可读当前站内提醒；不调用通用getFinanceReadiness，不读取资金规则。完成后返回，不执行下文general流程。
+
+## general 分支
+
+以下仅在profile=general时执行。
 
 listReviewQueue返回当前员工真正分派的步骤。按target_type读取报销、应付或原action_plan，并查询原证据；reviewer公司查看权不等于任意审批权，不能代他人或本人自审。
 业务单据使用队列的target_version；原action_plan始终expected_version=1，workflow_step_id来自当前步骤。准备approve/reject预检，驳回给出原因；不要对approve/reject计划再创建一轮批准。

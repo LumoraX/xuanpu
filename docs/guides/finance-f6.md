@@ -29,3 +29,5 @@ F6沿用独立财务PG/加密原件、进程外API、7个Skill、实际员工HIT
 当前仓库的维护/恢复测试复用成熟PG工具，通过名为`xuanpu-finance-f4-test-pg`的专属测试容器执行pg_dump/pg_restore。运行quick/full前须准备与显式DSN对应的这个隔离容器、可用Docker及创建临时库/角色的测试管理员权限；名称沿用旧测试约定，本轮标签为finance-f6。不可把已有平台或正式容器改名复用。未满足前提时测试应失败，不能跳过维护或恢复模块。验收超时/取消报告会提示核对临时资源；在清理前不要把报告当作完整验收。
 
 源码入口为`scripts/finance_acceptance.py`，使用`--dsn-file`、`--output`和`--suite quick|full`；DSN文件必须是私密普通文件，新输出目录保留JUnit、脱敏日志及report.json。完整报告中已有非财务skip逐项列出，正式供应商仍not_verified。
+
+当前内部记录的摘要检索、专用部署配置与上线准备见[F9指南](finance-f9.md)，原阶段验收事实仍以对应记录为准。

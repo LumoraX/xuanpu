@@ -133,3 +133,5 @@ uv run pytest packages/xuanpu-finance/tests/test_f5_contract.py packages/xuanpu-
 真实供应商、正式制度、税务官方票样/签章、真实WORM、外部企微/飞书报销、异机DR、真实模型专项评测和生产并发均未验。完整遗留边界见[缺口台账](finance-gap-register.md)，不以本阶段编号或隔离HTTP成功代替这些证据。
 
 当前F6新增正式接入准备检查与可重复隔离验收，总70项API、7个Skill；见[F6指南](finance-f6.md)和[正式接入清单](finance-provider-acceptance.md)。原阶段正式能力未验边界继续保留。
+
+当前内部记录的摘要检索、专用部署配置与上线准备见[F9指南](finance-f9.md)，原阶段验收事实仍以对应记录为准。

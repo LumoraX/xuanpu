@@ -1,0 +1,145 @@
+AssertionError [ERR_ASSERTION]: 任何公司查询之前须读取能力
++ actual - expected
+
++ 'listLegalEntities'
+- 'getFinanceCapabilities'
+
+    at capabilitiesFirstAndInternalEntries (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:13:348)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:21:354 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'listLegalEntities',
+  expected: 'getFinanceCapabilities',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+capabilitiesFirstAndInternalEntries passed
+malformedCapabilitiesStopAllCalls passed
+summariesKeepIndependentTotalAndNoOriginal passed
+filtersUseMineDraftAndTrimmedQuery passed
+delayedResponsesCannotReplaceNewPage passed
+paginationSerializesAndRejectsObsoleteButtons passed
+pendingWritesPreserveFiltersAndRequest passed
+internalOverviewAndOperationNoticesUseAllowedCalls passed
+AssertionError [ERR_ASSERTION]: 分页读取失败必须允许继续核对同一页
+
+true !== false
+
+    at failedPaginationCanRetrySameCursor (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:21:409)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:23:428 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: true,
+  expected: false,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+capabilitiesFirstAndInternalEntries passed
+malformedCapabilitiesStopAllCalls passed
+summariesKeepIndependentTotalAndNoOriginal passed
+filtersUseMineDraftAndTrimmedQuery passed
+delayedResponsesCannotReplaceNewPage passed
+paginationSerializesAndRejectsObsoleteButtons passed
+pendingWritesPreserveFiltersAndRequest passed
+internalOverviewAndOperationNoticesUseAllowedCalls passed
+failedPaginationCanRetrySameCursor passed
+lateCapabilityAndGeneralModeStayScoped passed
+AssertionError [ERR_ASSERTION]: 已过期查询的错误不得覆盖当前页面或弹出误导错误
++ actual - expected
+
++ Error: 旧筛选的网络错误
++     at supersededPaginationAndFailuresStayQuiet (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:23:379)
++     at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:24:469
+- null
+
+    at supersededPaginationAndFailuresStayQuiet (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:23:409)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:24:469 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: Error: 旧筛选的网络错误
+      at supersededPaginationAndFailuresStayQuiet (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:23:379)
+      at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:24:469,
+  expected: null,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+capabilitiesFirstAndInternalEntries passed
+malformedCapabilitiesStopAllCalls passed
+summariesKeepIndependentTotalAndNoOriginal passed
+filtersUseMineDraftAndTrimmedQuery passed
+delayedResponsesCannotReplaceNewPage passed
+paginationSerializesAndRejectsObsoleteButtons passed
+pendingWritesPreserveFiltersAndRequest passed
+internalOverviewAndOperationNoticesUseAllowedCalls passed
+failedPaginationCanRetrySameCursor passed
+lateCapabilityAndGeneralModeStayScoped passed
+supersededPaginationAndFailuresStayQuiet passed
+AssertionError [ERR_ASSERTION]: 领域合法 Unicode 和单空格事由必须可显示
+    at summaryReasonAndSearchRespectUnicodeCharacters (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:24:306)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:25:516 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: null,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+capabilitiesFirstAndInternalEntries passed
+malformedCapabilitiesStopAllCalls passed
+summariesKeepIndependentTotalAndNoOriginal passed
+filtersUseMineDraftAndTrimmedQuery passed
+delayedResponsesCannotReplaceNewPage passed
+paginationSerializesAndRejectsObsoleteButtons passed
+pendingWritesPreserveFiltersAndRequest passed
+internalOverviewAndOperationNoticesUseAllowedCalls passed
+failedPaginationCanRetrySameCursor passed
+lateCapabilityAndGeneralModeStayScoped passed
+supersededPaginationAndFailuresStayQuiet passed
+summaryReasonAndSearchRespectUnicodeCharacters passed
+AssertionError [ERR_ASSERTION]: 内部实例不能调用未开放异常目录
+    at h.answer (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:26:172)
+    at ctx.api (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:8:1120)
+    at financeCall (evalmachine.<anonymous>:19:22)
+    at financeNoticeException (evalmachine.<anonymous>:24:107)
+    at Object.exception (evalmachine.<anonymous>:16:498)
+    at financeOpenNotice (evalmachine.<anonymous>:17:105)
+    at evalmachine.<anonymous>:1:1
+    at Script.runInContext (node:vm:149:12)
+    at Object.runInContext (node:vm:301:6)
+    at Object.run (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:8:806) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'listExceptions',
+  expected: 'listExceptions',
+  operator: 'notStrictEqual',
+  diff: 'simple'
+}
+capabilitiesFirstAndInternalEntries passed
+malformedCapabilitiesStopAllCalls passed
+summariesKeepIndependentTotalAndNoOriginal passed
+filtersUseMineDraftAndTrimmedQuery passed
+delayedResponsesCannotReplaceNewPage passed
+paginationSerializesAndRejectsObsoleteButtons passed
+pendingWritesPreserveFiltersAndRequest passed
+internalOverviewAndOperationNoticesUseAllowedCalls passed
+failedPaginationCanRetrySameCursor passed
+lateCapabilityAndGeneralModeStayScoped passed
+supersededPaginationAndFailuresStayQuiet passed
+summaryReasonAndSearchRespectUnicodeCharacters passed
+internalExceptionUsesExactOwnerMaterialMetadata passed
+internalExceptionSearchIsBoundedAndManual passed
+internalExceptionUnmappedAndDeniedNeverGuess passed
+internalExceptionRespectsPendingAndLateNavigation passed
+AssertionError [ERR_ASSERTION]: 异常定位下一页失败后必须可按原游标重试
+
+true !== false
+
+    at internalExceptionPaginationFailureRetriesSameCursor (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:31:479)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_list_behavior.cjs:33:812 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: true,
+  expected: false,
+  operator: 'strictEqual',
+  diff: 'simple'
+}

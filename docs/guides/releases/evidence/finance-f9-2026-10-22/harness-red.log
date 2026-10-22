@@ -1,0 +1,60 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________ test_browser_fixture_uses_strict_internal_records_profile ___________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1886/test_browser_fixture_uses_stri0')
+
+    async def test_browser_fixture_uses_strict_internal_records_profile(tmp_path: Path) -> None:
+        """真实装配测试人员和固定凭据，离线检查通过仍不能宣称生产可用。"""
+        from xuanpu_finance.config import FinanceConfig
+        from xuanpu_finance.readiness.offline import preflight
+    
+        async with AsyncExitStack() as resources:
+            _, ident, people, _, blocker = await browser.bootstrap_people(
+                tmp_path, 'http://127.0.0.1:1', resources)
+            config = await browser.configure_finance(
+                tmp_path, 'postgresql://sample:private-value@127.0.0.1:1/finance_test_browser',
+                'http://127.0.0.1:1', 2, Ed25519PrivateKey.generate(), ident, people)
+>           assert config.profile == 'internal_records'
+                   ^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f9_harness.py:26: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = FinanceConfig(database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasusch...ce_policies=[], compliance_providers=[], mode='enabled', environment='test', synthetic=False, host='127.0.0.1', port=2)
+item = 'profile'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'FinanceConfig' object has no attribute 'profile'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1042: AttributeError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f9_harness.py::test_browser_fixture_uses_strict_internal_records_profile
+1 failed in 0.69s

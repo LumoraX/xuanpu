@@ -1,0 +1,543 @@
+{
+  "environment": "isolated_loopback_test",
+  "profile": "internal_records",
+  "claim": {
+    "id": "a7663bc1890d4de2b58fda021ae448d2",
+    "owner_id": "usr_ad0bd2670995685e663e978b",
+    "version": 6,
+    "status": "approved",
+    "total": "100.00",
+    "content": {
+      "lines": [
+        {
+          "amount": "100.00",
+          "reason": "隔离测试交通费用",
+          "category_id": "travel",
+          "occurred_on": "2026-10-22"
+        }
+      ],
+      "reason": "F9交通 100%_内部记录",
+      "evidence_ids": [
+        "4f9a8cc11b574fda974ba19e7ea7b4c6"
+      ],
+      "legal_entity_id": "company-a",
+      "invoice_information": "  发票信息：F9-TEST-001\n金额100.00；仅内部申报、未查验  "
+    },
+    "record_mode": "internal_record"
+  },
+  "history": [
+    {
+      "version": 1,
+      "data": {
+        "id": "a7663bc1890d4de2b58fda021ae448d2",
+        "kind": "expense_claim",
+        "total": "100.00",
+        "status": "draft",
+        "content": {
+          "lines": [
+            {
+              "amount": "100.00",
+              "reason": "隔离测试交通费用",
+              "category_id": "travel",
+              "occurred_on": "2026-10-22"
+            }
+          ],
+          "reason": "F9交通 100%_内部记录",
+          "evidence_ids": [
+            "05a440cab2924f1a8dafbab868e8722a"
+          ],
+          "legal_entity_id": "company-a",
+          "invoice_information": "  发票信息：F9-TEST-001\n金额100.00；仅内部申报、未查验  "
+        },
+        "version": 1,
+        "evidence": [
+          {
+            "id": "05a440cab2924f1a8dafbab868e8722a",
+            "kind": "source",
+            "sha256": "c9f2257792587a4c0571dc827a272a52b14db6f3f9088582d1fd450fed56dff6",
+            "source_version": "1",
+            "verification_state": "not_checked"
+          }
+        ],
+        "owner_id": "usr_ad0bd2670995685e663e978b",
+        "simulation": false,
+        "paid_amount": "0.00",
+        "record_mode": "internal_record",
+        "posted_amount": "0.00",
+        "allocation_ids": [],
+        "payment_status": "not_requested",
+        "posting_status": "not_posted",
+        "legal_entity_id": "company-a",
+        "reversed_amount": "0.00",
+        "payment_pending_amount": "0.00",
+        "posting_pending_amount": "0.00"
+      }
+    },
+    {
+      "version": 2,
+      "data": {
+        "id": "a7663bc1890d4de2b58fda021ae448d2",
+        "kind": "expense_claim",
+        "total": "100.00",
+        "due_at": "2026-10-25T13:56:03.543713+00:00",
+        "status": "under_review",
+        "content": {
+          "lines": [
+            {
+              "amount": "100.00",
+              "reason": "隔离测试交通费用",
+              "category_id": "travel",
+              "occurred_on": "2026-10-22"
+            }
+          ],
+          "reason": "F9交通 100%_内部记录",
+          "evidence_ids": [
+            "05a440cab2924f1a8dafbab868e8722a"
+          ],
+          "legal_entity_id": "company-a",
+          "invoice_information": "  发票信息：F9-TEST-001\n金额100.00；仅内部申报、未查验  "
+        },
+        "version": 2,
+        "evidence": [
+          {
+            "id": "05a440cab2924f1a8dafbab868e8722a",
+            "kind": "source",
+            "sha256": "c9f2257792587a4c0571dc827a272a52b14db6f3f9088582d1fd450fed56dff6",
+            "source_version": "1",
+            "verification_state": "not_checked"
+          }
+        ],
+        "owner_id": "usr_ad0bd2670995685e663e978b",
+        "workflow": {
+          "id": "c2d83ca65f82444993e88fd5d710ac09",
+          "steps": [
+            {
+              "id": "d3f89093f8e8449a8c1763393ac5af89",
+              "name": "负责人审批",
+              "status": "pending",
+              "version": 1,
+              "approver_user_id": "usr_1e409024aae5a385eacc5803"
+            },
+            {
+              "id": "21ffd2de451e41e5ac073da5eb65c95d",
+              "name": "财务复核",
+              "status": "waiting",
+              "version": 1,
+              "approver_user_id": "usr_c9de58cef8abc75d82e392ab"
+            }
+          ],
+          "due_at": "2026-10-25T13:56:03.543713+00:00",
+          "status": "under_review",
+          "version": 1,
+          "provider": "internal",
+          "policy_version": 1,
+          "target_version": 2,
+          "current_step_id": "d3f89093f8e8449a8c1763393ac5af89"
+        },
+        "simulation": false,
+        "paid_amount": "0.00",
+        "record_mode": "internal_record",
+        "workflow_id": "c2d83ca65f82444993e88fd5d710ac09",
+        "posted_amount": "0.00",
+        "allocation_ids": [],
+        "payment_status": "not_requested",
+        "posting_status": "not_posted",
+        "legal_entity_id": "company-a",
+        "reversed_amount": "0.00",
+        "workflow_version": 1,
+        "payment_pending_amount": "0.00",
+        "posting_pending_amount": "0.00"
+      }
+    },
+    {
+      "version": 3,
+      "data": {
+        "id": "a7663bc1890d4de2b58fda021ae448d2",
+        "kind": "expense_claim",
+        "total": "100.00",
+        "due_at": "2026-10-25T13:56:03.543713+00:00",
+        "status": "rejected",
+        "content": {
+          "lines": [
+            {
+              "amount": "100.00",
+              "reason": "隔离测试交通费用",
+              "category_id": "travel",
+              "occurred_on": "2026-10-22"
+            }
+          ],
+          "reason": "F9交通 100%_内部记录",
+          "evidence_ids": [
+            "05a440cab2924f1a8dafbab868e8722a"
+          ],
+          "legal_entity_id": "company-a",
+          "invoice_information": "  发票信息：F9-TEST-001\n金额100.00；仅内部申报、未查验  "
+        },
+        "version": 3,
+        "evidence": [
+          {
+            "id": "05a440cab2924f1a8dafbab868e8722a",
+            "kind": "source",
+            "sha256": "c9f2257792587a4c0571dc827a272a52b14db6f3f9088582d1fd450fed56dff6",
+            "source_version": "1",
+            "verification_state": "not_checked"
+          }
+        ],
+        "owner_id": "usr_ad0bd2670995685e663e978b",
+        "workflow": {
+          "id": "c2d83ca65f82444993e88fd5d710ac09",
+          "steps": [
+            {
+              "id": "d3f89093f8e8449a8c1763393ac5af89",
+              "name": "负责人审批",
+              "status": "rejected",
+              "version": 2,
+              "approver_user_id": "usr_1e409024aae5a385eacc5803"
+            },
+            {
+              "id": "21ffd2de451e41e5ac073da5eb65c95d",
+              "name": "财务复核",
+              "status": "cancelled",
+              "version": 2,
+              "approver_user_id": "usr_c9de58cef8abc75d82e392ab"
+            }
+          ],
+          "due_at": "2026-10-25T13:56:03.543713+00:00",
+          "status": "rejected",
+          "version": 2,
+          "provider": "internal",
+          "policy_version": 1,
+          "target_version": 2,
+          "current_step_id": null
+        },
+        "simulation": false,
+        "paid_amount": "0.00",
+        "record_mode": "internal_record",
+        "workflow_id": "c2d83ca65f82444993e88fd5d710ac09",
+        "posted_amount": "0.00",
+        "allocation_ids": [],
+        "payment_status": "not_requested",
+        "posting_status": "not_posted",
+        "legal_entity_id": "company-a",
+        "reversed_amount": "0.00",
+        "workflow_version": 2,
+        "payment_pending_amount": "0.00",
+        "posting_pending_amount": "0.00"
+      }
+    },
+    {
+      "version": 4,
+      "data": {
+        "id": "a7663bc1890d4de2b58fda021ae448d2",
+        "kind": "expense_claim",
+        "total": "100.00",
+        "due_at": "2026-10-25T13:56:03.543713+00:00",
+        "status": "draft",
+        "content": {
+          "lines": [
+            {
+              "amount": "100.00",
+              "reason": "隔离测试交通费用",
+              "category_id": "travel",
+              "occurred_on": "2026-10-22"
+            }
+          ],
+          "reason": "F9交通 100%_内部记录",
+          "evidence_ids": [
+            "4f9a8cc11b574fda974ba19e7ea7b4c6"
+          ],
+          "legal_entity_id": "company-a",
+          "invoice_information": "  发票信息：F9-TEST-001\n金额100.00；仅内部申报、未查验  "
+        },
+        "version": 4,
+        "evidence": [
+          {
+            "id": "4f9a8cc11b574fda974ba19e7ea7b4c6",
+            "kind": "source",
+            "sha256": "9b80ae6ca6ccd7f8853aab56d24fecbbbc9beb8077d3f48757eaf7b7e30cc069",
+            "source_version": "1",
+            "verification_state": "not_checked"
+          }
+        ],
+        "owner_id": "usr_ad0bd2670995685e663e978b",
+        "workflow": {
+          "id": "c2d83ca65f82444993e88fd5d710ac09",
+          "steps": [
+            {
+              "id": "d3f89093f8e8449a8c1763393ac5af89",
+              "name": "负责人审批",
+              "status": "rejected",
+              "version": 2,
+              "approver_user_id": "usr_1e409024aae5a385eacc5803"
+            },
+            {
+              "id": "21ffd2de451e41e5ac073da5eb65c95d",
+              "name": "财务复核",
+              "status": "cancelled",
+              "version": 2,
+              "approver_user_id": "usr_c9de58cef8abc75d82e392ab"
+            }
+          ],
+          "due_at": "2026-10-25T13:56:03.543713+00:00",
+          "status": "rejected",
+          "version": 2,
+          "provider": "internal",
+          "policy_version": 1,
+          "target_version": 2,
+          "current_step_id": null
+        },
+        "simulation": false,
+        "paid_amount": "0.00",
+        "record_mode": "internal_record",
+        "workflow_id": "c2d83ca65f82444993e88fd5d710ac09",
+        "posted_amount": "0.00",
+        "allocation_ids": [],
+        "payment_status": "not_requested",
+        "posting_status": "not_posted",
+        "legal_entity_id": "company-a",
+        "reversed_amount": "0.00",
+        "workflow_version": 2,
+        "payment_pending_amount": "0.00",
+        "posting_pending_amount": "0.00"
+      }
+    },
+    {
+      "version": 5,
+      "data": {
+        "id": "a7663bc1890d4de2b58fda021ae448d2",
+        "kind": "expense_claim",
+        "total": "100.00",
+        "due_at": "2026-10-25T14:00:12.619456+00:00",
+        "status": "under_review",
+        "content": {
+          "lines": [
+            {
+              "amount": "100.00",
+              "reason": "隔离测试交通费用",
+              "category_id": "travel",
+              "occurred_on": "2026-10-22"
+            }
+          ],
+          "reason": "F9交通 100%_内部记录",
+          "evidence_ids": [
+            "4f9a8cc11b574fda974ba19e7ea7b4c6"
+          ],
+          "legal_entity_id": "company-a",
+          "invoice_information": "  发票信息：F9-TEST-001\n金额100.00；仅内部申报、未查验  "
+        },
+        "version": 5,
+        "evidence": [
+          {
+            "id": "4f9a8cc11b574fda974ba19e7ea7b4c6",
+            "kind": "source",
+            "sha256": "9b80ae6ca6ccd7f8853aab56d24fecbbbc9beb8077d3f48757eaf7b7e30cc069",
+            "source_version": "1",
+            "verification_state": "not_checked"
+          }
+        ],
+        "owner_id": "usr_ad0bd2670995685e663e978b",
+        "workflow": {
+          "id": "dc7d0770683b464bb96b3c8935683a8b",
+          "steps": [
+            {
+              "id": "028398bab270454c8e018104129e34e4",
+              "name": "负责人审批",
+              "status": "pending",
+              "version": 1,
+              "approver_user_id": "usr_1e409024aae5a385eacc5803"
+            },
+            {
+              "id": "5696e44f67954dffbebc45a0623d3077",
+              "name": "财务复核",
+              "status": "waiting",
+              "version": 1,
+              "approver_user_id": "usr_c9de58cef8abc75d82e392ab"
+            }
+          ],
+          "due_at": "2026-10-25T14:00:12.619456+00:00",
+          "status": "under_review",
+          "version": 1,
+          "provider": "internal",
+          "policy_version": 1,
+          "target_version": 5,
+          "current_step_id": "028398bab270454c8e018104129e34e4"
+        },
+        "simulation": false,
+        "paid_amount": "0.00",
+        "record_mode": "internal_record",
+        "workflow_id": "dc7d0770683b464bb96b3c8935683a8b",
+        "posted_amount": "0.00",
+        "allocation_ids": [],
+        "payment_status": "not_requested",
+        "posting_status": "not_posted",
+        "legal_entity_id": "company-a",
+        "reversed_amount": "0.00",
+        "workflow_version": 1,
+        "payment_pending_amount": "0.00",
+        "posting_pending_amount": "0.00"
+      }
+    },
+    {
+      "version": 6,
+      "data": {
+        "id": "a7663bc1890d4de2b58fda021ae448d2",
+        "kind": "expense_claim",
+        "total": "100.00",
+        "due_at": "2026-10-25T14:00:12.619456+00:00",
+        "status": "approved",
+        "content": {
+          "lines": [
+            {
+              "amount": "100.00",
+              "reason": "隔离测试交通费用",
+              "category_id": "travel",
+              "occurred_on": "2026-10-22"
+            }
+          ],
+          "reason": "F9交通 100%_内部记录",
+          "evidence_ids": [
+            "4f9a8cc11b574fda974ba19e7ea7b4c6"
+          ],
+          "legal_entity_id": "company-a",
+          "invoice_information": "  发票信息：F9-TEST-001\n金额100.00；仅内部申报、未查验  "
+        },
+        "version": 6,
+        "evidence": [
+          {
+            "id": "4f9a8cc11b574fda974ba19e7ea7b4c6",
+            "kind": "source",
+            "sha256": "9b80ae6ca6ccd7f8853aab56d24fecbbbc9beb8077d3f48757eaf7b7e30cc069",
+            "source_version": "1",
+            "verification_state": "not_checked"
+          }
+        ],
+        "owner_id": "usr_ad0bd2670995685e663e978b",
+        "workflow": {
+          "id": "dc7d0770683b464bb96b3c8935683a8b",
+          "steps": [
+            {
+              "id": "028398bab270454c8e018104129e34e4",
+              "name": "负责人审批",
+              "status": "approved",
+              "version": 2,
+              "approver_user_id": "usr_1e409024aae5a385eacc5803"
+            },
+            {
+              "id": "5696e44f67954dffbebc45a0623d3077",
+              "name": "财务复核",
+              "status": "approved",
+              "version": 3,
+              "approver_user_id": "usr_c9de58cef8abc75d82e392ab"
+            }
+          ],
+          "due_at": "2026-10-25T14:00:12.619456+00:00",
+          "status": "approved",
+          "version": 3,
+          "provider": "internal",
+          "policy_version": 1,
+          "target_version": 5,
+          "current_step_id": null
+        },
+        "simulation": false,
+        "paid_amount": "0.00",
+        "record_mode": "internal_record",
+        "workflow_id": "dc7d0770683b464bb96b3c8935683a8b",
+        "posted_amount": "0.00",
+        "allocation_ids": [],
+        "payment_status": "not_requested",
+        "posting_status": "not_posted",
+        "legal_entity_id": "company-a",
+        "reversed_amount": "0.00",
+        "workflow_version": 3,
+        "payment_pending_amount": "0.00",
+        "posting_pending_amount": "0.00"
+      }
+    }
+  ],
+  "decisions": [
+    {
+      "actor_id": "usr_1e409024aae5a385eacc5803",
+      "action": "reject",
+      "data": {
+        "origin": "human",
+        "plan_id": "79edeae133f54dac8c6c38b659a207bd",
+        "parameters": {
+          "reason": "请补充交通行程附件",
+          "workflow_step_id": "d3f89093f8e8449a8c1763393ac5af89"
+        },
+        "target_version": 2
+      }
+    },
+    {
+      "actor_id": "usr_1e409024aae5a385eacc5803",
+      "action": "approve",
+      "data": {
+        "origin": "human",
+        "plan_id": "342e1159c0a9481c98f0e1b536d64a30",
+        "parameters": {
+          "workflow_step_id": "028398bab270454c8e018104129e34e4"
+        },
+        "target_version": 5
+      }
+    },
+    {
+      "actor_id": "usr_c9de58cef8abc75d82e392ab",
+      "action": "approve",
+      "data": {
+        "origin": "human",
+        "plan_id": "a0252043db05444a8acbee6d1efe8216",
+        "parameters": {
+          "workflow_step_id": "5696e44f67954dffbebc45a0623d3077"
+        },
+        "target_version": 5
+      }
+    }
+  ],
+  "counts": {
+    "finance_operation": 4,
+    "finance_receipt": 3,
+    "finance_invoice": 0,
+    "finance_settlement_operation": 0,
+    "finance_compliance_operation": 0,
+    "finance_exception": 1
+  },
+  "items": [
+    {
+      "operation_id": "2e06b4101fde494f89172367a0e9b8c0",
+      "position": 0,
+      "state": "material_received",
+      "exception_id": null,
+      "error_code": null
+    },
+    {
+      "operation_id": "560b5dc7ddea4ac79c490aa933458d80",
+      "position": 0,
+      "state": "material_received",
+      "exception_id": null,
+      "error_code": null
+    },
+    {
+      "operation_id": "84f8b5f86021477ebf1ae4718edb2fee",
+      "position": 0,
+      "state": "failed",
+      "exception_id": "91448fb1a9b14cc8b7e236e8535b064e",
+      "error_code": "FILE_DOWNLOAD_FAILED"
+    },
+    {
+      "operation_id": "fd59ac8e04f74e31ad7d63f067b24984",
+      "position": 0,
+      "state": "material_received",
+      "exception_id": null,
+      "error_code": null
+    }
+  ],
+  "trusted_subjects": [
+    [
+      "acme",
+      "usr_ad0bd2670995685e663e978b",
+      "human"
+    ]
+  ],
+  "extra_receipt_note": "receipt-invalid.pdf was retained as opaque unverified supporting bytes; material_received is not format or invoice verification",
+  "production_status": "not_verified"
+}

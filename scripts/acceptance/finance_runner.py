@@ -23,6 +23,16 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 QUICK_MODULES = [
+    'packages/xuanpu-finance/tests/test_f9_profile.py',
+    'packages/xuanpu-finance/tests/test_f9_compatibility.py',
+    'packages/xuanpu-finance/tests/test_f9_runtime.py',
+    'packages/xuanpu-finance/tests/test_f9_preflight.py',
+    'packages/xuanpu-server/tests/identity/test_finance_f9_gateway_e2e.py',
+    'packages/xuanpu-finance/tests/test_f9_summaries.py',
+    'packages/xuanpu-finance/tests/test_f9_api.py',
+    'packages/xuanpu-finance/tests/test_f9_process.py',
+    'packages/xuanpu-finance/tests/test_f9_contract.py',
+    'packages/xuanpu-finance/tests/test_f9_harness.py',
     'packages/xuanpu-finance/tests/test_f8_materials.py',
     'packages/xuanpu-finance/tests/test_f8_api.py',
     'packages/xuanpu-finance/tests/test_f8_contract.py',

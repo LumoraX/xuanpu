@@ -1,10 +1,11 @@
 ---
 name: accounts-payable
 description: 从真实供应商与合同、订单或验收目录准备原生应付、发票分配及提交或撤回计划。
-version: 0.9.0-f8
+version: 0.10.0-f9
 entry: false
 type: composite
 tool_names:
+- api__finance__getFinanceCapabilities
 - api__finance__listFinanceNotifications
 - api__finance__listLegalEntities
 - api__finance__listIntegrations
@@ -29,6 +30,16 @@ tool_names:
 - api__finance__importSupportingMaterials
 ---
 # 采购应付
+
+先调用getFinanceCapabilities；读取失败或字段非法时停止并说明。profile=internal_records时只处理内部收件元数据、普通报销草稿、记录查询和人工动作预检；不调用应付、资金、支付、记账、查验、红字、正式档案或通用接入检查接口。实例能力不是个人授权、审批或上线验收。
+
+## internal_records 分支
+
+profile=internal_records：此实例不处理应付或专用资金。说明当前只支持普通报销记录，交财务入口路由到expense-reimbursement；本Skill停止，不读取执行/资金规则或调用下文general工具。
+
+## general 分支
+
+以下仅在profile=general时执行。
 
 先读[执行规则](references/execution-rules.md)。查询有权公司，以listBusinessDocuments(kind=supplier)选择供应商，再按contract/order/acceptance查询至少一项已取得依据。所有引用保留kind/source/id/version/sha256，不能把聊天叙述登记成受控资料。
 createPayable需legal_entity_id、supplier_ref、正amount、due_date、business_refs、reason，可附真实evidence_ids。只建本人草稿，不批准、不付款。修订使用当前expected_version与完整draft，公司和simulation由服务端保持。

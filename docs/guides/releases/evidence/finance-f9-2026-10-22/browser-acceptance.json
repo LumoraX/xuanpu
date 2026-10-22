@@ -1,0 +1,53 @@
+{
+  "status": "passed",
+  "environment": "isolated_loopback_test",
+  "profile": "internal_records",
+  "claim_id": "a7663bc1890d4de2b58fda021ae448d2",
+  "version": 6,
+  "business_status": "approved",
+  "browser_actors": "automation with three test employee cookies, actual CSRF and signed human context; not production SSO or actual staff decisions",
+  "steps": [
+    "upload supporting PDF",
+    "confirm independent receipt",
+    "full reload and receipt recovery",
+    "prepare original declaration and select actual attachment",
+    "save draft",
+    "mine/draft/literal percent search",
+    "raw declaration not searched",
+    "human submit",
+    "manager reads original and rejects with reason",
+    "owner replaces attachment, saves revision and resubmits",
+    "remove two exact-hash platform source objects",
+    "manager reads independent supplement and approves",
+    "reviewer mine excludes others",
+    "finance reviewer approves",
+    "approved/visible filter",
+    "history reason and old-version original download",
+    "internal overview",
+    "platform source fault before finance confirmation",
+    "actual failed receipt notification exact match with FILE_DOWNLOAD_FAILED"
+  ],
+  "revisions": 6,
+  "decisions": [
+    "reject",
+    "approve",
+    "approve"
+  ],
+  "decision_origins": [
+    "human"
+  ],
+  "external_operation_counts": {
+    "finance_invoice": 0,
+    "finance_settlement_operation": 0,
+    "finance_compliance_operation": 0
+  },
+  "supporting_operations": 4,
+  "receipts": 3,
+  "source_fault_failures": 1,
+  "model_calls": 0,
+  "blocked_model_attempts": 3,
+  "test_data_note": "Two valid PDFs are used by the claim; an additional opaque malformed PDF is retained only as unverified supporting bytes; one separate valid PDF source is deliberately removed to force download failure. Material receipt is not invoice or file format verification.",
+  "earlier_attempt": "exploration-before-session-renewal/record.json retains incomplete trial whose preissued 3600-second fixture session expired before supplementation; no product code changed",
+  "production_status": "not_verified",
+  "source_frozen_files": 368
+}

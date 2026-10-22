@@ -14,6 +14,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from xuanpu_finance.operations import request_digest
 from xuanpu_finance.readiness.checks import build_report
+from xuanpu_finance.readiness.internal import internal_report
 from xuanpu_finance.readiness.models import ReadinessCheck, ReadinessReport, check
 
 if TYPE_CHECKING:
@@ -168,7 +169,10 @@ async def preflight(config: FinanceConfig) -> ReadinessReport:
         )
     )
     scopes = [(c.tenant_id, c.legal_entity_id) for c in config.companies] or [("", "")]
-    reports = [build_report(offline_snapshot(config, *scope), resources) for scope in scopes]
+    snapshots = [offline_snapshot(config, *scope) for scope in scopes]
+    if config.profile == "internal_records":
+        return internal_report(config, snapshots, resources)
+    reports = [build_report(snapshot, resources) for snapshot in snapshots]
     result = reports[0]
     if len(reports) > 1:
         result["checks"] = [c for r in reports for c in r["checks"]]

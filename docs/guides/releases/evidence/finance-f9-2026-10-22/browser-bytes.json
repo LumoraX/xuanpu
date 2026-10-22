@@ -1,0 +1,32 @@
+{
+  "items": [
+    {
+      "download": "财务材料-05a440cab2924f1a8dafbab868e8722a.pdf",
+      "preserved": "/tmp/xuanpu-finance-f9-build/downloads/original.pdf",
+      "fixture": "receipt-original.pdf",
+      "bytes": 659,
+      "sha256": "c9f2257792587a4c0571dc827a272a52b14db6f3f9088582d1fd450fed56dff6",
+      "equal": true,
+      "valid_test_pdf": true
+    },
+    {
+      "download": "财务材料-4f9a8cc11b574fda974ba19e7ea7b4c6.pdf",
+      "preserved": "/tmp/xuanpu-finance-f9-build/downloads/supplement.pdf",
+      "fixture": "receipt-supplement.pdf",
+      "bytes": 669,
+      "sha256": "9b80ae6ca6ccd7f8853aab56d24fecbbbc9beb8077d3f48757eaf7b7e30cc069",
+      "equal": true,
+      "valid_test_pdf": true
+    },
+    {
+      "download": "财务材料-05a440cab2924f1a8dafbab868e8722a (1).pdf",
+      "preserved": "/tmp/xuanpu-finance-f9-build/downloads/history-original.pdf",
+      "fixture": "receipt-original.pdf",
+      "bytes": 659,
+      "sha256": "c9f2257792587a4c0571dc827a272a52b14db6f3f9088582d1fd450fed56dff6",
+      "equal": true,
+      "valid_test_pdf": true
+    }
+  ],
+  "production_status": "not_verified"
+}

@@ -1,6 +1,6 @@
-# 玄圃财务 F0–F8
+# 玄圃财务 F0–F9
 
-当前包契约finance `0.9.0-f8`、74项API与7个Skill；当前优先发票申报和报销内部流转记录，不做支付。用法见[F8指南](../../docs/guides/finance-f8.md)，本轮验证与制品见[F8验收记录](../../docs/guides/releases/2026-10-22-finance-f8-acceptance.md)。
+当前包契约finance `0.10.0-f9`、76项API与7个Skill；当前优先发票申报和报销内部流转记录，不做支付。用法见[F9指南](../../docs/guides/finance-f9.md)，本轮验证与制品见[F9验收记录](../../docs/guides/releases/2026-10-22-finance-f9-acceptance.md)。
 
 独立进程接收电子票原件、加密保留原字节、持久逐项操作和异常。提供归集、证据、轻量报销记录与真实内部人工审批；F2提供应付及通用付款/记账接口、专用人工批准和隔离闭环；真实支付、税务查验、ERP、归档未配置。原件哈希一致只说明内容一致，不表示官方验真。
 
@@ -56,3 +56,5 @@ F4原生提醒、SQL权限分页、运营概览与local配套备份恢复见[使
 F5新增严格`funding_case`：无票预付、员工已付款后的本人偿还、供应商授权第三方收款，以及不再付款的预付核销/内部退款核对。`funding_policies`缺省为空，启用须五场景显式审批链及invoice_backed基础制度；真实供应商/正式制度未选，仍仅显式simulation，正式默认关闭。支持材料用F0固定版本责任链独立加密保存，purpose为supporting_material，终态material_received、source为not_checked，不伪造invoice或银行成功。核销/退回共同受原确定已付限额，unknown不算已付；最终批准的收尾事实不可普通回退。模型仅准备与查询，人工执行、授权撤销仍走真实员工网关。详见[F6指南](../../docs/guides/finance-f6.md)。
 
 F6新增只读接入准备检查和仓库固定隔离验收入口；配置通过不构成正式验收或执行许可。正式接入逐项证据见[供应商清单](../../docs/guides/finance-provider-acceptance.md)。
+
+`profile=internal_records`提供显式内部记录部署：必填公司/制度/实际岗位，启动迁移前只读核对已有结构与全租户业务兼容性，不装配外部客户端/worker/回调。专用离线预检成功仍not_verified，模板待填写即blocked。`getFinanceCapabilities`读取实例模式；`listExpenseClaimSummaries`只投影九字段，默认本人20条、最大50，按单号/事由字面检索，详情另读原文。独立存储和真人决定不变。

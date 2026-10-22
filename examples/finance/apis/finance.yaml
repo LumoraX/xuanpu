@@ -1,14 +1,14 @@
 openapi: 3.0.3
 info:
-  title: 玄圃财务 F0—F8 API
-  version: 0.9.0-f8
+  title: 玄圃财务 F0—F9 API
+  version: 0.10.0-f9
   description: 独立存储与Skill/API/HITL；当前优先发票申报、内部报销、真人审批和完整流转记录，外部支付与正式验真归档未启用。
 servers:
 - url: http://127.0.0.1:8443
 security:
 - serviceBearer: []
   actorContext: []
-x-design-status: implemented-f0-f8-internal-records
+x-design-status: implemented-f0-f9-internal-records
 x-trusted-context: 平台签名注入X-Xuanpu-Context，禁止模型提供身份；executeFinanceAction/reconcileOperation及F2取消只允许cookie人工网关。
 paths:
   /v1/finance/legal-entities:
@@ -1426,6 +1426,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SupportingMaterialImportDetail'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/finance/capabilities:
+    get:
+      operationId: getFinanceCapabilities
+      summary: 读取实例运行模式；不代表个人授权或上线验收
+      x-delivery-phase: F9
+      responses:
+        '200':
+          description: 读取实例运行模式；不代表个人授权或上线验收
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinanceCapabilities'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/finance/expense-claim-summaries:
+    get:
+      operationId: listExpenseClaimSummaries
+      summary: 检索本人或有权记录的摘要及独立总数，不返回申报原文
+      x-delivery-phase: F9
+      parameters:
+      - $ref: '#/components/parameters/LegalEntity'
+      - name: view
+        in: query
+        schema:
+          type: string
+          enum:
+          - mine
+          - visible
+          default: mine
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: &id014
+          - draft
+          - submitted
+          - under_review
+          - approved
+          - rejected
+          - withdrawn
+      - name: q
+        in: query
+        description: trim后按字面量忽略大小写匹配单号/事由，不查询原文
+        schema:
+          type: string
+          maxLength: 128
+      - $ref: '#/components/parameters/Cursor'
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      responses:
+        '200':
+          description: 检索本人或有权记录的摘要及独立总数，不返回申报原文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseClaimSummaryPage'
         default:
           $ref: '#/components/responses/Error'
 components:
@@ -6045,3 +6108,88 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SupportingMaterialMetadata'
+    ExpenseClaimSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - legal_entity_id
+      - owner_id
+      - version
+      - status
+      - total
+      - reason
+      - created_at
+      - record_mode
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        legal_entity_id:
+          $ref: '#/components/schemas/Id'
+        owner_id:
+          $ref: '#/components/schemas/Id'
+        version:
+          $ref: '#/components/schemas/Version'
+        status:
+          type: string
+          enum: *id014
+        total:
+          $ref: '#/components/schemas/Money'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        created_at:
+          type: string
+          format: date-time
+        record_mode:
+          type: string
+          enum:
+          - invoice_backed
+          - internal_record
+    ExpenseClaimSummaryPage:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - next_cursor
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ExpenseClaimSummary'
+        total:
+          type: integer
+          minimum: 0
+        next_cursor:
+          type: string
+          nullable: true
+    FinanceCapabilities:
+      type: object
+      additionalProperties: false
+      required:
+      - profile
+      - mode
+      - service_version
+      - internal_records_only
+      properties:
+        profile:
+          type: string
+          enum:
+          - general
+          - internal_records
+        mode:
+          type: string
+          enum:
+          - enabled
+          - read_only
+          - disabled
+          - draining
+        service_version:
+          type: string
+          minLength: 1
+          maxLength: 128
+        internal_records_only:
+          type: boolean

@@ -23,6 +23,7 @@ from xuanpu_finance.objects import EncryptedLocalObjects, EncryptedS3Objects
 from xuanpu_finance.settlement.providers import ProviderRegistry
 from xuanpu_finance.settlement.worker import SettlementWorker
 from xuanpu_finance.storage import FinanceStore
+from xuanpu_finance.storage.f9_compatibility import check_internal_database
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -71,6 +72,8 @@ async def objects_from_config(
 
 async def configure_store(pool: asyncpg.Pool, config: FinanceConfig) -> FinanceStore:
     """先核对模拟库真实身份，再迁移和注入独立公司/业务配置。"""
+    if config.profile == "internal_records":
+        await check_internal_database(pool)
     if config.execution_simulation:
         database = await pool.fetchval("SELECT current_database()")
         if not isinstance(database, str) or not database.startswith("finance_test"):
@@ -118,6 +121,7 @@ async def provider_registry(config: FinanceConfig, resources: AsyncExitStack) ->
 @asynccontextmanager
 async def open_runtime(config: FinanceConfig) -> AsyncIterator[FastAPI]:
     """持有独立数据库锁，先停止服务后台再关闭其资源。"""
+    config = type(config).model_validate(config.model_dump())
     async with AsyncExitStack() as resources:
         pool = await asyncpg.create_pool(
             await secret_text(config.database_dsn_file), min_size=1, max_size=8
@@ -155,24 +159,7 @@ async def open_runtime(config: FinanceConfig) -> AsyncIterator[FastAPI]:
         if isinstance(objects, EncryptedS3Objects):
             resources.push_async_callback(asyncio.to_thread, objects.client.close)
         worker = FinanceWorker(store, objects, gateway, synthetic=config.synthetic)
-        providers = await provider_registry(config, resources)
-        settlement = SettlementWorker(store, providers, gateway)
-        compliance = await compliance_registry(config, resources)
-        archive = ArchivePipeline(compliance, objects, EvidenceFetcher({
-            "settlement": providers, "compliance": compliance}))
-        compliance.archive = archive
-        compliance_worker = SettlementWorker(ComplianceQueueAdapter(store, archive), compliance, gateway)
-        app = create_app(
-            store=store,
-            auth=auth,
-            worker=worker,
-            mode=config.mode,
-            settlement_worker=settlement,
-            settlement_providers=providers,
-            compliance_worker=compliance_worker,
-            compliance_providers=compliance,
-            notification_worker=NotificationsWorker(store),
-        )
+        app = await runtime_app(config, resources, store, auth, worker, gateway, objects)
         app.state.finance_store, app.state.finance_objects = store, objects
         app.state.lock_pid = await lock.fetchval("SELECT pg_backend_pid()")
 
@@ -207,3 +194,26 @@ async def compliance_registry(config: FinanceConfig, resources: AsyncExitStack) 
             raise ValueError("合规回调密钥至少32字节")
     return ComplianceRegistry(list(config.compliance_providers), client,
                               tokens=tokens, callback_secrets=secrets)
+
+
+async def runtime_app(
+    config: FinanceConfig, resources: AsyncExitStack, store: FinanceStore,
+    auth: FinanceAuthenticator, worker: FinanceWorker, gateway: PlatformGateway,
+    objects: OriginalObjects,
+) -> FastAPI:
+    """内部实例仅装配收件和本地通知，外部注册表与专用客户端都不创建。"""
+    if config.profile == "internal_records":
+        return create_app(store=store, auth=auth, worker=worker, mode=config.mode,
+                          profile=config.profile, notification_worker=NotificationsWorker(store),
+                          objects=objects)
+    providers = await provider_registry(config, resources)
+    settlement = SettlementWorker(store, providers, gateway)
+    compliance = await compliance_registry(config, resources)
+    archive = ArchivePipeline(compliance, objects, EvidenceFetcher({
+        "settlement": providers, "compliance": compliance}))
+    compliance.archive = archive
+    compliance_worker = SettlementWorker(ComplianceQueueAdapter(store, archive), compliance, gateway)
+    return create_app(store=store, auth=auth, worker=worker, mode=config.mode,
+        profile=config.profile, settlement_worker=settlement, settlement_providers=providers,
+        compliance_worker=compliance_worker, compliance_providers=compliance,
+        notification_worker=NotificationsWorker(store), objects=objects)

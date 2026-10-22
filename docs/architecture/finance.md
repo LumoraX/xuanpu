@@ -1,6 +1,8 @@
-# 财务 F0–F8 当前架构
+# 财务 F0–F9 当前架构
 
-财务作为进程外 HTTP 服务运行。玄圃负责企业员工身份、会话和工具入口；独立财务服务持有公司授权、导入操作、发票、异常、原件回执及事件。平台进程不加载财务业务代码。当前覆盖F0原件、F1报销/人工审批、F2应付/付款/记账、F3查验/红字/档案、F4提醒/恢复、F5专用资金及F6只读接入准备。当前F8按用户要求聚焦发票申报与内部报销流转记录，契约finance 0.9.0-f8、74项API、7个Skill；实际制品与门禁以[F8验收记录](../guides/releases/2026-10-22-finance-f8-acceptance.md)为准。真实供应商、正式制度、官方标准和正式归档尚未验收。
+财务作为进程外 HTTP 服务运行。玄圃负责企业员工身份、会话和工具入口；独立财务服务持有公司授权、导入操作、发票、异常、原件回执及事件。平台进程不加载财务业务代码。当前覆盖F0原件、F1报销/人工审批、F2应付/付款/记账、F3查验/红字/档案、F4提醒/恢复、F5专用资金及F6只读接入准备。当前F9按用户要求聚焦发票申报与内部报销流转记录，不做支付；新增摘要检索、内部记录专用profile及配置预检。契约finance 0.10.0-f9、76项API、7个Skill；实际制品与门禁以[F9验收记录](../guides/releases/2026-10-22-finance-f9-acceptance.md)为准。真实供应商、正式制度、官方标准和正式归档尚未验收。
+
+以下图包含general模式的可替换外部通道；internal_records不装配外部worker、供应商客户端及回调。
 
 ```mermaid
 flowchart LR
@@ -121,3 +123,16 @@ F7复用既有本人确认、顺序审批、驳回补充重提、撤回与持久
 独立PG原有operation/item/receipt建立本人材料目录，不新增平台业务表。两个只读API逐次核当前租户、公司、owner和用途；count/items同repeatable_read，复合倒序游标绑定完整范围。逐项回执责任链决定selectable，整体partial或cancelled不抹去已保全项；元数据不代替实际原件完整性验证。
 
 人工页提供已收件附件选择与持久收件列表。localStorage仅为受限恢复线索，平台POST前保全原request_id，财务POST前保全固定ref与原key；未知人工恢复、known op只读，损坏或存储失败拒绝发送。内联选择保留当前未保存内容，整页刷新不承诺恢复正文。服务端仍是状态、权限和责任链依据；HITL计划与实际真人执行边界不变。
+
+
+## F9 内部记录专用实例与摘要
+
+`profile=general`保持已有通用接口和回归，`profile=internal_records`是显式受限部署形态，与enabled/read_only/disabled/draining正交。配置必须有公司、enabled/internal_record制度和实际collector/审批岗位，拒绝模拟、未填写标识及外部策略/供应商/目录/账户。进程取得独占锁后，先以只读repeatable_read检查整个实例全部租户：非内部报销、正式发票、结算/合规操作、非supporting_material导入（含未生成invoice的accepted/running）、非内部动作计划、启用的外部策略/供应商或simulation均阻断。空库允许首次迁移；未知旧结构拒绝，不为通过检查删除或重写旧业务。
+
+内部profile只登记内部收件、普通报销、真实审批/提醒及只读overview的明确操作白名单；不装配结算/合规注册表、客户端、worker和回调。preview/getPlan/execute另校验实际计划的expense_claim目标及submit_claim/approve/reject/withdraw动作，旧计划不能借共享入口越界。human来源、当前身份/公司授权、版本、策略代数、CAS和幂等均继续生效。
+
+`getFinanceCapabilities`在可信员工认证后仅返回profile/mode/service_version/internal_records_only，不代表个人权限、ready或批准。页面与所有Skill先读能力；内部模式隐藏通用功能并限制业务引导，服务端白名单仍是执行边界。读取失败或元数据非法不能静默按general处理。
+
+`listExpenseClaimSummaries`用显式SQL投影九个字段，不组装完整快照。当前tenant/company/owner、reviewer或历史分派权限过滤，mine额外限定owner，默认20最大50条；事由/单号字面忽略大小写检索，游标绑定完整身份和筛选，created_at/id倒序；count/items同一repeatable_read。旧详情/历史接口仍保持完整事实。页面过滤切换使旧异步结果失效，pending写/收件恢复规则不变。
+
+专用离线预检只读固定凭据文件，不连接数据库/网关、不创建对象目录或worker，不要求外部支付/ERP/档案能力。所有检查通过仍not_verified，不能替代实际部署、人员制度、网络权限或备份恢复验收。填写与运维步骤见[F9指南](../guides/finance-f9.md)。

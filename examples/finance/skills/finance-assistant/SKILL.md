@@ -1,10 +1,11 @@
 ---
 name: finance-assistant
 description: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。
-version: 0.9.0-f8
+version: 0.10.0-f9
 entry: true
 type: composite
-tool_names: []
+tool_names:
+- api__finance__getFinanceCapabilities
 child_skills:
 - invoice-intake
 - expense-reimbursement
@@ -14,6 +15,16 @@ child_skills:
 - archive-audit
 ---
 # 财务助手
+
+先调用getFinanceCapabilities；读取失败或字段非法时停止并说明。profile=internal_records时只处理内部收件元数据、普通报销草稿、记录查询和人工动作预检；不调用应付、资金、支付、记账、查验、红字、正式档案或通用接入检查接口。实例能力不是个人授权、审批或上线验收。
+
+## internal_records 分支
+
+profile=internal_records：按目标交expense-reimbursement准备普通草稿与摘要查询、invoice-intake读取本人收件元数据、finance-review准备当前报销步骤预检。上传、原件及实际决定交人工入口。完成这条分支后返回，不执行下文general流程，不读取资金规则。
+
+## general 分支
+
+以下仅在profile=general时执行。
 
 按用户目标读取 invoice-intake（原件）、expense-reimbursement（报销）、accounts-payable（应付）、finance-review（实际待审）或 posting-reconciliation（付款、入账与核对）。原件解释见[边界](references/f0-boundary.md)。
 先查有权公司与真实受控目录，再准备记录或计划。单据、行动计划、人工待办及结果均由独立财务API恢复；重新会话不重建批准、不换键重放付款。

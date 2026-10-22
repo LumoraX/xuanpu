@@ -14,6 +14,7 @@ from xuanpu_finance.compliance_config import validate_compliance_config
 from xuanpu_finance.expenses.models import ExpensePolicy  # noqa: TC001 — Pydantic运行时解析
 from xuanpu_finance.funding.models import FundingPolicy  # noqa: TC001
 from xuanpu_finance.funding_config import validate_funding_config
+from xuanpu_finance.internal_profile import validate_internal_config
 from xuanpu_finance.settlement.models import (  # noqa: TC001
     BusinessSnapshot,
     PayeeAccount,
@@ -113,6 +114,7 @@ class GrantConfig(StrictConfig):
 class FinanceConfig(StrictConfig):
     """不含平台库地址、对象密钥或环境变量读取逻辑。"""
 
+    profile: Literal["general", "internal_records"] = "general"
     database_dsn_file: Path
     service_token_file: Path
     issuer: str = Field(min_length=1)
@@ -155,6 +157,7 @@ class FinanceConfig(StrictConfig):
         validate_settlement_config(self)
         validate_compliance_config(self)
         validate_funding_config(self)
+        validate_internal_config(self)
         return self
 
     def validate_expense_links(self, companies: set[tuple[str, str]]) -> None:
