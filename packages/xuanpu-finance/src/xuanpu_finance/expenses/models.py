@@ -59,6 +59,20 @@ class ExpenseDraft(StrictModel):
     lines: Annotated[list[ExpenseLine], Field(min_length=1, max_length=100)]
     evidence_ids: Annotated[list[Identifier], Field(max_length=100)] = Field(default_factory=list)
 
+    invoice_information: Annotated[str, Field(min_length=1, max_length=20000)] | None = None
+
+    @field_validator("invoice_information")
+    @classmethod
+    def nonblank_information(cls, value: str | None) -> str | None:
+        """拒绝纯空白，保留员工提供的全部原文。"""
+        if value is not None:
+            if not value.strip():
+                raise ValueError("发票信息不能全部为空白")
+            if "\x00" in value:
+                raise ValueError("发票信息不能包含NUL字符")
+            value.encode("utf-8")
+        return value
+
     @model_validator(mode="after")
     def bounded_total(self) -> Self:
         """服务端求和时拒绝numeric(18,2)溢出。"""

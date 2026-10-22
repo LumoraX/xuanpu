@@ -1,0 +1,16 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____________ test_internal_records_tools_and_declared_text_contract ____________
+
+    def test_internal_records_tools_and_declared_text_contract() -> None:
+        """申报原文不能附带验真状态；原件不应出现在模型工具列表。"""
+        document = contracts()['finance']
+        methods = operations(document)
+>       assert methods['listExpenseClaimHistory'][:2] == ('/v1/finance/expense-claims/{id}/history', 'get')
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'listExpenseClaimHistory'
+
+packages/xuanpu-finance/tests/test_f7_contract.py:13: KeyError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f7_contract.py::test_internal_records_tools_and_declared_text_contract
+1 failed in 0.66s

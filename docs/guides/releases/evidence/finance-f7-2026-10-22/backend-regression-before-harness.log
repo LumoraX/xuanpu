@@ -1,0 +1,355 @@
+........................................................................ [ 12%]
+........................................................................ [ 25%]
+........................................................................ [ 38%]
+...............................................................F.FF.F..F [ 51%]
+F.......................................................F............... [ 63%]
+........................................................................ [ 76%]
+........................................................................ [ 89%]
+...........................................................              [100%]
+=================================== FAILURES ===================================
+_______________ test_backup_restore_actual_original_and_database _______________
+
+maintenance_database = (<xuanpu_finance.storage.store.FinanceStore object at 0x10fe0e600>, [MaintenanceOptions(database_dsn_file=PosixPath('/..., 'postgresql://finance_test:f7-isolated-local-test@127.0.0.1:64844/finance_restore_64f8ce27203c47b0b138b4fc54051edc'])
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_backup_restore_actual_ori0')
+
+    async def test_backup_restore_actual_original_and_database(maintenance_database,tmp_path: Path) -> None:
+        """真实dump/restore后，原件可用AAD解密，业务行与原摘要一致。"""
+        store,options,dsns=maintenance_database
+        raw=await source_original(store,options[0].object_root)
+        dump,load=pg_tools(tmp_path)
+        output=tmp_path/'backup'
+>       result=await backup(options[0],output,pg_dump=str(dump))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f4_maintenance.py:84: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/src/xuanpu_finance/maintenance.py:75: in backup
+    await guard.run([pg_dump, '--format=custom', '--no-owner', '--no-acl'], pg_environment(dsn), stdout=stream)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <xuanpu_finance.maintenance_types.MaintenanceLock object at 0x10fde73e0>
+args = ['/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_backup_restore_actual_ori0/pg_dump', '--format=custom', '--no-owner', '--no-acl']
+env = {'BROWSER_USE_ACCESS_VERIFYING_IDENTITY': 'MCowBQYDK2VwAyEAEounvEDzMOH3CSC32uae+uGRsLUOzz/pDw47BgIqmTk=', 'CODEX_APPLY...', 'CODEX_APP_TOOLS_PIPE_PATH': '/tmp/codex-app-tools/936331de-030d-4020-8186-4677678a4023.sock', 'CODEX_CI': '1', ...}
+streams = {'stdout': <_io.BufferedWriter name='/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_backup_restore_actual_ori0/.finance-backup-icz86dnq/database.dump'>}
+
+    async def run(self, args: list[str], env: dict[str, str], **streams: Any) -> None:
+        """调用成熟工具，丢锁或取消时终止并等待子进程，忽略敏感stderr正文。"""
+        await self.check()
+        try:
+            process = await asyncio.create_subprocess_exec(*args, env=env, stderr=asyncio.subprocess.PIPE, **streams)
+        except OSError as error:
+            raise MaintenanceError('PG_TOOL_UNAVAILABLE') from error
+        done = asyncio.create_task(process.communicate())
+        lost = asyncio.create_task(self.lost.wait())
+        try:
+            await asyncio.wait([done, lost], return_when=asyncio.FIRST_COMPLETED)
+            if self.lost.is_set():
+                raise MaintenanceError('MAINTENANCE_LOCK_LOST')
+            await done
+            if process.returncode:
+>               raise MaintenanceError('PG_TOOL_FAILED')
+E               xuanpu_finance.maintenance_types.MaintenanceError: PG_TOOL_FAILED
+
+packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py:70: MaintenanceError
+_____________ test_restore_rejects_tamper_key_and_nonempty_target ______________
+
+maintenance_database = (<xuanpu_finance.storage.store.FinanceStore object at 0x10f69a210>, [MaintenanceOptions(database_dsn_file=PosixPath('/..., 'postgresql://finance_test:f7-isolated-local-test@127.0.0.1:64844/finance_restore_1f5538c4bb1d42a6a26332d1284e18ee'])
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_restore_rejects_tamper_ke0')
+
+    async def test_restore_rejects_tamper_key_and_nonempty_target(maintenance_database,tmp_path: Path) -> None:
+        """恢复校验在写入前拒绝错密钥、清册篡改和已有对象根。"""
+        store,options,_=maintenance_database
+        await source_original(store,options[0].object_root)
+        dump,load=pg_tools(tmp_path);output=tmp_path/'backup'
+>       await backup(options[0],output,pg_dump=str(dump))
+
+packages/xuanpu-finance/tests/test_f4_maintenance.py:120: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/src/xuanpu_finance/maintenance.py:75: in backup
+    await guard.run([pg_dump, '--format=custom', '--no-owner', '--no-acl'], pg_environment(dsn), stdout=stream)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <xuanpu_finance.maintenance_types.MaintenanceLock object at 0x10f03d8e0>
+args = ['/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_restore_rejects_tamper_ke0/pg_dump', '--format=custom', '--no-owner', '--no-acl']
+env = {'BROWSER_USE_ACCESS_VERIFYING_IDENTITY': 'MCowBQYDK2VwAyEAEounvEDzMOH3CSC32uae+uGRsLUOzz/pDw47BgIqmTk=', 'CODEX_APPLY...', 'CODEX_APP_TOOLS_PIPE_PATH': '/tmp/codex-app-tools/936331de-030d-4020-8186-4677678a4023.sock', 'CODEX_CI': '1', ...}
+streams = {'stdout': <_io.BufferedWriter name='/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_restore_rejects_tamper_ke0/.finance-backup-5tarii6p/database.dump'>}
+
+    async def run(self, args: list[str], env: dict[str, str], **streams: Any) -> None:
+        """调用成熟工具，丢锁或取消时终止并等待子进程，忽略敏感stderr正文。"""
+        await self.check()
+        try:
+            process = await asyncio.create_subprocess_exec(*args, env=env, stderr=asyncio.subprocess.PIPE, **streams)
+        except OSError as error:
+            raise MaintenanceError('PG_TOOL_UNAVAILABLE') from error
+        done = asyncio.create_task(process.communicate())
+        lost = asyncio.create_task(self.lost.wait())
+        try:
+            await asyncio.wait([done, lost], return_when=asyncio.FIRST_COMPLETED)
+            if self.lost.is_set():
+                raise MaintenanceError('MAINTENANCE_LOCK_LOST')
+            await done
+            if process.returncode:
+>               raise MaintenanceError('PG_TOOL_FAILED')
+E               xuanpu_finance.maintenance_types.MaintenanceError: PG_TOOL_FAILED
+
+packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py:70: MaintenanceError
+___________ test_corrupt_ciphertext_and_nonempty_restore_fail_closed ___________
+
+maintenance_database = (<xuanpu_finance.storage.store.FinanceStore object at 0x10f03d580>, [MaintenanceOptions(database_dsn_file=PosixPath('/..., 'postgresql://finance_test:f7-isolated-local-test@127.0.0.1:64844/finance_restore_b73b502ab70949b5b77a45d70c1737cd'])
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_corrupt_ciphertext_and_no0')
+
+    async def test_corrupt_ciphertext_and_nonempty_restore_fail_closed(maintenance_database,tmp_path: Path) -> None:
+        """头仍合法的损坏原件必须实际认证失败；既有目标表不能被覆盖。"""
+        store,options,dsns=maintenance_database
+        await source_original(store,options[0].object_root)
+        dump,load=pg_tools(tmp_path);output=tmp_path/'backup'
+>       await backup(options[0],output,pg_dump=str(dump))
+
+packages/xuanpu-finance/tests/test_f4_maintenance.py:135: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/src/xuanpu_finance/maintenance.py:75: in backup
+    await guard.run([pg_dump, '--format=custom', '--no-owner', '--no-acl'], pg_environment(dsn), stdout=stream)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <xuanpu_finance.maintenance_types.MaintenanceLock object at 0x10fa68a40>
+args = ['/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_corrupt_ciphertext_and_no0/pg_dump', '--format=custom', '--no-owner', '--no-acl']
+env = {'BROWSER_USE_ACCESS_VERIFYING_IDENTITY': 'MCowBQYDK2VwAyEAEounvEDzMOH3CSC32uae+uGRsLUOzz/pDw47BgIqmTk=', 'CODEX_APPLY...', 'CODEX_APP_TOOLS_PIPE_PATH': '/tmp/codex-app-tools/936331de-030d-4020-8186-4677678a4023.sock', 'CODEX_CI': '1', ...}
+streams = {'stdout': <_io.BufferedWriter name='/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_corrupt_ciphertext_and_no0/.finance-backup-73yd7jrd/database.dump'>}
+
+    async def run(self, args: list[str], env: dict[str, str], **streams: Any) -> None:
+        """调用成熟工具，丢锁或取消时终止并等待子进程，忽略敏感stderr正文。"""
+        await self.check()
+        try:
+            process = await asyncio.create_subprocess_exec(*args, env=env, stderr=asyncio.subprocess.PIPE, **streams)
+        except OSError as error:
+            raise MaintenanceError('PG_TOOL_UNAVAILABLE') from error
+        done = asyncio.create_task(process.communicate())
+        lost = asyncio.create_task(self.lost.wait())
+        try:
+            await asyncio.wait([done, lost], return_when=asyncio.FIRST_COMPLETED)
+            if self.lost.is_set():
+                raise MaintenanceError('MAINTENANCE_LOCK_LOST')
+            await done
+            if process.returncode:
+>               raise MaintenanceError('PG_TOOL_FAILED')
+E               xuanpu_finance.maintenance_types.MaintenanceError: PG_TOOL_FAILED
+
+packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py:70: MaintenanceError
+_______________ test_manifest_rewrite_cannot_hide_modified_dump ________________
+
+maintenance_database = (<xuanpu_finance.storage.store.FinanceStore object at 0x10f674b30>, [MaintenanceOptions(database_dsn_file=PosixPath('/..., 'postgresql://finance_test:f7-isolated-local-test@127.0.0.1:64844/finance_restore_2e4119cb185f4fa5853fb2cc70a0de89'])
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_manifest_rewrite_cannot_h0')
+
+    async def test_manifest_rewrite_cannot_hide_modified_dump(maintenance_database,tmp_path: Path) -> None:
+        """不能同时改文件和清册hash绕过备份完整性认证。"""
+        store,options,_=maintenance_database
+        await source_original(store,options[0].object_root)
+        dump,load=pg_tools(tmp_path);output=tmp_path/'backup'
+>       await backup(options[0],output,pg_dump=str(dump))
+
+packages/xuanpu-finance/tests/test_f4_maintenance.py:169: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/src/xuanpu_finance/maintenance.py:75: in backup
+    await guard.run([pg_dump, '--format=custom', '--no-owner', '--no-acl'], pg_environment(dsn), stdout=stream)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <xuanpu_finance.maintenance_types.MaintenanceLock object at 0x10f676630>
+args = ['/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_manifest_rewrite_cannot_h0/pg_dump', '--format=custom', '--no-owner', '--no-acl']
+env = {'BROWSER_USE_ACCESS_VERIFYING_IDENTITY': 'MCowBQYDK2VwAyEAEounvEDzMOH3CSC32uae+uGRsLUOzz/pDw47BgIqmTk=', 'CODEX_APPLY...', 'CODEX_APP_TOOLS_PIPE_PATH': '/tmp/codex-app-tools/936331de-030d-4020-8186-4677678a4023.sock', 'CODEX_CI': '1', ...}
+streams = {'stdout': <_io.BufferedWriter name='/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_manifest_rewrite_cannot_h0/.finance-backup-6r13xglv/database.dump'>}
+
+    async def run(self, args: list[str], env: dict[str, str], **streams: Any) -> None:
+        """调用成熟工具，丢锁或取消时终止并等待子进程，忽略敏感stderr正文。"""
+        await self.check()
+        try:
+            process = await asyncio.create_subprocess_exec(*args, env=env, stderr=asyncio.subprocess.PIPE, **streams)
+        except OSError as error:
+            raise MaintenanceError('PG_TOOL_UNAVAILABLE') from error
+        done = asyncio.create_task(process.communicate())
+        lost = asyncio.create_task(self.lost.wait())
+        try:
+            await asyncio.wait([done, lost], return_when=asyncio.FIRST_COMPLETED)
+            if self.lost.is_set():
+                raise MaintenanceError('MAINTENANCE_LOCK_LOST')
+            await done
+            if process.returncode:
+>               raise MaintenanceError('PG_TOOL_FAILED')
+E               xuanpu_finance.maintenance_types.MaintenanceError: PG_TOOL_FAILED
+
+packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py:70: MaintenanceError
+_______________ test_restore_preserves_hitl_and_unknown_requests _______________
+
+maintenance_database = (<xuanpu_finance.storage.store.FinanceStore object at 0x10fde6600>, [MaintenanceOptions(database_dsn_file=PosixPath('/..., 'postgresql://finance_test:f7-isolated-local-test@127.0.0.1:64844/finance_restore_a308fc1b8683485b9d562abda1b1f0cb'])
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_restore_preserves_hitl_an0')
+
+    async def test_restore_preserves_hitl_and_unknown_requests(maintenance_database,tmp_path: Path) -> None:
+        """恢复真实业务批准与F2/F3原未知请求，恢复不配置通道或启动执行器。"""
+        from xuanpu_finance.invoices.worker import FinanceWorker
+    
+        from .test_expense_domain import execute
+        from .test_f2_domain import action_plan, approved_payable
+        from .test_f3_domain import configured
+        from .test_parser import SAMPLE
+        from .test_worker import Gateway, ref
+        store,options,dsns=maintenance_database
+        _,payer,_,approver,doc=await approved_payable(store)
+        plan=await action_plan(store,payer,approver,doc,'execute_payment')
+        payment=await execute(store,payer,plan)
+        job=await store.claim_settlement();payment_request=await store.prepare_settlement_dispatch(job)
+        await store.defer_settlement(job,'TIMEOUT',uncertain=True);await store.release_settlement(job)
+        owner,_,_=await configured(store)
+        await store.accept_import(owner,'e',[ref('retained',SAMPLE)],'retained')
+        await FinanceWorker(store,EncryptedLocalObjects(options[0].object_root,b'k'*32),Gateway({'retained':SAMPLE}),synthetic=True).run_once()
+        invoices=await store.list_invoices(owner,'e');id=next(x['id'] for x in invoices['items'] if x.get('number')=='SYN-001')
+        tax=await store.verify_invoice(owner,id,1,'verify-retained')
+        job=await store.claim_compliance();tax_request=await store.prepare_compliance_dispatch(job)
+        await store.defer_compliance(job,'TIMEOUT',uncertain=True);await store.release_compliance(job)
+        decisions=await store.pool.fetchval('SELECT count(*) FROM finance_decision')
+        dump,load=pg_tools(tmp_path);output=tmp_path/'history-backup'
+>       await backup(options[0],output,pg_dump=str(dump));report=await restore(options[1],output,pg_restore=str(load))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f4_maintenance.py:235: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/src/xuanpu_finance/maintenance.py:75: in backup
+    await guard.run([pg_dump, '--format=custom', '--no-owner', '--no-acl'], pg_environment(dsn), stdout=stream)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <xuanpu_finance.maintenance_types.MaintenanceLock object at 0x10f8e37d0>
+args = ['/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_restore_preserves_hitl_an0/pg_dump', '--format=custom', '--no-owner', '--no-acl']
+env = {'BROWSER_USE_ACCESS_VERIFYING_IDENTITY': 'MCowBQYDK2VwAyEAEounvEDzMOH3CSC32uae+uGRsLUOzz/pDw47BgIqmTk=', 'CODEX_APPLY...', 'CODEX_APP_TOOLS_PIPE_PATH': '/tmp/codex-app-tools/936331de-030d-4020-8186-4677678a4023.sock', 'CODEX_CI': '1', ...}
+streams = {'stdout': <_io.BufferedWriter name='/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_restore_preserves_hitl_an0/.finance-backup-ud88j1ut/database.dump'>}
+
+    async def run(self, args: list[str], env: dict[str, str], **streams: Any) -> None:
+        """调用成熟工具，丢锁或取消时终止并等待子进程，忽略敏感stderr正文。"""
+        await self.check()
+        try:
+            process = await asyncio.create_subprocess_exec(*args, env=env, stderr=asyncio.subprocess.PIPE, **streams)
+        except OSError as error:
+            raise MaintenanceError('PG_TOOL_UNAVAILABLE') from error
+        done = asyncio.create_task(process.communicate())
+        lost = asyncio.create_task(self.lost.wait())
+        try:
+            await asyncio.wait([done, lost], return_when=asyncio.FIRST_COMPLETED)
+            if self.lost.is_set():
+                raise MaintenanceError('MAINTENANCE_LOCK_LOST')
+            await done
+            if process.returncode:
+>               raise MaintenanceError('PG_TOOL_FAILED')
+E               xuanpu_finance.maintenance_types.MaintenanceError: PG_TOOL_FAILED
+
+packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py:70: MaintenanceError
+_______________ test_restore_actual_archive_cache_and_supplement _______________
+
+maintenance_database = (<xuanpu_finance.storage.store.FinanceStore object at 0x10f675d90>, [MaintenanceOptions(database_dsn_file=PosixPath('/..., 'postgresql://finance_test:f7-isolated-local-test@127.0.0.1:64844/finance_restore_58008959583243c2af2a2af80db32561'])
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_restore_actual_archive_ca0')
+
+    async def test_restore_actual_archive_cache_and_supplement(maintenance_database,tmp_path: Path) -> None:
+        """完整归档及补包真实dump到新库后，所有缓存以原AAD解密且包字节一致。"""
+        import io
+        import zipfile
+    
+        from xuanpu_finance.maintenance_objects import archive_index
+    
+        from .test_f3_http_e2e import test_real_import_tax_hitl_archive_and_readonly_audit
+        store,options,dsns=maintenance_database
+        await test_real_import_tax_hitl_archive_and_readonly_audit(store,tmp_path)
+        root=tmp_path/'objects'
+        source=EncryptedLocalObjects(root,b'k'*32)
+        indexed={}
+        async with store.pool.acquire() as conn:
+            await archive_index(conn,source,indexed)
+        originals={key:await source.get(key) for key in indexed}
+        bundles={key:raw for key,raw in originals.items() if key.endswith('/bundle.zip')}
+        assert len(bundles)==2 and len(originals)>10
+        for raw in bundles.values():
+            with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+                assert archive.testzip() is None and len(archive.namelist())>5
+        rows=await store.pool.fetch("SELECT id,request,request_template,status FROM finance_compliance_operation ORDER BY id")
+        dump,load=pg_tools(tmp_path)
+        output=tmp_path/'archive-backup'
+>       report=await backup(MaintenanceOptions(options[0].database_dsn_file,root,options[0].key_file),output,pg_dump=str(dump))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f4_maintenance.py:271: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/src/xuanpu_finance/maintenance.py:75: in backup
+    await guard.run([pg_dump, '--format=custom', '--no-owner', '--no-acl'], pg_environment(dsn), stdout=stream)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <xuanpu_finance.maintenance_types.MaintenanceLock object at 0x10fcf66f0>
+args = ['/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_restore_actual_archive_ca0/pg_dump', '--format=custom', '--no-owner', '--no-acl']
+env = {'BROWSER_USE_ACCESS_VERIFYING_IDENTITY': 'MCowBQYDK2VwAyEAEounvEDzMOH3CSC32uae+uGRsLUOzz/pDw47BgIqmTk=', 'CODEX_APPLY...', 'CODEX_APP_TOOLS_PIPE_PATH': '/tmp/codex-app-tools/936331de-030d-4020-8186-4677678a4023.sock', 'CODEX_CI': '1', ...}
+streams = {'stdout': <_io.BufferedWriter name='/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_restore_actual_archive_ca0/.finance-backup-j8hzgid8/database.dump'>}
+
+    async def run(self, args: list[str], env: dict[str, str], **streams: Any) -> None:
+        """调用成熟工具，丢锁或取消时终止并等待子进程，忽略敏感stderr正文。"""
+        await self.check()
+        try:
+            process = await asyncio.create_subprocess_exec(*args, env=env, stderr=asyncio.subprocess.PIPE, **streams)
+        except OSError as error:
+            raise MaintenanceError('PG_TOOL_UNAVAILABLE') from error
+        done = asyncio.create_task(process.communicate())
+        lost = asyncio.create_task(self.lost.wait())
+        try:
+            await asyncio.wait([done, lost], return_when=asyncio.FIRST_COMPLETED)
+            if self.lost.is_set():
+                raise MaintenanceError('MAINTENANCE_LOCK_LOST')
+            await done
+            if process.returncode:
+>               raise MaintenanceError('PG_TOOL_FAILED')
+E               xuanpu_finance.maintenance_types.MaintenanceError: PG_TOOL_FAILED
+
+packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py:70: MaintenanceError
+_____________ test_funding_actual_archive_and_independent_restore ______________
+
+maintenance_database = (<xuanpu_finance.storage.store.FinanceStore object at 0x1101c13a0>, [MaintenanceOptions(database_dsn_file=PosixPath('/..., 'postgresql://finance_test:f7-isolated-local-test@127.0.0.1:64844/finance_restore_62a22747df1f4e1b864d105ef725c3e4'])
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_funding_actual_archive_an0')
+
+    async def test_funding_actual_archive_and_independent_restore(maintenance_database: Any,tmp_path: Path) -> None:
+        """真实新表、授权撤销决定、资金原材料和两个ZIP恢复后同摘要且不发起执行。"""
+        store,options,dsns=maintenance_database
+        objects,all_bytes=await funding_archive_roundtrip(store,tmp_path)
+        before={table:await store.pool.fetch('SELECT * FROM '+table+' ORDER BY 1,2,3') for table in ['finance_funding_case','finance_funding_authority','finance_funding_original','finance_funding_authority_decision','finance_funding_reservation','finance_funding_policy_revision']}
+        dump,load=pg_tools(tmp_path);folder=tmp_path/'backup'
+>       await backup(MaintenanceOptions(options[0].database_dsn_file,objects.root,options[0].key_file),folder,pg_dump=str(dump))
+
+packages/xuanpu-finance/tests/test_f5_archive_restore.py:153: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/src/xuanpu_finance/maintenance.py:75: in backup
+    await guard.run([pg_dump, '--format=custom', '--no-owner', '--no-acl'], pg_environment(dsn), stdout=stream)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <xuanpu_finance.maintenance_types.MaintenanceLock object at 0x10fd0a900>
+args = ['/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_funding_actual_archive_an0/pg_dump', '--format=custom', '--no-owner', '--no-acl']
+env = {'BROWSER_USE_ACCESS_VERIFYING_IDENTITY': 'MCowBQYDK2VwAyEAEounvEDzMOH3CSC32uae+uGRsLUOzz/pDw47BgIqmTk=', 'CODEX_APPLY...', 'CODEX_APP_TOOLS_PIPE_PATH': '/tmp/codex-app-tools/936331de-030d-4020-8186-4677678a4023.sock', 'CODEX_CI': '1', ...}
+streams = {'stdout': <_io.BufferedWriter name='/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1693/test_funding_actual_archive_an0/.finance-backup-kmi9axwk/database.dump'>}
+
+    async def run(self, args: list[str], env: dict[str, str], **streams: Any) -> None:
+        """调用成熟工具，丢锁或取消时终止并等待子进程，忽略敏感stderr正文。"""
+        await self.check()
+        try:
+            process = await asyncio.create_subprocess_exec(*args, env=env, stderr=asyncio.subprocess.PIPE, **streams)
+        except OSError as error:
+            raise MaintenanceError('PG_TOOL_UNAVAILABLE') from error
+        done = asyncio.create_task(process.communicate())
+        lost = asyncio.create_task(self.lost.wait())
+        try:
+            await asyncio.wait([done, lost], return_when=asyncio.FIRST_COMPLETED)
+            if self.lost.is_set():
+                raise MaintenanceError('MAINTENANCE_LOCK_LOST')
+            await done
+            if process.returncode:
+>               raise MaintenanceError('PG_TOOL_FAILED')
+E               xuanpu_finance.maintenance_types.MaintenanceError: PG_TOOL_FAILED
+
+packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py:70: MaintenanceError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f4_maintenance.py::test_backup_restore_actual_original_and_database
+FAILED packages/xuanpu-finance/tests/test_f4_maintenance.py::test_restore_rejects_tamper_key_and_nonempty_target
+FAILED packages/xuanpu-finance/tests/test_f4_maintenance.py::test_corrupt_ciphertext_and_nonempty_restore_fail_closed
+FAILED packages/xuanpu-finance/tests/test_f4_maintenance.py::test_manifest_rewrite_cannot_hide_modified_dump
+FAILED packages/xuanpu-finance/tests/test_f4_maintenance.py::test_restore_preserves_hitl_and_unknown_requests
+FAILED packages/xuanpu-finance/tests/test_f4_maintenance.py::test_restore_actual_archive_cache_and_supplement
+FAILED packages/xuanpu-finance/tests/test_f5_archive_restore.py::test_funding_actual_archive_and_independent_restore
+7 failed, 556 passed in 203.00s (0:03:23)

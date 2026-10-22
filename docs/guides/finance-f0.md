@@ -1,5 +1,7 @@
 # 财务 F0 开发与接入
 
+当前F7按用户要求聚焦发票与报销内部流转记录，不做支付。最新契约为finance `0.8.0-f7`、72项API、7个Skill；见[F7指南](finance-f7.md)及[F7本轮验收](releases/2026-10-22-finance-f7-acceptance.md)。下文阶段记录保留其原有验证范围。
+
 当前专用资金能力与最新包契约入口见[F5指南](finance-f5.md)（finance `0.6.0-f5`、69项API、7个Skill）。本页保留本阶段操作说明、历史版本和验证证据；当前最终门禁、制品与运行状态见[F5验收记录](releases/2026-10-22-finance-f5-acceptance.md)。
 
 F0基座用于原件归集、逐项进度、票面/字段/证据查询和持久补件。示例包的报销与内部审批见[F1指南](finance-f1.md)；通用付款/记账见[F2](finance-f2.md)，查验、红字和档案隔离闭环见[F3](finance-f3.md)。生产官方 XML 标准映射、真实模型使用、税务/支付/ERP/归档与生产环境验收分别记录在[验收记录](releases/2026-10-21-finance-f0-acceptance.md)。

@@ -2,8 +2,8 @@ apiVersion: xuanpu/v1
 kind: Package
 metadata:
   name: finance
-  version: 0.7.0-f6
-  description: 独立财务F0-F6：专用资金、实际人工审批与只读接入准备，正式渠道未验收
+  version: 0.8.0-f7
+  description: 独立财务F0-F7：发票申报、报销流转记录、真人审批与历史原件，当前不做支付
 spec:
   skills:
     entries:
@@ -48,6 +48,10 @@ spec:
     - name: listExpenseClaims
       effect: read
     - name: getExpenseClaim
+      effect: read
+    - name: listExpenseClaimHistory
+      effect: read
+    - name: getExpenseMaterial
       effect: read
     - name: updateExpenseClaim
       effect: write

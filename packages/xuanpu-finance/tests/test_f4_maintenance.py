@@ -4,7 +4,9 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from typing import TYPE_CHECKING
+import re
+import shutil
+from pathlib import Path
 from uuid import uuid4
 
 import asyncpg
@@ -14,9 +16,6 @@ from xuanpu_finance.maintenance import MaintenanceError, MaintenanceOptions, bac
 from xuanpu_finance.models import FinancePrincipal
 from xuanpu_finance.objects import EncryptedLocalObjects
 from xuanpu_finance.storage import FinanceStore
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 @pytest_asyncio.fixture
@@ -55,10 +54,18 @@ async def maintenance_database(tmp_path: Path):
 
 def pg_tools(tmp_path: Path) -> tuple[Path,Path]:
     """测试通过本轮专用容器调用成熟PG工具，数据库凭据只用环境传递。"""
+    container = os.environ.get('FINANCE_TEST_PG_CONTAINER')
+    if container is None:
+        native = [shutil.which(tool) for tool in ['pg_dump', 'pg_restore']]
+        if not all(native):
+            pytest.fail('请安装PG工具或显式设置本轮 FINANCE_TEST_PG_CONTAINER')
+        return Path(str(native[0])), Path(str(native[1]))
+    if re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,127}', container) is None:
+        raise ValueError('测试PG容器名称无效')
     files=[]
     for tool in ['pg_dump','pg_restore']:
         path=tmp_path/tool
-        path.write_text('#!/bin/sh\nexec docker exec -i -e PGDATABASE -e PGUSER -e PGPASSWORD xuanpu-finance-f4-test-pg '+tool+' "$@"\n')
+        path.write_text('#!/bin/sh\nexec docker exec -i -e PGDATABASE -e PGUSER -e PGPASSWORD '+container+' '+tool+' "$@"\n')
         path.chmod(0o700);files.append(path)
     return files[0],files[1]
 

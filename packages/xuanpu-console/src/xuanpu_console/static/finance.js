@@ -1,16 +1,16 @@
 // 财务辅助页：普通员工可无模型完成草稿、分票与逐步审批，真实规则始终由业务服务裁定。
 "use strict";
-const financeState={generation:0,controller:new AbortController(),entity:null,current:null,plan:null,execution:null,pending:null,queue:[],categories:[],centers:[],claimStatus:"",revision:0};
+const financeState={generation:0,controller:new AbortController(),entity:null,current:null,plan:null,execution:null,pending:null,queue:[],categories:[],centers:[],claimStatus:"",revision:0,materialForm:null};
 const financeActions={submit_claim:"提交",approve:"批准本步骤",reject:"驳回",withdraw:"撤回"};
 const financeStatuses={draft:"草稿",submitted:"已提交",under_review:"审批中",approved:"审批通过",rejected:"已驳回",withdrawn:"已撤回"};
 function resetFinance() {
   if(typeof financeFundingReleaseDownloads==="function")financeFundingReleaseDownloads();
   financeState.controller.abort();financeState.controller=new AbortController();financeState.generation++;
-  Object.assign(financeState,{entity:null,current:null,plan:null,execution:null,pending:null,queue:[],categories:[],centers:[],claimStatus:""});
+  Object.assign(financeState,{entity:null,current:null,plan:null,execution:null,pending:null,queue:[],categories:[],centers:[],claimStatus:"",materialForm:null});
 }
 function financeToken(){return {epoch:conn.epoch,generation:financeState.generation};}
 function financeCurrent(token){return conn.ready && token.epoch===conn.epoch && token.generation===financeState.generation && workspace.kind==="finance";}
-function financeInvalidate(){if(typeof financeFundingReleaseDownloads==="function")financeFundingReleaseDownloads();financeState.revision++;financeState.plan=null;financeState.execution=null;}
+function financeInvalidate(preserveMaterialForm=false){if(preserveMaterialForm!==true)financeState.materialForm=null;if(typeof financeFundingReleaseDownloads==="function")financeFundingReleaseDownloads();financeState.revision++;financeState.plan=null;financeState.execution=null;}
 async function financeCall(operation,arguments_={},confirmed=false,connector="finance") {
   if(conn.apiKey || !conn.me?.user_id)throw new Error("请使用员工登录后操作财务记录。");
   const epoch=conn.epoch,controller=financeState.controller;
@@ -52,10 +52,12 @@ async function renderFinanceList(generation,epoch) {
     select.addEventListener("change",()=>{if(financeState.pending){financeShowPending();return;}financeState.entity=select.value;financeInvalidate();return refreshWorkspace();});
     select.disabled=!!financeState.pending;
     if(typeof financeOperationsToolbar==="function")financeOperationsToolbar(toolbar);
-    if(typeof financeComplianceToolbar==="function")financeComplianceToolbar(toolbar);
-    if(typeof financeFundingToolbar==="function")financeFundingToolbar(toolbar);
-    if(typeof financeSettlementToolbar==="function")financeSettlementToolbar(toolbar);
+    const auxiliary=wsText("div",""),more=wsButton("更多财务功能",()=>{auxiliary.hidden=!auxiliary.hidden;more.setAttribute("aria-expanded",String(!auxiliary.hidden));});auxiliary.hidden=true;more.setAttribute("aria-expanded","false");
+    if(typeof financeComplianceToolbar==="function")financeComplianceToolbar(auxiliary);
+    if(typeof financeFundingToolbar==="function")financeFundingToolbar(auxiliary);
+    if(typeof financeSettlementToolbar==="function")financeSettlementToolbar(auxiliary);
     toolbar.append(wsButton("新建报销",financeEdit),wsButton("本人草稿",()=>{financeState.claimStatus="draft";return financeLoadClaims(token);}),wsButton("全部可看记录",()=>{financeState.claimStatus="";return financeLoadClaims(token);}),wsButton("待我审批",()=>financeLoadQueue(token)),wsButton("刷新",refreshWorkspace));
+    toolbar.append(more,auxiliary);
     if(financeState.pending)financeShowPending();
     else await financeLoadClaims(token);
   } catch(error) {
@@ -64,8 +66,9 @@ async function renderFinanceList(generation,epoch) {
   }
 }
 async function financeLoadClaims(token=financeToken(),cursor="",append=false) {
-  const args={legal_entity_id:financeState.entity,limit:50};if(cursor)args.cursor=cursor;if(financeState.claimStatus)args.status=financeState.claimStatus;
-  const page=await financeCall("listExpenseClaims",args);if(!financeCurrent(token))return;
+  if(financeState.pending){financeShowPending();return;}if(!append)financeInvalidate();const revision=financeState.revision;
+  const args={legal_entity_id:financeState.entity,limit:1};if(cursor)args.cursor=cursor;if(financeState.claimStatus)args.status=financeState.claimStatus;
+  const page=await financeCall("listExpenseClaims",args);if(!financeCurrent(token)||revision!==financeState.revision)return;
   const box=$("workspace-content");if(!append)box.replaceChildren();
   financeFeedback("可查看的报销（"+page.total+"）");
   if(!page.items.length)box.append(wsText("p","还没有报销，点击新建即可保存本人草稿。"));
@@ -75,8 +78,9 @@ async function financeLoadClaims(token=financeToken(),cursor="",append=false) {
   if(page.next_cursor)box.append(wsButton("加载更多",()=>financeLoadClaims(token,page.next_cursor,true)));
 }
 async function financeLoadQueue(token=financeToken(),cursor="",append=false) {
+  if(financeState.pending){financeShowPending();return;}if(!append)financeInvalidate();const revision=financeState.revision;
   const args={legal_entity_id:financeState.entity,limit:50};if(cursor)args.cursor=cursor;
-  const page=await financeCall("listReviewQueue",args);if(!financeCurrent(token))return;
+  const page=await financeCall("listReviewQueue",args);if(!financeCurrent(token)||revision!==financeState.revision)return;
   financeState.queue=page.items;const box=$("workspace-content");if(!append)box.replaceChildren();
   financeFeedback("待我审批（"+page.total+"）");if(!page.items.length)box.append(wsText("p","没有分派给你的审批步骤。"));
   for(const item of page.items){const card=wsText("article","","workspace-record");card.append(wsText("h3",item.summary),wsText("p","¥"+item.total+" · 单据版本 "+item.target_version),wsText("p",item.due_at?"审批期限："+item.due_at:"审批期限待服务确认"),wsText("p",(item.blockers||[]).map(text=>"阻断："+text).join("；")),wsButton("核对材料并审批",()=>item.target_type==="action_plan"?financeSettlementPlan(item.target_id,item):item.target_type==="funding_case"?financeFundingDetail(item.target_id,item):item.target_type==="payable"?financePayableDetail(item.target_id,item):financeDetail(item.target_id,item)));box.append(card);}
@@ -91,6 +95,7 @@ async function financeDetail(id,review=null) {
   for(const line of claim.content.lines)box.append(wsText("p",[line.reason,line.occurred_on,"¥"+line.amount,line.category_id,line.department_id,line.project_id].filter(Boolean).join(" · ")));
   if(claim.record_mode==="internal_record")box.append(wsText("p","内部报销记录：记录与内部审批不表示已经付款、入账或完成票据验真。"));
   financeEvidence(box,claim.evidence);
+  if(typeof financeRecordsDetail==="function")financeRecordsDetail(box,claim);
   if(claim.workflow){const flow=claim.workflow;box.append(wsText("h4","审批进展"));
     box.append(wsText("p","流程版本："+flow.version+" · 制度版本："+flow.policy_version));
     if(flow.due_at||claim.due_at)box.append(wsText("p","审批期限："+(flow.due_at||claim.due_at)));
@@ -100,7 +105,7 @@ async function financeDetail(id,review=null) {
   for(const item of allocations){const row=wsText("article","","workspace-record");row.append(wsText("p","票据 "+item.invoice_id+" · 分配 ¥"+item.amount+" · 税额 ¥"+item.tax+" · "+({proposed:"待提交建议",reserved:"已保留额度",consumed:"已使用额度",released:"已释放"}[item.state]||item.state)),wsButton("查看票据与证据",()=>financeInvoice(item.invoice_id)));
     if(claim.status==="draft" && item.state==="proposed" && claim.owner_id===conn.me.user_id)row.append(wsButton("移除此分配",()=>financeConfirmWrite("releaseInvoiceAllocation",{id:item.id,body:{expected_version:item.version}},"确认移除此草稿的分票建议？",()=>financeDetail(claim.id))));box.append(row);}
   if(["draft","rejected","withdrawn"].includes(claim.status) && claim.owner_id===conn.me.user_id)box.append(wsButton("编辑报销记录",()=>financeEdit(claim)));
-  if(claim.status==="draft" && claim.owner_id===conn.me.user_id)box.append(wsButton("分配发票（可选）",()=>financeAllocate(claim)),wsButton("提交预检",()=>financePreview("submit_claim",{})));
+  if(claim.status==="draft" && claim.owner_id===conn.me.user_id){if(claim.record_mode!=="internal_record")box.append(wsButton("分配发票（可选）",()=>financeAllocate(claim)));box.append(wsButton("提交预检",()=>financePreview("submit_claim",{})));}
   if(claim.owner_id===conn.me.user_id && ["submitted","under_review","approved"].includes(claim.status))box.append(wsButton("撤回",()=>financeReason("withdraw")));
   if(review && claim.status==="under_review"){
     const step=claim.workflow?.steps?.find(item=>item.id===review.workflow_step_id);
@@ -109,8 +114,10 @@ async function financeDetail(id,review=null) {
     for(const blocker of review.blockers||[])box.append(wsText("p","阻断："+blocker));
     const approve=wsButton("批准本步骤",()=>financePreview("approve",{workflow_step_id:review.workflow_step_id}));approve.disabled=!!review.blockers?.length;
     box.append(approve,wsButton("驳回",()=>financeReason("reject",review.workflow_step_id)));}
-  if(typeof financeSettlementSection==="function")await financeSettlementSection(box,claim);
-  if(typeof financeComplianceDocumentArchive==="function")await financeComplianceDocumentArchive(box,claim);
+  if(claim.record_mode!=="internal_record"){
+    if(typeof financeSettlementSection==="function")await financeSettlementSection(box,claim);
+    if(typeof financeComplianceDocumentArchive==="function")await financeComplianceDocumentArchive(box,claim);
+  }
   financeFeedback("请核对报销明细、票据依据和审批步骤；审批通过不表示已付款或入账。");
 }
 function financeEvidence(box,evidence=[]) {
@@ -133,6 +140,8 @@ async function financeEdit(claim=null) {
   if(!categories.items.length){financeFeedback("公司尚未配置可用的报销分类，无法保存草稿。");return;}
   const box=$("workspace-content"),form=wsText("form","","workspace-form");box.replaceChildren(form);
   const reason=financeField(form,"报销事由","text",claim?.content.reason||""),lines=[];
+  const invoice=typeof financeRecordsInvoiceField==="function"?financeRecordsInvoiceField(form,claim):null;
+  const materials={ids:[],pending:null};
   const evidence=financeField(form,"附件记录编号（可选，多个用逗号分隔）","text",(claim?.content.evidence_ids||[]).join(","),false);
   function addLine(initial={}){const row=wsText("fieldset",""),legend=wsText("legend","费用明细 "+(lines.length+1));row.append(legend);
     const category=financeSelect(row,"费用分类",categories.items,initial.category_id||categories.items[0].id);
@@ -143,10 +152,12 @@ async function financeEdit(claim=null) {
     const project=financeSelect(row,"所属项目",centers.items.filter(x=>x.kind==="project"),initial.project_id||"",true);
     form.append(row);lines.push({category,amount,date,why,department,project});}
   for(const line of claim?.content.lines||[{}])addLine(line);
-  form.append(wsButton("增加一项费用",()=>addLine()));const save=wsButton(claim?"保存修改":"保存本人草稿",()=>{},"");save.type="submit";form.append(save);
-  form.addEventListener("input",financeInvalidate);
-  financeSubmit(form,async()=>{if(!financeCurrent(token))return;
-    const draft={legal_entity_id:financeState.entity,reason:reason.value.trim(),...(evidence.value.trim()?{evidence_ids:evidence.value.split(/[，,\s]+/).filter(Boolean)}:{}),lines:lines.map(line=>({category_id:line.category.value,amount:financeMoney(line.amount.value),occurred_on:line.date.value,reason:line.why.value.trim(),...(line.department.value?{department_id:line.department.value}:{}),...(line.project.value?{project_id:line.project.value}:{})}))};
+  form.append(wsButton("增加一项费用",()=>{addLine();financeInvalidate(true);}));const save=wsButton(claim?"保存修改":"保存本人草稿",()=>{},"");save.type="submit";
+  if(typeof financeFundingMaterials==="function")financeFundingMaterials(form,materials,save,token,{required:false,onReceived:ids=>{evidence.value=[...new Set([...evidence.value.split(/[，,\s]+/).filter(Boolean),...ids])].join(",");}});form.append(save);
+  form.addEventListener("input",()=>financeInvalidate(true));
+  financeSubmit(form,async()=>{if(!financeCurrent(token)||materials.pending||materials.uploading||materials.confirming)return;
+    const ids=[...new Set(evidence.value.split(/[，,\s]+/).filter(Boolean))];
+    const draft={legal_entity_id:financeState.entity,reason:reason.value.trim(),...(ids.length?{evidence_ids:ids}:{}),...(invoice?.value.trim()?{invoice_information:invoice.value}:{}),lines:lines.map(line=>({category_id:line.category.value,amount:financeMoney(line.amount.value),occurred_on:line.date.value,reason:line.why.value.trim(),...(line.department.value?{department_id:line.department.value}:{}),...(line.project.value?{project_id:line.project.value}:{})}))};
     await financeConfirmWrite(claim?"updateExpenseClaim":"createExpenseClaim",{...(claim?{id:claim.id}:{}),body:claim?{expected_version:claim.version,draft}:draft},"确认保存以下报销草稿？",result=>financeDetail(result.id),form);});
 }
 function financeAllocate(claim) {
@@ -216,7 +227,7 @@ async function financeSendPending(token) {
   const pending=financeState.pending;if(!pending||pending.sending)return;pending.sending=true;
   try {
     const result=await financeCall(pending.operation,pending.arguments,true);if(!financeCurrent(token))return;
-    financeState.pending=null;financeInvalidate();
+    financeState.pending=null;financeInvalidate(pending.operation==="importSupportingMaterials");
     if(pending.onDone)await pending.onDone(result);
     else {$("workspace-content").replaceChildren(wsText("p","已取得操作回执："+result.id+"（"+result.status+"）。审批结论以当前单据为准。"),wsButton("读取最新单据",()=>financeDetail(pending.target)));}
     if(pending.operation!=="previewFinanceAction")financeFeedback("请求已受理，请以服务返回的当前业务状态为准。");

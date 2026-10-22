@@ -23,6 +23,7 @@ from xuanpu_finance.routes_f3 import router as f3_router
 from xuanpu_finance.routes_f4 import router as f4_router
 from xuanpu_finance.routes_f5 import router as f5_router
 from xuanpu_finance.routes_f6 import router as f6_router
+from xuanpu_finance.routes_f7 import router as f7_router
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -163,7 +164,7 @@ def create_app(
     """显式注入独立存储，不在平台进程中导入此应用。"""
     if mode not in MODES:
         raise ValueError("财务模块模式无效")
-    app = FastAPI(title="玄圃财务 F0–F6", version="2026.10.22.3", lifespan=_lifespan)
+    app = FastAPI(title="玄圃财务 F0–F7", version="2026.10.22.4", lifespan=_lifespan)
     app.state.store, app.state.auth, app.state.mode = store, auth, mode
     app.state.objects = objects if objects is not None else worker.objects if worker is not None else None
     app.state.worker, app.state.start_worker, app.state.worker_error = worker, start_worker, None
@@ -188,6 +189,7 @@ def create_app(
     app.include_router(f4_router)
     app.include_router(f5_router)
     app.include_router(f6_router)
+    app.include_router(f7_router)
 
     @app.get("/health")
     async def health() -> JSONResponse:

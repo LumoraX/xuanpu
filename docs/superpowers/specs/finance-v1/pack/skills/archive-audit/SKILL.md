@@ -1,7 +1,7 @@
 ---
 name: archive-audit
 description: 查询发票查验、税务确认、红字和档案证据，准备受控税务或归档计划并核对审计缺口。
-version: 0.7.0-f6
+version: 0.8.0-f7
 entry: false
 type: composite
 tool_names:
@@ -51,3 +51,5 @@ verifyInvoice绑定当前合规version发起实际查验；按getOperation及查
 F4原生提醒由listFinanceNotifications读取当前来源，未读计数独立于当前页；提醒已读不表示审批或渠道成功。模型不调用readFinanceNotification；待审/未知应恢复原目标和原计划，不从提醒正文代批或重发。站内提醒不等于飞书、企业微信或邮件送达。
 
 F5专用资金先读[资金规则](references/funding-rules.md)。材料先真实收件并读取source回执；申报不是核实，模型仅准备草稿/预检，实际决定交员工。资金业务使用funding-cases专用入口，不伪装普通应付。
+
+F7内部报销流转留存使用listExpenseClaimHistory及独立原件；这是内部历史查询，不是正式archive成功或WORM证明。当前仅记录流程不自动准备归档执行。

@@ -1,7 +1,7 @@
 ---
 name: finance-assistant
 description: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。
-version: 0.7.0-f6
+version: 0.8.0-f7
 entry: true
 type: composite
 tool_names: []
@@ -28,3 +28,5 @@ F4原生提醒由listFinanceNotifications读取当前来源，未读计数独立
 预付、员工垫付、供应商委托第三方收款及预付核销/退回交accounts-payable，先读其专用规则。internal_attestation仅内部人工核对，不代表银行事实。
 
 接入准备、当前制度/岗位/通道检查交finance-review。该检查只读、要求当前公司reviewer；检查结果不批准业务，也不代表正式供应商或生产验收通过。
+
+当前内部记录用法优先交expense-reimbursement：用户粘贴发票信息、说明费用后准备草稿，实际提交与审批留给真人；不因提及报销自动发起付款/记账/税务/法定归档。历史由listExpenseClaimHistory读取。

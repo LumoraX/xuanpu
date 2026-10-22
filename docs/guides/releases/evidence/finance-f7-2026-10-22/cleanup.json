@@ -1,0 +1,19 @@
+{
+  "owned_container": "xuanpu-finance-f7-pg",
+  "removed": true,
+  "anonymous_volume_removed": true,
+  "test_port": 64844,
+  "test_port_closed": true,
+  "dsn_file_removed": true,
+  "remaining_temporary_schemas_before_removal": 0,
+  "remaining_databases_before_removal": [
+    "finance_test_f7"
+  ],
+  "remaining_nondefault_roles_before_removal": [
+    "finance_test"
+  ],
+  "original_checkout_clean": true,
+  "retained_builds": "/tmp/xuanpu-finance-f7-build",
+  "retained_image": "xuanpu-finance:2026.10.22.4",
+  "production_deployed": false
+}
