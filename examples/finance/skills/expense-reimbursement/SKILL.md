@@ -1,7 +1,7 @@
 ---
 name: expense-reimbursement
 description: 根据费用事实准备本人报销记录与真实分票，查询进度、修订草稿及准备提交或撤回计划。
-version: 0.6.0-f5
+version: 0.7.0-f6
 entry: false
 type: composite
 tool_names:

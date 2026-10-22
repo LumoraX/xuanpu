@@ -1,0 +1,96 @@
+{
+  "exit_code": 2,
+  "report": {
+    "status": "blocked",
+    "production_status": "not_verified",
+    "checks": [
+      {
+        "code": "credential_resources",
+        "status": "passed",
+        "detail": "credential_resources_valid"
+      },
+      {
+        "code": "transport_tls",
+        "status": "passed",
+        "detail": "正式网关与对象端点必须使用TLS"
+      },
+      {
+        "code": "gateway_credentials",
+        "status": "passed",
+        "detail": "每个公司租户须有独立网关凭据"
+      },
+      {
+        "code": "company",
+        "status": "passed",
+        "detail": "公司基础资料须完整配置"
+      },
+      {
+        "code": "policies",
+        "status": "blocked",
+        "detail": "四类当前制度须显式启用"
+      },
+      {
+        "code": "approval_roles",
+        "status": "blocked",
+        "detail": "各审批及异常岗位须有当前公司资格"
+      },
+      {
+        "code": "executor_roles",
+        "status": "blocked",
+        "detail": "经办岗位须有效且付款记账分离"
+      },
+      {
+        "code": "settlement_channels",
+        "status": "blocked",
+        "detail": "结算绑定版本须具备幂等及查单能力"
+      },
+      {
+        "code": "ledger_periods",
+        "status": "blocked",
+        "detail": "须配置账簿和开放期间"
+      },
+      {
+        "code": "controlled_accounts",
+        "status": "blocked",
+        "detail": "须存在当前启用且已核实的受控账户"
+      },
+      {
+        "code": "funding_chains",
+        "status": "blocked",
+        "detail": "资金五场景须分别有实际审批链"
+      },
+      {
+        "code": "funding_capabilities",
+        "status": "blocked",
+        "detail": "资金场景须被绑定结算通道显式支持"
+      },
+      {
+        "code": "invoice_basis",
+        "status": "blocked",
+        "detail": "专用资金须基于有效发票制度，内部台账不能提升执行资格"
+      },
+      {
+        "code": "tax_capabilities",
+        "status": "blocked",
+        "detail": "税务须具备期间票样及权威版本能力"
+      },
+      {
+        "code": "archive_capabilities",
+        "status": "blocked",
+        "detail": "归档须具备标准配置及版本留存读回能力"
+      }
+    ],
+    "versions": [],
+    "configuration_digest": "28665e05bfa46b0362d58ac06f7809986eb3248939984946c1739eddd03a819e",
+    "external_verifications": [
+      "formal_policy_approval",
+      "provider_integration",
+      "official_invoice_and_signature",
+      "worm_retention",
+      "offsite_disaster_recovery",
+      "real_model",
+      "production_load"
+    ]
+  },
+  "temporary_runtime_removed_on_exit": true
+}

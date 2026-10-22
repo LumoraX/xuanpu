@@ -1,0 +1,39 @@
+{
+  "status": "passed",
+  "production_status": "not_verified",
+  "tests": 77,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "missing_modules": [],
+  "skipped_cases": [],
+  "suite": "quick",
+  "source": {
+    "head": "7516a79c0ad60945ac6736d428730415b346448d",
+    "worktree_sha256": "ec1eec09bdf0a4903cf1ba33e9f648e2ed049d087a33e85fad27357a885828bf"
+  },
+  "modules": [
+    "packages/xuanpu-finance/tests/test_worker.py",
+    "packages/xuanpu-finance/tests/test_expense_domain.py",
+    "packages/xuanpu-finance/tests/test_f2_http_e2e.py",
+    "packages/xuanpu-finance/tests/test_f3_http_e2e.py",
+    "packages/xuanpu-finance/tests/test_f5_http_e2e.py",
+    "packages/xuanpu-finance/tests/test_f5_archive_restore.py",
+    "packages/xuanpu-finance/tests/test_f2_lifecycle_api.py",
+    "packages/xuanpu-finance/tests/test_f4_lifecycle.py",
+    "packages/xuanpu-finance/tests/test_f6_credential_isolation.py",
+    "packages/xuanpu-finance/tests/test_f6_readiness.py",
+    "packages/xuanpu-server/tests/identity/test_finance_f5_gateway_e2e.py"
+  ],
+  "started_at": "2026-10-22T04:54:55.958130+00:00",
+  "finished_at": "2026-10-22T04:55:53.377969+00:00",
+  "returncode": 0,
+  "diagnostic": null,
+  "environment": "isolated_loopback_finance_test",
+  "external_suppliers": "not_verified",
+  "cleanup_required": false,
+  "evidence_sha256": {
+    "pytest.log": "1fba21c56ee946f89871d5cdd724782d95f41f25922264282d32b39fa234f3cf",
+    "junit.xml": "837b64ecac3f8254f0952fe97c2347e1a0f80c9af58dd2dd4e083867b776bab4"
+  }
+}

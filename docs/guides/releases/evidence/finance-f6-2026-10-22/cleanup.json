@@ -1,0 +1,19 @@
+{
+  "owned_pg_container": "xuanpu-finance-f4-test-pg",
+  "owned_pg_id": "bdc8f4773ffd4c925e0dd0339bc7a4df9b8c81551d3d6594d723573de3e125ed",
+  "owned_pg_removed": true,
+  "anonymous_volumes_removed": [
+    "c9f8cc0fbc9f317398d0df741c6a963a8fd9524db5b34945c558cb5a04f7ec46"
+  ],
+  "remaining_finance_schemas": 0,
+  "remaining_temporary_databases": 0,
+  "remaining_isolation_roles": 0,
+  "compose_containers": [],
+  "compose_volumes": [],
+  "test_pg_port_closed": true,
+  "entry_dsn_file_removed": true,
+  "preflight_and_compose_temporary_runtime_remaining": [],
+  "original_checkout_clean": true,
+  "wheel_sdist_image_and_worktree_retained": true,
+  "production_modified": false
+}

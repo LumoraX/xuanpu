@@ -66,3 +66,5 @@ uv run pytest packages/xuanpu-console/tests/test_finance_behavior.py -q
 PG用例须显式FINANCE_TEST_DSN指向独立finance_test库。实际HTTP闭环覆盖所有20个新增API响应契约；平台cookie/CSRF链在模型不可用时验证实际专用审批。部署/全量门禁及正式未验收边界见[F3验收记录](releases/2026-10-21-finance-f3-acceptance.md)。
 
 当前F4已补原生站内提醒、SQL权限分页、配置/运营投影和local配套恢复，见[F4指南](finance-f4.md)与[剩余缺口台账](finance-gap-register.md)。F4阶段为61项API、7个Skill；当前F5为69项API、7个Skill，专用资金见[F5指南](finance-f5.md)。
+
+当前F6新增正式接入准备检查与可重复隔离验收，总70项API、7个Skill；见[F6指南](finance-f6.md)和[正式接入清单](finance-provider-acceptance.md)。原阶段正式能力未验边界继续保留。

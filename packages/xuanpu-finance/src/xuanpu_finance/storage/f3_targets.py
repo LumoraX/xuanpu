@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
+from xuanpu_finance.compliance.archive_checks import archive_profile_eligible
 from xuanpu_finance.errors import FinanceError
 from xuanpu_finance.storage.common import decode
 from xuanpu_finance.storage.f3_catalog import ComplianceCatalogStore
@@ -121,7 +122,7 @@ class ComplianceTargetStore(ComplianceCatalogStore):
             sources = [*target.get("invoices", []), *target.get("linked_red_invoices", [])]
             if any(source["simulation"] != target["simulation"] for source in sources):
                 raise FinanceError("SIMULATION_MODE_CONFLICT", 409, "归档关联原件含不同来源环境，旧正式原件不能升级为模拟材料")
-            if not target["simulation"] or (policy["archive_profile_id"], policy["archive_profile_version"], policy["required_lock_mode"]) != ("simulation-archive-v1", 1, "SIMULATION"):
+            if not archive_profile_eligible(target["simulation"], policy["archive_profile_id"], policy["archive_profile_version"], policy["required_lock_mode"]):
                 raise FinanceError("ARCHIVE_PROFILE_UNVERIFIED", 409, "归档标准profile尚未验收或隔离锁不符")
             return {}
         if body.action == "audit_archive":

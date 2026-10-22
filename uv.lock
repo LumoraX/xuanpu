@@ -2220,7 +2220,7 @@ source = { virtual = "packages/xuanpu-desktop" }
 
 [[package]]
 name = "xuanpu-finance"
-version = "2026.10.22.1"
+version = "2026.10.22.3"
 source = { editable = "packages/xuanpu-finance" }
 dependencies = [
     { name = "anyio" },
