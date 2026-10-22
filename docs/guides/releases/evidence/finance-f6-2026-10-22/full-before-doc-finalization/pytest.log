@@ -1,0 +1,101 @@
+...............................F.................................FF..... [  2%]
+........................................................................ [  5%]
+.....................F.................................................. [  8%]
+........................................................................ [ 11%]
+........................................................................ [ 14%]
+........................................................................ [ 17%]
+........................................................................ [ 20%]
+........................................................................ [ 23%]
+........................................................................ [ 25%]
+........................................................................ [ 28%]
+........................................................................ [ 31%]
+........................................................................ [ 34%]
+........................................................................ [ 37%]
+........................................................................ [ 40%]
+........................................................................ [ 43%]
+........................................................................ [ 46%]
+........................................................................ [ 48%]
+........................................................................ [ 51%]
+.............................................................s.......... [ 54%]
+........................................................................ [ 57%]
+........................................................................ [ 60%]
+........................................................................ [ 63%]
+........................................................................ [ 66%]
+........................................................................ [ 69%]
+........................................................................ [ 71%]
+........................................................................ [ 74%]
+........................................................................ [ 77%]
+........................................................................ [ 80%]
+........................................................................ [ 83%]
+........................................................................ [ 86%]
+........................................................................ [ 89%]
+.......................................................................s [ 92%]
+......s................................................................. [ 94%]
+........................................................................ [ 97%]
+......................................................                   [100%]
+=================================== FAILURES ===================================
+__________ test_document_links_resolve[docs/architecture/finance.md] ___________
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/architecture/finance.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['../guides/r...ce.md（文件不存在）'] == []
+E         
+E         Left contains one more item: '../guides/releases/2026-10-22-finance-f6-acceptance.md（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+____________ test_document_links_resolve[docs/guides/finance-f6.md] ____________
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/finance-f6.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['releases/20...ce.md（文件不存在）'] == []
+E         
+E         Left contains one more item: 'releases/2026-10-22-finance-f6-acceptance.md（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+_______ test_document_links_resolve[docs/guides/finance-gap-register.md] _______
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/finance-gap-register.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['releases/20...ce.md（文件不存在）'] == []
+E         
+E         Left contains one more item: 'releases/2026-10-22-finance-f6-acceptance.md（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+________ test_document_links_resolve[packages/xuanpu-finance/README.md] ________
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance/README.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['../../docs/...ce.md（文件不存在）'] == []
+E         
+E         Left contains one more item: '../../docs/guides/releases/2026-10-22-finance-f6-acceptance.md（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+=========================== short test summary info ============================
+SKIPPED [1] packages/xuanpu-server/tests/reminders/test_postgres_order.py:21: 本用例验证真实PostgreSQL行锁与事务
+SKIPPED [1] packages/xuanpu-server/tests/workspace/test_proactive_store.py:453: 仅数据库约束需要直接连接
+SKIPPED [1] packages/xuanpu-server/tests/workspace/test_proactive_store.py:562: 数据库身份行锁已由共享通知锁测试覆盖
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[docs/architecture/finance.md]
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[docs/guides/finance-f6.md]
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[docs/guides/finance-gap-register.md]
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[packages/xuanpu-finance/README.md]
+4 failed, 2495 passed, 3 skipped in 399.07s (0:06:39)

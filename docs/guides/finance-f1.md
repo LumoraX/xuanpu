@@ -39,3 +39,5 @@ previewFinanceAction返回不可变计划及实时blockers；executeFinanceActio
 企业微信/飞书未来可作为通知、展示或审批执行适配器；公司只能选择一个审批权威。外部实例、人员映射、回执及验签单独记录，不能用一个“已通过”字符串覆盖内部状态。本期尚未实现这两个适配器，真实支付、ERP、税务和正式归档尚未接入；通用付款/记账接口及隔离执行见[F2指南](finance-f2.md)。
 
 当前F4已补原生站内提醒、SQL权限分页、配置/运营投影和local配套恢复，见[F4指南](finance-f4.md)与[剩余缺口台账](finance-gap-register.md)。F4阶段为61项API、7个Skill；当前F5为69项API、7个Skill，专用资金见[F5指南](finance-f5.md)。
+
+当前F6新增正式接入准备检查与可重复隔离验收，总70项API、7个Skill；见[F6指南](finance-f6.md)和[正式接入清单](finance-provider-acceptance.md)。原阶段正式能力未验边界继续保留。

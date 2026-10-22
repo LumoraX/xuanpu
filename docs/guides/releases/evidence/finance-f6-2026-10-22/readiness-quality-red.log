@@ -1,0 +1,194 @@
+........................FFFF....FFF                                      [100%]
+=================================== FAILURES ===================================
+________ test_s3_credentials_require_nonempty_utf8[ \n-access_key_file] ________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1610/test_s3_credentials_require_no0')
+key_name = 'access_key_file', value = b' \n'
+
+    @pytest.mark.parametrize('key_name', ['access_key_file', 'secret_key_file'])
+    @pytest.mark.parametrize('value', [b' \n', b'\xff'])
+    async def test_s3_credentials_require_nonempty_utf8(tmp_path: Path, key_name: str, value: bytes) -> None:
+        """S3凭据须与运行时一致地解码UTF8并拒绝空白正文。"""
+        config=configured(tmp_path)
+        config.objects.kind='s3'; config.objects.root=None
+        config.objects.bucket='finance'; config.objects.endpoint_url='https://objects.example'
+        for name in ('access_key_file','secret_key_file'):
+            path=tmp_path/name; path.write_bytes(b'valid-credential'); path.chmod(0o600)
+            setattr(config.objects,name,path)
+        getattr(config.objects,key_name).write_bytes(value)
+        result=await report(config)
+>       assert next(c for c in result['checks'] if c['code']=='credential_resources')['status']=='blocked'
+E       AssertionError: assert 'passed' == 'blocked'
+E
+E         - blocked
+E         + passed
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:291: AssertionError
+________ test_s3_credentials_require_nonempty_utf8[ \n-secret_key_file] ________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1610/test_s3_credentials_require_no1')
+key_name = 'secret_key_file', value = b' \n'
+
+    @pytest.mark.parametrize('key_name', ['access_key_file', 'secret_key_file'])
+    @pytest.mark.parametrize('value', [b' \n', b'\xff'])
+    async def test_s3_credentials_require_nonempty_utf8(tmp_path: Path, key_name: str, value: bytes) -> None:
+        """S3凭据须与运行时一致地解码UTF8并拒绝空白正文。"""
+        config=configured(tmp_path)
+        config.objects.kind='s3'; config.objects.root=None
+        config.objects.bucket='finance'; config.objects.endpoint_url='https://objects.example'
+        for name in ('access_key_file','secret_key_file'):
+            path=tmp_path/name; path.write_bytes(b'valid-credential'); path.chmod(0o600)
+            setattr(config.objects,name,path)
+        getattr(config.objects,key_name).write_bytes(value)
+        result=await report(config)
+>       assert next(c for c in result['checks'] if c['code']=='credential_resources')['status']=='blocked'
+E       AssertionError: assert 'passed' == 'blocked'
+E
+E         - blocked
+E         + passed
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:291: AssertionError
+_______ test_s3_credentials_require_nonempty_utf8[\xff-access_key_file] ________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1610/test_s3_credentials_require_no2')
+key_name = 'access_key_file', value = b'\xff'
+
+    @pytest.mark.parametrize('key_name', ['access_key_file', 'secret_key_file'])
+    @pytest.mark.parametrize('value', [b' \n', b'\xff'])
+    async def test_s3_credentials_require_nonempty_utf8(tmp_path: Path, key_name: str, value: bytes) -> None:
+        """S3凭据须与运行时一致地解码UTF8并拒绝空白正文。"""
+        config=configured(tmp_path)
+        config.objects.kind='s3'; config.objects.root=None
+        config.objects.bucket='finance'; config.objects.endpoint_url='https://objects.example'
+        for name in ('access_key_file','secret_key_file'):
+            path=tmp_path/name; path.write_bytes(b'valid-credential'); path.chmod(0o600)
+            setattr(config.objects,name,path)
+        getattr(config.objects,key_name).write_bytes(value)
+        result=await report(config)
+>       assert next(c for c in result['checks'] if c['code']=='credential_resources')['status']=='blocked'
+E       AssertionError: assert 'passed' == 'blocked'
+E
+E         - blocked
+E         + passed
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:291: AssertionError
+_______ test_s3_credentials_require_nonempty_utf8[\xff-secret_key_file] ________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1610/test_s3_credentials_require_no3')
+key_name = 'secret_key_file', value = b'\xff'
+
+    @pytest.mark.parametrize('key_name', ['access_key_file', 'secret_key_file'])
+    @pytest.mark.parametrize('value', [b' \n', b'\xff'])
+    async def test_s3_credentials_require_nonempty_utf8(tmp_path: Path, key_name: str, value: bytes) -> None:
+        """S3凭据须与运行时一致地解码UTF8并拒绝空白正文。"""
+        config=configured(tmp_path)
+        config.objects.kind='s3'; config.objects.root=None
+        config.objects.bucket='finance'; config.objects.endpoint_url='https://objects.example'
+        for name in ('access_key_file','secret_key_file'):
+            path=tmp_path/name; path.write_bytes(b'valid-credential'); path.chmod(0o600)
+            setattr(config.objects,name,path)
+        getattr(config.objects,key_name).write_bytes(value)
+        result=await report(config)
+>       assert next(c for c in result['checks'] if c['code']=='credential_resources')['status']=='blocked'
+E       AssertionError: assert 'passed' == 'blocked'
+E
+E         - blocked
+E         + passed
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:291: AssertionError
+__________ test_archive_profile_matches_domain_eligibility[changes0] ___________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10c2e8a10>
+changes = {'archive_profile_id': 'unverified-profile'}
+
+    @pytest.mark.parametrize('changes', [
+        {'archive_profile_id':'unverified-profile'},
+        {'archive_profile_version':999},
+        {'required_lock_mode':'COMPLIANCE'},
+    ])
+    async def test_archive_profile_matches_domain_eligibility(store: Any, changes: dict[str, Any]) -> None:
+        """准备检查不得把领域明确拒绝的档案profile标为模拟可用。"""
+        from xuanpu_finance.compliance.models import CompliancePolicy
+        from xuanpu_finance.storage.common import decode
+        payer=await fully_configured(store)
+        first=await store.get_finance_readiness(payer,'e')
+        assert first['status']=='configured_simulation'
+        raw=decode(await store.pool.fetchval("SELECT r.data FROM finance_compliance_policy p JOIN finance_compliance_policy_revision r USING(tenant_id,legal_entity_id,version) WHERE p.tenant_id='t' AND p.legal_entity_id='e'"))
+        raw.update(version=raw['version']+1,enabled=True,**changes)
+        providers=[{**decode(row['data']),'enabled':row['enabled']} for row in await store.pool.fetch("SELECT data,enabled FROM finance_compliance_provider WHERE tenant_id='t' AND legal_entity_id='e'")]
+        await store.configure_compliance([CompliancePolicy.model_validate(raw)],providers,simulation=True)
+        report=await store.get_finance_readiness(payer,'e')
+>       assert report['status']=='blocked'
+E       AssertionError: assert 'configured_simulation' == 'blocked'
+E
+E         - blocked
+E         + configured_simulation
+
+packages/xuanpu-finance/tests/test_f6_readiness.py:169: AssertionError
+__________ test_archive_profile_matches_domain_eligibility[changes1] ___________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10c2e88c0>
+changes = {'archive_profile_version': 999}
+
+    @pytest.mark.parametrize('changes', [
+        {'archive_profile_id':'unverified-profile'},
+        {'archive_profile_version':999},
+        {'required_lock_mode':'COMPLIANCE'},
+    ])
+    async def test_archive_profile_matches_domain_eligibility(store: Any, changes: dict[str, Any]) -> None:
+        """准备检查不得把领域明确拒绝的档案profile标为模拟可用。"""
+        from xuanpu_finance.compliance.models import CompliancePolicy
+        from xuanpu_finance.storage.common import decode
+        payer=await fully_configured(store)
+        first=await store.get_finance_readiness(payer,'e')
+        assert first['status']=='configured_simulation'
+        raw=decode(await store.pool.fetchval("SELECT r.data FROM finance_compliance_policy p JOIN finance_compliance_policy_revision r USING(tenant_id,legal_entity_id,version) WHERE p.tenant_id='t' AND p.legal_entity_id='e'"))
+        raw.update(version=raw['version']+1,enabled=True,**changes)
+        providers=[{**decode(row['data']),'enabled':row['enabled']} for row in await store.pool.fetch("SELECT data,enabled FROM finance_compliance_provider WHERE tenant_id='t' AND legal_entity_id='e'")]
+        await store.configure_compliance([CompliancePolicy.model_validate(raw)],providers,simulation=True)
+        report=await store.get_finance_readiness(payer,'e')
+>       assert report['status']=='blocked'
+E       AssertionError: assert 'configured_simulation' == 'blocked'
+E
+E         - blocked
+E         + configured_simulation
+
+packages/xuanpu-finance/tests/test_f6_readiness.py:169: AssertionError
+__________ test_archive_profile_matches_domain_eligibility[changes2] ___________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10c2ea4b0>
+changes = {'required_lock_mode': 'COMPLIANCE'}
+
+    @pytest.mark.parametrize('changes', [
+        {'archive_profile_id':'unverified-profile'},
+        {'archive_profile_version':999},
+        {'required_lock_mode':'COMPLIANCE'},
+    ])
+    async def test_archive_profile_matches_domain_eligibility(store: Any, changes: dict[str, Any]) -> None:
+        """准备检查不得把领域明确拒绝的档案profile标为模拟可用。"""
+        from xuanpu_finance.compliance.models import CompliancePolicy
+        from xuanpu_finance.storage.common import decode
+        payer=await fully_configured(store)
+        first=await store.get_finance_readiness(payer,'e')
+        assert first['status']=='configured_simulation'
+        raw=decode(await store.pool.fetchval("SELECT r.data FROM finance_compliance_policy p JOIN finance_compliance_policy_revision r USING(tenant_id,legal_entity_id,version) WHERE p.tenant_id='t' AND p.legal_entity_id='e'"))
+        raw.update(version=raw['version']+1,enabled=True,**changes)
+        providers=[{**decode(row['data']),'enabled':row['enabled']} for row in await store.pool.fetch("SELECT data,enabled FROM finance_compliance_provider WHERE tenant_id='t' AND legal_entity_id='e'")]
+        await store.configure_compliance([CompliancePolicy.model_validate(raw)],providers,simulation=True)
+        report=await store.get_finance_readiness(payer,'e')
+>       assert report['status']=='blocked'
+E       AssertionError: assert 'configured_simulation' == 'blocked'
+E
+E         - blocked
+E         + configured_simulation
+
+packages/xuanpu-finance/tests/test_f6_readiness.py:169: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_s3_credentials_require_nonempty_utf8[ \n-access_key_file]
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_s3_credentials_require_nonempty_utf8[ \n-secret_key_file]
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_s3_credentials_require_nonempty_utf8[\xff-access_key_file]
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_s3_credentials_require_nonempty_utf8[\xff-secret_key_file]
+FAILED packages/xuanpu-finance/tests/test_f6_readiness.py::test_archive_profile_matches_domain_eligibility[changes0]
+FAILED packages/xuanpu-finance/tests/test_f6_readiness.py::test_archive_profile_matches_domain_eligibility[changes1]
+FAILED packages/xuanpu-finance/tests/test_f6_readiness.py::test_archive_profile_matches_domain_eligibility[changes2]
+7 failed, 28 passed in 3.18s

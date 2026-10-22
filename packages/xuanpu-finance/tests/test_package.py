@@ -18,6 +18,7 @@ from xuanpu_finance.routes_f2 import router as f2_router
 from xuanpu_finance.routes_f3 import router as f3_router
 from xuanpu_finance.routes_f4 import router as f4_router
 from xuanpu_finance.routes_f5 import router as f5_router
+from xuanpu_finance.routes_f6 import router as f6_router
 from xuanpu_spec import validate_package
 
 PACKAGE = Path(__file__).resolve().parents[3] / "examples/finance"
@@ -81,11 +82,11 @@ async def test_f0_f2_package_and_kernel_reference_read() -> None:
         assert "not_checked" in result.output or "outcome_unknown" in result.output
 
 
-def test_runnable_package_has_exactly_the_69_actual_finance_operations() -> None:
+def test_runnable_package_has_exactly_the_70_actual_finance_operations() -> None:
     """包只能发布已交付F3工具，也不能遗漏人工入口依赖的已实现路由。"""
     actual = {
         route.operation_id: (route.path, next(iter(route.methods)).lower())
-        for router in (f0_router, f1_router, f2_router, f3_router, f4_router, f5_router)
+        for router in (f0_router, f1_router, f2_router, f3_router, f4_router, f5_router, f6_router)
         for route in router.routes
         if isinstance(route, APIRoute)
     }
@@ -94,7 +95,7 @@ def test_runnable_package_has_exactly_the_69_actual_finance_operations() -> None
         for document in contracts().values()
         for key, (path, method, _) in operations(document).items()
     }
-    assert len(declared) == 69 and declared == actual
+    assert len(declared) == 70 and declared == actual
     manifest = yaml.safe_load((PACKAGE / "xuanpu.yaml").read_text())
     connectors = manifest["spec"]["connectors"]
     assert {tool["name"] for connector in connectors for tool in connector["tools"]} == set(actual)
@@ -102,7 +103,7 @@ def test_runnable_package_has_exactly_the_69_actual_finance_operations() -> None
     for document in contracts().values():
         assert len(document["paths"]) > 0
         assert all(
-            operation.get("x-delivery-phase") in {"F0", "F1", "F2", "F3", "F4", "F5"}
+            operation.get("x-delivery-phase") in {"F0", "F1", "F2", "F3", "F4", "F5", "F6"}
             for _, _, operation in operations(document).values()
         )
 
@@ -233,7 +234,7 @@ def test_declared_query_selectors_match_actual_fastapi_route_contract() -> None:
         for doc in documents.values()
         for name, (path, method, item) in operations(doc).items()
     }
-    for router in (f0_router, f1_router, f2_router, f3_router, f4_router, f5_router):
+    for router in (f0_router, f1_router, f2_router, f3_router, f4_router, f5_router, f6_router):
         for route in router.routes:
             if not isinstance(route, APIRoute):
                 continue

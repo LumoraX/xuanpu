@@ -1,0 +1,9 @@
+   Building xuanpu-finance @ file:///Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance
+      Built xuanpu-finance @ file:///Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance
+Uninstalled 1 package in 0.82ms
+warning: Failed to clone files; falling back to full copy. This may lead to degraded performance.
+         If the cache and target directories are on different filesystems, reflinking may not be supported.
+         If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
+Installed 1 package in 2ms
+...................                                                      [100%]
+19 passed in 8.98s

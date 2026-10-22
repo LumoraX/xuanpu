@@ -1,10 +1,11 @@
 ---
 name: finance-review
-description: 读取本人实际分派的报销、应付和原行动计划审批，核对证据并准备本人决定。
-version: 0.6.0-f5
+description: 读取本人实际分派的报销、应付和原行动计划审批，核对证据、准备本人决定，或由公司复核人只读检查接入准备。
+version: 0.7.0-f6
 entry: false
 type: composite
 tool_names:
+- api__finance__getFinanceReadiness
 - api__finance__getFinanceOverview
 - api__finance__listFinanceNotifications
 - api__finance__getInvoiceCompliance
@@ -38,3 +39,5 @@ F3查验和税务动作使用getInvoiceCompliance.version，原getInvoice.versio
 F4原生提醒由listFinanceNotifications读取当前来源，未读计数独立于当前页；提醒已读不表示审批或渠道成功。模型不调用readFinanceNotification；待审/未知应恢复原目标和原计划，不从提醒正文代批或重发。站内提醒不等于飞书、企业微信或邮件送达。
 
 F5专用资金先读[资金规则](references/funding-rules.md)。材料先真实收件并读取source回执；申报不是核实，模型仅准备草稿/预检，实际决定交员工。资金业务使用funding-cases专用入口，不伪装普通应付。
+
+准备接入正式渠道时，当前公司reviewer可用getFinanceReadiness读持久配置、岗位与渠道版本检查。遇到权限拒绝，不冒用身份；交该公司实际财务复核人处理。报告始终保留production_status=not_verified；配置检查通过不能代替逐单预检、人工决定或供应商正式验收，也不打开执行开关。

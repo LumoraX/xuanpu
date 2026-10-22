@@ -2,8 +2,8 @@ apiVersion: xuanpu/v1
 kind: Package
 metadata:
   name: finance
-  version: 0.6.0-f5
-  description: 独立财务F0-F5：专用资金、原生通知与实际人工审批，正式渠道未验收
+  version: 0.7.0-f6
+  description: 独立财务F0-F6：专用资金、实际人工审批与只读接入准备，正式渠道未验收
 spec:
   skills:
     entries:
@@ -154,6 +154,8 @@ spec:
     - name: importSupportingMaterials
       effect: write
     - name: getFundingMaterial
+      effect: read
+    - name: getFinanceReadiness
       effect: read
     contextAudience: xuanpu-finance
   - name: catalog

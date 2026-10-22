@@ -1,7 +1,7 @@
 ---
 name: invoice-intake
 description: 归集受权固定版本发票原件，查询持久进度并为报销或应付处理补件。
-version: 0.6.0-f5
+version: 0.7.0-f6
 entry: false
 type: composite
 tool_names:

@@ -51,3 +51,5 @@ F2交付38项操作和6个Skill；F3阶段包扩至58项操作和7个Skill，见
 `getSettlementOptions`返回当前员工可用的账簿、开放期间及动作许可，目录查询只返回受权资料和脱敏账户。`listActionPlans`可恢复原执行计划。`reconcileOperation`和取消均要求expected_version、幂等键和真实人工。正式业务、真实供应商及上线证据见独立验收记录，不以接口200或模型回答代替。
 
 当前F4已补原生站内提醒、SQL权限分页、配置/运营投影和local配套恢复，见[F4指南](finance-f4.md)与[剩余缺口台账](finance-gap-register.md)。F4阶段为61项API、7个Skill；当前F5为69项API、7个Skill，专用资金见[F5指南](finance-f5.md)。
+
+当前F6新增正式接入准备检查与可重复隔离验收，总70项API、7个Skill；见[F6指南](finance-f6.md)和[正式接入清单](finance-provider-acceptance.md)。原阶段正式能力未验边界继续保留。

@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 from pathlib import Path
 
 import uvicorn
 
 from xuanpu_finance.config import FinanceConfig, load_config
+from xuanpu_finance.readiness.offline import preflight
 from xuanpu_finance.runtime import open_runtime
 
 
@@ -25,10 +27,26 @@ async def serve(config: FinanceConfig) -> None:
 
 def main() -> None:
     """解析显式配置路径；配置检查不连接数据库或执行财务动作。"""
-    parser = argparse.ArgumentParser(description="玄圃独立财务 F0–F5")
+    parser = argparse.ArgumentParser(description="玄圃独立财务 F0–F6")
     parser.add_argument("--config", required=True, type=Path)
-    parser.add_argument("--check-config", action="store_true")
+    checks = parser.add_mutually_exclusive_group()
+    checks.add_argument("--check-config", action="store_true")
+    checks.add_argument("--preflight", action="store_true")
     args = parser.parse_args()
+    if args.preflight:
+        try:
+            config = load_config(args.config)
+            report = asyncio.run(preflight(config))
+            output = json.dumps(report, ensure_ascii=False)
+        except Exception:
+            print(json.dumps({"status": "blocked", "production_status": "not_verified",
+                              "checks": [{"code": "configuration_invalid", "status": "blocked",
+                                          "detail": "configuration_invalid"}]}))
+            raise SystemExit(2) from None
+        print(output)
+        if report["status"] == "blocked":
+            raise SystemExit(2)
+        return
     config = load_config(args.config)
     if args.check_config:
         print("财务配置结构校验通过；尚未连接外部资源")

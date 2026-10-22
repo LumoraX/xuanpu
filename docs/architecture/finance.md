@@ -1,6 +1,6 @@
-# 财务 F0–F5 当前架构
+# 财务 F0–F6 当前架构
 
-财务作为进程外 HTTP 服务运行。玄圃负责企业员工身份、会话和工具入口；独立财务服务持有公司授权、导入操作、发票、异常、原件回执及事件。平台进程不加载财务业务代码。当前覆盖F0原件、F1报销/人工审批、F2应付/付款/记账、F3查验/红字/档案、F4提醒/恢复及F5专用资金。当前契约finance 0.6.0-f5、69项API、7个Skill；实际制品与门禁以[F5验收记录](../guides/releases/2026-10-22-finance-f5-acceptance.md)为准。真实供应商、正式制度、官方标准和正式归档尚未验收。
+财务作为进程外 HTTP 服务运行。玄圃负责企业员工身份、会话和工具入口；独立财务服务持有公司授权、导入操作、发票、异常、原件回执及事件。平台进程不加载财务业务代码。当前覆盖F0原件、F1报销/人工审批、F2应付/付款/记账、F3查验/红字/档案、F4提醒/恢复、F5专用资金及F6只读接入准备。当前契约finance 0.7.0-f6、70项API、7个Skill；实际制品与门禁以[F6验收记录](../guides/releases/2026-10-22-finance-f6-acceptance.md)为准。真实供应商、正式制度、官方标准和正式归档尚未验收。
 
 ```mermaid
 flowchart LR
@@ -103,3 +103,9 @@ F3及统一F2/F3查询在SQL做授权count与limit+1分页；同一repeatable_re
 F3归档闭包扩展funding_case父子、实际材料、authority/decisions/reservation与付款/记账原回执；新源事实追加事件并要求补包。成熟pypdf/Pillow在可终止进程（10秒期限）进行PDF/PNG/JPEG有限结构检查，限制50MiB/2000页/2000万像素；不证明官方签章或法定四性。F4提醒保留资金目标，funding_due仅确定已付、到票逾期未结的预付，完整收尾后退出。SQL授权count/分页和独立dump/新库恢复覆盖新事实，恢复不启动worker。
 
 专用场景的配置、严格字段、API示例及停发续办见[F5指南](../guides/finance-f5.md)。正式制度/供应商未选，仍仅simulation与可替换HTTP；真实税务票样/WORM/外部报销/异机DR/真实模型与生产并发未验。
+
+## F6接入准备与验收事实
+
+`--preflight`在启动前只读显式固定凭据，检查秘密格式/权限/分离、公司制度与渠道前提，不连接外部资源或迁移。`getFinanceReadiness`仅当前同公司reviewer可读，从独立PG的read-only repeatable_read事务读取实际当前配置、授权代数及账户/渠道启停；配置摘要绑定作用域与版本。运行态独立附带模式、锁和后台任务故障。报告不持久化为批准，不新增业务表或平台库外键；逐单预检/HITL/原经办执行不受检查结果替代。
+
+仓库固定验收入口验证loopback实际finance_test库，使用真实pytest/JUnit生成模块覆盖/失败/跳过/源码和证据摘要。临时两库/独立非超级角色双向CONNECT拒绝是隔离机制演练，不代表正式凭据或原件IAM已验。正式制度批准、供应商、官方票样/签章、WORM、异机DR、模型与生产负载始终not_verified，关闭条件见[正式接入清单](../guides/finance-provider-acceptance.md)。

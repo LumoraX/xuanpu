@@ -1,0 +1,466 @@
+FFFFFFFFF                                                                [100%]
+=================================== FAILURES ===================================
+__________________ test_real_cases_not_untrusted_suite_totals __________________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1585/test_real_cases_not_untrusted_0')
+
+    def test_real_cases_not_untrusted_suite_totals(tmp_path: Path) -> None:
+        """汇总实际case而非伪造testsuite总数，并确认固定模块实际执行。"""
+        module='packages/xuanpu-finance/tests/test_worker.py'
+        p=junit(tmp_path,'<testcase classname="packages.xuanpu-finance.tests.test_worker" name="test_original"/>')
+>       result=runner().summarize(p,returncode=0,expected_modules=[module],suite='quick')
+               ^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:26:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:12: in runner
+    return importlib.import_module('scripts.acceptance.finance_runner')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'scripts', import_ = <function _gcd_import at 0x1027c40e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+______ test_empty_missing_failed_skip_and_process_failure_never_pass[-0] _______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1585/test_empty_missing_failed_skip0')
+case = '', returncode = 0
+
+    @pytest.mark.parametrize('case,returncode',[
+        ('',0),('<testcase classname="other" name="x"/>',0),
+        ('<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"><failure message="actual failure"/></testcase>',0),
+        ('<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"><skipped/></testcase>',0),
+        ('<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"/>',2),
+    ])
+    def test_empty_missing_failed_skip_and_process_failure_never_pass(tmp_path: Path,case: str,returncode: int) -> None:
+        """进程和case必须同时真实通过，财务skip不能当验收。"""
+>       result=runner().summarize(junit(tmp_path,case),returncode=returncode,
+               ^^^^^^^^
+            expected_modules=['packages/xuanpu-finance/tests/test_worker.py'],suite='quick')
+
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:39:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:12: in runner
+    return importlib.import_module('scripts.acceptance.finance_runner')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'scripts', import_ = <function _gcd_import at 0x1027c40e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+_ test_empty_missing_failed_skip_and_process_failure_never_pass[<testcase classname="other" name="x"/>-0] _
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1585/test_empty_missing_failed_skip1')
+case = '<testcase classname="other" name="x"/>', returncode = 0
+
+    @pytest.mark.parametrize('case,returncode',[
+        ('',0),('<testcase classname="other" name="x"/>',0),
+        ('<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"><failure message="actual failure"/></testcase>',0),
+        ('<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"><skipped/></testcase>',0),
+        ('<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"/>',2),
+    ])
+    def test_empty_missing_failed_skip_and_process_failure_never_pass(tmp_path: Path,case: str,returncode: int) -> None:
+        """进程和case必须同时真实通过，财务skip不能当验收。"""
+>       result=runner().summarize(junit(tmp_path,case),returncode=returncode,
+               ^^^^^^^^
+            expected_modules=['packages/xuanpu-finance/tests/test_worker.py'],suite='quick')
+
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:39:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:12: in runner
+    return importlib.import_module('scripts.acceptance.finance_runner')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'scripts', import_ = <function _gcd_import at 0x1027c40e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+_ test_empty_missing_failed_skip_and_process_failure_never_pass[<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"><failure message="actual failure"/></testcase>-0] _
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1585/test_empty_missing_failed_skip2')
+case = '<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"><failure message="actual failure"/></testcase>'
+returncode = 0
+
+    @pytest.mark.parametrize('case,returncode',[
+        ('',0),('<testcase classname="other" name="x"/>',0),
+        ('<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"><failure message="actual failure"/></testcase>',0),
+        ('<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"><skipped/></testcase>',0),
+        ('<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"/>',2),
+    ])
+    def test_empty_missing_failed_skip_and_process_failure_never_pass(tmp_path: Path,case: str,returncode: int) -> None:
+        """进程和case必须同时真实通过，财务skip不能当验收。"""
+>       result=runner().summarize(junit(tmp_path,case),returncode=returncode,
+               ^^^^^^^^
+            expected_modules=['packages/xuanpu-finance/tests/test_worker.py'],suite='quick')
+
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:39:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:12: in runner
+    return importlib.import_module('scripts.acceptance.finance_runner')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'scripts', import_ = <function _gcd_import at 0x1027c40e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+_ test_empty_missing_failed_skip_and_process_failure_never_pass[<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"><skipped/></testcase>-0] _
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1585/test_empty_missing_failed_skip3')
+case = '<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"><skipped/></testcase>'
+returncode = 0
+
+    @pytest.mark.parametrize('case,returncode',[
+        ('',0),('<testcase classname="other" name="x"/>',0),
+        ('<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"><failure message="actual failure"/></testcase>',0),
+        ('<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"><skipped/></testcase>',0),
+        ('<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"/>',2),
+    ])
+    def test_empty_missing_failed_skip_and_process_failure_never_pass(tmp_path: Path,case: str,returncode: int) -> None:
+        """进程和case必须同时真实通过，财务skip不能当验收。"""
+>       result=runner().summarize(junit(tmp_path,case),returncode=returncode,
+               ^^^^^^^^
+            expected_modules=['packages/xuanpu-finance/tests/test_worker.py'],suite='quick')
+
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:39:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:12: in runner
+    return importlib.import_module('scripts.acceptance.finance_runner')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'scripts', import_ = <function _gcd_import at 0x1027c40e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+_ test_empty_missing_failed_skip_and_process_failure_never_pass[<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"/>-2] _
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1585/test_empty_missing_failed_skip4')
+case = '<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"/>'
+returncode = 2
+
+    @pytest.mark.parametrize('case,returncode',[
+        ('',0),('<testcase classname="other" name="x"/>',0),
+        ('<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"><failure message="actual failure"/></testcase>',0),
+        ('<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"><skipped/></testcase>',0),
+        ('<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"/>',2),
+    ])
+    def test_empty_missing_failed_skip_and_process_failure_never_pass(tmp_path: Path,case: str,returncode: int) -> None:
+        """进程和case必须同时真实通过，财务skip不能当验收。"""
+>       result=runner().summarize(junit(tmp_path,case),returncode=returncode,
+               ^^^^^^^^
+            expected_modules=['packages/xuanpu-finance/tests/test_worker.py'],suite='quick')
+
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:39:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:12: in runner
+    return importlib.import_module('scripts.acceptance.finance_runner')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'scripts', import_ = <function _gcd_import at 0x1027c40e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+________________ test_nonfinance_full_skip_is_explicit_partial _________________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1585/test_nonfinance_full_skip_is_e0')
+
+    def test_nonfinance_full_skip_is_explicit_partial(tmp_path: Path) -> None:
+        """既有非财务skip单列，不伪装为完整通过。"""
+        p=junit(tmp_path,'<testcase classname="packages.xuanpu-server.tests.workspace.test_store" name="db"><skipped message="only PG"/></testcase>')
+>       result=runner().summarize(p,returncode=0,expected_modules=[],suite='full')
+               ^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:47:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:12: in runner
+    return importlib.import_module('scripts.acceptance.finance_runner')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'scripts', import_ = <function _gcd_import at 0x1027c40e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+_________________ test_missing_and_malformed_junit_fail_closed _________________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1585/test_missing_and_malformed_jun0')
+
+    def test_missing_and_malformed_junit_fail_closed(tmp_path: Path) -> None:
+        """没有真实结果或XML损坏时返回固定失败码。"""
+        for p in [tmp_path/'missing.xml',junit(tmp_path,'<broken>')]:
+>           result=runner().summarize(p,returncode=0,expected_modules=[],suite='quick')
+                   ^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:54:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:12: in runner
+    return importlib.import_module('scripts.acceptance.finance_runner')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'scripts', import_ = <function _gcd_import at 0x1027c40e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+___________ test_runner_rejects_remote_production_and_ambiguous_dsn ____________
+
+    def test_runner_rejects_remote_production_and_ambiguous_dsn() -> None:
+        """脚本仅用于本机明确的finance_test独立库，不可变任意渠道工具。"""
+        for dsn in ['postgresql://u:p@remote.example/finance_test','postgresql://u:p@127.0.0.1/production',
+                    'postgresql://u:p@127.0.0.1/finance_test?host=remote.example','postgresql:///finance_test']:
+            with pytest.raises(ValueError,match='TEST_DSN_REQUIRED'):
+>               runner().validate_dsn(dsn)
+                ^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:63:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:12: in runner
+    return importlib.import_module('scripts.acceptance.finance_runner')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1310: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:488: in _call_with_frames_removed
+    ???
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'scripts', import_ = <function _gcd_import at 0x1027c40e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f6_acceptance_runner.py::test_real_cases_not_untrusted_suite_totals
+FAILED packages/xuanpu-finance/tests/test_f6_acceptance_runner.py::test_empty_missing_failed_skip_and_process_failure_never_pass[-0]
+FAILED packages/xuanpu-finance/tests/test_f6_acceptance_runner.py::test_empty_missing_failed_skip_and_process_failure_never_pass[<testcase classname="other" name="x"/>-0]
+FAILED packages/xuanpu-finance/tests/test_f6_acceptance_runner.py::test_empty_missing_failed_skip_and_process_failure_never_pass[<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"><failure message="actual failure"/></testcase>-0]
+FAILED packages/xuanpu-finance/tests/test_f6_acceptance_runner.py::test_empty_missing_failed_skip_and_process_failure_never_pass[<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"><skipped/></testcase>-0]
+FAILED packages/xuanpu-finance/tests/test_f6_acceptance_runner.py::test_empty_missing_failed_skip_and_process_failure_never_pass[<testcase classname="packages.xuanpu-finance.tests.test_worker" name="x"/>-2]
+FAILED packages/xuanpu-finance/tests/test_f6_acceptance_runner.py::test_nonfinance_full_skip_is_explicit_partial
+FAILED packages/xuanpu-finance/tests/test_f6_acceptance_runner.py::test_missing_and_malformed_junit_fail_closed
+FAILED packages/xuanpu-finance/tests/test_f6_acceptance_runner.py::test_runner_rejects_remote_production_and_ambiguous_dsn
+9 failed in 1.10s

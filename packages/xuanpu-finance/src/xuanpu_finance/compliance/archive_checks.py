@@ -29,11 +29,17 @@ def canonical(value: object) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
 
 
+def archive_profile_eligible(simulation: bool, profile_id: object, profile_version: object,
+                             lock_mode: object) -> bool:
+    """归档资格只接受经过隔离验收的固定profile、版本及锁模式。"""
+    return simulation and (profile_id, profile_version, lock_mode) == (SIMULATION_PROFILE, 1, "SIMULATION")
+
+
 def validate_profile(snapshot: ArchiveSnapshot, request: dict[str, Any]) -> None:
     """没有真实标准材料和检测器时正式归档保持关闭。"""
-    if not request["simulation"] or not snapshot.simulation or (
-        snapshot.profile.id != SIMULATION_PROFILE or snapshot.profile.version != 1
-    ) or snapshot.retention.required_lock_mode != "SIMULATION":
+    if not archive_profile_eligible(request["simulation"] and snapshot.simulation,
+                                    snapshot.profile.id, snapshot.profile.version,
+                                    snapshot.retention.required_lock_mode):
         raise FinanceError("ARCHIVE_PROFILE_UNVERIFIED", 409, "当前仅支持明确隔离的模拟归档profile")
     if snapshot.target != request["target"]:
         raise FinanceError("ARCHIVE_SCOPE_MISMATCH", 409, "归档输入目标与固定请求不符")
