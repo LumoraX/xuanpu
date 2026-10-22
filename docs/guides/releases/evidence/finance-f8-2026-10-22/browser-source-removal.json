@@ -1,0 +1,14 @@
+{
+  "platform_source_files_before": 3,
+  "removed_test_originals": [
+    {
+      "sha256": "438ff9be06db7b4d89745f3baf1adaeb261209fdc69710b98bc0a7ca0e025b34",
+      "size": 669
+    },
+    {
+      "sha256": "363216039006f6271c38b432c29b46ccbc9315c89f48fb45fe89f6473ee0de3f",
+      "size": 659
+    }
+  ],
+  "remaining_non_original_objects": 1
+}

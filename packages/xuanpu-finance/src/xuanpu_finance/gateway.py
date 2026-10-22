@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from email.message import Message
+from email.utils import collapse_rfc2231_value
 from typing import TYPE_CHECKING
 from urllib.parse import quote
 
@@ -81,7 +82,10 @@ class PlatformGateway:
                     raise FinanceError("source_checksum_mismatch", 422, "原件版本摘要不一致")
                 disposition = Message()
                 disposition["content-disposition"] = response.headers.get("content-disposition", "")
-                name = disposition.get_filename() or file.file_id
+                # 平台同时提供ASCII占位名和RFC2231原名，优先保留扩展原名。
+                extended = [value for field, value in disposition.get_params(header="content-disposition", failobj=[])
+                            if field == "filename" and isinstance(value, tuple)]
+                name = (collapse_rfc2231_value(extended[-1]) if extended else disposition.get_filename()) or file.file_id
                 return data, response.headers.get("content-type", "application/octet-stream"), name
         except httpx.HTTPError as error:
             raise FinanceError("file_gateway_unavailable", 503, "原件读取通道暂不可用") from error

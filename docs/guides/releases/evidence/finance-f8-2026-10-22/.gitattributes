@@ -1,0 +1,15 @@
+# 保留原始测试回溯和构建日志字节，仅这些证据不检查行尾空白。
+backend-red.log -whitespace
+contract-red.log -whitespace
+docs-initial.log -whitespace
+download-lifecycle-red.log -whitespace
+filename-red.log -whitespace
+frontend-lineage-red.log -whitespace
+frontend-red-boundaries.log -whitespace
+frontend-red-picker.log -whitespace
+frontend-red-pointer.log -whitespace
+frontend-red.log -whitespace
+frontend-review-red.log -whitespace
+full-before-final-review/junit.xml -whitespace
+full-before-final-review/pytest.log -whitespace
+image-build.log -whitespace

@@ -51,6 +51,7 @@ async function renderFinanceList(generation,epoch) {
     const toolbar=$("workspace-toolbar"),select=financeSelect(toolbar,"所属公司",entities.items,financeState.entity);
     select.addEventListener("change",()=>{if(financeState.pending){financeShowPending();return;}financeState.entity=select.value;financeInvalidate();return refreshWorkspace();});
     select.disabled=!!financeState.pending;
+    if(typeof financeMaterialsToolbar==="function")financeMaterialsToolbar(toolbar);
     if(typeof financeOperationsToolbar==="function")financeOperationsToolbar(toolbar);
     const auxiliary=wsText("div",""),more=wsButton("更多财务功能",()=>{auxiliary.hidden=!auxiliary.hidden;more.setAttribute("aria-expanded",String(!auxiliary.hidden));});auxiliary.hidden=true;more.setAttribute("aria-expanded","false");
     if(typeof financeComplianceToolbar==="function")financeComplianceToolbar(auxiliary);
@@ -132,7 +133,7 @@ async function financeInvoice(id) {
   if(typeof financeComplianceInvoice==="function")card.append(wsButton("查验、税务与归档",()=>financeComplianceInvoice(id)));
   financeEvidence(card,bundle.evidence);for(const gap of bundle.gaps||[])card.append(wsText("p",gap));box.append(card);
 }
-async function financeEdit(claim=null) {
+async function financeEdit(claim=null,initialMaterials=[]) {
   if(financeState.pending){financeShowPending();return;}
   financeInvalidate();const revision=financeState.revision,token=financeToken(),args={legal_entity_id:financeState.entity,limit:100};
   const [categories,centers]=await Promise.all([financeCall("listExpenseCategories",args,false,"catalog"),financeCall("listCostCenters",args,false,"catalog")]);
@@ -142,7 +143,8 @@ async function financeEdit(claim=null) {
   const reason=financeField(form,"报销事由","text",claim?.content.reason||""),lines=[];
   const invoice=typeof financeRecordsInvoiceField==="function"?financeRecordsInvoiceField(form,claim):null;
   const materials={ids:[],pending:null};
-  const evidence=financeField(form,"附件记录编号（可选，多个用逗号分隔）","text",(claim?.content.evidence_ids||[]).join(","),false);
+  const attachments=typeof financeMaterialsAttachmentField==="function"?financeMaterialsAttachmentField(form,claim,token,initialMaterials):null;
+  const evidence=attachments?.evidence||financeField(form,"附件记录编号（可选，多个用逗号分隔）","text",(claim?.content.evidence_ids||[]).join(","),false);
   function addLine(initial={}){const row=wsText("fieldset",""),legend=wsText("legend","费用明细 "+(lines.length+1));row.append(legend);
     const category=financeSelect(row,"费用分类",categories.items,initial.category_id||categories.items[0].id);
     const amount=financeField(row,"报销金额（元）","text",initial.amount||"");amount.inputMode="decimal";
@@ -153,7 +155,7 @@ async function financeEdit(claim=null) {
     form.append(row);lines.push({category,amount,date,why,department,project});}
   for(const line of claim?.content.lines||[{}])addLine(line);
   form.append(wsButton("增加一项费用",()=>{addLine();financeInvalidate(true);}));const save=wsButton(claim?"保存修改":"保存本人草稿",()=>{},"");save.type="submit";
-  if(typeof financeFundingMaterials==="function")financeFundingMaterials(form,materials,save,token,{required:false,onReceived:ids=>{evidence.value=[...new Set([...evidence.value.split(/[，,\s]+/).filter(Boolean),...ids])].join(",");}});form.append(save);
+  if(typeof financeFundingMaterials==="function")financeFundingMaterials(form,materials,save,token,{required:false,onReceived:(ids,items)=>{if(attachments){attachments.add(ids,items);return;}evidence.value=[...new Set([...evidence.value.split(/[，,\s]+/).filter(Boolean),...ids])].join(",");}});form.append(save);
   form.addEventListener("input",()=>financeInvalidate(true));
   financeSubmit(form,async()=>{if(!financeCurrent(token)||materials.pending||materials.uploading||materials.confirming)return;
     const ids=[...new Set(evidence.value.split(/[，,\s]+/).filter(Boolean))];
@@ -204,11 +206,12 @@ async function financeExecute() {
 async function financeConfirmWrite(operation,args,label,onDone,form=null) {
   if(financeState.pending){financeShowPending();return;}
   const token=financeToken(),revision=financeState.revision,snapshot=JSON.parse(JSON.stringify(args)),box=wsText("article","","workspace-record");
+  const beforeSend=operation==="importSupportingMaterials"&&typeof financeMaterialsSendGuard==="function"?financeMaterialsSendGuard(snapshot):null;
   box.append(wsText("p",label));
   if(args.body?.draft||args.body?.lines){const draft=args.body.draft||args.body;box.append(wsText("p",draft.reason));for(const line of draft.lines||[])box.append(wsText("p",[line.reason,line.occurred_on,"¥"+line.amount].join(" · ")));}
   if(args.body?.invoice_id)box.append(wsText("p","票据 "+args.body.invoice_id+" · 版本 "+args.body.invoice_version+" · 金额 ¥"+args.body.amount+" · 税额 ¥"+args.body.tax));
   const confirm=wsButton("本人确认保存",async()=>{if(!financeCurrent(token)||revision!==financeState.revision||confirm.disabled)return;confirm.disabled=true;
-    financeState.pending={operation,arguments:{...snapshot,"Idempotency-Key":crypto.randomUUID()},onDone};
+    financeState.pending={operation,arguments:{...snapshot,"Idempotency-Key":snapshot["Idempotency-Key"]||crypto.randomUUID()},onDone,beforeSend};
     await financeSendPending(token);},"");box.append(confirm);(form||$("workspace-content")).append(box);
   if(form)for(const event of ["input","change"])form.addEventListener(event,()=>{confirm.disabled=true;box.replaceChildren(wsText("p","内容已改变，请重新核对。"));},{once:true});
 }
@@ -226,6 +229,7 @@ async function financeCheckPending(id) {
 async function financeSendPending(token) {
   const pending=financeState.pending;if(!pending||pending.sending)return;pending.sending=true;
   try {
+    if(pending.beforeSend)pending.beforeSend();
     const result=await financeCall(pending.operation,pending.arguments,true);if(!financeCurrent(token))return;
     financeState.pending=null;financeInvalidate(pending.operation==="importSupportingMaterials");
     if(pending.onDone)await pending.onDone(result);

@@ -2,8 +2,8 @@ apiVersion: xuanpu/v1
 kind: Package
 metadata:
   name: finance
-  version: 0.8.0-f7
-  description: 独立财务F0-F7：发票申报、报销流转记录、真人审批与历史原件，当前不做支付
+  version: 0.9.0-f8
+  description: 独立财务F0-F8：发票申报、报销流转记录、真人审批与历史原件，当前不做支付
 spec:
   skills:
     entries:
@@ -155,6 +155,10 @@ spec:
       effect: read
     - name: revokeFundingAuthority
       effect: write
+    - name: listSupportingMaterialImports
+      effect: read
+    - name: getSupportingMaterialImport
+      effect: read
     - name: importSupportingMaterials
       effect: write
     - name: getFundingMaterial

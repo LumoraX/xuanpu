@@ -1,0 +1,61 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_______________________ test_finance_materials_behavior ________________________
+
+    def test_finance_materials_behavior() -> None:
+        """收件跨页恢复保留请求身份，附件点选不丢未保存单据。"""
+        node = shutil.which('node')
+        assert node is not None
+        result = subprocess.run(
+            [node, str(Path(__file__).with_name('finance_materials_behavior.cjs')), str(static_dir())],
+            capture_output=True, text=True, timeout=15,
+        )
+>       assert result.returncode == 0, result.stdout + result.stderr
+E       AssertionError: PASS abandonedOrChangedLineageCannotUseOldConfirmation
+E         PASS retryAlsoRechecksStorage
+E         PASS pointerIdentifierContractMatchesAPI
+E         PASS pickerPagingAndCancelKeepBody
+E         PASS unresolvedPointerCannotBeOverwritten
+E         PASS knownOperationAfterReloadOnlyQueries
+E         PASS differentFileCannotReplayFixedReference
+E         PASS compositeScopeCannotCollide
+E         PASS lateAcceptedImportDoesNotReviveOldForm
+E         PASS persistencePrecedesPosts
+E         PASS unknownPlatformKeepsOriginalRequest
+E         PASS unknownFinanceKeepsOriginalKey
+E         PASS invalidStorageBlocksPosts
+E         PASS scopeAndCaps
+E         PASS pickerKeepsUnsavedForm
+E         FAIL lateQueryCannotDeleteAnotherRequest AssertionError [ERR_ASSERTION]: 旧查询不得清除新请求恢复链：changed
+E         + actual - expected
+E         
+E         + undefined
+E         - '{"filename":"new.pdf","size_bytes":13,"media_type":"application/pdf","sha256":"3ebc4089517fc8051e504689df25e88c600fd3d18ffc29beb08e6a2cd1236350","request_id":"new-request","tenant_id":"acme","user_id":"operator","legal_entity_id":"e"}'
+E         
+E             at lateQueryCannotDeleteAnotherRequest (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:27:944)
+E             at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:29:596 {
+E           generatedMessage: false,
+E           code: 'ERR_ASSERTION',
+E           actual: undefined,
+E           expected: '{"filename":"new.pdf","size_bytes":13,"media_type":"application/pdf","sha256":"3ebc4089517fc8051e504689df25e88c600fd3d18ffc29beb08e6a2cd1236350","request_id":"new-request","tenant_id":"acme","user_id":"operator","legal_entity_id":"e"}',
+E           operator: 'strictEqual',
+E           diff: 'simple'
+E         }
+E         FAIL forgettingExpectedPointerCannotClearNewLineage AssertionError [ERR_ASSERTION]: Missing expected exception.
+E             at forgettingExpectedPointerCannotClearNewLineage (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:28:427)
+E             at /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:29:602 {
+E           generatedMessage: false,
+E           code: 'ERR_ASSERTION',
+E           actual: undefined,
+E           expected: /恢复/,
+E           operator: 'throws',
+E           diff: 'simple'
+E         }
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/opt/homebrew/bin/node', '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/x...  code: \'ERR_ASSERTION\',\n  actual: undefined,\n  expected: /恢复/,\n  operator: \'throws\',\n  diff: \'simple\'\n}\n').returncode
+
+packages/xuanpu-console/tests/test_finance_behavior.py:77: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-console/tests/test_finance_behavior.py::test_finance_materials_behavior
+1 failed, 6 deselected in 0.11s

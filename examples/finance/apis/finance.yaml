@@ -1,14 +1,14 @@
 openapi: 3.0.3
 info:
-  title: 玄圃财务 F0—F7 API
-  version: 0.8.0-f7
+  title: 玄圃财务 F0—F8 API
+  version: 0.9.0-f8
   description: 独立存储与Skill/API/HITL；当前优先发票申报、内部报销、真人审批和完整流转记录，外部支付与正式验真归档未启用。
 servers:
 - url: http://127.0.0.1:8443
 security:
 - serviceBearer: []
   actorContext: []
-x-design-status: implemented-f0-f7-internal-records
+x-design-status: implemented-f0-f8-internal-records
 x-trusted-context: 平台签名注入X-Xuanpu-Context，禁止模型提供身份；executeFinanceAction/reconcileOperation及F2取消只允许cookie人工网关。
 paths:
   /v1/finance/legal-entities:
@@ -1338,6 +1338,23 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SupportingMaterialImport'
+    get:
+      operationId: listSupportingMaterialImports
+      summary: 分页恢复当前公司本人支持材料收件记录
+      x-delivery-phase: F8
+      parameters:
+      - $ref: '#/components/parameters/LegalEntity'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 本人收件元数据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupportingMaterialImportPage'
+        default:
+          $ref: '#/components/responses/Error'
   /v1/finance/funding-cases/{id}/materials/{receipt_id}:
     parameters:
     - $ref: '#/components/parameters/Id'
@@ -1389,6 +1406,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FinanceReadinessResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/finance/supporting-material-imports/{id}:
+    get:
+      operationId: getSupportingMaterialImport
+      summary: 只读本人收件逐项元数据，selectable不代表正式验真
+      x-delivery-phase: F8
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: &id012
+          type: string
+      responses:
+        '200':
+          description: 本人收件元数据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupportingMaterialImportDetail'
         default:
           $ref: '#/components/responses/Error'
 components:
@@ -5924,3 +5961,87 @@ components:
           type: object
           description: 不可变历史原文。revision为当时版本快照，兼容历史schema；decision含实际actor_id/action/workflow_id/step_id与原计划参数，不能由当前快照推算。
           additionalProperties: true
+    SupportingMaterialImportSummary:
+      type: object
+      required:
+      - id
+      - version
+      - status
+      - created_at
+      - total
+      - summary
+      additionalProperties: false
+      properties:
+        id: *id012
+        version:
+          type: integer
+        status: *id012
+        created_at:
+          type: string
+          format: date-time
+        total:
+          type: integer
+          minimum: 0
+        summary:
+          $ref: '#/components/schemas/ImportSummary'
+    SupportingMaterialImportPage:
+      type: object
+      required:
+      - items
+      - total
+      - next_cursor
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupportingMaterialImportSummary'
+        total:
+          type: integer
+          minimum: 0
+        next_cursor: &id013
+          type: string
+          nullable: true
+    SupportingMaterialMetadata:
+      type: object
+      required:
+      - position
+      - state
+      - receipt_id
+      - filename
+      - size_bytes
+      - media_type
+      - sha256
+      - verification_state
+      - selectable
+      additionalProperties: false
+      properties:
+        position:
+          type: integer
+        state: *id012
+        receipt_id: *id013
+        filename: *id013
+        size_bytes:
+          type: integer
+          nullable: true
+        media_type: *id013
+        sha256: *id013
+        verification_state:
+          type: string
+          enum:
+          - not_checked
+        selectable:
+          type: boolean
+    SupportingMaterialImportDetail:
+      type: object
+      required:
+      - operation
+      - materials
+      additionalProperties: false
+      properties:
+        operation:
+          $ref: '#/components/schemas/Operation'
+        materials:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupportingMaterialMetadata'

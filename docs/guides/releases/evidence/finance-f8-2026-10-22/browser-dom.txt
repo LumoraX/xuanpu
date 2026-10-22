@@ -1,0 +1,122 @@
+- banner:
+  - generic: 玄圃 个人工作站
+  - generic: 已登录 · F8测试财务复核（飞书）
+  - button "通知"
+  - generic: F8测试财务复核 · 成员
+  - button "退出"
+- navigation:
+  - button "会话"
+  - button "功能"
+- main:
+  - complementary "财务记录与审批":
+    - heading "财务记录与审批" [level=2]
+    - button "关闭工作窗口": 收起
+    - text: 所属公司
+    - combobox "所属公司":
+      - option "F8隔离验收公司" [selected]
+    - button "我的收件记录"
+    - button "财务提醒"
+    - button "运行概览"
+    - button "新建报销"
+    - button "本人草稿"
+    - button "全部可看记录"
+    - button "待我审批"
+    - button "刷新"
+    - button "更多财务功能"
+    - status: 请核对报销明细、票据依据和审批步骤；审批通过不表示已付款或入账。
+    - heading "F8最终验收：已补充交通行程" [level=3]
+    - paragraph: ¥100.00 · 审批通过 · 版本 6
+    - paragraph: 单号：ac7d47fdc1a741aa804b7c2c7c6d971f
+    - paragraph: F8最终测试地铁费用 · 2026-10-22 · ¥100.00 · travel
+    - paragraph: 内部报销记录：记录与内部审批不表示已经付款、入账或完成票据验真。
+    - generic "证据记录（1）"
+    - heading "发票信息申报（未经查验）" [level=4]
+    - generic: 发票号 TEST-F8-FINAL 申报金额 100.00；未经查验
+    - paragraph: 以上为申请人提供的原文，非正式发票；未作票据验真、付款或记账。
+    - button "读取原件 6297bb514e6e4b668286a97ebc555ccc"
+    - button "查看流转历史"
+    - heading "流转历史（9）" [level=4]
+    - article:
+      - paragraph: 2026-10-22T10:36:01.930348+00:00
+      - heading "原单据版本 1 · ¥100.00 · 草稿" [level=5]
+      - paragraph: F8最终验收：客户拜访交通
+      - paragraph: F8最终测试地铁费用 · 2026-10-22 · ¥100.00
+      - heading "发票信息申报（未经查验）" [level=4]
+      - generic: 发票号 TEST-F8-FINAL 申报金额 100.00；未经查验
+      - paragraph: 以上为申请人提供的原文，非正式发票；未作票据验真、付款或记账。
+      - generic "证据记录（1）"
+      - button "读取原件 e720d3223e2e425080a4895fe631ead3"
+      - link "下载已核对摘要的原件":
+        - /url: blob:http://127.0.0.1:53690/66235034-9afb-4070-a61e-264df792fd37
+      - paragraph: 已读取独立财务原件；这不代表材料内容或银行事实已核实。
+    - button "加载更多历史" [disabled]
+    - article:
+      - paragraph: 2026-10-22T10:36:02.689887+00:00
+      - heading "原单据版本 2 · ¥100.00 · 审批中" [level=5]
+      - paragraph: F8最终验收：客户拜访交通
+      - paragraph: F8最终测试地铁费用 · 2026-10-22 · ¥100.00
+      - heading "发票信息申报（未经查验）" [level=4]
+      - generic: 发票号 TEST-F8-FINAL 申报金额 100.00；未经查验
+      - paragraph: 以上为申请人提供的原文，非正式发票；未作票据验真、付款或记账。
+      - generic "证据记录（1）"
+      - button "读取原件 e720d3223e2e425080a4895fe631ead3"
+    - button "加载更多历史" [disabled]
+    - article:
+      - paragraph: 2026-10-22T10:38:25.053797+00:00
+      - heading "驳回 · 单据版本 2" [level=5]
+      - paragraph: 实际操作人：usr_5fd1ff32f971e52dda27b60e
+      - paragraph: 意见：请补充交通行程附件
+      - paragraph: 21f2634c9693484c834da9d6b5514ca3 · d084209066e9412dadd6b7a3f46e51c7
+    - button "加载更多历史"
+    - heading "审批进展" [level=4]
+    - paragraph: 流程版本：3 · 制度版本：1
+    - paragraph: 审批期限：2026-10-25T10:38:45.857536+00:00
+    - paragraph: 负责人审批 · 已批准本步骤 · 审批人：usr_5fd1ff32f971e52dda27b60e
+    - paragraph: 财务复核 · 已批准本步骤 · 审批人：usr_b287b5dbc6f9bf87b152cd0d
+  - heading "功能" [level=1]
+  - paragraph: 平时直接在对话里说出需求，也可以在这里查看记录、自己操作。
+  - article:
+    - heading "交办工作" [level=2]
+    - paragraph: 查看材料处理进展，确认行动项并下载成果。关闭页面后仍会继续处理。
+    - button "查看我的工作"
+  - article:
+    - heading "发票报销记录与审批" [level=2]
+    - paragraph: 记录发票和报销内容、选择附件、查看流转进展并处理本人审批。
+    - button "打开财务辅助页" [expanded]
+  - article:
+    - heading "我的文件" [level=2]
+    - paragraph: 文件夹、附件、版本和回收站，始终属于你的个人空间。
+    - button "打开文件"
+  - article:
+    - heading "事项与待办" [level=2]
+    - paragraph: 查看进展、关联资料，记录下一步工作。
+    - button "打开事项"
+    - button "查看待办"
+  - article:
+    - heading "日程" [level=2]
+    - paragraph: 安排自己的时间，查看日程和到期提醒。
+    - button "打开日程"
+  - article:
+    - heading "个人能力与设置" [level=2]
+    - paragraph: 沉淀工作方法，设置助手的称呼、风格和时区。
+    - button "个人能力"
+    - button "助手设置"
+  - article:
+    - heading "提醒" [level=2]
+    - paragraph: 新建提醒、调整时间，查看已提醒或已取消的记录。
+    - button "管理提醒"
+  - article:
+    - heading "业务跟进" [level=2]
+    - paragraph: 查看需要核实、安排或继续处理的工作，在对话中确认决定。
+    - button "查看业务跟进"
+  - article:
+    - heading "通知" [level=2]
+    - paragraph: 查看到期提醒和送达情况，离线期间的通知也会保留。
+    - button "查看通知"
+- contentinfo:
+  - link "管理员入口":
+    - /url: "?admin=1"
+  - text: ·
+  - link "员工入口":
+    - /url: "?"
+- status

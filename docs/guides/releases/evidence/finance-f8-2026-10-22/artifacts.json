@@ -1,0 +1,55 @@
+{
+  "artifacts": [
+    {
+      "package": "xuanpu_finance",
+      "version": "2026.10.22.5",
+      "source_files": 129,
+      "source_equal": true,
+      "artifacts": [
+        {
+          "path": "/tmp/xuanpu-finance-f8-build/xuanpu_finance-2026.10.22.5-py3-none-any.whl",
+          "sha256": "06a2f0a160cd8b984c9fa5f3b3302834e1e3297a5ec99a7dcfdbdb12b2a796fe",
+          "size": 321665
+        },
+        {
+          "path": "/tmp/xuanpu-finance-f8-build/xuanpu_finance-2026.10.22.5.tar.gz",
+          "sha256": "1978b0ba6a382ada659433a05abb7e6cabd302b151af9092bd79009b5c461e0f",
+          "size": 380058
+        }
+      ]
+    },
+    {
+      "package": "xuanpu_console",
+      "version": "2026.10.22.4",
+      "source_files": 23,
+      "source_equal": true,
+      "artifacts": [
+        {
+          "path": "/tmp/xuanpu-finance-f8-build/xuanpu_console-2026.10.22.4-py3-none-any.whl",
+          "sha256": "b5667283c8f16af0ae389d126335fadfc765321942a24858739d69fb4f8c85e5",
+          "size": 104900
+        },
+        {
+          "path": "/tmp/xuanpu-finance-f8-build/xuanpu_console-2026.10.22.4.tar.gz",
+          "sha256": "be30acab6b8507c088fe46734aeaa1fd212b55a9974eab70a0959e2d526d36bf",
+          "size": 120486
+        }
+      ]
+    }
+  ],
+  "image": {
+    "name": "xuanpu-finance:2026.10.22.5",
+    "id": "sha256:40834c57c6727593b56bb4474e61bfe355ea75fc59a6caccbd9d158c418563e5",
+    "uid": 10001,
+    "source_files": 129,
+    "source_equal": true
+  },
+  "business_pack": {
+    "path": "/tmp/xuanpu-finance-f8-build/finance-0.9.0-f8.zip",
+    "sha256": "511a2582e6dc1adf74ba24dca0d994b7928d007c57e9bc625c10a4b52b249b72",
+    "source_files": 20,
+    "source_equal": true,
+    "mirror_equal": true
+  },
+  "lock_sha256": "62b3c8e7648445b7d30e6ef91965f24859dc1056c5e49db9f52fc4e3617d4e74"
+}

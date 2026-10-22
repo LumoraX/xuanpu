@@ -1,0 +1,17 @@
+{
+  "original": {
+    "receipt_id": "e720d3223e2e425080a4895fe631ead3",
+    "sha256": "363216039006f6271c38b432c29b46ccbc9315c89f48fb45fe89f6473ee0de3f",
+    "size": 659,
+    "browser_download_equal": true,
+    "after_platform_source_removal": true,
+    "history_version_1_after_replacement_equal": true
+  },
+  "supplement": {
+    "receipt_id": "6297bb514e6e4b668286a97ebc555ccc",
+    "sha256": "438ff9be06db7b4d89745f3baf1adaeb261209fdc69710b98bc0a7ca0e025b34",
+    "size": 669,
+    "browser_download_equal": true,
+    "after_platform_source_removal": true
+  }
+}

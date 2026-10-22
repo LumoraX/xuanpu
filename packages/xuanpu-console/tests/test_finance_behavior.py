@@ -64,3 +64,14 @@ def test_finance_records_behavior() -> None:
         capture_output=True, text=True, timeout=15,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_finance_materials_behavior() -> None:
+    """收件跨页恢复保留请求身份，附件点选不丢未保存单据。"""
+    node = shutil.which('node')
+    assert node is not None
+    result = subprocess.run(
+        [node, str(Path(__file__).with_name('finance_materials_behavior.cjs')), str(static_dir())],
+        capture_output=True, text=True, timeout=15,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

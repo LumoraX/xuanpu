@@ -1,6 +1,6 @@
 # 财务F5：预付、员工垫付与委托收款
 
-当前F7按用户要求聚焦发票与报销内部流转记录，不做支付。最新契约为finance `0.8.0-f7`、72项API、7个Skill；见[F7指南](finance-f7.md)及[F7本轮验收](releases/2026-10-22-finance-f7-acceptance.md)。下文阶段记录保留其原有验证范围。
+当前F8按用户要求聚焦发票报销内部流转记录，不做支付。最新契约finance `0.9.0-f8`、74项API、7个Skill；见[F8指南](finance-f8.md)及[F8本轮验收](releases/2026-10-22-finance-f8-acceptance.md)。下文阶段记录保留原有验证范围。
 
 F5在独立财务PostgreSQL、AES-GCM原件、真实人工审批和F2固定外部请求上增加专用资金单据，覆盖三种付款场景与两种预付收尾。当前包契约为finance `0.6.0-f5`、69项API、7个Skill；服务与console已构建版本分别为`2026.10.22.1`、`2026.10.22.2`，实际制品和验证结果以[F5验收记录](releases/2026-10-22-finance-f5-acceptance.md)为准。版本编号不表示正式通道已启用。
 

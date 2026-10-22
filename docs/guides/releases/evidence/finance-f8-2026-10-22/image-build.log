@@ -1,0 +1,75 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 723B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.12-slim-bookworm
+#2 DONE 2.9s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/7] FROM docker.io/library/python:3.12-slim-bookworm@sha256:6a0e06f5ba0b373d051aabd3fffb9b873f27f9a2a3a14bcbe37dee6f0e3bbc70
+#4 resolve docker.io/library/python:3.12-slim-bookworm@sha256:6a0e06f5ba0b373d051aabd3fffb9b873f27f9a2a3a14bcbe37dee6f0e3bbc70 done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 1.06MB 0.0s done
+#5 DONE 0.0s
+
+#6 [2/7] RUN groupadd --gid 10001 finance && useradd --uid 10001 --gid 10001 --create-home finance     && mkdir -p /var/lib/finance/originals && chown -R finance:finance /var/lib/finance
+#6 CACHED
+
+#7 [3/7] COPY requirements.lock /build/requirements.lock
+#7 CACHED
+
+#8 [4/7] RUN pip install --no-cache-dir --require-hashes -r /build/requirements.lock
+#8 CACHED
+
+#9 [5/7] COPY packages/ /build/packages/
+#9 DONE 0.0s
+
+#10 [6/7] RUN pip install --no-cache-dir --no-deps /build/packages/xuanpu-spec '/build/packages/xuanpu-finance[s3]'     && pip check && rm -rf /build
+#10 0.792 Processing /build/packages/xuanpu-spec
+#10 0.793   Installing build dependencies: started
+#10 7.264   Installing build dependencies: finished with status 'done'
+#10 7.265   Getting requirements to build wheel: started
+#10 7.417   Getting requirements to build wheel: finished with status 'done'
+#10 7.418   Preparing metadata (pyproject.toml): started
+#10 7.679   Preparing metadata (pyproject.toml): finished with status 'done'
+#10 7.680 Processing /build/packages/xuanpu-finance
+#10 7.681   Installing build dependencies: started
+#10 10.13   Installing build dependencies: finished with status 'done'
+#10 10.13   Getting requirements to build wheel: started
+#10 10.29   Getting requirements to build wheel: finished with status 'done'
+#10 10.29   Preparing metadata (pyproject.toml): started
+#10 10.53   Preparing metadata (pyproject.toml): finished with status 'done'
+#10 10.53 Building wheels for collected packages: xuanpu-spec, xuanpu-finance
+#10 10.53   Building wheel for xuanpu-spec (pyproject.toml): started
+#10 10.60   Building wheel for xuanpu-spec (pyproject.toml): finished with status 'done'
+#10 10.60   Created wheel for xuanpu-spec: filename=xuanpu_spec-2026.10.21.1-py3-none-any.whl size=25633 sha256=89dc09d668ac43cf96155d7a1544a39e6af824f02fd813c3936b51cbda072752
+#10 10.60   Stored in directory: /tmp/pip-ephem-wheel-cache-vfawiw8f/wheels/05/80/34/85df0908a56563b99b8a9e526f9d5d9ef596477c4f4cdd5f81
+#10 10.60   Building wheel for xuanpu-finance (pyproject.toml): started
+#10 10.66   Building wheel for xuanpu-finance (pyproject.toml): finished with status 'done'
+#10 10.66   Created wheel for xuanpu-finance: filename=xuanpu_finance-2026.10.22.5-py3-none-any.whl size=321665 sha256=06a2f0a160cd8b984c9fa5f3b3302834e1e3297a5ec99a7dcfdbdb12b2a796fe
+#10 10.66   Stored in directory: /tmp/pip-ephem-wheel-cache-vfawiw8f/wheels/00/77/d8/4c975941903f3b04ea00b53654d371cfcceabcbdf128d90800
+#10 10.66 Successfully built xuanpu-spec xuanpu-finance
+#10 10.66 Installing collected packages: xuanpu-spec, xuanpu-finance
+#10 10.78 Successfully installed xuanpu-finance-2026.10.22.5 xuanpu-spec-2026.10.21.1
+#10 10.78 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#10 11.63 
+#10 11.63 [notice] A new release of pip is available: 25.0.1 -> 26.2.2
+#10 11.63 [notice] To update, run: pip install --upgrade pip
+#10 12.20 No broken requirements found.
+#10 DONE 12.2s
+
+#11 [7/7] WORKDIR /home/finance
+#11 DONE 0.0s
+
+#12 exporting to image
+#12 exporting layers 0.0s done
+#12 writing image sha256:40834c57c6727593b56bb4474e61bfe355ea75fc59a6caccbd9d158c418563e5 done
+#12 naming to docker.io/library/xuanpu-finance:2026.10.22.5 done
+#12 DONE 0.0s

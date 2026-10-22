@@ -1,0 +1,54 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_______________________ test_finance_materials_behavior ________________________
+
+    def test_finance_materials_behavior() -> None:
+        """收件跨页恢复保留请求身份，附件点选不丢未保存单据。"""
+        node = shutil.which('node')
+        assert node is not None
+        result = subprocess.run(
+            [node, str(Path(__file__).with_name('finance_materials_behavior.cjs')), str(static_dir())],
+            capture_output=True, text=True, timeout=15,
+        )
+>       assert result.returncode == 0, result.stdout + result.stderr
+E       AssertionError: PASS knownOperationAfterReloadOnlyQueries
+E         PASS lateAcceptedImportDoesNotReviveOldForm
+E         PASS persistencePrecedesPosts
+E         PASS unknownPlatformKeepsOriginalRequest
+E         PASS unknownFinanceKeepsOriginalKey
+E         PASS invalidStorageBlocksPosts
+E         PASS scopeAndCaps
+E         PASS pickerKeepsUnsavedForm
+E         FAIL differentFileCannotReplayFixedReference AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+E         
+E           assert(text(form).includes('不匹配'))
+E         
+E             at differentFileCannotReplayFixedReference (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:19:384)
+E             at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:22:335 {
+E           generatedMessage: true,
+E           code: 'ERR_ASSERTION',
+E           actual: false,
+E           expected: true,
+E           operator: '==',
+E           diff: 'simple'
+E         }
+E         FAIL compositeScopeCannotCollide AssertionError [ERR_ASSERTION]: Expected "actual" to be strictly unequal to:
+E         
+E         'xuanpu.finance.materials.v1.a.b.c.d'
+E             at compositeScopeCannotCollide (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:20:249)
+E             at /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:22:341 {
+E           generatedMessage: true,
+E           code: 'ERR_ASSERTION',
+E           actual: 'xuanpu.finance.materials.v1.a.b.c.d',
+E           expected: 'xuanpu.finance.materials.v1.a.b.c.d',
+E           operator: 'notStrictEqual',
+E           diff: 'simple'
+E         }
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/opt/homebrew/bin/node', '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/x....d\',\n  expected: \'xuanpu.finance.materials.v1.a.b.c.d\',\n  operator: \'notStrictEqual\',\n  diff: \'simple\'\n}\n').returncode
+
+packages/xuanpu-console/tests/test_finance_behavior.py:77: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-console/tests/test_finance_behavior.py::test_finance_materials_behavior
+1 failed, 6 deselected in 0.10s

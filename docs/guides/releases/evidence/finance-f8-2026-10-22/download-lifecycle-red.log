@@ -1,0 +1,47 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________________________ test_finance_records_behavior _________________________
+
+    def test_finance_records_behavior() -> None:
+        """内部报销保留原文、真实可选附件及版本历史，且不暴露外部执行。"""
+        node = shutil.which('node')
+        assert node is not None
+        result = subprocess.run(
+            [node, str(Path(__file__).with_name('finance_records_behavior.cjs')), str(static_dir())],
+            capture_output=True, text=True, timeout=15,
+        )
+>       assert result.returncode == 0, result.stdout + result.stderr
+E       AssertionError: PASS addingExpenseLineInvalidatesEarlierSaveConfirmation
+E         PASS fundingBasisEditsKeepInFlightMaterialRecovery
+E         PASS lateImportCannotRestoreAbandonedForm
+E         PASS editingWhileImportIsInFlightKeepsReceiptRecovery
+E         PASS editingAttachmentIdsCanReplaceOrRemoveExisting
+E         PASS expenseListPaginatesMaximumChineseOriginals
+E         PASS uploadingInvalidatesEarlierDraftConfirmation
+E         PASS listNavigationAndExitReleaseDownloads
+E         PASS unknownMaterialRequestRetainsIdempotency
+E         PASS lateMaterialReceiptCannotChangeNewPage
+E         PASS editPreservesInvoiceAndOptionalEvidence
+E         PASS uploadedExpenseUsesRealReceiptAndLocksSave
+E         PASS internalRecordsAndHistory
+E         PASS expenseDownloadPinsVersionAndValidatesDigest
+E         PASS lateHistoryAndDownloadDoNotReachNewPage
+E         PASS moreFunctionsAreExplicit
+E         FAIL revokedDownloadCannotRemainClickableAfterOpeningRejection AssertionError [ERR_ASSERTION]: 驳回表单保留详情时，已撤销下载不得继续可点击
+E             at revokedDownloadCannotRemainClickableAfterOpeningRejection (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:39:768)
+E             at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:40:752 {
+E           generatedMessage: false,
+E           code: 'ERR_ASSERTION',
+E           actual: false,
+E           expected: true,
+E           operator: '==',
+E           diff: 'simple'
+E         }
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/opt/homebrew/bin/node', '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/x...sage: false,\n  code: 'ERR_ASSERTION',\n  actual: false,\n  expected: true,\n  operator: '==',\n  diff: 'simple'\n}\n").returncode
+
+packages/xuanpu-console/tests/test_finance_behavior.py:66: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-console/tests/test_finance_behavior.py::test_finance_records_behavior
+1 failed, 6 deselected in 0.11s

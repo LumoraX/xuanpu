@@ -1,6 +1,6 @@
 # 财务 F0 开发与接入
 
-当前F7按用户要求聚焦发票与报销内部流转记录，不做支付。最新契约为finance `0.8.0-f7`、72项API、7个Skill；见[F7指南](finance-f7.md)及[F7本轮验收](releases/2026-10-22-finance-f7-acceptance.md)。下文阶段记录保留其原有验证范围。
+当前F8按用户要求聚焦发票报销内部流转记录，不做支付。最新契约finance `0.9.0-f8`、74项API、7个Skill；见[F8指南](finance-f8.md)及[F8本轮验收](releases/2026-10-22-finance-f8-acceptance.md)。下文阶段记录保留原有验证范围。
 
 当前专用资金能力与最新包契约入口见[F5指南](finance-f5.md)（finance `0.6.0-f5`、69项API、7个Skill）。本页保留本阶段操作说明、历史版本和验证证据；当前最终门禁、制品与运行状态见[F5验收记录](releases/2026-10-22-finance-f5-acceptance.md)。
 
