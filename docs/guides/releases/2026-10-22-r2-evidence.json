@@ -2,7 +2,7 @@
   "schema_version": 1,
   "date": "2026-10-22",
   "timezone": "Asia/Shanghai",
-  "overall_r2_acceptance": "partial_pending_shared_host_reboot",
+  "overall_r2_acceptance": "passed_required_r2_scope",
   "implementation_commit": "66d6fc6549bef3a8a9dbe0a8a5f1a5b98af2e2dd",
   "base_commit": "65a46df3ebfd040e443b45e641e30ebb95bb2039",
   "kernel_changed": false,
@@ -238,7 +238,7 @@
         }
       }
     },
-    "whole_host_reboot": "not_checked"
+    "whole_host_reboot": "passed"
   },
   "migration_checksums": {
     "result": "passed",
@@ -414,7 +414,6 @@
   },
   "raw_evidence_policy": "Raw model outputs and unsuccessful attempts are retained privately; this file contains aggregates and raw-file hashes only. No credentials or raw tool arguments are exported.",
   "unverified": [
-    "shared_host_whole_machine_reboot",
     "real_enterprise_oauth",
     "real_external_message_delivery",
     "multi_owner_production_load",
@@ -429,6 +428,8 @@
     },
     "production_source_equal_files": 219
   },
+  "shared_host_reboot_evidence": "2026-10-22-r2-host-reboot.json",
+  "historical_snapshots": "final_runtime and temporary_runtime_cleanup are original pre-maintenance snapshots; the later host-reboot evidence contains the current post-maintenance state.",
   "raw_evidence_manifest": [
     {"path_relative_to_private_archive":"migration-final.json","bytes":248,"sha256":"36a71e1c495ddb6d88e72e9a2b13e3d9e851f25578ae91174ba07115eaf8dd3b"},
     {"path_relative_to_private_archive":"local-evidence/image-local.json","bytes":26236,"sha256":"851666f04e664b24bafb30c2800ae64e64d556269962cb729b101e653f08358e"},
