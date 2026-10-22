@@ -160,3 +160,9 @@ task_triggers:
 task_activity:
   enabled: false
   tenant_ids: []
+
+# R3-A企业只读连接：默认关闭，空列表不放行任何租户；应用安装另行核定。
+connections:
+  enabled: false
+  tenants: []
+  max_consent_seconds: 86400

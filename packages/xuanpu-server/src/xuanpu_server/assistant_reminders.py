@@ -57,3 +57,4 @@ class RouteOutcome:
     preserve_input: bool = False
     task_definition_draft: dict[str, Any] | None = None
     open_task_definitions: bool = False
+    open_connections: bool = False

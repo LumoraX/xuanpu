@@ -6,6 +6,9 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from xuanpu_server.connections.models import (
+    ConnectionRef,  # noqa: TC001 —— Pydantic运行时解析持久引用
+)
 from xuanpu_server.workspace.models import timezone_name
 
 Identifier = Annotated[str, Field(min_length=1, max_length=128, pattern=r"\S")]
@@ -127,6 +130,7 @@ class WorkTaskRecord(FrozenModel):
     package_digest: Digest
     recovery_policy_version: Literal[1, 2] = 1
     grant_id: Identifier | None = None
+    connection_refs: tuple[ConnectionRef,...] = ()
     definition_id: Identifier | None = None
     definition_version: int | None = Field(default=None, ge=1)
     trigger_origin_chain: tuple[str, ...] = Field(default=(),max_length=16)

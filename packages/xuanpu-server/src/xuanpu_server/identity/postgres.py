@@ -33,7 +33,7 @@ from xuanpu_server.identity.models import (
 from xuanpu_server.identity.postgres_users import PostgresUserTables, affected
 
 if TYPE_CHECKING:
-    from xuanpu_server.identity.models import IdentityProvider
+    from xuanpu_server.identity.models import ExternalIdentity, IdentityProvider
 
 _CONFIG_COLUMNS = (
     "tenant_id, provider, app_id, app_secret_ref, encrypt_key_ref, verification_token_ref, "
@@ -123,6 +123,44 @@ class PostgresIdentityStore(PostgresUserTables):
         return [TenantIdentityConfig(**dict(row)) for row in rows]
 
     # --- 登录会话 ---
+
+    async def complete_external_login(self, identity: ExternalIdentity, session: LoginSession, *,
+                                      bind: bool, required_login_hash: str | None = None,
+                                      connection_id: str | None = None, connection_version: int | None = None) -> None:
+        """同一连接锁住租户、员工及原登录，外部映射与新登录原子提交。"""
+        from xuanpu_server.errors import AuthenticationError
+
+        if (identity.tenant_id,identity.user_id)!=(session.tenant_id,session.user_id):
+            raise ValueError('身份与登录会话不一致')
+        t=self._t
+        try:
+            async with self._pool.acquire() as conn,conn.transaction():
+                tenant=await conn.fetchval(f"SELECT status FROM {self._tenant_table} WHERE tenant_id=$1 FOR UPDATE",identity.tenant_id)
+                user=await conn.fetchval(f"SELECT status FROM {t['user']} WHERE tenant_id=$1 AND user_id=$2 FOR UPDATE",identity.tenant_id,identity.user_id)
+                if tenant!='active' or user!='active':
+                    raise AuthenticationError('企业登录身份不可用')
+                if connection_id is not None:
+                    revision=await conn.fetchval(f"SELECT record FROM {self._connection_table} WHERE tenant_id=$1 AND id=$2",identity.tenant_id,connection_id)
+                    import json
+                    install=json.loads(revision) if revision is not None else {}
+                    if install.get('status')!='active' or install.get('version')!=connection_version:
+                        raise ConflictError('应用配置已变化，请重新登录')
+                if bind:
+                    old=await conn.fetchrow(f"SELECT user_id,expires_at FROM {t['login_session']} WHERE tenant_id=$1 AND token_hash=$2 FOR UPDATE",identity.tenant_id,required_login_hash)
+                    if old is None or old['user_id']!=identity.user_id or old['expires_at']<=session.created_at:
+                        raise AuthenticationError('绑定期间原登录已失效')
+                existing=await conn.fetchval(f"SELECT user_id FROM {t['external_identity']} WHERE tenant_id=$1 AND provider=$2 AND subject=$3",identity.tenant_id,identity.provider,identity.subject)
+                if existing is not None and existing!=identity.user_id:
+                    raise ConflictError('企业身份已绑定其他员工')
+                if existing is None and not bind:
+                    raise AuthenticationError('企业身份尚未预配')
+                if existing is None:
+                    await self._insert_identity(conn,identity)
+                await conn.execute(f"INSERT INTO {t['login_session']} ({_LOGIN_SESSION_COLUMNS}) VALUES($1,$2,$3,$4,$5,$6)",session.token_hash,session.tenant_id,session.user_id,session.created_at,session.expires_at,session.last_seen_at)
+                if required_login_hash is not None:
+                    await conn.execute(f"DELETE FROM {t['login_session']} WHERE tenant_id=$1 AND token_hash=$2",identity.tenant_id,required_login_hash)
+        except asyncpg.UniqueViolationError as exc:
+            raise ConflictError('企业身份或登录会话已变化') from exc
 
     async def create_login_session(self, session: LoginSession) -> None:
         """登记登录会话。"""

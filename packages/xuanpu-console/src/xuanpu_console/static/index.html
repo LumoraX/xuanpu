@@ -140,6 +140,7 @@
     <div class="function-cards">
       <article class="function-card"><h2>执行安排</h2><p>确认何时替你处理工作，查看、修改或停止本人安排。</p><button data-workspace="definition" type="button">查看执行安排</button></article>
       <article class="function-card"><h2>交办工作</h2><p>查看材料处理进展，确认行动项并下载成果。关闭页面后仍会继续处理。</p><button data-workspace="task" type="button">查看我的工作</button></article>
+      <article class="function-card"><h2>企业连接</h2><p>绑定本人的企业微信，查看只读范围，确认或撤销个人授权。</p><button id="open-connections" type="button">管理我的连接</button></article>
       <article class="function-card"><h2>我的文件</h2><p>文件夹、附件、版本和回收站，始终属于你的个人空间。</p><button data-workspace="file" type="button">打开文件</button></article>
       <article class="function-card"><h2>事项与待办</h2><p>查看进展、关联资料，记录下一步工作。</p><button data-workspace="matter" type="button">打开事项</button> <button data-workspace="todo" type="button" class="ghost">查看待办</button></article>
       <article class="function-card"><h2>日程</h2><p>安排自己的时间，查看日程和到期提醒。</p><button data-workspace="event" type="button">打开日程</button></article>
@@ -150,6 +151,8 @@
     </div>
     <div id="reminder-module-host"></div>
   </section>
+
+  <section id="connections-panel" class="reminder-preview hidden" aria-label="本人的企业连接"><div class="row"><h2>本人的企业连接</h2><button id="close-connections" type="button">收起</button></div><p id="connections-feedback" role="status"></p><div id="connections-list"></div></section>
 
   <!-- 业务包 -->
   <section id="tab-packages" class="tab">
@@ -230,6 +233,7 @@
 <script src="work-tasks.js"></script>
 <script src="task-definitions.js"></script>
 <script src="proactive.js"></script>
+<script src="connections.js"></script>
 <script src="identity.js"></script>
 </body>
 </html>

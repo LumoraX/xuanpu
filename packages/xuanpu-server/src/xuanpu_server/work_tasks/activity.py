@@ -37,7 +37,7 @@ def semantic(task: WorkTaskRecord, previous: dict[str,Any], dispatch: dict[str,A
     if task.status in TERMINAL:
         return 'terminal' if task.status!='cancelled' else None
     reason=dispatch.get('block_reason')
-    if isinstance(reason,str) and any(word in reason for word in ('budget','grant','source_unavailable','block_resume','block_unknown')):
+    if isinstance(reason,str) and any(word in reason for word in ('budget','grant','source_unavailable','block_resume','block_unknown','connection_reauthorization_required')):
         return 'blocked:'+reason
     if task.status!='waiting_user':return None
     ids={p.get('request_id',p.get('action_id','')) for p in (*task.pending,*task.action_candidates)}

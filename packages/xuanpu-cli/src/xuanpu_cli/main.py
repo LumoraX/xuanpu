@@ -304,6 +304,8 @@ def build_parser() -> argparse.ArgumentParser:
     from xuanpu_cli.work_commands import add_work_commands
 
     add_work_commands(commands)
+    from xuanpu_cli.connection_commands import add_connection_commands
+    add_connection_commands(commands)
     return parser
 
 

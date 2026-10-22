@@ -14,7 +14,7 @@ from xuanpu_server.tenancy import TenantRole
 
 UserStatus = Literal["active", "disabled"]
 DisabledReason = Literal["feishu_resigned", "feishu_frozen", "feishu_exited", "admin"]
-IdentityProvider = Literal["feishu"]
+IdentityProvider = Literal["feishu", "wecom"]
 LoginFailureReason = Literal[
     "feishu_denied",
     "not_in_app_scope",
@@ -116,7 +116,7 @@ class ExternalIdentity:
 
     Attributes:
         tenant_id: 所属租户。
-        provider: 身份源；第一版只有 ``feishu``。
+        provider: 身份源，员工映射支持 ``feishu`` 和 ``wecom``。
         subject: 身份源里的稳定标识；飞书用 ``union_id``。
         user_id: 对应的平台用户。
         attributes: 身份源的其他标识（飞书存 ``open_id``，供以后调飞书接口用）。
@@ -158,7 +158,7 @@ class TenantIdentityConfig:
     """
 
     tenant_id: str
-    provider: IdentityProvider
+    provider: Literal["feishu"]
     app_id: str
     app_secret_ref: str
     encrypt_key_ref: str | None = None
@@ -168,7 +168,7 @@ class TenantIdentityConfig:
 
     def __post_init__(self) -> None:
         """身份源取值受限；有效期为正数。"""
-        require_choice("provider", self.provider, get_args(IdentityProvider))
+        require_choice("provider", self.provider, ("feishu",))
         for name in ("encrypt_key_ref", "verification_token_ref"):
             if getattr(self, name) == "":
                 object.__setattr__(self, name, None)

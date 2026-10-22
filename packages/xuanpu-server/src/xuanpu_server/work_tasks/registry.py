@@ -24,6 +24,7 @@ from .worker import DurableWorker
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
+    from xuanpu_server.connections.service import ConnectionService
     from xuanpu_server.workspace.models import WorkspaceState
 
     from .decisions import TaskDecision, ToolApprovalDecision
@@ -57,6 +58,7 @@ class TaskRegistry:
         """注入任务存储、处理器和当前独占进程身份。"""
         self.store, self.runner, self.process_owner, self.now = store, runner, process_owner, now
         self.cleanup, self.close_resources, self.recover, self.actions = cleanup, close_resources, recover, actions
+        self.connections: ConnectionService | None = None
         self._active: dict[TaskKey, asyncio.Task[None]] = {}
         self._controls: dict[TaskKey, asyncio.Task[None]] = {}
         self._failures: list[BaseException] = []

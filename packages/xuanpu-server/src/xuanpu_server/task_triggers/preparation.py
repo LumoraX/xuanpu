@@ -9,6 +9,7 @@ from xuanpu_server.work_tasks.models import CapabilityTaskInput, WorkTaskInput, 
 from xuanpu_server.work_tasks.rules import input_fingerprint
 
 if TYPE_CHECKING:
+    from xuanpu_server.connections.models import ConnectionRef
     from xuanpu_server.tenancy import Principal
     from xuanpu_server.work_tasks.service import WorkTaskService
 
@@ -39,10 +40,19 @@ async def prepare(tasks: WorkTaskService,who: Principal,request: DefinitionCreat
     mimes={source.mime_type in {'text/csv','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'} for source in inputs}
     if template.kind=='office' and len(mimes)!=1:
         raise InvalidRequestError('会议与表格材料应分开安排')
-    return WorkTaskRecord(task_id=new_id('task'),tenant_id=tenant,user_id=user,actor=who.actor,
+    refs=await _connection_refs(tasks,who,package.record.digest.removeprefix('sha256:'))
+    return WorkTaskRecord(connection_refs=refs,task_id=new_id('task'),tenant_id=tenant,user_id=user,actor=who.actor,
         request_id=request.request_id,input_fingerprint=input_fingerprint(model),text=template.text,
         timezone=request.timezone,matter_id=template.matter_id,inputs=inputs,package=package.record.name,
         package_version=package.record.version,package_digest=package.record.digest.removeprefix('sha256:'),
         entry=entry,execution_kind=template.kind,completion_policy='office_files' if template.kind=='office' else 'capability_receipt',
         output_kind=('table_summary' if True in mimes else 'meeting_minutes') if template.kind=='office' else 'capability_result',
         recovery_policy_version=2,process_owner=tasks.process_owner,accepted_at=now,updated_at=now)
+
+
+async def _connection_refs(tasks: WorkTaskService,who: Principal,digest: str) -> tuple[ConnectionRef,...]:
+    """只冻结现有员工同意，没有托管绑定时保持R2默认空引用。"""
+    if tasks.connections is None:
+        return ()
+    from xuanpu_server.connections.task_bindings import snapshot
+    return await snapshot(tasks.connections,who,digest)

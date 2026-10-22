@@ -23,6 +23,7 @@ from .store import WorkTaskStore
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from xuanpu_server.connections.service import ConnectionService
     from xuanpu_server.packages import PackageRegistry
     from xuanpu_server.tenancy import Principal
     from xuanpu_server.work_tasks.decisions import TaskDecision
@@ -63,6 +64,7 @@ class WorkTaskService:
         self.workspace, self.packages = workspace, packages
         self.store = WorkTaskStore(workspace)
         self.process_owner, self._now = process_owner, now
+        self.connections: ConnectionService | None = None
         self.executor: TaskExecutor | None = None
         self.durable = durable or DurableExecutionConfig()
         self.store.durable_config = self.durable
@@ -144,6 +146,10 @@ class WorkTaskService:
             entry=request.capability.entry, execution_kind='capability', completion_policy='capability_receipt',
             output_kind='capability_result', recovery_policy_version=2, process_owner=self.process_owner,
             accepted_at=now, updated_at=now)
+        if self.connections is not None:
+            from xuanpu_server.connections.task_bindings import snapshot
+            refs=await snapshot(self.connections,who,record.package_digest)
+            record=record.model_copy(update={'connection_refs':refs})
         accepted, created = await self.store.create_or_replay(who, record)
         if created and self.executor is not None:
             self.executor.start(who, accepted)
@@ -199,6 +205,13 @@ class WorkTaskService:
     async def decide(self, who: Principal, task_id: str, decision: TaskDecision) -> WorkTaskRecord:
         """严格本人输入只作用于当前等待状态，不把展示文案当成回执。"""
         task = await self.store.get(who, task_id)
+        if self.connections is not None and task.connection_refs:
+            from xuanpu_server.connections.task_bindings import check_refs
+            from xuanpu_server.errors import PermissionDeniedError
+            try:
+                await check_refs(self.connections,who,task.connection_refs)
+            except PermissionDeniedError as exc:
+                raise ConflictError('connection_reauthorization_required') from exc
         if self.executor is None:
             raise ConflictError("任务执行器尚未准备好")
         return await self.executor.decide(who, task, decision)

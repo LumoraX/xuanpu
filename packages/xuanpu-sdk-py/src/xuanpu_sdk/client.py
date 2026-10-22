@@ -11,6 +11,7 @@ from urllib.parse import quote
 
 import httpx
 
+from xuanpu_sdk.connections import ConnectionClient
 from xuanpu_sdk.errors import XuanpuError, XuanpuTransportError
 from xuanpu_sdk.models import (
     AuditRecord,
@@ -386,7 +387,7 @@ class Admin:
         return [UserUsage.from_json(item) for item in body["usage"]]
 
 
-class XuanpuClient(TaskDefinitionClient):
+class XuanpuClient(TaskDefinitionClient,ConnectionClient):
     """平台客户端。
 
     用法::
@@ -414,6 +415,7 @@ class XuanpuClient(TaskDefinitionClient):
             act_as_user: 固定代表的员工；key 必须已获代调用能力，角色取两者中较低者。
                 要代表其他员工须新建客户端，不在共享客户端上切换身份。
         """
+        self._connection_base=base_url
         self._http = _Http(base_url, api_key, timeout_seconds, transport, act_as_user)
         self.sessions = Sessions(self._http)
         self.packages = Packages(self._http)

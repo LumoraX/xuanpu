@@ -120,3 +120,7 @@ xuanpu serve --config xuanpu.yaml
 work-tasks提供list/get/events/create/capability/cancel/decide/reconcile；task-definitions提供list/get/create/update/pause/resume/cancel/occurrences。写操作的`--body`指向严格请求JSON，保留原request_id和版本；网络结果不确定时重发同一文件，不生成新标识。分页使用`--limit`及`--after`，按服务端游标继续补读。安排创建/修改须confirmed=true；模型草稿不能充当确认。回执核实只接受已登记的权威查询，不重试原写操作。
 
 两个组的`--help`及各子命令`--help`可直接查看当前参数，无需模型或网络。CLI仅在原生HTTP接口上封装操作，关闭R2后读取、暂停、取消和已有成果仍使用兼容reader。
+
+## 本人的企业只读连接
+
+`xuanpu connections` 使用 `--credentials` 指向权限600的私有JSON档案，字段仅`base_url`、`api_key`、`act_as_user`。不提供tenant/user/key命令行覆盖：`list`列本人连接；`read <identifier>`读本人基础资料；`revoke <identifier> <consent_id> --request-id <稳定请求> --expected-version <当前版本>`撤销；`confirm`只显示浏览器确认地址，不创建或扩大同意。个人同意必须由员工本人登录浏览器确认，API key及act-as不能代替。命令已通过帮助和行为测试；真实企业接入按服务端验收记录判断。

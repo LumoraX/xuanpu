@@ -288,6 +288,7 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
             durable_execution=config.durable_execution,
             task_triggers=config.task_triggers,
             task_activity=config.task_activity,
+            connections=config.connections,
             instance_id=config.instance_id,
             lease_seconds=config.lease_seconds,
             shutdown_drain_seconds=config.shutdown_drain_seconds,

@@ -41,7 +41,7 @@ import re
 import secrets
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from xuanpu_server.errors import ConflictError, NotFoundError, SecretMissingError
 from xuanpu_server.identity.cookies import login_token_hash, new_login_token
@@ -69,7 +69,6 @@ if TYPE_CHECKING:
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.identity.feishu import FeishuClient, FeishuUserInfo
     from xuanpu_server.identity.models import (
-        IdentityProvider,
         LoginFailureReason,
         TenantIdentityConfig,
     )
@@ -80,7 +79,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-FEISHU: IdentityProvider = "feishu"
+FEISHU: Literal["feishu"] = "feishu"
 LOGIN_ATTEMPT_TTL_SECONDS = 600
 """登录尝试（与登录尝试 cookie）的有效期：从开始登录算起 10 分钟。"""
 MAX_CODE_LENGTH = 512

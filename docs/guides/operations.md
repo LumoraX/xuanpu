@@ -708,3 +708,11 @@ grant_revoked须重新明确确认；misfire_window_expired是错过记录；sam
 R2配置中的`task_activity.enabled`控制工作动态通知，默认false；`task_activity.tenant_ids`、`task_triggers.tenant_ids`与`durable_execution.tenant_ids`分别限制灰度租户。非空名单须同时满足相关开关的范围，员工请求不能修改名单；空名单仅在管理员显式enabled=true时全量生效。
 
 `durable_execution.max_task_tokens`为管理员配置的单项任务累计上限，默认150000，允许1–300000；即使调大也仍同时受员工已确认的grant总额与租户额度限制。请求须在发送前覆盖完整保守上界，不能只按历史平均用量放行。额度不足保存blocked/block_budget，原生查询与取消可用；确认卡展示单项和累计两个限制。
+
+## R3-A 企业只读连接
+
+`connections` 配置独立于飞书登录：`enabled` 默认false，`tenants` 默认为空且不放行任何租户，`max_consent_seconds` 默认86400、允许60–86400秒。开关关闭后仍可查看本人连接及撤销既有同意，但不能新绑定、同意或读取。生产安装还必须disabled→核定真实应用权限→明确active，开关不能代替权限核定。
+
+新增0015迁移保存connection_record、独立connection_credential和五分钟connection_auth_attempt；纳入既有PG备份及主密钥轮换。内部密文不能由普通租户密钥API访问。先部署兼容reader且全关，再隔离试点，最后按已核定租户启用；关闭新读取时保留查询、撤销和既有R2取消。新格式已落库后不能降到旧R2严格reader。
+
+企微应用创建、私有配置、员工确认与验收前提见[企业微信只读接入](wecom-connections.md)。部署前反向代理应只记录路径，去掉OAuth回调query；供应商HTTP客户端已隐藏认证URL。当前仅支持企业微信客户端网页授权，桌面扫码入口待核定，不能拿合成Cookie代替真实登录证据。

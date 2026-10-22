@@ -21,6 +21,7 @@ from xuanpu_server.api.assistant import assistant_router
 from xuanpu_server.api.assistant_actions import assistant_actions_router
 from xuanpu_server.api.audit_usage import audit_usage_router
 from xuanpu_server.api.auth import Caller, bearer
+from xuanpu_server.api.connections import connections_router
 from xuanpu_server.api.console import ConsoleStaticFiles
 from xuanpu_server.api.history import history_router
 from xuanpu_server.api.identity import identity_router
@@ -29,6 +30,7 @@ from xuanpu_server.api.proactive import proactive_router
 from xuanpu_server.api.reminders import reminders_router
 from xuanpu_server.api.sse import frame, stream_turn
 from xuanpu_server.api.task_definitions import task_definitions_router
+from xuanpu_server.api.wecom import wecom_router
 from xuanpu_server.api.work_tasks import work_tasks_router
 from xuanpu_server.api.workspace import workspace_router
 from xuanpu_server.assistant_workspace import prepare_business_message
@@ -152,6 +154,8 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
 
     app.add_middleware(InstanceMiddleware, platform=platform)
     app.include_router(identity_router(platform))
+    app.include_router(connections_router(platform))
+    app.include_router(wecom_router(platform))
     app.include_router(audit_usage_router(platform))
     app.include_router(history_router(platform))
     app.include_router(assistant_router(platform))

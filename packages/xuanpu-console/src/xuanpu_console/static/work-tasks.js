@@ -193,10 +193,14 @@ async function showWorkTaskCreate(){
 
 function appendWorkTaskExecution(card,task){
   if(task.task_token_limit)card.append(wsText("p","单项工作模型额度上限："+task.task_token_limit+" tokens；未知用量仍按完整预留计入。","meta"));
-  const blocked={budget:"模型额度不足，等待核实或补充授权。",block_budget:"模型额度不足，等待核实或补充授权。",definition_paused:"执行安排已暂停。",source_invalid:"原材料或授权已失效。",block_resume:"原操作无法安全恢复，请先核实。"};
+  const blocked={connection_reauthorization_required:"企业连接需要本人重新授权。请确认连接后，再明确继续这项工作。",budget:"模型额度不足，等待核实或补充授权。",block_budget:"模型额度不足，等待核实或补充授权。",definition_paused:"执行安排已暂停。",source_invalid:"原材料或授权已失效。",block_resume:"原操作无法安全恢复，请先核实。"};
   if(task.recovering){card.append(wsText("p","正在恢复 · 第 "+task.attempt_no+" 次尝试","tag"),wsText("p",task.recovery_mode==="save_artifacts"?"继续保存成果":task.recovery_mode==="await_decision"?"等待批准或核实":"重新执行"));}
   if(task.block_reason)card.append(wsText("p",blocked[task.block_reason]||"执行已暂停，等待核对材料、权限或结果。","status"));
   else if(task.next_run_at&&!taskTerminal.has(task.status))card.append(wsText("p","排队等待执行 · "+workspaceTime(task.next_run_at)));
+  if(task.block_reason==="connection_reauthorization_required"){
+    card.append(wsButton("查看本人连接",()=>typeof openConnections==="function"?openConnections():toast("请打开功能中的企业连接")));
+    if(!task.source_occurrence)card.append(workTaskConnectionButton(task));
+  }
   if(task.source_occurrence)card.append(wsButton("查看原执行安排",()=>openWorkspace("definition")));
   if(task.status==="failed"&&task.available_actions?.includes("create_followup"))card.append(wsButton("重新交办",()=>openWorkspace("task").then(()=>showWorkTaskCreate())));
   for(const effect of task.effects||[])if(effect.can_reconcile)card.append(workTaskReconcileButton(task,effect));
@@ -207,6 +211,17 @@ function workTaskReconcileButton(task,effect){
     if(sending||!taskCurrent(epoch,generation))return;sending=true;button.disabled=true;
     try{await api("POST","/v1/work-tasks/"+encodeURIComponent(task.task_id)+"/effects/"+encodeURIComponent(effect.action_id)+"/reconcile",{json:payload});if(taskCurrent(epoch,generation))await refreshWorkTask(task.task_id);}
     catch(error){if(taskCurrent(epoch,generation)){button.textContent=error.status===409?"状态已变化，请刷新进展":"重试同一回执查询";if(!error.status||error.status>=500)button.disabled=false;}}
+    finally{sending=false;}
+  });return button;
+}
+
+function workTaskConnectionButton(task){
+  const epoch=conn.epoch,generation=workTaskState.generation;
+  const payload={request_id:crypto.randomUUID(),expected_version:task.state_version};let sending=false;
+  const button=wsButton("已重新授权，继续原工作",async()=>{
+    if(sending||!taskCurrent(epoch,generation))return;sending=true;button.disabled=true;
+    try{const result=await api("POST","/v1/work-tasks/"+encodeURIComponent(task.task_id)+"/connection-authorization",{json:payload});if(taskCurrent(epoch,generation))updateWorkTask(result);}
+    catch(error){if(taskCurrent(epoch,generation)){button.textContent=error.status===409?"状态已变化，请刷新进展":"重试同一次继续确认";if(!error.status||error.status>=500)button.disabled=false;toast(error.message);}}
     finally{sending=false;}
   });return button;
 }

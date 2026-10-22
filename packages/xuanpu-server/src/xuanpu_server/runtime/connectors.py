@@ -43,12 +43,13 @@ from xuanpu_server.runtime.remote_mcp import RemoteRun
 from xuanpu_server.runtime.sandbox import DEFAULT_BASE_ENV
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Awaitable, Callable, Mapping
     from pathlib import Path
 
     from xuanpu_spec.manifest import ConnectorSpec, Effect
 
     from xuanpu_server.audit import AuditLog
+    from xuanpu_server.connections.managed_http import ManagedHttpTools
     from xuanpu_server.runtime.events import SubmissionIndex
     from xuanpu_server.runtime.mcp_connectors import Invoke, McpRun, McpTool
     from xuanpu_server.secrets import SecretVault
@@ -91,6 +92,7 @@ class _Pending:
     description: str
     input_schema: dict[str, Any]
     invoke: Invoke
+    invoke_context: Callable[[dict[str,Any],taifeng.ToolContext],Awaitable[tuple[str,bool]]] | None = None
 
     @property
     def full_name(self) -> str:
@@ -134,12 +136,14 @@ class ConnectorGate:
         audit: AuditLog,
         submissions: SubmissionIndex,
         timeout_seconds: float,
+        invoke_context: Callable[[dict[str,Any],taifeng.ToolContext],Awaitable[tuple[str,bool]]] | None = None,
     ) -> None:
         """绑定一个工具。"""
         from xuanpu_server.work_tasks.execution_context import current_execution
 
         self._task_execution = current_execution.get()
         self._read_receipts: set[str] = set()
+        self._invoke_context=invoke_context
         self._invoke = invoke
         self._info = info
         self._tenant_id = tenant_id
@@ -337,7 +341,7 @@ class ConnectorGate:
             )
         effect_store, receipt = await self._task_intent(ctx,digest)
         try:
-            text, is_error = await asyncio.wait_for(self._invoke(args), timeout=self._timeout)
+            text, is_error = await asyncio.wait_for(self._invoke(args) if self._invoke_context is None else self._invoke_context(args,ctx), timeout=self._timeout)
         except TimeoutError:
             await self._record(
                 ctx, digest, decision="allowed", started=started, is_error=True, detail="timeout"
@@ -394,6 +398,8 @@ class ConnectorSet:
         base_env: Mapping[str, str] = DEFAULT_BASE_ENV,
         call_timeout_seconds: float = 60.0,
         startup_timeout_seconds: float = 30.0,
+        managed_connections: ManagedHttpTools | None = None,
+        package_digest: str = "",
     ) -> None:
         """
         Args:
@@ -409,6 +415,8 @@ class ConnectorSet:
                 超时约束，取小的）。
             startup_timeout_seconds: 启动（或连上）连接器并列出工具的超时。
         """
+        self._managed_connections=managed_connections
+        self._package_digest=package_digest
         self._tenant_id = tenant_id
         self._vault = vault
         self._audit = audit
@@ -544,6 +552,16 @@ class ConnectorSet:
 
             return invoke
 
+        async def invoke_context(operation_id: str,args: dict[str,Any],ctx: taifeng.ToolContext) -> tuple[str,bool]:
+            """当前绑定存在时强制进入员工broker，不退回静态认证。"""
+            managed=self._managed_connections
+            if managed is not None:
+                binding=await managed.lookup(self._tenant_id,self._package_digest,spec.name,operation_id)
+                if binding is not None:
+                    return await managed.invoke(self._tenant_id,self._package_digest,spec,
+                        document.operations[operation_id],resolve_base_url(spec,document),args,ctx)
+            return await invoker(operation_id)(args)
+
         found: list[_Pending] = []
         for operation_id, operation in document.operations.items():
             if not spec.allows(operation_id):
@@ -556,6 +574,7 @@ class ConnectorSet:
                     description=operation.summary or f"{operation.method.upper()} {operation.path}",
                     input_schema=operation.input_schema(),
                     invoke=invoker(operation_id),
+                    invoke_context=functools.partial(invoke_context,operation_id),
                 )
             )
         return found
@@ -567,6 +586,7 @@ class ConnectorSet:
             timeout = self._timeout_of(item.spec)
             gate = ConnectorGate(
                 invoke=item.invoke,
+                invoke_context=item.invoke_context,
                 info=item.info,
                 full_name=item.full_name,
                 tenant_id=self._tenant_id,

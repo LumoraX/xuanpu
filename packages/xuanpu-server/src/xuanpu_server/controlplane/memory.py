@@ -38,6 +38,9 @@ class InMemoryControlPlane:
             lambda tenant, session: self._sessions.get((tenant, session)),
             self._append_reminder_audit,
         )
+        from xuanpu_server.connections.memory import InMemoryConnectionStore
+
+        self.connection_store = InMemoryConnectionStore(self._append_workspace_audit)
         self.workspace_store = InMemoryWorkspaceStore(self._append_workspace_audit)
         self.reminder_store = InMemoryReminderStore(
             lambda tenant_id: (

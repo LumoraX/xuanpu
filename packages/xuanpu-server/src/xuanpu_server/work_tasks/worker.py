@@ -71,10 +71,26 @@ class DurableWorker:
                 grant = ExecutionGrant.model_validate_json(json.dumps(state.task_grants[task.grant_id]))
             self.registry.start(grant.principal(), task)
 
+    async def _connections_valid(self,who: Principal,task: WorkTaskRecord) -> bool:
+        """连接检查在员工事务外；broker派发前再检，避免锁内跨域死锁。"""
+        if not task.connection_refs:
+            return True
+        if self.registry.connections is None:
+            return False
+        from xuanpu_server.connections.task_bindings import check_refs
+        try:
+            await check_refs(self.registry.connections,who,task.connection_refs)
+        except PermissionDeniedError:
+            return False
+        return True
+
     async def _claim_or_settle(self, who: Principal, task: WorkTaskRecord) -> AttemptLease | None:
         """没有名额不认领，授权或次数阻塞在资源启动前结束。"""
         registry = self.registry
         key = task.tenant_id, task.user_id, task.task_id
+        if not await self._connections_valid(who,task):
+            await self.execution.block(task,reason='connection_reauthorization_required',now=registry.now())
+            return None
         if not self.config.allows(task.tenant_id) or (not task.frozen_staging and not await registry._admit(key)):
             return None
         try:
@@ -118,6 +134,8 @@ class DurableWorker:
                     expected_version=task.state_version, at=registry.now(), event_kind='attempt_started')
             async with asyncio.timeout(self.config.attempt_seconds):
                 result = dict(await registry.runner.run(who, task, decision))
+            if await self._hold_connections(who,task,lease):
+                return
             await registry._finish_result(who, task, result)
             current = await registry.store.get(who, task.task_id)
             target = 'waiting_user' if current.status == 'waiting_user' else 'settled'
@@ -126,15 +144,37 @@ class DurableWorker:
             await self._cancelled(task, lease, binding.stop_reason)
             raise
         except PermissionDeniedError:
+            if await self._hold_connections(who,task,lease):
+                return
             await registry._settle(task, 'interrupted', 'grant_revoked')
             await self.execution.release(lease, state_name='blocked', now=registry.now(), block_reason='grant_revoked')
         except Exception as error:
-            await self._failed(task, lease, error)
+            if not await self._hold_connections(who,task,lease):
+                await self._failed(task, lease, error)
         finally:
             heartbeat.cancel()
             await asyncio.gather(heartbeat, return_exceptions=True)
             current_execution.reset(token)
             registry._executing.discard(key)
+
+    async def _hold_connections(self,who: Principal,task: WorkTaskRecord,lease: AttemptLease) -> bool:
+        """结果提交前复核固定引用；撤权保留原工作，未知写和取消仍优先结算。"""
+        if await self._connections_valid(who,task):
+            return False
+        registry=self.registry
+        current=await registry.store.lifecycle_task(task.tenant_id,task.user_id,task.task_id)
+        if current.status in TERMINAL:
+            return False
+        if registry.cleanup is not None:
+            await registry.cleanup(current)
+        if current.unverified_write or current.cancel_requested:
+            await registry._settle(current,'outcome_unknown' if current.unverified_write else 'cancelled',
+                'write_outcome_unverified' if current.unverified_write else 'cancel_requested',lease=lease)
+            await self.execution.release(lease,state_name='settled',now=registry.now())
+        else:
+            await self.execution.release(lease,state_name='blocked',now=registry.now(),
+                block_reason='connection_reauthorization_required')
+        return True
 
     async def _heartbeat(self, binding: ExecutionBinding, parent: asyncio.Task[Any] | None) -> None:
         """失去租约或授权立即取消唯一执行者，不能让旧网络结果继续提交。"""
@@ -213,6 +253,9 @@ class DurableWorker:
             settled = await registry.store.lifecycle_task(task.tenant_id,task.user_id,task.task_id)
             await self.execution.settle_terminal(settled,now=registry.now())
             return
+        from xuanpu_server.tenancy import Principal
+        actor=Principal(role='tenant_member',tenant_id=task.tenant_id,key_id=None,user_id=task.user_id)
+        connection_valid=await self._connections_valid(actor,task)
         async with workspace.store.transaction(task.tenant_id, task.user_id, _lifecycle_guard,
                 'work-task:exec:' + task.task_id, allow_inactive=True) as state:
             from xuanpu_server.work_tasks.store import require_task
@@ -227,6 +270,9 @@ class DurableWorker:
             except PermissionDeniedError:
                 valid = False
                 auth_reason = 'grant_revoked'
+            if not connection_valid:
+                valid=False
+                auth_reason='connection_reauthorization_required'
             effects = [entry for entry in state.task_effects.values() if entry['task_id'] == task.task_id]
             safe_pending = bool(task.pending) and not task.inputs and not task.unsafe_resume and all(
                 entry.get('detail', {}).get('target') in self.config.stateless_http_tools for entry in task.pending)

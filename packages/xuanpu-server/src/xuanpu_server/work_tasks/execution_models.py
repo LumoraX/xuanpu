@@ -6,6 +6,9 @@ from typing import Any, Literal
 
 from pydantic import Field
 
+from xuanpu_server.connections.models import (
+    ConnectionRef,  # noqa: TC001 —— Pydantic运行时解析持久引用
+)
 from xuanpu_server.tenancy import Principal, TenantRole
 from xuanpu_server.work_tasks.models import Digest, FrozenModel, Identifier, Timestamp
 
@@ -20,6 +23,7 @@ class ExecutionGrant(FrozenModel):
     role: TenantRole
     key_id: str | None = None
     package_digest: Digest
+    connection_refs: tuple[ConnectionRef,...] = ()
     input_digests: tuple[str, ...] = ()
     created_at: Timestamp
     expires_at: Timestamp
