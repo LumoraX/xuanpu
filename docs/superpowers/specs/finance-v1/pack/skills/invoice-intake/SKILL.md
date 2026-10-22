@@ -1,7 +1,7 @@
 ---
 name: invoice-intake
 description: 归集受权固定版本发票原件，查询持久进度并为报销或应付处理补件。
-version: 0.7.0-f6
+version: 0.8.0-f7
 entry: false
 type: composite
 tool_names:
@@ -37,3 +37,5 @@ F3查验和税务动作使用getInvoiceCompliance.version，原getInvoice.versio
 F4原生提醒由listFinanceNotifications读取当前来源，未读计数独立于当前页；提醒已读不表示审批或渠道成功。模型不调用readFinanceNotification；待审/未知应恢复原目标和原计划，不从提醒正文代批或重发。站内提醒不等于飞书、企业微信或邮件送达。
 
 F5专用资金先读[资金规则](references/funding-rules.md)。材料先真实收件并读取source回执；申报不是核实，模型仅准备草稿/预检，实际决定交员工。资金业务使用funding-cases专用入口，不伪装普通应付。
+
+F7普通报销可用importSupportingMaterials保全PDF/图片原件并取得真实source回执，不要求正式解析成功。仅有粘贴文本时交expense-reimbursement的invoice_information原样记录，标明未查验；不能伪造finance_invoice或把材料收件说成官方验真。

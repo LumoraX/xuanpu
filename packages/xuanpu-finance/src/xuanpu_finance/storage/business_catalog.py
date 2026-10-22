@@ -124,6 +124,8 @@ class CatalogStore(BusinessBase):
         self, who: FinancePrincipal, draft: ExpenseDraft, policy: dict[str, Any]
     ) -> None:
         """分类、归属必须来自当前制度且员工确实可用。"""
+        if draft.invoice_information is not None and policy["record_mode"] != "internal_record":
+            raise FinanceError("INVOICE_INFORMATION_MODE_INVALID", 422, "粘贴发票信息仅适用于内部记录模式")
         categories = {entry["id"] for entry in policy["categories"]}
         centers = {(entry["id"], entry["kind"]): entry for entry in policy["cost_centers"]}
         total = sum((Decimal(line.amount) for line in draft.lines), Decimal(0))

@@ -53,3 +53,14 @@ def test_finance_funding_behavior() -> None:
     assert node is not None
     result = subprocess.run([node, str(Path(__file__).with_name('finance_funding_behavior.cjs')), str(static_dir())], capture_output=True, text=True, timeout=15)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_finance_records_behavior() -> None:
+    """内部报销保留原文、真实可选附件及版本历史，且不暴露外部执行。"""
+    node = shutil.which('node')
+    assert node is not None
+    result = subprocess.run(
+        [node, str(Path(__file__).with_name('finance_records_behavior.cjs')), str(static_dir())],
+        capture_output=True, text=True, timeout=15,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

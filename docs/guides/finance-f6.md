@@ -1,5 +1,7 @@
 # 财务F6：接入准备与端到端验收
 
+当前F7按用户要求聚焦发票与报销内部流转记录，不做支付。最新契约为finance `0.8.0-f7`、72项API、7个Skill；见[F7指南](finance-f7.md)及[F7本轮验收](releases/2026-10-22-finance-f7-acceptance.md)。下文阶段记录保留其原有验证范围。
+
 F6沿用独立财务PG/加密原件、进程外API、7个Skill、实际员工HITL。它提供接入检查和可重复隔离验收；正式支付、ERP、税务、WORM和外部审批尚未选定供应商，仍需按[正式接入清单](finance-provider-acceptance.md)取得真实证据。
 
 ## 两类只读检查

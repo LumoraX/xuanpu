@@ -1,6 +1,6 @@
-# 财务 F0–F6 当前架构
+# 财务 F0–F7 当前架构
 
-财务作为进程外 HTTP 服务运行。玄圃负责企业员工身份、会话和工具入口；独立财务服务持有公司授权、导入操作、发票、异常、原件回执及事件。平台进程不加载财务业务代码。当前覆盖F0原件、F1报销/人工审批、F2应付/付款/记账、F3查验/红字/档案、F4提醒/恢复、F5专用资金及F6只读接入准备。当前契约finance 0.7.0-f6、70项API、7个Skill；实际制品与门禁以[F6验收记录](../guides/releases/2026-10-22-finance-f6-acceptance.md)为准。真实供应商、正式制度、官方标准和正式归档尚未验收。
+财务作为进程外 HTTP 服务运行。玄圃负责企业员工身份、会话和工具入口；独立财务服务持有公司授权、导入操作、发票、异常、原件回执及事件。平台进程不加载财务业务代码。当前覆盖F0原件、F1报销/人工审批、F2应付/付款/记账、F3查验/红字/档案、F4提醒/恢复、F5专用资金及F6只读接入准备。当前F7按用户要求聚焦发票申报与内部报销流转记录，契约finance 0.8.0-f7、72项API、7个Skill；实际制品与门禁以[F7验收记录](../guides/releases/2026-10-22-finance-f7-acceptance.md)为准。真实供应商、正式制度、官方标准和正式归档尚未验收。
 
 ```mermaid
 flowchart LR
@@ -109,3 +109,9 @@ F3归档闭包扩展funding_case父子、实际材料、authority/decisions/rese
 `--preflight`在启动前只读显式固定凭据，检查秘密格式/权限/分离、公司制度与渠道前提，不连接外部资源或迁移。`getFinanceReadiness`仅当前同公司reviewer可读，从独立PG的read-only repeatable_read事务读取实际当前配置、授权代数及账户/渠道启停；配置摘要绑定作用域与版本。运行态独立附带模式、锁和后台任务故障。报告不持久化为批准，不新增业务表或平台库外键；逐单预检/HITL/原经办执行不受检查结果替代。
 
 仓库固定验收入口验证loopback实际finance_test库，使用真实pytest/JUnit生成模块覆盖/失败/跳过/源码和证据摘要。临时两库/独立非超级角色双向CONNECT拒绝是隔离机制演练，不代表正式凭据或原件IAM已验。正式制度批准、供应商、官方票样/签章、WORM、异机DR、模型与生产负载始终not_verified，关闭条件见[正式接入清单](../guides/finance-provider-acceptance.md)。
+
+## F7 内部记录使用闭环
+
+ExpenseDraft可选invoice_information仅在internal_record原样保存，作为未查验的用户申报，不能写正式发票或取得执行资格。listExpenseClaimHistory按当前普通报销读权分页读取finance_expense_history与finance_decision不可变原文；不把最新workflow反推旧意见。getExpenseMaterial仅接受human，校验当前岗位代数及指定版本实际证据关联，再从独立加密存储验证完整字节摘要返回固定分块；原件下载不是验真，awaiting_original已保全材料仍保持原状态。
+
+F7复用既有本人确认、顺序审批、驳回补充重提、撤回与持久待办，审批通过即内部流程完成；不引入支付或独立结案状态。API及人工页共用规则，Skill仅准备草稿/计划及查询历史，原始附件读取与业务决定保留人工入口。F7不需要供应商配置。

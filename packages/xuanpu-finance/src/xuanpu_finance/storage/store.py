@@ -12,14 +12,14 @@ from xuanpu_finance.storage.f3_schema import F3_SCHEMA, immutable_schema
 from xuanpu_finance.storage.f4_query_schema import F4_QUERY_SCHEMA
 from xuanpu_finance.storage.f4_schema import F4_SCHEMA
 from xuanpu_finance.storage.f5_schema import F5_SCHEMA
-from xuanpu_finance.storage.f6_readiness import ReadinessStore
+from xuanpu_finance.storage.f7_records import RecordStore
 from xuanpu_finance.storage.schema import SCHEMA
 
 if TYPE_CHECKING:
     from xuanpu_finance.models import FinancePrincipal
 
 
-class FinanceStore(ReadinessStore):
+class FinanceStore(RecordStore):
     """显式注入连接池、全部业务状态独立持久化的财务存储。"""
 
     async def migrate(self) -> None:

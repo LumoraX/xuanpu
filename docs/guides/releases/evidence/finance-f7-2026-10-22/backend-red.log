@@ -1,0 +1,152 @@
+   Building xuanpu-finance @ file:///Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance
+      Built xuanpu-finance @ file:///Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance
+Uninstalled 1 package in 1ms
+warning: Failed to clone files; falling back to full copy. This may lead to degraded performance.
+         If the cache and target directories are on different filesystems, reflinking may not be supported.
+         If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
+Installed 1 package in 2ms
+F......FFFF                                                              [100%]
+=================================== FAILURES ===================================
+_________ test_invoice_information_is_exact_optional_and_internal_only _________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10c287e60>
+
+    async def test_invoice_information_is_exact_optional_and_internal_only(store: FinanceStore) -> None:
+        """粘贴文本原样持久化且不能制造发票、已验真或正式执行事实。"""
+        owner,_=await configured(store)
+        pasted='  发票号码：001\n金额 10.00\t备注  '
+>       doc=await store.create_expense_claim(owner,ExpenseDraft(**expense_body(invoice_information=pasted)),'pasted')
+                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for ExpenseDraft
+E       invoice_information
+E         Extra inputs are not permitted [type=extra_forbidden, input_value='  发票号码：001\n金额 10.00\t备注  ', input_type=str]
+E           For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+
+packages/xuanpu-finance/tests/test_f7_records.py:75: ValidationError
+_____ test_history_two_step_reject_revise_withdraw_pagination_and_restart ______
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10c336000>
+
+    async def test_history_two_step_reject_revise_withdraw_pagination_and_restart(store: FinanceStore) -> None:
+        """原快照和实际操作者跨重组保留，分页总数独立且游标不跨用户或单据。"""
+        owner,people=await configured(store)
+        doc=await claim(store,owner)
+        doc=await act(store,owner,doc,'submit_claim')
+        doc=await act(store,people[0],doc,'approve',workflow_step_id=doc['workflow']['current_step_id'],reason='主管同意')
+        doc=await act(store,people[1],doc,'reject',workflow_step_id=doc['workflow']['current_step_id'],reason='缺行程')
+>       doc=await store.update_expense_claim(owner,doc['id'],ExpenseUpdate(expected_version=doc['version'],draft=ExpenseDraft(**expense_body(invoice_information=' 修订原文 '))),'revise')
+                                                                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for ExpenseDraft
+E       invoice_information
+E         Extra inputs are not permitted [type=extra_forbidden, input_value=' 修订原文 ', input_type=str]
+E           For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+
+packages/xuanpu-finance/tests/test_f7_records.py:107: ValidationError
+________ test_material_actual_pdf_history_and_current_assignment[False] ________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10c337da0>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1689/test_material_actual_pdf_histo0')
+invoice_import = False
+
+    @pytest.mark.parametrize('invoice_import',[False,True])
+    async def test_material_actual_pdf_history_and_current_assignment(store: FinanceStore,tmp_path: Path,invoice_import: bool) -> None:
+        """当前授权人员可读指定历史版本的真实原件，恢复旧岗位代数不能重获权限。"""
+        owner,people,doc,objects,raw,receipt=await original_doc(store,tmp_path,invoice_import=invoice_import)
+>       assert importlib.util.find_spec('xuanpu_finance.expenses.materials') is not None,'F7原件读取尚未实现'
+E       AssertionError: F7原件读取尚未实现
+E       assert None is not None
+E        +  where None = <function find_spec at 0x10394e160>('xuanpu_finance.expenses.materials')
+E        +    where <function find_spec at 0x10394e160> = <module 'importlib.util' (frozen)>.find_spec
+E        +      where <module 'importlib.util' (frozen)> = importlib.util
+
+packages/xuanpu-finance/tests/test_f7_records.py:138: AssertionError
+________ test_material_actual_pdf_history_and_current_assignment[True] _________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10c3af020>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1689/test_material_actual_pdf_histo1')
+invoice_import = True
+
+    @pytest.mark.parametrize('invoice_import',[False,True])
+    async def test_material_actual_pdf_history_and_current_assignment(store: FinanceStore,tmp_path: Path,invoice_import: bool) -> None:
+        """当前授权人员可读指定历史版本的真实原件，恢复旧岗位代数不能重获权限。"""
+        owner,people,doc,objects,raw,receipt=await original_doc(store,tmp_path,invoice_import=invoice_import)
+>       assert importlib.util.find_spec('xuanpu_finance.expenses.materials') is not None,'F7原件读取尚未实现'
+E       AssertionError: F7原件读取尚未实现
+E       assert None is not None
+E        +  where None = <function find_spec at 0x10394e160>('xuanpu_finance.expenses.materials')
+E        +    where <function find_spec at 0x10394e160> = <module 'importlib.util' (frozen)>.find_spec
+E        +      where <module 'importlib.util' (frozen)> = importlib.util
+
+packages/xuanpu-finance/tests/test_f7_records.py:138: AssertionError
+___________ test_signed_f7_record_history_material_and_strict_input ____________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10c336c90>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1689/test_signed_f7_record_history_0')
+
+    async def test_signed_f7_record_history_material_and_strict_input(store: FinanceStore,tmp_path: Path) -> None:
+        """签名入口实际读取原件并拒绝agent、伪造状态、无存储及越界参数。"""
+        _,_,doc,objects,raw,receipt=await original_doc(store,tmp_path)
+        key=Ed25519PrivateKey.generate();app=app_for(store,objects,Gateway({}),key)
+        prefix='/v1/finance/expense-claims';path=prefix+'/'+doc['id']
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app),base_url='https://finance') as http:
+            signed=SignedClient(http,key)
+            async def call(method: str,url: str,**kwargs: Any) -> httpx.Response:
+                """所有请求经真实签名和当前身份核验。"""
+                return await signed.call(method,url,tenant='t',user='owner',origin='human',**kwargs)
+            response=await call('POST',prefix,body=expense_body(invoice_information='  原文\n '),idem='signed-paste')
+>           assert response.status_code==201,response.text
+E           AssertionError: {"code":"invalid_request","message":"请求字段或版本格式无效","trace_id":"8feb2b7d669449119dedafae5c0b0696","retryable":false}
+E           assert 422 == 201
+E            +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+
+packages/xuanpu-finance/tests/test_f7_api.py:30: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f7_records.py::test_invoice_information_is_exact_optional_and_internal_only
+FAILED packages/xuanpu-finance/tests/test_f7_records.py::test_history_two_step_reject_revise_withdraw_pagination_and_restart
+FAILED packages/xuanpu-finance/tests/test_f7_records.py::test_material_actual_pdf_history_and_current_assignment[False]
+FAILED packages/xuanpu-finance/tests/test_f7_records.py::test_material_actual_pdf_history_and_current_assignment[True]
+FAILED packages/xuanpu-finance/tests/test_f7_api.py::test_signed_f7_record_history_material_and_strict_input
+5 failed, 6 passed in 3.34s
+.....F..F                                                                [100%]
+=================================== FAILURES ===================================
+______ test_invoice_information_rejects_invalid_values[\u53f7\x00\u7801] _______
+
+value = '号\x00码'
+
+    @pytest.mark.parametrize('value',['',' \n\t','x'*20001,12,True,'号\x00码','\ud800','\udfff'])
+    def test_invoice_information_rejects_invalid_values(value: Any) -> None:
+        """严格拒绝空白、过长及非文本，不对合法原文strip。"""
+>       with pytest.raises(ValidationError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+packages/xuanpu-finance/tests/test_f7_records.py:91: Failed
+______ test_signed_invoice_information_nul_is_422_for_create_and_revision ______
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10d797bf0>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1703/test_signed_invoice_informatio0')
+
+    async def test_signed_invoice_information_nul_is_422_for_create_and_revision(store: FinanceStore,tmp_path: Path) -> None:
+        """数据库JSONB不能接收NUL，创建和修订均须在签名API校验时422拒绝。"""
+        _,_,doc,objects,_,_=await original_doc(store,tmp_path)
+        key=Ed25519PrivateKey.generate();app=app_for(store,objects,Gateway({}),key)
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app,raise_app_exceptions=False),base_url='https://finance') as http:
+            signed=SignedClient(http,key)
+            draft=expense_body(invoice_information='发票\x00信息')
+            for method,path,body in [
+                ('POST','/v1/finance/expense-claims',draft),
+                ('PUT','/v1/finance/expense-claims/'+doc['id'],{'expected_version':doc['version'],'draft':draft}),
+            ]:
+                result=await signed.call(method,path,tenant='t',user='owner',origin='human',body=body,idem='nul-'+method)
+>               assert result.status_code==422,result.text
+E               AssertionError: {"code":"internal_error","message":"财务服务内部错误","trace_id":"fc9e9782752144ac8e6134b99485a5cf","retryable":false}
+E               assert 500 == 422
+E                +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+packages/xuanpu-finance/tests/test_f7_api.py:69: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    xuanpu_finance.api:api.py:70 财务请求未处理异常：UntranslatableCharacterError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f7_records.py::test_invoice_information_rejects_invalid_values[\u53f7\x00\u7801]
+FAILED packages/xuanpu-finance/tests/test_f7_api.py::test_signed_invoice_information_nul_is_422_for_create_and_revision
+2 failed, 7 passed in 3.09s

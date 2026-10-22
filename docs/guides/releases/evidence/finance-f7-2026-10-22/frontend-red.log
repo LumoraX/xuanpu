@@ -1,0 +1,310 @@
+FAIL editPreservesInvoiceAndOptionalEvidence AssertionError [ERR_ASSERTION]: 普通报销需要可粘贴发票信息
+    at editPreservesInvoiceAndOptionalEvidence (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:11:253)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:17:256 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+FAIL uploadedExpenseUsesRealReceiptAndLocksSave TypeError: Cannot set properties of undefined (setting 'files')
+    at uploadedExpenseUsesRealReceiptAndLocksSave (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:12:890)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:17:256
+FAIL internalRecordsAndHistory AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+  assert(!text(box).includes('外部付款'))
+
+    at internalRecordsAndHistory (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:13:979)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:17:256 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+FAIL expenseDownloadPinsVersionAndValidatesDigest AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
+  {
+-   document_version: 2,
+    id: 'claim1',
+    limit: 131072,
+    offset: 0,
++   op: 'getFundingMaterial',
+-   op: 'getExpenseMaterial',
+    receipt_id: 'receipt-old'
+  }
+
+    at expenseDownloadPinsVersionAndValidatesDigest (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:14:624)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:17:256 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [Object],
+  expected: [Object],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+FAIL lateHistoryAndDownloadDoNotReachNewPage evalmachine.<anonymous>:1
+financeRecordsHistory($("workspace-content"),record)
+^
+
+ReferenceError: financeRecordsHistory is not defined
+    at evalmachine.<anonymous>:1:1
+    at Script.runInContext (node:vm:149:12)
+    at Object.runInContext (node:vm:301:6)
+    at Object.run (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:4:1068)
+    at lateHistoryAndDownloadDoNotReachNewPage (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:15:297)
+    at /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:17:262
+FAIL moreFunctionsAreExplicit AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+  assert(more)
+
+    at moreFunctionsAreExplicit (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:16:380)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:17:256 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: null,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+FAIL listNavigationAndExitReleaseDownloads AssertionError [ERR_ASSERTION]: 列表、审批和退出均应回收原件链接
+    at listNavigationAndExitReleaseDownloads (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:18:388)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:22:374 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+PASS unknownMaterialRequestRetainsIdempotency
+PASS lateMaterialReceiptCannotChangeNewPage
+PASS editPreservesInvoiceAndOptionalEvidence
+PASS uploadedExpenseUsesRealReceiptAndLocksSave
+PASS internalRecordsAndHistory
+FAIL expenseDownloadPinsVersionAndValidatesDigest AssertionError [ERR_ASSERTION]: 不安全内容只能作为下载字节
++ actual - expected
+
++ 'text/html'
+- 'application/octet-stream'
+
+    at expenseDownloadPinsVersionAndValidatesDigest (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:14:876)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:22:374 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'text/html',
+  expected: 'application/octet-stream',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+PASS lateHistoryAndDownloadDoNotReachNewPage
+PASS moreFunctionsAreExplicit
+.........F.....                                                          [100%]
+=================================== FAILURES ===================================
+__________________________ test_static_files_present ___________________________
+
+    def test_static_files_present() -> None:
+        """静态文件都在，页面引用的脚本与样式就是它们。"""
+        directory = static_dir()
+        assert (directory / "index.html").is_file()
+        assert (directory / "app.js").is_file()
+        assert (directory / "identity.js").is_file()
+        assert (directory / "style.css").is_file()
+        html = (directory / "index.html").read_text(encoding="utf-8")
+        referenced = set(re.findall(r'(?:src|href)="([^"]+)"', html))
+>       assert referenced == {
+            "app.js", "identity.js", "reminders.js", "notification-alerts.js", "notification-center.js", "style.css",
+            "?admin=1", "?", "workspace.css", "workspace.js", "workspace-forms.js",
+            "workspace-files.js", "workspace-chat.js", "proactive.js", "work-tasks.js", "finance.js", "finance_settlement.js", "finance_compliance.js", "finance_operations.js", "finance_funding.js",
+        }
+E       AssertionError: assert {'?', '?admin...ding.js', ...} == {'?', '?admin...ding.js', ...}
+E         
+E         Extra items in the left set:
+E         'finance_records.js'
+E         Use -v to get more diff
+
+packages/xuanpu-console/tests/test_static.py:19: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-console/tests/test_static.py::test_static_files_present
+1 failed, 14 passed in 0.77s
+FAIL uploadingInvalidatesEarlierDraftConfirmation AssertionError [ERR_ASSERTION]: 开始上传后旧保存确认不能绕过材料接收
+    at uploadingInvalidatesEarlierDraftConfirmation (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:23:569)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:25:419 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+PASS listNavigationAndExitReleaseDownloads
+PASS unknownMaterialRequestRetainsIdempotency
+PASS lateMaterialReceiptCannotChangeNewPage
+PASS editPreservesInvoiceAndOptionalEvidence
+PASS uploadedExpenseUsesRealReceiptAndLocksSave
+PASS internalRecordsAndHistory
+PASS expenseDownloadPinsVersionAndValidatesDigest
+PASS lateHistoryAndDownloadDoNotReachNewPage
+PASS moreFunctionsAreExplicit
+PASS uploadingInvalidatesEarlierDraftConfirmation
+PASS listNavigationAndExitReleaseDownloads
+PASS unknownMaterialRequestRetainsIdempotency
+PASS lateMaterialReceiptCannotChangeNewPage
+PASS editPreservesInvoiceAndOptionalEvidence
+PASS uploadedExpenseUsesRealReceiptAndLocksSave
+FAIL internalRecordsAndHistory AssertionError [ERR_ASSERTION]: 历史完整原文逐条加载以保持响应上限
+    at internalRecordsAndHistory (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:13:1378)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:25:419 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+PASS expenseDownloadPinsVersionAndValidatesDigest
+PASS lateHistoryAndDownloadDoNotReachNewPage
+PASS moreFunctionsAreExplicit
+FAIL editingAttachmentIdsCanReplaceOrRemoveExisting AssertionError [ERR_ASSERTION]: 当前附件编号必须允许替换或清空旧附件
++ actual - expected
+
+  [
++   'A',
+    'B'
+  ]
+
+    at editingAttachmentIdsCanReplaceOrRemoveExisting (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:26:520)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:29:510 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [Array],
+  expected: [Array],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+FAIL expenseListPaginatesMaximumChineseOriginals Error: 返回资料超过上限，请缩小查询范围。
+    at financeCall (evalmachine.<anonymous>:22:29)
+    at async financeLoadClaims (evalmachine.<anonymous>:71:14)
+    at async expenseListPaginatesMaximumChineseOriginals (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:27:591)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:29:510
+PASS uploadingInvalidatesEarlierDraftConfirmation
+PASS listNavigationAndExitReleaseDownloads
+PASS unknownMaterialRequestRetainsIdempotency
+PASS lateMaterialReceiptCannotChangeNewPage
+PASS editPreservesInvoiceAndOptionalEvidence
+FAIL uploadedExpenseUsesRealReceiptAndLocksSave AssertionError [ERR_ASSERTION]: 本次新收件也允许有意移除
++ actual - expected
+
++ [
++   'receipt1'
++ ]
+- []
+
+    at uploadedExpenseUsesRealReceiptAndLocksSave (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:12:1985)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:29:510 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [Array],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+PASS internalRecordsAndHistory
+PASS expenseDownloadPinsVersionAndValidatesDigest
+PASS lateHistoryAndDownloadDoNotReachNewPage
+PASS moreFunctionsAreExplicit
+FAIL editingWhileImportIsInFlightKeepsReceiptRecovery AssertionError [ERR_ASSERTION]: 同一编辑表单在途修改不能丢掉已受理操作的查询链
+    at editingWhileImportIsInFlightKeepsReceiptRecovery (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:30:1229)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:32:559 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: null,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+PASS editingAttachmentIdsCanReplaceOrRemoveExisting
+PASS expenseListPaginatesMaximumChineseOriginals
+PASS uploadingInvalidatesEarlierDraftConfirmation
+PASS listNavigationAndExitReleaseDownloads
+PASS unknownMaterialRequestRetainsIdempotency
+PASS lateMaterialReceiptCannotChangeNewPage
+PASS editPreservesInvoiceAndOptionalEvidence
+PASS uploadedExpenseUsesRealReceiptAndLocksSave
+PASS internalRecordsAndHistory
+PASS expenseDownloadPinsVersionAndValidatesDigest
+PASS lateHistoryAndDownloadDoNotReachNewPage
+PASS moreFunctionsAreExplicit
+FAIL addingExpenseLineInvalidatesEarlierSaveConfirmation AssertionError [ERR_ASSERTION]: 增加费用后旧保存确认不得提交旧费用快照
+    at addingExpenseLineInvalidatesEarlierSaveConfirmation (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:36:444)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:39:694 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+FAIL fundingBasisEditsKeepInFlightMaterialRecovery AssertionError [ERR_ASSERTION]: 资金表单增加采购依据不能丢掉在途材料操作
+    at fundingBasisEditsKeepInFlightMaterialRecovery (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:37:1476)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:39:694 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: null,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+PASS lateImportCannotRestoreAbandonedForm
+FAIL editingWhileImportIsInFlightKeepsReceiptRecovery TypeError: Cannot read properties of undefined (reading 'listeners')
+    at editingWhileImportIsInFlightKeepsReceiptRecovery (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:30:1789)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:39:694
+PASS editingAttachmentIdsCanReplaceOrRemoveExisting
+PASS expenseListPaginatesMaximumChineseOriginals
+PASS uploadingInvalidatesEarlierDraftConfirmation
+PASS listNavigationAndExitReleaseDownloads
+PASS unknownMaterialRequestRetainsIdempotency
+PASS lateMaterialReceiptCannotChangeNewPage
+PASS editPreservesInvoiceAndOptionalEvidence
+PASS uploadedExpenseUsesRealReceiptAndLocksSave
+PASS internalRecordsAndHistory
+PASS expenseDownloadPinsVersionAndValidatesDigest
+PASS lateHistoryAndDownloadDoNotReachNewPage
+PASS moreFunctionsAreExplicit
+FAIL addingExpenseLineInvalidatesEarlierSaveConfirmation AssertionError [ERR_ASSERTION]: 增加费用后旧保存确认不得提交旧费用快照
+    at addingExpenseLineInvalidatesEarlierSaveConfirmation (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:36:444)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:39:694 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+FAIL fundingBasisEditsKeepInFlightMaterialRecovery AssertionError [ERR_ASSERTION]: 资金表单增加采购依据不能丢掉在途材料操作
+    at fundingBasisEditsKeepInFlightMaterialRecovery (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:37:1476)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_records_behavior.cjs:39:694 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: null,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+PASS lateImportCannotRestoreAbandonedForm
+PASS editingWhileImportIsInFlightKeepsReceiptRecovery
+PASS editingAttachmentIdsCanReplaceOrRemoveExisting
+PASS expenseListPaginatesMaximumChineseOriginals
+PASS uploadingInvalidatesEarlierDraftConfirmation
+PASS listNavigationAndExitReleaseDownloads
+PASS unknownMaterialRequestRetainsIdempotency
+PASS lateMaterialReceiptCannotChangeNewPage
+PASS editPreservesInvoiceAndOptionalEvidence
+PASS uploadedExpenseUsesRealReceiptAndLocksSave
+PASS internalRecordsAndHistory
+PASS expenseDownloadPinsVersionAndValidatesDigest
+PASS lateHistoryAndDownloadDoNotReachNewPage
+PASS moreFunctionsAreExplicit

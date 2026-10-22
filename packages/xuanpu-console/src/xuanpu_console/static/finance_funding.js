@@ -28,11 +28,11 @@ async function financeFundingEdit(record=null,scenario=record?.content.scenario|
   const content=record?.content,suppliers=financeFundingOriginalOptions(supplierRows,content?[content.supplier_ref]:[]),basis=financeFundingOriginalOptions(basisRows.flat(),content?.business_refs||[]),box=$("workspace-content");box.replaceChildren();if(!options.enabled||!suppliers.length||!basis.some(x=>x.ref.kind==="contract")){box.append(wsText("p","当前公司缺少启用的专用资金制度、供应商或合同，请联系财务负责人。"));return;}
   const form=wsText("form","","workspace-form");box.append(wsText("h3",financeFundingNames[scenario]+"草稿"),form);const select=(label,items,ref)=>financeSelect(form,label,items.map((x,i)=>({id:String(i),name:x.name})),String(ref?items.findIndex(x=>JSON.stringify(x.ref)===JSON.stringify(ref)):0));
   const supplier=select("供应商",suppliers,content?.supplier_ref),amount=financeField(form,"本次金额（元）","text",content?.amount||""),due=financeField(form,"到期日期","date",content?.due_date||""),reason=financeField(form,"款项用途","text",content?.reason||"");amount.inputMode="decimal";const selections=[];
-  function addBasis(ref=basis.find(x=>x.ref.kind==="contract").ref){const field=select("合同、订单或验收依据 "+(selections.length+1),basis,ref),item={field,removed:false};selections.push(item);form.append(wsButton("移除依据 "+selections.length,()=>{item.removed=true;field.disabled=true;financeInvalidate();}));}for(const ref of content?.business_refs||[basis.find(x=>x.ref.kind==="contract").ref])addBasis(ref);form.append(wsButton("增加采购依据",()=>{addBasis();financeInvalidate();}));
+  function addBasis(ref=basis.find(x=>x.ref.kind==="contract").ref){const field=select("合同、订单或验收依据 "+(selections.length+1),basis,ref),item={field,removed:false};selections.push(item);form.append(wsButton("移除依据 "+selections.length,()=>{item.removed=true;field.disabled=true;financeInvalidate(true);}));}for(const ref of content?.business_refs||[basis.find(x=>x.ref.kind==="contract").ref])addBasis(ref);form.append(wsButton("增加采购依据",()=>{addBasis();financeInvalidate(true);}));
   const parent=["prepayment_clearance","prepayment_return"].includes(scenario)?financeSelect(form,"原预付",parents.map(x=>({id:x.id,name:x.content.reason+" · 已付 ¥"+x.funding.paid_amount+" · 未结 ¥"+x.funding.outstanding_amount})),content?.source_case_id||parents[0]?.id||""):null;
   const authority=financeFundingAuthorityFields(form,scenario,content?.authority,options.accounts),materials={ids:[...(content?.evidence_ids||[])],pending:null},save=wsButton("核对资金草稿",()=>{});save.type="submit";save.disabled=!materials.ids.length;
-  financeFundingMaterials(form,materials,save,token);form.append(save);form.addEventListener("input",financeInvalidate);form.addEventListener("change",financeInvalidate);
-  financeSubmit(form,async()=>{if(!financeCurrent(token)||!materials.ids.length||materials.pending||materials.uploading)return;const draft={legal_entity_id:financeState.entity,scenario,reason:reason.value.trim(),amount:financeMoney(amount.value),due_date:due.value,supplier_ref:suppliers[Number(supplier.value)].ref,business_refs:selections.filter(x=>!x.removed).map(x=>basis[Number(x.field.value)].ref),evidence_ids:[...materials.ids],...(parent?{source_case_id:parent.value}:{}),...(authority?{authority:authority(materials.ids)}:{})};await financeConfirmWrite(record?"updateFundingCase":"createFundingCase",{...(record?{id:record.id}:{}),body:record?{expected_version:record.version,draft}:draft},"确认保存"+financeFundingNames[scenario]+"草稿 · ¥"+draft.amount+" · "+draft.reason,result=>financeFundingDetail(result.id),form);});
+  financeFundingMaterials(form,materials,save,token);form.append(save);form.addEventListener("input",()=>financeInvalidate(true));form.addEventListener("change",()=>financeInvalidate(true));
+  financeSubmit(form,async()=>{if(!financeCurrent(token)||!materials.ids.length||materials.pending||materials.uploading||materials.confirming)return;const draft={legal_entity_id:financeState.entity,scenario,reason:reason.value.trim(),amount:financeMoney(amount.value),due_date:due.value,supplier_ref:suppliers[Number(supplier.value)].ref,business_refs:selections.filter(x=>!x.removed).map(x=>basis[Number(x.field.value)].ref),evidence_ids:[...materials.ids],...(parent?{source_case_id:parent.value}:{}),...(authority?{authority:authority(materials.ids)}:{})};await financeConfirmWrite(record?"updateFundingCase":"createFundingCase",{...(record?{id:record.id}:{}),body:record?{expected_version:record.version,draft}:draft},"确认保存"+financeFundingNames[scenario]+"草稿 · ¥"+draft.amount+" · "+draft.reason,result=>financeFundingDetail(result.id),form);});
 }
 function financeFundingOriginalOptions(items,refs){const result=[...items];for(const ref of refs)if(!result.some(x=>JSON.stringify(x.ref)===JSON.stringify(ref)))result.push({ref,name:"原资料 "+ref.id+" · "+ref.version+"（当前目录未提供）",account_name:"原绑定账户（当前不可用）",masked_account:ref.id});return result;}
 
@@ -43,22 +43,57 @@ function financeFundingAuthorityFields(form,scenario,initial,accounts){
   const allowed=financeFundingOriginalOptions(accounts,initial?.account_ref?[initial.account_ref]:[]).filter(x=>x.ref.kind===(scenario==="employee_advance"?"employee_account":"supplier_account")),account=["employee_advance","entrusted_collection"].includes(scenario)?financeSelect(form,"受控收款账户",allowed.map((x,i)=>({id:String(i),name:x.account_name+" · "+x.masked_account})),String(Math.max(0,allowed.findIndex(x=>JSON.stringify(x.ref)===JSON.stringify(initial?.account_ref))))):null;
   return ids=>({kind,reference:reference.value.trim(),amount_limit:financeMoney(limit.value),evidence_ids:[...(initial?.evidence_ids||ids)],...(occurred?{occurred_on:occurred.value}:{}),...(start?{valid_from:start.value,valid_until:end.value}:{}),...(account?{account_ref:allowed[Number(account.value)]?.ref}: {})});
 }
-function financeFundingMaterials(form,state,save,token){
-  const input=financeField(form,"支持材料文件","file","",false),status=wsText("p",state.ids.length?"已有材料回执 "+state.ids.length+" 份":"尚无材料接收回执。上传并确认导入后，可读取接收结果。"),progress=wsText("div","");input.accept=".pdf,.png,.jpg,.jpeg,.xml";form.append(status,progress,wsButton("上传支持材料",async()=>{
-    const file=input.files?.[0];if(!file||state.pending||state.uploading)return;state.uploading=true;save.disabled=true;const revision=financeState.revision;try{const bytes=await file.arrayBuffer(),sha=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),n=>n.toString(16).padStart(2,"0")).join("");const params=new URLSearchParams({name:file.name,request_id:crypto.randomUUID()}),item=await api("POST",workspaceBase+"/files?"+params,{body:file,headers:{"Content-Type":file.type||"application/octet-stream"}});if(!financeCurrent(token)||revision!==financeState.revision)return;const args={body:{legal_entity_id:financeState.entity,files:[{file_id:item.id,revision:item.data.current_revision,sha256:sha}]}};await financeConfirmWrite("importSupportingMaterials",args,"确认将“"+file.name+"”固定版本导入当前公司独立财务存储？",op=>{state.pending=op.id;status.textContent="材料已受理，尚未取得接收回执。";progress.replaceChildren(wsButton("读取材料接收结果",async()=>{const op=await financeCall("getOperation",{id:state.pending});if(!financeCurrent(token))return;if(op.status!=="succeeded"){status.textContent="材料状态："+op.status+"，请保留原操作继续查询。";return;}if(op.purpose!=="supporting_material"||op.business_result!=="succeeded"||op.summary.materials<1||!op.items.every(x=>x.state==="material_received"))throw new Error("材料回执不完整，请核对原操作。");state.ids.push(...op.result_refs.filter(x=>x.kind==="source").map(x=>x.id));state.ids=[...new Set(state.ids)];state.pending=null;save.disabled=!state.ids.length;status.textContent="已取得真实材料接收回执 "+state.ids.length+" 份，待人工核对。";progress.replaceChildren();}));},form);}catch(error){status.textContent=error.message;save.disabled=!state.ids.length;fail(error);}finally{state.uploading=false;if(financeCurrent(token))save.disabled=!state.ids.length||state.pending!==null;}
-  }));
+function financeFundingMaterials(form,state,save,token,{required=true,onReceived=null}={}) {
+  financeState.materialForm=form;
+  const input=financeField(form,"支持材料文件","file","",false),status=wsText("p",state.ids.length?"已有材料回执 "+state.ids.length+" 份":"尚无材料接收回执。上传并确认导入后，可读取接收结果。"),progress=wsText("div","");
+  input.accept=".pdf,.png,.jpg,.jpeg,.xml";
+  const update=()=>{save.disabled=(required&&!state.ids.length)||!!(state.pending||state.uploading||state.confirming);};
+  const cancel=()=>{if(!financeState.pending&&!state.pending){state.confirming=false;update();}};
+  form.append(status,progress,wsButton("上传支持材料",async()=>{
+    const file=input.files?.[0];if(!file||state.pending||state.uploading||state.confirming||financeState.pending)return;
+    financeInvalidate(true);state.uploading=true;update();const revision=financeState.revision,current=()=>financeCurrent(token)&&revision===financeState.revision;
+    try {
+      const bytes=await file.arrayBuffer(),sha=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),n=>n.toString(16).padStart(2,"0")).join("");
+      if(!current())return;
+      const params=new URLSearchParams({name:file.name,request_id:crypto.randomUUID()}),item=await api("POST",workspaceBase+"/files?"+params,{body:file,headers:{"Content-Type":file.type||"application/octet-stream"},signal:financeState.controller.signal});
+      if(!current())return;
+      const args={body:{legal_entity_id:financeState.entity,files:[{file_id:item.id,revision:item.data.current_revision,sha256:sha}]}};
+      state.confirming=true;
+      await financeConfirmWrite("importSupportingMaterials",args,"确认将“"+file.name+"”固定版本导入当前公司独立财务存储？",op=>{
+        // 在途编辑不能丢失原操作；独立表单身份仍拒绝切页或身份切换后的旧回执。
+        if(!financeCurrent(token)||financeState.materialForm!==form)return;
+        state.confirming=false;state.pending=op.id;status.textContent="材料已受理，尚未取得接收回执。";
+        if(form.isConnected===false)$("workspace-content").replaceChildren(form);
+        progress.replaceChildren(wsButton("读取材料接收结果",async()=>{
+          const queryRevision=financeState.revision,operationId=state.pending;
+          const op=await financeCall("getOperation",{id:operationId});
+          if(!financeCurrent(token)||queryRevision!==financeState.revision||state.pending!==operationId)return;
+          if(op.status!=="succeeded"){status.textContent="材料状态："+op.status+"，请保留原操作继续查询。";return;}
+          const ids=op.result_refs?.filter(x=>x.kind==="source").map(x=>x.id);
+          if(op.id!==operationId||op.purpose!=="supporting_material"||op.business_result!=="succeeded"||!Number.isSafeInteger(op.summary?.materials)||op.summary.materials<1||!Array.isArray(op.items)||!op.items.length||!op.items.every(x=>x.state==="material_received")||ids?.length!==op.summary.materials||ids.some(x=>typeof x!=="string"||!x))throw new Error("材料回执不完整，请核对原操作。");
+          state.ids=[...new Set([...state.ids,...ids])];if(onReceived)onReceived(ids);state.pending=null;update();status.textContent="已取得真实材料接收回执 "+state.ids.length+" 份，待人工核对。";progress.replaceChildren();
+        }));update();
+      },form);
+      for(const event of ["input","change"])form.addEventListener(event,cancel);
+    } catch(error) {if(current()){status.textContent=error.message;state.confirming=false;fail(error);}}
+    finally {state.uploading=false;if(financeCurrent(token))update();}
+  }));update();
 }
 const financeFundingDownloads=new Set();
 function financeFundingReleaseDownloads(){for(const url of financeFundingDownloads)URL.revokeObjectURL(url);financeFundingDownloads.clear();}
 async function financeFundingReadMaterial(record,evidence,box){
   if(financeState.pending){financeShowPending();return;}const token=financeToken(),revision=financeState.revision,parts=[];let offset=0,initial=null;
-  do{const part=await financeCall("getFundingMaterial",{id:record.id,receipt_id:evidence.id,offset,limit:131072});if(!financeCurrent(token)||revision!==financeState.revision)return;
+  do{const part=await financeCall(record.kind==="expense_claim"?"getExpenseMaterial":"getFundingMaterial",{id:record.id,receipt_id:evidence.id,...(record.kind==="expense_claim"?{document_version:record.version}:{}),offset,limit:131072});if(!financeCurrent(token)||revision!==financeState.revision)return;
     if(part.document_id!==record.id||part.document_version!==record.version||part.receipt_id!==evidence.id||part.sha256!==evidence.sha256||part.offset!==offset||!Number.isSafeInteger(part.size)||part.size<1||part.size>50*1024*1024)throw new Error("原件或单据版本已变化，请刷新后核对。");
     if(initial&&(part.size!==initial.size||part.media_type!==initial.media_type))throw new Error("原件分块资料不一致。");initial=part;const decoded=atob(part.content_base64),bytes=Uint8Array.from(decoded,c=>c.charCodeAt(0));parts.push(bytes);const end=offset+bytes.length;if(!bytes.length||end>part.size||(part.next_offset!==null&&part.next_offset!==end)||(part.next_offset===null&&end!==part.size))throw new Error("原件分块不完整，请按原材料重新读取。");offset=part.next_offset;
   }while(offset!==null);
   const full=new Uint8Array(initial.size);let position=0;for(const part of parts){full.set(part,position);position+=part.length;}const sha=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",full)),x=>x.toString(16).padStart(2,"0")).join("");if(!financeCurrent(token)||revision!==financeState.revision)return;if(sha!==evidence.sha256)throw new Error("原件整体摘要校验失败。");
-  const url=URL.createObjectURL(new Blob([full],{type:initial.media_type}));financeFundingDownloads.add(url);const link=wsText("a","下载已核对摘要的原件");link.href=url;link.download="财务材料-"+evidence.id+({"application/pdf":".pdf","image/png":".png","image/jpeg":".jpg","application/xml":".xml"}[initial.media_type]||".bin");box.append(link,wsText("p","已读取独立财务原件；这不代表材料内容或银行事实已核实。"));
+  const safeType=["application/pdf","image/png","image/jpeg"].includes(initial.media_type)?initial.media_type:"application/octet-stream";
+  const url=URL.createObjectURL(new Blob([full],{type:safeType}));financeFundingDownloads.add(url);const link=wsText("a","下载已核对摘要的原件");link.href=url;link.download="财务材料-"+evidence.id+({"application/pdf":".pdf","image/png":".png","image/jpeg":".jpg","application/xml":".xml"}[initial.media_type]||".bin");box.append(link,wsText("p","已读取独立财务原件；这不代表材料内容或银行事实已核实。"));
 }
 function financeFundingRevoke(record){
   if(financeState.pending){financeShowPending();return;}financeInvalidate();const form=wsText("form","","workspace-form"),box=$("workspace-content"),authority=record.funding.authority;box.append(form);form.append(wsText("p","仅当前公司财务复核人且非申请人可撤销。撤销阻止尚未发送的资格，不会撤回已付资金或删除历史。"));const reason=financeField(form,"撤销授权的原因"),button=wsButton("核对撤销授权",()=>{});button.type="submit";form.append(button);form.addEventListener("input",financeInvalidate);financeSubmit(form,()=>financeConfirmWrite("revokeFundingAuthority",{id:authority.id,body:{expected_version:authority.version,reason:reason.value.trim()}},"确认撤销原凭据/授权“"+authority.reference+"”？原因："+reason.value.trim(),()=>financeFundingDetail(record.id),form));
 }
+
+// 关闭辅助窗口或转到其它功能后，立即回收仍留在隐藏页面上的下载链接。
+if(typeof MutationObserver!=="undefined")new MutationObserver(()=>{if(workspace.kind!=="finance")financeFundingReleaseDownloads();}).observe($("workspace-window"),{attributes:true,childList:true,subtree:true});
