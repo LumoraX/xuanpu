@@ -1,0 +1,62 @@
+{
+  "baseline": "16875fb",
+  "reviews": [
+    {
+      "scope": "F9 design and plan",
+      "reviewer": "f9_spec_review",
+      "status": "Approved",
+      "resolved": [
+        "max summary limit reduced to 50 for escaped response bound",
+        "startup rejects pending invoice imports and incompatible general plans"
+      ]
+    },
+    {
+      "scope": "published contracts, 7 Skills, template and guide",
+      "reviewer": "f9_spec_review",
+      "status": "Approved",
+      "resolved": [
+        "explicit internal branch termination and general-only instructions"
+      ]
+    },
+    {
+      "scope": "F9 backend specification",
+      "reviewer": "f9_spec_review",
+      "status": "Approved",
+      "resolved": [
+        "fixed inventory verifies 80 tables and 680 columns and exact types in pre-migration read-only transaction; missing item/receipt/history fields now reject before writes"
+      ],
+      "independent_verification": "compatibility tests 15 passed; real migrated schema inventory equal; zero companies/grants on original reproduction"
+    },
+    {
+      "scope": "F9 backend and published package code quality",
+      "reviewer": "f9_quality",
+      "status": "Approved",
+      "verification": "19 profile/contract/preflight/harness tests passed; source and authorization review; backend files/functions limits checked",
+      "not_covered": "console implementation pending at this review"
+    },
+    {
+      "scope": "F9 console specification",
+      "reviewer": "f9_spec_review",
+      "status": "Approved",
+      "resolved": [
+        "Unicode character limits and preserved whitespace reason",
+        "internal material exception uses owned supporting metadata only",
+        "failed exception pagination can retry same cursor; stale scope remains invalid"
+      ],
+      "independent_verification": "console 17 passed; failed cursor retry and stale revision/company/identity/pending tests reproduced"
+    },
+    {
+      "scope": "F9 console code quality",
+      "reviewer": "f9_quality",
+      "status": "Approved",
+      "independent_verification": "all 17 console tests, including 18 new CJS behavior cases; projection and race guards reviewed"
+    },
+    {
+      "scope": "final release evidence and actual isolated database",
+      "reviewer": "f9_spec_review",
+      "status": "Approved",
+      "verification": "readonly RR final DB matches persisted evidence; 3 downloads byte/hash/PDF verified; actual JUnit and artifact hashes match; no production or real-model claim; allows owned resource cleanup"
+    }
+  ],
+  "production_status": "not_verified"
+}

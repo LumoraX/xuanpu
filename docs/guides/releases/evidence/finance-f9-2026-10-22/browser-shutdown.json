@@ -1,0 +1,13 @@
+{
+  "owned_instances_exited": 2,
+  "final_exit_code": 0,
+  "ready_files_removed": true,
+  "final_temporary_runtime_removed": true,
+  "ports_closed": [
+    54240,
+    54241,
+    64333,
+    64334
+  ],
+  "product_files_frozen_equal": 368
+}

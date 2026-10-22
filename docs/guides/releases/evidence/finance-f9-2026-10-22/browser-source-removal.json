@@ -1,0 +1,18 @@
+{
+  "scope": "own final browser test platform objects only",
+  "removed": [
+    {
+      "fixture": "receipt-supplement.pdf",
+      "sha256": "9b80ae6ca6ccd7f8853aab56d24fecbbbc9beb8077d3f48757eaf7b7e30cc069",
+      "bytes": 669
+    },
+    {
+      "fixture": "receipt-original.pdf",
+      "sha256": "c9f2257792587a4c0571dc827a272a52b14db6f3f9088582d1fd450fed56dff6",
+      "bytes": 659
+    }
+  ],
+  "retained_object_files": 1,
+  "removed_originals": 2,
+  "production_status": "not_verified"
+}

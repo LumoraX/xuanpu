@@ -61,3 +61,5 @@ uv run pytest packages/xuanpu-server/tests/identity/test_finance_f4_gateway_e2e.
 PG用例须显式FINANCE_TEST_DSN指向独立finance_test库；维护演练还需可用PG工具（本轮专用容器xuanpu-finance-f4-test-pg）。[缺口台账](finance-gap-register.md)逐项区分既有本地已验、F5专用业务及外部未验收；[F4验收记录](releases/2026-10-21-finance-f4-acceptance.md)记录最终门禁、镜像、浏览器和清理证据。
 
 当前F6新增正式接入准备检查与可重复隔离验收，总70项API、7个Skill；见[F6指南](finance-f6.md)和[正式接入清单](finance-provider-acceptance.md)。原阶段正式能力未验边界继续保留。
+
+当前内部记录的摘要检索、专用部署配置与上线准备见[F9指南](finance-f9.md)，原阶段验收事实仍以对应记录为准。

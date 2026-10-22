@@ -1,10 +1,11 @@
 ---
 name: archive-audit
 description: 查询发票查验、税务确认、红字和档案证据，准备受控税务或归档计划并核对审计缺口。
-version: 0.9.0-f8
+version: 0.10.0-f9
 entry: false
 type: composite
 tool_names:
+- api__finance__getFinanceCapabilities
 - api__finance__listFinanceNotifications
 - api__finance__listLegalEntities
 - api__finance__getInvoice
@@ -35,6 +36,16 @@ tool_names:
 - api__finance__getFundingOptions
 ---
 # 查验、红字与档案核对
+
+先调用getFinanceCapabilities；读取失败或字段非法时停止并说明。profile=internal_records时只处理内部收件元数据、普通报销草稿、记录查询和人工动作预检；不调用应付、资金、支付、记账、查验、红字、正式档案或通用接入检查接口。实例能力不是个人授权、审批或上线验收。
+
+## internal_records 分支
+
+profile=internal_records：此实例不处理查验、税务、红字或正式归档。内部历史转报销Skill的listExpenseClaimHistory，原件交人工入口；本Skill停止，不读取资金规则或调用下文general工具。
+
+## general 分支
+
+以下仅在profile=general时执行。
 
 先读取受权公司和getComplianceOptions；未配置通道或正式profile未验收时说明缺口，不模拟正式成功。查询getInvoiceCompliance取得合规version；票面getInvoice.version仅用于分配。
 

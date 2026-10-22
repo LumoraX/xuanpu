@@ -1,0 +1,73 @@
+# 内部记录专用模板。REPLACE_ 和 .invalid 是明确阻断项，填写前不能启动。
+# 凭据由各自系统操作员准备；不得共用平台数据库、对象密钥或服务令牌。
+profile: internal_records
+environment: production
+mode: read_only
+synthetic: false
+execution_simulation: false
+host: 127.0.0.1
+port: 8443
+database_dsn_file: ./credentials/finance-dsn
+service_token_file: ./credentials/finance-service-token
+issuer: REPLACE_PLATFORM_ISSUER
+audience: xuanpu-finance
+public_key_files:
+  REPLACE_SIGNER_KEY_ID: ./credentials/platform-signing-public.pem
+gateway:
+  base_url: https://replace-platform.invalid
+  tenant_token_files:
+    REPLACE_TENANT_ID: ./credentials/platform-file-identity-token
+objects:
+  kind: local
+  root: ./data/finance-originals
+  key_file: ./credentials/finance-original-aes-key
+companies:
+  - tenant_id: REPLACE_TENANT_ID
+    legal_entity_id: REPLACE_COMPANY_ID
+    name: REPLACE_COMPANY_NAME
+    tax_id: REPLACE_COMPANY_TAX_ID
+grants:
+  - tenant_id: REPLACE_TENANT_ID
+    legal_entity_id: REPLACE_COMPANY_ID
+    user_id: REPLACE_APPLICANT_USER_ID
+    role: collector
+  - tenant_id: REPLACE_TENANT_ID
+    legal_entity_id: REPLACE_COMPANY_ID
+    user_id: REPLACE_MANAGER_USER_ID
+    role: approver
+  - tenant_id: REPLACE_TENANT_ID
+    legal_entity_id: REPLACE_COMPANY_ID
+    user_id: REPLACE_FINANCE_USER_ID
+    role: reviewer
+expense_policies:
+  - tenant_id: REPLACE_TENANT_ID
+    legal_entity_id: REPLACE_COMPANY_ID
+    version: 1
+    enabled: true
+    record_mode: internal_record
+    require_verified_invoice: false
+    require_cost_center: false
+    approval_due_hours: 72
+    max_claim_amount: '100000.00'
+    categories:
+      - id: office
+        name: 办公费用
+      - id: travel
+        name: 交通差旅
+    cost_centers: []
+    steps:
+      - id: manager
+        name: 负责人审批
+        approver_user_id: REPLACE_MANAGER_USER_ID
+      - id: finance
+        name: 财务复核
+        approver_user_id: REPLACE_FINANCE_USER_ID
+    exception_owner_user_id: REPLACE_FINANCE_USER_ID
+# 保持所有外部制度、供应商、业务目录和收款账户为空。
+funding_policies: []
+settlement_policies: []
+settlement_providers: []
+compliance_policies: []
+compliance_providers: []
+business_documents: []
+payee_accounts: []

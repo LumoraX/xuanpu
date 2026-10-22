@@ -1,10 +1,11 @@
 ---
 name: invoice-intake
 description: 归集受权固定版本发票原件，查询持久进度并为报销或应付处理补件。
-version: 0.9.0-f8
+version: 0.10.0-f9
 entry: false
 type: composite
 tool_names:
+- api__finance__getFinanceCapabilities
 - api__finance__listSupportingMaterialImports
 - api__finance__getSupportingMaterialImport
 - api__finance__listFinanceNotifications
@@ -27,6 +28,16 @@ tool_names:
 - api__finance__getFundingOptions
 ---
 # 发票归集与补件
+
+先调用getFinanceCapabilities；读取失败或字段非法时停止并说明。profile=internal_records时只处理内部收件元数据、普通报销草稿、记录查询和人工动作预检；不调用应付、资金、支付、记账、查验、红字、正式档案或通用接入检查接口。实例能力不是个人授权、审批或上线验收。
+
+## internal_records 分支
+
+profile=internal_records：只用listSupportingMaterialImports/getSupportingMaterialImport读取当前公司本人收件元数据和真实receipt_id。仅selectable=true的material_received项可选；not_checked不是验真。上传及收件执行交人工入口，粘贴文本转报销Skill的invoice_information。完成后返回，不执行下文general流程或读取其执行/资金规则。
+
+## general 分支
+
+以下仅在profile=general时执行。
 
 先读[执行规则](references/execution-rules.md)。只用用户有权文件的file_id、revision、sha256；明确公司后importInvoices，不生成XML冒充原件。
 202表示持久受理；getOperation按项汇报parsed、duplicate_linked、awaiting_original、quarantined、failed、cancelled。summary合计等于total，partial应说明各项缺口。分页跟随next_cursor，total是过滤后的总数。

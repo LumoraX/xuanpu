@@ -75,3 +75,14 @@ def test_finance_materials_behavior() -> None:
         capture_output=True, text=True, timeout=15,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_finance_records_list_behavior() -> None:
+    """能力失败关闭，摘要筛选、分页与未决写入恢复保持身份边界。"""
+    node = shutil.which('node')
+    assert node is not None
+    result = subprocess.run(
+        [node, str(Path(__file__).with_name('finance_records_list_behavior.cjs')), str(static_dir())],
+        capture_output=True, text=True, timeout=15,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

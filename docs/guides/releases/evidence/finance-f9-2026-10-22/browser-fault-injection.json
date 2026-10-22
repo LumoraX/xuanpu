@@ -1,0 +1,7 @@
+{
+  "scope": "test-only platform source removed after upload and before finance confirmation",
+  "fixture": "receipt-unavailable.pdf",
+  "sha256": "ea83a960ca5a30473a89759479d8d4bcdd369fea2bccf0e255b257e2534c04fc",
+  "removed_objects": 1,
+  "business_claim_unchanged": true
+}

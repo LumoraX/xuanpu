@@ -1,0 +1,30 @@
+{
+  "profile": "internal_records",
+  "published_operations": 23,
+  "operations": {
+    "listLegalEntities": "/v1/finance/legal-entities",
+    "getOperation": "/v1/finance/operations/{id}",
+    "cancelOperation": "/v1/finance/operations/{id}/cancel",
+    "createExpenseClaim": "/v1/finance/expense-claims",
+    "listExpenseClaims": "/v1/finance/expense-claims",
+    "getExpenseClaim": "/v1/finance/expense-claims/{id}",
+    "updateExpenseClaim": "/v1/finance/expense-claims/{id}",
+    "listExpenseCategories": "/v1/finance/catalog/expense-categories",
+    "listCostCenters": "/v1/finance/catalog/cost-centers",
+    "listReviewQueue": "/v1/finance/review-queue",
+    "previewFinanceAction": "/v1/finance/action-previews",
+    "getActionPlan": "/v1/finance/action-plans/{id}",
+    "executeFinanceAction": "/v1/finance/action-executions",
+    "listFinanceNotifications": "/v1/finance/notifications",
+    "readFinanceNotification": "/v1/finance/notifications/{id}/read",
+    "getFinanceOverview": "/v1/finance/overview",
+    "importSupportingMaterials": "/v1/finance/supporting-material-imports",
+    "listSupportingMaterialImports": "/v1/finance/supporting-material-imports",
+    "listExpenseClaimHistory": "/v1/finance/expense-claims/{id}/history",
+    "getExpenseMaterial": "/v1/finance/expense-claims/{id}/materials/{receipt_id}",
+    "getSupportingMaterialImport": "/v1/finance/supporting-material-imports/{id}",
+    "getFinanceCapabilities": "/v1/finance/capabilities",
+    "listExpenseClaimSummaries": "/v1/finance/expense-claim-summaries"
+  },
+  "production_status": "not_verified"
+}
