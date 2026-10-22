@@ -1,0 +1,289 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-22",
+  "timezone": "Asia/Shanghai",
+  "result": "passed",
+  "authorization": "user explicitly approved shared-host reboot now",
+  "implementation_changed": false,
+  "implementation_commit": "66d6fc6549bef3a8a9dbe0a8a5f1a5b98af2e2dd",
+  "source_main_before_this_documentation": "8cbdef0d93f795663a12ba4f41e1a2ffde96bbf6",
+  "host_reboot": {
+    "method": "systemctl reboot",
+    "command_count": 1,
+    "requested_at": "2026-10-22T12:36:01.730274+08:00",
+    "before_boot_id": "bc07bc12-7ab4-4a34-bbbf-fd5cffa6c265",
+    "after_boot_id": "02530915-6afe-4747-896d-b7880d152fcb",
+    "ssh_unavailable_observed": true,
+    "observed_ssh_recovery_seconds_after_command": 94.19974899291992
+  },
+  "backup": {
+    "remote_directory": "/data/xuanpu/releases/r2c-20261022/host-reboot-20261022-123302/backup",
+    "quiesced_xuanpu_database_and_files": true,
+    "two_pg_archives_listed": true,
+    "sha256_verified_before_and_after": true,
+    "failed_staging_archive_excluded": true
+  },
+  "services": {
+    "original_running_containers_auto_restored": 22,
+    "container_ids_and_images_unchanged": true,
+    "https": [
+      {
+        "url": "https://xuanpu.lingfengchen.com/healthz",
+        "status": 200
+      },
+      {
+        "url": "https://lumorax.lingfengchen.com/",
+        "status": 200
+      },
+      {
+        "url": "https://affine.lingfengchen.com/",
+        "status": 200
+      },
+      {
+        "url": "https://matrix.lingfengchen.com/_matrix/client/versions",
+        "status": 200
+      }
+    ],
+    "manual_container_start_after_reboot": false,
+    "previous_failed_unit_count": 3,
+    "final_failed_unit_count": 0
+  },
+  "bootstrap": {
+    "result": "passed",
+    "before_boot_id": "bc07bc12-7ab4-4a34-bbbf-fd5cffa6c265",
+    "after_boot_id": "02530915-6afe-4747-896d-b7880d152fcb",
+    "slice_unchanged": true,
+    "mounts_idmapped": 6,
+    "socket_acl_unchanged": true,
+    "daemon_auto_started": true,
+    "task_containers": 0,
+    "data": {
+      "production": {
+        "old_rows_unchanged": [
+          "work_task",
+          "work_task_input",
+          "task_effect",
+          "task_budget_reservation",
+          "task_attempt"
+        ],
+        "old_objects_verified": 117,
+        "extra_objects": 0
+      },
+      "staging": {
+        "old_rows_unchanged": [
+          "work_task",
+          "work_task_input",
+          "task_effect",
+          "task_budget_reservation",
+          "task_attempt"
+        ],
+        "old_objects_verified": 92,
+        "extra_objects": 8
+      }
+    },
+    "original_pending_session_attempt_unchanged": true
+  },
+  "production_probe": {
+    "daemon_version": "29.6.2",
+    "rootless": true,
+    "cgroup_driver": "systemd",
+    "isolation": {
+      "input_read_only": true,
+      "network": "loopback only",
+      "memory_max": "536870912",
+      "cpu_max": [
+        "100000",
+        "100000"
+      ],
+      "pids_max": "256",
+      "secrets_and_sockets_absent": true
+    },
+    "export_sha256": "cc8fd4a073f8ae660bfb3e7c392ef9f6bffacef005e01cc57e2a708aaf57f32c"
+  },
+  "staging_probe": {
+    "daemon_version": "29.6.2",
+    "rootless": true,
+    "cgroup_driver": "systemd",
+    "isolation": {
+      "input_read_only": true,
+      "network": "loopback only",
+      "memory_max": "536870912",
+      "cpu_max": [
+        "100000",
+        "100000"
+      ],
+      "pids_max": "256",
+      "secrets_and_sockets_absent": true
+    },
+    "export_sha256": "cc8fd4a073f8ae660bfb3e7c392ef9f6bffacef005e01cc57e2a708aaf57f32c"
+  },
+  "cold_original_read_approval": {
+    "result": "passed",
+    "original_session_pending_attempt_preserved": true,
+    "before_attempt": 1,
+    "after_approved_attempt": 2,
+    "actual_http_read_receipt": true,
+    "same_decision_replay_unchanged": true
+  },
+  "persisted_future_schedule": {
+    "result": "passed",
+    "planned_at": "2026-10-22T12:37:41+08:00",
+    "accepted_at": "2026-10-22T12:37:53.939396+08:00",
+    "occurrences": 1,
+    "task_count": 1,
+    "attempt_no": 1,
+    "fixed_input_sha256_verified": true,
+    "artifact_count": 4,
+    "values": {
+      "A": "12.50",
+      "B": "3.00",
+      "total": "15.50"
+    },
+    "download_sha256": {
+      "summary_csv": "54c2639a3ec799dcfc81d5df71735a5a101ec06f1c27738bd97466025f7e4a5b",
+      "summary_xlsx": "bc0e32d6a710b01bd17d09660a0f1ec87bab2bb2c58863ace6383efeb78967ad",
+      "report": "f9a657307bffd7d7f9de4639fb98caf2a808df4ff8020f3c981a19ada10cfae2",
+      "evidence": "7c14afcdbe0164deb40d4d2e3ea7ba7b03f9fda5f842d31adc55facc6f21c58d"
+    },
+    "new_staged_and_final_objects": 8
+  },
+  "final_cleanup": {
+    "result": "passed",
+    "environments": {
+      "production": {
+        "counts": {
+          "enabled_definitions": 0,
+          "nonterminal_tasks": 0,
+          "resources_pending": 0,
+          "leased_dispatches": 0,
+          "active_session_leases": 0,
+          "active_keys": 0,
+          "login_sessions": 0,
+          "active_reminders": 0
+        },
+        "tenant_suspended": true,
+        "migrations_equal": 14,
+        "downstream_count": 1,
+        "downstream_rows_unchanged": true
+      },
+      "staging": {
+        "counts": {
+          "enabled_definitions": 0,
+          "nonterminal_tasks": 0,
+          "resources_pending": 0,
+          "leased_dispatches": 0,
+          "active_session_leases": 0,
+          "active_keys": 0,
+          "login_sessions": 0,
+          "active_reminders": 0
+        },
+        "tenant_suspended": true,
+        "migrations_equal": 14,
+        "downstream_count": 1,
+        "downstream_rows_unchanged": true
+      }
+    },
+    "production_source_files_equal": 219,
+    "versions": {
+      "xuanpu-server": "2026.10.22.2",
+      "xuanpu-console": "2026.10.22.1",
+      "xuanpu-sdk-py": "2026.10.22.1",
+      "xuanpu-cli": "2026.10.22.1",
+      "xuanpu-spec": "2026.10.2.7",
+      "taifeng": "2026.10.1.11",
+      "taifeng-sandbox": "2026.10.21.1",
+      "taifeng-stores": "2026.9.29.15"
+    },
+    "production_flags_unchanged": true,
+    "rootless_task_containers": 0,
+    "sidecar_removed": true,
+    "stage_stopped": true,
+    "ssh_tunnel_stopped": true,
+    "old_task_input_effect_budget_attempt_rows_unchanged": true,
+    "failed_system_units_after": [],
+    "at": 1792644066.482611,
+    "stage_test_tool_allowlist_cleared": true
+  },
+  "boundaries": {
+    "real_enterprise_oauth": "not_checked",
+    "real_external_message_delivery": "not_checked",
+    "multi_owner_production_load": "not_checked",
+    "runtime_boot_from_separately_restored_snapshot": "not_checked"
+  },
+  "operator_preparation_notes": {
+    "type": "operator assessment of preparation errors",
+    "backup_initial_failure": "staging has no .env; incomplete archive moved to failed and excluded from the valid SHA256SUMS",
+    "preflight_read_failure": "session_id is deliberately not in public task view; preflight stopped before reboot, then verified via scoped read-only database query",
+    "audit_export_failure": "invalid session events query was rejected with 400; scoped task events and session audit were exported with the documented access paths",
+    "reboot_commands_executed": 1
+  },
+  "raw_evidence_manifest": [
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/before.json","bytes":60340,"sha256":"2ccd5f845f4e469aa30f13d39393738e04fc587b9db44f8e7ab841482b9a7e0e"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/after.json","bytes":61848,"sha256":"edae0a37b9a56765b5965fbe89ae939f16b878a14004501cbe8e9240dad569b4"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/final.json","bytes":61848,"sha256":"611fa2c788cccf1394e536a274888a2dd6154d9dadcd7f1aaffeadba97de64b7"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/boot-return.json","bytes":255,"sha256":"922a4e742303f6ae9df422e005712aaaa05f5ed76367e4eba03086fa4ddaf721"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/reboot-request.json","bytes":317,"sha256":"8c4b25892b3ab4f94e6820b6bc580191367a299b6ec722f8a9857777115f07ee"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/reboot-command.json","bytes":80,"sha256":"2fa9b3bbbaee177ae8e439edaf768624d9ddaeb11e08adfa2579e49d6257e5ae"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/bootstrap-assessment.json","bytes":857,"sha256":"22bb0b91330db8d0eadd6f1f127e9df5b19d6365d7e66250d41f045aed224127"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/services-after.json","bytes":36762,"sha256":"be2bb04c6f37cb34d223dcbe53312e8efebcd1657dd7621c51afd667943a5bf6"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/service-health-progress.json","bytes":27837,"sha256":"c70cc0a1ee377a685bfa9c8799299ce172c2cf3988ae9de1cc2db6ec0638d0a6"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/backup-SHA256SUMS","bytes":596,"sha256":"3e02d1d6a926f082d11394063130cc7cb5e8c0c4d79dbcc8634e83dc79431a2e"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/backup-verified-after.log","bytes":162,"sha256":"9c3ce392672014c680d4e8ac58771ec783751911ddbb986e7c24b5aab586bc84"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/backup.log","bytes":1556,"sha256":"c08b289ae41653d988601ecfab067ad697fbcc9fb57f8f92d4822ee74efe7b81"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/definition.json","bytes":1300,"sha256":"4b1dc62ff60cd05151bec782aec413e2e526bec583a870279232be45502751c9"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/definition-request.json","bytes":811,"sha256":"969ddc2b850a7d5da87b41843cd51c1567b2eec349bbde49f50e95378ba8fb75"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/source.json","bytes":368,"sha256":"5b34f711acf0ba1a5fca50014d136388bfdaafc7164052e8282f37cd3ca3188a"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/downstream-before.json","bytes":933,"sha256":"0443c390547e8de561b6f4d3c863d5ab1a28ab49fb53bbc82723ba94eea1fe8f"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/pending-store-before.json","bytes":731,"sha256":"60199df8e615febf1aa81049b572407c96704919edfa6ff0b4b0be9a7f0e57a2"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/pending-store-after.json","bytes":731,"sha256":"60199df8e615febf1aa81049b572407c96704919edfa6ff0b4b0be9a7f0e57a2"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/pending-immediately-before-reboot.json","bytes":1962,"sha256":"78ef6867b919ff574ad4d25f25459e7a5e9511723eaf9a3a19f9661f7a9fa095"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/occurrences-before-reboot.json","bytes":13,"sha256":"eeb85c2675888473ec64b7580aa0c76c6fd6b2bd51828870286ef202ad89dae2"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/occurrences-first-after-boot.json","bytes":681,"sha256":"aaf702759887b87633eff643a33bece2a21f187c3eb2a86ef27ce17ebeaed2e5"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/schedule-first-after-boot.json","bytes":2160,"sha256":"81562c83ca136b653031f1d8546f9bb0c25b9dc93d3c2dff229cb5043c3d5f65"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/schedule-assessment.json","bytes":5861,"sha256":"6b9c93ff10f6c0a5f1177057ffb70a9a23e70a825eb7e929a98c4ff361eb20d3"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/case-final-checks.json","bytes":400,"sha256":"5250d6ae1fea7734700d07e452531b6504f47b4db54e2ba2db5dcd6050bf13ae"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/final-assessment.json","bytes":1588,"sha256":"1f66b5ca5395e05269bc8eab810baff324e83a19219887ef6d7ff0e181b3528d"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/r2c-host-prod-probe.log","bytes":343,"sha256":"a01b926fb19930ec533cc74aeb30b80c5dc48ed33c8f03f1741c9fbb72033cf2"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/r2c-host-stage-probe.log","bytes":343,"sha256":"a01b926fb19930ec533cc74aeb30b80c5dc48ed33c8f03f1741c9fbb72033cf2"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/operator-notes.json","bytes":547,"sha256":"bf0e147bdf26ef86601085fb65ff77aaefadc7e7b006ea814dac143a159b4cd1"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/staging/read-recovery-before.json","bytes":1962,"sha256":"78ef6867b919ff574ad4d25f25459e7a5e9511723eaf9a3a19f9661f7a9fa095"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/staging/read-recovery-result-5dd7d3.json","bytes":9193,"sha256":"f8eeaed62a4203924b9ebc4349c3be27b54dd687e2654656d07a8656ba18efbf"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/task_027a6f115460d89139913cc2b7d739906c9094f6-raw-events.json","bytes":14751,"sha256":"53a8dfacf0ec68d4aa35af1d26c162a315bb62ce03b66a4fa94b8906984948a9"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/task_027a6f115460d89139913cc2b7d739906c9094f6-session-audit.jsonl","bytes":30191,"sha256":"ef16d3626cbb3ec2734fff669360defe0e6b6ee415266839c93eac05739aac7d"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/task_3612eea12a7ba0cc9cab67ba-raw-events.json","bytes":7160,"sha256":"7e5b09322034a4679fec3b3b73dbb3f62f319a0cf0596abb1ac0d989f451ddfa"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/task_3612eea12a7ba0cc9cab67ba-session-audit.jsonl","bytes":12120,"sha256":"62fda7dffb49efdc3e3437c240cb5ccce42eab50a2f3213a098e72d71f952b46"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/logs/r2c-host-bootstrap.log","bytes":100,"sha256":"9d7c722b64f1b030c6ad3d0089aa94ffbd1c1beb486ee22135396de79ac2e485"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/logs/r2c-host-case-final.log","bytes":806,"sha256":"592edcc7d84bcbea40e303b0456f79b12c1affde31811fa18bf6f54e6492a0ed"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/logs/r2c-host-case-final2.log","bytes":117,"sha256":"03abf54c91a8760901b1b01ae2a4d9cd2bd343e446078b2719cd94a29a1edac5"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/logs/r2c-host-final-verify.log","bytes":133,"sha256":"c495d2fc956ab99a36c4363cf441b18473ff87c15e11631955b91683d8dac9c7"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/logs/r2c-host-health.log","bytes":87,"sha256":"98d494fd1d2b5007e19b9c9bb1e4e2b9e4f23d64b60647d90daa6d4e53832022"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/logs/r2c-host-prod-probe.log","bytes":343,"sha256":"a01b926fb19930ec533cc74aeb30b80c5dc48ed33c8f03f1741c9fbb72033cf2"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/logs/r2c-host-reboot.log","bytes":617,"sha256":"5ae58ce99ecb0cb6cd26613a9aea29200490ae11a4cd9e83106c1b1c647041bf"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/logs/r2c-host-reboot2.log","bytes":89,"sha256":"0975c631c4fe36dd48b5e9a4935da58ee8c45ebd1ffbb1e1b92c7f83cb959759"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/logs/r2c-host-schedule-verify.log","bytes":89,"sha256":"4dda70f4832d6ad1a5ee5617f75621e56ba22d1463e176efba9209d96871aada"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/logs/r2c-host-stage-probe.log","bytes":343,"sha256":"a01b926fb19930ec533cc74aeb30b80c5dc48ed33c8f03f1741c9fbb72033cf2"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/logs/r2c-host-stop-stage.log","bytes":268,"sha256":"1b0579f32bf5bf39fea4017c8b111671f44ff6a60be97c1d345f613b8c75e2e4"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/logs/r2c-reboot-provision.log","bytes":933,"sha256":"563efe37cb9060e4d2c94af0e920e1d4a281615701bdec6a61b3951e316c019f"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/logs/r2c-reboot-stage-start.log","bytes":502,"sha256":"06e8fef6b914ff3bcbedd1a2cde19069b57cd0bb184024ec20930002c381b019"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/operator-scripts/r2c-host-after-bootstrap.py","bytes":2944,"sha256":"6393b69be31c0f63645b6acd6f9c4de43eb356687b91c3d5ab88a8d2d90d3130"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/operator-scripts/r2c-host-backup.sh","bytes":1766,"sha256":"bd65a719d9c639a8b5013feae0042c5b4782529f027fb95eb10b1c5455f25f93"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/operator-scripts/r2c-host-export.py","bytes":7346,"sha256":"2fd9fc1cf5d4af19aa944d216a0da3f40ed81455d0bc114cfcc4f10ddddad9c5"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/operator-scripts/r2c-host-final-verify.py","bytes":5849,"sha256":"f3b2991b36fc6c4a4cfe813c1b8661a4a093dd2f7ce4433d99d4b8ca30a019ef"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/operator-scripts/r2c-host-health.py","bytes":2195,"sha256":"5191bc5d8e5c90854cd8064d40abef20c8478e3782ea9f395d4b37400515f249"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/operator-scripts/r2c-host-inventory.py","bytes":3134,"sha256":"af941d0723ca3e26f88d20de92325e1c8811f09cdf54033275965a8f30d69d5a"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/operator-scripts/r2c-host-schedule-verify.py","bytes":2635,"sha256":"7b2b879474633ac9b1c2d83cac65014ba750424249978fc2981a74407c053744"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/operator-scripts/r2c-perform-host-reboot.py","bytes":3402,"sha256":"29fafe3396591a03ea9159dcf999ca0a1f778f09bffbe540946688a0f26cf5a0"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/operator-scripts/r2c-reboot-definition.py","bytes":1887,"sha256":"e02739be05d1d84afdb1657dad5ff4c22d3121be9263f7ff5e5db246390bb597"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/operator-scripts/r2c-reboot-final-cases.py","bytes":3640,"sha256":"3151e0f0cda928f2360febaa4e75c5d0f99db895fcd4a5edecbca52916256bdc"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/operator-scripts/r2c-reboot-provision.py","bytes":2407,"sha256":"894f46b0544620881b7e66a4cb5551b2519e68f963d58e43181faaf0d76ec063"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/schedule-result/r2-http.json","bytes":5526,"sha256":"033dde0f5fdc7192762279b28d00ba97a18d0edbb663528f807f063dbcd0c122"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/schedule-result/task_027a6f115460d89139913cc2b7d739906c9094f6/来源行证据.json","bytes":702,"sha256":"7c14afcdbe0164deb40d4d2e3ea7ba7b03f9fda5f842d31adc55facc6f21c58d"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/schedule-result/task_027a6f115460d89139913cc2b7d739906c9094f6/汇总.csv","bytes":130,"sha256":"54c2639a3ec799dcfc81d5df71735a5a101ec06f1c27738bd97466025f7e4a5b"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/schedule-result/task_027a6f115460d89139913cc2b7d739906c9094f6/汇总.xlsx","bytes":5045,"sha256":"bc0e32d6a710b01bd17d09660a0f1ec87bab2bb2c58863ace6383efeb78967ad"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/schedule-result/task_027a6f115460d89139913cc2b7d739906c9094f6/汇总报告.md","bytes":442,"sha256":"f9a657307bffd7d7f9de4639fb98caf2a808df4ff8020f3c981a19ada10cfae2"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/host-boot-services.log","bytes":32532,"sha256":"3a7bfeca609147d52351e824d55abfe8803c14cf8a228348cf582fa9dc299f1b"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/operator-scripts/remote-backup.sh","bytes":1766,"sha256":"bd65a719d9c639a8b5013feae0042c5b4782529f027fb95eb10b1c5455f25f93"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/operator-scripts/remote-inventory-after.py","bytes":3134,"sha256":"af941d0723ca3e26f88d20de92325e1c8811f09cdf54033275965a8f30d69d5a"},
+    {"path_relative_to_private_archive":"host-reboot-20261022-123302/operator-scripts/remote-inventory.py","bytes":3026,"sha256":"517433a6435150f52c5039cb9a6697d8eb0f9963081e62bf082d71c8e3062a81"}
+  ]
+}

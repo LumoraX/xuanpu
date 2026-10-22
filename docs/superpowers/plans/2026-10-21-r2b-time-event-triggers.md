@@ -193,4 +193,7 @@ Commit: `feat: 衔接主动业务并限制触发循环`。
 B0–B3作为一个完整绿色变更提交。实际新增15个触发模块，将准备、资格、受理、日历、事件投递及双后端辅助拆分，避免超长函数。
 测试覆盖按职责合并到test_recovery_authorization、test_review_regressions、test_outbox_order和test_management_race；上方执行路径已更新为实际文件。
 最终全量2012 passed、7 skipped；专项80 passed、2 skipped；真实模型time/event两项通过；没有发布服务镜像、部署或开启生产开关。
-R2-C员工入口、统一动态和生产故障验收仍待实施。
+此时R2-C员工入口、统一动态和生产故障验收仍待实施。
+
+后续交付：2026-10-22已完成R2-C及用户授权的整机重启补验，既定R2强制验收全部签收。
+最终生产版本和分层证据见[R2完整验收](../../guides/releases/2026-10-21-r2-acceptance.md)，本节2012项结果仍保留为B独立实施时的历史门禁。
