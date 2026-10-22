@@ -68,3 +68,19 @@ async def test_file_bridge_rejects_oversize_and_changed_bytes(limit: int, digest
             await gateway.download(
                 FinancePrincipal("acme", "alice"), FileRef(file_id="f1", revision=1, sha256=digest)
             )
+
+
+async def test_file_bridge_prefers_actual_utf8_name_over_download_fallback() -> None:
+    """真实平台同时发ASCII占位名与UTF8原名时，保留原附件名便于人工选择。"""
+    from urllib.parse import quote
+
+    raw = b'original pdf'
+    filename = '交通发票原件.pdf'
+    headers = {'Content-Type':'application/pdf','Content-Disposition':
+               "attachment; filename=download; filename*=UTF-8''"+quote(filename,safe='')}
+    async with httpx.AsyncClient(base_url='http://platform',transport=httpx.MockTransport(
+        lambda request:httpx.Response(200,content=raw,headers=headers))) as client:
+        gateway = PlatformGateway(client,tenant_tokens={'acme':'test'})
+        result, _, name = await gateway.download(FinancePrincipal('acme','owner'),
+            FileRef(file_id='f',revision=1,sha256=hashlib.sha256(raw).hexdigest()))
+    assert result == raw and name == filename

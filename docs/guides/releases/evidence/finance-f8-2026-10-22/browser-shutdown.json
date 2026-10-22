@@ -1,0 +1,9 @@
+{
+  "harness_exit_code": 0,
+  "ready_removed": true,
+  "runtime_directory_removed": true,
+  "ports_closed": {
+    "53690": true,
+    "53691": true
+  }
+}

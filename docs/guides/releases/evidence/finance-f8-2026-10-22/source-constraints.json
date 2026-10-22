@@ -1,0 +1,119 @@
+{
+  "files": 19,
+  "checks": [
+    {
+      "file": "docker/finance/build_image.py",
+      "max_function_lines": 17,
+      "issues": [],
+      "sha256": "3f5258631e7612ac42b1cbadcfcaf3d42250d01216b5d2b8f0d691ba15b88009"
+    },
+    {
+      "file": "packages/xuanpu-console/tests/test_finance_behavior.py",
+      "max_function_lines": 9,
+      "issues": [],
+      "sha256": "0c17453b2f67302e949986cc31b7fb81f32b3b88d7e918ad1852afeab5d0c87a"
+    },
+    {
+      "file": "packages/xuanpu-console/tests/test_static.py",
+      "max_function_lines": 17,
+      "issues": [],
+      "sha256": "7e68d91caea9205e67751fba1867b94c3eed21151d12b0e97a7045697cb207bc"
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/__main__.py",
+      "max_function_lines": 27,
+      "issues": [],
+      "sha256": "e18d62e80069c4a3c07ab72dcfd160b1e61d2e7abb1ec7523c9a43ec3b6386a2"
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/api.py",
+      "max_function_lines": 56,
+      "issues": [],
+      "sha256": "30320a5241318f359fb32f653c63deb03f284a41a23eefe606369a161a75a0b7"
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/gateway.py",
+      "max_function_lines": 29,
+      "issues": [],
+      "sha256": "1eb7e853b11a0f2f8ff245f5a07b22d03b660ec046cf498941519031ebf20d0b"
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/routes_f8.py",
+      "max_function_lines": 6,
+      "issues": [],
+      "sha256": "0c8ff101bde44e54f109f2657b78c2230d9af5c89949835fd213587e0ab6891a"
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/storage/f8_materials.py",
+      "max_function_lines": 25,
+      "issues": [],
+      "sha256": "bf683398bbcfe541c27d0cda5e769d49af09ca54d87f7e672212f095fa1bdf11"
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/storage/store.py",
+      "max_function_lines": 48,
+      "issues": [],
+      "sha256": "5a755af30b85a483713683a45a62474cfd51db10013daf3af18bf3c0806443c7"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f7_api.py",
+      "max_function_lines": 35,
+      "issues": [],
+      "sha256": "95465c05dafb4b5210185b67e209113ec49ab4e2b4e1a955cc2587287ba29bab"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f7_contract.py",
+      "max_function_lines": 22,
+      "issues": [],
+      "sha256": "61e394bfa32dfe156f615b02c1c753d4c3831b8156b2be1664a1831ae9a0f76b"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f8_api.py",
+      "max_function_lines": 37,
+      "issues": [],
+      "sha256": "c7827b62fc5d7088c046fffcf520d9fc2e55add0eb88e73e6bd67bd7d470dda4"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f8_contract.py",
+      "max_function_lines": 15,
+      "issues": [],
+      "sha256": "1e6f8e8241f218c313dc075d6d017b70f439d76d7015646235e8f886ad695e75"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f8_harness.py",
+      "max_function_lines": 37,
+      "issues": [],
+      "sha256": "f043db7243da341afb60ee28ccfd1b041d18c895c2ad02d25141f2339a57ef61"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f8_materials.py",
+      "max_function_lines": 29,
+      "issues": [],
+      "sha256": "02ee8703eb5c2a4788f14c202aac190c0c0b3d0cacdce2f60a85fa5501629da1"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_gateway.py",
+      "max_function_lines": 19,
+      "issues": [],
+      "sha256": "27b5b9544dc2de8189ab77f50e09cbdb0d5c7ad7ba53b8245ce999d30714dfee"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_package.py",
+      "max_function_lines": 35,
+      "issues": [],
+      "sha256": "7abc497d3b082c8c36556e25009b811a8bdcddc2fbe9f0a669c107dd27d76882"
+    },
+    {
+      "file": "scripts/acceptance/finance_browser.py",
+      "max_function_lines": 39,
+      "issues": [],
+      "sha256": "dc8607974d38c097976049ca8746b1378fe2febab20d57fdc8f21a330c276079"
+    },
+    {
+      "file": "scripts/acceptance/finance_runner.py",
+      "max_function_lines": 48,
+      "issues": [],
+      "sha256": "6af006410df364ea4a3cc4ead9c2ca68ef2729eb6b54172d1d01ea78d88d1025"
+    }
+  ]
+}

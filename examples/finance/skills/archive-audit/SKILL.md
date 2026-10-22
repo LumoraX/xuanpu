@@ -1,7 +1,7 @@
 ---
 name: archive-audit
 description: 查询发票查验、税务确认、红字和档案证据，准备受控税务或归档计划并核对审计缺口。
-version: 0.8.0-f7
+version: 0.9.0-f8
 entry: false
 type: composite
 tool_names:

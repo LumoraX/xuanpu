@@ -1,0 +1,16 @@
+{
+  "counts": {
+    "finance_invoice": 0,
+    "finance_settlement_operation": 0,
+    "finance_compliance_operation": 0,
+    "finance_operation": 2,
+    "finance_receipt": 2
+  },
+  "model_calls": 2,
+  "model_attempts": 2,
+  "people": {
+    "owner": "usr_0c5890c482faa9242f669876",
+    "manager": "usr_8f94ff5350abcb31300d3f1b",
+    "finance": "usr_af3427f5af6e2ca9769a540d"
+  }
+}

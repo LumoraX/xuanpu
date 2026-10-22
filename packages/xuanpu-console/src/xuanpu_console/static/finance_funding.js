@@ -44,6 +44,7 @@ function financeFundingAuthorityFields(form,scenario,initial,accounts){
   return ids=>({kind,reference:reference.value.trim(),amount_limit:financeMoney(limit.value),evidence_ids:[...(initial?.evidence_ids||ids)],...(occurred?{occurred_on:occurred.value}:{}),...(start?{valid_from:start.value,valid_until:end.value}:{}),...(account?{account_ref:allowed[Number(account.value)]?.ref}: {})});
 }
 function financeFundingMaterials(form,state,save,token,{required=true,onReceived=null}={}) {
+  if(typeof financeMaterialsUpload==="function")return financeMaterialsUpload(form,state,save,token,{required,onReceived});
   financeState.materialForm=form;
   const input=financeField(form,"支持材料文件","file","",false),status=wsText("p",state.ids.length?"已有材料回执 "+state.ids.length+" 份":"尚无材料接收回执。上传并确认导入后，可读取接收结果。"),progress=wsText("div","");
   input.accept=".pdf,.png,.jpg,.jpeg,.xml";
@@ -79,8 +80,12 @@ function financeFundingMaterials(form,state,save,token,{required=true,onReceived
     finally {state.uploading=false;if(financeCurrent(token))update();}
   }));update();
 }
-const financeFundingDownloads=new Set();
-function financeFundingReleaseDownloads(){for(const url of financeFundingDownloads)URL.revokeObjectURL(url);financeFundingDownloads.clear();}
+const financeFundingDownloads=new Set(),financeFundingDownloadLinks=new Map();
+function financeFundingReleaseDownloads(){
+  // 详情可能继续显示驳回表单；撤销字节URL时同步取消旧锚的可点击状态。
+  for(const url of financeFundingDownloads){const link=financeFundingDownloadLinks.get(url);if(link){link.removeAttribute("href");link.removeAttribute("download");link.setAttribute("aria-disabled","true");link.textContent="此原件下载已失效，请重新读取";}URL.revokeObjectURL(url);}
+  financeFundingDownloads.clear();financeFundingDownloadLinks.clear();
+}
 async function financeFundingReadMaterial(record,evidence,box){
   if(financeState.pending){financeShowPending();return;}const token=financeToken(),revision=financeState.revision,parts=[];let offset=0,initial=null;
   do{const part=await financeCall(record.kind==="expense_claim"?"getExpenseMaterial":"getFundingMaterial",{id:record.id,receipt_id:evidence.id,...(record.kind==="expense_claim"?{document_version:record.version}:{}),offset,limit:131072});if(!financeCurrent(token)||revision!==financeState.revision)return;
@@ -89,7 +94,7 @@ async function financeFundingReadMaterial(record,evidence,box){
   }while(offset!==null);
   const full=new Uint8Array(initial.size);let position=0;for(const part of parts){full.set(part,position);position+=part.length;}const sha=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",full)),x=>x.toString(16).padStart(2,"0")).join("");if(!financeCurrent(token)||revision!==financeState.revision)return;if(sha!==evidence.sha256)throw new Error("原件整体摘要校验失败。");
   const safeType=["application/pdf","image/png","image/jpeg"].includes(initial.media_type)?initial.media_type:"application/octet-stream";
-  const url=URL.createObjectURL(new Blob([full],{type:safeType}));financeFundingDownloads.add(url);const link=wsText("a","下载已核对摘要的原件");link.href=url;link.download="财务材料-"+evidence.id+({"application/pdf":".pdf","image/png":".png","image/jpeg":".jpg","application/xml":".xml"}[initial.media_type]||".bin");box.append(link,wsText("p","已读取独立财务原件；这不代表材料内容或银行事实已核实。"));
+  const url=URL.createObjectURL(new Blob([full],{type:safeType}));financeFundingDownloads.add(url);const link=wsText("a","下载已核对摘要的原件");link.href=url;link.download="财务材料-"+evidence.id+({"application/pdf":".pdf","image/png":".png","image/jpeg":".jpg","application/xml":".xml"}[initial.media_type]||".bin");financeFundingDownloadLinks.set(url,link);box.append(link,wsText("p","已读取独立财务原件；这不代表材料内容或银行事实已核实。"));
 }
 function financeFundingRevoke(record){
   if(financeState.pending){financeShowPending();return;}financeInvalidate();const form=wsText("form","","workspace-form"),box=$("workspace-content"),authority=record.funding.authority;box.append(form);form.append(wsText("p","仅当前公司财务复核人且非申请人可撤销。撤销阻止尚未发送的资格，不会撤回已付资金或删除历史。"));const reason=financeField(form,"撤销授权的原因"),button=wsButton("核对撤销授权",()=>{});button.type="submit";form.append(button);form.addEventListener("input",financeInvalidate);financeSubmit(form,()=>financeConfirmWrite("revokeFundingAuthority",{id:authority.id,body:{expected_version:authority.version,reason:reason.value.trim()}},"确认撤销原凭据/授权“"+authority.reference+"”？原因："+reason.value.trim(),()=>financeFundingDetail(record.id),form));

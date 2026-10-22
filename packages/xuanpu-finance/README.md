@@ -1,6 +1,6 @@
-# 玄圃财务 F0–F7
+# 玄圃财务 F0–F8
 
-当前包契约finance `0.8.0-f7`、72项API与7个Skill；当前优先发票申报和报销内部流转记录，不做支付。用法见[F7指南](../../docs/guides/finance-f7.md)，本轮验证与制品见[F7验收记录](../../docs/guides/releases/2026-10-22-finance-f7-acceptance.md)。
+当前包契约finance `0.9.0-f8`、74项API与7个Skill；当前优先发票申报和报销内部流转记录，不做支付。用法见[F8指南](../../docs/guides/finance-f8.md)，本轮验证与制品见[F8验收记录](../../docs/guides/releases/2026-10-22-finance-f8-acceptance.md)。
 
 独立进程接收电子票原件、加密保留原字节、持久逐项操作和异常。提供归集、证据、轻量报销记录与真实内部人工审批；F2提供应付及通用付款/记账接口、专用人工批准和隔离闭环；真实支付、税务查验、ERP、归档未配置。原件哈希一致只说明内容一致，不表示官方验真。
 

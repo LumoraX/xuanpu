@@ -1,6 +1,6 @@
-# 财务 F0–F7 当前架构
+# 财务 F0–F8 当前架构
 
-财务作为进程外 HTTP 服务运行。玄圃负责企业员工身份、会话和工具入口；独立财务服务持有公司授权、导入操作、发票、异常、原件回执及事件。平台进程不加载财务业务代码。当前覆盖F0原件、F1报销/人工审批、F2应付/付款/记账、F3查验/红字/档案、F4提醒/恢复、F5专用资金及F6只读接入准备。当前F7按用户要求聚焦发票申报与内部报销流转记录，契约finance 0.8.0-f7、72项API、7个Skill；实际制品与门禁以[F7验收记录](../guides/releases/2026-10-22-finance-f7-acceptance.md)为准。真实供应商、正式制度、官方标准和正式归档尚未验收。
+财务作为进程外 HTTP 服务运行。玄圃负责企业员工身份、会话和工具入口；独立财务服务持有公司授权、导入操作、发票、异常、原件回执及事件。平台进程不加载财务业务代码。当前覆盖F0原件、F1报销/人工审批、F2应付/付款/记账、F3查验/红字/档案、F4提醒/恢复、F5专用资金及F6只读接入准备。当前F8按用户要求聚焦发票申报与内部报销流转记录，契约finance 0.9.0-f8、74项API、7个Skill；实际制品与门禁以[F8验收记录](../guides/releases/2026-10-22-finance-f8-acceptance.md)为准。真实供应商、正式制度、官方标准和正式归档尚未验收。
 
 ```mermaid
 flowchart LR
@@ -115,3 +115,9 @@ F3归档闭包扩展funding_case父子、实际材料、authority/decisions/rese
 ExpenseDraft可选invoice_information仅在internal_record原样保存，作为未查验的用户申报，不能写正式发票或取得执行资格。listExpenseClaimHistory按当前普通报销读权分页读取finance_expense_history与finance_decision不可变原文；不把最新workflow反推旧意见。getExpenseMaterial仅接受human，校验当前岗位代数及指定版本实际证据关联，再从独立加密存储验证完整字节摘要返回固定分块；原件下载不是验真，awaiting_original已保全材料仍保持原状态。
 
 F7复用既有本人确认、顺序审批、驳回补充重提、撤回与持久待办，审批通过即内部流程完成；不引入支付或独立结案状态。API及人工页共用规则，Skill仅准备草稿/计划及查询历史，原始附件读取与业务决定保留人工入口。F7不需要供应商配置。
+
+## F8 收件目录与实际使用
+
+独立PG原有operation/item/receipt建立本人材料目录，不新增平台业务表。两个只读API逐次核当前租户、公司、owner和用途；count/items同repeatable_read，复合倒序游标绑定完整范围。逐项回执责任链决定selectable，整体partial或cancelled不抹去已保全项；元数据不代替实际原件完整性验证。
+
+人工页提供已收件附件选择与持久收件列表。localStorage仅为受限恢复线索，平台POST前保全原request_id，财务POST前保全固定ref与原key；未知人工恢复、known op只读，损坏或存储失败拒绝发送。内联选择保留当前未保存内容，整页刷新不承诺恢复正文。服务端仍是状态、权限和责任链依据；HITL计划与实际真人执行边界不变。

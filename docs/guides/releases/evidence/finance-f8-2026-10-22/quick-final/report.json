@@ -1,0 +1,49 @@
+{
+  "status": "passed",
+  "production_status": "not_verified",
+  "tests": 147,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "missing_modules": [],
+  "skipped_cases": [],
+  "suite": "quick",
+  "source": {
+    "head": "b32a0618056386a3dd111d866d5fa22146a6af03",
+    "worktree_sha256": "ff6fc4ebdb36ce5e7abeac4bfcd7677c5bee45e8c31f49ff3af03519424fe069"
+  },
+  "modules": [
+    "packages/xuanpu-finance/tests/test_f8_materials.py",
+    "packages/xuanpu-finance/tests/test_f8_api.py",
+    "packages/xuanpu-finance/tests/test_f8_contract.py",
+    "packages/xuanpu-finance/tests/test_f8_harness.py",
+    "packages/xuanpu-finance/tests/test_f7_process.py",
+    "packages/xuanpu-finance/tests/test_f7_records.py",
+    "packages/xuanpu-finance/tests/test_f7_api.py",
+    "packages/xuanpu-finance/tests/test_f7_contract.py",
+    "packages/xuanpu-server/tests/identity/test_finance_f7_gateway_e2e.py",
+    "packages/xuanpu-console/tests/test_finance_behavior.py",
+    "packages/xuanpu-finance/tests/test_worker.py",
+    "packages/xuanpu-finance/tests/test_expense_domain.py",
+    "packages/xuanpu-finance/tests/test_f2_http_e2e.py",
+    "packages/xuanpu-finance/tests/test_f3_http_e2e.py",
+    "packages/xuanpu-finance/tests/test_f5_http_e2e.py",
+    "packages/xuanpu-finance/tests/test_f5_archive_restore.py",
+    "packages/xuanpu-finance/tests/test_f2_lifecycle_api.py",
+    "packages/xuanpu-finance/tests/test_f4_lifecycle.py",
+    "packages/xuanpu-finance/tests/test_f6_credential_isolation.py",
+    "packages/xuanpu-finance/tests/test_f6_readiness.py",
+    "packages/xuanpu-server/tests/identity/test_finance_f5_gateway_e2e.py"
+  ],
+  "started_at": "2026-10-22T10:42:43.662181+00:00",
+  "finished_at": "2026-10-22T10:44:00.999521+00:00",
+  "returncode": 0,
+  "diagnostic": null,
+  "environment": "isolated_loopback_finance_test",
+  "external_suppliers": "not_verified",
+  "cleanup_required": false,
+  "evidence_sha256": {
+    "pytest.log": "772409c95a4442be5e602d90d273424d8a1ff90cdf0b08c951a968758f9e3002",
+    "junit.xml": "c9628e44f921e1fc9d3f1f4d8327c22f6364b7c12ddd03a092a982e29b4cd57c"
+  }
+}

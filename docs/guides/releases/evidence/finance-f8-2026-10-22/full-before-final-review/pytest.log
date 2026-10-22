@@ -1,0 +1,141 @@
+........................................................................ [  2%]
+........................................................................ [  5%]
+........................................................................ [  8%]
+........................................................................ [ 11%]
+........................................................................ [ 13%]
+........................................................................ [ 16%]
+........................................................................ [ 19%]
+........................................................................ [ 22%]
+........................................................................ [ 25%]
+.................................................................F...... [ 27%]
+........................................................................ [ 30%]
+........................................................................ [ 33%]
+........................................................................ [ 36%]
+........................................................................ [ 39%]
+........................................................................ [ 41%]
+........................................................................ [ 44%]
+........................................................................ [ 47%]
+........................................................................ [ 50%]
+........................................................................ [ 53%]
+............................................................s........... [ 55%]
+........................................................................ [ 58%]
+........................................................................ [ 61%]
+........................................................................ [ 64%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+........................................................................ [ 72%]
+........................................................................ [ 75%]
+........................................................................ [ 78%]
+........................................................................ [ 81%]
+........................................................................ [ 83%]
+..........E............................................................. [ 86%]
+........................................................................ [ 89%]
+.......................................................................s [ 92%]
+......s................................................................. [ 95%]
+........................................................................ [ 97%]
+......................................................                   [100%]
+==================================== ERRORS ====================================
+_ ERROR at teardown of test_table_root_completion_saves_real_artifacts[postgres] _
+
+    def finalizer() -> None:
+        """Yield again, to finalize."""
+    
+        async def async_finalizer() -> None:
+            try:
+                await gen_obj.__anext__()
+            except StopAsyncIteration:
+                pass
+            else:
+                msg = "Async generator fixture didn't stop."
+                msg += "Yield only once."
+                raise ValueError(msg)
+    
+>       runner.run(async_finalizer(), context=context)
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:424: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:416: in async_finalizer
+    await gen_obj.__anext__()
+packages/xuanpu-server/tests/conftest.py:150: in identity_stores
+    async with _migrated_schema(request.getfixturevalue("postgres_dsn")) as (pool, namespace):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:217: in __aexit__
+    await anext(self.gen)
+packages/xuanpu-server/tests/conftest.py:123: in _migrated_schema
+    await conn.execute(f'DROP SCHEMA IF EXISTS "{namespace.schema}" CASCADE')
+.venv/lib/python3.12/site-packages/asyncpg/connection.py:354: in execute
+    result = await self._protocol.query(query, timeout)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+>   ???
+E   asyncpg.exceptions.DeadlockDetectedError: deadlock detected
+E   DETAIL:  Process 398 waits for AccessExclusiveLock on relation 101004 of database 16384; blocked by process 397.
+E   Process 397 waits for AccessShareLock on relation 100762 of database 16384; blocked by process 398.
+E   HINT:  See server log for query details.
+
+asyncpg/protocol/protocol.pyx:369: DeadlockDetectedError
+---------------------------- Captured log teardown -----------------------------
+ERROR    xuanpu_server.reminders.worker:worker.py:72 reminder_scan_cycle_failed
+=================================== FAILURES ===================================
+___________ test_signed_f7_record_history_material_and_strict_input ____________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10f45d190>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1803/test_signed_f7_record_history_0')
+
+    async def test_signed_f7_record_history_material_and_strict_input(store: FinanceStore,tmp_path: Path) -> None:
+        """签名入口实际读取原件并拒绝agent、伪造状态、无存储及越界参数。"""
+        _,_,doc,objects,raw,receipt=await original_doc(store,tmp_path)
+        key=Ed25519PrivateKey.generate();app=app_for(store,objects,Gateway({}),key)
+        prefix='/v1/finance/expense-claims';path=prefix+'/'+doc['id']
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app),base_url='https://finance') as http:
+            signed=SignedClient(http,key)
+            async def call(method: str,url: str,**kwargs: Any) -> httpx.Response:
+                """所有请求经真实签名和当前身份核验。"""
+                return await signed.call(method,url,tenant='t',user='owner',origin='human',**kwargs)
+            response=await call('POST',prefix,body=expense_body(invoice_information='  原文\n '),idem='signed-paste')
+            assert response.status_code==201,response.text
+            assert response.json()['content']['invoice_information']=='  原文\n '
+            for text in ['', ' \t ', 'x'*20001]:
+                result=await call('POST',prefix,body=expense_body(invoice_information=text),idem='invalid'+str(len(text)))
+                assert result.status_code==422,result.text
+            result=await call('POST',prefix,body=expense_body(invoice_information='票号',verified=True),idem='verified')
+            assert result.status_code==422
+            history=await call('GET',path+'/history',params={'limit':'1'})
+            assert history.status_code==200,history.text
+            assert history.json()['total']==1 and history.json()['items'][0]['kind']=='revision'
+            material=path+'/materials/'+receipt
+            result=await call('GET',material,params={'limit':'128','document_version':'1'})
+            assert result.status_code==200,result.text
+            assert base64.b64decode(result.json()['content_base64'])==raw[:128]
+            assert 'object_key' not in result.text
+            agent=await signed.call('GET',material,tenant='t',user='owner',origin='agent')
+            assert agent.status_code==403,agent.text
+            for params in [{'offset':'-1'},{'limit':'262145'},{'document_version':'0'}]:
+                result=await call('GET',material,params=params)
+                assert result.status_code==422,result.text
+            app.state.objects=None
+            unavailable=await call('GET',material)
+            assert unavailable.status_code==503 and unavailable.json()['code']=='MATERIAL_STORE_UNAVAILABLE'
+>       assert app.title=='玄圃财务 F0–F7' and app.version=='2026.10.22.5'
+E       AssertionError: assert ('玄圃财务 F0–F8' == '玄圃财务 F0–F7'
+E         
+E         - 玄圃财务 F0–F7
+E         ?          ^
+E         + 玄圃财务 F0–F8
+E         ?          ^)
+
+packages/xuanpu-finance/tests/test_f7_api.py:54: AssertionError
+=========================== short test summary info ============================
+SKIPPED [1] packages/xuanpu-server/tests/reminders/test_postgres_order.py:21: 本用例验证真实PostgreSQL行锁与事务
+SKIPPED [1] packages/xuanpu-server/tests/workspace/test_proactive_store.py:453: 仅数据库约束需要直接连接
+SKIPPED [1] packages/xuanpu-server/tests/workspace/test_proactive_store.py:562: 数据库身份行锁已由共享通知锁测试覆盖
+ERROR packages/xuanpu-server/tests/work_tasks/test_runner.py::test_table_root_completion_saves_real_artifacts[postgres]
+FAILED packages/xuanpu-finance/tests/test_f7_api.py::test_signed_f7_record_history_material_and_strict_input
+1 failed, 2569 passed, 3 skipped, 1 error in 422.89s (0:07:02)
