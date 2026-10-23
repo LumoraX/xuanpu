@@ -99,7 +99,7 @@ async def test_material_operation_does_not_cross_owner_or_company(store: Finance
 
 
 async def test_material_permission_revoked_during_object_read_cannot_commit(store: FinanceStore,tmp_path: Path) -> None:
-    """原件读取等待期间撤权，最终收件事务不得把材料标记成功。"""
+    """实际解密后撤权只使当前项失败，保留既有回执和密文且无材料成功事件。"""
     await prepare(store)
     raw=b'%PDF-1.4 permission race'
     op=await store.accept_supporting_materials(WHO,'company-a',[ref('source',raw)],'revoke-race')
@@ -114,7 +114,17 @@ async def test_material_permission_revoked_during_object_read_cannot_commit(stor
             return data
 
     objects=RevokingObjects(tmp_path/'objects',b'k'*32)
-    with pytest.raises(ExceptionGroup):
-        await FinanceWorker(store,objects,Gateway({'source':raw})).run_once()
-    assert await store.pool.fetchval('SELECT state FROM finance_item WHERE operation_id=$1',op['id'])=='received'
+    worker=FinanceWorker(store,objects,Gateway({'source':raw}))
+    assert await worker.run_once()
+    operation=await store.pool.fetchrow('SELECT status,business_result FROM finance_operation WHERE id=$1',op['id'])
+    assert operation is not None and operation['status']=='failed' and operation['business_result']=='failed'
+    item=await store.pool.fetchrow('SELECT state,error_code,receipt_id,object_key FROM finance_item WHERE operation_id=$1',op['id'])
+    assert item is not None and item['state']=='failed' and item['error_code']=='COMPANY_FORBIDDEN'
     assert await store.pool.fetchval("SELECT count(*) FROM finance_event WHERE aggregate_id=$1 AND kind='material.received'",op['id'])==0
+    assert await store.pool.fetchval('SELECT count(*) FROM finance_receipt WHERE operation_id=$1',op['id'])==1
+    receipt=await store.pool.fetchrow('SELECT object_key FROM finance_receipt WHERE id=$1',item['receipt_id'])
+    assert receipt is not None and receipt['object_key']==item['object_key']
+    assert await objects.get(item['object_key'])==raw
+    ciphers=list(objects.root.rglob('*.enc'))
+    assert len(ciphers)==1 and raw not in ciphers[0].read_bytes()
+    assert not await worker.run_once()

@@ -1,0 +1,4 @@
+{"file": "packages/xuanpu-finance/tests/f12_process_helpers.py", "file_lines": 495, "max_function_lines": 33, "all_docstrings": true}
+{"file": "packages/xuanpu-finance/tests/test_f12_crash.py", "file_lines": 79, "max_function_lines": 47, "all_docstrings": true}
+{"file": "packages/xuanpu-finance/tests/test_f12_hitl.py", "file_lines": 187, "max_function_lines": 54, "all_docstrings": true}
+All checks passed!

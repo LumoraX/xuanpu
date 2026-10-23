@@ -1,7 +1,7 @@
 ---
 name: invoice-intake
 description: 归集受权固定版本发票原件，查询持久进度并为报销或应付处理补件。
-version: 0.12.0-f11
+version: 0.13.0-f12
 entry: false
 type: composite
 tool_names:
@@ -32,6 +32,8 @@ tool_names:
 先调用getFinanceCapabilities；读取失败或字段非法时停止并说明。profile=internal_records时只处理内部收件元数据、普通报销草稿、记录查询和人工动作预检；不调用应付、资金、支付、记账、查验、红字、正式档案或通用接入检查接口。实例能力不是个人授权、审批或上线验收。
 
 ## internal_records 分支
+
+收件中断先按原操作读取持久进度；没有取得原操作结果时保留原幂等请求线索，不换键重复收件。中途撤权的failed项不会因恢复授权自动成功，交当前责任人核对后再按当前资格补充或重提。原件已保全不等于材料处理成功或票据验真。
 
 profile=internal_records：只用listSupportingMaterialImports/getSupportingMaterialImport读取当前公司本人收件元数据和真实receipt_id。仅selectable=true的material_received项可选；not_checked不是验真。上传及收件执行交人工入口，粘贴文本转报销Skill的invoice_information。完成后返回，不执行下文general流程或读取其执行/资金规则。
 

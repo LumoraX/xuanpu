@@ -1,4 +1,4 @@
-"""已发布F0—F11业务包的工具、Skill、实际路由及请求契约。"""
+"""已发布F0—F12业务包的工具、Skill、实际路由及请求契约。"""
 
 from __future__ import annotations
 

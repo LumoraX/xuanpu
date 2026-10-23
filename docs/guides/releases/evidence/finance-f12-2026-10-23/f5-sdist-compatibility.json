@@ -1,0 +1,8 @@
+{
+  "status": "passed",
+  "archive": "xuanpu_finance-2026.10.23.3.tar.gz",
+  "member": "xuanpu_finance-2026.10.23.3/tests/test_f5_materials.py",
+  "source_equal": true,
+  "sha256": "736941a1225008bc87a8addc8915d1f2fff26d24bcc29189e8b0fdc9f9577a17",
+  "production_status": "not_verified"
+}

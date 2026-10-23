@@ -1,0 +1,50 @@
+{
+  "mode": "pipe",
+  "http_trust_env": false,
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/healthz",
+      "status": 200,
+      "seconds": 0.0007746670162305236,
+      "log_bytes_before": 258,
+      "log_bytes_after": 317
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/tenants",
+      "status": 401,
+      "seconds": 0.0006637499900534749,
+      "log_bytes_before": 317,
+      "log_bytes_after": 395
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/tenants",
+      "status": 201,
+      "seconds": 0.000835792045108974,
+      "log_bytes_before": 395,
+      "log_bytes_after": 469
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/tenants/acme/keys",
+      "error_type": "ReadTimeout",
+      "seconds": 10.000393207999878,
+      "log_bytes_before": 469,
+      "log_bytes_after": 469
+    }
+  ],
+  "drain_bytes": 469,
+  "health_after_drain": {
+    "status": 200,
+    "seconds": 0.0011013330658897758
+  },
+  "exit": -15,
+  "log_bytes": 763,
+  "log_sha256": "5869d4f078dab21bfe13e099f479ef1437e96d39a00f3a03c8ad40f34989ee37",
+  "shutdown_complete": true,
+  "key_request_access_logged": true,
+  "log_lines": 14,
+  "port_closed": true
+}

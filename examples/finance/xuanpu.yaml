@@ -2,8 +2,8 @@ apiVersion: xuanpu/v1
 kind: Package
 metadata:
   name: finance
-  version: 0.12.0-f11
-  description: 独立财务F0-F11：内部报销记录、真人审批、正式启动门禁与独立原件核对，不支付
+  version: 0.13.0-f12
+  description: 独立财务F0-F12：内部报销记录、中途撤权隔离、崩溃恢复与真人幂等验收，不支付
 spec:
   skills:
     entries:

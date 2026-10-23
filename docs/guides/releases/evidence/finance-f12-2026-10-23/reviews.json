@@ -1,0 +1,93 @@
+{
+  "design": {
+    "reviewer": "f12_spec_review",
+    "status": "Approved",
+    "scope": "内部材料收件中途撤权、真实崩溃与并发HITL设计，静态追踪无PG",
+    "boundary": "通用发票finish_item_parsed撤权错误路径不在本轮internal_records修复范围"
+  },
+  "production_status": "not_verified",
+  "worker_spec": {
+    "reviewer": "f12_spec_review",
+    "status": "Approved",
+    "scope": "任务一真实事务角色复核与COMPANY_FORBIDDEN单项隔离",
+    "validation": "只读静态审查，无独立PG复测；明确保留DB/取消/lease语义与原件责任"
+  },
+  "worker_quality": {
+    "reviewer": "f12_worker_quality",
+    "status": "Approved",
+    "independent_test": "test_f12_worker.py 19 passed 7.59s, 0 skip",
+    "static": "4文件ruff/C901/约束，两源文件mypy通过；失败材料F8 _selectable=false",
+    "scope": "仅任务一，PG已释放"
+  },
+  "design_revision": {
+    "reviewer": "f12_spec_review",
+    "status": "Approved",
+    "scope": "以原有routes_f1与OpenAPI的202修正新验收，私有夹具600；产品契约未改",
+    "evidence": "process-initial4fail是测试预期/私有夹具问题，不作为产品红测；PG未运行"
+  },
+  "process_spec": {
+    "reviewer": "f12_spec_review",
+    "status": "Approved",
+    "scope": "真实强退、自然60秒租约、并发/未知人工响应、42模块与发布契约",
+    "validation": "只读源代码及JUnit审查，未独立复跑PG"
+  },
+  "process_and_contract_quality": {
+    "reviewer": "f12_final_quality",
+    "status": "Approved",
+    "independent_test": "test_f12_hitl.py 3 passed 5.89s; hitl-quality.xml",
+    "static": "三个测试文件Ruff/C901/中文docstring/行数通过，quick旧39保留+3，发布20文件一致",
+    "scope": "阶段一；全量、制品与最终清理另审"
+  },
+  "whole_spec_preliminary": {
+    "reviewer": "f12_spec_review",
+    "status": "Approved_preliminary_only",
+    "scope": "整轮规格、范围与文档一致性；717冻结及5制品摘要/源码字节静态复核",
+    "boundary": "full/quick与最终清理尚待核对，不是整轮完成"
+  },
+  "f5_compatibility_spec": {
+    "reviewer": "f12_spec_review",
+    "status": "Approved",
+    "scope": "只同步旧撤权异常断言到F12单项失败行为，真实屏障/保全与无成功检查保留",
+    "validation": "只读，25专项JUnit核对，未复跑PG"
+  },
+  "f5_compatibility_quality": {
+    "reviewer": "f12_final_quality",
+    "status": "Approved",
+    "scope": "同一个F5函数差异、25专项日志/JUnit及独立Ruff/约束",
+    "validation": "只读，未复跑PG"
+  },
+  "cli_fixture_design_revision": {
+    "reviewer": "f12_spec_review",
+    "status": "Approved",
+    "scope": "仅CLI served测试日志夹具TemporaryFile；PIPE容量512/A-B与系统write阻塞实证",
+    "boundary": "不改产品、超时、HTTP或退出断言，后续专项和规格质量/新冻结验收仍必需"
+  },
+  "cli_fixture_spec": {
+    "reviewer": "f12_spec_review",
+    "status": "Approved",
+    "scope": "TemporaryFile夹具实现保持原请求/业务/时限/退出断言",
+    "validation": "只读实现及10专项JUnit，未复跑PG"
+  },
+  "cli_fixture_quality": {
+    "reviewer": "f12_final_quality",
+    "status": "Approved",
+    "independent_test": "test_serve.py 10 passed 1.16s, cli-quality.log/xml",
+    "scope": "只读，无PG；Ruff/约束通过，仍待最终全量/quick/清理复核"
+  },
+  "whole_spec_final": {
+    "reviewer": "f12_spec_review",
+    "status": "Approved",
+    "validation": "独立核对full/quick原JUnit及hash、37事实/7统一结构、717冻结、5当前制品、48raw空白例外及其它staged0",
+    "cleanup": "实时只读确认原xuanpu clean、DSN/本轮容器/卷移除",
+    "boundary": "无PG复跑，生产/模型/外部依赖not_verified；随后质量二审独立"
+  },
+  "whole_quality_final": {
+    "reviewer": "f12_final_quality",
+    "status": "Approved",
+    "evidence": "artifact-quality.json",
+    "evidence_sha256": "6668a06f090eea575de87708b8b7d267bcf0d5d778bcdf2e505b286f4a925f5f",
+    "validation": "独立重算full/quick原JUnit/hash和37事实、717精确冻结集合、5制品/ZIP/镜像源码、48raw例外及清理",
+    "independent_static": "Ruff、mypy310、lock109、18Python约束与77API/24内部操作/7Skill真实registry通过",
+    "boundary": "未重跑PG；生产、真实人员/模型与性能未验"
+  }
+}

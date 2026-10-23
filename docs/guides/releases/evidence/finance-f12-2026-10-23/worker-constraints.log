@@ -1,0 +1,5 @@
+packages/xuanpu-finance/src/xuanpu_finance/storage/originals.py: lines=172, longest_function=78, future_annotations=yes, chinese_docstrings=yes
+packages/xuanpu-finance/src/xuanpu_finance/invoices/worker.py: lines=286, longest_function=51, future_annotations=yes, chinese_docstrings=yes
+packages/xuanpu-finance/tests/test_f12_worker.py: lines=243, longest_function=65, future_annotations=yes, chinese_docstrings=yes
+packages/xuanpu-finance/tests/f12_worker_helpers.py: lines=146, longest_function=47, future_annotations=yes, chinese_docstrings=yes
+4 files comply with file/function/docstring/future constraints

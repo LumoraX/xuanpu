@@ -1,0 +1,12 @@
+{
+  "ambient_loopback_transport": "HTTPProxy",
+  "loopback_with_explicit_bypass_transport": "ConnectionPool",
+  "bypass_scope": [
+    "127.0.0.1",
+    "localhost",
+    "::1"
+  ],
+  "product_source_modified": false,
+  "network_request_performed": false,
+  "production_status": "not_verified"
+}

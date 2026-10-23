@@ -160,6 +160,9 @@ class FinanceWorker:
                 filename,
             )
         except FinanceError as exc:
+            if exc.code == "COMPANY_FORBIDDEN":
+                await self.store.finish_item_error(claim, item["position"], "failed", exc.code)
+                return None
             if exc.code not in {"IMPORT_SIZE_EXCEEDED", "ORIGINAL_INDEX_CONFLICT"}:
                 raise
             await self.store.finish_item_error(claim, item["position"], "quarantined", exc.code)
@@ -201,17 +204,34 @@ class FinanceWorker:
             return True, None
         return True, await self._record_original(claim, item)
 
-    async def _record_original(self, claim: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
+    async def _record_original(
+        self, claim: dict[str, Any], item: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """只使用已持久的责任元数据重建回执，数据库故障向上传播。"""
-        return await self.store.receive_original(
-            claim,
-            item["position"],
-            item["object_key"],
-            item["actual_sha256"],
-            item["size_bytes"],
-            item["content_type"],
-            item["filename"],
-        )
+        try:
+            return await self.store.receive_original(
+                claim,
+                item["position"],
+                item["object_key"],
+                item["actual_sha256"],
+                item["size_bytes"],
+                item["content_type"],
+                item["filename"],
+            )
+        except FinanceError as exc:
+            if exc.code != "COMPANY_FORBIDDEN":
+                raise
+            await self.store.finish_item_error(claim, item["position"], "failed", exc.code)
+            return None
+
+    async def _finish_supporting(self, claim: dict[str, Any], position: int) -> None:
+        """材料完成只将明确公司撤权记录为当前项失败，失租约仍由外层退让。"""
+        try:
+            await self.store.finish_supporting_item(claim, position)
+        except FinanceError as exc:
+            if exc.code != "COMPANY_FORBIDDEN":
+                raise
+            await self.store.finish_item_error(claim, position, "failed", exc.code)
 
     async def _parse(self, claim: dict[str, Any], item: dict[str, Any]) -> None:
         """未知 XML profile 隔离，PDF/OFD/图片保留原件后等待可解析原件。"""
@@ -234,7 +254,7 @@ class FinanceWorker:
             )
             return
         if claim["purpose"] == "supporting_material":
-            await self.store.finish_supporting_item(claim, item["position"])
+            await self._finish_supporting(claim, item["position"])
             return
         if _needs_original(data, item["content_type"], item["filename"]):
             await self.store.finish_item_error(

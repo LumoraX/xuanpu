@@ -1,7 +1,7 @@
 ---
 name: finance-review
 description: 读取本人实际分派的报销、应付和原行动计划审批，核对证据、准备本人决定，或由公司复核人只读检查接入准备。
-version: 0.12.0-f11
+version: 0.13.0-f12
 entry: false
 type: composite
 tool_names:
@@ -34,6 +34,8 @@ tool_names:
 先调用getFinanceCapabilities；读取失败或字段非法时停止并说明。profile=internal_records时只处理内部收件元数据、普通报销草稿、记录查询和人工动作预检；不调用应付、资金、支付、记账、查验、红字、正式档案或通用接入检查接口。实例能力不是个人授权、审批或上线验收。
 
 ## internal_records 分支
+
+人工确认连接中断时先核对原计划、原操作及单据实际状态，保留原幂等键；模型不能换键重建批准或代员工重发确认。页面/请求成功和单据批准分开，重复确认不能新增决定；中途撤权须按当前岗位重新核定。
 
 profile=internal_records：当前公司财务复核人需要核对内部试用时，可调用getInternalRecordsReadiness；权限不足则说明岗位要求。本地原件核对由受信运维在停机维护入口执行，Skill不调用维护命令或shell；本地完整性结果不等于正式存储验收、票据查验或批准。报告即使全部检查通过也保持not_verified，不作为单据批准或上线授权；不自动修改配置。listReviewQueue只处理expense_claim，读取getExpenseClaim与listExpenseClaimHistory核对原文、原意见和版本；其他target_type说明实例不支持并停止。用当前target_version/workflow_step_id准备approve/reject预检，驳回需理由。提交实际决定交当前分派员工在人工入口确认，不能自审/代审或调用executeFinanceAction。可读当前站内提醒；不调用通用getFinanceReadiness，不读取资金规则。完成后返回，不执行下文general流程。
 

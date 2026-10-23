@@ -1,0 +1,17 @@
+{
+  "entrypoints": [
+    {
+      "module": "xuanpu_finance",
+      "exit_code": 0,
+      "network": "none",
+      "scope": "help_only_not_business_execution"
+    },
+    {
+      "module": "xuanpu_finance.maintenance_cli",
+      "exit_code": 0,
+      "network": "none",
+      "scope": "help_only_not_business_execution"
+    }
+  ],
+  "production_status": "not_verified"
+}

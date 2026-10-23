@@ -1,0 +1,19 @@
+{
+  "status": "completed",
+  "reason": "pytest失败上下文包含隔离CLI测试生成的临时根凭据，替换凭据保留异常/断言/其余字节，原摘要另存",
+  "changes": [
+    {
+      "file": "pytest.log",
+      "replacements": 1,
+      "original_sha256": "8220935457a4e0cc343acf769b95d2c8844ef4cc52e13618bb9adfe5f3d63697",
+      "redacted_sha256": "6ca0c3ba3c5c5a86a494671c0baffb4a19f5cacc1f274cab85e82423883e9ac9"
+    },
+    {
+      "file": "junit.xml",
+      "replacements": 1,
+      "original_sha256": "cb5fcd15ebc7706a5bb2c8b72c10e3c024212f468a2cd5e61282b2810e375e92",
+      "redacted_sha256": "3b0287b0af5e8e29d7e20444215f0aacbf1971f9e1f7a1f5709bb4ba7cf1d257"
+    }
+  ],
+  "production_status": "not_verified"
+}

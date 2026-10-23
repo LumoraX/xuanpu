@@ -11,6 +11,7 @@ import socket
 import subprocess
 import sys
 import time
+from tempfile import TemporaryFile
 from typing import TYPE_CHECKING
 
 import httpx
@@ -146,39 +147,46 @@ def served(tmp_path: Path) -> Iterator[tuple[str, str]]:
             }
         )
     )
-    process = subprocess.Popen(  # noqa: S603 —— 参数全部来自测试代码
-        [sys.executable, "-m", "xuanpu_cli.main", "serve", "--config", str(config)],
-        env={**os.environ, "GATEWAY_KEY": "sk-test"},
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
-    url = f"http://127.0.0.1:{port}"
-    try:
-        deadline = time.monotonic() + 30
-        while True:
-            if process.poll() is not None:
-                raise RuntimeError(f"服务进程提前退出：\n{process.stdout.read()}")  # type: ignore[union-attr]
-            try:
-                if httpx.get(url + "/healthz", timeout=1).status_code == 200:
-                    break
-            except httpx.TransportError:
-                pass
-            if time.monotonic() > deadline:
-                raise RuntimeError("服务进程没有在 30 秒内就绪")
-            time.sleep(0.1)
-        yield url, root_key
-    finally:
-        process.send_signal(signal.SIGTERM)
+    # 持续承接日志，避免未读取的有限管道阻塞服务器发送响应。
+    with TemporaryFile(mode="w+t", encoding="utf-8") as logs:
+        process = subprocess.Popen(  # noqa: S603 —— 参数全部来自测试代码
+            [sys.executable, "-m", "xuanpu_cli.main", "serve", "--config", str(config)],
+            env={**os.environ, "GATEWAY_KEY": "sk-test"},
+            stdout=logs,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        url = f"http://127.0.0.1:{port}"
         try:
-            output, _ = process.communicate(timeout=20)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            raise
-        # uvicorn 优雅关闭之后会把终止信号重新抛出，所以退出码是「被该信号终止」；
-        # 是否优雅，看关闭流程有没有走完
-        assert process.returncode in (0, -signal.SIGTERM), output
-        assert "Application shutdown complete" in output, output
+            deadline = time.monotonic() + 30
+            while True:
+                if process.poll() is not None:
+                    logs.seek(0)
+                    raise RuntimeError(f"服务进程提前退出：\n{logs.read()}")
+                try:
+                    if httpx.get(url + "/healthz", timeout=1).status_code == 200:
+                        break
+                except httpx.TransportError:
+                    pass
+                if time.monotonic() > deadline:
+                    logs.seek(0)
+                    raise RuntimeError(f"服务进程没有在 30 秒内就绪：\n{logs.read()}")
+                time.sleep(0.1)
+            yield url, root_key
+        finally:
+            process.send_signal(signal.SIGTERM)
+            try:
+                process.wait(timeout=20)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+                raise
+            logs.seek(0)
+            output = logs.read()
+            # uvicorn 优雅关闭之后会把终止信号重新抛出，所以退出码是「被该信号终止」；
+            # 是否优雅，看关闭流程有没有走完
+            assert process.returncode in (0, -signal.SIGTERM), output
+            assert "Application shutdown complete" in output, output
 
 
 def test_serve_end_to_end(served: tuple[str, str]) -> None:
