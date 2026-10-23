@@ -51,7 +51,7 @@ async def test_signed_f7_record_history_material_and_strict_input(store: Finance
         app.state.objects=None
         unavailable=await call('GET',material)
         assert unavailable.status_code==503 and unavailable.json()['code']=='MATERIAL_STORE_UNAVAILABLE'
-    assert app.title=='玄圃财务 F0–F11' and app.version=='2026.10.23.2'
+    assert app.title=='玄圃财务 F0–F12' and app.version=='2026.10.23.3'
 
 
 async def test_signed_invoice_information_nul_is_422_for_create_and_revision(store: FinanceStore,tmp_path: Path) -> None:

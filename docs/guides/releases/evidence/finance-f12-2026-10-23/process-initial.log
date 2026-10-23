@@ -1,0 +1,33 @@
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+_________ test_sigkill_after_cipher_before_receipt_recovers_naturally __________
+packages/xuanpu-finance/tests/test_f12_crash.py:66: in test_sigkill_after_cipher_before_receipt_recovers_naturally
+    verified = await readonly_verify(case)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/tests/f12_process_helpers.py:344: in readonly_verify
+    assert result == (0, {'status': 'completed', 'verification_status': 'complete',
+E   AssertionError
+____________ test_eight_human_confirmations_same_plan_execute_once _____________
+packages/xuanpu-finance/tests/test_f12_hitl.py:52: in test_eight_human_confirmations_same_plan_execute_once
+    assert [response.status_code for response in responses] == [200]*8
+E   assert [202, 202, 20...202, 202, ...] == [200, 200, 20...200, 200, ...]
+E     
+E     At index 0 diff: 202 != 200
+E     Use -v to get more diff
+__________ test_human_approve_and_reject_same_version_have_one_winner __________
+packages/xuanpu-finance/tests/test_f12_hitl.py:94: in test_human_approve_and_reject_same_version_have_one_winner
+    assert statuses.count(200) == 1
+E   assert 0 == 1
+E    +  where 0 = <built-in method count of list object at 0x10cb78a40>(200)
+E    +    where <built-in method count of list object at 0x10cb78a40> = [202, 409].count
+_ test_lost_human_confirmation_response_retries_original_operation_after_restart _
+packages/xuanpu-finance/tests/test_f12_hitl.py:150: in test_lost_human_confirmation_response_retries_original_operation_after_restart
+    assert lost.status_code == 503 and observations[0]['upstream_status'] == 200
+E   assert (500 == 503)
+E    +  where 500 = <Response [500 Internal Server Error]>.status_code
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f12_crash.py::test_sigkill_after_cipher_before_receipt_recovers_naturally
+FAILED packages/xuanpu-finance/tests/test_f12_hitl.py::test_eight_human_confirmations_same_plan_execute_once
+FAILED packages/xuanpu-finance/tests/test_f12_hitl.py::test_human_approve_and_reject_same_version_have_one_winner
+FAILED packages/xuanpu-finance/tests/test_f12_hitl.py::test_lost_human_confirmation_response_retries_original_operation_after_restart
+4 failed in 68.54s (0:01:08)

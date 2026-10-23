@@ -1,0 +1,389 @@
+{
+  "status": "Approved",
+  "reviewer": "f12_final_quality",
+  "reviewed_at_utc": "2026-10-23 06:48:19 UTC",
+  "baseline": "af96bb4f0735f733dcd2add922d140e3ff81dc7d",
+  "branch": "feat/finance-f12",
+  "production_status": "not_verified",
+  "scope": "Final independent quality and artifact audit; only this evidence file added; no PostgreSQL creation or rerun, commit, push, merge, or deployment.",
+  "full-final": {
+    "counts": {
+      "tests": 2779,
+      "passed": 2776,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 3
+    },
+    "raw_hashes": {
+      "pytest.log": "48df1efdb4ac10512e63c7e729b6229c9f66eed3db0676cd717c89109da35557",
+      "junit.xml": "c0fd0ee736851499060ee399163577798f9c78408b1c0bcbf04acd669483e448"
+    },
+    "skips": [
+      {
+        "class": "packages.xuanpu-server.tests.reminders.test_postgres_order",
+        "name": "test_same_employee_notification_commit_order[memory]"
+      },
+      {
+        "class": "packages.xuanpu-server.tests.workspace.test_proactive_store",
+        "name": "test_database_source_constraints_are_enforced[memory]"
+      },
+      {
+        "class": "packages.xuanpu-server.tests.workspace.test_proactive_store",
+        "name": "test_memory_disable_reenable_fences_open_snapshot[postgres]"
+      }
+    ],
+    "elapsed_seconds": 592.005157,
+    "exit": 0,
+    "missing_modules": []
+  },
+  "quick-final": {
+    "counts": {
+      "tests": 332,
+      "passed": 332,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "raw_hashes": {
+      "pytest.log": "90dacfb633a4ce7dd84a570e3eacd3a29a00830ae350a7a6de37af666e8623f2",
+      "junit.xml": "12c2b4fe085bd94c313483e22ae4d89f73b0fd252cb5d0dafa42c37fccd42fd5"
+    },
+    "skips": [],
+    "elapsed_seconds": 674.876522,
+    "exit": 0,
+    "missing_modules": []
+  },
+  "quick_modules": {
+    "count": 42,
+    "old_39_preserved_in_order": true,
+    "all_present_in_junit": true
+  },
+  "f12_properties": {
+    "count": 37,
+    "structured_records": 7,
+    "junit_exact_equal": true
+  },
+  "frozen": {
+    "files": 717,
+    "exact_set_and_hashes_equal": true,
+    "manifest_sha256": "ece0a103e603acea11a27bd12a443dbc89fc2c22f290f15020028c0d9ccb8112"
+  },
+  "artifacts": [
+    {
+      "name": "finance-0.13.0-f12.zip",
+      "bytes": 54600,
+      "sha256": "6175614b4765b309fbc020b0af54750e4f064f8a642feca5cc788c558cf28fa0"
+    },
+    {
+      "name": "xuanpu_console-2026.10.23.1-py3-none-any.whl",
+      "bytes": 110516,
+      "sha256": "0c340e0112933f1550fa7e0686bcefd2e380e9f150a1956f5b89093c6767066b"
+    },
+    {
+      "name": "xuanpu_console-2026.10.23.1.tar.gz",
+      "bytes": 134531,
+      "sha256": "8f1c34d598852449482566bf7371b163ab29a83d20908eac0bd2fab07469fc9d"
+    },
+    {
+      "name": "xuanpu_finance-2026.10.23.3-py3-none-any.whl",
+      "bytes": 344825,
+      "sha256": "5c9bf37dd1b971ed1e898e44445403158c44398df6815be0fe58204cc9adebc0"
+    },
+    {
+      "name": "xuanpu_finance-2026.10.23.3.tar.gz",
+      "bytes": 442508,
+      "sha256": "5d7f399ad13eb3e81a3599e9b174566eb57871a7620c55f22452849b4336788b"
+    }
+  ],
+  "finance": {
+    "source_files": 141,
+    "wheel_and_sdist_exact_bytes_equal": true
+  },
+  "console": {
+    "source_files": 23,
+    "wheel_and_sdist_exact_bytes_equal": true
+  },
+  "business_pack": {
+    "zip_and_20_examples_and_design_bytes_equal": true,
+    "baseline_extra_refs_unchanged": 4,
+    "design_files": 24
+  },
+  "whitespace": {
+    "raw_diagnostics": 48,
+    "exact_declared_exceptions_equal": true,
+    "affected_raw_files": 8,
+    "other_changes_exit": 0
+  },
+  "credential_redaction": {
+    "current_redacted_hashes_equal": true,
+    "original_values_unavailable_for_reconstruction": true
+  },
+  "runtime": {
+    "image": {
+      "tag": "xuanpu-finance:2026.10.23.3",
+      "id": "sha256:5a650c24a0fba3729f94dad8ff9bba2d99c959e9a57d39f3c228260033e26126",
+      "uid": 10001,
+      "version": "2026.10.23.3",
+      "source_files": 141,
+      "all_source_hashes_equal": true,
+      "network": "none"
+    },
+    "entrypoints": [
+      {
+        "module": "xuanpu_finance",
+        "exit": 0,
+        "stdout_sha256": "bf7de93249c4e1325de60bc1f96773ee865a95bf19140aa501d070ce347238f7",
+        "scope": "help_only_not_deployment"
+      },
+      {
+        "module": "xuanpu_finance.maintenance_cli",
+        "exit": 0,
+        "stdout_sha256": "5e22199a89d87ab9b1072b92eabb393380d2a6951a8acf66baca486928c33cb9",
+        "scope": "help_only_not_deployment"
+      }
+    ],
+    "live_cleanup": {
+      "owned_container_name_and_id_absent": true,
+      "all_f12_containers_absent": true,
+      "owned_volumes_absent": true,
+      "private_dsn_absent": true,
+      "port_51812_closed": true,
+      "original_xuanpu_checkout_clean": true,
+      "finance_cli_processes_absent": true,
+      "database_sessions_locks": "pre_cleanup_audit_only_container_now_absent_no_recreated_database"
+    }
+  },
+  "static": {
+    "constraints": {
+      "changed_python_files": 18,
+      "future_chinese_docstrings_800_80_c90110_passed": true,
+      "files": [
+        {
+          "file": "docker/finance/build_image.py",
+          "lines": 30,
+          "max_function_lines": 17
+        },
+        {
+          "file": "packages/xuanpu-cli/tests/test_serve.py",
+          "lines": 223,
+          "max_function_lines": 65
+        },
+        {
+          "file": "packages/xuanpu-finance/src/xuanpu_finance/__main__.py",
+          "lines": 68,
+          "max_function_lines": 35
+        },
+        {
+          "file": "packages/xuanpu-finance/src/xuanpu_finance/api.py",
+          "lines": 223,
+          "max_function_lines": 56
+        },
+        {
+          "file": "packages/xuanpu-finance/src/xuanpu_finance/invoices/worker.py",
+          "lines": 286,
+          "max_function_lines": 51
+        },
+        {
+          "file": "packages/xuanpu-finance/src/xuanpu_finance/storage/originals.py",
+          "lines": 172,
+          "max_function_lines": 78
+        },
+        {
+          "file": "packages/xuanpu-finance/tests/f12_process_helpers.py",
+          "lines": 495,
+          "max_function_lines": 33
+        },
+        {
+          "file": "packages/xuanpu-finance/tests/f12_worker_helpers.py",
+          "lines": 146,
+          "max_function_lines": 47
+        },
+        {
+          "file": "packages/xuanpu-finance/tests/test_f12_crash.py",
+          "lines": 79,
+          "max_function_lines": 47
+        },
+        {
+          "file": "packages/xuanpu-finance/tests/test_f12_hitl.py",
+          "lines": 187,
+          "max_function_lines": 54
+        },
+        {
+          "file": "packages/xuanpu-finance/tests/test_f12_worker.py",
+          "lines": 243,
+          "max_function_lines": 65
+        },
+        {
+          "file": "packages/xuanpu-finance/tests/test_f5_materials.py",
+          "lines": 130,
+          "max_function_lines": 30
+        },
+        {
+          "file": "packages/xuanpu-finance/tests/test_f7_api.py",
+          "lines": 71,
+          "max_function_lines": 35
+        },
+        {
+          "file": "packages/xuanpu-finance/tests/test_f7_contract.py",
+          "lines": 52,
+          "max_function_lines": 22
+        },
+        {
+          "file": "packages/xuanpu-finance/tests/test_f8_api.py",
+          "lines": 57,
+          "max_function_lines": 37
+        },
+        {
+          "file": "packages/xuanpu-finance/tests/test_f8_contract.py",
+          "lines": 40,
+          "max_function_lines": 15
+        },
+        {
+          "file": "packages/xuanpu-finance/tests/test_package.py",
+          "lines": 315,
+          "max_function_lines": 35
+        },
+        {
+          "file": "scripts/acceptance/finance_runner.py",
+          "lines": 220,
+          "max_function_lines": 48
+        }
+      ]
+    },
+    "contracts": {
+      "real_package_validator_ok": true,
+      "kernel_loaded_skills": 7,
+      "api_operations": 77,
+      "internal_operations": 24,
+      "skill_tool_names_exact_baseline": true,
+      "human_execution_or_maintenance_tool_added": false
+    },
+    "cli_fixture": {
+      "served_lines": 65,
+      "all_other_function_asts_unchanged": true,
+      "health_ready_30s_http_10s_shutdown_20s_and_exit_assertions_preserved": true
+    },
+    "secret_patterns": {
+      "private_key_and_complete_jwt_hits": 0,
+      "actual_deleted_dsn_and_password_recheck": "unavailable_after_cleanup_prior_exact_value_scan_recorded",
+      "pdf_scope": "synthetic_source_literals_exist_not_raw_original_body"
+    }
+  },
+  "additional_checks": {
+    "finance_distribution": {
+      "sdist_all_non_generated_files_current_equal": 258,
+      "inherited_root_gitignore_equal": true,
+      "wheel_and_sdist_metadata_version": "2026.10.23.3"
+    },
+    "console_distribution": {
+      "sdist_all_non_generated_files_current_equal": 45,
+      "inherited_root_gitignore_equal": true,
+      "wheel_and_sdist_metadata_version": "2026.10.23.1"
+    },
+    "f5_final_sdist_current_test_equal": true,
+    "preserved_historical_runs": {
+      "baseline": {
+        "tests": 309,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "full-initial": {
+        "tests": 2779,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 3
+      },
+      "full-proxy-attempt": {
+        "tests": 2779,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 3
+      },
+      "quick-pre-harness": {
+        "tests": 332,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "red_vs_exploratory_boundary": {
+      "worker_red_product_failure": {
+        "failed": 5,
+        "passed": 11
+      },
+      "process_exploratory_failed": 4,
+      "full_initial_and_proxy_failed_each": 1,
+      "finals_not_claimed_as_independent_reruns": true
+    },
+    "independent_rerun_copies": {
+      "hitl_quality_xml_equal_to_reviewer_tmp": true,
+      "cli_quality_log_and_xml_equal_to_reviewer_tmp": true,
+      "worker_quality": "separate_reviewer_recorded_19_passed"
+    },
+    "docs_final_record": {
+      "passed": 206,
+      "current_log_sha256": "be46dfeed1c91b14ab3fc58453e8b56fe99ade0991662c0c57223578160e4943",
+      "scope": "read_existing_log_not_independent_rerun"
+    },
+    "quick_timing": {
+      "elapsed_674_877_within_1800": true,
+      "cause": "not_checked",
+      "production_performance": "not_verified"
+    }
+  },
+  "final_f12_semantic_checks": {
+    "crash": {
+      "signal": -9,
+      "natural_expiry_elapsed_seconds": 60.237821,
+      "lease_unchanged_polls": 359,
+      "download_receipt_prepared_received_material_once": true,
+      "verify_ten_fields_snapshot_equal": true
+    },
+    "eight_humans_same_plan": {
+      "same_database_execution_once": true,
+      "actual_signed_requests_human": true,
+      "ports_closed": true
+    },
+    "opposite_human_decisions": {
+      "same_database_execution_once": true,
+      "actual_signed_requests_human": true,
+      "ports_closed": true
+    },
+    "human_response_delivery_lost": {
+      "same_database_execution_once": true,
+      "actual_signed_requests_human": true,
+      "ports_closed": true
+    },
+    "downloaded": {
+      "current_failed_next_succeeded": true,
+      "receipt_count": 0,
+      "cipher_count": 0
+    },
+    "written": {
+      "current_failed_next_succeeded": true,
+      "receipt_count": 0,
+      "cipher_count": 1
+    },
+    "received": {
+      "current_failed_next_succeeded": true,
+      "receipt_count": 1,
+      "cipher_count": 1
+    }
+  },
+  "independent_gates": {
+    "ruff": "All checks passed: F,S108,I,TC packages scripts",
+    "mypy": "Success: no issues found in 310 source files",
+    "lock": "Resolved 109 packages offline",
+    "complexity": "C901 max10 passed across all 18 changed Python files"
+  },
+  "review_boundaries": [
+    "Final full/quick are independently recounted and raw-hash verified, not independently rerun by this reviewer.",
+    "Earlier independent reviewer runs remain separately identified: HITL 3 passed/5.89s and CLI 10 passed/1.16s; the stored copies equal reviewer temporary outputs.",
+    "Removed PostgreSQL sessions, tables and locks cannot be queried live; zero counts are verified from the pre-cleanup audit, while container ID/name, owned volume, DSN absence and port closure are independently checked live.",
+    "Temporary credential redaction current hashes and counts are checked; removed secret values are not reconstructed.",
+    "Image checks use --rm --network none; UID/version/source hashes and help-only entrypoints do not prove deployment or production behavior.",
+    "Quick elapsed 674.876522s is below the original 1800s limit; slower timing cause remains not_checked.",
+    "Real employees, identity/IAM/network, model semantics, production load, external suppliers, power-loss durability and cross-host disaster recovery remain not_verified."
+  ]
+}

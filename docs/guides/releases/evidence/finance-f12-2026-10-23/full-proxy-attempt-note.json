@@ -1,0 +1,14 @@
+{
+  "status": "failed_not_final",
+  "tests": 2779,
+  "failures": 1,
+  "errors": 0,
+  "skipped": 3,
+  "f12_passed": 23,
+  "f5_compatibility_passed": true,
+  "failure": "xuanpu_cli.test_serve_end_to_end POST tenant API keys ReadTimeout",
+  "observed_ambient_route": "HTTPProxy",
+  "direct_targeted_rerun": "same ReadTimeout via direct ConnectionPool; proxy alone insufficient",
+  "source_changed_for_retry": false,
+  "production_status": "not_verified"
+}

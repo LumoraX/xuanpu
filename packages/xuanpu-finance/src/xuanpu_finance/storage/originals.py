@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from xuanpu_finance.errors import FinanceError
+from xuanpu_finance.models import FinancePrincipal
 from xuanpu_finance.storage.common import FinanceBase, identifier
 
 if TYPE_CHECKING:
@@ -17,7 +18,7 @@ class OriginalStore(FinanceBase):
     async def _locked_claim(
         self, conn: asyncpg.Connection | asyncpg.pool.PoolConnectionProxy, claim: dict[str, Any]
     ) -> Any:
-        """在每个检查点重新验证租约令牌及业务授权，取消优先。"""
+        """在每个检查点重新验证租约令牌，取消优先。"""
         row = await conn.fetchrow(
             "SELECT * FROM finance_operation WHERE tenant_id=$1 AND legal_entity_id=$2 AND id=$3 AND lease_token=$4 AND lease_until>now() AND status='running' FOR UPDATE",
             claim["tenant_id"],
@@ -41,6 +42,9 @@ class OriginalStore(FinanceBase):
         """在对象写入前持久责任键、内容摘要及元数据，并预占真实批大小。"""
         async with self.pool.acquire() as conn, conn.transaction():
             row = await self._locked_claim(conn, claim)
+            await self._role(
+                conn, FinancePrincipal(row["tenant_id"], row["owner_id"]), row["legal_entity_id"]
+            )
             args = (row["tenant_id"], row["legal_entity_id"], row["id"], position)
             item = await conn.fetchrow(
                 "SELECT * FROM finance_item WHERE tenant_id=$1 AND legal_entity_id=$2 AND operation_id=$3 AND position=$4 FOR UPDATE",
@@ -101,6 +105,9 @@ class OriginalStore(FinanceBase):
         """加密原件写成功后，原子保留回执、批大小和 received 检查点。"""
         async with self.pool.acquire() as conn, conn.transaction():
             row = await self._locked_claim(conn, claim)
+            await self._role(
+                conn, FinancePrincipal(row["tenant_id"], row["owner_id"]), row["legal_entity_id"]
+            )
             if (
                 size_bytes > 20 * 1024 * 1024
                 or row["bytes_received"] + size_bytes > 100 * 1024 * 1024
@@ -123,13 +130,8 @@ class OriginalStore(FinanceBase):
                 item["content_type"],
                 item["filename"],
             )
-            if expected != (
-                object_key,
-                actual_sha256,
-                size_bytes,
-                content_type[:256],
-                filename[:1000],
-            ):
+            actual = (object_key, actual_sha256, size_bytes, content_type[:256], filename[:1000])
+            if expected != actual:
                 raise FinanceError("ORIGINAL_INDEX_CONFLICT", 409, "原件回执与已持久责任索引不一致")
             receipt_id = identifier()
             args = (row["tenant_id"], row["legal_entity_id"], row["id"], position)

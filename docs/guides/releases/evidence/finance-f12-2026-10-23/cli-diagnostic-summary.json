@@ -1,0 +1,37 @@
+{
+  "diagnosis": "served fixture leaves child stdout/stderr PIPE unread until finally; actual log write blocks response delivery",
+  "source_or_product_changes": false,
+  "postgres_used": false,
+  "direct_http_trust_env": false,
+  "pipe_reproductions": 2,
+  "pipe_key_timeout_seconds": [
+    10.000393207999878,
+    10.00133925001137
+  ],
+  "file_output_reproductions": 2,
+  "file_key_statuses": [
+    201,
+    201
+  ],
+  "file_key_seconds": [
+    0.0008943330030888319,
+    0.0007197080412879586
+  ],
+  "actual_pipe_capacity_bytes": 512,
+  "unread_before_key_access_log_bytes": 469,
+  "key_access_log_bytes": 84,
+  "required_bytes": 553,
+  "actual_stack_samples_blocked_at_write": 889,
+  "drain_only_resumes_same_process": true,
+  "original_key_request_eventually_logged_201": true,
+  "minimal_recommendation": "Change only served fixture to TemporaryFile stdout/stderr capture, preserve 10s HTTP timeout, 20s child exit timeout, full request sequence, existing output/graceful/exit assertions; wait for authorization before editing.",
+  "prior_first_round_pass_cause": "not_checked; prior pipe capacity was not recorded",
+  "all_four_diagnostic_process_exits": [
+    -15,
+    -15,
+    -15,
+    -15
+  ],
+  "all_four_diagnostic_ports_closed": true,
+  "credential_pattern_leaks_found": 0
+}

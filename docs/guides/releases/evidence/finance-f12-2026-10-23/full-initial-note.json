@@ -1,0 +1,13 @@
+{
+  "status": "failed_not_final",
+  "tests": 2779,
+  "failures": 1,
+  "errors": 0,
+  "skipped": 3,
+  "failure": "test_f5_materials.test_material_permission_revoked_during_object_read_cannot_commit",
+  "root_cause": "F5历史断言仍要求撤权抛出ExceptionGroup；F12已批准行为是当前项失败、worker正常继续",
+  "action": "仅更新旧兼容断言并保留真实撤权/无成功/原件回执，随后重冻结与重跑",
+  "scope": "不是产品回退或跳过失败",
+  "f12_tests_passed": 23,
+  "finance_skipped": 0
+}

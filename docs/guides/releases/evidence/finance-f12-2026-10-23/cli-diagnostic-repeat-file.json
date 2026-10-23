@@ -1,0 +1,68 @@
+{
+  "mode": "file",
+  "http_trust_env": false,
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/healthz",
+      "status": 200,
+      "seconds": 0.0009606669191271067,
+      "log_bytes_before": 258,
+      "log_bytes_after": 317
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/tenants",
+      "status": 401,
+      "seconds": 0.0007921250071376562,
+      "log_bytes_before": 317,
+      "log_bytes_after": 395
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/tenants",
+      "status": 201,
+      "seconds": 0.0007345830090343952,
+      "log_bytes_before": 395,
+      "log_bytes_after": 469
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/tenants/acme/keys",
+      "status": 201,
+      "seconds": 0.0007197080412879586,
+      "log_bytes_before": 469,
+      "log_bytes_after": 553
+    },
+    {
+      "method": "GET",
+      "path": "/v1/sessions",
+      "status": 200,
+      "seconds": 0.0006222500232979655
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/secrets/crm-token",
+      "status": 200,
+      "seconds": 0.0006058330181986094
+    },
+    {
+      "method": "GET",
+      "path": "/v1/audit",
+      "status": 200,
+      "seconds": 0.0008431250462308526,
+      "audit_kinds": [
+        "tenant_created",
+        "api_key_issued",
+        "secret_written"
+      ]
+    }
+  ],
+  "exit": -15,
+  "log_bytes": 899,
+  "log_sha256": "c1e555aec7cdc325af6423444ed718b35a58a6ecafd43b2a5e56caef6d20fa08",
+  "shutdown_complete": true,
+  "key_request_access_logged": true,
+  "log_lines": 16,
+  "port_closed": true
+}

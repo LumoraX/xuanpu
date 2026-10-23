@@ -1,0 +1,51 @@
+{
+  "source": "worker-green.xml",
+  "production_status": "not_verified",
+  "facts": [
+    {
+      "test": "test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[downloaded]",
+      "value": {
+        "f12_window": "downloaded",
+        "f12_operation_id": "a16c7bd71d4c43fda83c1c4a532f98b0",
+        "f12_item_state": "failed",
+        "f12_error_code": "COMPANY_FORBIDDEN",
+        "f12_receipt_count": 0,
+        "f12_target_cipher_count": 0,
+        "f12_next_operation_status": "succeeded",
+        "f12_next_item_state": "material_received",
+        "f12_db_event_kinds": "[\"import.accepted\", \"import.claimed\", \"import.item_exception\", \"import.completed\"]",
+        "f12_original_source": "F7 configured/source + actual PDF + real FinanceStore/local objects"
+      }
+    },
+    {
+      "test": "test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[written]",
+      "value": {
+        "f12_window": "written",
+        "f12_operation_id": "bc502cb192e04139bc8372636a75c2c9",
+        "f12_item_state": "failed",
+        "f12_error_code": "COMPANY_FORBIDDEN",
+        "f12_receipt_count": 0,
+        "f12_target_cipher_count": 1,
+        "f12_next_operation_status": "succeeded",
+        "f12_next_item_state": "material_received",
+        "f12_db_event_kinds": "[\"import.accepted\", \"import.claimed\", \"original.prepared\", \"import.item_exception\", \"import.completed\"]",
+        "f12_original_source": "F7 configured/source + actual PDF + real FinanceStore/local objects"
+      }
+    },
+    {
+      "test": "test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[received]",
+      "value": {
+        "f12_window": "received",
+        "f12_operation_id": "88c1af3886f941048eb345b194bdc28e",
+        "f12_item_state": "failed",
+        "f12_error_code": "COMPANY_FORBIDDEN",
+        "f12_receipt_count": 1,
+        "f12_target_cipher_count": 1,
+        "f12_next_operation_status": "succeeded",
+        "f12_next_item_state": "material_received",
+        "f12_db_event_kinds": "[\"import.accepted\", \"import.claimed\", \"original.prepared\", \"original.received\", \"import.item_exception\", \"import.completed\"]",
+        "f12_original_source": "F7 configured/source + actual PDF + real FinanceStore/local objects"
+      }
+    }
+  ]
+}
