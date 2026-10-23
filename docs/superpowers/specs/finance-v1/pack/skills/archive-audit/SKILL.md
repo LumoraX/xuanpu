@@ -1,7 +1,7 @@
 ---
 name: archive-audit
 description: 查询发票查验、税务确认、红字和档案证据，准备受控税务或归档计划并核对审计缺口。
-version: 0.13.0-f12
+version: 0.14.0-f13
 entry: false
 type: composite
 tool_names:
@@ -40,6 +40,8 @@ tool_names:
 先调用getFinanceCapabilities；读取失败或字段非法时停止并说明。profile=internal_records时只处理内部收件元数据、普通报销草稿、记录查询和人工动作预检；不调用应付、资金、支付、记账、查验、红字、正式档案或通用接入检查接口。实例能力不是个人授权、审批或上线验收。
 
 ## internal_records 分支
+
+遇到OBJECT_PATH_UNSAFE或原件存储异常时，先保留原operation和持久收件事实，交受信管理员核对独立原件目录；管理员恢复合法文件后再查询原操作，并按当前资格补充或续办。模型不能删除文件、替换链接、读取原件正文、执行维护或代发人工批准。原件存在不等于材料处理成功。
 
 profile=internal_records：此实例不处理查验、税务、红字或正式归档。内部历史转报销Skill的listExpenseClaimHistory，原件交人工入口；本Skill停止，不读取资金规则或调用下文general工具。
 

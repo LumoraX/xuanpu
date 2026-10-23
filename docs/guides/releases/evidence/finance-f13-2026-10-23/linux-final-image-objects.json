@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "platform": "Linux",
+  "uid": 10001,
+  "source": "installed_final_image_no_mount",
+  "normal_read_write_idempotency": true,
+  "symlink_get_and_put": {
+    "get": "OBJECT_PATH_UNSAFE",
+    "put": "OBJECT_PATH_UNSAFE"
+  },
+  "external_cipher_unchanged": true,
+  "restored_original_readable": true,
+  "network": "none",
+  "production_status": "not_verified"
+}

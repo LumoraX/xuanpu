@@ -175,7 +175,7 @@ def create_app(
         raise ValueError("内部记录不能装配外部执行器或供应商")
     if profile == "internal_records" and worker is not None and worker.synthetic:
         raise ValueError("内部记录不能装配合成材料worker")
-    app = FastAPI(title="玄圃财务 F0–F12", version="2026.10.23.3", lifespan=_lifespan)
+    app = FastAPI(title="玄圃财务 F0–F13", version="2026.10.23.4", lifespan=_lifespan)
     app.state.profile = profile
     app.state.store, app.state.auth, app.state.mode = store, auth, mode
     app.state.objects = objects if objects is not None else worker.objects if worker is not None else None

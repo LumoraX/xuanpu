@@ -1,0 +1,248 @@
+FFFFFFFFFFFFFFFFFF.                                                      [100%]
+=================================== FAILURES ===================================
+_____________ test_symlink_rejects_valid_external_cipher[get-root] _____________
+packages/xuanpu-finance/tests/test_f13_objects.py:52: in test_symlink_rejects_valid_external_cipher
+    with pytest.raises(FinanceError, match='OBJECT_PATH_UNSAFE') as error:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE FinanceError
+____________ test_symlink_rejects_valid_external_cipher[get-shard] _____________
+packages/xuanpu-finance/tests/test_f13_objects.py:52: in test_symlink_rejects_valid_external_cipher
+    with pytest.raises(FinanceError, match='OBJECT_PATH_UNSAFE') as error:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE FinanceError
+_____________ test_symlink_rejects_valid_external_cipher[get-leaf] _____________
+packages/xuanpu-finance/tests/test_f13_objects.py:52: in test_symlink_rejects_valid_external_cipher
+    with pytest.raises(FinanceError, match='OBJECT_PATH_UNSAFE') as error:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE FinanceError
+_____________ test_symlink_rejects_valid_external_cipher[put-root] _____________
+packages/xuanpu-finance/tests/test_f13_objects.py:52: in test_symlink_rejects_valid_external_cipher
+    with pytest.raises(FinanceError, match='OBJECT_PATH_UNSAFE') as error:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE FinanceError
+____________ test_symlink_rejects_valid_external_cipher[put-shard] _____________
+packages/xuanpu-finance/tests/test_f13_objects.py:52: in test_symlink_rejects_valid_external_cipher
+    with pytest.raises(FinanceError, match='OBJECT_PATH_UNSAFE') as error:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE FinanceError
+_____________ test_symlink_rejects_valid_external_cipher[put-leaf] _____________
+packages/xuanpu-finance/tests/test_f13_objects.py:52: in test_symlink_rejects_valid_external_cipher
+    with pytest.raises(FinanceError, match='OBJECT_PATH_UNSAFE') as error:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE FinanceError
+________________ test_symlink_cannot_create_external_leaf[root] ________________
+packages/xuanpu-finance/tests/test_f13_objects.py:82: in test_symlink_cannot_create_external_leaf
+    with pytest.raises(FinanceError, match='OBJECT_PATH_UNSAFE'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE FinanceError
+
+During handling of the above exception, another exception occurred:
+packages/xuanpu-finance/tests/test_f13_objects.py:87: in test_symlink_cannot_create_external_leaf
+    assert snapshot(outside) == before
+E   AssertionError: assert {'12/128d6c96...d62d196f1496'} == {}
+E     
+E     Left contains 1 more item:
+E     {'12/128d6c963bd76c11edf6d9a49c06b70a641a25df787d3049a8fdf431249fe012.enc': '95d74d897f0f9f0b8a2168a42b8945d06400228161228713c87ed62d196f1496'}
+E     Use -v to get more diff
+_______________ test_symlink_cannot_create_external_leaf[shard] ________________
+packages/xuanpu-finance/tests/test_f13_objects.py:82: in test_symlink_cannot_create_external_leaf
+    with pytest.raises(FinanceError, match='OBJECT_PATH_UNSAFE'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE FinanceError
+
+During handling of the above exception, another exception occurred:
+packages/xuanpu-finance/tests/test_f13_objects.py:87: in test_symlink_cannot_create_external_leaf
+    assert snapshot(outside) == before
+E   AssertionError: assert {'128d6c963bd...b9cf5b8a7abb'} == {}
+E     
+E     Left contains 1 more item:
+E     {'128d6c963bd76c11edf6d9a49c06b70a641a25df787d3049a8fdf431249fe012.enc': 'b0c895a58e6a3696e805ebe18d66cf443674e315a960134df1fcb9cf5b8a7abb'}
+E     Use -v to get more diff
+_________________ test_unsafe_root_has_stable_error[get-file] __________________
+packages/xuanpu-finance/tests/test_f13_objects.py:105: in test_unsafe_root_has_stable_error
+    await objects.get(KEY)
+packages/xuanpu-finance/src/xuanpu_finance/objects.py:109: in get
+    encrypted = await anyio.to_thread.run_sync(self._path(key).read_bytes)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/anyio/to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:2706: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:1100: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/pathlib.py:1019: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   NotADirectoryError: [Errno 20] Not a directory: '/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2095/test_unsafe_root_has_stable_er0/objects/12/128d6c963bd76c11edf6d9a49c06b70a641a25df787d3049a8fdf431249fe012.enc'
+_______________ test_unsafe_root_has_stable_error[get-dangling] ________________
+packages/xuanpu-finance/tests/test_f13_objects.py:103: in test_unsafe_root_has_stable_error
+    with pytest.raises(FinanceError, match='OBJECT_PATH_UNSAFE') as error:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: Regex pattern did not match.
+E     Expected regex: 'OBJECT_PATH_UNSAFE'
+E     Actual message: 'OBJECT_NOT_FOUND: 加密原件尚未写入或已缺失'
+_____________ test_unsafe_root_has_stable_error[get-link_to_file] ______________
+packages/xuanpu-finance/tests/test_f13_objects.py:105: in test_unsafe_root_has_stable_error
+    await objects.get(KEY)
+packages/xuanpu-finance/src/xuanpu_finance/objects.py:109: in get
+    encrypted = await anyio.to_thread.run_sync(self._path(key).read_bytes)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/anyio/to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:2706: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:1100: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/pathlib.py:1019: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   NotADirectoryError: [Errno 20] Not a directory: '/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2095/test_unsafe_root_has_stable_er2/objects/12/128d6c963bd76c11edf6d9a49c06b70a641a25df787d3049a8fdf431249fe012.enc'
+_________________ test_unsafe_root_has_stable_error[put-file] __________________
+packages/xuanpu-finance/tests/test_f13_objects.py:107: in test_unsafe_root_has_stable_error
+    await objects.put(KEY, CONTENT)
+packages/xuanpu-finance/src/xuanpu_finance/objects.py:104: in put
+    await anyio.to_thread.run_sync(self._write, path, key, content, encrypted)
+.venv/lib/python3.12/site-packages/anyio/to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:2706: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:1100: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/objects.py:83: in _write
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/pathlib.py:1311: in mkdir
+    os.mkdir(self, mode)
+E   NotADirectoryError: [Errno 20] Not a directory: '/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2095/test_unsafe_root_has_stable_er3/objects/12'
+_______________ test_unsafe_root_has_stable_error[put-dangling] ________________
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/pathlib.py:1311: in mkdir
+    os.mkdir(self, mode)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2095/test_unsafe_root_has_stable_er4/objects/12'
+
+During handling of the above exception, another exception occurred:
+packages/xuanpu-finance/tests/test_f13_objects.py:107: in test_unsafe_root_has_stable_error
+    await objects.put(KEY, CONTENT)
+packages/xuanpu-finance/src/xuanpu_finance/objects.py:104: in put
+    await anyio.to_thread.run_sync(self._write, path, key, content, encrypted)
+.venv/lib/python3.12/site-packages/anyio/to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:2706: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:1100: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/objects.py:83: in _write
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/pathlib.py:1315: in mkdir
+    self.parent.mkdir(parents=True, exist_ok=True)
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/pathlib.py:1311: in mkdir
+    os.mkdir(self, mode)
+E   FileExistsError: [Errno 17] File exists: '/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2095/test_unsafe_root_has_stable_er4/objects'
+_____________ test_unsafe_root_has_stable_error[put-link_to_file] ______________
+packages/xuanpu-finance/tests/test_f13_objects.py:107: in test_unsafe_root_has_stable_error
+    await objects.put(KEY, CONTENT)
+packages/xuanpu-finance/src/xuanpu_finance/objects.py:104: in put
+    await anyio.to_thread.run_sync(self._write, path, key, content, encrypted)
+.venv/lib/python3.12/site-packages/anyio/to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:2706: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:1100: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/objects.py:83: in _write
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/pathlib.py:1311: in mkdir
+    os.mkdir(self, mode)
+E   NotADirectoryError: [Errno 20] Not a directory: '/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2095/test_unsafe_root_has_stable_er5/objects/12'
+___________ test_special_leaf_is_rejected_without_blocking[get-fifo] ___________
+packages/xuanpu-finance/tests/test_f13_objects.py:130: in test_special_leaf_is_rejected_without_blocking
+    assert result == {'code': 'OBJECT_PATH_UNSAFE', 'status': 500}
+E   AssertionError: assert {'code': 'BLO...reaped': True} == {'code': 'OBJ...'status': 500}
+E     
+E     Differing items:
+E     {'code': 'BLOCKED'} != {'code': 'OBJECT_PATH_UNSAFE'}
+E     Left contains 1 more item:
+E     {'reaped': True}
+E     Right contains 1 more item:
+E     {'status': 500}
+E     Use -v to get more diff
+__________ test_special_leaf_is_rejected_without_blocking[get-socket] __________
+packages/xuanpu-finance/tests/test_f13_objects.py:130: in test_special_leaf_is_rejected_without_blocking
+    assert result == {'code': 'OBJECT_PATH_UNSAFE', 'status': 500}
+E   AssertionError: assert {'code': 'OSError'} == {'code': 'OBJ...'status': 500}
+E     
+E     Differing items:
+E     {'code': 'OSError'} != {'code': 'OBJECT_PATH_UNSAFE'}
+E     Right contains 1 more item:
+E     {'status': 500}
+E     Use -v to get more diff
+___________ test_special_leaf_is_rejected_without_blocking[put-fifo] ___________
+packages/xuanpu-finance/tests/test_f13_objects.py:130: in test_special_leaf_is_rejected_without_blocking
+    assert result == {'code': 'OBJECT_PATH_UNSAFE', 'status': 500}
+E   AssertionError: assert {'code': 'BLO...reaped': True} == {'code': 'OBJ...'status': 500}
+E     
+E     Differing items:
+E     {'code': 'BLOCKED'} != {'code': 'OBJECT_PATH_UNSAFE'}
+E     Left contains 1 more item:
+E     {'reaped': True}
+E     Right contains 1 more item:
+E     {'status': 500}
+E     Use -v to get more diff
+__________ test_special_leaf_is_rejected_without_blocking[put-socket] __________
+packages/xuanpu-finance/tests/test_f13_objects.py:130: in test_special_leaf_is_rejected_without_blocking
+    assert result == {'code': 'OBJECT_PATH_UNSAFE', 'status': 500}
+E   AssertionError: assert {'code': 'OSError'} == {'code': 'OBJ...'status': 500}
+E     
+E     Differing items:
+E     {'code': 'OSError'} != {'code': 'OBJECT_PATH_UNSAFE'}
+E     Right contains 1 more item:
+E     {'status': 500}
+E     Use -v to get more diff
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[get-root]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[get-shard]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[get-leaf]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[put-root]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[put-shard]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[put-leaf]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_cannot_create_external_leaf[root]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_cannot_create_external_leaf[shard]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_unsafe_root_has_stable_error[get-file]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_unsafe_root_has_stable_error[get-dangling]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_unsafe_root_has_stable_error[get-link_to_file]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_unsafe_root_has_stable_error[put-file]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_unsafe_root_has_stable_error[put-dangling]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_unsafe_root_has_stable_error[put-link_to_file]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_special_leaf_is_rejected_without_blocking[get-fifo]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_special_leaf_is_rejected_without_blocking[get-socket]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_special_leaf_is_rejected_without_blocking[put-fifo]
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_special_leaf_is_rejected_without_blocking[put-socket]
+18 failed, 1 passed in 7.43s
+
+真实PG worker旧实现红测（基线objects.py）：
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___ test_material_worker_preserves_failed_responsibility_then_processes_next ___
+packages/xuanpu-finance/tests/test_f13_objects.py:388: in test_material_worker_preserves_failed_responsibility_then_processes_next
+    assert failed['status'] == 'failed' and failed['items'][0]['state'] == 'failed'
+E   AssertionError: assert ('succeeded' == 'failed'
+E     
+E     - failed
+E     + succeeded)
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_material_worker_preserves_failed_responsibility_then_processes_next
+1 failed in 0.44s

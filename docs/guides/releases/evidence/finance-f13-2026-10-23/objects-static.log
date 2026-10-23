@@ -1,0 +1,7 @@
+All checks passed!
+Success: no issues found in 142 source files
+packages/xuanpu-finance/src/xuanpu_finance/objects.py: lines=155; future/Chinese docstrings/file<=800/function<=80 PASS
+packages/xuanpu-finance/src/xuanpu_finance/local_objects.py: lines=108; future/Chinese docstrings/file<=800/function<=80 PASS
+packages/xuanpu-finance/tests/test_f13_objects.py: lines=448; future/Chinese docstrings/file<=800/function<=80 PASS
+packages/xuanpu-finance/tests/f13_objects_helpers.py: lines=53; future/Chinese docstrings/file<=800/function<=80 PASS
+Success: no issues found in 143 source files

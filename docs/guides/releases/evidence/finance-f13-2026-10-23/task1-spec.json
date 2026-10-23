@@ -1,0 +1,86 @@
+{
+  "task": "F13 任务一独立规格审查",
+  "worktree": "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0",
+  "status": "Approved",
+  "product_spec_status": "Approved",
+  "summary": "POSIX dirfd/no-follow 文件读写实现符合任务一规格；唯一P2测试随机性缺口已通过固定受理ID解决，任务一规格审查Approved。未修改产品，未运行PG测试，未提交。",
+  "findings": [
+    {
+      "priority": "P2",
+      "category": "test_reliability",
+      "file": "packages/xuanpu-finance/tests/test_f13_objects.py",
+      "lines": [
+        395,
+        404
+      ],
+      "title": "下一安全 shard 仅重新生成一次，仍可能随机撞到坏 shard",
+      "detail": "next_operation 的随机 operation ID 第一次若与坏 shard 相同，只取消并创建一次替代 operation；替代 operation 仍有可能命中同一 shard，因此第404行断言会让合法实现偶发失败。在散列均匀的假设下，两次均命中原坏 shard 的整体概率约为1/65536。",
+      "required_change": "在测试夹具层确定一个保证使用不同 shard 的真实 operation ID 或其他确定性的安全方案，再通过现有 accept_supporting_materials 流程创建责任记录；不要手填成功状态，也不要仅扩大随机重试次数以宣称消除了随机性。",
+      "evidence": "直接阅读第395–404行；现有 objects-green.xml 中这次运行 different_shard=true 只证明本次成功，不能排除后续随机失败。",
+      "status": "resolved",
+      "resolved_evidence": {
+        "source": "test_f13_objects.py:362–366只patch storage.imports.identifier，固定受理operation及trace ID序列；:373–376和:400–403仍通过真实accept_supporting_materials返回的operation生成责任key，删除随机取消/重试；:378–418真实FinanceWorker执行及数据库读取断言，无手填成功状态。",
+        "call_path": "storage/imports.py:75–104实际INSERT operation/item及import.accepted，identifier仅用于operation和trace；:106–110 supporting_materials复用完整受理流程。test_storage.py:17–20 prepare仅seed_company/grant。",
+        "determinism": "独立无PG计算tenant-a/company-a/{operation_id}/0/source的SHA-256：固定operation 00000000000000000000000000000001 shard=25，第二operation 00000000000000000000000000000003 shard=70，稳定不同。",
+        "red": "objects-review-red.log及objects-review-red.xml明确重现旧随机取消方案在碰撞ID下第404行失败，1 failed。",
+        "green": "objects-review-target.log:1–2与target.xml:1为1 passed；objects-review-module.log:1–2与module.xml:1为43 passed，均0 skipped/errors/failures。最新两个JUnit的f13_objects属性均确认failed/OBJECT_STORAGE_FAILED、prepared=1、失败后receipt/成功事件=0，随后material_received/succeeded、receipt/成功事件=1、外部相同、different_shard=true。",
+        "static": "objects-review-ruff.log:1 All checks passed。"
+      }
+    }
+  ],
+  "verified_requirements": [
+    {
+      "requirement": "dirfd/no-follow 与摘要边界",
+      "evidence": "local_objects.py:18–47 能力不足失败关闭且标志无零值降级；:50–70 精确64位小写hex校验，root/shard安全相对open，mkdir只吞FileExistsError后仍核验。"
+    },
+    {
+      "requirement": "非普通文件有界拒绝与稳定错误",
+      "evidence": "local_objects.py:26–33 仅ELOOP/ENOTDIR转OBJECT_PATH_UNSAFE；:72–83 lstat式stat拒绝非regular、O_NONBLOCK/O_NOFOLLOW打开、fstat复查；test_f13_objects.py:90–130 覆盖非法根、FIFO及真实AF_UNIX socket；f13_objects_helpers.py:23–53 FIFO探针为3秒独占可杀死子进程。"
+    },
+    {
+      "requirement": "密文/键/API/既有语义不变",
+      "evidence": "objects.py差异仅本地IO路由；_Envelope:31–64 保留XF01、12字节nonce、AES-GCM/AAD；:75–101 保留_path/_write参数、不变性比较及缺件404；S3:104–155未改。test_f13_objects.py:133–145 对照旧密文不被幂等写覆盖。"
+    },
+    {
+      "requirement": "原子创建、竞争、临时文件与fd回收",
+      "evidence": "local_objects.py:90–108 0600 O_EXCL自有临时文件，关闭后dirfd相对link，已存在调用同一_read，成功创建后才注册finally unlink；test_f13_objects.py:148–161 两适配器竞争，:176–190私有权限和无临时文件，:193–251故障/描述符/碰撞文件保留。"
+    },
+    {
+      "requirement": "实际目录/叶子替换竞态",
+      "evidence": "test_f13_objects.py:254–293 在实际open边界rename+symlink；:296–327实际link前移走root/shard，允许向旧fd写成功并证明外部不变；:330–355 stat后FIFO/symlink替换拒绝。与设计允许已打开旧目录写成功的限制一致。"
+    },
+    {
+      "requirement": "真实IO错误原样传播",
+      "evidence": "local_objects.py:26–33保留非ELOOP/ENOTDIR OSError；test_f13_objects.py:193–233验证注入EIO对象原样、fd回收与temp清理；:421–438实际chmod权限撤销产生PermissionError并恢复后可读。"
+    },
+    {
+      "requirement": "真实PG失败隔离和同worker续办",
+      "evidence": "test_f13_objects.py:358–418调用真实store/FinanceWorker，通过实际operation和position/source推导key，断言bad item failed/OBJECT_STORAGE_FAILED、prepared=1、receipt=0、material.received=0、外部不变；后续同worker安全operation成功。conftest.py:18–42要求finance_test数据库并使用独立随机schema。objects-green.xml:1记录bad失败及后续material_received/succeeded，receipt与成功事件各1。该项本次只审阅既有证据，未重跑PG。"
+    }
+  ],
+  "evidence_review": {
+    "red": "objects-red.log:234记录18 failed/1 passed；:236–248记录真实PG旧实现错误地succeeded导致红测失败。",
+    "green": "objects-green.log:1–2及objects-green.xml:1为43 passed，0 skipped/failures/errors，含真实PG worker user_properties。",
+    "regression": "objects-regression.log:1–3及objects-regression.xml:1为121 passed，0 skipped/failures/errors；模块含test_worker、test_f5_materials、test_f8_materials、test_f11_verify、test_f11_verify_cli、test_f4_maintenance、test_f12_crash、test_f12_worker。",
+    "static": "objects-static.log:1–7记录ruff、mypy与future/中文docstring/文件和函数长度通过。",
+    "review_fix": "objects-review-red.*保留旧方案定向碰撞红测；objects-review-target.*目标绿测1 passed；objects-review-module.*完整模块43 passed；objects-review-ruff.log检查通过。"
+  },
+  "independent_validation": {
+    "command": "uv run pytest -q packages/xuanpu-finance/tests/test_f13_objects.py -k 'not material_worker'",
+    "result": "42 passed, 1 deselected in 2.28s",
+    "pg_tests_run": false,
+    "product_files_changed": false
+  },
+  "limitations": [
+    "本次直接运行环境为macOS；未另行启动Linux环境验证。代码采用任务指定POSIX原语且缺能力失败关闭，该点不是本次规格阻塞。",
+    "PG事实基于既有JUnit及其属性核验，遵守主agent独占共享PG的要求。",
+    "未扩展到任务二/三、生产部署、支付或后续发布完成判断。"
+  ],
+  "followup_review": {
+    "scope": "固定受理ID的测试可靠性修复定点复核；只读，不使用PG。",
+    "conclusion": "Approved",
+    "open_findings": 0,
+    "test_file_sha256": "c91addfa53e5c819824d6f7b8101d16008564d5f2cf8ad277cfeca0ed0f756aa",
+    "independent_check": "阅读实际受理调用链并无PG计算25/70 shard；PG目标/模块结果只审阅实现agent保存的原始日志及JUnit。"
+  }
+}

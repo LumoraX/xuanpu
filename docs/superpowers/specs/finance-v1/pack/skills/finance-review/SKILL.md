@@ -1,7 +1,7 @@
 ---
 name: finance-review
 description: 读取本人实际分派的报销、应付和原行动计划审批，核对证据、准备本人决定，或由公司复核人只读检查接入准备。
-version: 0.13.0-f12
+version: 0.14.0-f13
 entry: false
 type: composite
 tool_names:

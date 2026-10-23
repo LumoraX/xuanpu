@@ -1,0 +1,81 @@
+{
+  "status": "passed_with_preserved_raw_evidence",
+  "raw_check_exit": 2,
+  "all_other_changes_check_exit": 0,
+  "diagnostic_count": 12,
+  "affected_raw_files": [
+    "docs/guides/releases/evidence/finance-f13-2026-10-23/image-build.log",
+    "docs/guides/releases/evidence/finance-f13-2026-10-23/objects-red.log",
+    "docs/guides/releases/evidence/finance-f13-2026-10-23/process-first.log",
+    "docs/guides/releases/evidence/finance-f13-2026-10-23/process-first.xml"
+  ],
+  "diagnostics": [
+    {
+      "file": "docs/guides/releases/evidence/finance-f13-2026-10-23/image-build.log",
+      "line": 62,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f13-2026-10-23/objects-red.log",
+      "line": 43,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f13-2026-10-23/objects-red.log",
+      "line": 57,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f13-2026-10-23/objects-red.log",
+      "line": 175,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f13-2026-10-23/objects-red.log",
+      "line": 187,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f13-2026-10-23/objects-red.log",
+      "line": 197,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f13-2026-10-23/objects-red.log",
+      "line": 209,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f13-2026-10-23/objects-red.log",
+      "line": 243,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f13-2026-10-23/process-first.log",
+      "line": 44,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f13-2026-10-23/process-first.log",
+      "line": 45,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f13-2026-10-23/process-first.xml",
+      "line": 40,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f13-2026-10-23/process-first.xml",
+      "line": 41,
+      "kind": "trailing whitespace."
+    }
+  ],
+  "failed_junit_files_parsed": [
+    "docs/guides/releases/evidence/finance-f13-2026-10-23/objects-review-red.xml",
+    "docs/guides/releases/evidence/finance-f13-2026-10-23/process-baseline-red.xml",
+    "docs/guides/releases/evidence/finance-f13-2026-10-23/process-first.xml"
+  ],
+  "reason": "保留原始pytest日志与失败JUnit异常正文空白；已声明测试凭据仅精确值脱敏并保留摘要。源代码、文档、JSON及其它JUnit均check0。",
+  "production_status": "not_verified"
+}
