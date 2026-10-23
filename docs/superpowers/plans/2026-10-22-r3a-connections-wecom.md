@@ -8,7 +8,7 @@
 
 **Tech Stack:** 现有identity、httpx、cryptography AES-GCM/密钥轮换、PG/memory、FastAPI、SDK/CLI、原生JS。
 
-前置：[R3设计](../specs/2026-10-22-r3-enterprise-collaboration-design.md)、[总计划](2026-10-22-r3-delivery.md)。执行状态（2026-10-22）：代码与本地验收已推进，实际结果以[验收记录](../../guides/releases/2026-10-22-r3a-acceptance.md)为准。真实企微前提不足，A5不得签收；测试文件按最终领域分组，未照搬早期候选文件名。
+前置：[R3设计](../specs/2026-10-22-r3-enterprise-collaboration-design.md)、[总计划](2026-10-22-r3-delivery.md)。执行状态（2026-10-23）：代码与生产本人只读试点已交付，真实身份、授权、范围变化及冷恢复结果以[验收记录](../../guides/releases/2026-10-22-r3a-acceptance.md)为准。当前功能验收口径及用户排除项见A5顶部；测试文件按最终领域分组。
 
 ## A0：冻结供应商契约及公共测试基础
 
@@ -82,7 +82,9 @@ Files：Create `connections/task_bindings.py`、`packages/xuanpu-console/src/xua
 
 ## A5：独立真实验收和兼容试点
 
-2026-10-23更新：候选已部署，真实客户端本人登录、授权、资料读取、撤销及再次拒绝已由用户确认，生产审计与重启后的撤销持久化一致。范围缩小、供应商令牌提前失效及真实受控任务冷恢复仍未验收；A5保持未整体签收，详见上述验收记录。
+验收口径变更（2026-10-23）：用户明确取消真实令牌提前失效演练，要求直接验证功能性。该项按用户要求移出本次日常功能签收条件，标记为未执行，不勾选为真实通过；当前生产本人只读试点与未启用的管理员目录预览分别记录。实际原生闭环、真实范围缩小、真实受控任务冷恢复及明确续接已通过，最终结果见验收记录顶部。本段更新优先于下述原始缺口状态。
+
+以下保留最初A5完整清单，供后续扩大生产接入范围时逐项核对；未启用能力及用户排除项不得记为真实通过。当前已启用试点的功能验收已通过，最终回归2155 passed、10 skipped，生产结果见验收记录顶部；这不代表未启用的管理员目录预览已完成真实生产验收。
 
 Files：Create `scripts/acceptance/r3_connections.py`；实现时写实际日期release记录；Modify受影响`docs/architecture/`与`docs/guides/`，各包按实际日期升版本/更新uv.lock。
 
