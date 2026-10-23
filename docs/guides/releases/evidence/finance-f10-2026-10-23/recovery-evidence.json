@@ -1,0 +1,29 @@
+{
+  "source": "full-final/junit.xml actual user property",
+  "facts": {
+    "approved_id": "c2a71637ce6e4a149e199be6d3dff331",
+    "backup_complete": true,
+    "decision_count": 2,
+    "external_operations": 0,
+    "origin": "human",
+    "read_only_snapshot_equal": true,
+    "real_maintenance_cli": true,
+    "restored_configuration_digest_equal": true,
+    "version": 5
+  },
+  "boundaries": {
+    "platform_identity": "explicit test gateway",
+    "environment": "isolated same-host loopback",
+    "production_status": "not_verified",
+    "offsite_rto_rpo": "not_verified"
+  },
+  "assertion_coverage": [
+    "valid approval plan before backup",
+    "readonly rejects existing valid plan execution",
+    "readonly complete persisted snapshot equal before and after startup",
+    "real two-database maintenance CLI",
+    "revoked/restored generation old plan409",
+    "withdraw/resubmit and two human approvals",
+    "invoice settlement compliance tables0"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "tested_files": 702,
+  "unchanged_files": 701,
+  "changed_files": [
+    {
+      "path": "packages/xuanpu-finance/README.md",
+      "before": "810b443695d80d7a301f69910114557beea0c544583acfe45b396f6217dc6c35",
+      "after": "4cc4aa8bcd6b2dc8c38515d4be3fa9f10a88b19f34586648aaab88419e8a096a",
+      "scope": "only current F10 title/version/API count/guide links; no Python JavaScript tests contracts or behavior changed"
+    }
+  ],
+  "tested_manifest_sha256": "16065f8095259f89f235fc3024a5bfbeef14a8d048d138be7f4fe433272f20c6",
+  "final_manifest_sha256": "c6d67fde6ce021085010600ce3a87be7ba56023049b0f6fc43985d2f66974497",
+  "verification": "docs tests and finance artifacts rebuilt; product code/tests/contracts unchanged"
+}

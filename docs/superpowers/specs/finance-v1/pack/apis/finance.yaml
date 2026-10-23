@@ -1,14 +1,14 @@
 openapi: 3.0.3
 info:
-  title: 玄圃财务 F0—F9 API
-  version: 0.10.0-f9
+  title: 玄圃财务 F0—F10 API
+  version: 0.11.0-f10
   description: 独立存储与Skill/API/HITL；当前优先发票申报、内部报销、真人审批和完整流转记录，外部支付与正式验真归档未启用。
 servers:
 - url: http://127.0.0.1:8443
 security:
 - serviceBearer: []
   actorContext: []
-x-design-status: implemented-f0-f9-internal-records
+x-design-status: implemented-f0-f10-internal-records
 x-trusted-context: 平台签名注入X-Xuanpu-Context，禁止模型提供身份；executeFinanceAction/reconcileOperation及F2取消只允许cookie人工网关。
 paths:
   /v1/finance/legal-entities:
@@ -1489,6 +1489,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ExpenseClaimSummaryPage'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/finance/internal-records-readiness:
+    get:
+      operationId: getInternalRecordsReadiness
+      summary: 当前公司财务复核人只读核对内部配置与运行态，不构成上线或单据批准
+      x-delivery-phase: F10
+      parameters:
+      - $ref: '#/components/parameters/LegalEntity'
+      responses:
+        '200':
+          description: 脱敏的内部试用检查，正式环境始终未验
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalRecordsReadiness'
         default:
           $ref: '#/components/responses/Error'
 components:
@@ -6193,3 +6209,153 @@ components:
           maxLength: 128
         internal_records_only:
           type: boolean
+    InternalRecordsReadiness:
+      type: object
+      additionalProperties: false
+      required:
+      - profile
+      - legal_entity_id
+      - generated_at
+      - status
+      - production_status
+      - configuration_digest
+      - checks
+      - versions
+      - external_verifications
+      - runtime
+      properties:
+        profile:
+          type: string
+          enum:
+          - internal_records
+        legal_entity_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+        generated_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - blocked
+          - not_verified
+        production_status:
+          type: string
+          enum:
+          - not_verified
+        configuration_digest: &id015
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        checks:
+          type: array
+          minItems: 12
+          maxItems: 12
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - code
+            - status
+            - detail
+            properties:
+              code:
+                type: string
+                enum:
+                - company
+                - expense_policy
+                - expense_categories
+                - approval_roles
+                - collector_separation
+                - grant_epochs
+                - external_configuration
+                - simulation_disabled
+                - runtime_mode
+                - runtime_instance_lock
+                - runtime_workers
+                - runtime_external_workers
+              status:
+                type: string
+                enum:
+                - passed
+                - blocked
+              detail:
+                type: string
+                minLength: 1
+                maxLength: 2000
+        versions:
+          type: array
+          maxItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - kind
+            - version
+            - generation
+            - enabled
+            - digest
+            properties:
+              kind:
+                type: string
+                enum:
+                - expense
+              version:
+                type: integer
+                minimum: 1
+              generation:
+                type: integer
+                minimum: 1
+              enabled:
+                type: boolean
+              digest: *id015
+        external_verifications:
+          type: array
+          minItems: 6
+          maxItems: 6
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+            - formal_policy_approval
+            - production_identity
+            - database_and_original_isolation
+            - offsite_disaster_recovery
+            - real_model
+            - production_load
+        runtime:
+          type: object
+          additionalProperties: false
+          required:
+          - mode
+          - instance_lock_lost
+          - receipt_worker
+          - notification_worker
+          - external_workers
+          properties:
+            mode:
+              type: string
+              enum:
+              - enabled
+              - draining
+              - read_only
+              - disabled
+            instance_lock_lost:
+              type: boolean
+            receipt_worker:
+              type: string
+              enum:
+              - running
+              - failed
+              - not_started
+            notification_worker:
+              type: string
+              enum:
+              - running
+              - failed
+              - not_started
+            external_workers:
+              type: string
+              enum:
+              - absent
+              - present

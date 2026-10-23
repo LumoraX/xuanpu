@@ -1,0 +1,7 @@
+{
+  "platform_package_validation": "passed",
+  "skill_count": 7,
+  "codex_generic_validator": "not_applicable_to_xuanpu_frontmatter",
+  "reason": "Xuanpu uses version/entry/type/tool_names validated by xuanpu-spec; generic Codex validator does not allow those platform fields",
+  "platform_kernel_read_tests": "test_package.py actual stable kernel skill loading and reference read"
+}

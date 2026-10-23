@@ -1,0 +1,610 @@
+FFFFFFFFFFFFFF                                                           [100%]
+=================================== FAILURES ===================================
+__________ test_internal_snapshot_current_grants_digest_and_redaction __________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10b2466c0>
+
+    async def test_internal_snapshot_current_grants_digest_and_redaction(store: FinanceStore) -> None:
+        """公司reviewer可读；撤权恢复改变摘要，墓碑不误报且报告脱敏。"""
+        reviewer = await ready(store)
+>       assert hasattr(store, 'get_internal_records_readiness'), '缺少F10只读内部检查'
+E       AssertionError: 缺少F10只读内部检查
+E       assert False
+E        +  where False = hasattr(<xuanpu_finance.storage.store.FinanceStore object at 0x10b2466c0>, 'get_internal_records_readiness')
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:37: AssertionError
+____ test_invalid_persisted_policy_is_blocked[changes0-expense_categories] _____
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ba316a0>
+changes = {'categories': []}, code = 'expense_categories'
+
+    @pytest.mark.parametrize('changes,code', [({'categories': []}, 'expense_categories'),
+        ({'categories': [{'id': 'bad', 'name': ''}]}, 'expense_policy'),
+        ({'require_verified_invoice': True}, 'expense_policy'),
+        ({'record_mode': 'invoice_backed'}, 'expense_policy'),
+        ({'steps': []}, 'expense_policy')])
+    async def test_invalid_persisted_policy_is_blocked(store: FinanceStore, changes: dict[str, Any], code: str) -> None:
+        """使用真实Pydantic模型拒绝畸形持久制度，空分类也不能通过。"""
+        who = await ready(store)
+>       assert hasattr(store, 'get_internal_records_readiness'), '缺少F10只读内部检查'
+E       AssertionError: 缺少F10只读内部检查
+E       assert False
+E        +  where False = hasattr(<xuanpu_finance.storage.store.FinanceStore object at 0x10ba316a0>, 'get_internal_records_readiness')
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:78: AssertionError
+______ test_invalid_persisted_policy_is_blocked[changes1-expense_policy] _______
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ba31550>
+changes = {'categories': [{'id': 'bad', 'name': ''}]}, code = 'expense_policy'
+
+    @pytest.mark.parametrize('changes,code', [({'categories': []}, 'expense_categories'),
+        ({'categories': [{'id': 'bad', 'name': ''}]}, 'expense_policy'),
+        ({'require_verified_invoice': True}, 'expense_policy'),
+        ({'record_mode': 'invoice_backed'}, 'expense_policy'),
+        ({'steps': []}, 'expense_policy')])
+    async def test_invalid_persisted_policy_is_blocked(store: FinanceStore, changes: dict[str, Any], code: str) -> None:
+        """使用真实Pydantic模型拒绝畸形持久制度，空分类也不能通过。"""
+        who = await ready(store)
+>       assert hasattr(store, 'get_internal_records_readiness'), '缺少F10只读内部检查'
+E       AssertionError: 缺少F10只读内部检查
+E       assert False
+E        +  where False = hasattr(<xuanpu_finance.storage.store.FinanceStore object at 0x10ba31550>, 'get_internal_records_readiness')
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:78: AssertionError
+______ test_invalid_persisted_policy_is_blocked[changes2-expense_policy] _______
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ba31a90>
+changes = {'require_verified_invoice': True}, code = 'expense_policy'
+
+    @pytest.mark.parametrize('changes,code', [({'categories': []}, 'expense_categories'),
+        ({'categories': [{'id': 'bad', 'name': ''}]}, 'expense_policy'),
+        ({'require_verified_invoice': True}, 'expense_policy'),
+        ({'record_mode': 'invoice_backed'}, 'expense_policy'),
+        ({'steps': []}, 'expense_policy')])
+    async def test_invalid_persisted_policy_is_blocked(store: FinanceStore, changes: dict[str, Any], code: str) -> None:
+        """使用真实Pydantic模型拒绝畸形持久制度，空分类也不能通过。"""
+        who = await ready(store)
+>       assert hasattr(store, 'get_internal_records_readiness'), '缺少F10只读内部检查'
+E       AssertionError: 缺少F10只读内部检查
+E       assert False
+E        +  where False = hasattr(<xuanpu_finance.storage.store.FinanceStore object at 0x10ba31a90>, 'get_internal_records_readiness')
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:78: AssertionError
+______ test_invalid_persisted_policy_is_blocked[changes3-expense_policy] _______
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ba31190>
+changes = {'record_mode': 'invoice_backed'}, code = 'expense_policy'
+
+    @pytest.mark.parametrize('changes,code', [({'categories': []}, 'expense_categories'),
+        ({'categories': [{'id': 'bad', 'name': ''}]}, 'expense_policy'),
+        ({'require_verified_invoice': True}, 'expense_policy'),
+        ({'record_mode': 'invoice_backed'}, 'expense_policy'),
+        ({'steps': []}, 'expense_policy')])
+    async def test_invalid_persisted_policy_is_blocked(store: FinanceStore, changes: dict[str, Any], code: str) -> None:
+        """使用真实Pydantic模型拒绝畸形持久制度，空分类也不能通过。"""
+        who = await ready(store)
+>       assert hasattr(store, 'get_internal_records_readiness'), '缺少F10只读内部检查'
+E       AssertionError: 缺少F10只读内部检查
+E       assert False
+E        +  where False = hasattr(<xuanpu_finance.storage.store.FinanceStore object at 0x10ba31190>, 'get_internal_records_readiness')
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:78: AssertionError
+______ test_invalid_persisted_policy_is_blocked[changes4-expense_policy] _______
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ba33cb0>
+changes = {'steps': []}, code = 'expense_policy'
+
+    @pytest.mark.parametrize('changes,code', [({'categories': []}, 'expense_categories'),
+        ({'categories': [{'id': 'bad', 'name': ''}]}, 'expense_policy'),
+        ({'require_verified_invoice': True}, 'expense_policy'),
+        ({'record_mode': 'invoice_backed'}, 'expense_policy'),
+        ({'steps': []}, 'expense_policy')])
+    async def test_invalid_persisted_policy_is_blocked(store: FinanceStore, changes: dict[str, Any], code: str) -> None:
+        """使用真实Pydantic模型拒绝畸形持久制度，空分类也不能通过。"""
+        who = await ready(store)
+>       assert hasattr(store, 'get_internal_records_readiness'), '缺少F10只读内部检查'
+E       AssertionError: 缺少F10只读内部检查
+E       assert False
+E        +  where False = hasattr(<xuanpu_finance.storage.store.FinanceStore object at 0x10ba33cb0>, 'get_internal_records_readiness')
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:78: AssertionError
+____ test_enabled_orphan_external_pointer_blocks[finance_settlement_policy] ____
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10bb489e0>
+table = 'finance_settlement_policy'
+
+    @pytest.mark.parametrize('table', ['finance_settlement_policy', 'finance_compliance_policy', 'finance_funding_policy'])
+    async def test_enabled_orphan_external_pointer_blocks(store: FinanceStore, table: str) -> None:
+        """外部当前指针没有revision仍阻断，不能用JOIN漏掉。"""
+        who = await ready(store)
+>       assert hasattr(store, 'get_internal_records_readiness'), '缺少F10只读内部检查'
+E       AssertionError: 缺少F10只读内部检查
+E       assert False
+E        +  where False = hasattr(<xuanpu_finance.storage.store.FinanceStore object at 0x10bb489e0>, 'get_internal_records_readiness')
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:89: AssertionError
+____ test_enabled_orphan_external_pointer_blocks[finance_compliance_policy] ____
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10bb49490>
+table = 'finance_compliance_policy'
+
+    @pytest.mark.parametrize('table', ['finance_settlement_policy', 'finance_compliance_policy', 'finance_funding_policy'])
+    async def test_enabled_orphan_external_pointer_blocks(store: FinanceStore, table: str) -> None:
+        """外部当前指针没有revision仍阻断，不能用JOIN漏掉。"""
+        who = await ready(store)
+>       assert hasattr(store, 'get_internal_records_readiness'), '缺少F10只读内部检查'
+E       AssertionError: 缺少F10只读内部检查
+E       assert False
+E        +  where False = hasattr(<xuanpu_finance.storage.store.FinanceStore object at 0x10bb49490>, 'get_internal_records_readiness')
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:89: AssertionError
+_____ test_enabled_orphan_external_pointer_blocks[finance_funding_policy] ______
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10bb4a1e0>
+table = 'finance_funding_policy'
+
+    @pytest.mark.parametrize('table', ['finance_settlement_policy', 'finance_compliance_policy', 'finance_funding_policy'])
+    async def test_enabled_orphan_external_pointer_blocks(store: FinanceStore, table: str) -> None:
+        """外部当前指针没有revision仍阻断，不能用JOIN漏掉。"""
+        who = await ready(store)
+>       assert hasattr(store, 'get_internal_records_readiness'), '缺少F10只读内部检查'
+E       AssertionError: 缺少F10只读内部检查
+E       assert False
+E        +  where False = hasattr(<xuanpu_finance.storage.store.FinanceStore object at 0x10bb4a1e0>, 'get_internal_records_readiness')
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:89: AssertionError
+_________ test_readonly_repeatable_snapshot_and_active_epoch_mismatch __________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10bb48770>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10bb4b470>
+
+    async def test_readonly_repeatable_snapshot_and_active_epoch_mismatch(store: FinanceStore, monkeypatch: Any) -> None:
+        """授权和检查共用readonly repeatable read事务，现行grant必须匹配epoch。"""
+        who = await ready(store)
+>       assert hasattr(store, 'get_internal_records_readiness'), '缺少F10只读内部检查'
+E       AssertionError: 缺少F10只读内部检查
+E       assert False
+E        +  where False = hasattr(<xuanpu_finance.storage.store.FinanceStore object at 0x10bb48770>, 'get_internal_records_readiness')
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:103: AssertionError
+________________ test_signed_internal_report_runtime_and_modes _________________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10bb85c10>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1962/test_signed_internal_report_ru0')
+
+    async def test_signed_internal_report_runtime_and_modes(store: FinanceStore, tmp_path: Path) -> None:
+        """运行中的真实任务可核对，只读合法；故障、退出、外部装配和锁丢失阻断。"""
+        await ready(store)
+        key = Ed25519PrivateKey.generate()
+        general = app_for(store, EncryptedLocalObjects(tmp_path, b'k' * 32), Gateway({}), key)
+        app = create_app(store=store, auth=general.state.auth, profile='internal_records', mode='read_only', start_worker=False)
+        async def idle() -> None:
+            """持有真实未结束任务直到测试清理。"""
+            await asyncio.Event().wait()
+        task = asyncio.create_task(idle())
+        app.state.worker_task = app.state.notification_task = task
+        try:
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url='https://finance') as client:
+                signed = SignedClient(client, key)
+                async def report() -> httpx.Response:
+                    """每次用真实签名重新读取当前运行态。"""
+                    return await signed.call('GET', PATH, tenant='t', user='reviewer', params={'legal_entity_id': 'e'})
+                response = await report()
+>               assert response.status_code == 200, response.text
+E               AssertionError: {"detail":"Not Found"}
+E               assert 404 == 200
+E                +  where 404 = <Response [404 Not Found]>.status_code
+
+packages/xuanpu-finance/tests/test_f10_api.py:42: AssertionError
+_______________ test_general_forbidden_company_reviewer_required _______________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10bb75b80>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1962/test_general_forbidden_company0')
+
+    async def test_general_forbidden_company_reviewer_required(store: FinanceStore, tmp_path: Path) -> None:
+        """通用profile明确403，内部collector、审批人及跨公司身份不可读。"""
+        await ready(store)
+        key = Ed25519PrivateKey.generate()
+        general = app_for(store, EncryptedLocalObjects(tmp_path, b'k' * 32), Gateway({}), key)
+        internal = create_app(store=store, auth=general.state.auth, profile='internal_records', start_worker=False)
+        for app, user, entity, code in [(general,'reviewer','e','INTERNAL_RECORDS_ONLY'),
+            (internal,'owner','e','READINESS_FORBIDDEN'), (internal,'a','e','READINESS_FORBIDDEN'),
+            (internal,'reviewer','other','READINESS_FORBIDDEN')]:
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url='https://finance') as client:
+                result = await SignedClient(client,key).call('GET',PATH,tenant='t',user=user,params={'legal_entity_id':entity})
+>               assert result.status_code == 403, result.text
+E               AssertionError: {"detail":"Not Found"}
+E               assert 404 == 403
+E                +  where 404 = <Response [404 Not Found]>.status_code
+
+packages/xuanpu-finance/tests/test_f10_api.py:77: AssertionError
+_ test_health_reports_new_fault_without_diagnostics[notification_worker_error-private failure] _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10bbfd580>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1962/test_health_reports_new_fault_0')
+name = 'notification_worker_error', value = 'private failure'
+
+    @pytest.mark.parametrize('name,value', [('notification_worker_error','private failure'), ('instance_lock_lost',True)])
+    async def test_health_reports_new_fault_without_diagnostics(store: FinanceStore, tmp_path: Path, name: str, value: Any) -> None:
+        """健康入口对站内通知故障及实例锁丢失返回503，拒绝诊断回显。"""
+        app = app_for(store, EncryptedLocalObjects(tmp_path, b'k' * 32), Gateway({}), Ed25519PrivateKey.generate())
+        setattr(app.state, name, value)
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url='https://finance') as client:
+            result = await client.get('/health')
+>       assert result.status_code == 503
+E       assert 200 == 503
+E        +  where 200 = <Response [200 OK]>.status_code
+
+packages/xuanpu-finance/tests/test_f10_api.py:88: AssertionError
+__ test_health_reports_new_fault_without_diagnostics[instance_lock_lost-True] __
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10bced580>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1962/test_health_reports_new_fault_1')
+name = 'instance_lock_lost', value = True
+
+    @pytest.mark.parametrize('name,value', [('notification_worker_error','private failure'), ('instance_lock_lost',True)])
+    async def test_health_reports_new_fault_without_diagnostics(store: FinanceStore, tmp_path: Path, name: str, value: Any) -> None:
+        """健康入口对站内通知故障及实例锁丢失返回503，拒绝诊断回显。"""
+        app = app_for(store, EncryptedLocalObjects(tmp_path, b'k' * 32), Gateway({}), Ed25519PrivateKey.generate())
+        setattr(app.state, name, value)
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url='https://finance') as client:
+            result = await client.get('/health')
+>       assert result.status_code == 503
+E       assert 200 == 503
+E        +  where 200 = <Response [200 OK]>.status_code
+
+packages/xuanpu-finance/tests/test_f10_api.py:88: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_internal_snapshot_current_grants_digest_and_redaction
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_invalid_persisted_policy_is_blocked[changes0-expense_categories]
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_invalid_persisted_policy_is_blocked[changes1-expense_policy]
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_invalid_persisted_policy_is_blocked[changes2-expense_policy]
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_invalid_persisted_policy_is_blocked[changes3-expense_policy]
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_invalid_persisted_policy_is_blocked[changes4-expense_policy]
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_enabled_orphan_external_pointer_blocks[finance_settlement_policy]
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_enabled_orphan_external_pointer_blocks[finance_compliance_policy]
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_enabled_orphan_external_pointer_blocks[finance_funding_policy]
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_readonly_repeatable_snapshot_and_active_epoch_mismatch
+FAILED packages/xuanpu-finance/tests/test_f10_api.py::test_signed_internal_report_runtime_and_modes
+FAILED packages/xuanpu-finance/tests/test_f10_api.py::test_general_forbidden_company_reviewer_required
+FAILED packages/xuanpu-finance/tests/test_f10_api.py::test_health_reports_new_fault_without_diagnostics[notification_worker_error-private failure]
+FAILED packages/xuanpu-finance/tests/test_f10_api.py::test_health_reports_new_fault_without_diagnostics[instance_lock_lost-True]
+14 failed in 5.94s
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_____ test_policy_body_scope_cannot_differ_from_current_pointer[changes0] ______
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x108b972f0>
+changes = {'tenant_id': 'other'}
+
+    @pytest.mark.parametrize('changes', [{'tenant_id': 'other'}, {'legal_entity_id': 'other'}])
+    async def test_policy_body_scope_cannot_differ_from_current_pointer(store: FinanceStore, changes: dict[str, Any]) -> None:
+        """制度正文即使结构有效也必须属于当前租户和公司。"""
+        who = await ready(store)
+        await store.pool.execute('ALTER TABLE finance_expense_policy_revision DISABLE TRIGGER ALL')
+        await store.pool.execute('UPDATE finance_expense_policy_revision SET data=data || $1::jsonb', json.dumps(changes))
+        report = await store.get_internal_records_readiness(who, 'e')
+>       assert item(report, 'expense_policy')['status'] == 'blocked'
+E       AssertionError: assert 'passed' == 'blocked'
+E         
+E         - blocked
+E         + passed
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:124: AssertionError
+_____ test_policy_body_scope_cannot_differ_from_current_pointer[changes1] ______
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x109293320>
+changes = {'legal_entity_id': 'other'}
+
+    @pytest.mark.parametrize('changes', [{'tenant_id': 'other'}, {'legal_entity_id': 'other'}])
+    async def test_policy_body_scope_cannot_differ_from_current_pointer(store: FinanceStore, changes: dict[str, Any]) -> None:
+        """制度正文即使结构有效也必须属于当前租户和公司。"""
+        who = await ready(store)
+        await store.pool.execute('ALTER TABLE finance_expense_policy_revision DISABLE TRIGGER ALL')
+        await store.pool.execute('UPDATE finance_expense_policy_revision SET data=data || $1::jsonb', json.dumps(changes))
+        report = await store.get_internal_records_readiness(who, 'e')
+>       assert item(report, 'expense_policy')['status'] == 'blocked'
+E       AssertionError: assert 'passed' == 'blocked'
+E         
+E         - blocked
+E         + passed
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:124: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_policy_body_scope_cannot_differ_from_current_pointer[changes0]
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_policy_body_scope_cannot_differ_from_current_pointer[changes1]
+2 failed, 10 deselected in 0.74s
+FFFFF                                                                    [100%]
+=================================== FAILURES ===================================
+__ test_nonobject_policy_revision_is_blocked_and_digest_binds_raw_value[None] __
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10b193f20>
+bad_value = None
+
+    @pytest.mark.parametrize('bad_value', [None, ['private-value'], 'private-value', 42, True])
+    async def test_nonobject_policy_revision_is_blocked_and_digest_binds_raw_value(
+        store: FinanceStore, bad_value: Any,
+    ) -> None:
+        """合法JSONB非对象属于失效制度，保留真实坏值参与摘要且不外泄。"""
+        who = await ready(store)
+        first = await store.get_internal_records_readiness(who, 'e')
+        await store.pool.execute('ALTER TABLE finance_expense_policy_revision DISABLE TRIGGER ALL')
+        await store.pool.execute('UPDATE finance_expense_policy_revision SET data=$1::jsonb', json.dumps(bad_value))
+>       report = await store.get_internal_records_readiness(who, 'e')
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:247: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/src/xuanpu_finance/storage/f10_readiness.py:59: in get_internal_records_readiness
+    snapshot = await self._readiness_snapshot(conn, who.tenant_id, entity)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <xuanpu_finance.storage.store.FinanceStore object at 0x10b193f20>
+conn = <PoolConnectionProxy [released] 0x10b24a650>, tenant = 't', entity = 'e'
+
+    async def _readiness_snapshot(
+        self, conn: Connection, tenant: str, entity: str
+    ) -> dict[str, Any]:
+        """每条业务查询明确限定租户和公司，原始正文只在事务内计算。"""
+        company = await conn.fetchrow(
+            "SELECT name,tax_id FROM finance_company WHERE tenant_id=$1 AND legal_entity_id=$2",
+            tenant,
+            entity,
+        )
+        roles = await conn.fetch(
+            "SELECT g.user_id,g.role,e.role AS epoch_role,e.generation FROM finance_grant g LEFT JOIN finance_grant_epoch e USING(tenant_id,legal_entity_id,user_id) WHERE g.tenant_id=$1 AND g.legal_entity_id=$2 ORDER BY g.user_id",
+            tenant,
+            entity,
+        )
+        epochs = await conn.fetch(
+            "SELECT user_id,role,generation FROM finance_grant_epoch WHERE tenant_id=$1 AND legal_entity_id=$2 ORDER BY user_id",
+            tenant,
+            entity,
+        )
+        policies = {}
+        for kind, query in POLICY_QUERIES.items():
+            row = await conn.fetchrow(query, tenant, entity)
+            if row is not None:
+>               policies[kind] = {
+                    **decode(row["data"]),
+                    **{k: row[k] for k in ("version", "enabled", "generation", "digest")},
+                }
+E               TypeError: 'NoneType' object is not a mapping
+
+packages/xuanpu-finance/src/xuanpu_finance/storage/f6_readiness.py:71: TypeError
+_ test_nonobject_policy_revision_is_blocked_and_digest_binds_raw_value[bad_value1] _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10b24ab40>
+bad_value = ['private-value']
+
+    @pytest.mark.parametrize('bad_value', [None, ['private-value'], 'private-value', 42, True])
+    async def test_nonobject_policy_revision_is_blocked_and_digest_binds_raw_value(
+        store: FinanceStore, bad_value: Any,
+    ) -> None:
+        """合法JSONB非对象属于失效制度，保留真实坏值参与摘要且不外泄。"""
+        who = await ready(store)
+        first = await store.get_internal_records_readiness(who, 'e')
+        await store.pool.execute('ALTER TABLE finance_expense_policy_revision DISABLE TRIGGER ALL')
+        await store.pool.execute('UPDATE finance_expense_policy_revision SET data=$1::jsonb', json.dumps(bad_value))
+>       report = await store.get_internal_records_readiness(who, 'e')
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:247: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/src/xuanpu_finance/storage/f10_readiness.py:59: in get_internal_records_readiness
+    snapshot = await self._readiness_snapshot(conn, who.tenant_id, entity)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <xuanpu_finance.storage.store.FinanceStore object at 0x10b24ab40>
+conn = <PoolConnectionProxy [released] 0x10b249240>, tenant = 't', entity = 'e'
+
+    async def _readiness_snapshot(
+        self, conn: Connection, tenant: str, entity: str
+    ) -> dict[str, Any]:
+        """每条业务查询明确限定租户和公司，原始正文只在事务内计算。"""
+        company = await conn.fetchrow(
+            "SELECT name,tax_id FROM finance_company WHERE tenant_id=$1 AND legal_entity_id=$2",
+            tenant,
+            entity,
+        )
+        roles = await conn.fetch(
+            "SELECT g.user_id,g.role,e.role AS epoch_role,e.generation FROM finance_grant g LEFT JOIN finance_grant_epoch e USING(tenant_id,legal_entity_id,user_id) WHERE g.tenant_id=$1 AND g.legal_entity_id=$2 ORDER BY g.user_id",
+            tenant,
+            entity,
+        )
+        epochs = await conn.fetch(
+            "SELECT user_id,role,generation FROM finance_grant_epoch WHERE tenant_id=$1 AND legal_entity_id=$2 ORDER BY user_id",
+            tenant,
+            entity,
+        )
+        policies = {}
+        for kind, query in POLICY_QUERIES.items():
+            row = await conn.fetchrow(query, tenant, entity)
+            if row is not None:
+>               policies[kind] = {
+                    **decode(row["data"]),
+                    **{k: row[k] for k in ("version", "enabled", "generation", "digest")},
+                }
+E               TypeError: 'list' object is not a mapping
+
+packages/xuanpu-finance/src/xuanpu_finance/storage/f6_readiness.py:71: TypeError
+_ test_nonobject_policy_revision_is_blocked_and_digest_binds_raw_value[private-value] _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10b20eb10>
+bad_value = 'private-value'
+
+    @pytest.mark.parametrize('bad_value', [None, ['private-value'], 'private-value', 42, True])
+    async def test_nonobject_policy_revision_is_blocked_and_digest_binds_raw_value(
+        store: FinanceStore, bad_value: Any,
+    ) -> None:
+        """合法JSONB非对象属于失效制度，保留真实坏值参与摘要且不外泄。"""
+        who = await ready(store)
+        first = await store.get_internal_records_readiness(who, 'e')
+        await store.pool.execute('ALTER TABLE finance_expense_policy_revision DISABLE TRIGGER ALL')
+        await store.pool.execute('UPDATE finance_expense_policy_revision SET data=$1::jsonb', json.dumps(bad_value))
+>       report = await store.get_internal_records_readiness(who, 'e')
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:247: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/src/xuanpu_finance/storage/f10_readiness.py:59: in get_internal_records_readiness
+    snapshot = await self._readiness_snapshot(conn, who.tenant_id, entity)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <xuanpu_finance.storage.store.FinanceStore object at 0x10b20eb10>
+conn = <PoolConnectionProxy [released] 0x10b20f130>, tenant = 't', entity = 'e'
+
+    async def _readiness_snapshot(
+        self, conn: Connection, tenant: str, entity: str
+    ) -> dict[str, Any]:
+        """每条业务查询明确限定租户和公司，原始正文只在事务内计算。"""
+        company = await conn.fetchrow(
+            "SELECT name,tax_id FROM finance_company WHERE tenant_id=$1 AND legal_entity_id=$2",
+            tenant,
+            entity,
+        )
+        roles = await conn.fetch(
+            "SELECT g.user_id,g.role,e.role AS epoch_role,e.generation FROM finance_grant g LEFT JOIN finance_grant_epoch e USING(tenant_id,legal_entity_id,user_id) WHERE g.tenant_id=$1 AND g.legal_entity_id=$2 ORDER BY g.user_id",
+            tenant,
+            entity,
+        )
+        epochs = await conn.fetch(
+            "SELECT user_id,role,generation FROM finance_grant_epoch WHERE tenant_id=$1 AND legal_entity_id=$2 ORDER BY user_id",
+            tenant,
+            entity,
+        )
+        policies = {}
+        for kind, query in POLICY_QUERIES.items():
+            row = await conn.fetchrow(query, tenant, entity)
+            if row is not None:
+>               policies[kind] = {
+                    **decode(row["data"]),
+                    **{k: row[k] for k in ("version", "enabled", "generation", "digest")},
+                }
+E               TypeError: 'str' object is not a mapping
+
+packages/xuanpu-finance/src/xuanpu_finance/storage/f6_readiness.py:71: TypeError
+___ test_nonobject_policy_revision_is_blocked_and_digest_binds_raw_value[42] ___
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10b20f020>
+bad_value = 42
+
+    @pytest.mark.parametrize('bad_value', [None, ['private-value'], 'private-value', 42, True])
+    async def test_nonobject_policy_revision_is_blocked_and_digest_binds_raw_value(
+        store: FinanceStore, bad_value: Any,
+    ) -> None:
+        """合法JSONB非对象属于失效制度，保留真实坏值参与摘要且不外泄。"""
+        who = await ready(store)
+        first = await store.get_internal_records_readiness(who, 'e')
+        await store.pool.execute('ALTER TABLE finance_expense_policy_revision DISABLE TRIGGER ALL')
+        await store.pool.execute('UPDATE finance_expense_policy_revision SET data=$1::jsonb', json.dumps(bad_value))
+>       report = await store.get_internal_records_readiness(who, 'e')
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:247: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/src/xuanpu_finance/storage/f10_readiness.py:59: in get_internal_records_readiness
+    snapshot = await self._readiness_snapshot(conn, who.tenant_id, entity)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <xuanpu_finance.storage.store.FinanceStore object at 0x10b20f020>
+conn = <PoolConnectionProxy [released] 0x10b20cd60>, tenant = 't', entity = 'e'
+
+    async def _readiness_snapshot(
+        self, conn: Connection, tenant: str, entity: str
+    ) -> dict[str, Any]:
+        """每条业务查询明确限定租户和公司，原始正文只在事务内计算。"""
+        company = await conn.fetchrow(
+            "SELECT name,tax_id FROM finance_company WHERE tenant_id=$1 AND legal_entity_id=$2",
+            tenant,
+            entity,
+        )
+        roles = await conn.fetch(
+            "SELECT g.user_id,g.role,e.role AS epoch_role,e.generation FROM finance_grant g LEFT JOIN finance_grant_epoch e USING(tenant_id,legal_entity_id,user_id) WHERE g.tenant_id=$1 AND g.legal_entity_id=$2 ORDER BY g.user_id",
+            tenant,
+            entity,
+        )
+        epochs = await conn.fetch(
+            "SELECT user_id,role,generation FROM finance_grant_epoch WHERE tenant_id=$1 AND legal_entity_id=$2 ORDER BY user_id",
+            tenant,
+            entity,
+        )
+        policies = {}
+        for kind, query in POLICY_QUERIES.items():
+            row = await conn.fetchrow(query, tenant, entity)
+            if row is not None:
+>               policies[kind] = {
+                    **decode(row["data"]),
+                    **{k: row[k] for k in ("version", "enabled", "generation", "digest")},
+                }
+E               TypeError: 'int' object is not a mapping
+
+packages/xuanpu-finance/src/xuanpu_finance/storage/f6_readiness.py:71: TypeError
+__ test_nonobject_policy_revision_is_blocked_and_digest_binds_raw_value[True] __
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10b20ef90>
+bad_value = True
+
+    @pytest.mark.parametrize('bad_value', [None, ['private-value'], 'private-value', 42, True])
+    async def test_nonobject_policy_revision_is_blocked_and_digest_binds_raw_value(
+        store: FinanceStore, bad_value: Any,
+    ) -> None:
+        """合法JSONB非对象属于失效制度，保留真实坏值参与摘要且不外泄。"""
+        who = await ready(store)
+        first = await store.get_internal_records_readiness(who, 'e')
+        await store.pool.execute('ALTER TABLE finance_expense_policy_revision DISABLE TRIGGER ALL')
+        await store.pool.execute('UPDATE finance_expense_policy_revision SET data=$1::jsonb', json.dumps(bad_value))
+>       report = await store.get_internal_records_readiness(who, 'e')
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f10_readiness.py:247: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/src/xuanpu_finance/storage/f10_readiness.py:59: in get_internal_records_readiness
+    snapshot = await self._readiness_snapshot(conn, who.tenant_id, entity)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <xuanpu_finance.storage.store.FinanceStore object at 0x10b20ef90>
+conn = <PoolConnectionProxy [released] 0x10b20c670>, tenant = 't', entity = 'e'
+
+    async def _readiness_snapshot(
+        self, conn: Connection, tenant: str, entity: str
+    ) -> dict[str, Any]:
+        """每条业务查询明确限定租户和公司，原始正文只在事务内计算。"""
+        company = await conn.fetchrow(
+            "SELECT name,tax_id FROM finance_company WHERE tenant_id=$1 AND legal_entity_id=$2",
+            tenant,
+            entity,
+        )
+        roles = await conn.fetch(
+            "SELECT g.user_id,g.role,e.role AS epoch_role,e.generation FROM finance_grant g LEFT JOIN finance_grant_epoch e USING(tenant_id,legal_entity_id,user_id) WHERE g.tenant_id=$1 AND g.legal_entity_id=$2 ORDER BY g.user_id",
+            tenant,
+            entity,
+        )
+        epochs = await conn.fetch(
+            "SELECT user_id,role,generation FROM finance_grant_epoch WHERE tenant_id=$1 AND legal_entity_id=$2 ORDER BY user_id",
+            tenant,
+            entity,
+        )
+        policies = {}
+        for kind, query in POLICY_QUERIES.items():
+            row = await conn.fetchrow(query, tenant, entity)
+            if row is not None:
+>               policies[kind] = {
+                    **decode(row["data"]),
+                    **{k: row[k] for k in ("version", "enabled", "generation", "digest")},
+                }
+E               TypeError: 'bool' object is not a mapping
+
+packages/xuanpu-finance/src/xuanpu_finance/storage/f6_readiness.py:71: TypeError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_nonobject_policy_revision_is_blocked_and_digest_binds_raw_value[None]
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_nonobject_policy_revision_is_blocked_and_digest_binds_raw_value[bad_value1]
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_nonobject_policy_revision_is_blocked_and_digest_binds_raw_value[private-value]
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_nonobject_policy_revision_is_blocked_and_digest_binds_raw_value[42]
+FAILED packages/xuanpu-finance/tests/test_f10_readiness.py::test_nonobject_policy_revision_is_blocked_and_digest_binds_raw_value[True]
+5 failed, 16 deselected in 1.79s

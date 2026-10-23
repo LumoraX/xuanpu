@@ -1,0 +1,15 @@
+{
+  "initial_exit_code": 0,
+  "final_exit_code": 0,
+  "normal_sigterm": true,
+  "ready_files_removed": true,
+  "ports_closed": [
+    59060,
+    59061,
+    51400,
+    51401
+  ],
+  "all_created_tabs_closed": true,
+  "production_touched": false,
+  "check_note": "first script checked sockets after ready callback deletion but before graceful service exit; both process sessions subsequently returned0 and all sockets closed"
+}

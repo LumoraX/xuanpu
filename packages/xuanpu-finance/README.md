@@ -1,6 +1,6 @@
-# 玄圃财务 F0–F9
+# 玄圃财务 F0–F10
 
-当前包契约finance `0.10.0-f9`、76项API与7个Skill；当前优先发票申报和报销内部流转记录，不做支付。用法见[F9指南](../../docs/guides/finance-f9.md)，本轮验证与制品见[F9验收记录](../../docs/guides/releases/2026-10-22-finance-f9-acceptance.md)。
+当前包契约finance `0.11.0-f10`、77项API与7个Skill；当前优先发票申报和报销内部流转记录，不做支付。用法见[F10指南](../../docs/guides/finance-f10.md)，本轮验证与制品见[F10验收记录](../../docs/guides/releases/2026-10-23-finance-f10-acceptance.md)。
 
 独立进程接收电子票原件、加密保留原字节、持久逐项操作和异常。提供归集、证据、轻量报销记录与真实内部人工审批；F2提供应付及通用付款/记账接口、专用人工批准和隔离闭环；真实支付、税务查验、ERP、归档未配置。原件哈希一致只说明内容一致，不表示官方验真。
 
@@ -58,3 +58,5 @@ F5新增严格`funding_case`：无票预付、员工已付款后的本人偿还�
 F6新增只读接入准备检查和仓库固定隔离验收入口；配置通过不构成正式验收或执行许可。正式接入逐项证据见[供应商清单](../../docs/guides/finance-provider-acceptance.md)。
 
 `profile=internal_records`提供显式内部记录部署：必填公司/制度/实际岗位，启动迁移前只读核对已有结构与全租户业务兼容性，不装配外部客户端/worker/回调。专用离线预检成功仍not_verified，模板待填写即blocked。`getFinanceCapabilities`读取实例模式；`listExpenseClaimSummaries`只投影九字段，默认本人20条、最大50，按单号/事由字面检索，详情另读原文。独立存储和真人决定不变。
+
+F10增加内部试用只读检查与恢复后人工续办验收，当前77项API/7 Skills；使用与未验边界见[F10指南](../../docs/guides/finance-f10.md)。

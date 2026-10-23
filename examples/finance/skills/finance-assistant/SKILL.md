@@ -1,7 +1,7 @@
 ---
 name: finance-assistant
 description: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。
-version: 0.10.0-f9
+version: 0.11.0-f10
 entry: true
 type: composite
 tool_names:

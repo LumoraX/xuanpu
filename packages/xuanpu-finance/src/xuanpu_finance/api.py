@@ -27,6 +27,7 @@ from xuanpu_finance.routes_f6 import router as f6_router
 from xuanpu_finance.routes_f7 import router as f7_router
 from xuanpu_finance.routes_f8 import router as f8_router
 from xuanpu_finance.routes_f9 import router as f9_router
+from xuanpu_finance.routes_f10 import router as f10_router
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -174,7 +175,7 @@ def create_app(
         raise ValueError("内部记录不能装配外部执行器或供应商")
     if profile == "internal_records" and worker is not None and worker.synthetic:
         raise ValueError("内部记录不能装配合成材料worker")
-    app = FastAPI(title="玄圃财务 F0–F9", version="2026.10.22.6", lifespan=_lifespan)
+    app = FastAPI(title="玄圃财务 F0–F10", version="2026.10.23.1", lifespan=_lifespan)
     app.state.profile = profile
     app.state.store, app.state.auth, app.state.mode = store, auth, mode
     app.state.objects = objects if objects is not None else worker.objects if worker is not None else None
@@ -193,13 +194,13 @@ def create_app(
     app.add_exception_handler(Exception, _unexpected)
     app.add_middleware(RequestBodyLimit)
     include_finance_routers(app, [router, f1_router, f2_router, callback_router, f3_router,
-                                  f4_router, f5_router, f6_router, f7_router, f8_router, f9_router])
+                                  f4_router, f5_router, f6_router, f7_router, f8_router, f9_router, f10_router])
 
     @app.get("/health")
     async def health() -> JSONResponse:
         """健康状态不表示任何票据已验真或业务已完成。"""
         failed = any(getattr(app.state, name) is not None for name in (
-            "worker_error", "settlement_worker_error", "compliance_worker_error"))
+            "worker_error", "settlement_worker_error", "compliance_worker_error", "notification_worker_error")) or app.state.instance_lock_lost
         return JSONResponse(
             status_code=503 if failed else 200,
             content={"status": "unavailable" if failed else "ok", "mode": app.state.mode},

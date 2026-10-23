@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, Any
 
 from xuanpu_finance.errors import FinanceError
 from xuanpu_finance.readiness.checks import build_report
-from xuanpu_finance.storage.common import decode
 from xuanpu_finance.storage.f5_settlement import FundingStore
 
 if TYPE_CHECKING:
@@ -20,6 +20,12 @@ POLICY_QUERIES = {
     "compliance": "SELECT p.version,p.enabled,p.generation,r.digest,r.data FROM finance_compliance_policy p JOIN finance_compliance_policy_revision r USING(tenant_id,legal_entity_id,version) WHERE p.tenant_id=$1 AND p.legal_entity_id=$2",
     "funding": "SELECT p.version,p.enabled,p.generation,r.digest,r.data FROM finance_funding_policy p JOIN finance_funding_policy_revision r USING(tenant_id,legal_entity_id,version) WHERE p.tenant_id=$1 AND p.legal_entity_id=$2",
 }
+
+
+def revision_object(raw: Any) -> dict[str, Any]:
+    """合法JSONB非对象保留原值供摘要及模型拒绝，查询或解析故障仍上抛。"""
+    value = json.loads(raw) if isinstance(raw, str) else raw
+    return value if isinstance(value, dict) else {"invalid_revision": value}
 
 
 class ReadinessStore(FundingStore):
@@ -69,7 +75,7 @@ class ReadinessStore(FundingStore):
             row = await conn.fetchrow(query, tenant, entity)
             if row is not None:
                 policies[kind] = {
-                    **decode(row["data"]),
+                    **revision_object(row["data"]),
                     **{k: row[k] for k in ("version", "enabled", "generation", "digest")},
                 }
         providers = await self._readiness_providers(conn, tenant, entity)
@@ -97,7 +103,7 @@ class ReadinessStore(FundingStore):
             "providers": providers,
             "catalog": [
                 {
-                    **decode(r["data"]),
+                    **revision_object(r["data"]),
                     **{
                         k: r[k]
                         for k in (
@@ -134,7 +140,7 @@ class ReadinessStore(FundingStore):
         )
         return [
             {
-                **decode(r["data"]),
+                **revision_object(r["data"]),
                 **{
                     k: r[k]
                     for k in (

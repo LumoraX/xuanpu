@@ -1,0 +1,118 @@
+- banner:
+  - generic: 玄圃 个人工作站
+  - generic: 已登录 · F8测试财务复核（飞书）
+  - button "通知"
+  - generic: F8测试财务复核 · 成员
+  - button "退出"
+- navigation:
+  - button "会话"
+  - button "功能"
+- main:
+  - complementary "财务记录与审批":
+    - heading "财务记录与审批" [level=2]
+    - button "关闭工作窗口": 收起
+    - text: 所属公司
+    - combobox "所属公司":
+      - option "F9隔离验收公司" [selected]
+    - button "我的收件记录"
+    - button "财务提醒"
+    - button "运行概览"
+    - button "内部试用检查"
+    - button "新建报销"
+    - button "本人记录"
+    - button "本人草稿"
+    - button "全部可看记录"
+    - button "待我审批"
+    - button "刷新"
+    - text: 记录状态
+    - combobox "记录状态":
+      - option "全部状态" [selected]
+      - option "草稿"
+      - option "已提交"
+      - option "审批中"
+      - option "审批通过"
+      - option "已驳回"
+      - option "已撤回"
+    - text: 单号或事由
+    - searchbox "单号或事由"
+    - button "查询记录"
+    - status: 内部试用检查已读取；正式环境尚未验证。
+    - heading "内部试用检查" [level=3]
+    - paragraph: 检查时间：2026-10-23T00:00:34.092722+00:00
+    - paragraph: 当前配置检查通过，仍需核对以下未验项目。
+    - paragraph: 正式环境尚未验证（not_verified）。内部检查不授予业务执行许可。
+    - paragraph: 模式：启用（enabled）
+    - paragraph: 实例独占锁：保持有效
+    - paragraph: 收件任务：运行中 · 站内提醒任务：运行中
+    - paragraph: 外部执行器：未装配
+    - paragraph: 公司资料：通过 · 公司基础资料须完整配置
+    - paragraph: 内部报销制度：通过 · 须启用有效内部记录制度并关闭发票查验要求
+    - paragraph: 费用分类：通过 · 启用制度须至少包含一个有效费用分类
+    - paragraph: 审批及异常岗位：通过 · 审批及异常责任岗位须有当前公司资格
+    - paragraph: 收件岗位分离：通过 · 须存在审批链之外的当前收件岗位
+    - paragraph: 当前授权代际：通过 · 现行授权须匹配同角色的正授权代际
+    - paragraph: 外部配置关闭：通过 · 本公司不得启用外部制度、渠道或目录
+    - paragraph: 模拟关闭：通过 · 结算及合规模拟须显式关闭
+    - paragraph: 运行模式：通过 · 当前模式须允许内部核对
+    - paragraph: 实例独占锁：通过 · 实例独占锁须保持有效
+    - paragraph: 内部任务：通过 · 原件收件和站内通知任务须实际运行
+    - paragraph: 外部执行器：通过 · 内部实例不得装配外部执行器或渠道注册表
+    - heading "当前制度与配置摘要" [level=4]
+    - paragraph: 公司配置摘要：51a984d7a07a6b32d64747e4b95955a08d9c9fef58dd02c3857c57f9a5b28b9d
+    - paragraph: 报销制度版本：1 · 制度代际：1 · 启用
+    - paragraph: 制度摘要：ae7e5ac5168cd82b31e4327943c45f8c949eb3247a113cd6ac301a51033571e2
+    - heading "固定未验项目" [level=4]
+    - paragraph: 正式制度：尚未验证
+    - paragraph: 生产身份：尚未验证
+    - paragraph: 数据库与原件隔离：尚未验证
+    - paragraph: 异机恢复：尚未验证
+    - paragraph: 真实模型：尚未验证
+    - paragraph: 生产负载：尚未验证
+    - button "重新检查"
+  - heading "功能" [level=1]
+  - paragraph: 平时直接在对话里说出需求，也可以在这里查看记录、自己操作。
+  - article:
+    - heading "交办工作" [level=2]
+    - paragraph: 查看材料处理进展，确认行动项并下载成果。关闭页面后仍会继续处理。
+    - button "查看我的工作"
+  - article:
+    - heading "发票报销记录与审批" [level=2]
+    - paragraph: 记录发票和报销内容、选择附件、查看流转进展并处理本人审批。
+    - button "打开财务辅助页" [expanded]
+  - article:
+    - heading "我的文件" [level=2]
+    - paragraph: 文件夹、附件、版本和回收站，始终属于你的个人空间。
+    - button "打开文件"
+  - article:
+    - heading "事项与待办" [level=2]
+    - paragraph: 查看进展、关联资料，记录下一步工作。
+    - button "打开事项"
+    - button "查看待办"
+  - article:
+    - heading "日程" [level=2]
+    - paragraph: 安排自己的时间，查看日程和到期提醒。
+    - button "打开日程"
+  - article:
+    - heading "个人能力与设置" [level=2]
+    - paragraph: 沉淀工作方法，设置助手的称呼、风格和时区。
+    - button "个人能力"
+    - button "助手设置"
+  - article:
+    - heading "提醒" [level=2]
+    - paragraph: 新建提醒、调整时间，查看已提醒或已取消的记录。
+    - button "管理提醒"
+  - article:
+    - heading "业务跟进" [level=2]
+    - paragraph: 查看需要核实、安排或继续处理的工作，在对话中确认决定。
+    - button "查看业务跟进"
+  - article:
+    - heading "通知" [level=2]
+    - paragraph: 查看到期提醒和送达情况，离线期间的通知也会保留。
+    - button "查看通知"
+- contentinfo:
+  - link "管理员入口":
+    - /url: "?admin=1"
+  - text: ·
+  - link "员工入口":
+    - /url: "?"
+- status

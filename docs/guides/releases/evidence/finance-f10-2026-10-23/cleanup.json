@@ -1,0 +1,32 @@
+{
+  "scope": "only own F10 isolated resources",
+  "completed_at": "2026-10-23T01:12:52.962778+00:00",
+  "container": "xuanpu-finance-f10-pg",
+  "container_id": "acbb759e9e0827c88f631cf64114e7df205eff2b64e9f1bb6d7da6fca29b6155",
+  "removed_volumes": [
+    "4302ff258a9dc3389521ac25295e9e7dd2a30bbeb78197230f13a1abeea522ba"
+  ],
+  "removed_private_dsn_files": [
+    "/tmp/xuanpu-finance-f10-dsn",
+    "/tmp/xuanpu-finance-f10-browser-dsn",
+    "/tmp/xuanpu-finance-f10-browser-final-dsn"
+  ],
+  "ports_closed": [
+    49957,
+    59060,
+    59061,
+    51400,
+    51401
+  ],
+  "browser_ready_files_removed": true,
+  "browser_services_exit_code": [
+    0,
+    0
+  ],
+  "created_browser_tabs_closed": true,
+  "original_checkout_clean": true,
+  "retained_artifacts": "/tmp/xuanpu-finance-f10-build",
+  "retained_image": "xuanpu-finance:2026.10.23.1",
+  "production_touched": false,
+  "databases_and_roles_before_removal": "pre-cleanup.json exact four databases / finance_test only / zero temporary schemas"
+}
