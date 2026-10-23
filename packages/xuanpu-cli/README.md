@@ -124,3 +124,8 @@ work-tasks提供list/get/events/create/capability/cancel/decide/reconcile；task
 ## 本人的企业只读连接
 
 `xuanpu connections` 使用 `--credentials` 指向权限600的私有JSON档案，字段仅`base_url`、`api_key`、`act_as_user`。不提供tenant/user/key命令行覆盖：`list`列本人连接；`read <identifier>`读本人基础资料；`revoke <identifier> <consent_id> --request-id <稳定请求> --expected-version <当前版本>`撤销；`confirm`只显示浏览器确认地址，不创建或扩大同意。个人同意必须由员工本人登录浏览器确认，API key及act-as不能代替。命令已通过帮助和行为测试；真实企业接入按服务端验收记录判断。
+
+
+## 组织与职责
+
+`xuanpu organization --credentials <权限600的私有JSON档案>`使用固定调用身份。支持me、directory、list/get/create/change（集合为units、positions、memberships、roles）、authority、preview-authority、apply-authority、preview-import、get-import、apply-import。写操作用`--body`保留request_id、expected_version及明确selected_changes；分页用`--limit`和`--cursor`。目标user_id不是调用身份覆盖，服务端仍按组织范围授权。

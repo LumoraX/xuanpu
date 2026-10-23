@@ -15,6 +15,10 @@ if TYPE_CHECKING:
 class WorkspaceStore(Protocol):
     """领域在员工锁内检查关系、配额、版本并原子提交审计。"""
 
+    async def file_source(self, tenant: str, user: str, item_id: str, revision: int) -> tuple[dict[str, Any], dict[str, Any]] | None:
+        """内部只读固定版本；调用者负责当前身份和显式发布授权。"""
+        ...
+
     def transaction(
         self,
         tenant: str,

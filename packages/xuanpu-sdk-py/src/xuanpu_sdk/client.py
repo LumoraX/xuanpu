@@ -23,6 +23,7 @@ from xuanpu_sdk.models import (
     UserUsage,
     WorkTask,
 )
+from xuanpu_sdk.organization import OrganizationClient
 from xuanpu_sdk.sse import parse_sse
 from xuanpu_sdk.task_definitions import TaskDefinitionClient
 
@@ -387,7 +388,7 @@ class Admin:
         return [UserUsage.from_json(item) for item in body["usage"]]
 
 
-class XuanpuClient(TaskDefinitionClient,ConnectionClient):
+class XuanpuClient(TaskDefinitionClient, ConnectionClient, OrganizationClient):
     """平台客户端。
 
     用法::

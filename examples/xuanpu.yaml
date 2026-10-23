@@ -166,3 +166,18 @@ connections:
   enabled: false
   tenants: []
   max_consent_seconds: 86400
+
+# R3-B组织岗位与职责：默认关闭，按租户明确启用。
+organization:
+  enabled: false
+  tenants: []
+
+# R3-C候选默认关闭，完成上下文保护和发布验收后方可试点。
+shared_matters:
+  enabled: false
+  tenants: []
+  max_matters: 1000
+  max_material_bytes: 20971520
+  max_storage_bytes: 1073741824
+  copy_lease_seconds: 30
+  max_concurrent_copies: 2

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import contextmanager
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
@@ -18,6 +19,8 @@ from xuanpu_server.identity.models import (
 from xuanpu_server.reminders.memory import InMemoryReminderStore
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator
+
     from xuanpu_server.controlplane import ControlPlaneStore
     from xuanpu_server.identity.models import (
         DisabledReason,
@@ -30,6 +33,7 @@ if TYPE_CHECKING:
         UserRecord,
         UserStatus,
     )
+    from xuanpu_server.organization.user_profiles import ProfileUpdate
     from xuanpu_server.tenancy import TenantRole
 
 
@@ -145,6 +149,11 @@ class InMemoryIdentityStore:
         found.sort(key=lambda user: user.user_id)
         return found[: query.limit]
 
+    async def count_users(self, tenant_id: str, *, status: UserStatus | None = None) -> int:
+        """同步统计本租户已提交身份，不混入其他租户同名员工。"""
+        return sum(user.tenant_id == tenant_id and (status is None or user.status == status)
+                   for user in self._users.values())
+
     async def set_user_role(
         self, tenant_id: str, user_id: str, role: TenantRole, *, keep_an_admin: bool = False
     ) -> UserRecord:
@@ -181,9 +190,17 @@ class InMemoryIdentityStore:
                 status=status,
                 disabled_reason=reason,
                 disabled_at=at if disabled else None,
+                lifecycle_epoch=user.lifecycle_epoch + 1,
             )
             if disabled:
                 self._reminders.disable_user(tenant_id, user_id, at)
+                from xuanpu_server.coordination.memory import InMemoryCoordinationStore
+                from xuanpu_server.organization.events import disabled_event
+
+                coordination = self._control_plane.coordination_store
+                if not isinstance(coordination, InMemoryCoordinationStore):
+                    raise TypeError('内存身份存储要求内存协调后端')
+                coordination.append_identity_event(disabled_event(tenant_id, user_id, user.lifecycle_epoch + 1, at))
             return True
 
     async def update_user_profile(
@@ -194,13 +211,23 @@ class InMemoryIdentityStore:
         display_name: str,
         avatar_url: str | None,
         last_login_at: float | None = None,
+        source: str = "local",
     ) -> UserRecord:
         """刷新显示名与头像，可选地更新登录时间。"""
         async with self._lock:
             user = self._require_user(tenant_id, user_id)
+            from xuanpu_server.coordination.memory import InMemoryCoordinationStore
+
+            coordination = self._control_plane.coordination_store
+            if not isinstance(coordination, InMemoryCoordinationStore):
+                raise TypeError('内存身份存储要求内存协调后端')
+            authority = coordination.profile_source(tenant_id)
             updated = replace(
                 user,
-                display_name=display_name,
+                display_name=display_name if authority is None or authority == source else user.display_name,
+                profile_version=user.profile_version + int(
+                    ((authority is None or authority == source) and display_name != user.display_name)
+                    or avatar_url != user.avatar_url),
                 avatar_url=avatar_url,
                 last_login_at=last_login_at if last_login_at is not None else user.last_login_at,
             )
@@ -215,6 +242,26 @@ class InMemoryIdentityStore:
                 return False
             self._users[(tenant_id, user_id)] = replace(user, unverified_since=at)
             return True
+
+    @contextmanager
+    def organization_profiles(self, updates: Iterable[ProfileUpdate]) -> Iterator[None]:
+        """内存协调提交的同步写集；无await切点，异常恢复所有姓名及版本。"""
+        before: dict[tuple[str, str], UserRecord] = {}
+        after: dict[tuple[str, str], UserRecord] = {}
+        for update in updates:
+            user = self._require_user(update.tenant_id, update.user_id)
+            if (user.status != 'active' or user.lifecycle_epoch != update.expected_epoch
+                    or user.profile_version != update.expected_version or user.display_name != update.expected_name):
+                raise ConflictError('员工资料已改变，请重新预览')
+            key = (update.tenant_id, update.user_id)
+            before[key] = user
+            after[key] = replace(user, display_name=update.display_name, profile_version=user.profile_version + 1)
+        self._users.update(after)
+        try:
+            yield
+        except BaseException:
+            self._users.update(before)
+            raise
 
     async def clear_user_unverified(self, tenant_id: str, user_id: str) -> bool:
         """清掉查不到标记。"""

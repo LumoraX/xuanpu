@@ -24,6 +24,8 @@ from pydantic import (
 
 from xuanpu_server.connections.models import ConnectionConfig
 from xuanpu_server.identity.config import IdentityConfig, normalize_origin
+from xuanpu_server.organization.config import OrganizationConfig
+from xuanpu_server.shared_matters.models import SharedMatterConfig
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -306,6 +308,8 @@ class ServerConfig(_Section):
     task_triggers: TriggerConfig = TriggerConfig()
     task_activity: ActivityConfig = ActivityConfig()
     connections: ConnectionConfig = ConnectionConfig()
+    organization: OrganizationConfig = OrganizationConfig()
+    shared_matters: SharedMatterConfig = SharedMatterConfig()
     audit: AuditConfig = AuditConfig()
     metrics: MetricsConfig = MetricsConfig()
     public_url: str | None = None

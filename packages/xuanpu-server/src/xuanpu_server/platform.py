@@ -34,6 +34,9 @@ from xuanpu_server.identity.wecom_login import WeComLogin
 from xuanpu_server.ids import new_id
 from xuanpu_server.metrics import PlatformMetrics
 from xuanpu_server.objectstore import LocalObjectStore
+from xuanpu_server.organization.lifecycle import OrganizationLifecycle
+from xuanpu_server.organization.service import OrganizationService
+from xuanpu_server.organization.sync import OrganizationSync
 from xuanpu_server.packages import PackageRegistry
 from xuanpu_server.proactive.service import ProactiveService
 from xuanpu_server.proactive.worker import ProactiveWorker
@@ -49,6 +52,9 @@ from xuanpu_server.runtime.assembler import (
 from xuanpu_server.runtime.connector_process import install_kernel_mcp_log_guard
 from xuanpu_server.runtime.events import SubmissionIndex
 from xuanpu_server.runtime.sessions import SessionManager
+from xuanpu_server.shared_matters.materials import SharedMaterials
+from xuanpu_server.shared_matters.object_recovery import PublicationRecovery
+from xuanpu_server.shared_matters.service import SharedMatterService
 from xuanpu_server.task_triggers.models import TriggerConfig
 from xuanpu_server.task_triggers.service import TaskDefinitionService
 from xuanpu_server.task_triggers.worker import TriggerWorker
@@ -86,10 +92,12 @@ if TYPE_CHECKING:
     from xuanpu_server.identity.service import IdentitySettings
     from xuanpu_server.identity.store import IdentityStore
     from xuanpu_server.objectstore import ObjectStore
+    from xuanpu_server.organization.config import OrganizationConfig
     from xuanpu_server.runtime.instance_guard import InstanceGuard
     from xuanpu_server.runtime.models import ModelClientFactory
     from xuanpu_server.runtime.sandbox import SandboxProvider
     from xuanpu_server.secrets import SecretVault
+    from xuanpu_server.shared_matters.models import SharedMatterConfig
 
 ROOT_PRINCIPAL = Principal(role="platform_admin", tenant_id=None, key_id="root")
 
@@ -134,6 +142,8 @@ class Platform:
         task_triggers: TriggerConfig | None = None,
         task_activity: ActivityConfig | None = None,
         connections: ConnectionConfig | None = None,
+        organization: OrganizationConfig | None = None,
+        shared_matters: SharedMatterConfig | None = None,
         proactive_interval: float = 1800.0,
         proactive_scan_seconds: float = 60.0,
         now: Callable[[], float] = time.time,
@@ -191,6 +201,12 @@ class Platform:
             runtimes_live=lambda: self.runtimes.live_runtimes(),
         )
         self.audit = AuditLog(store, now=now, metrics=self.metrics)
+        self.coordination = store.coordination_store
+        self.coordination.bind_identity(identity_store)
+        self.organization = OrganizationService(self.coordination, identity_store, store,
+                                                config=organization, now=now)
+        self.organization_lifecycle = OrganizationLifecycle(self.organization)
+        self.shared_matters = SharedMatterService(self.organization, config=shared_matters)
         self.identity = IdentityService(
             store=identity_store,
             control_plane=store,
@@ -219,11 +235,14 @@ class Platform:
         self.wecom_provider = WeComClient()
         self.connection_tokens = TokenBroker(self.connections,vault,self.wecom_provider)
         self.connection_broker = CredentialBroker(self.connections,self.connection_tokens,self.wecom_provider)
+        self.organization_sync = OrganizationSync(self.organization, self.connection_broker)
         self.wecom_login = WeComLogin(self.connections,self.connection_tokens,self.wecom_provider,identity_settings)
         self.workspace = WorkspaceService(
             store=store.workspace_store, control=store, identity=identity_store,
             objects=self.objects, now=now,
         )
+        self.shared_materials = SharedMaterials(self.shared_matters, self.workspace.store, self.objects)
+        self.shared_publication_recovery = PublicationRecovery(self.shared_materials)
         store.workspace_store.configure_activity(task_activity or ActivityConfig())
         self.quota = QuotaGuard(store, now=now)
         self.packages = PackageRegistry(
@@ -269,6 +288,7 @@ class Platform:
         self.proactive_worker = ProactiveWorker(self.proactive, scan_seconds=proactive_scan_seconds)
         # 员工停用后关掉他名下的会话：身份域不依赖运行时，监听者在这里接上会话管理
         self.identity.disabling.register("close_work_tasks", self.task_registry)
+        self.identity.disabling.register("revoke_organization", self.organization_lifecycle)
         self.identity.disabling.register("close_task_triggers", self.task_definitions)
         self.identity.disabling.register(
             CLOSE_SESSIONS, CloseUserSessions(store=store, sessions=self.sessions)
@@ -323,6 +343,10 @@ class Platform:
             if self._closed or self._instance_guard.lost:
                 raise RuntimeError("启动准备期间已关闭或丢失持有权")
             await self.sessions.start()
+            await self.organization_lifecycle.recover_all()
+            self.organization_lifecycle.start()
+            await self.shared_publication_recovery.recover_all()
+            self.shared_publication_recovery.start()
             await self.task_registry.open()
             self.trigger_worker.start()
             self.identity.start()
@@ -341,7 +365,8 @@ class Platform:
             self._closed = True
             self.sessions.stop_accepting()
             errors: list[BaseException] = []
-            actions = (self.trigger_worker.close, self.task_registry.close, self.proactive_worker.close, self.reminders.close,
+            actions = (self.shared_publication_recovery.close, self.shared_materials.publications.close,
+                       self.organization_lifecycle.close, self.trigger_worker.close, self.task_registry.close, self.proactive_worker.close, self.reminders.close,
                        self.notification_sender.close, self.assistant.close,
                        self.identity.maintenance.close, self.identity.disabling.close,
                        self._shutdown_sessions, self.runtimes.close, self.identity.close, self.wecom_provider.close)

@@ -24,6 +24,7 @@ if TYPE_CHECKING:
         SessionRecord,
         UsageRecord,
     )
+    from xuanpu_server.coordination.store import CoordinationStore
     from xuanpu_server.reminders.store import ReminderStore
     from xuanpu_server.runtime.receipt_store import ReceiptStore
     from xuanpu_server.tenancy import ApiKeyRecord, Tenant
@@ -33,6 +34,11 @@ if TYPE_CHECKING:
 @runtime_checkable
 class ControlPlaneStore(Protocol):
     """控制面存储。"""
+
+    @property
+    def coordination_store(self) -> CoordinationStore:
+        """组织和跨员工业务共用的短事务存储。"""
+        ...
 
     @property
     def connection_store(self) -> ConnectionStore:

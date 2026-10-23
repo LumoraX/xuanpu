@@ -99,6 +99,9 @@ class PostgresControlPlane:
         from xuanpu_server.connections.postgres import PostgresConnectionStore
 
         self.connection_store = PostgresConnectionStore(pool,namespace)
+        from xuanpu_server.coordination.postgres import PostgresCoordinationStore
+
+        self.coordination_store = PostgresCoordinationStore(pool, namespace)
         self.workspace_store = PostgresWorkspaceStore(pool, namespace=namespace)
         self.operation_receipts = PostgresReceiptStore(pool, namespace)
         self._pool = pool

@@ -28,6 +28,15 @@ if TYPE_CHECKING:
 class InMemoryWorkspaceStore:
     """按员工加锁，私有副本验证后一次提交。"""
 
+    async def file_source(self, tenant: str, user: str, item_id: str, revision: int) -> tuple[dict[str, Any], dict[str, Any]] | None:
+        """同步复制已提交元数据，不嵌套另一份员工写事务。"""
+        state = self._states.get((tenant, user))
+        if state is None:
+            return None
+        item = state.items.get(item_id)
+        version = next((r for r in state.versions.get(item_id, []) if r['revision'] == revision), None)
+        return (deepcopy(item), deepcopy(version)) if item is not None and version is not None else None
+
     def __init__(self, audit: Callable[[list[AuditRecord]], None]) -> None:
         """注入同步批量审计，在提交前记录。"""
         self._audit = audit

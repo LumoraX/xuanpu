@@ -58,6 +58,8 @@ _USER_FIELDS = (
     "last_login_at",
     "disabled_at",
     "unverified_since",
+    "lifecycle_epoch",
+    "profile_version",
 )
 _USER_COLUMNS = ", ".join(_USER_FIELDS)
 _USER_COLUMNS_OF_U = ", ".join(f"u.{name}" for name in _USER_FIELDS)
@@ -98,6 +100,8 @@ class PostgresUserTables:
         """
         self._tenant_table = namespace.table("tenant")
         self._connection_table = namespace.table("connection_record")
+        self._authority_table = namespace.table("organization_authority")
+        self._coordination_outbox = namespace.table("coordination_outbox")
         self._proactive_tables = [namespace.table(name) for name in ("proactive_check", "proactive_followup")]
         self._reminder_table = namespace.table("reminder")
         self._delivery_table = namespace.table("notification_delivery")
@@ -137,7 +141,7 @@ class PostgresUserTables:
             async with self._pool.acquire() as conn, conn.transaction():
                 await conn.execute(
                     f"INSERT INTO {self._t['user']} ({_USER_COLUMNS}) "
-                    "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+                    "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
                     user.tenant_id,
                     user.user_id,
                     user.display_name,
@@ -149,6 +153,8 @@ class PostgresUserTables:
                     user.last_login_at,
                     user.disabled_at,
                     user.unverified_since,
+                    user.lifecycle_epoch,
+                    user.profile_version,
                 )
                 if identity is not None:
                     await self._insert_identity(conn, identity)
@@ -213,6 +219,12 @@ class PostgresUserTables:
         )
         return [_user(row) for row in rows]
 
+    async def count_users(self, tenant_id: str, *, status: UserStatus | None = None) -> int:
+        """聚合统计不受当前页长影响，同池读取可复用协调连接。"""
+        rows = await self._fetch(f"SELECT COUNT(*) AS total FROM {self._t['user']} WHERE tenant_id=$1 "
+                                 'AND ($2::text IS NULL OR status=$2)', tenant_id, status)
+        return int(rows[0]['total'])
+
     async def _require_another_admin(self, conn: Connection, tenant_id: str, user_id: str) -> None:
         """锁住租户里全部启用的管理员行；``user_id`` 是其中唯一一个时报冲突。须在事务里调用。
 
@@ -269,7 +281,7 @@ class PostgresUserTables:
             changed = affected(
                 await conn.execute(
                     f"UPDATE {self._t['user']} "
-                    "SET status = $3, disabled_reason = $4, disabled_at = $5 "
+                    "SET status = $3, disabled_reason = $4, disabled_at = $5, lifecycle_epoch=lifecycle_epoch+1 "
                     "WHERE tenant_id = $1 AND user_id = $2 AND status <> $3",
                     tenant_id,
                     user_id,
@@ -279,6 +291,17 @@ class PostgresUserTables:
                 )
             )
             if status == "disabled":
+                if changed:
+                    from xuanpu_server.organization.events import disabled_event
+
+                    epoch = await conn.fetchval(
+                        f"SELECT lifecycle_epoch FROM {self._t['user']} WHERE tenant_id=$1 AND user_id=$2",
+                        tenant_id, user_id)
+                    event = disabled_event(tenant_id, user_id, epoch, at)
+                    await conn.execute(
+                        f"INSERT INTO {self._coordination_outbox} (tenant_id,id,kind,entity_id,entity_version,record) "
+                        "VALUES($1,$2,$3,$4,$5,$6::jsonb) ON CONFLICT DO NOTHING",
+                        tenant_id, event.id, event.kind, event.entity_id, event.entity_version, event.model_dump_json())
                 for table in self._proactive_tables:
                     await conn.execute(
                         f"UPDATE {table} SET record=record || jsonb_build_object('status','resolved', "
@@ -317,18 +340,22 @@ class PostgresUserTables:
         display_name: str,
         avatar_url: str | None,
         last_login_at: float | None = None,
+        source: str = "local",
     ) -> UserRecord:
         """刷新显示名与头像，可选地更新登录时间。"""
-        row = await self._fetchrow(
-            f"UPDATE {self._t['user']} SET display_name = $3, avatar_url = $4, "
-            "last_login_at = COALESCE($5::float8, last_login_at) "
-            f"WHERE tenant_id = $1 AND user_id = $2 RETURNING {_USER_COLUMNS}",
-            tenant_id,
-            user_id,
-            display_name,
-            avatar_url,
-            last_login_at,
-        )
+        async with self._pool.acquire() as conn, conn.transaction():
+            # 与来源切换统一租户锁；不能在预览应用期间覆盖本地权威字段。
+            await conn.fetchval(f"SELECT tenant_id FROM {self._tenant_table} WHERE tenant_id=$1 FOR UPDATE", tenant_id)
+            authority = await conn.fetchval(
+                f"SELECT record->>'source' FROM {self._authority_table} WHERE tenant_id=$1 "
+                "AND object_type='user' AND field='display_name'", tenant_id)
+            row = await conn.fetchrow(
+                f"UPDATE {self._t['user']} SET display_name = CASE WHEN $6 THEN $3 ELSE display_name END, avatar_url = $4, "
+                "last_login_at = COALESCE($5::float8, last_login_at), "
+                "profile_version=profile_version+CASE WHEN ($6 AND display_name IS DISTINCT FROM $3) OR avatar_url IS DISTINCT FROM $4 THEN 1 ELSE 0 END "
+                f"WHERE tenant_id = $1 AND user_id = $2 RETURNING {_USER_COLUMNS}",
+                tenant_id, user_id, display_name, avatar_url, last_login_at,
+                authority is None or authority == source)
         if row is None:
             raise NotFoundError(f"用户 {user_id!r} 不存在")
         return _user(row)

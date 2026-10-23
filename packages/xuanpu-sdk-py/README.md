@@ -175,3 +175,8 @@ result = await client.decide_work_task(task.task_id, {
 ```
 
 `WorkTask` 直接映射服务端 `task_id/status/state_version`，完整响应保存在 `record`。`accepted` 表示已受理；`succeeded` 才表示成果与必要本人决定已完成。取消响应只说明已登记的停止状态，SDK不会推断停止成功，也不会重试未知结果的写操作。403、404、409照常抛出 `XuanpuError`。
+
+
+## 组织与职责
+
+客户端提供organization_me、organization_directory、list_organization、get_organization、create_organization、change_organization、organization_authority、preview_organization_authority、apply_organization_authority、preview_organization_import、get_organization_import和apply_organization_import。写入须传固定request_id，变更须传expected_version。目录应用只提交明确selected_changes及source_revision，不自动应用全量，也不改变客户端身份。

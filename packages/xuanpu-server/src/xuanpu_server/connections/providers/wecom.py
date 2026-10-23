@@ -122,40 +122,9 @@ class WeComClient:
         return {'data':allowed,'missing_fields':[k for k in ('name','position','department') if k not in allowed]}
 
     async def directory(self,token: str) -> dict[str,Any]:
-        """仅预览应用可见部门和成员，不推断全企业完整性。"""
-        raw=await self.get('/cgi-bin/department/list',{'access_token':token})
-        departments=raw.get('department')
-        if not isinstance(departments,list) or len(departments)>100:
-            raise WeComError()
-        result=[]
-        for department in departments:
-            if not isinstance(department,dict) or type(department.get('id')) is not int:
-                raise WeComError()
-            item: dict[str,Any]={'id':department['id']}
-            if isinstance(department.get('name'),str) and len(department['name'])<=256:
-                item['name']=department['name']
-            if type(department.get('parentid')) is int:
-                item['parentid']=department['parentid']
-            members=await self.get('/cgi-bin/user/simplelist',{'access_token':token,
-                'department_id':str(department['id']),'fetch_child':'0'})
-            users=members.get('userlist')
-            if not isinstance(users,list) or len(users)>1000:
-                raise WeComError()
-            projected=[]
-            for user in users:
-                if not isinstance(user,dict) or not isinstance(user.get('userid'),str) or not 1<=len(user['userid'].encode())<=64:
-                    raise WeComError()
-                member: dict[str,Any]={'userid':user['userid']}
-                if isinstance(user.get('name'),str) and len(user['name'])<=256:
-                    member['name']=user['name']
-                groups=user.get('department')
-                if isinstance(groups,list) and len(groups)<=1000 and all(type(v) is int for v in groups):
-                    member['department']=groups
-                projected.append(member)
-            item['members']=projected
-            result.append(item)
-        return {'departments':result,'scope':'application_visible','complete':False,
-                'completeness_reason':'企业应用可见范围不等于全企业；此处不授权缺失成员停用'}
+        """采集应用可见范围，逐页保留摘要和失败证据。"""
+        from xuanpu_server.connections.providers.wecom_directory import capture
+        return await capture(self.get,token)
 
     async def close(self) -> None:
         """关闭HTTP资源。"""
