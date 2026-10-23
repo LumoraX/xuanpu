@@ -1,0 +1,56 @@
+{
+  "status": "Approved",
+  "reviews": {
+    "design-review": {
+      "status": "Approved",
+      "status_field": "verdict",
+      "evidence": "design-review.json",
+      "sha256": "44a98be97b3938648949d496ace54e082c3320baeb77d11d863676c896130c97"
+    },
+    "task1-spec": {
+      "status": "Approved",
+      "status_field": "status",
+      "evidence": "task1-spec.json",
+      "sha256": "e285b7bf67e7c090ce100c2666e2cc6cebbfbafc8a828d7263a66442482823ab"
+    },
+    "task1-quality": {
+      "status": "Approved",
+      "status_field": "status",
+      "evidence": "task1-quality.json",
+      "sha256": "e61529d3b69ab5689b69f9feba523978276f5ae7a4849c7cf26e8bcc2b9939f8"
+    },
+    "task2-spec": {
+      "status": "Approved",
+      "status_field": "status",
+      "evidence": "task2-spec.json",
+      "sha256": "e9f35d741805b437ff98297a6edae1014893d2ef4b2cb024bd7f8fa0682730f1"
+    },
+    "task2-quality": {
+      "status": "Approved",
+      "status_field": "status",
+      "evidence": "task2-quality.json",
+      "sha256": "f9f95549fa547e09d2772dc0f56778f5b9ca0e8c390a1d7cffe3f8f4a7d896a9"
+    },
+    "whole-spec": {
+      "status": "Approved",
+      "status_field": "status",
+      "evidence": "whole-spec.json",
+      "sha256": "d91ef38e5fef1b516c5fe3e0f9338cecd019d79762ee94f28e08d5c69f16c191"
+    },
+    "whole-quality": {
+      "status": "Approved",
+      "status_field": "status",
+      "evidence": "whole-quality.json",
+      "sha256": "7a10f1582cf929986d61913bbcecf11b4ce352b68ba20a35edb218e03e12106f"
+    },
+    "artifact-quality": {
+      "status": "Approved",
+      "status_field": "status",
+      "evidence": "artifact-quality.json",
+      "sha256": "c25b989bf53c28805e0033c57d39ac3eff704cf78e964348cecde9348a5ce0f2"
+    }
+  },
+  "production_status": "not_verified",
+  "independent_full_or_quick_rerun": false,
+  "note": "全量与quick由主执行者独占PG运行；独立审查重算JUnit与实际制品。任务一质量独立复跑不接PG的凭据专项；任务二质量独立复跑真实PG联合专项，均不能等同独立重跑全量。"
+}

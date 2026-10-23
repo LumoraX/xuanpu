@@ -1,7 +1,7 @@
 ---
 name: finance-assistant
 description: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。
-version: 0.14.0-f13
+version: 0.15.0-f14
 entry: true
 type: composite
 tool_names:
@@ -19,6 +19,8 @@ child_skills:
 先调用getFinanceCapabilities；读取失败或字段非法时停止并说明。profile=internal_records时只处理内部收件元数据、普通报销草稿、记录查询和人工动作预检；不调用应付、资金、支付、记账、查验、红字、正式档案或通用接入检查接口。实例能力不是个人授权、审批或上线验收。
 
 ## internal_records 分支
+
+备份、恢复或停机核对失败时保留实际失败与原操作线索，交受信管理员核对固定凭据和独立备份；模型不得读取凭据、调整权限、执行维护或代发批准。管理员恢复合法输入并核对实际维护结果后，再按当前岗位与单据状态续办；维护成功不等于业务批准或生产验收。
 
 profile=internal_records：按目标交expense-reimbursement准备普通草稿与摘要查询、invoice-intake读取本人收件元数据、finance-review准备当前报销步骤预检。上传、原件及实际决定交人工入口。完成这条分支后返回，不执行下文general流程，不读取资金规则。
 

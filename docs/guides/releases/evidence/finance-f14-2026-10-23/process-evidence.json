@@ -1,0 +1,663 @@
+{
+  "task": 2,
+  "new_files": [
+    "packages/xuanpu-finance/tests/test_f14_process.py",
+    "packages/xuanpu-finance/tests/f14_process_helpers.py"
+  ],
+  "product_changes_by_task2": false,
+  "baseline": "da624a9",
+  "red": {
+    "tests": 1,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 0
+  },
+  "green": {
+    "tests": 1,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "sequential_regression": {
+    "tests": 28,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "f14_process": {
+    "maintenance": {
+      "bad_credentials": [
+        {
+          "action": "backup",
+          "field": "dsn",
+          "input": "0644",
+          "exit": 1,
+          "output": {
+            "status": "failed",
+            "code": "MAINTENANCE_INPUT_INVALID"
+          },
+          "stderr_empty": true,
+          "secrets_paths_trace_absent": true,
+          "source_all_tables_and_ciphertext_equal": true,
+          "empty_target_all_tables_and_ciphertext_equal": true,
+          "target_root_absent": true,
+          "package_unpublished": true,
+          "temporary_stage_entries_before": {
+            "backup_destination_parent": [],
+            "source_object_root_parent": [],
+            "restore_target_object_root_parent": []
+          },
+          "temporary_stage_entries_after": {
+            "backup_destination_parent": [],
+            "source_object_root_parent": [],
+            "restore_target_object_root_parent": []
+          },
+          "temporary_stage_entries_equal": true,
+          "temporary_stage_absent": true,
+          "pg_tool_calls": 0,
+          "database_connection_observation": "not_inferred_from_snapshot"
+        },
+        {
+          "action": "backup",
+          "field": "dsn",
+          "input": "symlink",
+          "exit": 1,
+          "output": {
+            "status": "failed",
+            "code": "MAINTENANCE_INPUT_INVALID"
+          },
+          "stderr_empty": true,
+          "secrets_paths_trace_absent": true,
+          "source_all_tables_and_ciphertext_equal": true,
+          "empty_target_all_tables_and_ciphertext_equal": true,
+          "target_root_absent": true,
+          "package_unpublished": true,
+          "temporary_stage_entries_before": {
+            "backup_destination_parent": [],
+            "source_object_root_parent": [],
+            "restore_target_object_root_parent": []
+          },
+          "temporary_stage_entries_after": {
+            "backup_destination_parent": [],
+            "source_object_root_parent": [],
+            "restore_target_object_root_parent": []
+          },
+          "temporary_stage_entries_equal": true,
+          "temporary_stage_absent": true,
+          "pg_tool_calls": 0,
+          "database_connection_observation": "not_inferred_from_snapshot"
+        },
+        {
+          "action": "backup",
+          "field": "key",
+          "input": "0644",
+          "exit": 1,
+          "output": {
+            "status": "failed",
+            "code": "MAINTENANCE_INPUT_INVALID"
+          },
+          "stderr_empty": true,
+          "secrets_paths_trace_absent": true,
+          "source_all_tables_and_ciphertext_equal": true,
+          "empty_target_all_tables_and_ciphertext_equal": true,
+          "target_root_absent": true,
+          "package_unpublished": true,
+          "temporary_stage_entries_before": {
+            "backup_destination_parent": [],
+            "source_object_root_parent": [],
+            "restore_target_object_root_parent": []
+          },
+          "temporary_stage_entries_after": {
+            "backup_destination_parent": [],
+            "source_object_root_parent": [],
+            "restore_target_object_root_parent": []
+          },
+          "temporary_stage_entries_equal": true,
+          "temporary_stage_absent": true,
+          "pg_tool_calls": 0,
+          "database_connection_observation": "not_inferred_from_snapshot"
+        },
+        {
+          "action": "backup",
+          "field": "key",
+          "input": "symlink",
+          "exit": 1,
+          "output": {
+            "status": "failed",
+            "code": "MAINTENANCE_INPUT_INVALID"
+          },
+          "stderr_empty": true,
+          "secrets_paths_trace_absent": true,
+          "source_all_tables_and_ciphertext_equal": true,
+          "empty_target_all_tables_and_ciphertext_equal": true,
+          "target_root_absent": true,
+          "package_unpublished": true,
+          "temporary_stage_entries_before": {
+            "backup_destination_parent": [],
+            "source_object_root_parent": [],
+            "restore_target_object_root_parent": []
+          },
+          "temporary_stage_entries_after": {
+            "backup_destination_parent": [],
+            "source_object_root_parent": [],
+            "restore_target_object_root_parent": []
+          },
+          "temporary_stage_entries_equal": true,
+          "temporary_stage_absent": true,
+          "pg_tool_calls": 0,
+          "database_connection_observation": "not_inferred_from_snapshot"
+        },
+        {
+          "action": "restore",
+          "field": "dsn",
+          "input": "0644",
+          "exit": 1,
+          "output": {
+            "status": "failed",
+            "code": "MAINTENANCE_INPUT_INVALID"
+          },
+          "stderr_empty": true,
+          "secrets_paths_trace_absent": true,
+          "source_all_tables_and_ciphertext_equal": true,
+          "empty_target_all_tables_and_ciphertext_equal": true,
+          "target_root_absent": true,
+          "package_unpublished": true,
+          "temporary_stage_entries_before": {
+            "backup_destination_parent": [],
+            "source_object_root_parent": [],
+            "restore_target_object_root_parent": []
+          },
+          "temporary_stage_entries_after": {
+            "backup_destination_parent": [],
+            "source_object_root_parent": [],
+            "restore_target_object_root_parent": []
+          },
+          "temporary_stage_entries_equal": true,
+          "temporary_stage_absent": true,
+          "pg_tool_calls": 0,
+          "database_connection_observation": "not_inferred_from_snapshot"
+        },
+        {
+          "action": "restore",
+          "field": "dsn",
+          "input": "symlink",
+          "exit": 1,
+          "output": {
+            "status": "failed",
+            "code": "MAINTENANCE_INPUT_INVALID"
+          },
+          "stderr_empty": true,
+          "secrets_paths_trace_absent": true,
+          "source_all_tables_and_ciphertext_equal": true,
+          "empty_target_all_tables_and_ciphertext_equal": true,
+          "target_root_absent": true,
+          "package_unpublished": true,
+          "temporary_stage_entries_before": {
+            "backup_destination_parent": [],
+            "source_object_root_parent": [],
+            "restore_target_object_root_parent": []
+          },
+          "temporary_stage_entries_after": {
+            "backup_destination_parent": [],
+            "source_object_root_parent": [],
+            "restore_target_object_root_parent": []
+          },
+          "temporary_stage_entries_equal": true,
+          "temporary_stage_absent": true,
+          "pg_tool_calls": 0,
+          "database_connection_observation": "not_inferred_from_snapshot"
+        },
+        {
+          "action": "restore",
+          "field": "key",
+          "input": "0644",
+          "exit": 1,
+          "output": {
+            "status": "failed",
+            "code": "MAINTENANCE_INPUT_INVALID"
+          },
+          "stderr_empty": true,
+          "secrets_paths_trace_absent": true,
+          "source_all_tables_and_ciphertext_equal": true,
+          "empty_target_all_tables_and_ciphertext_equal": true,
+          "target_root_absent": true,
+          "package_unpublished": true,
+          "temporary_stage_entries_before": {
+            "backup_destination_parent": [],
+            "source_object_root_parent": [],
+            "restore_target_object_root_parent": []
+          },
+          "temporary_stage_entries_after": {
+            "backup_destination_parent": [],
+            "source_object_root_parent": [],
+            "restore_target_object_root_parent": []
+          },
+          "temporary_stage_entries_equal": true,
+          "temporary_stage_absent": true,
+          "pg_tool_calls": 0,
+          "database_connection_observation": "not_inferred_from_snapshot"
+        },
+        {
+          "action": "restore",
+          "field": "key",
+          "input": "symlink",
+          "exit": 1,
+          "output": {
+            "status": "failed",
+            "code": "MAINTENANCE_INPUT_INVALID"
+          },
+          "stderr_empty": true,
+          "secrets_paths_trace_absent": true,
+          "source_all_tables_and_ciphertext_equal": true,
+          "empty_target_all_tables_and_ciphertext_equal": true,
+          "target_root_absent": true,
+          "package_unpublished": true,
+          "temporary_stage_entries_before": {
+            "backup_destination_parent": [],
+            "source_object_root_parent": [],
+            "restore_target_object_root_parent": []
+          },
+          "temporary_stage_entries_after": {
+            "backup_destination_parent": [],
+            "source_object_root_parent": [],
+            "restore_target_object_root_parent": []
+          },
+          "temporary_stage_entries_equal": true,
+          "temporary_stage_absent": true,
+          "pg_tool_calls": 0,
+          "database_connection_observation": "not_inferred_from_snapshot"
+        }
+      ],
+      "backup": {
+        "exit": 0,
+        "output": {
+          "status": "completed",
+          "backup_complete": true,
+          "authenticated_objects": 1,
+          "prepared_missing": [],
+          "unmapped_objects": [],
+          "complete_object_validation": true,
+          "created_at": "2026-10-23T08:38:14.783973+00:00",
+          "external_archive_backup": "not_included"
+        },
+        "stderr_empty": true,
+        "secrets_paths_trace_absent": true
+      },
+      "restore": {
+        "exit": 0,
+        "output": {
+          "status": "completed",
+          "database_restored": true,
+          "objects_published": true,
+          "workers_started": false,
+          "external_side_effects": 0,
+          "authenticated_objects": 1,
+          "prepared_missing": [],
+          "unmapped_objects": [],
+          "complete_object_validation": true
+        },
+        "stderr_empty": true,
+        "secrets_paths_trace_absent": true
+      },
+      "manifest_hmac_valid": true,
+      "key_not_copied": true,
+      "source_unchanged": true,
+      "all_public_tables_equal_before_start": true,
+      "source_backup_target_ciphertexts_equal": true
+    },
+    "original": {
+      "receipt_id": "55cc5f668bde42ba9375e9c04c328854",
+      "original_operation": {
+        "id": "fa78c62bf2254013be80b498bde054f8",
+        "status": "succeeded"
+      },
+      "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+      "object_key": "tenant-a/company-a/fa78c62bf2254013be80b498bde054f8/0/source",
+      "cipher_authenticated": true
+    },
+    "retained": {
+      "receipt_id": "55cc5f668bde42ba9375e9c04c328854",
+      "original_operation": {
+        "id": "fa78c62bf2254013be80b498bde054f8",
+        "status": "succeeded"
+      },
+      "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+      "object_key": "tenant-a/company-a/fa78c62bf2254013be80b498bde054f8/0/source",
+      "cipher_authenticated": true
+    },
+    "original_import_and_receipt_equal": true,
+    "database": {
+      "source_database": "finance_test_backup_c4617f2f65a94ae79d2cc6ea083750f5",
+      "target_database": "finance_restore_96b88efe3d8b4980bd90eb5d8b41a887",
+      "different_databases": true
+    },
+    "final": {
+      "approvals": [
+        {
+          "original": {
+            "reader": "manager",
+            "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+            "bytes_equal": true
+          },
+          "model_rejection": {
+            "status": 403,
+            "output": {
+              "code": "HUMAN_REQUIRED",
+              "message": "请本人在人工确认入口作出业务决定",
+              "trace_id": "907407c6a6954432a18dde43440ec011",
+              "retryable": false
+            },
+            "signed_origin": "agent",
+            "document_unchanged": true
+          },
+          "human_execution": {
+            "id": "f1op_9987e4ed759843ebb28fe5bb8bebc4b8",
+            "version": 1,
+            "status": "succeeded",
+            "business_result": "succeeded",
+            "trace_id": "d92cd00146d84197b7135e5f7fa86167",
+            "items": [],
+            "result_refs": [],
+            "resources": [
+              {
+                "kind": "expense_claim",
+                "id": "ad01b3990fbb4584a622ccd8c51ef42d"
+              }
+            ]
+          },
+          "signed_origin": "human",
+          "reason": "manager已核对独立原件"
+        },
+        {
+          "original": {
+            "reader": "finance-reviewer",
+            "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+            "bytes_equal": true
+          },
+          "model_rejection": {
+            "status": 403,
+            "output": {
+              "code": "HUMAN_REQUIRED",
+              "message": "请本人在人工确认入口作出业务决定",
+              "trace_id": "d36fa2455cbd480ba4e8b251333fe6ea",
+              "retryable": false
+            },
+            "signed_origin": "agent",
+            "document_unchanged": true
+          },
+          "human_execution": {
+            "id": "f1op_563876706f834590bb7096f3d108bcbe",
+            "version": 1,
+            "status": "succeeded",
+            "business_result": "succeeded",
+            "trace_id": "6e00e8793e1c4127a5ccd7e266d6feaf",
+            "items": [],
+            "result_refs": [],
+            "resources": [
+              {
+                "kind": "expense_claim",
+                "id": "ad01b3990fbb4584a622ccd8c51ef42d"
+              }
+            ]
+          },
+          "signed_origin": "human",
+          "reason": "finance-reviewer已核对独立原件"
+        }
+      ],
+      "decisions": [
+        {
+          "id": "a539a48c59ec40eb9594e93b0ef4cadd",
+          "actor_id": "manager",
+          "action": "approve",
+          "step_id": "71b903fbd76c41d0abcb6a75fa4c9f8d",
+          "data": {
+            "origin": "human",
+            "plan_id": "9e1114ab153a494b811e431d07fb97b7",
+            "parameters": {
+              "reason": "manager已核对独立原件",
+              "workflow_step_id": "71b903fbd76c41d0abcb6a75fa4c9f8d"
+            },
+            "target_version": 2
+          }
+        },
+        {
+          "id": "241c88ad17ff4620abe7f3ea4d7d4e68",
+          "actor_id": "finance-reviewer",
+          "action": "approve",
+          "step_id": "99f3b614d6ff40b587363471bb8ec051",
+          "data": {
+            "origin": "human",
+            "plan_id": "699f2c5d22434dbbac7f7bb0b1520b52",
+            "parameters": {
+              "reason": "finance-reviewer已核对独立原件",
+              "workflow_step_id": "99f3b614d6ff40b587363471bb8ec051"
+            },
+            "target_version": 2
+          }
+        }
+      ],
+      "operations": [
+        {
+          "decision": {
+            "id": "a539a48c59ec40eb9594e93b0ef4cadd",
+            "actor_id": "manager",
+            "action": "approve",
+            "step_id": "71b903fbd76c41d0abcb6a75fa4c9f8d",
+            "data": {
+              "origin": "human",
+              "plan_id": "9e1114ab153a494b811e431d07fb97b7",
+              "parameters": {
+                "reason": "manager已核对独立原件",
+                "workflow_step_id": "71b903fbd76c41d0abcb6a75fa4c9f8d"
+              },
+              "target_version": 2
+            }
+          },
+          "operation_id": "f1op_9987e4ed759843ebb28fe5bb8bebc4b8",
+          "decision_count": 1,
+          "operation_count": 1,
+          "outbox_count": 1,
+          "outbox_id": "f0008ed154eb450f9e75eabaa750ac19"
+        },
+        {
+          "decision": {
+            "id": "241c88ad17ff4620abe7f3ea4d7d4e68",
+            "actor_id": "finance-reviewer",
+            "action": "approve",
+            "step_id": "99f3b614d6ff40b587363471bb8ec051",
+            "data": {
+              "origin": "human",
+              "plan_id": "699f2c5d22434dbbac7f7bb0b1520b52",
+              "parameters": {
+                "reason": "finance-reviewer已核对独立原件",
+                "workflow_step_id": "99f3b614d6ff40b587363471bb8ec051"
+              },
+              "target_version": 2
+            }
+          },
+          "operation_id": "f1op_563876706f834590bb7096f3d108bcbe",
+          "decision_count": 1,
+          "operation_count": 1,
+          "outbox_count": 1,
+          "outbox_id": "5e6876ff3c974292a63be2faf011d8b7"
+        }
+      ],
+      "original": {
+        "reader": "finance-reviewer",
+        "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+        "bytes_equal": true
+      },
+      "status": "approved",
+      "record": {
+        "source_text_preserved": true,
+        "reason_preserved": true,
+        "paid_amount": "0.00",
+        "posted_amount": "0.00"
+      },
+      "external_table_counts": {
+        "finance_invoice": 0,
+        "finance_settlement_operation": 0,
+        "finance_compliance_operation": 0
+      }
+    },
+    "confirmation_requests": [
+      {
+        "signed": {
+          "iss": "platform",
+          "sub": "manager",
+          "tenant_id": "tenant-a",
+          "origin": "agent",
+          "jti": "79e8a136ea0144389fd80d96806cc889",
+          "call_id": "97112bbc47954253b1fc5e88fbd8180d",
+          "request_sha256": "5c7497f5da67bddafc011b6eea0d70e68cb9518ea79dc4d62a021656464f0c7d",
+          "exp": 1792744757,
+          "idempotency_key": "model-execute-manager"
+        },
+        "status": 403,
+        "operation_id": null,
+        "code": "HUMAN_REQUIRED"
+      },
+      {
+        "signed": {
+          "iss": "platform",
+          "sub": "manager",
+          "tenant_id": "tenant-a",
+          "origin": "human",
+          "jti": "167e53cf88a04b7c914b613071c001f2",
+          "call_id": "0b7745beca1e45e0bdff0fae242ffc43",
+          "request_sha256": "d808a7796739c61afcade014f2e7b3aacb30a6ec320195cbd2794025736f511b",
+          "exp": 1792744757,
+          "idempotency_key": "human-execute-manager"
+        },
+        "status": 202,
+        "operation_id": "f1op_9987e4ed759843ebb28fe5bb8bebc4b8",
+        "code": null
+      },
+      {
+        "signed": {
+          "iss": "platform",
+          "sub": "finance-reviewer",
+          "tenant_id": "tenant-a",
+          "origin": "agent",
+          "jti": "7f5bd5fe4de4455e8de7c3a02359f744",
+          "call_id": "457d5e08bbf94171bad80a6ec4e0bf11",
+          "request_sha256": "2732d057443982482eec8bd9269d485fcd0d3fdb720303712e7ab1f2581f7a96",
+          "exp": 1792744757,
+          "idempotency_key": "model-execute-finance-reviewer"
+        },
+        "status": 403,
+        "operation_id": null,
+        "code": "HUMAN_REQUIRED"
+      },
+      {
+        "signed": {
+          "iss": "platform",
+          "sub": "finance-reviewer",
+          "tenant_id": "tenant-a",
+          "origin": "human",
+          "jti": "1ad2ead1a14d40ee8c1207661b4fd095",
+          "call_id": "5ed2e2509e094419b2b416f8ec0c6abe",
+          "request_sha256": "b183ba8b53645c1314affcf143b23c29f45a18f8b8ab38beed73576b561ef0a9",
+          "exp": 1792744757,
+          "idempotency_key": "human-execute-finance-reviewer"
+        },
+        "status": 202,
+        "operation_id": "f1op_563876706f834590bb7096f3d108bcbe",
+        "code": null
+      }
+    ],
+    "source_removed": true,
+    "download_count": 1,
+    "source_unchanged_during_target_approvals": true,
+    "readonly_verify": {
+      "exit": 0,
+      "output": {
+        "status": "completed",
+        "verification_status": "complete",
+        "profile": "internal_records",
+        "production_status": "not_verified",
+        "authenticated_objects": 1,
+        "prepared_missing_count": 0,
+        "unmapped_objects_count": 0,
+        "complete_object_validation": true,
+        "workers_started": false,
+        "business_writes": 0
+      },
+      "snapshot_equal": true
+    },
+    "processes": [
+      {
+        "exit": -15,
+        "ended": true,
+        "forced_kill": false,
+        "graceful_shutdown": true,
+        "stdout_empty": true,
+        "stderr_bytes": 350,
+        "stderr_sha256": "83ad7597aba6c5d47098b83f0d7d40e79d5569d32302b5d3b0482b618c875ee7",
+        "port_closed": true
+      },
+      {
+        "exit": -15,
+        "ended": true,
+        "forced_kill": false,
+        "graceful_shutdown": true,
+        "stdout_empty": true,
+        "stderr_bytes": 350,
+        "stderr_sha256": "04bc87cb7f860318b8618b5ce87993529eab70641a3e4d84327a7d793494da66",
+        "port_closed": true
+      }
+    ],
+    "finance_port_closed": true,
+    "gateway_port_closed": true
+  },
+  "resources": {
+    "fixture_databases_remaining": 0,
+    "other_finance_client_sessions": 0,
+    "advisory_locks": 0,
+    "pg_released_for_parent": true
+  },
+  "all_evidence_xml_parseable": 13,
+  "redaction_manifest": "process-redaction.json",
+  "static_structure": "process-review-structure.json",
+  "ruff_log": "process-review-ruff.log",
+  "exploration_failures": [
+    {
+      "artifacts": [
+        "process-red-baseline.log",
+        "process-red-baseline.xml"
+      ],
+      "explanation": "初次隔离基线红测使用长回溯，pytest展示实际DSN参数；按实际完整DSN及密码精确值脱敏，保留前后SHA。最终基线重放使用短回溯与安全实际结果诊断。"
+    },
+    {
+      "explanation": "首轮汇总脚本错误预期13项，断言报错；从实际JUnit确认含参数化与导入测试的28项全绿，汇总现直接读取JUnit，不预填数量。"
+    }
+  ],
+  "baseline_replay": {
+    "isolated_source_copy": true,
+    "only_product_replacements": [
+      "maintenance.py",
+      "maintenance_cli.py"
+    ],
+    "worktree_product_changed_by_task2": false,
+    "observed_code": "PG_TOOL_FAILED",
+    "observed_pg_tool_called": true,
+    "meaning": "旧实现接受0644 DSN并调用测试标记工具；新实现提前拒绝。"
+  },
+  "final_f14_junit": "process-review-final.xml",
+  "final_f14_stats": {
+    "tests": 1,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "spec_review_fix": {
+    "finding": "初版只在maintenance目录扫描restore暂存，但restore实际暂存父目录是target object_root.parent。",
+    "previous_evidence": "process-evidence-before-stage-review.json",
+    "fix": "仅修改测试helper，逐一检查backup destination.parent、source object_root.parent、restore target object_root.parent的维护暂存名称清单；每次CLI前后都核对为空且精确相同。",
+    "new_junit": "process-review-final.xml",
+    "old_regression": "process-regression.xml",
+    "old_regression_retained": true,
+    "old_regression_rerun": false,
+    "scope": "产品源码未改；检查仅限实际暂存父目录，不递归扫描其它外部目录。"
+  }
+}

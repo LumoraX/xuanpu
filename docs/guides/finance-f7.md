@@ -1,6 +1,8 @@
 # F7 发票与报销流转记录
 
-当前F8按用户要求聚焦发票报销内部流转记录，不做支付。最新契约finance `0.9.0-f8`、74项API、7个Skill；见[F8指南](finance-f8.md)及[F8本轮验收](releases/2026-10-22-finance-f8-acceptance.md)。下文阶段记录保留原有验证范围。
+当前F14按用户要求仅作内部流转记录，不支付；契约finance `0.15.0-f14`、77项API、7个Skill，见[F14指南](finance-f14.md)及[F14验收](releases/2026-10-23-finance-f14-acceptance.md)。下文保留各阶段事实。
+
+F8阶段按用户要求聚焦发票报销内部流转记录，不做支付。当轮契约finance `0.9.0-f8`、74项API、7个Skill；见[F8指南](finance-f8.md)及[F8本轮验收](releases/2026-10-22-finance-f8-acceptance.md)。下文阶段记录保留原有验证范围。
 
 F7阶段按当时要求只做内部记录。当时契约finance `0.8.0-f7`、72项API、7个Skill；财务服务发行`2026.10.22.4`，人工页发行`2026.10.22.3`。F7当轮实际门禁与运行范围见[F7验收记录](releases/2026-10-22-finance-f7-acceptance.md)。
 

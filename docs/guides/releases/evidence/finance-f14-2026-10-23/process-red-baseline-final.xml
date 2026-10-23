@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="2.308" timestamp="2026-10-23T16:33:39.067155+08:00" hostname="krasusdeMacBook-Pro"><testcase classname="packages.xuanpu-finance.tests.test_f14_process" name="test_bad_credentials_refused_then_restored_target_humans_resume" time="2.114"><failure message="AssertionError: {'actual': {'exit': 1, 'output': {'status': 'failed', 'code': 'PG_TOOL_FAILED'}, 'stderr_empty': True, 'secrets_paths_trace_absent': True}, 'pg_tool_called': True}">packages/xuanpu-finance/tests/test_f14_process.py:46: in test_bad_credentials_refused_then_restored_target_humans_resume
+    maintenance = await prepare_backup(case, options, dsns, tmp_path/'maintenance')
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/tests/f14_process_helpers.py:147: in prepare_backup
+    rejected = await bad_credentials('backup', options, dsns, directory, package)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/tests/f14_process_helpers.py:111: in bad_credentials
+    assert result['output'] == {'status': 'failed', 'code': 'MAINTENANCE_INPUT_INVALID'}, {
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: {'actual': {'exit': 1, 'output': {'status': 'failed', 'code': 'PG_TOOL_FAILED'}, 'stderr_empty': True, 'secrets_paths_trace_absent': True}, 'pg_tool_called': True}</failure></testcase></testsuite></testsuites>

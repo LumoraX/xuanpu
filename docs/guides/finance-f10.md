@@ -45,4 +45,4 @@ uv run python -m xuanpu_finance --config examples/finance-internal-records/confi
 实际公司/制度/人员、生产身份和独立凭据/IAM/网络、真实模型语义与生产负载、异机恢复仍not_verified。支付、ERP、官方查验/税务、法定归档和飞书/企业微信审批不属于当前记录流程的依赖。
 
 
-后续正式启动门禁和停机原件核对见[F11指南](finance-f11.md)。本页保留F10当轮事实，当前版本与实际验收以F11为准。
+后续正式启动门禁和停机原件核对见[F11指南](finance-f11.md)。本页保留F10当轮事实，当前版本、维护凭据规则与实际验收以[F14指南](finance-f14.md)及[F14验收](releases/2026-10-23-finance-f14-acceptance.md)为准。

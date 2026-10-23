@@ -41,7 +41,7 @@ async def maintenance_database(tmp_path: Path):
     files=[]
     for i,dsn_value in enumerate(dsns):
         p=tmp_path/f'dsn-{i}';p.write_text(dsn_value);p.chmod(0o600);files.append(p)
-    key=tmp_path/'key';key.write_bytes(b'k'*32)
+    key=tmp_path/'key';key.write_bytes(b'k'*32);key.chmod(0o600)
     options=[MaintenanceOptions(files[0],tmp_path/'originals',key),MaintenanceOptions(files[1],tmp_path/'restored',key)]
     try:
         yield store,options,dsns
@@ -125,7 +125,7 @@ async def test_restore_rejects_tamper_key_and_nonempty_target(maintenance_databa
     await source_original(store,options[0].object_root)
     dump,load=pg_tools(tmp_path);output=tmp_path/'backup'
     await backup(options[0],output,pg_dump=str(dump))
-    wrong=tmp_path/'wrong-key';wrong.write_bytes(b'x'*32)
+    wrong=tmp_path/'wrong-key';wrong.write_bytes(b'x'*32);wrong.chmod(0o600)
     with pytest.raises(MaintenanceError,match='KEY_MISMATCH'):
         await restore(MaintenanceOptions(options[1].database_dsn_file,options[1].object_root,wrong),output,pg_restore=str(load))
     manifest=json.loads((output/'manifest.json').read_text())

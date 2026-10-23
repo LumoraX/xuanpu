@@ -1,0 +1,78 @@
+........................................................................ [  2%]
+........................................................................ [  4%]
+........................................................................ [  7%]
+........................................................................ [  9%]
+........................................................................ [ 12%]
+........................................................................ [ 14%]
+........................................................................ [ 17%]
+........................................................................ [ 19%]
+........................................................................ [ 22%]
+........................................................................ [ 24%]
+........................................................................ [ 27%]
+........................................................................ [ 29%]
+........................................................................ [ 32%]
+........................................................................ [ 34%]
+........................................................................ [ 37%]
+........................................................................ [ 39%]
+........................................................................ [ 42%]
+........................................................................ [ 44%]
+........................................................................ [ 47%]
+........................................................................ [ 49%]
+........................................................................ [ 52%]
+........................................................................ [ 54%]
+........................................................................ [ 57%]
+........................................................................ [ 59%]
+..........................s............................................. [ 62%]
+........................................................................ [ 64%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+........................................................................ [ 72%]
+........................................................................ [ 74%]
+........................................................................ [ 76%]
+........................................................................ [ 79%]
+........................................................................ [ 81%]
+........................................................................ [ 84%]
+........................................................................ [ 86%]
+........................................................................ [ 89%]
+........................................................................ [ 91%]
+....................................s......s............................ [ 94%]
+........................................................................ [ 96%]
+........................................................................ [ 99%]
+...................                                                      [100%]
+=============================== warnings summary ===============================
+packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[get-root]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[get-shard]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[get-leaf]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[put-root]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[put-shard]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[put-leaf]
+  packages/xuanpu-finance/tests/test_f13_objects.py:26: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.parametrize('level', ['root', 'shard', 'leaf'])
+
+packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_cannot_create_external_leaf[root]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_cannot_create_external_leaf[shard]
+  packages/xuanpu-finance/tests/test_f13_objects.py:66: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.parametrize('level', ['root', 'shard'])
+
+packages/xuanpu-finance/tests/test_f13_objects.py::test_directory_swap_before_open_never_follows_link[get-root]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_directory_swap_before_open_never_follows_link[get-shard]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_directory_swap_before_open_never_follows_link[put-root]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_directory_swap_before_open_never_follows_link[put-shard]
+  packages/xuanpu-finance/tests/test_f13_objects.py:254: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.parametrize('level', ['root', 'shard'])
+
+packages/xuanpu-finance/tests/test_f13_objects.py::test_directory_swap_at_link_uses_opened_directory[root]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_directory_swap_at_link_uses_opened_directory[shard]
+  packages/xuanpu-finance/tests/test_f13_objects.py:296: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.parametrize('level', ['root', 'shard'])
+
+packages/xuanpu-finance/tests/test_f13_objects.py::test_material_worker_preserves_failed_responsibility_then_processes_next
+  packages/xuanpu-finance/tests/test_f13_objects.py:358: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    async def test_material_worker_preserves_failed_responsibility_then_processes_next(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] packages/xuanpu-server/tests/reminders/test_postgres_order.py:21: 本用例验证真实PostgreSQL行锁与事务
+SKIPPED [1] packages/xuanpu-server/tests/workspace/test_proactive_store.py:453: 仅数据库约束需要直接连接
+SKIPPED [1] packages/xuanpu-server/tests/workspace/test_proactive_store.py:562: 数据库身份行锁已由共享通知锁测试覆盖
+2896 passed, 3 skipped, 15 warnings in 585.03s (0:09:45)

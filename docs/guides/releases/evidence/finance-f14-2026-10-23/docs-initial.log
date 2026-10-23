@@ -1,0 +1,21 @@
+........................................................................ [ 33%]
+.........F.............................................................. [ 67%]
+......................................................................   [100%]
+=================================== FAILURES ===================================
+_ test_document_links_resolve[docs/guides/releases/2026-10-23-finance-f14-acceptance.md] _
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/releases/2026-10-23-finance-f14-acceptance.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['evidence/fi....json（文件不存在）'] == []
+E         
+E         Left contains one more item: 'evidence/finance-f14-2026-10-23/reviews.json（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[docs/guides/releases/2026-10-23-finance-f14-acceptance.md]
+1 failed, 213 passed in 1.68s

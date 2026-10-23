@@ -17,7 +17,7 @@ def test_internal_records_tools_and_declared_text_contract() -> None:
     methods = operations(document)
     assert methods['listExpenseClaimHistory'][:2] == ('/v1/finance/expense-claims/{id}/history', 'get')
     assert methods['getExpenseMaterial'][:2] == ('/v1/finance/expense-claims/{id}/materials/{receipt_id}', 'get')
-    assert document['info']['version'] == '0.14.0-f13'
+    assert document['info']['version'] == '0.15.0-f14'
     assert document['components']['schemas']['ExpenseDraft']['properties']['invoice_information']['maxLength'] == 20000
     validate_schema('ExpenseClaimHistoryPage', {'items': [], 'total': 0, 'next_cursor': None})
     for path in (PACKAGE / 'skills').glob('*/SKILL.md'):

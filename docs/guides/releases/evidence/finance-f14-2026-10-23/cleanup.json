@@ -1,0 +1,19 @@
+{
+  "status": "completed",
+  "production_status": "not_verified",
+  "container_removed": "xuanpu-finance-f14-pg",
+  "container_id": "2362025c16f06218c01504c8812ce736fccfff1ab2315951992b59973e3fc296",
+  "owned_volumes_removed": [
+    "513867d26bb610b66b92024bc1180b12753d0be91101ce3256d5dbea8cdc717b"
+  ],
+  "private_dsn_file_removed": true,
+  "database_port_closed": true,
+  "all_phase_f14_containers_absent": true,
+  "test_databases_removed_with_owned_container": true,
+  "original_checkout_clean": true,
+  "branch_preserved": "feat/finance-f14",
+  "artifacts_preserved": "/tmp/xuanpu-finance-f14-build",
+  "deployed": false,
+  "pushed": false,
+  "merged": false
+}

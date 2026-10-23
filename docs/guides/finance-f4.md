@@ -1,6 +1,8 @@
 # 财务F4：提醒、运营与配套恢复
 
-当前F8按用户要求聚焦发票报销内部流转记录，不做支付。最新契约finance `0.9.0-f8`、74项API、7个Skill；见[F8指南](finance-f8.md)及[F8本轮验收](releases/2026-10-22-finance-f8-acceptance.md)。下文阶段记录保留原有验证范围。
+当前F14按用户要求仅作内部流转记录，不支付；契约finance `0.15.0-f14`、77项API、7个Skill，见[F14指南](finance-f14.md)及[F14验收](releases/2026-10-23-finance-f14-acceptance.md)。下文保留各阶段事实。
+
+F8阶段按用户要求聚焦发票报销内部流转记录，不做支付。当轮契约finance `0.9.0-f8`、74项API、7个Skill；见[F8指南](finance-f8.md)及[F8本轮验收](releases/2026-10-22-finance-f8-acceptance.md)。下文阶段记录保留原有验证范围。
 
 当前专用资金能力与最新包契约入口见[F5指南](finance-f5.md)（finance `0.6.0-f5`、69项API、7个Skill）。本页保留本阶段操作说明、历史版本和验证证据；当前最终门禁、制品与运行状态见[F5验收记录](releases/2026-10-22-finance-f5-acceptance.md)。
 
@@ -28,7 +30,7 @@ F3列表、统一F2/F3计划和待办在SQL内按同一授权谓词count并取li
 
 ## 运维备份与恢复
 
-维护CLI随finance wheel提供。需安装与数据库兼容的pg_dump/pg_restore；服务镜像不附带PG客户端，维护应在具备客户端的独立运维环境运行，或显式传入受控工具路径。测试使用专属PG容器的真实工具，不用自造SQL备份。CLI不停止现有服务，运行实例仍持锁时返回INSTANCE_ACTIVE。
+维护CLI随finance wheel提供。当前备份/恢复的DSN与AES固定文件须为私密普通叶子（0600或0400），不接受符号链接；安全捕获失败在连接前拒绝，具体限制、TLS选项与有限错误处理见[F14维护凭据规则](finance-f14.md#受信管理员与固定凭据)。需安装与数据库兼容的pg_dump/pg_restore；服务镜像不附带PG客户端，维护应在具备客户端的独立运维环境运行，或显式传入受控工具路径。测试使用专属PG容器的真实工具，不用自造SQL备份。CLI不停止现有服务，运行实例仍持锁时返回INSTANCE_ACTIVE。
 
 ```text
 xuanpu-finance-maintenance --help
@@ -60,6 +62,6 @@ uv run pytest packages/xuanpu-server/tests/identity/test_finance_f4_gateway_e2e.
 
 PG用例须显式FINANCE_TEST_DSN指向独立finance_test库；维护演练还需可用PG工具（本轮专用容器xuanpu-finance-f4-test-pg）。[缺口台账](finance-gap-register.md)逐项区分既有本地已验、F5专用业务及外部未验收；[F4验收记录](releases/2026-10-21-finance-f4-acceptance.md)记录最终门禁、镜像、浏览器和清理证据。
 
-当前F6新增正式接入准备检查与可重复隔离验收，总70项API、7个Skill；见[F6指南](finance-f6.md)和[正式接入清单](finance-provider-acceptance.md)。原阶段正式能力未验边界继续保留。
+F6阶段新增正式接入准备检查与可重复隔离验收，当轮70项API、7个Skill；见[F6指南](finance-f6.md)和[正式接入清单](finance-provider-acceptance.md)。原阶段正式能力未验边界继续保留。
 
 当前内部记录的摘要检索、专用部署配置与上线准备见[F9指南](finance-f9.md)，原阶段验收事实仍以对应记录为准。
