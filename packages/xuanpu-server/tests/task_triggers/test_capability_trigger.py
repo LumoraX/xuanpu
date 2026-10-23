@@ -21,6 +21,16 @@ async def test_todo_completion_runs_one_readonly_capability(capability_world,ste
         'timezone':'UTC','valid_until':deadline})
     world.models.script(step(calls=[('read','mcp__crm__search_customer',{'query':'C-R2B'})]),step(text='已读取客户'))
     await world.platform.workspace.update(world.employee,todo['id'],{'status':'done'},todo['version'])
+    # PG事务时钟与应用扫描时钟存在毫秒差，后台领取也可能先于本次显式扫描。
+    # 等待可观测的任务受理，不能把两次立即扫描当成异步工作已结束。
+    tasks=[]
+    async with asyncio.timeout(15):
+        while not tasks:
+            await world.platform.trigger_worker.tick_events()
+            await asyncio.wait_for(world.platform.task_registry.join(),15)
+            tasks=await service.tasks.store.list(world.employee)
+            if not tasks:
+                await asyncio.sleep(.02)
     for _ in range(2):
         await world.platform.trigger_worker.tick_events()
         await asyncio.wait_for(world.platform.task_registry.join(),15)

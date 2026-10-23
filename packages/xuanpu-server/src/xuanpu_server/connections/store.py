@@ -22,6 +22,10 @@ class ConnectionStore(Protocol):
         """进入短事务，不在锁内等待供应商。"""
         ...
 
+    async def read_record(self, tenant: str, identifier: str) -> dict[str, Any] | None:
+        """协调事务内读取安装元数据，PG复用同连接且不嵌套连接事务。"""
+        ...
+
     async def put_attempt(self,state_hash: str,record: dict[str,Any],*,now: float) -> None:
         """保存五分钟登录尝试，清理过期记录并限制单租户并发量。"""
         ...

@@ -85,6 +85,10 @@ class IdentityStore(Protocol):
         """按条件列出用户，按 ``user_id`` 升序；用 ``query.after`` 翻页。"""
         ...
 
+    async def count_users(self, tenant_id: str, *, status: UserStatus | None = None) -> int:
+        """按租户和启用状态统计员工，独立于目录当前页。"""
+        ...
+
     async def set_user_role(
         self, tenant_id: str, user_id: str, role: TenantRole, *, keep_an_admin: bool = False
     ) -> UserRecord:
@@ -131,6 +135,7 @@ class IdentityStore(Protocol):
         display_name: str,
         avatar_url: str | None,
         last_login_at: float | None = None,
+        source: str = "local",
     ) -> UserRecord:
         """刷新显示名与头像；``last_login_at`` 给了才改登录时间。返回改后的记录。
 

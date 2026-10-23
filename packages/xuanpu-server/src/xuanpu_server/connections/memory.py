@@ -36,6 +36,11 @@ class InMemoryConnectionStore:
             self._history.extend(records)
             self._states[tenant]=copy.deepcopy(state)
 
+    async def read_record(self, tenant: str, identifier: str) -> dict[str, Any] | None:
+        """只复制已提交元数据，永不读取凭据表。"""
+        state = self._states.get(tenant)
+        return copy.deepcopy(state.records.get(identifier)) if state is not None else None
+
     async def put_attempt(self,state_hash: str,record: dict[str,Any],*,now: float) -> None:
         """内存动作无await中断，与PG原子写入语义一致。"""
         from xuanpu_server.errors import ConflictError

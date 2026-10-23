@@ -10,6 +10,18 @@
 
 前置：[B](2026-10-22-r3b-organization-authority.md)+[C](2026-10-22-r3c-shared-matters.md)。统一身份/CAS/幂等和测试fixture见[总计划](2026-10-22-r3-delivery.md)。
 
+## 2026-10-23 到人优先补充
+
+用户明确当前无业务部门，采用[到人优先设计](../specs/2026-10-23-r3-person-first-amendment.md)。以下部门规则继续作为可选分支；当前试点不要求先建部门或临时授予部门职责。
+
+- 交接目标改为互斥的target_kind=user|unit及target_id，固定保存目标员工身份代次。user目标只有本人可查看来件摘要并接收；unit目标仍查当前unit_operator。列表增加view=received，按当前员工过滤，客户端不能另传user覆盖身份。
+- 到人submit必须由共享事项owner原生确认目标与精确资料包；接收后只授予该交接的packet读取及publish_result，不提升完整事项editor或租户角色。
+- 到人转交由当前事项owner明确选择另一名启用员工并记录原因。旧承办人的当前授权撤销，新承办人重新接收；原责任、交付和决定历史保留。停用或失去权限只阻塞，不自动猜下一人。
+- 审批策略步骤支持selector=user（稳定员工标识及授予时身份代次）或selector=unit_role（原部门解析规则）。策略仍由有权管理员预配；申请接口只引用policy_id，不信任客户端另传审批人集合。
+- 创建审批冻结策略revision和解析后的1–3名当前启用员工；每一步即时复核身份代次，禁止申请人自批，用户步骤不要求部门任职。身份代次改变的未决步骤blocked，必须明确重配后新建请求。
+- 当前真实试点为陈翔发起、drYang承办；drYang提交成果审批申请，陈翔按明确配置的策略审批，随后由承办人交付、陈翔另行签收。审批决定与签收分别记录，不能合并为一次确认。
+- 两名真实员工验证到人闭环；部门竞争、四人、两部门分支继续由自动化反例覆盖，真实多部门试点未执行，不标已通过。
+
 ## D0：冻结交接与审批的两个契约
 
 Files：Create `handoffs/models.py`、`approvals/models.py`、`tests/r3_contract/test_handoff_contract.py`、`test_approval_contract.py`；Review既有`runtime/approval.py`、`work_tasks/decisions.py`，不借用其个人工具批准当组织批准。

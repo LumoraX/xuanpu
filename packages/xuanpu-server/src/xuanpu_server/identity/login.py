@@ -386,6 +386,7 @@ class FeishuLogin:
             display_name=info.name,
             avatar_url=info.avatar_url,
             last_login_at=now,
+            source=FEISHU,
         )
         await self._refresh_open_id(user, info)
         ttl = config.session_ttl_seconds or self._settings.session_ttl_seconds

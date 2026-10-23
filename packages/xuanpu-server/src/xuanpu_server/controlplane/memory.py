@@ -41,6 +41,9 @@ class InMemoryControlPlane:
         from xuanpu_server.connections.memory import InMemoryConnectionStore
 
         self.connection_store = InMemoryConnectionStore(self._append_workspace_audit)
+        from xuanpu_server.coordination.memory import InMemoryCoordinationStore
+
+        self.coordination_store = InMemoryCoordinationStore(self, audit=self._append_workspace_audit)
         self.workspace_store = InMemoryWorkspaceStore(self._append_workspace_audit)
         self.reminder_store = InMemoryReminderStore(
             lambda tenant_id: (

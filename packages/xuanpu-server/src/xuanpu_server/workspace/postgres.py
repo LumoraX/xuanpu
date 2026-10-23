@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from xuanpu_server.controlplane.schema import DEFAULT_NAMESPACE
 from xuanpu_server.errors import PermissionDeniedError
+from xuanpu_server.transaction_reads import read_connection
 from xuanpu_server.work_tasks.activity import ActivityConfig
 from xuanpu_server.workspace.models import SettingsData, WorkspaceState
 from xuanpu_server.workspace.postgres_proactive import load_proactive, save_proactive
@@ -26,6 +27,19 @@ if TYPE_CHECKING:
 
 class PostgresWorkspaceStore:
     """租户共享锁、员工排他锁后统一校验和提交领域快照。"""
+
+    async def file_source(self, tenant: str, user: str, item_id: str, revision: int) -> tuple[dict[str, Any], dict[str, Any]] | None:
+        """同池同协程复用协调连接，只查本人明确文件版本。"""
+        sql = (f"SELECT i.record AS item,v.record AS revision FROM {self._t['workspace_item']} i "
+               f"JOIN {self._t['workspace_file_version']} v USING(tenant_id,user_id,item_id) "
+               'WHERE i.tenant_id=$1 AND i.user_id=$2 AND i.item_id=$3 AND v.revision=$4')
+        conn = read_connection(self._pool, sql)
+        if conn is not None:
+            row = await conn.fetchrow(sql, tenant, user, item_id, revision)
+        else:
+            async with self._pool.acquire() as current:
+                row = await current.fetchrow(sql, tenant, user, item_id, revision)
+        return (json.loads(row['item']), json.loads(row['revision'])) if row is not None else None
 
     def __init__(self, pool: asyncpg.Pool, *, namespace: SqlNamespace = DEFAULT_NAMESPACE) -> None:
         """表名来自已验证的 SqlNamespace，用户数据全为绑定参数。"""

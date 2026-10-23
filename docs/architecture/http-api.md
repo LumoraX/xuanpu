@@ -924,3 +924,8 @@ expected_version对state_version做CAS；配置version仅修改时增加。幂�
 SDK提供TaskDefinition快照及对应原生方法；CLI的work-tasks/task-definitions使用私有credentials JSON（base_url/api_key/act_as_user），不会接受命令行租户/员工/host覆盖；body文件须保存稳定request_id，网络不确定时重用原文件。
 
 企业只读连接与员工同意接口见[企业连接架构](connections.md)。
+
+组织、职责、字段来源及目录预览接口见[组织架构](organization.md)。
+
+
+R3-C候选共享接口及当前边界见[共享事项与固定材料](shared-matters.md)；直接员工选择为 GET /v1/organization/people，仅返回本企业启用员工的姓名及稳定编号。

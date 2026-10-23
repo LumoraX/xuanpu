@@ -46,6 +46,7 @@ function applyPermissions() {
 
 // 先取消旧请求并递增代际，再清除可见的身份数据；旧响应不能把上一位员工的数据填回来。
 function resetIdentity() {
+  if (typeof resetOrganization === "function") resetOrganization();
   if (typeof resetConnections === "function") resetConnections();
   resetReminders();
   if (typeof resetWorkspace === "function") resetWorkspace();

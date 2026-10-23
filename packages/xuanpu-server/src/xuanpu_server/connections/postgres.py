@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from xuanpu_server.connections.store import ConnectionState
 from xuanpu_server.errors import NotFoundError
-from xuanpu_server.transaction_reads import transaction_reads
+from xuanpu_server.transaction_reads import read_connection, transaction_reads
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -22,6 +22,20 @@ class PostgresConnectionStore:
         """表名只来自已校验的命名空间。"""
         self._pool=pool
         self._tables={n:namespace.table(n) for n in ('tenant','connection_record','connection_credential','connection_auth_attempt','audit')}
+
+    async def read_record(self, tenant: str, identifier: str) -> dict[str, Any] | None:
+        """同一协调事务直接读取当前安装行，不二次占池或重复锁租户。"""
+        sql = f"SELECT record FROM {self._tables['connection_record']} WHERE tenant_id=$1 AND id=$2"
+        current = read_connection(self._pool, sql)
+        if current is not None:
+            raw = await current.fetchval(sql, tenant, identifier)
+        else:
+            async with self._pool.acquire() as conn:
+                raw = await conn.fetchval(sql, tenant, identifier)
+        if raw is None:
+            return None
+        value: dict[str, Any] = json.loads(raw)
+        return value
 
     @asynccontextmanager
     async def transaction(self,tenant: str) -> AsyncIterator[ConnectionState]:

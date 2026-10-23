@@ -716,3 +716,15 @@ R2配置中的`task_activity.enabled`控制工作动态通知，默认false；`t
 新增0015迁移保存connection_record、独立connection_credential和五分钟connection_auth_attempt；纳入既有PG备份及主密钥轮换。内部密文不能由普通租户密钥API访问。先部署兼容reader且全关，再隔离试点，最后按已核定租户启用；关闭新读取时保留查询、撤销和既有R2取消。新格式已落库后不能降到旧R2严格reader。
 
 企微应用创建、私有配置、员工确认与验收前提见[企业微信只读接入](wecom-connections.md)。部署前反向代理应只记录路径，去掉OAuth回调query；供应商HTTP客户端已隐藏认证URL。当前仅支持企业微信客户端网页授权，桌面扫码入口待核定，不能拿合成Cookie代替真实登录证据。
+
+
+## R3-B 组织与职责
+
+`organization.enabled`默认false，`organization.tenants`默认空；两项同时匹配才允许组织新写入。关闭后保留目录读取和必要撤销／停用。候选增加0016组织与协调事务迁移，及身份lifecycle_epoch/profile_version列，旧行默认1。先备份并迁移，再部署兼容reader；本候选尚未生产验收，不允许旧R2 reader读取新格式。详见[组织架构](../architecture/organization.md)与[配置手册](organization.md)。
+
+
+## R3-C 共享事项候选
+
+`shared_matters.enabled`默认false，`tenants`默认空且不开放新共享。`max_matters`默认1000；`max_material_bytes`默认20971520（20MiB）；`max_storage_bytes`默认1073741824（1GiB）；`copy_lease_seconds`默认30秒；`max_concurrent_copies`默认2。意图先预留空间，失败副本实际清理后才释放预留；历史和撤回材料仍计入空间。关闭新共享后保留已有读取、归档、成员撤销和材料撤回。
+
+候选0017建立固定材料、发布意图、受保护上下文、来源依赖及通知来源结构。当前只有C0/C1基础路径，模型上下文保护、完整员工入口、SIGKILL和生产验收待完成；不得以开关启用替代这些门禁。详见[共享候选边界](../architecture/shared-matters.md)。

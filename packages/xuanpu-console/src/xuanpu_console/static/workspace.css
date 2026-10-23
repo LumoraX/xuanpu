@@ -91,3 +91,10 @@
 #workspace-content>form{display:grid;gap:.8rem}
 #workspace-content>form textarea{width:100%;min-height:90px;box-sizing:border-box}
 @media(max-width:480px){.work-task-card{padding:.85rem}.work-task-card .row{display:grid;grid-template-columns:1fr}.work-task-card input[type=datetime-local]{max-width:100%}}
+
+/* 组织确认表单保持窄屏和键盘可用，不覆盖默认对话布局。 */
+.organization-form{display:grid;gap:.75rem;min-width:0}
+.organization-form label{display:grid;gap:.3rem;min-width:0}
+#organization-list{display:grid;gap:1rem;min-width:0}
+#organization-panel input:not([type=checkbox]),#organization-panel select{box-sizing:border-box;max-width:100%;min-width:0;width:100%}
+#organization-panel label{overflow-wrap:anywhere}

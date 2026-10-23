@@ -10,6 +10,8 @@
 
 前置：[A](2026-10-22-r3a-connections-wecom.md)、[B](2026-10-22-r3b-organization-authority.md)、[C](2026-10-22-r3c-shared-matters.md)、[D](2026-10-22-r3d-handoffs-approvals.md)。本计划不授予真实发消息、外部业务写入或共享宿主整机重启权限。
 
+2026-10-23 真实试点按[到人优先补充](../specs/2026-10-23-r3-person-first-amendment.md)执行：陈翔和 drYang 两人，不要求先建部门或再提供两名员工。以下原四人/两部门条目保留为可选后续场景，当前不执行也不标通过；其他隐私、材料、组织决定、独立签收、故障与发布门禁不变。
+
 ## E0：统一入口、可理解状态及无模型路径
 
 Files：Modify `packages/xuanpu-console/src/xuanpu_console/static/{index.html,workspace.js,workspace-chat.js,notification-alerts.js,style.css}`和A–D控制台模块；Modify对应SDK/CLI、server `assistant.py`；Create `tests/r3_contract/test_collaboration_views.py`及console `r3_journey_behavior.cjs`。

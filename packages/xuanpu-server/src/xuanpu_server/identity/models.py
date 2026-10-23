@@ -96,10 +96,14 @@ class UserRecord:
     last_login_at: float | None = None
     disabled_at: float | None = None
     unverified_since: float | None = None
+    lifecycle_epoch: int = 1
+    profile_version: int = 1
 
     def __post_init__(self) -> None:
         """角色、状态取值受限；停用原因与时间和状态一致。"""
         require_choice("role", self.role, get_args(TenantRole))
+        if self.lifecycle_epoch < 1 or self.profile_version < 1:
+            raise ValueError('身份权限版本必须为正整数')
         require_choice("status", self.status, get_args(UserStatus))
         if self.status == "active":
             if self.disabled_reason is not None or self.disabled_at is not None:
