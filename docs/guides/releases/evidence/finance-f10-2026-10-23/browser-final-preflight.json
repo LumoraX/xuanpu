@@ -1,0 +1,42 @@
+{
+  "status": "not_verified",
+  "production_status": "not_verified",
+  "checks": [
+    {
+      "code": "credential_resources",
+      "status": "passed",
+      "detail": "credential_resources_valid"
+    },
+    {
+      "code": "transport_tls",
+      "status": "passed",
+      "detail": "正式网关与对象端点必须使用TLS"
+    },
+    {
+      "code": "gateway_credentials",
+      "status": "passed",
+      "detail": "每个公司租户须有独立网关凭据"
+    },
+    {
+      "code": "internal_records_configuration",
+      "status": "passed",
+      "detail": "公司、制度、岗位及内部记录边界须完整配置"
+    }
+  ],
+  "versions": [
+    {
+      "kind": "expense",
+      "version": 1,
+      "enabled": true
+    }
+  ],
+  "configuration_digest": "be8ba9d5a298e9dc4e4b66db680419e33188250485aa8c6ca026c5a25c0bb805",
+  "external_verifications": [
+    "formal_policy_approval",
+    "production_identity",
+    "database_and_original_storage",
+    "offsite_disaster_recovery",
+    "real_model",
+    "production_load"
+  ]
+}

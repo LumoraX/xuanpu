@@ -1,6 +1,6 @@
 [project]
 name = "xuanpu-finance"
-version = "2026.10.22.6"
+version = "2026.10.23.1"
 description = "玄圃进程外财务：原件报销、实际HITL、付款记账与税务红字档案通用接口"
 readme = "README.md"
 requires-python = ">=3.12"

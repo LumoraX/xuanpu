@@ -1,0 +1,28 @@
+{
+  "status": "passed",
+  "files": [
+    "docker/finance/build_image.py",
+    "packages/xuanpu-console/tests/test_finance_behavior.py",
+    "packages/xuanpu-finance/src/xuanpu_finance/api.py",
+    "packages/xuanpu-finance/src/xuanpu_finance/internal_profile.py",
+    "packages/xuanpu-finance/src/xuanpu_finance/readiness/internal_live.py",
+    "packages/xuanpu-finance/src/xuanpu_finance/routes_f10.py",
+    "packages/xuanpu-finance/src/xuanpu_finance/storage/f10_readiness.py",
+    "packages/xuanpu-finance/src/xuanpu_finance/storage/f6_readiness.py",
+    "packages/xuanpu-finance/src/xuanpu_finance/storage/store.py",
+    "packages/xuanpu-finance/tests/f10_recovery_helpers.py",
+    "packages/xuanpu-finance/tests/test_f10_api.py",
+    "packages/xuanpu-finance/tests/test_f10_contract.py",
+    "packages/xuanpu-finance/tests/test_f10_readiness.py",
+    "packages/xuanpu-finance/tests/test_f10_recovery.py",
+    "packages/xuanpu-finance/tests/test_f7_api.py",
+    "packages/xuanpu-finance/tests/test_f7_contract.py",
+    "packages/xuanpu-finance/tests/test_f8_api.py",
+    "packages/xuanpu-finance/tests/test_f8_contract.py",
+    "packages/xuanpu-finance/tests/test_package.py",
+    "scripts/acceptance/finance_runner.py"
+  ],
+  "file_limit": 800,
+  "function_limit": 80,
+  "future_and_docstring": true
+}

@@ -2,8 +2,8 @@ apiVersion: xuanpu/v1
 kind: Package
 metadata:
   name: finance
-  version: 0.10.0-f9
-  description: 独立财务F0-F9：内部发票报销记录、真人审批、摘要检索与专用配置，当前不做支付
+  version: 0.11.0-f10
+  description: 独立财务F0-F10：内部发票报销记录、真人审批、试用核对与恢复验收，当前不做支付
 spec:
   skills:
     entries:
@@ -168,6 +168,8 @@ spec:
     - name: getFinanceCapabilities
       effect: read
     - name: listExpenseClaimSummaries
+      effect: read
+    - name: getInternalRecordsReadiness
       effect: read
     contextAudience: xuanpu-finance
   - name: catalog

@@ -17,7 +17,7 @@ INTERNAL_ACTIONS = frozenset({'submit_claim', 'approve', 'reject', 'withdraw'})
 INTERNAL_OPERATIONS = frozenset({
     'getFinanceCapabilities', 'listLegalEntities', 'listExpenseCategories', 'listCostCenters',
     'importSupportingMaterials', 'listSupportingMaterialImports', 'getSupportingMaterialImport',
-    'getOperation', 'cancelOperation', 'createExpenseClaim', 'listExpenseClaims',
+    'getInternalRecordsReadiness', 'getOperation', 'cancelOperation', 'createExpenseClaim', 'listExpenseClaims',
     'listExpenseClaimSummaries', 'getExpenseClaim', 'updateExpenseClaim',
     'listExpenseClaimHistory', 'getExpenseMaterial', 'listReviewQueue',
     'previewFinanceAction', 'getActionPlan', 'executeFinanceAction',

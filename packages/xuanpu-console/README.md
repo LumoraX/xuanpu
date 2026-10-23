@@ -69,3 +69,5 @@ app = create_app(platform, console_dir=static_dir())
 退出/切换身份清空全部个人界面；迟到响应不能覆盖新身份、新会话或新回复。窄屏工作窗口适配375px。详细用法、限额及尚未接通的企业流程见[本地试用](../../docs/guides/local-trial.md#个人工作站)；存储与确认事务见[个人工作站架构](../../docs/architecture/personal-workspace.md)。
 
 财务内部记录页面先读实例能力，默认本人摘要20条并支持状态/单号/事由检索。internal_records实例不显示通用资金、税务或接入检查；详情、原件、补件和实际审批仍复用独立服务与员工人工入口。配置及隔离验证见[F9指南](../../docs/guides/finance-f9.md)。
+
+F10增加内部试用只读检查与恢复后人工续办验收，当前77项API/7 Skills；使用与未验边界见[F10指南](../../docs/guides/finance-f10.md)。

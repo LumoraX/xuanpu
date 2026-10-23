@@ -86,3 +86,14 @@ def test_finance_records_list_behavior() -> None:
         capture_output=True, text=True, timeout=15,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_finance_internal_readiness_behavior() -> None:
+    """内部试用检查严格验证只读报告，未验边界、重试和过期响应保持隔离。"""
+    node = shutil.which('node')
+    assert node is not None
+    result = subprocess.run(
+        [node, str(Path(__file__).with_name('finance_internal_readiness_behavior.cjs')), str(static_dir())],
+        capture_output=True, text=True, timeout=15,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

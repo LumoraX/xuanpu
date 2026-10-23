@@ -1,0 +1,24 @@
+   Building xuanpu-console @ file:///Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console
+   Building xuanpu-finance @ file:///Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance
+      Built xuanpu-finance @ file:///Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance
+      Built xuanpu-console @ file:///Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console
+Uninstalled 2 packages in 1ms
+warning: Failed to clone files; falling back to full copy. This may lead to degraded performance.
+         If the cache and target directories are on different filesystems, reflinking may not be supported.
+         If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
+Installed 2 packages in 2ms
+
+==================================== ERRORS ====================================
+_____ ERROR collecting packages/xuanpu-finance/tests/test_f10_contract.py ______
+ImportError while importing test module '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance/tests/test_f10_contract.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+packages/xuanpu-finance/tests/test_f10_contract.py:10: in <module>
+    from .test_package import PACKAGE, contracts, operations, validate_schema
+packages/xuanpu-finance/tests/test_package.py:25: in <module>
+    from xuanpu_finance.routes_f10 import router as f10_router
+E   ModuleNotFoundError: No module named 'xuanpu_finance.routes_f10'
+=========================== short test summary info ============================
+ERROR packages/xuanpu-finance/tests/test_f10_contract.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.40s

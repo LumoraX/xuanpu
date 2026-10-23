@@ -1,0 +1,47 @@
+{
+  "environment": "isolated_loopback_test",
+  "profile": "internal_records",
+  "production_status": "not_verified",
+  "checks_passed": 12,
+  "reviewer_report_and_recheck": "verified",
+  "collector_forbidden_and_retry": "verified",
+  "digest_stable": "760d792c7e238737efaa94db50dcc30ee1ae521221c234ba41a026f622b10336",
+  "business_counts": {
+    "finance_expense_claim": 0,
+    "finance_action_plan": 0,
+    "finance_expense_history": 0,
+    "finance_decision": 0,
+    "finance_operation": 0,
+    "finance_receipt": 0,
+    "finance_invoice": 0,
+    "finance_settlement_operation": 0,
+    "finance_compliance_operation": 0,
+    "finance_notification": 0
+  },
+  "authenticated_replay_rows": 10,
+  "service_evidence": {
+    "counts": {
+      "finance_invoice": 0,
+      "finance_settlement_operation": 0,
+      "finance_compliance_operation": 0,
+      "finance_operation": 0,
+      "finance_receipt": 0
+    },
+    "model_calls": 0,
+    "model_attempts": 0,
+    "blocked_attempts": 0,
+    "blocked_entries": {
+      "runtime": 0,
+      "factory": 0,
+      "session": 0
+    },
+    "people": {
+      "owner": "usr_7c929a6cf20dfcfd7a6a9229",
+      "manager": "usr_a6c4caafeefa4f0c91be81ae",
+      "finance": "usr_e0fa82bf7d5edc262b450f75"
+    }
+  },
+  "fixture_session_age_seconds": 92.68773126602173,
+  "identity_boundary": "explicit fixture identities; actual cookie/CSRF/manual connector/signer/finance auth and PostgreSQL; no real SSO",
+  "legacy_fixture_labels": "F8 users/F9 company retained, not real staff/company"
+}
