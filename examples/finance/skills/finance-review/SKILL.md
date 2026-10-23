@@ -1,7 +1,7 @@
 ---
 name: finance-review
 description: 读取本人实际分派的报销、应付和原行动计划审批，核对证据、准备本人决定，或由公司复核人只读检查接入准备。
-version: 0.11.0-f10
+version: 0.12.0-f11
 entry: false
 type: composite
 tool_names:
@@ -35,7 +35,7 @@ tool_names:
 
 ## internal_records 分支
 
-profile=internal_records：当前公司财务复核人需要核对内部试用时，可调用getInternalRecordsReadiness；权限不足则说明岗位要求。报告即使全部检查通过也保持not_verified，不作为单据批准或上线授权；不自动修改配置。listReviewQueue只处理expense_claim，读取getExpenseClaim与listExpenseClaimHistory核对原文、原意见和版本；其他target_type说明实例不支持并停止。用当前target_version/workflow_step_id准备approve/reject预检，驳回需理由。提交实际决定交当前分派员工在人工入口确认，不能自审/代审或调用executeFinanceAction。可读当前站内提醒；不调用通用getFinanceReadiness，不读取资金规则。完成后返回，不执行下文general流程。
+profile=internal_records：当前公司财务复核人需要核对内部试用时，可调用getInternalRecordsReadiness；权限不足则说明岗位要求。本地原件核对由受信运维在停机维护入口执行，Skill不调用维护命令或shell；本地完整性结果不等于正式存储验收、票据查验或批准。报告即使全部检查通过也保持not_verified，不作为单据批准或上线授权；不自动修改配置。listReviewQueue只处理expense_claim，读取getExpenseClaim与listExpenseClaimHistory核对原文、原意见和版本；其他target_type说明实例不支持并停止。用当前target_version/workflow_step_id准备approve/reject预检，驳回需理由。提交实际决定交当前分派员工在人工入口确认，不能自审/代审或调用executeFinanceAction。可读当前站内提醒；不调用通用getFinanceReadiness，不读取资金规则。完成后返回，不执行下文general流程。
 
 ## general 分支
 

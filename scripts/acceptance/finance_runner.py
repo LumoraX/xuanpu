@@ -23,6 +23,10 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 QUICK_MODULES = [
+    'packages/xuanpu-finance/tests/test_f11_startup.py',
+    'packages/xuanpu-finance/tests/test_f11_verify.py',
+    'packages/xuanpu-finance/tests/test_f11_verify_cli.py',
+    'packages/xuanpu-finance/tests/test_f11_process.py',
     'packages/xuanpu-finance/tests/test_f10_readiness.py',
     'packages/xuanpu-finance/tests/test_f10_api.py',
     'packages/xuanpu-finance/tests/test_f10_recovery.py',

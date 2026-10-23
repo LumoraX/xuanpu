@@ -10,8 +10,10 @@ from pathlib import Path
 import uvicorn
 
 from xuanpu_finance.config import FinanceConfig, load_config
+from xuanpu_finance.errors import FinanceError
 from xuanpu_finance.readiness.offline import preflight
 from xuanpu_finance.runtime import open_runtime
+from xuanpu_finance.startup import load_startup_config
 
 
 async def serve(config: FinanceConfig) -> None:
@@ -27,7 +29,7 @@ async def serve(config: FinanceConfig) -> None:
 
 def main() -> None:
     """解析显式配置路径；配置检查不连接数据库或执行财务动作。"""
-    parser = argparse.ArgumentParser(description="玄圃独立财务 F0–F9")
+    parser = argparse.ArgumentParser(description="玄圃独立财务 F0–F11")
     parser.add_argument("--config", required=True, type=Path)
     checks = parser.add_mutually_exclusive_group()
     checks.add_argument("--check-config", action="store_true")
@@ -47,11 +49,19 @@ def main() -> None:
         if report["status"] == "blocked":
             raise SystemExit(2)
         return
-    config = load_config(args.config)
     if args.check_config:
+        load_config(args.config)
         print("财务配置结构校验通过；尚未连接外部资源")
         return
-    asyncio.run(serve(config))
+    try:
+        config = load_startup_config(args.config)
+        asyncio.run(serve(config))
+    except FinanceError as error:
+        if error.code != "INTERNAL_STARTUP_BLOCKED":
+            raise
+        print(json.dumps({"status": "blocked", "production_status": "not_verified",
+                          "code": "INTERNAL_STARTUP_BLOCKED"}))
+        raise SystemExit(2) from None
 
 
 if __name__ == "__main__":

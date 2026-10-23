@@ -1,0 +1,23 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____________ test_verify_cli_unexpected_internal_failure_is_safe ______________
+packages/xuanpu-finance/tests/test_f11_verify_cli.py:79: in test_verify_cli_unexpected_internal_failure_is_safe
+    module.main()
+packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py:35: in main
+    result = asyncio.run(verify_internal_records(options))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+packages/xuanpu-finance/tests/test_f11_verify_cli.py:75: in broken
+    raise RuntimeError('secret-sentinel-internal-failure')
+E   RuntimeError: secret-sentinel-internal-failure
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f11_verify_cli.py::test_verify_cli_unexpected_internal_failure_is_safe
+1 failed in 0.05s

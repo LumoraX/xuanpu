@@ -22,6 +22,7 @@ from xuanpu_finance.notifications import NotificationsWorker
 from xuanpu_finance.objects import EncryptedLocalObjects, EncryptedS3Objects
 from xuanpu_finance.settlement.providers import ProviderRegistry
 from xuanpu_finance.settlement.worker import SettlementWorker
+from xuanpu_finance.startup import prepare_startup
 from xuanpu_finance.storage import FinanceStore
 from xuanpu_finance.storage.f9_compatibility import check_internal_database
 
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
 
     from xuanpu_finance.config import FinanceConfig, ObjectsConfig
     from xuanpu_finance.objects import OriginalObjects
+    from xuanpu_finance.readiness.credentials import CredentialSnapshot
 
 WORKER_LOCK = 617472002
 
@@ -46,10 +48,12 @@ async def secret_text(path: Path) -> str:
 
 
 async def objects_from_config(
-    config: ObjectsConfig, *, simulation: bool = False
+    config: ObjectsConfig, *, simulation: bool = False,
+    credentials: CredentialSnapshot | None = None,
 ) -> OriginalObjects:
     """只创建财务自身对象适配器，不取得平台存储凭据。"""
-    key = await asyncio.to_thread(config.key_file.read_bytes)
+    key = (credentials.aes_key if credentials
+           else await asyncio.to_thread(config.key_file.read_bytes))
     if config.kind == "local":
         assert config.root is not None
         return EncryptedLocalObjects(config.root / "simulation" if simulation else config.root, key)
@@ -61,8 +65,10 @@ async def objects_from_config(
         boto3.client,
         "s3",
         endpoint_url=config.endpoint_url,
-        aws_access_key_id=await secret_text(config.access_key_file),
-        aws_secret_access_key=await secret_text(config.secret_key_file),
+        aws_access_key_id=(credentials.access_key if credentials
+                           else await secret_text(config.access_key_file)),
+        aws_secret_access_key=(credentials.secret_key if credentials
+                               else await secret_text(config.secret_key_file)),
         region_name="us-east-1",
     )
     return EncryptedS3Objects(
@@ -121,14 +127,14 @@ async def provider_registry(config: FinanceConfig, resources: AsyncExitStack) ->
 @asynccontextmanager
 async def open_runtime(config: FinanceConfig) -> AsyncIterator[FastAPI]:
     """持有独立数据库锁，先停止服务后台再关闭其资源。"""
-    config = type(config).model_validate(config.model_dump())
+    config, credentials = await prepare_startup(config)
     async with AsyncExitStack() as resources:
-        pool = await asyncpg.create_pool(
-            await secret_text(config.database_dsn_file), min_size=1, max_size=8
-        )
+        dsn = credentials.dsn if credentials else await secret_text(config.database_dsn_file)
+        pool = await asyncpg.create_pool(dsn, min_size=1, max_size=8)
         assert pool is not None
         resources.push_async_callback(pool.close)
-        lock = await asyncpg.connect(await secret_text(config.database_dsn_file))
+        lock_dsn = dsn if credentials else await secret_text(config.database_dsn_file)
+        lock = await asyncpg.connect(lock_dsn)
         resources.push_async_callback(lock.close)
         if not await lock.fetchval("SELECT pg_try_advisory_lock($1::bigint)", WORKER_LOCK):
             raise FinanceError("instance_owned", 409, "已有财务服务持有此独立数据库")
@@ -141,21 +147,26 @@ async def open_runtime(config: FinanceConfig) -> AsyncIterator[FastAPI]:
                 follow_redirects=False,
             )
         )
-        tokens = {
+        tokens = dict(credentials.gateway_tokens) if credentials else {
             tenant: await secret_text(path)
             for tenant, path in config.gateway.tenant_token_files.items()
         }
         gateway = PlatformGateway(client, tenant_tokens=tokens)
-        keys = {kid: await secret_text(path) for kid, path in config.public_key_files.items()}
+        keys = dict(credentials.public_keys) if credentials else {
+            kid: await secret_text(path) for kid, path in config.public_key_files.items()
+        }
         auth = FinanceAuthenticator(
-            service_token=await secret_text(config.service_token_file),
+            service_token=(credentials.service_token if credentials
+                           else await secret_text(config.service_token_file)),
             issuer=config.issuer,
             audience=config.audience,
             public_keys=keys,
             store=store,
             gateway=gateway,
         )
-        objects = await objects_from_config(config.objects, simulation=config.execution_simulation)
+        objects = await objects_from_config(
+            config.objects, simulation=config.execution_simulation, credentials=credentials
+        )
         if isinstance(objects, EncryptedS3Objects):
             resources.push_async_callback(asyncio.to_thread, objects.client.close)
         worker = FinanceWorker(store, objects, gateway, synthetic=config.synthetic)

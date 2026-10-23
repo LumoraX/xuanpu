@@ -43,3 +43,6 @@ uv run python -m xuanpu_finance --config examples/finance-internal-records/confi
 返回公司ID、内部profile、时间、固定检查/expense版本、当前配置摘要、有限运行状态及固定未验项；没有正文、凭据或人员名单。`finance-review` Skill可按需读取；403说明岗位要求，模型不能执行真人决定，也不能把not_verified写成通过上线验收。其他Skill继续先读capabilities，内部模式不调用支付、税务、档案或通用readiness。
 
 实际公司/制度/人员、生产身份和独立凭据/IAM/网络、真实模型语义与生产负载、异机恢复仍not_verified。支付、ERP、官方查验/税务、法定归档和飞书/企业微信审批不属于当前记录流程的依赖。
+
+
+后续正式启动门禁和停机原件核对见[F11指南](finance-f11.md)。本页保留F10当轮事实，当前版本与实际验收以F11为准。

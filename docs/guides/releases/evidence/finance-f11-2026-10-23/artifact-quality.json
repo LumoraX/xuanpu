@@ -1,0 +1,128 @@
+{
+  "reviewer": "f11_final_quality",
+  "status": "Approved",
+  "production_status": "not_verified",
+  "scope": "最终源码、证据、制品、镜像和资源清理独立质量复核",
+  "checks": {
+    "frozen_source": {
+      "files": 712,
+      "current_bytes_equal": true,
+      "manifest_sha256": "45c9e50a7e5a281aa7adcf5b9e8a36f32fe4573be26acab677a99a34e94e91d4"
+    },
+    "archives": [
+      {
+        "name": "finance-0.12.0-f11.zip",
+        "bytes": 54296,
+        "sha256": "193632ce4d80bd7be2c8fe23ccf8e97232d0a4e6ce7c908717fcfac12b887c25"
+      },
+      {
+        "name": "xuanpu_console-2026.10.23.1-py3-none-any.whl",
+        "bytes": 110516,
+        "sha256": "0c340e0112933f1550fa7e0686bcefd2e380e9f150a1956f5b89093c6767066b"
+      },
+      {
+        "name": "xuanpu_console-2026.10.23.1.tar.gz",
+        "bytes": 134531,
+        "sha256": "8f1c34d598852449482566bf7371b163ab29a83d20908eac0bd2fab07469fc9d"
+      },
+      {
+        "name": "xuanpu_finance-2026.10.23.2-py3-none-any.whl",
+        "bytes": 344543,
+        "sha256": "623269506b37932de74c26d68c4eeb543309a4f30206a15e4e3cd5bf1c54a488"
+      },
+      {
+        "name": "xuanpu_finance-2026.10.23.2.tar.gz",
+        "bytes": 427884,
+        "sha256": "99880b87608145b924da8bcbdfed1fad62b90f4a43f48d3cbe1d7d16e7a58469"
+      }
+    ],
+    "finance": {
+      "version": "2026.10.23.2",
+      "source_files": 141,
+      "wheel_sdist_current_source_equal": true
+    },
+    "console": {
+      "version": "2026.10.23.1",
+      "source_files": 23,
+      "wheel_sdist_current_source_equal": true
+    },
+    "business_pack": {
+      "zip_current_source_equal": true,
+      "design_corresponding_equal": true,
+      "published_files": 20,
+      "extra_design_references_unchanged": [
+        "skills/archive-audit/references/execution-rules.md",
+        "skills/expense-reimbursement/references/execution-rules.md",
+        "skills/finance-assistant/references/execution-rules.md",
+        "skills/finance-review/references/execution-rules.md"
+      ]
+    },
+    "test_evidence": {
+      "full-final": {
+        "passed": 2749,
+        "skipped": 3,
+        "failures": 0,
+        "errors": 0,
+        "pytest_exit": 0,
+        "junit_and_raw_log_hashes_equal": true
+      },
+      "quick-final": {
+        "passed": 309,
+        "skipped": 0,
+        "failures": 0,
+        "errors": 0,
+        "pytest_exit": 0,
+        "junit_and_raw_log_hashes_equal": true
+      }
+    },
+    "f11_facts": {
+      "facts_exactly_reextracted_from_full_junit": 14,
+      "finance_process_exit_codes": [
+        -15,
+        -15
+      ],
+      "graceful_shutdown_logged": true,
+      "pytest_exit_is_distinct_from_business_process_exit": true
+    },
+    "image": {
+      "tag": "xuanpu-finance:2026.10.23.2",
+      "id": "sha256:d7a59db804e62c314c17da26eb91b7e1b437869996c5bd435af3fddb19df1f51",
+      "uid": 10001,
+      "version": "2026.10.23.2",
+      "source_files": 141,
+      "current_source_equal": true,
+      "network": "none",
+      "entrypoints": {
+        "xuanpu-finance": {
+          "exit": 0,
+          "help_loaded": true
+        },
+        "xuanpu-finance-maintenance": {
+          "exit": 0,
+          "help_loaded": true
+        }
+      },
+      "business_runtime": "not_started"
+    },
+    "cleanup": {
+      "f11_owned_containers_absent": true,
+      "owned_volumes_absent": true,
+      "private_dsn_absent": true,
+      "port_52262_closed": true,
+      "original_checkout_clean": true
+    },
+    "independent_static": {
+      "ruff_F_S108_I_TC": "passed",
+      "mypy_source_files": 310,
+      "offline_lock_packages": 109,
+      "changed_python_constraints_files": 25,
+      "future_chinese_docstrings_file800_function80": "passed",
+      "C901": "passed"
+    }
+  },
+  "limitations": [
+    "未重新运行已删除隔离数据库上的full/quick；本阶段独立核对最终JUnit与原始日志及哈希，专项2process已在阶段一独立复跑通过。",
+    "镜像检查仅安装字节、UID、版本及隔离--help入口；不证明业务runtime或生产部署。",
+    "正式人员、生产SSO/IAM/网络、真实模型、生产负载及异机恢复仍not_verified。"
+  ]
+}

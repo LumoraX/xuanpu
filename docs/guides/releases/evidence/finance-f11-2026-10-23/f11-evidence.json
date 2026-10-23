@@ -1,0 +1,281 @@
+{
+  "production_status": "not_verified",
+  "source": "full-final/junit.xml",
+  "facts": [
+    {
+      "test": "packages.xuanpu-finance.tests.test_f11_process.test_internal_records_real_process_and_readonly_verify",
+      "name": "f11_process",
+      "value": {
+        "invoice_information_preserved": true,
+        "reason_preserved": true,
+        "status": "approved",
+        "paid_amount": "0.00",
+        "posted_amount": "0.00",
+        "original": {
+          "reader": "finance-reviewer",
+          "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+          "bytes_equal": true
+        },
+        "approvals": [
+          {
+            "original": {
+              "reader": "manager",
+              "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+              "bytes_equal": true
+            },
+            "model_rejection": {
+              "status": 403,
+              "output": {
+                "code": "HUMAN_REQUIRED",
+                "message": "请本人在人工确认入口作出业务决定",
+                "trace_id": "033245774b2a44a28b76ac40c69f54e4",
+                "retryable": false
+              },
+              "signed_origin": "agent",
+              "document_unchanged": true
+            },
+            "human_execution": {
+              "id": "f1op_50d345c6ecad40039ec4d52947bb8360",
+              "version": 1,
+              "status": "succeeded",
+              "business_result": "succeeded",
+              "trace_id": "35ba335facf34c6f8fdf2960369c32a6",
+              "items": [],
+              "result_refs": [],
+              "resources": [
+                {
+                  "kind": "expense_claim",
+                  "id": "c8438501850c45cf9a2e3bdc1011b663"
+                }
+              ]
+            },
+            "signed_origin": "human",
+            "reason": "manager已核对独立原件"
+          },
+          {
+            "original": {
+              "reader": "finance-reviewer",
+              "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+              "bytes_equal": true
+            },
+            "model_rejection": {},
+            "human_execution": {
+              "id": "f1op_9703023fbd3c470fb839ed069399b854",
+              "version": 1,
+              "status": "succeeded",
+              "business_result": "succeeded",
+              "trace_id": "cfd76d60f2c44c7da6af35b65b7d5ae9",
+              "items": [],
+              "result_refs": [],
+              "resources": [
+                {
+                  "kind": "expense_claim",
+                  "id": "c8438501850c45cf9a2e3bdc1011b663"
+                }
+              ]
+            },
+            "signed_origin": "human",
+            "reason": "finance-reviewer已核对独立原件"
+          }
+        ],
+        "decisions": [
+          {
+            "actor_id": "manager",
+            "action": "approve",
+            "data": {
+              "origin": "human",
+              "plan_id": "8e1de580fe9c44b39775a786d3dee6c8",
+              "parameters": {
+                "reason": "manager已核对独立原件",
+                "workflow_step_id": "be4d00c69a184896b843d947f4592858"
+              },
+              "target_version": 2
+            }
+          },
+          {
+            "actor_id": "finance-reviewer",
+            "action": "approve",
+            "data": {
+              "origin": "human",
+              "plan_id": "7b22ca28e2c9409ca12ab39b81fbbaf6",
+              "parameters": {
+                "reason": "finance-reviewer已核对独立原件",
+                "workflow_step_id": "9b5db853cbdc4b869ebee40562343c65"
+              },
+              "target_version": 2
+            }
+          }
+        ],
+        "receipts": [
+          {
+            "id": "70d30ce6b03f4d49a8018f083cda73b0",
+            "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3"
+          }
+        ],
+        "external_table_counts": {
+          "finance_invoice": 0,
+          "finance_settlement_operation": 0,
+          "finance_compliance_operation": 0
+        },
+        "active_verify": {
+          "exit": 1,
+          "output": {
+            "status": "failed",
+            "code": "INSTANCE_ACTIVE"
+          }
+        },
+        "stopped_verify": {
+          "exit": 0,
+          "output": {
+            "status": "completed",
+            "verification_status": "complete",
+            "profile": "internal_records",
+            "production_status": "not_verified",
+            "authenticated_objects": 1,
+            "prepared_missing_count": 0,
+            "unmapped_objects_count": 0,
+            "complete_object_validation": true,
+            "workers_started": false,
+            "business_writes": 0
+          }
+        },
+        "snapshot_equal": true,
+        "processes": [
+          {
+            "exit": -15,
+            "ended": true,
+            "graceful_shutdown": true,
+            "stdout_empty": true
+          },
+          {
+            "exit": -15,
+            "ended": true,
+            "graceful_shutdown": true,
+            "stdout_empty": true
+          }
+        ],
+        "finance_port_closed": true,
+        "gateway_port_closed": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f11_process.test_production_bad_permissions_real_cli_preserves_database",
+      "name": "f11_process",
+      "value": {
+        "production_bad_permissions": {
+          "exit": 2,
+          "output": {
+            "status": "blocked",
+            "production_status": "not_verified",
+            "code": "INTERNAL_STARTUP_BLOCKED"
+          },
+          "stderr_empty": true
+        },
+        "object_root_absent": true,
+        "snapshot_equal": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f11_verify_cli.test_verify_cli_complete_and_empty",
+      "name": "verify_complete_output",
+      "value": {
+        "authenticated_objects": 1,
+        "business_writes": 0,
+        "complete_object_validation": true,
+        "prepared_missing_count": 0,
+        "production_status": "not_verified",
+        "profile": "internal_records",
+        "status": "completed",
+        "unmapped_objects_count": 0,
+        "verification_status": "complete",
+        "workers_started": false
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f11_verify_cli.test_verify_cli_complete_and_empty",
+      "name": "verify_complete_exit",
+      "value": 0
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f11_verify_cli.test_verify_cli_incomplete[prepared]",
+      "name": "verify_incomplete_output",
+      "value": {
+        "authenticated_objects": 0,
+        "business_writes": 0,
+        "complete_object_validation": false,
+        "prepared_missing_count": 1,
+        "production_status": "not_verified",
+        "profile": "internal_records",
+        "status": "completed",
+        "unmapped_objects_count": 0,
+        "verification_status": "incomplete",
+        "workers_started": false
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f11_verify_cli.test_verify_cli_incomplete[prepared]",
+      "name": "verify_incomplete_exit",
+      "value": 2
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f11_verify_cli.test_verify_cli_incomplete[unmapped]",
+      "name": "verify_incomplete_output",
+      "value": {
+        "authenticated_objects": 1,
+        "business_writes": 0,
+        "complete_object_validation": false,
+        "prepared_missing_count": 0,
+        "production_status": "not_verified",
+        "profile": "internal_records",
+        "status": "completed",
+        "unmapped_objects_count": 1,
+        "verification_status": "incomplete",
+        "workers_started": false
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f11_verify_cli.test_verify_cli_incomplete[unmapped]",
+      "name": "verify_incomplete_exit",
+      "value": 2
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f11_verify_cli.test_verify_cli_failed_has_only_safe_code[missing]",
+      "name": "verify_failed_output",
+      "value": {
+        "code": "OBJECT_MISSING",
+        "status": "failed"
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f11_verify_cli.test_verify_cli_failed_has_only_safe_code[missing]",
+      "name": "verify_failed_exit",
+      "value": 1
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f11_verify_cli.test_verify_cli_failed_has_only_safe_code[wrong_key]",
+      "name": "verify_failed_output",
+      "value": {
+        "code": "OBJECT_AUTHENTICATION_FAILED",
+        "status": "failed"
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f11_verify_cli.test_verify_cli_failed_has_only_safe_code[wrong_key]",
+      "name": "verify_failed_exit",
+      "value": 1
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f11_verify_cli.test_verify_cli_failed_has_only_safe_code[blank]",
+      "name": "verify_failed_output",
+      "value": {
+        "code": "INTERNAL_DATABASE_INCOMPATIBLE",
+        "status": "failed"
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f11_verify_cli.test_verify_cli_failed_has_only_safe_code[blank]",
+      "name": "verify_failed_exit",
+      "value": 1
+    }
+  ]
+}

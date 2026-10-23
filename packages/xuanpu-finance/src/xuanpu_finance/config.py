@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from xuanpu_finance.compliance.models import CompliancePolicy  # noqa: TC001
 from xuanpu_finance.compliance.protocol import ComplianceProviderConfig  # noqa: TC001
 from xuanpu_finance.compliance_config import validate_compliance_config
+from xuanpu_finance.errors import startup_blocked
 from xuanpu_finance.expenses.models import ExpensePolicy  # noqa: TC001 — Pydantic运行时解析
 from xuanpu_finance.funding.models import FundingPolicy  # noqa: TC001
 from xuanpu_finance.funding_config import validate_funding_config
@@ -186,9 +187,16 @@ class FinanceConfig(StrictConfig):
                     raise ValueError("部门项目归属必须引用有公司授权的员工")
 
 
-def load_config(path: Path) -> FinanceConfig:
+def load_config(path: Path, *, startup: bool = False) -> FinanceConfig:
     """在进入事件循环前读取受信操作员配置；相对路径以配置所在目录为根。"""
-    config = FinanceConfig.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    try:
+        config = FinanceConfig.model_validate(raw)
+    except ValueError:
+        if (startup and isinstance(raw, dict) and raw.get("profile") == "internal_records"
+                and raw.get("environment", "production") == "production"):
+            raise startup_blocked() from None
+        raise
     base = path.resolve().parent
 
     def resolve(value: Path) -> Path:
