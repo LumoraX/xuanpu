@@ -1,0 +1,7 @@
+{
+  "baseline": "c239a52",
+  "shard_symlink_write_escaped": true,
+  "shard_symlink_read_returned_plaintext": true,
+  "scope": "temporary_local_objects_only_no_pg",
+  "private_content_or_credentials_recorded": false
+}

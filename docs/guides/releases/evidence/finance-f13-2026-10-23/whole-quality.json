@@ -1,0 +1,121 @@
+{
+  "task": "F13整轮独立最终质量审查",
+  "reviewer": "f13_final_quality",
+  "status": "Approved",
+  "open_findings": 0,
+  "findings": [],
+  "created_at": "2026-10-23T08:00:19.535504+00:00",
+  "baseline": "c239a52",
+  "branch": "feat/finance-f13",
+  "summary": "最终规格Approved后核对源码、两套最终JUnit与报告、17条真实F13属性、制品/镜像、文档和清理证据，未发现开放质量问题。内部记录联合验收边界清楚，具备授权本地提交条件。",
+  "independent_execution": {
+    "source_review": [
+      "git diff HEAD",
+      "F13 design/plan",
+      "local_objects.py/objects.py",
+      "five new F13 source/test/helper files",
+      "Skill/architecture/guides/final acceptance report"
+    ],
+    "frozen": "独立枚举722文件完整集合、对717基线新增5无删除并重算全部摘要；最终核对无漂移",
+    "artifacts": "独立打开5制品，逐字节核对wheel/sdist完整finance142和console23源、README/METADATA/PKG-INFO、所有非生成sdist文件和wheel RECORD；ZIP20/设计对应20一致且4refs对基线不变；重算5制品SHA",
+    "image": "实际执行network=none容器读取UID10001/version2026.10.23.4/142源码hash；ID与制品记录一致",
+    "quick_contract": "AST比较当前44模块=2F13+基线原42完整顺序，并核对最终report模块列表",
+    "cleanup": "实际docker清单确认F13容器及精确owned卷消失、DSN不存在、55055关闭，原xuanpu git status为空",
+    "product_or_tests_modified": false,
+    "pytest_or_pg_executed": false,
+    "full_or_quick_independent_rerun": false
+  },
+  "existing_evidence_recomputed": {
+    "scope": "只读重新解析主执行者独占PG生成的full/quick JUnit、report及pytest/JUnit SHA；不是本reviewer重跑全量或quick。任务一/二另有独立质量专项真实PG重跑证据。",
+    "suites": {
+      "full": {
+        "tests": 2827,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 3,
+        "passed": 2824,
+        "returncode": 0,
+        "status": "partial",
+        "missing_modules": [],
+        "finance_cases": 836,
+        "finance_all_passed": true
+      },
+      "quick": {
+        "tests": 376,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 376,
+        "returncode": 0,
+        "status": "passed",
+        "missing_modules": [],
+        "finance_cases": 364,
+        "finance_all_passed": true
+      }
+    },
+    "f13_properties": 17,
+    "real_process": "79张非replay表精确同、外部密文不变；真实签名认证新增1/移除0单列；拒绝无正文路径、恢复后两级403/202、源移除下载1、原件保持、approved且paid/posted0.00和正式invoice/settlement/compliance0；verify complete/无workers/无业务写入/快照同，-15优雅退出与端口关闭。",
+    "static": "复核Ruff全通过、strict Mypy311源无问题、离线锁109包、15变更Python约束、最终docs210passed证据。未独立重跑这些门禁。",
+    "scan_and_resources": "复核secret-scan hits=[]及清理前专用PG临时库/其它会话/锁/基线表/schema均0；扫描后仅无凭据文档和审查元数据。",
+    "known_failures": "原基线红测、确定shard碰撞红测、首轮process错误假设及精确凭据脱敏分别保留；不把历史失败抹去或把3项既有非财务skip算作通过。"
+  },
+  "quality_assessment": {
+    "security": "root/shard相对dirfd且O_DIRECTORY/O_NOFOLLOW；leaf nofollow stat+O_NONBLOCK/O_NOFOLLOW open+fstat，拒绝特殊文件。原子link只创建不覆盖，AES/AAD/不变性保持。",
+    "resource_and_concurrency": "ExitStack关闭fd，finally只删除本次成功创建temp；创建碰撞不删除他人项；真实双适配器竞争和实际系统调用替换边界测试覆盖，坏shard收件失败责任保留且同worker下一安全项继续。",
+    "authorization": "77API/24内部操作/7Skills/shell=false/工具名单不扩权；两级真实human决定及agent403，管理员测试夹具恢复文件不等于模型维护授权；不支付。",
+    "documentation": "当前最终报告与指南明确full partial的3个非财务skip、专项与最终门禁、制品/help与生产、Linux基础IO与全Linux业务、浏览器/真实模型未验边界。"
+  },
+  "review_sequence": {
+    "whole_spec_status": "Approved",
+    "whole_spec_open_findings": 0,
+    "approved_after_final_spec": true
+  },
+  "evidence_sha256": {
+    "whole-spec.json": "ea89b474cec99e0271e308a0a059efdb1c958ceb6019d9d9469fa7ab4e3fe965",
+    "artifact-quality.json": "26e07d988f901eac0d3f3d426a969da4208b2b0e9e3247ef3e64766aa942b8d9",
+    "full-final/report.json": "1022d485cd1ca422175bb7e8ba43dbb3431b0cb1408cfe23abb33712bd35148e",
+    "full-final/junit.xml": "810f843a97db673ae5d46a7aa198f08f6ed6e364e782f230279d4b0b91895e5d",
+    "full-final/pytest.log": "6a8c7d45a35ff2aa01f728ae3274087cca1647bdf54927cd32f0078dfbb490c0",
+    "quick-final/report.json": "57719b83e7d808c4a53f1ce89d8b8183d123c0f11826da71c434226e6f04eead",
+    "quick-final/junit.xml": "60b420b4feef26d1ec0431f7faa1b4537c24cc31c4ab0fb3b044155daea72eee",
+    "quick-final/pytest.log": "d61e7f31395fcb876fbf7a7347a82bb81ece65a76189e74e34d80af69365e0d8",
+    "f13-evidence.json": "8c61c3b9bc9c1c3ed9847b8c17e9cc07af6504d8746efc9d8a427a031dbe8933",
+    "frozen-source.json": "dee9a3f66cc82e82731abbc0903c425323406d193eb8e88407ae51b231a79710",
+    "artifacts.json": "dce7f3700e33dc5261274e321a69272f8047f077ddd73b835359b475815ef227",
+    "skill-contract-validation.json": "56389f431e0726405c0e658af5a30bdca41ca650592d33a6e9b8613aacd079e3",
+    "source-constraints.json": "155582efc8a08df8b78668fee1bc098119deb279a3b4385f697acb641df53254",
+    "cleanup.json": "ada07c821346e73b453f19e0723260eba8f746f869fca117318688b72279b4e8",
+    "test-resource-audit.json": "fec7989a1756b91d60b265708d1a6fc2482dab661f244c0f4942ff7379370fbd",
+    "secret-scan.json": "87d3c091cf675e591572de236bf4f6dc6375048cd2230ddc54114b983e1e06a0",
+    "docs-final.log": "49bcb901881b2bdcf646e3e3d7b3743d525afb0ede71dd82bf11ebd85fe05015",
+    "static-ruff.log": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "static-mypy.log": "fb137be3de18a936fec5be2f8945360343e7552c7904ff5a51e61547cae8b7a6",
+    "static-lock.log": "b8a9fa2fc7aaaf2878e07c0f9fb2fb05e2879fd58906900fc205844601f605e3",
+    "task1-quality.json": "c2f67c1b5176b26dfbd375c4b6731f2c67ea2968685080c6f8e430586da756d4",
+    "task2-quality.json": "304ff8ce2b0c9784e24d1771d8f53422d6663a9d4e8a4a9fe5d4039b45bfae9b"
+  },
+  "final_acceptance_document": {
+    "path": "docs/guides/releases/2026-10-23-finance-f13-acceptance.md",
+    "sha256": "adffcb7974826efaf12b2d1f0303badf175ce844b27395d1494b521be964171d"
+  },
+  "remaining_local_delivery_steps": "主执行者收口reviews/计划与精确原始证据空白清册，再按授权本地提交；本审查不声称提交已经存在。",
+  "not_verified": [
+    "真实公司/制度/人员",
+    "SSO/独立生产凭据/IAM/网络",
+    "真实模型语义",
+    "生产负载",
+    "生产存储/S3/异机灾备",
+    "本轮浏览器验收",
+    "整套Linux PG/CLI业务验收",
+    "正式部署"
+  ],
+  "threat_boundaries": [
+    "受信根祖先、服务账号/受信运维独占修改权",
+    "恶意本机管理员/硬链接/挂载/掉电/孤立temp自动修复/Windows不在承诺",
+    "已打开目录改名后旧fd可成功但不保证当前配置路径可达"
+  ],
+  "production_status": "not_verified",
+  "pushed": false,
+  "merged": false,
+  "deployed": false
+}

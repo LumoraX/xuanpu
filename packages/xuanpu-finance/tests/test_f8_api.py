@@ -54,4 +54,4 @@ async def test_signed_list_detail_params_modes_and_agent_read_only(store: Financ
         assert decision.status_code == 403, decision.text
     assert await store.get_operation(WHO, op['id']) == before
     assert await store.pool.fetchval('SELECT count(*) FROM finance_execution_grant') == 0
-    assert app.title == '玄圃财务 F0–F12' and app.version == '2026.10.23.3'
+    assert app.title == '玄圃财务 F0–F13' and app.version == '2026.10.23.4'

@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "base_head": "c239a52b5fb0d4430a4220df2eeba866b0d4b17b",
+  "branch": "feat/finance-f13",
+  "frozen_files": 722,
+  "full_passed": 2824,
+  "full_existing_non_finance_skips": 3,
+  "quick_passed": 376,
+  "quick_modules": 44,
+  "reviews": "Approved",
+  "raw_whitespace_diagnostics_preserved": 12,
+  "other_whitespace_check": 0,
+  "artifacts_equal": true,
+  "private_dsn_absent": true,
+  "original_checkout_clean": true,
+  "production_status": "not_verified",
+  "pushed": false,
+  "merged": false,
+  "deployed": false
+}

@@ -1,0 +1,16 @@
+{
+  "status": "passed",
+  "entries": [
+    {
+      "entry": "service",
+      "exit": 0,
+      "network": "none"
+    },
+    {
+      "entry": "maintenance",
+      "exit": 0,
+      "network": "none"
+    }
+  ],
+  "production_status": "not_verified"
+}

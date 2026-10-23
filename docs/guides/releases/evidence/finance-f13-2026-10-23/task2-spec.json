@@ -1,0 +1,112 @@
+{
+  "task": "F13 任务二独立规格审查",
+  "worktree": "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0",
+  "status": "Approved",
+  "summary": "任务二真实CLI、签名HTTP链接拒绝及显式恢复后两级人工续办符合规格。当前无开放规格差距。只读审查产品和测试，未运行PG或提交；仅写入本审查JSON。",
+  "open_findings": 0,
+  "reviewed_sources": [
+    "docs/superpowers/specs/2026-10-23-finance-f13-design.md",
+    "docs/superpowers/plans/2026-10-23-finance-f13.md:任务二",
+    "packages/xuanpu-finance/tests/test_f13_process.py",
+    "packages/xuanpu-finance/tests/f13_process_helpers.py",
+    "packages/xuanpu-finance/tests/f11_process_helpers.py",
+    "packages/xuanpu-finance/tests/f12_process_helpers.py",
+    "packages/xuanpu-finance/tests/f11_verify_helpers.py",
+    "packages/xuanpu-finance/tests/test_f4_maintenance.py",
+    "packages/xuanpu-finance/tests/test_f7_process.py",
+    "packages/xuanpu-finance/tests/test_f0_e2e.py"
+  ],
+  "verified_requirements": [
+    {
+      "requirement": "F4两新public库及真实CLI/loopback/签名human",
+      "evidence": "test_f13_process.py:17、31–36复用F4 maintenance_database和F12 process_case；F4:28–38创建两个随机独立库并迁移第一库；f12_process_helpers.py:103–121核对两DSN无search_path、public、test/internal_records，真实loopback身份/文件网关及HTTP客户端。F13 observed_file_process实际启动python -m xuanpu_finance。"
+    },
+    {
+      "requirement": "临时文件分别收stdout/stderr，有界SIGTERM/kill回收及真实退出",
+      "evidence": "f13_process_helpers.py:40–70两个TemporaryFile分别承接输出，finally terminate，15秒等待，超时kill再有界wait；断言实际-15、非forced、Application shutdown complete、stdout空及端口关闭。process-final.xml实际exit=-15、forced_kill=false、graceful_shutdown=true、port_closed=true。"
+    },
+    {
+      "requirement": "真实收件、本人提交、删除平台源并从actual receipt/object_key定位密文",
+      "evidence": "test_f13_process.py:36–46调用F7 receive_and_submit，真实worker supporting-material-imports完成后本人创建草稿和human提交；payloads.clear后真人读取原字节。f13_process_helpers.py:112–125从finance_receipt查询object_key/sha256/operation_id并核对实际operation succeeded，再调用既有_path定位。最终download_count=1、source_removed=true。"
+    },
+    {
+      "requirement": "root外副本symlink，真实GET拒绝500/OBJECT_PATH_UNSAFE且不返回正文/路径",
+      "evidence": "test_f13_process.py:42–50将当前独占密文rename到root外目录并将leaf symlink至该副本；f13_process_helpers.py:165–173真实manager/human签名GET，断言500/OBJECT_PATH_UNSAFE、响应原始字节无content_base64、无原PDF、无root/outside路径。process-final.xml和regression.xml均记录真实500及安全结果。"
+    },
+    {
+      "requirement": "通知锁下全部public表精确比较，replay唯一例外，外部密文字节不变",
+      "evidence": "f13_process_helpers.py:159–190独立连接事务持617472004，finally关闭连接释放锁；F11 snapshot枚举全部public表并对各行to_jsonb文本排序。拒绝前后表名集合相同，除finance_context_replay外全部逐表比较；外部目录相对文件名/bytes字典相同。process-final.xml记录79张非replay表均true。产品f4_notices.py:29–30使用同一通知锁。"
+    },
+    {
+      "requirement": "replay仅本次实际签名jti/主体/指纹/exp新增及合法过期清理，其余行不变",
+      "evidence": "f13_process_helpers.py:73–84从实际response.request验证EdDSA及request_fingerprint；:128–152读取replay全部字段，新增key必须唯一等于实际iss/jti，交集行全字段相同，删除行expires_at必须小于数据库clock_timestamp；新增整行必须等于实际tenant/sub/origin主体、request_sha256、idempotency和exp UTC时间。最终JUnit added_count=1、removed_count=0、added_matches_signature=true、existing_rows_unchanged=true。"
+    },
+    {
+      "requirement": "显式管理员恢复、每级agent403不改状态后human202、两级真实DB决定",
+      "evidence": "test_f13_process.py:51–58 finally仅删除本测试指向moved的链接并将原密文rename回来，真实GET再次核对原bytes。f13_process_helpers.py:193–213独立helper逐级F11 approve(reject_model=True)，非retained_approval。F11:78–85每级真实agent执行403/HUMAN_REQUIRED并比较完整单据前后相等，之后human签名执行；test_f13_process.py:61–63实际确认请求顺序严格403/202/403/202、agent/human/agent/human。document_decisions实际DB读取manager和finance-reviewer两决定、origin=human，single_execution核对每计划一决定/操作/outbox。"
+    },
+    {
+      "requirement": "批准后原件/原文/理由保留、paid/posted及正式三表0、下载1",
+      "evidence": "f13_process_helpers.py:198–213最终真实状态approved、DB理由与两实际批准reason匹配，批准后finance-reviewer再read_original校验bytes。复用preserved_record核对invoice_information和reason原文不变、paid_amount=posted_amount=0.00；external_counts实际三正式表均0；test_f13_process.py:64要求payloads为空且downloads恰为[pdf]。process-final.xml记录全部事实。"
+    },
+    {
+      "requirement": "停机verify complete且全库与密文快照相同，workers0/writes0，端口关闭",
+      "evidence": "test_f13_process.py:65在observed_file_process退出后调用真实readonly_verify；F12:348–360真实maintenance_cli并核对完整输出和F11全表/逐文件bytes快照前后相等，workers_started=false、business_writes=0、verification_status=complete。进程及gateway上下文实际断言端口关闭，最终JUnit两个端口均true。"
+    },
+    {
+      "requirement": "JUnit f13_process保留安全事实，失败断言不输出原件正文或凭据",
+      "evidence": "test_f13_process.py:66–71只记录摘要、布尔结果、IDs、DB决定、实际签名安全字段、verify和进程事实。signed_request不保存原JWT或请求正文。当前500失败断言仅status/code/content_base64_present；基线200红测日志/JUnit只输出这些安全字段。独立解析final/regression属性未发现票号原文、金额原文、JWT前缀、Bearer、X-Xuanpu-Context或PDF base64前缀。"
+    }
+  ],
+  "evidence_review": {
+    "baseline_red": "process-baseline-red.log/xml：旧产品实际GET返回200且content_base64_present=true，1 failed，0 skipped/errors；失败原因是期望500而实际200，非缺环境或挂死。",
+    "green": "process-green.log/xml：1 passed；process-final.log/xml：最终增加批准后原件读回后的1 passed，0 failures/errors/skipped。",
+    "regression": {
+      "log": "process-regression.log：8 passed in 79.63s；JUnit 8 tests、0 failures/errors/skipped。",
+      "testcases": [
+        "packages.xuanpu-finance.tests.test_f13_process.test_unsafe_original_refused_then_humans_resume_after_explicit_restore",
+        "packages.xuanpu-finance.tests.test_f11_process.test_internal_records_real_process_and_readonly_verify",
+        "packages.xuanpu-finance.tests.test_f11_process.test_production_bad_permissions_real_cli_preserves_database",
+        "packages.xuanpu-finance.tests.test_f12_crash.test_sigkill_after_cipher_before_receipt_recovers_naturally",
+        "packages.xuanpu-finance.tests.test_f12_hitl.test_eight_human_confirmations_same_plan_execute_once",
+        "packages.xuanpu-finance.tests.test_f12_hitl.test_human_approve_and_reject_same_version_have_one_winner",
+        "packages.xuanpu-finance.tests.test_f12_hitl.test_lost_human_confirmation_response_retries_original_operation_after_restart",
+        "packages.xuanpu-finance.tests.test_f10_recovery.test_real_cli_restored_internal_readonly_then_human_continuation"
+      ]
+    },
+    "static": "process-static.log：All checks passed，两个新文件future/中文docstring/函数<=80行检查通过；helper213行，test71行。",
+    "initial_failure": "process-first.log/xml原始失败保留，非最终通过证据；一次临时DSN凭据值脱敏，process-failure-redaction.json记录原始/中间/最终SHA和replacement_count=1。"
+  },
+  "findings": [
+    {
+      "priority": "P2",
+      "category": "evidence_integrity",
+      "file": "docs/guides/releases/evidence/finance-f13-2026-10-23/process-first.xml",
+      "title": "历史失败JUnit脱敏标记曾导致XML不可解析",
+      "status": "resolved",
+      "detail": "首次脱敏使用尖括号标记，独立XML解析报mismatched tag；已改为[redacted-test-password]，仅修改脱敏标记，原始失败仍保留。",
+      "resolved_evidence": "本次重新解析全部5份process-*.xml成功；first仍1 failed。redaction.json的最终SHA与两文件实际SHA逐字节相符，保留before/intermediate/after摘要。"
+    }
+  ],
+  "independent_validation": {
+    "pg_tests_run": false,
+    "product_files_changed": false,
+    "tests_changed": false,
+    "checks": [
+      "只读追踪真实调用链和全部相关断言",
+      "ElementTree解析全部5份process JUnit",
+      "读取final和regression的f13_process实际属性核对状态、签名、DB决定、表快照和进程事实",
+      "核对redaction JSON最终SHA等于当前日志/JUnit的SHA",
+      "扫描f13_process属性中的原文/JWT/凭据/PDF base64敏感前缀"
+    ],
+    "source_sha256": {
+      "f13_process_helpers.py": "704ada7dc100aab2ffdbeabc10ec6f6f63f5ea3edfa538964abfbdc956ef50e5",
+      "test_f13_process.py": "c737c34f0d44a65eb3b52e9da98b7f52c6eb08b88742d2a6e086469763d191b4"
+    }
+  },
+  "limitations": [
+    "本次真实PG结果基于实现agent保存的原始JUnit与日志独立审阅，遵守PG独占要求，未重跑PG。",
+    "仅任务二内部隔离验收规格；不代表生产部署、真实公司身份、真实模型、生产负载或灾备验收。",
+    "任务三发布与整轮最终门禁不属于本结论。"
+  ]
+}

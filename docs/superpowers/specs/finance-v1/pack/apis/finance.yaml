@@ -1,14 +1,14 @@
 openapi: 3.0.3
 info:
-  title: 玄圃财务 F0—F12 API
-  version: 0.13.0-f12
+  title: 玄圃财务 F0—F13 API
+  version: 0.14.0-f13
   description: 独立存储与Skill/API/HITL；当前优先发票申报、内部报销、真人审批和完整流转记录，外部支付与正式验真归档未启用。
 servers:
 - url: http://127.0.0.1:8443
 security:
 - serviceBearer: []
   actorContext: []
-x-design-status: implemented-f0-f12-internal-records
+x-design-status: implemented-f0-f13-internal-records
 x-trusted-context: 平台签名注入X-Xuanpu-Context，禁止模型提供身份；executeFinanceAction/reconcileOperation及F2取消只允许cookie人工网关。
 paths:
   /v1/finance/legal-entities:

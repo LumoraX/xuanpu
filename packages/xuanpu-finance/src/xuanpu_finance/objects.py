@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-import tempfile
 from functools import partial
 from pathlib import Path
 from typing import Any, Protocol
@@ -14,6 +13,7 @@ from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from xuanpu_finance.errors import FinanceError
+from xuanpu_finance.local_objects import LocalObjectFiles
 
 
 class OriginalObjects(Protocol):
@@ -65,7 +65,7 @@ class _Envelope:
 
 
 class EncryptedLocalObjects:
-    """异步文件 IO、加密认证和原子替换的独立原件适配。"""
+    """异步文件 IO、加密认证和原子创建的独立原件适配。"""
 
     def __init__(self, root: Path | str, key: bytes) -> None:
         """注入独立原件目录与原始 32 字节密钥，不读取环境。"""
@@ -80,22 +80,9 @@ class EncryptedLocalObjects:
 
     def _write(self, path: Path, key: str, content: bytes, encrypted: bytes) -> None:
         """通过原子硬链接创建对象，已有对象只允许原字节完全相同。"""
-        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as stream:
-            temporary = Path(stream.name)
-            try:
-                stream.write(encrypted)
-                stream.flush()
-                stream.close()
-                try:
-                    path.hardlink_to(temporary)
-                except FileExistsError:
-                    if self.envelope.decrypt(key, path.read_bytes()) != content:
-                        raise FinanceError(
-                            "OBJECT_IMMUTABLE", 409, "原件对象键已绑定不同内容"
-                        ) from None
-            finally:
-                temporary.unlink(missing_ok=True)
+        existing = LocalObjectFiles(self.root).write_once(path.stem, encrypted)
+        if existing is not None and self.envelope.decrypt(key, existing) != content:
+            raise FinanceError("OBJECT_IMMUTABLE", 409, "原件对象键已绑定不同内容")
 
     async def put(self, key: str, content: bytes) -> None:
         """在线程池加密写入原件，不阻塞事件循环。"""
@@ -106,7 +93,9 @@ class EncryptedLocalObjects:
     async def get(self, key: str) -> bytes:
         """读取并校验原件完整性。"""
         try:
-            encrypted = await anyio.to_thread.run_sync(self._path(key).read_bytes)
+            encrypted = await anyio.to_thread.run_sync(
+                LocalObjectFiles(self.root).read, self._path(key).stem
+            )
         except FileNotFoundError as exc:
             raise FinanceError("OBJECT_NOT_FOUND", 404, "加密原件尚未写入或已缺失") from exc
         return await anyio.to_thread.run_sync(self.envelope.decrypt, key, encrypted)

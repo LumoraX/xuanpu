@@ -1,0 +1,70 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____ test_unsafe_original_refused_then_humans_resume_after_explicit_restore ____
+
+maintenance_database = (<xuanpu_finance.storage.store.FinanceStore object at 0x1098d5cd0>, [MaintenanceOptions(database_dsn_file=PosixPath('/...st:[redacted-test-password]@127.0.0.1:55055/finance_restore_02669a509aeb45b19591cca253628be1'])
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2113/test_unsafe_original_refused_t0')
+request = <FixtureRequest for <Coroutine test_unsafe_original_refused_then_humans_resume_after_explicit_restore>>
+
+    async def test_unsafe_original_refused_then_humans_resume_after_explicit_restore(
+        maintenance_database: Any, tmp_path: Path, request: pytest.FixtureRequest,
+    ) -> None:
+        """源移除后链接拒绝无业务变更，恢复原密文后原操作两级真人批准且停机只读。"""
+        async with process_case(maintenance_database, tmp_path/'process') as case:
+            signed = RecordedSignedClient(case.signed)
+            case.signed = signed
+            async with observed_file_process(case.path, case.outcomes, case.config.port):
+                await wait_for_ready(case.signed.client)
+                doc = await receive_and_submit(case.signed, case.raw)
+                case.payloads.clear()
+                prefix = '/v1/finance/expense-claims/'+doc['id']
+                original = await read_original(case.signed, prefix, doc, 'manager', case.raw)
+                leaf, receipt = await receipt_ciphertext(case, doc)
+                assert original['sha256'] == receipt['sha256']
+                outside = tmp_path/'outside-original-root'
+                outside.mkdir()
+                moved = outside/leaf.name
+                leaf.rename(moved)
+                try:
+                    leaf.symlink_to(moved)
+                    refusal = await refused_original(
+                        case, prefix+'/materials/'+receipt['receipt_id'], outside)
+                finally:
+                    # 只有本测试恢复自己创建的链接，不经模型或产品接口自动修复。
+                    if leaf.is_symlink():
+                        assert leaf.readlink() == moved
+                        leaf.unlink()
+                    moved.rename(leaf)
+                restored = await read_original(case.signed, prefix, doc, 'manager', case.raw)
+                assert restored == original
+                signed.executions.clear()
+>               final = await two_human_approvals(case, doc)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f13_process.py:59: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+case = ProcessCase(store=<xuanpu_finance.storage.store.FinanceStore object at 0x1098d5cd0>, path=PosixPath('/private/var/fold...ytes': 350, 'stderr_sha256': '7577cbe761776e1b3f61d99c6ff29d99833f4510fe485af940b07b0359a4e783', 'port_closed': True}])
+doc = {'id': 'ded0820571f443b482900808ba361886', 'kind': 'expense_claim', 'legal_entity_id': 'company-a', 'version': 1, ...}
+
+    async def two_human_approvals(case: ProcessCase, doc: dict[str, Any]) -> dict[str, Any]:
+        """两级均先验证agent真实403，再由human签名确认，数据库核对实际决定。"""
+        prefix = '/v1/finance/expense-claims/'+doc['id']
+        approvals = [await approve(case.signed, prefix, user, case.raw, reject_model=True)
+                     for user in ['manager', 'finance-reviewer']]
+        done = await call(case.signed, 'GET', prefix)
+        decisions = await document_decisions(case.store, doc['id'])
+        assert done['status'] == 'approved'
+        assert [decision['actor_id'] for decision in decisions] == ['manager', 'finance-reviewer']
+        assert all(decision['data']['origin'] == 'human' for decision in decisions)
+        assert {decision['data']['parameters']['reason'] for decision in decisions} == {
+            approval['reason'] for approval in approvals}
+>       assert [decision['data']['operation_id'] for decision in decisions] == [
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            approval['human_execution']['id'] for approval in approvals]
+E       KeyError: 'operation_id'
+
+packages/xuanpu-finance/tests/f13_process_helpers.py:191: KeyError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f13_process.py::test_unsafe_original_refused_then_humans_resume_after_explicit_restore
+1 failed in 2.25s
