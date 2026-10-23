@@ -82,6 +82,8 @@ Files：Create `connections/task_bindings.py`、`packages/xuanpu-console/src/xua
 
 ## A5：独立真实验收和兼容试点
 
+2026-10-23更新：候选已部署，真实客户端本人登录、授权、资料读取、撤销及再次拒绝已由用户确认，生产审计与重启后的撤销持久化一致。范围缩小、供应商令牌提前失效及真实受控任务冷恢复仍未验收；A5保持未整体签收，详见上述验收记录。
+
 Files：Create `scripts/acceptance/r3_connections.py`；实现时写实际日期release记录；Modify受影响`docs/architecture/`与`docs/guides/`，各包按实际日期升版本/更新uv.lock。
 
 - [x] 脚本显式接收private credentials、独立evidence目录、staging/production、隔离tenant；只允许冻结的本人读取/目录预览，不自动扩供应商权限，不配置假成功身份。

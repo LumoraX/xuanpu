@@ -27,8 +27,17 @@ class _CredentialLogFilter(logging.Filter):
         """不在日志中保留token、secret、code或成员票据。"""
         if any(key in record.getMessage().lower() for key in
                ('access_token=','corpsecret=','code=','user_ticket=')):
-            record.msg='企业连接HTTP请求（认证URL已隐去）'
-            record.args=()
+            if record.name == 'uvicorn.access':
+                # 原生访问格式器依赖五个参数；仅隐藏路径，保留方法与状态。
+                if not isinstance(record.args, tuple) or len(record.args) != 5:
+                    # 未知格式含认证值时不输出，避免格式器异常回显原始记录。
+                    return False
+                client, method, _, version, status = record.args
+                record.msg = '%s - "%s %s HTTP/%s" %d'
+                record.args = (client, method, '/[connection-auth-redacted]', version, status)
+            else:
+                record.msg='企业连接HTTP请求（认证URL已隐去）'
+                record.args=()
         return True
 
 
