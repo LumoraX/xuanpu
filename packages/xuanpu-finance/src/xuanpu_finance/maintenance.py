@@ -26,6 +26,7 @@ from xuanpu_finance.maintenance_types import (
     MaintenanceOptions,
     pg_environment,
 )
+from xuanpu_finance.readiness.credentials import read_fixed, read_text_secret
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -35,14 +36,27 @@ if TYPE_CHECKING:
 __all__ = ['MaintenanceError', 'MaintenanceOptions', 'backup', 'restore']
 
 
+def _capture_maintenance_credentials(options: MaintenanceOptions) -> tuple[str, bytes]:
+    """连接前一次有界读取私密普通文件，并沿用维护DSN参数契约。"""
+    try:
+        raw, _ = read_text_secret(options.database_dsn_file)
+        key, _ = read_fixed(options.key_file)
+        if len(key) != 32:
+            raise MaintenanceError('KEY_INVALID')
+        dsn = raw.decode('utf-8')
+        pg_environment(dsn)
+    except (OSError, ValueError, UnicodeError) as error:
+        raise MaintenanceError('MAINTENANCE_INPUT_INVALID') from error
+    return dsn, key
+
+
 @asynccontextmanager
 async def maintenance_session(
     options: MaintenanceOptions, *, credentials: tuple[str, bytes] | None = None,
 ) -> AsyncIterator[tuple[MaintenanceLock, str, bytes]]:
     """维护锁贯穿全部步骤，凭据仅从显式文件读取且不回显。"""
     if credentials is None:
-        dsn = (await asyncio.to_thread(options.database_dsn_file.read_text)).strip()
-        key = await asyncio.to_thread(options.key_file.read_bytes)
+        dsn, key = await asyncio.to_thread(_capture_maintenance_credentials, options)
     else:
         dsn, key = credentials
     if len(key) != 32:

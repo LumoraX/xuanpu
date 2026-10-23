@@ -1,6 +1,8 @@
 # 财务F5：预付、员工垫付与委托收款
 
-当前F8按用户要求聚焦发票报销内部流转记录，不做支付。最新契约finance `0.9.0-f8`、74项API、7个Skill；见[F8指南](finance-f8.md)及[F8本轮验收](releases/2026-10-22-finance-f8-acceptance.md)。下文阶段记录保留原有验证范围。
+当前F14按用户要求仅作内部流转记录，不支付；契约finance `0.15.0-f14`、77项API、7个Skill，见[F14指南](finance-f14.md)及[F14验收](releases/2026-10-23-finance-f14-acceptance.md)。下文保留各阶段事实。
+
+F8阶段按用户要求聚焦发票报销内部流转记录，不做支付。当轮契约finance `0.9.0-f8`、74项API、7个Skill；见[F8指南](finance-f8.md)及[F8本轮验收](releases/2026-10-22-finance-f8-acceptance.md)。下文阶段记录保留原有验证范围。
 
 F5在独立财务PostgreSQL、AES-GCM原件、真实人工审批和F2固定外部请求上增加专用资金单据，覆盖三种付款场景与两种预付收尾。当前包契约为finance `0.6.0-f5`、69项API、7个Skill；服务与console已构建版本分别为`2026.10.22.1`、`2026.10.22.2`，实际制品和验证结果以[F5验收记录](releases/2026-10-22-finance-f5-acceptance.md)为准。版本编号不表示正式通道已启用。
 
@@ -132,6 +134,6 @@ uv run pytest packages/xuanpu-finance/tests/test_f5_contract.py packages/xuanpu-
 
 真实供应商、正式制度、税务官方票样/签章、真实WORM、外部企微/飞书报销、异机DR、真实模型专项评测和生产并发均未验。完整遗留边界见[缺口台账](finance-gap-register.md)，不以本阶段编号或隔离HTTP成功代替这些证据。
 
-当前F6新增正式接入准备检查与可重复隔离验收，总70项API、7个Skill；见[F6指南](finance-f6.md)和[正式接入清单](finance-provider-acceptance.md)。原阶段正式能力未验边界继续保留。
+F6阶段新增正式接入准备检查与可重复隔离验收，当轮70项API、7个Skill；见[F6指南](finance-f6.md)和[正式接入清单](finance-provider-acceptance.md)。原阶段正式能力未验边界继续保留。
 
 当前内部记录的摘要检索、专用部署配置与上线准备见[F9指南](finance-f9.md)，原阶段验收事实仍以对应记录为准。

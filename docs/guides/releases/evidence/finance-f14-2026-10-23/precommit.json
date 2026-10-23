@@ -1,0 +1,31 @@
+{
+  "status": "passed",
+  "base": "da624a9571e9c6e97f1f375428091ba4a5a41140",
+  "branch": "feat/finance-f14",
+  "suites": {
+    "full": {
+      "tests": 2899,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 3
+    },
+    "quick": {
+      "tests": 444,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "quick_modules": 46,
+  "source_frozen_files": 726,
+  "artifacts": 5,
+  "approved_independent_reviews": 8,
+  "all_xml_parseable": 20,
+  "docs_tests_passed": 214,
+  "f14_final_process_facts_checked": true,
+  "staged_only": true,
+  "original_checkout_clean": true,
+  "private_dsn_removed": true,
+  "production_status": "not_verified",
+  "commit_push_merge_deploy": "only next local commit is authorized; no push, merge or deployment"
+}

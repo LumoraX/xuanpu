@@ -1,0 +1,121 @@
+{
+  "task": "F14整轮独立规格审查（初步）",
+  "status": "PendingFinalEvidence",
+  "baseline": "da624a9",
+  "branch": "feat/finance-f14",
+  "reviewer": "independent-whole-spec",
+  "reviewed_at_utc": "2026-10-23T08:54:18.930129+00:00",
+  "scope": "只读审查当前源码、测试/helper、冻结清单、文档与既有专项证据；未连接PG、未跑pytest、未修改冻结路径、未提交。仅写本审查报告。",
+  "findings": [],
+  "checks": [
+    {
+      "requirement": "F0–F13 gap到F14选择与范围一致",
+      "result": "pass",
+      "detail": "台账保留正式制度/人员、身份凭据/IAM/网络、真实模型/生产负载、S3/异机恢复等未验项；F14选择复用既有安全读取，未通过隔离证据关闭外部缺口。"
+    },
+    {
+      "requirement": "维护固定凭据安全读取、兼容性、有限失败",
+      "result": "pass",
+      "detail": "_capture_maintenance_credentials复用read_text_secret/read_fixed，asyncio.to_thread内连接前单次捕获；O_NOFOLLOW/O_NONBLOCK、普通私有文件、有界读取/finally close、编码/空白/长度检查；沿用pg_environment维护TLS白名单并保持verify注入不重读；未知backup/restore仅failed/MAINTENANCE_FAILED/exit1，既有码及可能已提交语义保留。",
+      "evidence": [
+        "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-evidence.json",
+        "docs/guides/releases/evidence/finance-f14-2026-10-23/task1-spec.json",
+        "docs/guides/releases/evidence/finance-f14-2026-10-23/task1-quality.json"
+      ]
+    },
+    {
+      "requirement": "8坏CLI、实际两库配套backup/restore和目标池真人续办",
+      "result": "pass",
+      "detail": "逐读4个新测试/helper及复用F10–F13边界；actual_cli调用当前模块、pg_tools转发真实成熟工具；八组真实拒绝核对marker零调用/两库全表及密文不变/实际三位置stage清单。target_store切换新DSN/root及FinanceStore(target_pool)，两个数据库不同；真实签名403/202/403/202；原operation/receipt/key/SHA/原文字节保持；approved、paid/posted0、正式三表0、平台源移除/下载1，停机verify complete且零worker/写和快照不变。单测零连接与真实CLI数据不变证据明确区分。",
+      "evidence": [
+        "docs/guides/releases/evidence/finance-f14-2026-10-23/process-evidence.json",
+        "docs/guides/releases/evidence/finance-f14-2026-10-23/process-review-final.xml",
+        "docs/guides/releases/evidence/finance-f14-2026-10-23/task2-spec-initial.json",
+        "docs/guides/releases/evidence/finance-f14-2026-10-23/task2-spec.json",
+        "docs/guides/releases/evidence/finance-f14-2026-10-23/task2-quality.json"
+      ]
+    },
+    {
+      "requirement": "Task2初审问题及历史保留",
+      "result": "pass",
+      "detail": "初版stage观察父目录错误已由staging_snapshot最小修复；新process-review-final.xml 1/0/0/0，f14_process属性与当前汇总逐字结构相等；修复前回归28pass不冒称修复后复跑。"
+    },
+    {
+      "requirement": "20对应pack同步/4额外refs未改/77API24internal7Skills及权限不扩张",
+      "result": "pass",
+      "detail": "独立逐字节比对发布20文件与设计24文件全部对应一致，4额外execution-rules refs对da624a9完全不变；OpenAPI实际72+5=77个唯一operationId，internal_profile AST读取24项；7份Skill tool_names与基线相同，shell=false保持。",
+      "evidence": [
+        "docs/guides/releases/evidence/finance-f14-2026-10-23/skill-contract-validation.json",
+        "docs/guides/releases/evidence/finance-f14-2026-10-23/metadata-docs.json"
+      ]
+    },
+    {
+      "requirement": "版本和当前文档更新、历史保留",
+      "result": "pass",
+      "detail": "pack0.15.0-f14、finance/镜像2026.10.23.5、console2026.10.23.1一致；README、当前架构、gap ledger、F14指南更新准确；F10–F13指南及F13验收只追加当前指引，历史阶段版本与结果保留；F14验收当前明确标待最终证据。"
+    },
+    {
+      "requirement": "Skill场景证据边界",
+      "result": "pass",
+      "detail": "baseline/after/forward均只读模拟；baseline已有通用管理员/原请求/真人边界，没有将原有正确Skill虚构为违规或真实模型红测；当前只补维护凭据分支。",
+      "evidence": [
+        "docs/guides/releases/evidence/finance-f14-2026-10-23/skill-scenario-baseline.json",
+        "docs/guides/releases/evidence/finance-f14-2026-10-23/skill-scenario-after-update.json",
+        "docs/guides/releases/evidence/finance-f14-2026-10-23/skill-scenario-forward.json"
+      ]
+    },
+    {
+      "requirement": "冻结与既有证据完整性",
+      "result": "pass",
+      "detail": "独立重算frozen-source全部726路径SHA，0缺失/0改变；抽取凭据与Task1/2质量清册28项重算SHA/大小全部匹配。metadata初测37总项=35pass+2未供PGskip，最终纯合同35pass0skip；不得替代最终finance0skip。",
+      "evidence": [
+        "docs/guides/releases/evidence/finance-f14-2026-10-23/frozen-source.json",
+        "docs/guides/releases/evidence/finance-f14-2026-10-23/metadata-contract.xml",
+        "docs/guides/releases/evidence/finance-f14-2026-10-23/metadata-contract-final.xml"
+      ]
+    },
+    {
+      "requirement": "固定quick顺序",
+      "result": "pass",
+      "detail": "独立AST读取runner，当前46模块；前置F14两个模块后剩余44与da624a9完全相同且顺序保持。"
+    }
+  ],
+  "pending_final_evidence": [
+    {
+      "requirement": "冻结源最终全量",
+      "expected": "docs/guides/releases/evidence/finance-f14-2026-10-23/full-final/report.json",
+      "detail": "实际退出0、无失败/错误且finance skipped=0；核对JUnit、pytest日志、模块与冻结源指纹，不能复用旧轮。"
+    },
+    {
+      "requirement": "全量完成后顺序quick",
+      "expected": "docs/guides/releases/evidence/finance-f14-2026-10-23/quick-final/report.json",
+      "detail": "46模块、原44顺序保留、新2前置；实际finance0skip及业务属性，PG独占顺序执行。"
+    },
+    {
+      "requirement": "最终整轮汇总与验收文档",
+      "expected": "docs/guides/releases/evidence/finance-f14-2026-10-23/f14-evidence.json",
+      "detail": "汇总与最终full/quick/静态/制品事实逐项一致；验收文档替换待定状态并保留失败/修复/metadata skip历史。"
+    },
+    {
+      "requirement": "独立整轮质量与制品审查",
+      "expected": "docs/guides/releases/evidence/finance-f14-2026-10-23/reviews.json",
+      "detail": "等独立whole-quality与artifact-quality实际结论，制品镜像生成不自动表示整轮Approved。"
+    },
+    {
+      "requirement": "最终凭据扫描、空白例外和本轮资源清理",
+      "expected": "docs/guides/releases/evidence/finance-f14-2026-10-23/cleanup.json",
+      "detail": "匹配本轮ID/label的PG/卷/DSN/进程/端口及测试DB/会话/锁清理，原xuanpu干净；实际扫描与原始失败日志空白精确清册。"
+    },
+    {
+      "requirement": "最终冻结一致性",
+      "expected": "docs/guides/releases/evidence/finance-f14-2026-10-23/frozen-source.json",
+      "detail": "全量/quick及构建后再次核对726路径无变化；最终文档、审查与清理报告不改变冻结产品输入。"
+    }
+  ],
+  "limitations": [
+    "本报告不授予整轮最终Approved，待主agent提供最终full/quick/f14-evidence/cleanup/acceptance后复核。",
+    "未独立运行PG或pytest；专项运行事实来自已解析JUnit、实际源码边界及已批准独立专项审查。",
+    "实际TLS握手/证书链、真实公司/制度/员工、SSO/生产独立凭据/IAM/网络、真实模型、生产负载、实际S3/异机恢复、Linux完整业务、正式部署仍not_verified。",
+    "不支付、独立财务存储、实际真人审批边界保持；维护成功不等于业务批准或生产验收。"
+  ]
+}

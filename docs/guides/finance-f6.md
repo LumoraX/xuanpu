@@ -1,6 +1,8 @@
 # 财务F6：接入准备与端到端验收
 
-当前F8按用户要求聚焦发票报销内部流转记录，不做支付。最新契约finance `0.9.0-f8`、74项API、7个Skill；见[F8指南](finance-f8.md)及[F8本轮验收](releases/2026-10-22-finance-f8-acceptance.md)。下文阶段记录保留原有验证范围。
+当前F14按用户要求仅作内部流转记录，不支付；契约finance `0.15.0-f14`、77项API、7个Skill，见[F14指南](finance-f14.md)及[F14验收](releases/2026-10-23-finance-f14-acceptance.md)。下文保留各阶段事实。
+
+F8阶段按用户要求聚焦发票报销内部流转记录，不做支付。当轮契约finance `0.9.0-f8`、74项API、7个Skill；见[F8指南](finance-f8.md)及[F8本轮验收](releases/2026-10-22-finance-f8-acceptance.md)。下文阶段记录保留原有验证范围。
 
 F6沿用独立财务PG/加密原件、进程外API、7个Skill、实际员工HITL。它提供接入检查和可重复隔离验收；正式支付、ERP、税务、WORM和外部审批尚未选定供应商，仍需按[正式接入清单](finance-provider-acceptance.md)取得真实证据。
 

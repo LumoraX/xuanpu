@@ -1,0 +1,74 @@
+[
+  {
+    "file": "process-green.log",
+    "sha256_before": "2a19b9d1c2215658daacf8379a832d3e2118029ebdffd826d276d0e7652bdfa9",
+    "sha256_after": "2a19b9d1c2215658daacf8379a832d3e2118029ebdffd826d276d0e7652bdfa9",
+    "exact_value_redaction": false
+  },
+  {
+    "file": "process-green.xml",
+    "sha256_before": "31c80272e91d20417c559876b97a511d4c290d29fe94a8334e01ae9b8ef6d61e",
+    "sha256_after": "31c80272e91d20417c559876b97a511d4c290d29fe94a8334e01ae9b8ef6d61e",
+    "exact_value_redaction": false
+  },
+  {
+    "file": "process-red-baseline.log",
+    "sha256_before": "80f637e8069eddc6e36b60900fa51e5e68be8368f03a31ef7175eadd9bde429f",
+    "sha256_after": "20d9fac52070d83c04afc1e347720393f0928b9a3027bfc0e05405d6d92c6075",
+    "exact_value_redaction": true
+  },
+  {
+    "file": "process-red-baseline.xml",
+    "sha256_before": "e6f2479484353d895159c1819cfa406f817125e2edd9e0107abd42447860f76a",
+    "sha256_after": "58547e5edfd88ec92e49dfc2ffde839a94763ca521b639eb43d80d591017a94a",
+    "exact_value_redaction": true
+  },
+  {
+    "file": "process-red-baseline-final.log",
+    "sha256_before": "07ee89a25066dadb084fe9a040088ce36955acfbc849251620536eef42bdd446",
+    "sha256_after": "07ee89a25066dadb084fe9a040088ce36955acfbc849251620536eef42bdd446",
+    "exact_value_redaction": false
+  },
+  {
+    "file": "process-red-baseline-final.xml",
+    "sha256_before": "da5c86fad65880bba6abfa20e128101778abb82048513e36609e29a13ac17f3d",
+    "sha256_after": "da5c86fad65880bba6abfa20e128101778abb82048513e36609e29a13ac17f3d",
+    "exact_value_redaction": false
+  },
+  {
+    "file": "process-regression.log",
+    "sha256_before": "9919d7e71e3e33461efcf403dc1bed1e42ae4fc696bc3df210c4d5a095f8eefe",
+    "sha256_after": "9919d7e71e3e33461efcf403dc1bed1e42ae4fc696bc3df210c4d5a095f8eefe",
+    "exact_value_redaction": false
+  },
+  {
+    "file": "process-regression.xml",
+    "sha256_before": "d334eada506759f87c33bb65441eb73af10ac0adf9eb71a69a1452e09308006f",
+    "sha256_after": "d334eada506759f87c33bb65441eb73af10ac0adf9eb71a69a1452e09308006f",
+    "exact_value_redaction": false
+  },
+  {
+    "file": "process-ruff.log",
+    "sha256_before": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "sha256_after": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "exact_value_redaction": false
+  },
+  {
+    "file": "process-review-final.log",
+    "sha256_before": "33c7b60665f4da1009562335ef3ea06c7bda053daf058e0883848f0ca741df49",
+    "sha256_after": "33c7b60665f4da1009562335ef3ea06c7bda053daf058e0883848f0ca741df49",
+    "exact_value_redaction": false
+  },
+  {
+    "file": "process-review-final.xml",
+    "sha256_before": "74de2ab51999f79330fa2de60ea1d86c1ded911850c20ce4e20ac7972098c45f",
+    "sha256_after": "74de2ab51999f79330fa2de60ea1d86c1ded911850c20ce4e20ac7972098c45f",
+    "exact_value_redaction": false
+  },
+  {
+    "file": "process-review-ruff.log",
+    "sha256_before": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "sha256_after": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "exact_value_redaction": false
+  }
+]

@@ -78,3 +78,5 @@ uv build --package xuanpu-finance --out-dir /tmp/xuanpu-finance-f13-build
 uv build --package xuanpu-console --out-dir /tmp/xuanpu-finance-f13-build
 uv run python docker/finance/build_image.py
 ```
+
+后续F14维护凭据安全、配套恢复和真人续办见[F14指南](../finance-f14.md)与[F14验收](2026-10-23-finance-f14-acceptance.md)；本页F13版本、制品、数字及历史证据保持，不代表F14最终结果。

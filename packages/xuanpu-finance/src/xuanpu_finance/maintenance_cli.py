@@ -40,10 +40,9 @@ def main() -> None:
         print(json.dumps({'status': 'failed', 'code': code}, ensure_ascii=False))
         raise SystemExit(1) from None
     except Exception:
-        # 未知内部故障也只能失败；旧backup/restore仍保留原有异常语义。
-        if args.action != 'verify':
-            raise
-        print(json.dumps({'status': 'failed', 'code': 'VERIFICATION_FAILED'}, ensure_ascii=False))
+        # 所有维护动作的未知故障仅输出固定代码，不回显原始异常。
+        code = 'VERIFICATION_FAILED' if args.action == 'verify' else 'MAINTENANCE_FAILED'
+        print(json.dumps({'status': 'failed', 'code': code}, ensure_ascii=False))
         raise SystemExit(1) from None
     print(json.dumps({'status': 'completed', **result}, ensure_ascii=False))
     if args.action == 'verify' and result['verification_status'] == 'incomplete':

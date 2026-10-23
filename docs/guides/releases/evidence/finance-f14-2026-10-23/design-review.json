@@ -1,0 +1,47 @@
+{
+  "review_type": "independent_design_and_implementation_plan_review",
+  "verdict": "Approved",
+  "baseline": "da624a9571e9c6e97f1f375428091ba4a5a41140",
+  "reviewed": [
+    "AGENTS.md",
+    "docs/superpowers/specs/2026-10-23-finance-f14-design.md",
+    "docs/superpowers/plans/2026-10-23-finance-f14.md",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-diagnostic.json",
+    "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+    "packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py",
+    "packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py",
+    "packages/xuanpu-finance/src/xuanpu_finance/maintenance_verify.py",
+    "packages/xuanpu-finance/src/xuanpu_finance/readiness/credentials.py",
+    "packages/xuanpu-finance/tests/test_f4_maintenance.py",
+    "packages/xuanpu-finance/tests/test_f10_recovery.py",
+    "packages/xuanpu-finance/tests/test_f13_process.py",
+    "packages/xuanpu-finance/tests/f10_recovery_helpers.py",
+    "packages/xuanpu-finance/tests/f12_process_helpers.py",
+    "packages/xuanpu-finance/tests/f13_process_helpers.py",
+    "scripts/acceptance/finance_runner.py"
+  ],
+  "required_changes": [],
+  "findings": [
+    "维护直接Path读取与启动/verify固定叶子安全读取的差异可在现有read_fixed/read_text_secret边界内修复；真实基线诊断与源码一致。",
+    "一次捕获后仅消费内存dsn/key、在asyncpg连接及PG工具和暂存目录之前拒绝坏凭据，符合现有锁及配套备份恢复结构；保留只读路径冲突检查顺序可实施。",
+    "维护DSN复用pg_environment允许的TLS查询参数，verify保留valid_dsn和注入快照；两者无须合并成同一DSN策略。",
+    "CLI有限失败分支保留已知MaintenanceError、参数退出2、verify incomplete退出2和restore可能已提交语义；未知backup/restore故障有明确失败而不暴露原异常。",
+    "F4合法key及wrong-key夹具显式600是必要测试修正；正确保留KEY_MISMATCH与篡改校验机制。",
+    "计划已有特殊文件有界拒绝、描述符回收、一次快照、故障脱敏、两库实际备份恢复与两级human审批证据；现有过程帮助函数可复用。",
+    "对坏输入的单测调用0和真实CLI数据不变明确分层，没有从数据快照过度推导零连接。",
+    "API/内部操作/Skills及shell权限、20发布文件同步与4refs基线、quick前置2模块且原44顺序、版本及本地提交边界均明确，无需扩大业务权限或本期范围。"
+  ],
+  "implementation_watchpoints": [
+    "pg_environment既有MaintenanceError代码必须原样保留；格式解析ValueError等须在连接前有限失败，不引入新的默许回退。",
+    "verify credentials注入路径不得重复读取或额外施加维护DSN参数策略。",
+    "真实过程测试切换恢复目标时同步case配置及store连接，停机快照与后续审批证据必须来自目标库和恢复后对象根。"
+  ],
+  "execution_scope": {
+    "postgres_run": false,
+    "pytest_run": false,
+    "product_changed": false,
+    "evidence_only": true
+  },
+  "limits": "本审查批准设计与计划可实施性；不构成实现、全量测试、制品、生产资料、实际TLS或部署验收。",
+  "production_status": "not_verified"
+}

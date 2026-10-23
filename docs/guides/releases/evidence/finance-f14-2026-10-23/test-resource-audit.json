@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "temporary_databases_remaining": 0,
+  "other_database_sessions": 0,
+  "advisory_locks_remaining": 0,
+  "baseline_public_tables": 0,
+  "baseline_temporary_schemas": 0,
+  "scope": "owned_f14_postgres_only",
+  "production_status": "not_verified"
+}

@@ -1,0 +1,125 @@
+{
+  "ruff_command": [
+    "uv",
+    "run",
+    "ruff",
+    "check",
+    "--select",
+    "F,S108,I,TC,C901",
+    "--config",
+    "lint.mccabe.max-complexity=10",
+    "packages/xuanpu-finance/tests/test_f14_process.py",
+    "packages/xuanpu-finance/tests/f14_process_helpers.py"
+  ],
+  "ruff_exit": 0,
+  "files": [
+    {
+      "file": "packages/xuanpu-finance/tests/test_f14_process.py",
+      "lines": 73,
+      "future_annotations": true,
+      "chinese_module_docstring": true,
+      "definitions": [
+        {
+          "name": "test_bad_credentials_refused_then_restored_target_humans_resume",
+          "start": 26,
+          "end": 73,
+          "lines": 48,
+          "chinese_docstring": true
+        }
+      ],
+      "sha256": "a99348f382382e0159235967e31e2270b55e36ca0df2fb25009f7d7b0b5d3651"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/f14_process_helpers.py",
+      "lines": 220,
+      "future_annotations": true,
+      "chinese_module_docstring": true,
+      "definitions": [
+        {
+          "name": "actual_cli",
+          "start": 32,
+          "end": 54,
+          "lines": 23,
+          "chinese_docstring": true
+        },
+        {
+          "name": "database_snapshot",
+          "start": 57,
+          "end": 64,
+          "lines": 8,
+          "chinese_docstring": true
+        },
+        {
+          "name": "private_copy",
+          "start": 67,
+          "end": 84,
+          "lines": 18,
+          "chinese_docstring": true
+        },
+        {
+          "name": "marker_tool",
+          "start": 87,
+          "end": 92,
+          "lines": 6,
+          "chinese_docstring": true
+        },
+        {
+          "name": "staging_snapshot",
+          "start": 95,
+          "end": 101,
+          "lines": 7,
+          "chinese_docstring": true
+        },
+        {
+          "name": "bad_credentials",
+          "start": 104,
+          "end": 142,
+          "lines": 39,
+          "chinese_docstring": true
+        },
+        {
+          "name": "receipt_state",
+          "start": 145,
+          "end": 153,
+          "lines": 9,
+          "chinese_docstring": true
+        },
+        {
+          "name": "prepare_backup",
+          "start": 156,
+          "end": 185,
+          "lines": 30,
+          "chinese_docstring": true
+        },
+        {
+          "name": "target_store",
+          "start": 189,
+          "end": 208,
+          "lines": 20,
+          "chinese_docstring": true
+        },
+        {
+          "name": "original_identity",
+          "start": 211,
+          "end": 220,
+          "lines": 10,
+          "chinese_docstring": true
+        }
+      ],
+      "sha256": "df7e42f52ca2f5cf2c2241f728657de0760234db3d32efc749e5f8491dc538dc"
+    }
+  ],
+  "resolved_product_modules": [
+    {
+      "module": "xuanpu_finance.maintenance",
+      "file": "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+      "sha256": "be3e4a95d8d8d150e83a3fb9e8e3ffe232dd182f9019741f1f12902b1bcc2746"
+    },
+    {
+      "module": "xuanpu_finance.maintenance_cli",
+      "file": "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py",
+      "sha256": "f298f26bc57455862c204a4b153218b3e53d3101eeb32a7748490362815b1224"
+    }
+  ],
+  "status": "passed"
+}

@@ -1,0 +1,416 @@
+{
+  "task": "F14 Task1 独立代码质量审查",
+  "status": "Approved",
+  "baseline": "da624a9",
+  "reviewer": "f14_task1_quality",
+  "reviewed_at_utc": "2026-10-23T08:29:45.916481+00:00",
+  "scope": "只审Task1维护凭据安全捕获、CLI有限错误、测试真实性和工程约束；未改产品或测试，未提交。",
+  "test_run": {
+    "command": "uv run pytest -q packages/xuanpu-finance/tests/test_f14_credentials.py --junitxml=docs/guides/releases/evidence/finance-f14-2026-10-23/task1-quality.xml",
+    "exit_code": 0,
+    "counts": {
+      "tests": 67,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "summary": "67 passed in 1.25s",
+    "real_postgresql_used": false,
+    "real_dsn_used": false
+  },
+  "static_runs": [
+    {
+      "command": "uv run ruff check --select F,S108,I,TC,C901 packages/xuanpu-finance/src/xuanpu_finance/maintenance.py packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py packages/xuanpu-finance/tests/test_f14_credentials.py packages/xuanpu-finance/tests/f14_credentials_helpers.py",
+      "exit_code": 0,
+      "summary": "All checks passed!",
+      "complexity_limit": 10
+    },
+    {
+      "command": "uv run mypy packages/xuanpu-finance/src/xuanpu_finance/maintenance.py packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py",
+      "exit_code": 0,
+      "summary": "Success: no issues found in 2 source files"
+    }
+  ],
+  "resource_probes": [
+    {
+      "probe": "cancel_during_capture",
+      "cancel_propagated": true,
+      "opened": 2,
+      "closed": 2,
+      "connect_calls": 0,
+      "bounded_thread_completed": true
+    },
+    {
+      "probe": "cancel_in_session",
+      "cancel_propagated": true,
+      "instrumented_connection_closed": true
+    }
+  ],
+  "checks": [
+    {
+      "area": "安全读取和顺序",
+      "result": "pass",
+      "evidence": "maintenance.py:39-50、58-65、82-94、131-143；复用O_NOFOLLOW/O_NONBLOCK、fstat普通文件/私密权限、65537字节单次有界read及finally close；安全读取和DSN解析在连接/工具/暂存前。backup既有只读路径检查顺序保留。"
+    },
+    {
+      "area": "有限错误",
+      "result": "pass",
+      "evidence": "IO/编码/输入异常归一MAINTENANCE_INPUT_INVALID；非32字节KEY_INVALID保留；CLI三个动作未知异常仅status/code、退出1且stderr空，已知恢复可能提交错误保留。"
+    },
+    {
+      "area": "取消及资源释放",
+      "result": "pass",
+      "evidence": "新读取只在asyncio.to_thread内；取消检查实际传播CancelledError，捕获线程完成后2次open/2次close且连接0次；持锁会话取消后连接替身close。成熟工具和stage清理源代码未变。"
+    },
+    {
+      "area": "快照和兼容性",
+      "result": "pass",
+      "evidence": "真实读取后在连接屏障轮换文件仍只读DSN/AES各一次，驱动、PG环境和认证共用旧值；0400/0600可用；TLS四选项/编码密码仅解析验证；verify注入凭据不重读、不新增维护DSN验证，verify模块及凭据模块未改。"
+    },
+    {
+      "area": "测试真实性",
+      "result": "pass",
+      "evidence": "安全输入参数化覆盖三个入口及两种文件；连接/工具/stage边界计数均0；FIFO/socket在可杀死子进程3秒内拒绝，finally kill/communicate；公开哨兵脱敏；真实文件读取与替换，无真实PG声明。"
+    },
+    {
+      "area": "F4权限修正",
+      "result": "pass",
+      "evidence": "相对da624a9仅key及wrong-key两行追加chmod(0o600)，原KEY_MISMATCH及其它断言保持。"
+    },
+    {
+      "area": "约束与范围",
+      "result": "pass",
+      "evidence": "受审四文件future/中文docstring、文件≤800、函数≤80、C901≤10及门禁lint通过；产品仅维护读取/CLI差异，未改schema/API/HITL/支付/密文格式。"
+    }
+  ],
+  "findings": [],
+  "structure": {
+    "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py": {
+      "lines": 171,
+      "max_function_lines": 36,
+      "future_annotations": true,
+      "chinese_docstrings": true
+    },
+    "packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py": {
+      "lines": 53,
+      "max_function_lines": 37,
+      "future_annotations": true,
+      "chinese_docstrings": true
+    },
+    "packages/xuanpu-finance/tests/test_f14_credentials.py": {
+      "lines": 319,
+      "max_function_lines": 56,
+      "future_annotations": true,
+      "chinese_docstrings": true
+    },
+    "packages/xuanpu-finance/tests/f14_credentials_helpers.py": {
+      "lines": 128,
+      "max_function_lines": 24,
+      "future_annotations": true,
+      "chinese_docstrings": true
+    }
+  },
+  "reviewed_files": [
+    {
+      "file": "AGENTS.md",
+      "sha256": "d0b7c2dc6abb72a0af2666d7a01b21df6fa72702a437bcd93190b47e358f05fc",
+      "bytes": 4876
+    },
+    {
+      "file": "docs/superpowers/specs/2026-10-23-finance-f14-design.md",
+      "sha256": "add3fa446435911768f39104ecf9ad152c085f86c64045db23d41759f7e58fc1",
+      "bytes": 6061
+    },
+    {
+      "file": "docs/superpowers/plans/2026-10-23-finance-f14.md",
+      "sha256": "c7994c387e09bfccc9782c479f876289569769a1168074a2d65e4326a0e5d3a7",
+      "bytes": 8795
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+      "sha256": "be3e4a95d8d8d150e83a3fb9e8e3ffe232dd182f9019741f1f12902b1bcc2746",
+      "bytes": 8740
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py",
+      "sha256": "f298f26bc57455862c204a4b153218b3e53d3101eeb32a7748490362815b1224",
+      "bytes": 2839
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f14_credentials.py",
+      "sha256": "bc0610bfa001bc7b610d0b6a0bf5cbb68ab5a6327a0ccf157acb3e16ead74b5e",
+      "bytes": 14163
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/f14_credentials_helpers.py",
+      "sha256": "bf62961edea129933c464327304e6a2feee62f982861a5b89695142f8da8ec4a",
+      "bytes": 4095
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f4_maintenance.py",
+      "sha256": "318194501332c41304cf62920d188c7da68c3d17e985ead24357de1ef3d4773f",
+      "bytes": 15791
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/readiness/credentials.py",
+      "sha256": "2a907d373190da02c648b9f85e2a5db018110c7dd5b80b1c39fd2fb1515a1890",
+      "bytes": 5457
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py",
+      "sha256": "2b72ae5c2e7cc2f170318945b554e84e308ddad782dcace3331c3083202b7434",
+      "bytes": 4125
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_verify.py",
+      "sha256": "0fe7b7a5246ba4f5a237f428c598afcc35f027b0aa24b9c8681d6e2a15c0c6a3",
+      "bytes": 4498
+    }
+  ],
+  "spec_approved_snapshot_matches": [
+    {
+      "file": "AGENTS.md",
+      "sha256": "d0b7c2dc6abb72a0af2666d7a01b21df6fa72702a437bcd93190b47e358f05fc",
+      "bytes": 4876
+    },
+    {
+      "file": "docs/superpowers/specs/2026-10-23-finance-f14-design.md",
+      "sha256": "add3fa446435911768f39104ecf9ad152c085f86c64045db23d41759f7e58fc1",
+      "bytes": 6061
+    },
+    {
+      "file": "docs/superpowers/plans/2026-10-23-finance-f14.md",
+      "sha256": "c7994c387e09bfccc9782c479f876289569769a1168074a2d65e4326a0e5d3a7",
+      "bytes": 8795
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+      "sha256": "be3e4a95d8d8d150e83a3fb9e8e3ffe232dd182f9019741f1f12902b1bcc2746",
+      "bytes": 8740
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py",
+      "sha256": "f298f26bc57455862c204a4b153218b3e53d3101eeb32a7748490362815b1224",
+      "bytes": 2839
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/readiness/credentials.py",
+      "sha256": "2a907d373190da02c648b9f85e2a5db018110c7dd5b80b1c39fd2fb1515a1890",
+      "bytes": 5457
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py",
+      "sha256": "2b72ae5c2e7cc2f170318945b554e84e308ddad782dcace3331c3083202b7434",
+      "bytes": 4125
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_verify.py",
+      "sha256": "0fe7b7a5246ba4f5a237f428c598afcc35f027b0aa24b9c8681d6e2a15c0c6a3",
+      "bytes": 4498
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f14_credentials.py",
+      "sha256": "bc0610bfa001bc7b610d0b6a0bf5cbb68ab5a6327a0ccf157acb3e16ead74b5e",
+      "bytes": 14163
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/f14_credentials_helpers.py",
+      "sha256": "bf62961edea129933c464327304e6a2feee62f982861a5b89695142f8da8ec4a",
+      "bytes": 4095
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f4_maintenance.py",
+      "sha256": "318194501332c41304cf62920d188c7da68c3d17e985ead24357de1ef3d4773f",
+      "bytes": 15791
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-evidence.json",
+      "sha256": "f9503b2239030168c32ddac3b7cf4cd7de74d5c8cde0358d65d75f55e2429bfd",
+      "bytes": 4992
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-structure.json",
+      "sha256": "efc2d192467fe85abfbfd32d2792c732b7f0a39aa4175149f477999bce6019f5",
+      "bytes": 725
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-diagnostic.json",
+      "sha256": "39d9c7cb9b7779c020183d680e0febed4daeb349cead44051eb78ec4b1a58f02",
+      "bytes": 1033
+    }
+  ],
+  "evidence": [
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/task1-quality.log",
+      "sha256": "7437cade0539588f2c4423c14761643a6ac182c8066e18a53d09d5b90dabccf9",
+      "bytes": 99
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/task1-quality.xml",
+      "sha256": "d882a5d2f76f05e796e4f0f86b040f36ff1b389d86f9a5e5d905ce2a8104fb00",
+      "bytes": 14768
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/task1-quality-ruff.log",
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "bytes": 19
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/task1-quality-mypy.log",
+      "sha256": "f9b031e5c45aa702cd4fef028d465551cb20a2c4698e0913c7b00766b20ac4d8",
+      "bytes": 43
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/task1-quality-resources.log",
+      "sha256": "2a7e206b9b5fbb9e545a769ab283b7d1389633bde48af0f7588b3c69e4cff9d1",
+      "bytes": 240
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/task1-spec.json",
+      "sha256": "e285b7bf67e7c090ce100c2666e2cc6cebbfbafc8a828d7263a66442482823ab",
+      "bytes": 10742
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-evidence.json",
+      "sha256": "f9503b2239030168c32ddac3b7cf4cd7de74d5c8cde0358d65d75f55e2429bfd",
+      "bytes": 4992
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-structure.json",
+      "sha256": "efc2d192467fe85abfbfd32d2792c732b7f0a39aa4175149f477999bce6019f5",
+      "bytes": 725
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-diagnostic.json",
+      "sha256": "39d9c7cb9b7779c020183d680e0febed4daeb349cead44051eb78ec4b1a58f02",
+      "bytes": 1033
+    }
+  ],
+  "historical_evidence_verified": [
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.log",
+      "sha256": "058546060202be1a374d11c0c7c900161d87dd94d6d1a70af9c90e41a9147ff3",
+      "bytes": 74628
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.xml",
+      "sha256": "0fa8f2cbbc1117bd855ebdfe1708ab02786cb037aa4c7a54f1601ccbb77117e0",
+      "bytes": 80609,
+      "counts": {
+        "tests": 67,
+        "failures": 56,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-green-final.log",
+      "sha256": "394a9c18e651d54495dd758f6ae5423f8a95ce646cc2cc6a5bda514e6c23b48b",
+      "bytes": 99
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-green-final.xml",
+      "sha256": "8abdae32b6c2dce15b1c34b4b7d778dfc2454a9fbfeb856ba43c14c35dda8af9",
+      "bytes": 14768,
+      "counts": {
+        "tests": 67,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-green.log",
+      "sha256": "9329950e38c7d1104cd151f87d02a35806495a9b52a08b5909e19c0344856ba6",
+      "bytes": 2609
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-green.xml",
+      "sha256": "40aea85f8efcb7bad21ece40543d387ac40767ea68dfbe0b1845ff4343b8b30c",
+      "bytes": 14446,
+      "counts": {
+        "tests": 67,
+        "failures": 6,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-mypy.log",
+      "sha256": "fb137be3de18a936fec5be2f8945360343e7552c7904ff5a51e61547cae8b7a6",
+      "bytes": 45
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "sha256": "9972dda85ba92ffc96578b46992aebe7ff4bf3450c37c66f4afd6d7ce948733f",
+      "bytes": 53961
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "sha256": "f66d0317cd43b923a298c2fa6488547d55d76bd9655e6cf238e94889ecb4c52a",
+      "bytes": 58148,
+      "counts": {
+        "tests": 61,
+        "failures": 54,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.log",
+      "sha256": "35f5c98de517d857cc93deb6391d7aa480413a2c34182a872dbfa796ce65a294",
+      "bytes": 69861
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.xml",
+      "sha256": "0cfc11f71b9d1849bfaad2d2569bd6ae1959088c2c5b7c5b1a30d7fb33000c4d",
+      "bytes": 74420,
+      "counts": {
+        "tests": 67,
+        "failures": 56,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-regression.log",
+      "sha256": "8b5370dcd1b6395e49810945ef5d623df5c496d5ed890a32fea703624f544f94",
+      "bytes": 3076
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-regression.xml",
+      "sha256": "24fa3ddaa465aaf09624b691b6fb36e0752a4b74dc787ecc48c661de45c7ed92",
+      "bytes": 43411,
+      "counts": {
+        "tests": 105,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-ruff.log",
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "bytes": 19
+    }
+  ],
+  "historical_results_provenance": "逐项重算14份历史日志/XML哈希、字节、JUnit计数；历史56红/67绿/105回归未复跑，不作为本次独立PG执行声明。",
+  "unchanged_against_baseline": [
+    "packages/xuanpu-finance/src/xuanpu_finance/readiness/credentials.py",
+    "packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py",
+    "packages/xuanpu-finance/src/xuanpu_finance/maintenance_verify.py"
+  ],
+  "postgres": {
+    "used_by_this_review": false,
+    "connection_boundary": "专项全部instrumented，无真实DSN、PG连接或PG工具调用",
+    "remaining_use": "Task2才使用；本次未占用或启动PG"
+  },
+  "limitations": [
+    "本次仅独立复跑67项专项和针对性静态/取消检查，未重跑F4/F5/F10/F11/F13真实PG回归、全量/quick或构建。历史105通过只核验现有证据。",
+    "取消探针使用真实本地文件读取和连接替身；不证明真实PG驱动连接中取消、成熟工具进程取消或网络文件系统故障行为。",
+    "TLS只证明参数解析兼容，未验证实际握手、证书链、生产IAM与网络。",
+    "沿用固定叶子安全读取，不承诺受信祖先恶意替换、管理员对抗、多文件原子轮换。",
+    "Task2实际CLI坏凭据、恢复后两级真人续办及Task3全量交付不在本次Approved范围；真实员工/模型、生产负载、S3/异机灾备、部署仍未验证。",
+    "没有读取或重新扫描真实DSN/秘密；未独立检查PG服务器空闲状态，仅确认本次不访问PG。"
+  ]
+}
