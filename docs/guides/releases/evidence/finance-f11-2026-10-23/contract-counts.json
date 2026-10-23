@@ -1,0 +1,14 @@
+{
+  "version": "0.12.0-f11",
+  "skills": 7,
+  "api_operations": 77,
+  "design_files": 24,
+  "published_files": 20,
+  "model_shell": false,
+  "production_status": "not_verified",
+  "contracts": {
+    "finance": 72,
+    "catalog": 5
+  },
+  "internal_operations": 24
+}

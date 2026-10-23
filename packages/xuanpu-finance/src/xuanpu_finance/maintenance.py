@@ -36,10 +36,15 @@ __all__ = ['MaintenanceError', 'MaintenanceOptions', 'backup', 'restore']
 
 
 @asynccontextmanager
-async def maintenance_session(options: MaintenanceOptions) -> AsyncIterator[tuple[MaintenanceLock, str, bytes]]:
+async def maintenance_session(
+    options: MaintenanceOptions, *, credentials: tuple[str, bytes] | None = None,
+) -> AsyncIterator[tuple[MaintenanceLock, str, bytes]]:
     """维护锁贯穿全部步骤，凭据仅从显式文件读取且不回显。"""
-    dsn = (await asyncio.to_thread(options.database_dsn_file.read_text)).strip()
-    key = await asyncio.to_thread(options.key_file.read_bytes)
+    if credentials is None:
+        dsn = (await asyncio.to_thread(options.database_dsn_file.read_text)).strip()
+        key = await asyncio.to_thread(options.key_file.read_bytes)
+    else:
+        dsn, key = credentials
     if len(key) != 32:
         raise MaintenanceError('KEY_INVALID')
     try:

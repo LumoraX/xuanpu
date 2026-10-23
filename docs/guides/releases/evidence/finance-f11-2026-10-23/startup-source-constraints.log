@@ -1,0 +1,10 @@
+src/xuanpu_finance/runtime.py: lines=230, max_function=65, docstrings=present, future_annotations=present
+src/xuanpu_finance/config.py: lines=232, max_function=43, docstrings=present, future_annotations=present
+src/xuanpu_finance/startup.py: lines=42, max_function=19, docstrings=present, future_annotations=present
+src/xuanpu_finance/readiness/credentials.py: lines=135, max_function=23, docstrings=present, future_annotations=present
+src/xuanpu_finance/readiness/offline.py: lines=102, max_function=32, docstrings=present, future_annotations=present
+src/xuanpu_finance/errors.py: lines=23, max_function=6, docstrings=present, future_annotations=present
+src/xuanpu_finance/__main__.py: lines=68, max_function=35, docstrings=present, future_annotations=present
+tests/test_f11_startup.py: lines=280, max_function=30, docstrings=present, future_annotations=present
+tests/f11_startup_helpers.py: lines=95, max_function=11, docstrings=present, future_annotations=present
+All startup source constraints passed.

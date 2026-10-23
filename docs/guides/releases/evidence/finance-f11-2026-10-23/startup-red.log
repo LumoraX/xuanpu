@@ -1,0 +1,2149 @@
+   Building xuanpu-finance @ file:///Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance
+      Built xuanpu-finance @ file:///Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance
+Uninstalled 1 package in 0.67ms
+warning: Failed to clone files; falling back to full copy. This may lead to degraded performance.
+         If the cache and target directories are on different filesystems, reflinking may not be supported.
+         If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
+Installed 1 package in 1ms
+FFFFFFFFFFFFFFFFFFF...FFFF                                               [100%]
+=================================== FAILURES ===================================
+____ test_production_internal_gate_precedes_every_side_effect[permissions] _____
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c2894f0>
+failure = 'permissions'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+______ test_production_internal_gate_precedes_every_side_effect[symlink] _______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c289cd0>
+failure = 'symlink'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+________ test_production_internal_gate_precedes_every_side_effect[fifo] ________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c288770>
+failure = 'fifo'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+_____ test_production_internal_gate_precedes_every_side_effect[directory] ______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c28aed0>
+failure = 'directory'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+______ test_production_internal_gate_precedes_every_side_effect[oversize] ______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_4')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c2c9a60>
+failure = 'oversize'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+_______ test_production_internal_gate_precedes_every_side_effect[empty] ________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_5')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c28ac60>
+failure = 'empty'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+________ test_production_internal_gate_precedes_every_side_effect[utf8] ________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_6')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c200590>
+failure = 'utf8'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+________ test_production_internal_gate_precedes_every_side_effect[aes] _________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_7')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10acfc6b0>
+failure = 'aes'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+_______ test_production_internal_gate_precedes_every_side_effect[public] _______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_8')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10acfe360>
+failure = 'public'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+_____ test_production_internal_gate_precedes_every_side_effect[same_inode] _____
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_9')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10acbee40>
+failure = 'same_inode'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+_____ test_production_internal_gate_precedes_every_side_effect[same_bytes] _____
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_10')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10acbee70>
+failure = 'same_bytes'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+________ test_production_internal_gate_precedes_every_side_effect[dsn] _________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_11')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10acbe870>
+failure = 'dsn'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://secret@localhost/finance?host=private',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+________ test_production_internal_gate_precedes_every_side_effect[tls] _________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_12')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10acfc1a0>
+failure = 'tls'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+______ test_production_internal_gate_precedes_every_side_effect[gateway] _______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_13')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c2c8e00>
+failure = 'gateway'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+___ test_production_internal_gate_precedes_every_side_effect[configuration] ____
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_14')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c289e50>
+failure = 'configuration'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = FinanceConfig(profile='internal_records', database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn...es=[], compliance_providers=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+
+    @asynccontextmanager
+    async def open_runtime(config: FinanceConfig) -> AsyncIterator[FastAPI]:
+        """持有独立数据库锁，先停止服务后台再关闭其资源。"""
+>       config = type(config).model_validate(config.model_dump())
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for FinanceConfig
+E         Value error, 内部记录配置不能保留REPLACE_占位标识 [type=value_error, input_value={'profile': 'internal_rec...27.0.0.1', 'port': 8443}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.13/v/value_error
+
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:124: ValidationError
+_____ test_production_internal_gate_precedes_every_side_effect[s3_missing] _____
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_15')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c2c9580>
+failure = 's3_missing'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = FinanceConfig(profile='internal_records', database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn...es=[], compliance_providers=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+
+    @asynccontextmanager
+    async def open_runtime(config: FinanceConfig) -> AsyncIterator[FastAPI]:
+        """持有独立数据库锁，先停止服务后台再关闭其资源。"""
+>       config = type(config).model_validate(config.model_dump())
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for FinanceConfig
+E       objects
+E         Value error, S3 财务存储必须显式配置端点、桶和独立凭据 [type=value_error, input_value={'kind': 's3', 'key_file'...te_15/secret_key_file')}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.13/v/value_error
+
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:124: ValidationError
+______ test_production_internal_gate_precedes_every_side_effect[s3_empty] ______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_16')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c2c9010>
+failure = 's3_empty'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+_______ test_production_internal_gate_precedes_every_side_effect[s3_tls] _______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_17')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c2ca990>
+failure = 's3_tls'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+______ test_production_internal_gate_precedes_every_side_effect[s3_port] _______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_production_internal_gate_18')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c2c9040>
+failure = 's3_port'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+________ test_real_cli_blocks_without_traceback_or_secrets[permissions] ________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_real_cli_blocks_without_t0')
+failure = 'permissions'
+
+    @pytest.mark.parametrize("failure", ["permissions", "configuration", "s3_missing"])
+    def test_real_cli_blocks_without_traceback_or_secrets(tmp_path: Path, failure: str) -> None:
+        """实际子进程同时覆盖运行资源错误及load_config结构错误的固定退出契约。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+        result = subprocess.run(
+            [sys.executable, "-m", "xuanpu_finance", "--config", str(write_cli_config(config, tmp_path))],
+            capture_output=True, text=True, check=False, timeout=15,
+        )
+>       assert result.returncode == 2
+E       assert 1 == 2
+E        +  where 1 = CompletedProcess(args=['/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/bin/python', '-m', 'xuanpu_fin...dr\n    await connected\nasyncpg.exceptions.InvalidPasswordError: password authentication failed for user "finance"\n').returncode
+
+packages/xuanpu-finance/tests/test_f11_startup.py:164: AssertionError
+_______ test_real_cli_blocks_without_traceback_or_secrets[configuration] _______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_real_cli_blocks_without_t1')
+failure = 'configuration'
+
+    @pytest.mark.parametrize("failure", ["permissions", "configuration", "s3_missing"])
+    def test_real_cli_blocks_without_traceback_or_secrets(tmp_path: Path, failure: str) -> None:
+        """实际子进程同时覆盖运行资源错误及load_config结构错误的固定退出契约。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+        result = subprocess.run(
+            [sys.executable, "-m", "xuanpu_finance", "--config", str(write_cli_config(config, tmp_path))],
+            capture_output=True, text=True, check=False, timeout=15,
+        )
+>       assert result.returncode == 2
+E       AssertionError: assert 1 == 2
+E        +  where 1 = CompletedProcess(args=['/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/bin/python', '-m', 'xuanpu_fin...hetic\': False}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\n').returncode
+
+packages/xuanpu-finance/tests/test_f11_startup.py:164: AssertionError
+________ test_real_cli_blocks_without_traceback_or_secrets[s3_missing] _________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_real_cli_blocks_without_t2')
+failure = 's3_missing'
+
+    @pytest.mark.parametrize("failure", ["permissions", "configuration", "s3_missing"])
+    def test_real_cli_blocks_without_traceback_or_secrets(tmp_path: Path, failure: str) -> None:
+        """实际子进程同时覆盖运行资源错误及load_config结构错误的固定退出契约。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+        result = subprocess.run(
+            [sys.executable, "-m", "xuanpu_finance", "--config", str(write_cli_config(config, tmp_path))],
+            capture_output=True, text=True, check=False, timeout=15,
+        )
+>       assert result.returncode == 2
+E       AssertionError: assert 1 == 2
+E        +  where 1 = CompletedProcess(args=['/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/bin/python', '-m', 'xuanpu_fin...ret_key_file\'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\n').returncode
+
+packages/xuanpu-finance/tests/test_f11_startup.py:164: AssertionError
+_____________ test_snapshot_is_immutable_and_has_no_sensitive_repr _____________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1984/test_snapshot_is_immutable_and0')
+
+    async def test_snapshot_is_immutable_and_has_no_sensitive_repr(tmp_path: Path) -> None:
+        """不可变快照与元组映射均不把秘密写入repr。"""
+>       assert importlib.util.find_spec("xuanpu_finance.startup"), "missing F11 startup gate"
+E       AssertionError: missing F11 startup gate
+E       assert None
+E        +  where None = <function find_spec at 0x1037e6160>('xuanpu_finance.startup')
+E        +    where <function find_spec at 0x1037e6160> = <module 'importlib.util' (frozen)>.find_spec
+E        +      where <module 'importlib.util' (frozen)> = importlib.util
+
+packages/xuanpu-finance/tests/test_f11_startup.py:175: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[permissions]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[symlink]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[fifo]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[directory]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[oversize]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[empty]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[utf8]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[aes]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[public]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[same_inode]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[same_bytes]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[dsn]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[tls]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[gateway]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[configuration]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[s3_missing]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[s3_empty]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[s3_tls]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[s3_port]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_real_cli_blocks_without_traceback_or_secrets[permissions]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_real_cli_blocks_without_traceback_or_secrets[configuration]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_real_cli_blocks_without_traceback_or_secrets[s3_missing]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_snapshot_is_immutable_and_has_no_sensitive_repr
+23 failed, 3 passed in 2.03s
+FFFFFFFFFFFFFFFFFFF...FFFFFF                                             [100%]
+=================================== FAILURES ===================================
+____ test_production_internal_gate_precedes_every_side_effect[permissions] _____
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e5e6ff0>
+failure = 'permissions'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+______ test_production_internal_gate_precedes_every_side_effect[symlink] _______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e5e6510>
+failure = 'symlink'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+________ test_production_internal_gate_precedes_every_side_effect[fifo] ________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e5e7890>
+failure = 'fifo'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+_____ test_production_internal_gate_precedes_every_side_effect[directory] ______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e649550>
+failure = 'directory'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+______ test_production_internal_gate_precedes_every_side_effect[oversize] ______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_4')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e6482f0>
+failure = 'oversize'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+_______ test_production_internal_gate_precedes_every_side_effect[empty] ________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_5')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e5a9610>
+failure = 'empty'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+________ test_production_internal_gate_precedes_every_side_effect[utf8] ________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_6')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d0b4680>
+failure = 'utf8'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+________ test_production_internal_gate_precedes_every_side_effect[aes] _________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_7')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d0b69c0>
+failure = 'aes'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+_______ test_production_internal_gate_precedes_every_side_effect[public] _______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_8')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d072f00>
+failure = 'public'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+_____ test_production_internal_gate_precedes_every_side_effect[same_inode] _____
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_9')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e5e6a80>
+failure = 'same_inode'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+_____ test_production_internal_gate_precedes_every_side_effect[same_bytes] _____
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_10')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d072f60>
+failure = 'same_bytes'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+________ test_production_internal_gate_precedes_every_side_effect[dsn] _________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_11')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d0b78c0>
+failure = 'dsn'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://secret@localhost/finance?host=private',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+________ test_production_internal_gate_precedes_every_side_effect[tls] _________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_12')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e649730>
+failure = 'tls'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+______ test_production_internal_gate_precedes_every_side_effect[gateway] _______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_13')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d0b4440>
+failure = 'gateway'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+___ test_production_internal_gate_precedes_every_side_effect[configuration] ____
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_14')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e5e6a80>
+failure = 'configuration'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = FinanceConfig(profile='internal_records', database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn...es=[], compliance_providers=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+
+    @asynccontextmanager
+    async def open_runtime(config: FinanceConfig) -> AsyncIterator[FastAPI]:
+        """持有独立数据库锁，先停止服务后台再关闭其资源。"""
+>       config = type(config).model_validate(config.model_dump())
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for FinanceConfig
+E         Value error, 内部记录配置不能保留REPLACE_占位标识 [type=value_error, input_value={'profile': 'internal_rec...27.0.0.1', 'port': 8443}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.13/v/value_error
+
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:124: ValidationError
+_____ test_production_internal_gate_precedes_every_side_effect[s3_missing] _____
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_15')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e64b320>
+failure = 's3_missing'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = FinanceConfig(profile='internal_records', database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn...es=[], compliance_providers=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+
+    @asynccontextmanager
+    async def open_runtime(config: FinanceConfig) -> AsyncIterator[FastAPI]:
+        """持有独立数据库锁，先停止服务后台再关闭其资源。"""
+>       config = type(config).model_validate(config.model_dump())
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for FinanceConfig
+E       objects
+E         Value error, S3 财务存储必须显式配置端点、桶和独立凭据 [type=value_error, input_value={'kind': 's3', 'key_file'...te_15/secret_key_file')}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.13/v/value_error
+
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:124: ValidationError
+______ test_production_internal_gate_precedes_every_side_effect[s3_empty] ______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_16')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e7134a0>
+failure = 's3_empty'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+_______ test_production_internal_gate_precedes_every_side_effect[s3_tls] _______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_17')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e5e58b0>
+failure = 's3_tls'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+______ test_production_internal_gate_precedes_every_side_effect[s3_port] _______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_production_internal_gate_18')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e713680>
+failure = 's3_port'
+
+    @pytest.mark.parametrize("failure", [
+        "permissions", "symlink", "fifo", "directory", "oversize", "empty", "utf8", "aes",
+        "public", "same_inode", "same_bytes", "dsn", "tls", "gateway", "configuration",
+        "s3_missing", "s3_empty", "s3_tls", "s3_port",
+    ])
+    async def test_production_internal_gate_precedes_every_side_effect(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+    ) -> None:
+        """结构、文件与TLS失败全部先于第一个连接或客户端构造并固定脱敏。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+    
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+            pytest.fail("side effect reached before credential gate")
+    
+        monkeypatch.setattr(runtime.asyncpg, "create_pool", forbidden)
+        monkeypatch.setattr(runtime.asyncpg, "connect", forbidden)
+        monkeypatch.setattr(runtime.httpx, "AsyncClient", forbidden)
+        monkeypatch.setattr(runtime, "objects_from_config", forbidden)
+        monkeypatch.setattr(runtime, "FinanceWorker", forbidden)
+        with pytest.raises(FinanceError) as caught:
+>           async with runtime.open_runtime(config):
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:126: in open_runtime
+    pool = await asyncpg.create_pool(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('postgresql://finance:private@localhost/finance',)
+kwargs = {'min_size': 1, 'max_size': 8}
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        """坏资源不能通过先连接再拒绝伪装启动门禁。"""
+>       pytest.fail("side effect reached before credential gate")
+E       Failed: side effect reached before credential gate
+
+packages/xuanpu-finance/tests/test_f11_startup.py:111: Failed
+________ test_real_cli_blocks_without_traceback_or_secrets[permissions] ________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_real_cli_blocks_without_t0')
+failure = 'permissions'
+
+    @pytest.mark.parametrize("failure", ["permissions", "configuration", "s3_missing"])
+    def test_real_cli_blocks_without_traceback_or_secrets(tmp_path: Path, failure: str) -> None:
+        """实际子进程同时覆盖运行资源错误及load_config结构错误的固定退出契约。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+        result = subprocess.run(
+            [sys.executable, "-m", "xuanpu_finance", "--config", str(write_cli_config(config, tmp_path))],
+            capture_output=True, text=True, check=False, timeout=15,
+        )
+>       assert result.returncode == 2
+E       assert 1 == 2
+E        +  where 1 = CompletedProcess(args=['/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/bin/python', '-m', 'xuanpu_fin...dr\n    await connected\nasyncpg.exceptions.InvalidPasswordError: password authentication failed for user "finance"\n').returncode
+
+packages/xuanpu-finance/tests/test_f11_startup.py:164: AssertionError
+_______ test_real_cli_blocks_without_traceback_or_secrets[configuration] _______
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_real_cli_blocks_without_t1')
+failure = 'configuration'
+
+    @pytest.mark.parametrize("failure", ["permissions", "configuration", "s3_missing"])
+    def test_real_cli_blocks_without_traceback_or_secrets(tmp_path: Path, failure: str) -> None:
+        """实际子进程同时覆盖运行资源错误及load_config结构错误的固定退出契约。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+        result = subprocess.run(
+            [sys.executable, "-m", "xuanpu_finance", "--config", str(write_cli_config(config, tmp_path))],
+            capture_output=True, text=True, check=False, timeout=15,
+        )
+>       assert result.returncode == 2
+E       AssertionError: assert 1 == 2
+E        +  where 1 = CompletedProcess(args=['/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/bin/python', '-m', 'xuanpu_fin...hetic\': False}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\n').returncode
+
+packages/xuanpu-finance/tests/test_f11_startup.py:164: AssertionError
+________ test_real_cli_blocks_without_traceback_or_secrets[s3_missing] _________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_real_cli_blocks_without_t2')
+failure = 's3_missing'
+
+    @pytest.mark.parametrize("failure", ["permissions", "configuration", "s3_missing"])
+    def test_real_cli_blocks_without_traceback_or_secrets(tmp_path: Path, failure: str) -> None:
+        """实际子进程同时覆盖运行资源错误及load_config结构错误的固定退出契约。"""
+        config = production_config(tmp_path)
+        corrupt(config, failure, tmp_path)
+        result = subprocess.run(
+            [sys.executable, "-m", "xuanpu_finance", "--config", str(write_cli_config(config, tmp_path))],
+            capture_output=True, text=True, check=False, timeout=15,
+        )
+>       assert result.returncode == 2
+E       AssertionError: assert 1 == 2
+E        +  where 1 = CompletedProcess(args=['/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/bin/python', '-m', 'xuanpu_fin...ret_key_file\'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\n').returncode
+
+packages/xuanpu-finance/tests/test_f11_startup.py:164: AssertionError
+_____________ test_snapshot_is_immutable_and_has_no_sensitive_repr _____________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_snapshot_is_immutable_and0')
+
+    async def test_snapshot_is_immutable_and_has_no_sensitive_repr(tmp_path: Path) -> None:
+        """不可变快照与元组映射均不把秘密写入repr。"""
+>       assert importlib.util.find_spec("xuanpu_finance.startup"), "missing F11 startup gate"
+E       AssertionError: missing F11 startup gate
+E       assert None
+E        +  where None = <function find_spec at 0x105b2e160>('xuanpu_finance.startup')
+E        +    where <function find_spec at 0x105b2e160> = <module 'importlib.util' (frozen)>.find_spec
+E        +      where <module 'importlib.util' (frozen)> = importlib.util
+
+packages/xuanpu-finance/tests/test_f11_startup.py:175: AssertionError
+__ test_runtime_consumes_only_validated_snapshot_after_files_replaced[local] ___
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_runtime_consumes_only_val0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e769100>
+storage = 'local'
+
+    @pytest.mark.parametrize("storage", ["local", "s3"])
+    async def test_runtime_consumes_only_validated_snapshot_after_files_replaced(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, storage: str,
+    ) -> None:
+        """池和锁复用DSN，所有认证、网关、AES与S3参数仅来自首次已验字节。"""
+        from .f11_startup_helpers import RuntimeSpies
+    
+        config = production_config(tmp_path)
+        if storage == "s3":
+            corrupt(config, "s3_valid", tmp_path)
+        public = config.public_key_files["k"].read_text().strip()
+        dsn = config.database_dsn_file.read_text().strip()
+        spies = RuntimeSpies(config)
+        spies.install(monkeypatch)
+        async with runtime.open_runtime(config):
+>           assert spies.seen["pool_dsn"] == spies.seen["lock_dsn"] == dsn
+E           AssertionError: assert 'postgresql:/...lhost/finance' == 'replacement-private-secret'
+E             
+E             - replacement-private-secret
+E             + postgresql://finance:private@localhost/finance
+
+packages/xuanpu-finance/tests/test_f11_startup.py:201: AssertionError
+____ test_runtime_consumes_only_validated_snapshot_after_files_replaced[s3] ____
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1985/test_runtime_consumes_only_val1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e769a60>
+storage = 's3'
+
+    @pytest.mark.parametrize("storage", ["local", "s3"])
+    async def test_runtime_consumes_only_validated_snapshot_after_files_replaced(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, storage: str,
+    ) -> None:
+        """池和锁复用DSN，所有认证、网关、AES与S3参数仅来自首次已验字节。"""
+        from .f11_startup_helpers import RuntimeSpies
+    
+        config = production_config(tmp_path)
+        if storage == "s3":
+            corrupt(config, "s3_valid", tmp_path)
+        public = config.public_key_files["k"].read_text().strip()
+        dsn = config.database_dsn_file.read_text().strip()
+        spies = RuntimeSpies(config)
+        spies.install(monkeypatch)
+>       async with runtime.open_runtime(config):
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_startup.py:200: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:158: in open_runtime
+    objects = await objects_from_config(config.objects, simulation=config.execution_simulation)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:68: in objects_from_config
+    return EncryptedS3Objects(
+packages/xuanpu-finance/src/xuanpu_finance/objects.py:121: in __init__
+    self.envelope = _Envelope(key)
+                    ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <xuanpu_finance.objects._Envelope object at 0x10ed2a1e0>
+key = b'replacement-private-secret'
+
+    def __init__(self, key: bytes) -> None:
+        """要求显式注入 256 位原始密钥。"""
+        if len(key) != 32:
+>           raise ValueError("原件密钥必须为 32 字节 AES-256 密钥")
+E           ValueError: 原件密钥必须为 32 字节 AES-256 密钥
+
+packages/xuanpu-finance/src/xuanpu_finance/objects.py:37: ValueError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[permissions]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[symlink]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[fifo]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[directory]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[oversize]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[empty]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[utf8]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[aes]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[public]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[same_inode]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[same_bytes]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[dsn]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[tls]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[gateway]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[configuration]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[s3_missing]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[s3_empty]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[s3_tls]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_production_internal_gate_precedes_every_side_effect[s3_port]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_real_cli_blocks_without_traceback_or_secrets[permissions]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_real_cli_blocks_without_traceback_or_secrets[configuration]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_real_cli_blocks_without_traceback_or_secrets[s3_missing]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_snapshot_is_immutable_and_has_no_sensitive_repr
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_runtime_consumes_only_validated_snapshot_after_files_replaced[local]
+FAILED packages/xuanpu-finance/tests/test_f11_startup.py::test_runtime_consumes_only_validated_snapshot_after_files_replaced[s3]
+25 failed, 3 passed in 2.02s

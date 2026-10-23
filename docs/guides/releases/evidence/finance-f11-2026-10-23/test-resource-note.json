@@ -1,0 +1,6 @@
+{
+  "production_status": "not_verified",
+  "resource": "F11本轮自建finance_test_f11基准库",
+  "event": "实施者查询关系清单调试时调用FinanceStore.migrate，创建默认结构和模式行，未seed业务；未冒险逐表删除。",
+  "test_isolation": "verify使用F4每例新建的独立public数据库，后续进程验收亦使用新库；最终删除整个F11自建容器和卷清理。"
+}

@@ -1,4 +1,4 @@
-"""已发布F0—F3业务包的工具、Skill、实际路由及请求契约。"""
+"""已发布F0—F11业务包的工具、Skill、实际路由及请求契约。"""
 
 from __future__ import annotations
 
@@ -87,7 +87,7 @@ async def test_f0_f2_package_and_kernel_reference_read() -> None:
 
 
 def test_runnable_package_has_exactly_the_77_actual_finance_operations() -> None:
-    """包只能发布已交付F3工具，也不能遗漏人工入口依赖的已实现路由。"""
+    """包只能发布已交付工具，也不能遗漏人工入口依赖的已实现路由。"""
     actual = {
         route.operation_id: (route.path, next(iter(route.methods)).lower())
         for router in (f0_router, f1_router, f2_router, f3_router, f4_router, f5_router, f6_router, f7_router, f8_router, f9_router, f10_router)

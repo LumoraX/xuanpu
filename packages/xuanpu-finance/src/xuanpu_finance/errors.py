@@ -16,3 +16,8 @@ class FinanceError(Exception):
     def __reduce__(self) -> tuple[type[FinanceError], tuple[str, int, str]]:
         """保留结构化构造参数，使隔离解析子进程能还原同一领域错误。"""
         return type(self), (self.code, self.status, self.message)
+
+
+def startup_blocked() -> FinanceError:
+    """正式内部启动失败使用固定错误，不携带资源路径或异常正文。"""
+    return FinanceError("INTERNAL_STARTUP_BLOCKED", 422, "内部财务启动检查未通过")

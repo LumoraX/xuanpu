@@ -1,0 +1,17 @@
+usage: maintenance_cli.py [-h] --database-dsn-file DATABASE_DSN_FILE --objects
+                          OBJECTS --key-file KEY_FILE [--package PACKAGE]
+                          [--pg-tool PG_TOOL]
+                          {backup,restore,verify}
+
+独立财务数据库与加密原件配套维护
+
+positional arguments:
+  {backup,restore,verify}
+
+options:
+  -h, --help            show this help message and exit
+  --database-dsn-file DATABASE_DSN_FILE
+  --objects OBJECTS     独立local密文根；恢复时必须不存在
+  --key-file KEY_FILE   另行保全的32字节密钥，密钥不会写入备份
+  --package PACKAGE     备份目标或恢复来源目录
+  --pg-tool PG_TOOL     明确指定成熟pg_dump或pg_restore程序路径

@@ -17,7 +17,7 @@ def test_materials_contract_and_skill_read_tools() -> None:
     """只发布两项本人元数据读取，不把原件读取或人工执行开放给模型。"""
     document = contracts()['finance']
     declared = operations(document)
-    assert document['info']['version'] == '0.11.0-f10'
+    assert document['info']['version'] == '0.12.0-f11'
     assert declared['listSupportingMaterialImports'][:2] == ('/v1/finance/supporting-material-imports','get')
     assert declared['getSupportingMaterialImport'][:2] == ('/v1/finance/supporting-material-imports/{id}','get')
     validate_schema('SupportingMaterialImportPage',{'items':[],'total':0,'next_cursor':None})
