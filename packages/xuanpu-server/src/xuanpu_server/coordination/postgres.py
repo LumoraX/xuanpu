@@ -15,7 +15,7 @@ from xuanpu_server.organization.postgres import load_organization, save_organiza
 from xuanpu_server.organization.user_profiles import save_profiles, validate_profiles
 from xuanpu_server.shared_matters.postgres import load_shared, save_shared
 from xuanpu_server.shared_matters.store import validate_shared
-from xuanpu_server.transaction_reads import transaction_reads
+from xuanpu_server.transaction_reads import read_connection, transaction_reads
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -31,6 +31,16 @@ if TYPE_CHECKING:
 
 class PostgresCoordinationStore:
     """复用控制面连接池；每次工作单元持有唯一数据库事务。"""
+    async def runtime_contexts(self, tenant: str, user: str, session_id: str) -> tuple[str, ...]:
+        """同连接只读来源索引，不在已有事务内嵌套写事务。"""
+        sql = f'SELECT id FROM {self._namespace.table("shared_context")} WHERE tenant_id=$1 AND user_id=$2 AND runtime_session_id=$3 ORDER BY id'
+        conn = read_connection(self._pool, sql)
+        if conn is not None:
+            rows = await conn.fetch(sql, tenant, user, session_id)
+        else:
+            async with self._pool.acquire() as current:
+                rows = await current.fetch(sql, tenant, user, session_id)
+        return tuple(row['id'] for row in rows)
     def __init__(self, pool: asyncpg.Pool, namespace: SqlNamespace) -> None:
         """命名空间由已验证的控制面配置提供。"""
         self._pool = pool

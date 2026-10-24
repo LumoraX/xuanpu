@@ -21,6 +21,13 @@ from xuanpu_server.runtime.connectors import ConnectorSet
 from xuanpu_server.runtime.execution_scope import ExecutionScope
 from xuanpu_server.runtime.sandbox import DEFAULT_BASE_ENV
 from xuanpu_server.runtime.script_executors import ScriptObserver, script_executors
+from xuanpu_server.runtime.source_guard import (
+    RuntimeSourceBinding,
+    SourceContextEngine,
+    SourceModelClient,
+    SourcePermissionPolicy,
+    source_binding,
+)
 from xuanpu_server.tenancy import tenant_directory
 
 if TYPE_CHECKING:
@@ -36,6 +43,7 @@ if TYPE_CHECKING:
     from xuanpu_server.runtime.models import ModelClientFactory
     from xuanpu_server.runtime.sandbox import SandboxHandle, SandboxProvider
     from xuanpu_server.secrets import SecretVault
+    from xuanpu_server.shared_matters.context_guard import SharedContexts
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +175,7 @@ class TenantRuntime:
     last_used: float = 0.0
     retainers: int = 0
     closing: bool = False
+    source: RuntimeSourceBinding | None = None
 
     def live_sessions(self) -> int:
         """引擎池里当前活着的会话数。"""
@@ -214,6 +223,7 @@ class RuntimeAssembler:
             now: 取当前时间的函数，测试时可替换。
         """
         self._managed_connections=managed_connections
+        self._source_contexts: SharedContexts | None = None
         self._now = now
         self._submissions = submissions
         self._data_dir = data_dir
@@ -232,6 +242,12 @@ class RuntimeAssembler:
     def defaults(self) -> RuntimeDefaults:
         """平台默认参数。"""
         return self._defaults
+
+    def bind_sources(self, contexts: SharedContexts) -> None:
+        """平台启动前固定来源检查，不能给已装配运行时临时换权限来源。"""
+        if self._runtimes or (self._source_contexts is not None and self._source_contexts is not contexts):
+            raise RuntimeError('运行时来源检查已固定')
+        self._source_contexts = contexts
 
     def live_runtimes(self) -> int:
         """当前组装着（还没回收）的运行时数。"""
@@ -268,7 +284,7 @@ class RuntimeAssembler:
                 if existing is None:
                     if chosen.execution_id.startswith("task:") and input_root is None:
                         raise RuntimeUnavailableError("任务运行时必须先固定输入只读挂载")
-                    existing = await self._assemble(key, package, input_root=input_root,
+                    existing = await self._assemble(key, package, scope=chosen, input_root=input_root,
                         contains_external_input=contains_external_input or input_root is not None or not chosen.owner_id.startswith("service:"), script_observer=script_observer)
                     self._runtimes[key] = existing
         if existing.closing:
@@ -301,6 +317,7 @@ class RuntimeAssembler:
 
     async def _assemble(
         self, key: RuntimeKey, package: ResolvedPackage, *, input_root: Path | None = None,
+        scope: ExecutionScope | None = None,
         contains_external_input: bool = False, script_observer: ScriptObserver | None = None,
     ) -> TenantRuntime:
         """组装一个运行时。任何一步失败都会收回已经准备好的资源。
@@ -309,24 +326,29 @@ class RuntimeAssembler:
         ``<data_dir>/connectors/<租户目录>/<名>/<版本>/``），没有就不开。
         """
         spec = package.manifest.spec
+        source = await source_binding(self._source_contexts, scope)
+        protected = source is not None and source.protected
         connector_sandbox: SandboxHandle | None = None
         connectors: ConnectorSet | None = None
         sandbox: SandboxHandle | None = None
         try:
-            if any(connector.transport == "stdio" for connector in spec.connectors):
+            if not protected and any(connector.transport == "stdio" for connector in spec.connectors):
                 connector_sandbox = await self._sandboxes.open_connectors(
                     package, self._scoped("connectors", package, key[3])
                 )
             connectors = self._connector_set(package, connector_sandbox)
             effects: dict[str, Effect] = {}
             for connector in spec.connectors:
-                effects.update(await connectors.start(connector, package_root=package.root))
+                if not protected:
+                    effects.update(await connectors.start(connector, package_root=package.root))
             workspace = self._scoped("workspaces", package, key[3])
             sandbox = (await self._sandboxes.open(package, workspace) if input_root is None
                 else await self._sandboxes.open(package, workspace, input_root=input_root))
             policy = build_policy(spec.policy.approval, effects,
                 contains_external_input=contains_external_input,
                 workspace_root=sandbox.workspace_inside if input_root is not None else None)
+            if source is not None and source.protected:
+                policy = SourcePermissionPolicy(source)
             from xuanpu_server.runtime.task_policy import TaskPermissionPolicy
             from xuanpu_server.work_tasks.execution_context import current_execution
 
@@ -335,7 +357,7 @@ class RuntimeAssembler:
                 if spec.policy.sandbox.network:
                     raise RuntimeUnavailableError('持久任务脚本必须断网')
                 policy = TaskPermissionPolicy(policy, binding)
-            pool = await self._create_pool(package, policy, sandbox, connectors, key=key, script_observer=script_observer)
+            pool = await self._create_pool(package, policy, sandbox, connectors, key=key, source=source, script_observer=script_observer)
         except BaseException as original:
             steps = self._failed_closures.setdefault(key, [])
             if isinstance(original, RuntimeCleanupRequiredError):
@@ -355,6 +377,7 @@ class RuntimeAssembler:
             connectors=connectors,
             connector_sandbox=connector_sandbox,
             tool_effects=effects,
+            source=source,
         )
 
     def _extra_tools(
@@ -363,8 +386,12 @@ class RuntimeAssembler:
         policy: taifeng.PermissionPolicy,
         sandbox: SandboxHandle,
         connectors: ConnectorSet,
+        source: RuntimeSourceBinding | None = None,
     ) -> list[taifeng.ToolSpec]:
         """内核默认工具之外，平台额外开放的工具。"""
+        if source is not None and source.protected:
+            from xuanpu_server.shared_matters.read_tools import shared_read_tools
+            return shared_read_tools(source, self._submissions)
         tools = [tool.spec for tool in connectors.build_tools(policy)]
         if package.record.name == "office-assistant":
             from xuanpu_server.work_tasks.tools import office_tools
@@ -420,6 +447,7 @@ class RuntimeAssembler:
         connectors: ConnectorSet,
         *,
         key: RuntimeKey, script_observer: ScriptObserver | None = None,
+        source: RuntimeSourceBinding | None = None,
     ) -> taifeng.EnginePool:
         """创建内核引擎池。"""
         tenant_id = package.record.tenant_id
@@ -447,11 +475,15 @@ class RuntimeAssembler:
             if binding is not None:
                 model_client = TaskModelClient(model_client, binding,
                     verified_text_bound=binding.store.verified_text_bounds)
+            protected = source is not None and source.protected
+            if source is not None:
+                model_client = SourceModelClient(model_client, source.check)
             return await taifeng.EnginePool.create(
                 skills_dir=package.skills_dir,
                 model_client=model_client,
-                extra_tools=self._extra_tools(package, policy, sandbox, connectors),
-                script_executors=script_executors(sandbox, script_observer),
+                extra_tools=self._extra_tools(package, policy, sandbox, connectors, source),
+                script_executors={} if protected else script_executors(sandbox, script_observer),
+                context_engine=SourceContextEngine(source.check) if source is not None else None,
                 permission_policy=policy,
                 # 业务包可以把预算调低，不能调高过平台上限
                 max_session_tokens=min(
@@ -461,7 +493,7 @@ class RuntimeAssembler:
                 max_iterations=min(
                     budget.max_iterations or defaults.max_iterations, defaults.max_iterations
                 ),
-                enable_request_capture=defaults.capture_requests,
+                enable_request_capture=defaults.capture_requests and not protected,
                 image_input_policy=taifeng.ImageInputPolicy(enabled=True, max_images=8, max_item_bytes=20*1024*1024, max_total_bytes=20*1024*1024),
                 file_input_policy=taifeng.FileInputPolicy(enabled=True, max_files=8, max_item_bytes=20*1024*1024, max_total_bytes=20*1024*1024),
                 **options,

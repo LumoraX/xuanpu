@@ -28,6 +28,13 @@ if TYPE_CHECKING:
 
 class InMemoryCoordinationStore:
     """每租户快照串行；生产正确性由PG事务承担。"""
+    async def runtime_contexts(self, tenant: str, user: str, session_id: str) -> tuple[str, ...]:
+        """只读已提交来源索引；随后仍需协调事务重新检查权限。"""
+        state = self._states.get(tenant)
+        if state is None:
+            return ()
+        return tuple(sorted(c.id for c in state.shared.contexts.values()
+            if c.user_id == user and c.runtime_session_id == session_id))
     def __init__(self, control: ControlPlaneStore, *, audit: Callable[[list[AuditRecord]], None]) -> None:
         """复用控制面的租户，身份由平台显式绑定。"""
         self._control = control

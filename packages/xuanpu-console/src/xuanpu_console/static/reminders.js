@@ -137,7 +137,8 @@ async function refreshNotifications() {
   if (generation !== reminderState.generation || request < reminderState.notificationApplied) return;
   reminderState.notificationApplied=request;
   observeNotificationAlerts(body.items,{snapshot:true});
-  const unread = body.items.some(item => !item.read_at);
+  if(typeof renderSharedNotifications==="function"&&body.shared)renderSharedNotifications(body.shared);
+  const unread = body.items.some(item => !item.read_at) || (body.shared?.unread_total>0);
   $("notification-toggle").textContent = unread ? "通知 · 有未读" : "通知";
   $("notification-toggle").title = "查看最近100条通知";
   const list = $("notification-list"); list.innerHTML = "";
@@ -249,14 +250,17 @@ async function startNotificationStream(generation) {
   if(generation !== reminderState.generation || !conn.me?.user_id) return;
   const controller=new AbortController();reminderState.controller=controller;
   try {
-    const response=await fetch(url(`/v1/notifications/events?after_id=${reminderState.cursor}`),{
+    const response=await fetch(url(`/v1/notifications/events?after_id=${reminderState.cursor}&shared_after_id=${typeof sharedInbox!=="undefined"?sharedInbox.cursor:0}`),{
       ...requestOptions(),headers:headers(),signal:controller.signal,
     });
     if(!response.ok) {if(response.status===401){resetIdentity();return;}throw new Error("通知连接暂不可用");}
     $("notification-status").textContent="实时更新中";
     for await(const [name,data] of sse(response)) {
       if(generation !== reminderState.generation) return;
-      if(name==="notification") {
+      if(name==="shared_notification" || name==="shared_notifications_changed"){
+        if(typeof sharedNotificationEvent==="function")sharedNotificationEvent(name,data);
+        await refreshNotifications();
+      }else if(name==="notification") {
         reminderState.cursor=Math.max(reminderState.cursor, Number(data.notification_id || data.id || 0));
         observeNotificationAlerts([data]);
         await Promise.all([refreshNotifications(),refreshReminders()]);

@@ -12,6 +12,10 @@ if TYPE_CHECKING:
 
 class CoordinationStore(Protocol):
     """固定租户→排序员工→领域实体→outbox，禁止在事务内等待外部服务。"""
+
+    async def runtime_contexts(self, tenant: str, user: str, session_id: str) -> tuple[str, ...]:
+        """仅查询本人业务会话的来源上下文编号，不返回正文或授权缓存。"""
+        ...
     def bind_identity(self, identity: IdentityStore) -> None:
         """内存后端取得同装配的当前身份状态，PG直接锁同库身份行。"""
         ...

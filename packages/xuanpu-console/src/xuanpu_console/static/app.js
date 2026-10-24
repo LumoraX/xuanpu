@@ -290,6 +290,7 @@ $("send").addEventListener("submit", async event => {
       ...extras,
     }});
     if (epoch !== conn.epoch || generation !== chat.generation) return;
+    if (typeof handleSharedRoute === "function" && await handleSharedRoute(route,text)) return;
     if (typeof handleConnectionRoute === "function" && await handleConnectionRoute(route,text)) return;
     if (typeof handleTaskDefinitionRoute === "function" && await handleTaskDefinitionRoute(route,text)) return;
     if (typeof handleWorkTaskRoute === "function" && await handleWorkTaskRoute(route,text)) return;
@@ -405,7 +406,10 @@ async function streamTurn(path, json) {
     }
     for await (const [name, data] of sse(response)) {
       if (epoch !== conn.epoch) throw new DOMException("身份已切换", "AbortError");
-      if (name === "turn") {
+      if (name === "error") {
+        if(data.error?.code==="shared_access_revoked")$("transcript").replaceChildren();
+        throw Object.assign(new Error(data.error?.message||"阅读已停止，请重新核对来源。"),{code:data.error?.code});
+      } else if (name === "turn") {
         chat.streaming.submissionId = data.submission_id;
         $("stop-btn").disabled = false;
       } else if (name === "assistant_text") {
@@ -447,6 +451,7 @@ async function* sse(response) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  try {
   for (;;) {
     const { value, done } = await reader.read();
     if (done) break;
@@ -463,6 +468,9 @@ async function* sse(response) {
       }
       if (name) yield [name, data.length ? JSON.parse(data.join("\n")) : {}];
     }
+  }
+  } finally {
+    try { await reader.cancel(); } finally { reader.releaseLock(); }
   }
 }
 

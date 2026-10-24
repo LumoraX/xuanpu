@@ -57,6 +57,7 @@ def history_router(platform: Platform) -> APIRouter:
             session.tenant_id,
             AuditQuery(session_id=session.session_id, after_id=query.after_id, limit=query.limit),
         )
+        await platform.sessions.content(who, session_id)
         return {
             "records": [history_view(record) for record in records if record.kind in _FIELDS],
             "next_after_id": records[-1].audit_id if len(records) == query.limit else None,

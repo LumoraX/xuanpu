@@ -16,6 +16,7 @@ from xuanpu_server.errors import (
 from xuanpu_server.ids import new_id
 from xuanpu_server.shared_matters.models import MaterialRevision, Publication, SharedMaterial
 from xuanpu_server.shared_matters.permissions import access
+from xuanpu_server.shared_matters.source_dependencies import check_publisher_sources
 from xuanpu_server.tenancy import Principal
 from xuanpu_server.workspace.models import FileData
 
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
 
     from xuanpu_server.coordination.models import CoordinationTransaction
     from xuanpu_server.shared_matters.materials import SharedMaterials
+    from xuanpu_server.shared_matters.models import SharedSourceRef
     from xuanpu_server.shared_matters.schemas import PublishMaterialInput
 
 # 代次只用于追踪，不作为旧writer已经死亡或对象空间已腾空的证明。
@@ -48,7 +50,8 @@ class Publications:
 
     async def prepare(self, who: Principal, identifier: str, *, request_id: str, expected: int,
                       body: PublishMaterialInput | None = None, data: bytes | None = None,
-                      name: str = '', mime: str = 'application/octet-stream') -> dict[str, JsonValue]:
+                      name: str = '', mime: str = 'application/octet-stream',
+                      source_refs: tuple[SharedSourceRef, ...] = (), draft_message_id: int | None = None) -> dict[str, JsonValue]:
         """固定请求指纹和空间预留，意图、材料、事项版本与回执原子提交。"""
         if self._closed:
             raise RuntimeUnavailableError('共享发布正在停止，请稍后重试')
@@ -58,8 +61,11 @@ class Publications:
         payload: dict[str, JsonValue] = {'action': 'shared.publish', 'id': identifier,
             'body': body.model_dump(mode='json') if body else {'request_id': request_id,
                 'expected_version': expected, 'name': name, 'mime': mime, 'sha256': checksum}}
+        if source_refs:
+            payload.update(source_refs=[ref.model_dump(mode='json') for ref in source_refs], draft_message_id=draft_message_id)
         async with self.service.store.transaction(who.require_tenant(), participants=(who.user_id,)) as tx:
             await self.service.actor(who)
+            check_publisher_sources(tx, who, source_refs, self.service.now(), self.materials)
             access(tx, who, identifier, self.service.now(), write=True)
             old = tx.receipt(who.actor, request_id, payload)
             if old is not None:
@@ -92,9 +98,9 @@ class Publications:
                 material_id=material.id, publisher_id=who.user_id, publisher_epoch=tx.participant_epochs[who.user_id],
                 expected_matter_version=matter.version, access_epoch=matter.access_epoch, revision=revision,
                 object_key=f'{tx.tenant_id}/shared/{identifier}/{publication_id}', name=name, mime_type=mime,
-                source_kind='private_file' if body else 'upload', source_item_id=body.source_item_id if body else None,
+                source_kind='private_file' if body else ('text' if source_refs else 'upload'), source_item_id=body.source_item_id if body else None,
                 source_revision=body.source_revision if body else None, source_item_version=source[0]['version'] if source else None,
-                expected_sha256=str(checksum), expected_size=size, created_at=now, updated_at=now)
+                expected_sha256=str(checksum), expected_size=size, source_refs=source_refs, created_at=now, updated_at=now)
             tx.shared.publications[publication_id] = publication
             self.service.event(tx, who, matter, 'publication_requested', {'publication_id': publication_id, 'material_id': material.id})
             result: dict[str, JsonValue] = {'id': publication_id, 'material_id': material.id, 'status': 'pending'}
@@ -145,6 +151,7 @@ class Publications:
         matter = await self.service.writable(tx, who, publication.matter_id, publication.expected_matter_version)
         if tx.participant_epochs[publication.publisher_id] != publication.publisher_epoch or matter.access_epoch != publication.access_epoch:
             raise ConflictError('发布期间权限已改变')
+        check_publisher_sources(tx, who, publication.source_refs, self.service.now(), self.materials)
         if publication.source_kind == 'private_file':
             item, revision = await self.source(tx.tenant_id, publication.publisher_id,
                 publication.source_item_id or '', publication.source_revision or 0)

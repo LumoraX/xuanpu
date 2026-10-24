@@ -98,3 +98,10 @@
 #organization-list{display:grid;gap:1rem;min-width:0}
 #organization-panel input:not([type=checkbox]),#organization-panel select{box-sizing:border-box;max-width:100%;min-width:0;width:100%}
 #organization-panel label{overflow-wrap:anywhere}
+/* 共享内容按文本换行展示，不让长编号挤出手机视口。 */
+#shared-panel p, #shared-panel label, #shared-panel h3, #shared-notification-list { overflow-wrap: anywhere; }
+#shared-panel p { white-space: pre-wrap; }
+#shared-panel textarea { min-height: 4rem; width: 100%; box-sizing: border-box; }
+#shared-panel .function-card { margin-block: .8rem; }
+#shared-panel button { margin: .25rem; }
+.shared-transcript { border-inline-start: 3px solid var(--border, #d7dce4); padding-inline-start: .75rem; }

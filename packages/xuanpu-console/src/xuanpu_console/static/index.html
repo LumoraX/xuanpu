@@ -28,6 +28,7 @@
 <section id="notifications-panel" class="notification-panel hidden" role="dialog" aria-modal="false" aria-labelledby="notification-title" tabindex="-1">
   <div class="notification-panel-heading"><strong id="notification-title">通知</strong><button id="close-notifications" type="button" class="ghost" aria-label="关闭通知" title="关闭通知">×</button></div>
   <p id="notification-status" class="meta"></p>
+  <div id="shared-notification-list"></div>
   <ul id="notification-list" class="reminder-items" aria-live="polite"></ul>
 </section>
 
@@ -141,6 +142,7 @@
       <article class="function-card"><h2>执行安排</h2><p>确认何时替你处理工作，查看、修改或停止本人安排。</p><button data-workspace="definition" type="button">查看执行安排</button></article>
       <article class="function-card"><h2>交办工作</h2><p>查看材料处理进展，确认行动项并下载成果。关闭页面后仍会继续处理。</p><button data-workspace="task" type="button">查看我的工作</button></article>
       <article class="function-card"><h2>企业连接</h2><p>绑定本人的企业微信，查看只读范围，确认或撤销个人授权。</p><button id="open-connections" type="button">管理我的连接</button></article>
+      <article class="function-card"><h2>共享协作</h2><p>直接邀请具体员工，共同核对资料。部门与岗位可选。</p><button id="open-shared" type="button">查看共享事项</button></article>
       <article class="function-card"><h2>组织与职责</h2><p>查看本人的部门与职责。获授权的同事可配置部门、岗位和业务职责。</p><button id="open-organization" type="button">查看组织与职责</button></article>
       <article class="function-card"><h2>我的文件</h2><p>文件夹、附件、版本和回收站，始终属于你的个人空间。</p><button data-workspace="file" type="button">打开文件</button></article>
       <article class="function-card"><h2>事项与待办</h2><p>查看进展、关联资料，记录下一步工作。</p><button data-workspace="matter" type="button">打开事项</button> <button data-workspace="todo" type="button" class="ghost">查看待办</button></article>
@@ -153,6 +155,7 @@
     <div id="reminder-module-host"></div>
   </section>
 
+  <section id="shared-panel" class="reminder-preview hidden" aria-label="共享事项与资料"><div class="row"><h2>共享协作</h2><button id="close-shared" type="button">收起</button></div><p id="shared-feedback" role="status"></p><div id="shared-list"></div></section>
   <section id="organization-panel" class="reminder-preview hidden" aria-label="组织与职责"><div class="row"><h2>组织与职责</h2><button id="close-organization" type="button">收起</button></div><p id="organization-feedback" role="status"></p><div id="organization-list"></div></section>
   <section id="connections-panel" class="reminder-preview hidden" aria-label="本人的企业连接"><div class="row"><h2>本人的企业连接</h2><button id="close-connections" type="button">收起</button></div><p id="connections-feedback" role="status"></p><div id="connections-list"></div></section>
 
@@ -238,6 +241,10 @@
 <script src="connections.js"></script>
 <script src="organization-forms.js"></script>
 <script src="organization.js"></script>
+<script src="shared-matters.js"></script>
+<script src="shared-materials.js"></script>
+<script src="shared-conversation.js"></script>
+<script src="shared-notifications.js"></script>
 <script src="identity.js"></script>
 </body>
 </html>

@@ -232,6 +232,8 @@ class ProactiveService:
             if claim is None:
                 return False
             payload, evidence = await prepare_context(self, tenant, user, claim)
+            if not await context_current(self, tenant, user, claim):
+                raise ValueError('业务会话来源在模型请求前已更新')
             if not evidence:
                 assessment = validate_assessment('{"followups":[]}', evidence)
             else:

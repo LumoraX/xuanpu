@@ -44,6 +44,7 @@ def assistant_router(platform: Platform) -> APIRouter:
                 "task_definition_draft": result.task_definition_draft,
                 "open_task_definitions": result.open_task_definitions,
                 "open_connections": result.open_connections,
+                "shared_draft": result.shared_draft, "open_shared": result.open_shared,
             }
         finally:
             # 普通HTTP请求的断连不会自动取消handler；显式取消采样并等待有界计量收尾。

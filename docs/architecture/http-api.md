@@ -122,6 +122,7 @@ X-Xuanpu-Act-As: usr_5f0c1b2e7d9a4c3b8e6f1a20
 | 403 | `permission_denied` | 凭据有效但无权操作（包括不允许的[代员工调用](#系统代员工调用)） | |
 | 403 | `csrf_rejected` | 用登录 cookie 的写请求缺 `X-Requested-By: xuanpu` 头，或 `Origin` 与 `public_url` 不符（见[浏览器登录](#浏览器登录)） | |
 | 403 | `session_owner_disabled` | 会话的主人（员工）已停用：任何调用者都不能再往这个会话发消息、送审批结果（见[主人停用之后](#主人停用之后)）；换一把凭据也没用 | |
+| 403 | `shared_access_revoked` | 共享来源、原授权或身份代次失效，旧受保护上下文拒绝正文、历史、缓存回放及模型续跑；重新选择来源开始新对话 | |
 | 404 | `not_found` | 资源不存在，或属于别的租户；普通成员访问别人的会话也是它（见[可见范围](#可见范围)） | |
 | 409 | `conflict` | 与现有状态冲突（版本已发布、会话已关闭、要降级或停用的是租户里最后一名启用的管理员等） | |
 | 409 | `session_busy` | 会话正由另一个实例持有 | `owner`：持有者的实例标识 |
@@ -929,3 +930,12 @@ SDK提供TaskDefinition快照及对应原生方法；CLI的work-tasks/task-defin
 
 
 R3-C候选共享接口及当前边界见[共享事项与固定材料](shared-matters.md)；直接员工选择为 GET /v1/organization/people，仅返回本企业启用员工的姓名及稳定编号。
+
+候选新增 `POST /v1/shared-contexts` 和 `GET /v1/shared-contexts/{id}/read`，写入严格拒绝额外身份、权限或正文；来源选择必须原生确认。`POST /v1/assistant/route`可显式传shared_context_id，仅返回文本，共享历史带来源且不进入普通个人路由或主动跟进。不得同时传session_id、matter_id、attachments、input_files或context。普通session_id一旦绑定共享来源，普通路由返回400并引导对应共享会话。`POST /v1/shared-matters/{id}/material-texts`接受request_id、confirmed=true、expected_version、source_context_id、draft_message_id、name，原文及来源由服务器从本人固定助手消息取得；返回202固定pending回执，再补读publication当前状态。
+
+
+R3-C候选还提供GET /v1/shared-contexts、GET /v1/shared-contexts/{id}、POST /v1/shared-contexts/{id}/close；元数据不含正文，关闭要求本人的context expected_version，closed终态。workspace/messages支持private_only及source_context_id，均在存储分页前过滤，不能和私人matter过滤混用。
+
+GET /v1/shared-matters/{id}返回allowed_actions；packet的version是不透明的授权集合选择号，提交来源选择时原样带回，不能自行递增。普通assistant/route新增shared_draft及open_shared响应，草稿只包含title/content，不创建或邀请。共享材料文本阅读及当前任职/职责身份足迹见共享架构。
+
+GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/shared-notifications/{id}/read共用当前ACL；分页包含独立total、unread_total、visibility_revision、permission_revision及前后sequence游标。统一通知SSE新增shared_notification/shared_notifications_changed，共享帧无id行，shared_after_id不覆盖原提醒after_id/Last-Event-ID。permission_revision独立覆盖所有当前可见事项权限，无历史通知也能提示降权。

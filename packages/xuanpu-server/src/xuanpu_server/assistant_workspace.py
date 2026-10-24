@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict
 
 from xuanpu_server.errors import InvalidRequestError, NotFoundError
 from xuanpu_server.workspace.models import validate_data
+from xuanpu_server.workspace.source_history import protected_message
 
 if TYPE_CHECKING:
     from xuanpu_server.platform import Platform
@@ -92,7 +93,8 @@ async def workspace_context(platform: Platform, who: Principal, matter_id: str |
               for x in items if x["kind"] == "skill" and x["data"]["enabled"]]
     if sum(len(x["instructions"]) for x in skills) > 32000:
         raise InvalidRequestError("已启用的个人指令过长，请在个人能力中精简或停用部分指令")
-    history = await service.messages(who, limit=12, latest=True)
+    history = await service.messages(who, limit=12, latest=True, private_only=True)
+    history = [row for row in history if not protected_message(row) and not row.get('source_blocked')]
     return {"settings": settings, "items": visible, "total_records": len(items),
             "personal_instructions": skills, "current_matter": matter,
             "recent_conversation": [{"role": x["role"], "text": x["text"][-4000:]} for x in history]}

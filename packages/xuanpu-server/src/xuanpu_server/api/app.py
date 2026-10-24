@@ -29,7 +29,9 @@ from xuanpu_server.api.instance import InstanceMiddleware
 from xuanpu_server.api.organization import organization_router
 from xuanpu_server.api.proactive import proactive_router
 from xuanpu_server.api.reminders import reminders_router
+from xuanpu_server.api.shared_contexts import shared_contexts_router
 from xuanpu_server.api.shared_matters import shared_matters_router
+from xuanpu_server.api.shared_notifications import shared_notifications_router
 from xuanpu_server.api.sse import frame, stream_turn
 from xuanpu_server.api.task_definitions import task_definitions_router
 from xuanpu_server.api.wecom import wecom_router
@@ -71,10 +73,13 @@ def _error(status: int, code: str, message: str, **extra: Any) -> JSONResponse:
     )
 
 
-def _turn_response(turn: Turn) -> StreamingResponse:
+def _turn_response(turn: Turn, platform: Platform, who: Caller) -> StreamingResponse:
     """一轮对话的事件流响应。"""
+    async def check_sources() -> object:
+        """实际外发各帧前复查本人来源；机器普通会话不带共享上下文。"""
+        return await platform.shared_contexts.check_runtime(who, turn.session_id) if who.user_id else None
     return StreamingResponse(
-        stream_turn(turn),
+        stream_turn(turn, check_sources=check_sources),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -159,6 +164,8 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.include_router(connections_router(platform))
     app.include_router(organization_router(platform))
     app.include_router(shared_matters_router(platform))
+    app.include_router(shared_contexts_router(platform))
+    app.include_router(shared_notifications_router(platform))
     app.include_router(wecom_router(platform))
     app.include_router(audit_usage_router(platform))
     app.include_router(history_router(platform))
@@ -388,7 +395,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
         text, attachments = await prepare_business_message(platform, who, body.text, body.attachments)
         return _turn_response(await platform.sessions.send_message(
             who, session_id, text, attachments=attachments, audit_text=body.text
-        ))
+        ), platform, who)
 
     @app.post("/v1/sessions/{session_id}/resume")
     async def resume_session(
@@ -401,13 +408,15 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
                 """原提交的审计快照；未结束时继续用原标识补读。"""
                 yield frame("turn", {"session_id": result.session_id, "submission_id": result.submission_id, "replayed": True})
                 for event in result.events:
+                    if who.user_id:
+                        await platform.shared_contexts.check_runtime(who, session_id)
                     if event["kind"] not in SENSITIVE_KINDS:
                         yield frame(event["kind"], {"submission_id": result.submission_id, **event})
                 yield frame("end", {"submission_id": result.submission_id, "replayed": True})
             return StreamingResponse(replay_frames(), media_type="text/event-stream",
                 headers={"X-Submission-Id": result.submission_id, "X-Xuanpu-Replayed": "true",
                          "Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
-        return _turn_response(result)
+        return _turn_response(result, platform, who)
 
     @app.post("/v1/sessions/{session_id}/cancel")
     async def cancel_turns(

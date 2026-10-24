@@ -53,6 +53,7 @@ if TYPE_CHECKING:
     from xuanpu_server.controlplane.models import SessionRecord
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.identity.store import IdentityStore
+    from xuanpu_server.shared_matters.context_guard import SharedContexts
     from xuanpu_server.tenancy import Principal
 
 from xuanpu_server.runtime.content_access import can_read_content
@@ -87,6 +88,13 @@ class SessionOwnership:
         """
         self._store = store
         self._users = users
+        self._sources: SharedContexts | None = None
+
+    def bind_sources(self, contexts: SharedContexts) -> None:
+        """启动装配时固定当前来源检查，不改变私人会话归属。"""
+        if self._sources is not None and self._sources is not contexts:
+            raise RuntimeError('会话来源检查已固定')
+        self._sources = contexts
 
     async def visible(self, principal: Principal, session_id: str) -> SessionRecord:
         """取一个调用者看得见的会话。别的租户的、看不见的，都按不存在处理。
@@ -104,6 +112,8 @@ class SessionOwnership:
         record = await self.visible(principal, session_id)
         if not can_read_content(principal, record):
             raise NotFoundError(f"会话 {session_id!r} 不存在")
+        if self._sources is not None and principal.user_id is not None:
+            await self._sources.check_runtime(principal, session_id)
         return record
 
     async def writable(self, principal: Principal, session_id: str) -> SessionRecord:

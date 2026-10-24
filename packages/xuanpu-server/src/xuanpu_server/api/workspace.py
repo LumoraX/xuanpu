@@ -166,11 +166,14 @@ def workspace_router(platform: Platform) -> APIRouter:
         latest: bool = False,
         matter_id: str | None = None,
         before_id: Annotated[int | None, Query(ge=1, le=9223372036854775807)] = None,
+        private_only: bool = False,
+        source_context_id: Annotated[str | None, Query(min_length=1, max_length=160)] = None,
     ) -> dict[str, Any]:
         """按持久游标读取主对话；写入由助手路由统一管理。"""
         return {
             "items": await service.messages(
-                who, after_id, limit, latest=latest, matter_id=matter_id, before_id=before_id
+                who, after_id, limit, latest=latest, matter_id=matter_id, before_id=before_id,
+                private_only=private_only, source_context_id=source_context_id,
             )
         }
 

@@ -180,3 +180,15 @@ result = await client.decide_work_task(task.task_id, {
 ## 组织与职责
 
 客户端提供organization_me、organization_directory、list_organization、get_organization、create_organization、change_organization、organization_authority、preview_organization_authority、apply_organization_authority、preview_organization_import、get_organization_import和apply_organization_import。写入须传固定request_id，变更须传expected_version。目录应用只提交明确selected_changes及source_revision，不自动应用全量，也不改变客户端身份。
+
+## 共享协作（R3 候选，尚未生产发布）
+
+`XuanpuClient`提供 `create_shared_matter`、`list_shared_matters`、`get_shared_matter`、`change_shared_matter`；
+`list_shared_members`、`invite_shared_member`、`revoke_shared_member`、`transfer_shared_owner`、`shared_matter_events`；
+`list_shared_materials`、`publish_shared_material`、`upload_shared_material`、`download_shared_material`、`withdraw_shared_material`、`shared_publication`、`publish_shared_text`；
+`create_shared_context`、`list_shared_contexts`、`get_shared_context`、`read_shared_context`、`close_shared_context`、`shared_source_reply`；
+`shared_notifications`、`read_shared_notification`。准确签名见[客户端实现](src/xuanpu_sdk/shared_matters.py)。
+
+JSON写入保留调用者的操作号、版本及确认，不自动补 `confirmed`。下载在20MiB限制内校验服务端SHA，返回字节，不写本地或私人空间。
+共享历史与上下文不参与普通个人对话；来源失效的SSE `error`帧转成带状态和错误码的 `XuanpuError`，不会误当成内核业务事件。
+`organization_people`仅列本企业可选启用员工的稳定编号和姓名，协作不要求部门。
