@@ -12,6 +12,8 @@
 
 2026-10-23 真实试点按[到人优先补充](../specs/2026-10-23-r3-person-first-amendment.md)执行：陈翔和 drYang 两人，不要求先建部门或再提供两名员工。以下原四人/两部门条目保留为可选后续场景，当前不执行也不标通过；其他隐私、材料、组织决定、独立签收、故障与发布门禁不变。
 
+2026-10-24进度：E0源码与本机原生闭环、真实模型、镜像及运行来源、实际0015→0019迁移、acme灰度、原记录/对象保全、独立执行服务恢复和同服务器隔离实例的前向回退均已留证。合成租户/临时凭据/HTTP夹具/隧道已收尾。真实双员工本人闭环及真实管理员目录导入预览仍未执行，整体保持partial；不把该状态改成已完成。详情见[分层验收](../../guides/releases/2026-10-24-r3-acceptance.md)。
+
 ## E0：统一入口、可理解状态及无模型路径
 
 Files：Modify `packages/xuanpu-console/src/xuanpu_console/static/{index.html,workspace.js,workspace-chat.js,notification-alerts.js,style.css}`和A–D控制台模块；Modify对应SDK/CLI、server `assistant.py`；Create `tests/r3_contract/test_collaboration_views.py`及console `r3_journey_behavior.cjs`。
