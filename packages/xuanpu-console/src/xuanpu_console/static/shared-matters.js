@@ -17,7 +17,7 @@ function resetShared(){
 function sharedField(form,label,value="",options=null){
  const wrapper=sharedNode("label",label),input=document.createElement(options?"select":"textarea");
  if(options)for(const [id,text]of options){const option=sharedNode("option",text);option.value=id;input.append(option);}
- input.value=value;input.maxLength=20000;wrapper.append(input);form.append(wrapper);return input;
+ input.setAttribute("aria-label",label);input.value=value;input.maxLength=20000;wrapper.append(input);form.append(wrapper);return input;
 }
 function sharedForm(host,title,setup){
  const section=sharedNode("article"),form=document.createElement("form");section.className="function-card";form.className="organization-form";
@@ -83,6 +83,7 @@ async function openSharedMatter(id){
   const matter=await api("GET",sharedPath(id));if(!sharedLive(epoch,generation))return;
   sharedState.matter=matter;host.append(sharedButton("返回共享事项",()=>openShared()),sharedNode("h3",matter.title),sharedNode("p",matter.content||"暂无共享正文"));
   const actions=new Set(matter.allowed_actions);sharedNotice(matter.scope==="packet"?"当前仅可见选定资料。":"资料与操作以当前授权为准。");
+  if(matter.owner_id===conn.me?.user_id&&typeof handoffCreate==="function")host.append(sharedButton("将本事项资料交给具体员工",()=>handoffCreate(matter)));
   if(actions.has("edit"))sharedEditForm(host,matter);
   if(actions.has("archive"))for(const [status,label]of [["closed","关闭事项"],["archived","归档事项"]])host.append(sharedButton(label,()=>sharedReview(host,label,"PATCH",sharedPath(id),
    {request_id:crypto.randomUUID(),confirmed:true,expected_version:matter.version,status},[label+"不代表完成交付、审批或签收。"] )));

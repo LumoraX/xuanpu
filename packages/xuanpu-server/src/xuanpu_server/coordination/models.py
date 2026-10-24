@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 
 from pydantic import BaseModel, Field, JsonValue
 
+from xuanpu_server.collaboration.models import CollaborationState
 from xuanpu_server.coordination.outbox import CoordinationEvent
 from xuanpu_server.coordination.receipts import CoordinationReceipt, fingerprint, receipt_key
 from xuanpu_server.errors import ConflictError, InvalidRequestError, NotFoundError
@@ -20,6 +21,7 @@ class CoordinationState(BaseModel):
     """实体、回执、事件和确认记录的一次提交快照。"""
     organization: OrganizationState = Field(default_factory=OrganizationState)
     shared: SharedState = Field(default_factory=SharedState)
+    collaboration: CollaborationState = Field(default_factory=CollaborationState)
     receipts: dict[str, CoordinationReceipt] = Field(default_factory=dict)
     events: dict[str, CoordinationEvent] = Field(default_factory=dict)
     acknowledgements: dict[str, set[str]] = Field(default_factory=dict)
@@ -32,6 +34,7 @@ class CoordinationTransaction:
     participants: tuple[str, ...]
     state: CoordinationState
     participant_epochs: dict[str, int] = field(default_factory=dict)
+    participant_statuses: dict[str, str] = field(default_factory=dict)
     profile_updates: dict[str, ProfileUpdate] = field(default_factory=dict)
 
     def stage_profile(self, update: ProfileUpdate) -> None:
@@ -57,6 +60,11 @@ class CoordinationTransaction:
     def shared(self) -> SharedState:
         """返回与组织变更共用提交边界的共享快照。"""
         return self.state.shared
+
+    @property
+    def collaboration(self) -> CollaborationState:
+        """交接和组织决定不能脱离同一次协调提交。"""
+        return self.state.collaboration
 
     def receipt(self, actor: str, request_id: str, payload: dict[str, JsonValue]) -> dict[str, JsonValue] | None:
         """先检查请求是否重放；不同参数不能复用旧操作号。"""

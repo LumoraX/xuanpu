@@ -21,12 +21,15 @@ from xuanpu_server.api.assistant import assistant_router
 from xuanpu_server.api.assistant_actions import assistant_actions_router
 from xuanpu_server.api.audit_usage import audit_usage_router
 from xuanpu_server.api.auth import Caller, bearer
+from xuanpu_server.api.collaboration_notifications import collaboration_notifications_router
 from xuanpu_server.api.connections import connections_router
 from xuanpu_server.api.console import ConsoleStaticFiles
+from xuanpu_server.api.handoffs import handoffs_router
 from xuanpu_server.api.history import history_router
 from xuanpu_server.api.identity import identity_router
 from xuanpu_server.api.instance import InstanceMiddleware
 from xuanpu_server.api.organization import organization_router
+from xuanpu_server.api.organizational_approvals import organizational_approvals_router
 from xuanpu_server.api.proactive import proactive_router
 from xuanpu_server.api.reminders import reminders_router
 from xuanpu_server.api.shared_contexts import shared_contexts_router
@@ -164,6 +167,9 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.include_router(connections_router(platform))
     app.include_router(organization_router(platform))
     app.include_router(shared_matters_router(platform))
+    app.include_router(handoffs_router(platform))
+    app.include_router(organizational_approvals_router(platform))
+    app.include_router(collaboration_notifications_router(platform))
     app.include_router(shared_contexts_router(platform))
     app.include_router(shared_notifications_router(platform))
     app.include_router(wecom_router(platform))

@@ -1,6 +1,6 @@
 [project]
 name = "xuanpu-console"
-version = "2026.10.22.2"
+version = "2026.10.24.1"
 description = "xuanpu 控制台 —— 业务视角的网页界面（静态页面，直接调用平台的 HTTP 接口）"
 readme = "README.md"
 requires-python = ">=3.12"

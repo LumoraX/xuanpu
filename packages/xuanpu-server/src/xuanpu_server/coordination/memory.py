@@ -5,6 +5,8 @@ import asyncio
 from contextlib import asynccontextmanager, nullcontext
 from typing import TYPE_CHECKING
 
+from xuanpu_server.collaboration.locks import purpose_participants
+from xuanpu_server.collaboration.store import validate_collaboration
 from xuanpu_server.controlplane.models import AuditRecord
 from xuanpu_server.coordination.models import CoordinationState, CoordinationTransaction
 from xuanpu_server.coordination.validation import validate_commit
@@ -63,7 +65,7 @@ class InMemoryCoordinationStore:
         state = self._states.setdefault(event.tenant_id, CoordinationState())
         state.events.setdefault(event.id, event)
 
-    async def _check(self, tenant: str, participants: tuple[str, ...], allow_inactive: tuple[str, ...]) -> dict[str, int]:
+    async def _check(self, tenant: str, participants: tuple[str, ...], allow_inactive: tuple[str, ...]) -> tuple[dict[str, int], dict[str, str]]:
         """当前状态在进入和提交前检查；停用立即生效。"""
         current = await self._control.get_tenant(tenant)
         if current is None:
@@ -72,13 +74,14 @@ class InMemoryCoordinationStore:
             raise PermissionDeniedError('租户已停用')
         if self._identity is None:
             raise RuntimeError('协调事务尚未绑定身份存储')
-        epochs = {}
+        epochs: dict[str, int] = {}
+        statuses: dict[str, str] = {}
         for user_id in participants:
             user = await self._identity.get_user(tenant, user_id)
             if user is None or (user.status != 'active' and user_id not in allow_inactive):
                 raise PermissionDeniedError('参与员工不存在或已停用')
-            epochs[user_id] = user.lifecycle_epoch
-        return epochs
+            epochs[user_id], statuses[user_id] = user.lifecycle_epoch, user.status
+        return epochs, statuses
 
     @asynccontextmanager
     async def transaction(self, tenant: str, *, participants: tuple[str, ...] = (),
@@ -88,15 +91,18 @@ class InMemoryCoordinationStore:
         if not set(allow_inactive) <= set(ordered):
             raise InvalidRequestError('允许停用的员工必须已加入事务')
         async with asyncio.timeout(timeout), self._locks.setdefault(tenant, asyncio.Lock()):
-            epochs = await self._check(tenant, ordered, allow_inactive)
             before = self._states.get(tenant, CoordinationState())
+            expanded = purpose_participants(before, ordered)
+            permitted = tuple(sorted(set(allow_inactive) | (set(expanded) - set(ordered))))
+            epochs, statuses = await self._check(tenant, expanded, permitted)
             state = before.model_copy(deep=True)
-            tx = CoordinationTransaction(tenant, ordered, state, epochs)
+            tx = CoordinationTransaction(tenant, expanded, state, epochs, statuses)
             yield tx
             validate_commit(tenant, before, state)
             validate_shared(tx)
+            validate_collaboration(tx)
             validate_profiles(tx)
-            if await self._check(tenant, ordered, allow_inactive) != epochs:
+            if await self._check(tenant, expanded, permitted) != (epochs, statuses):
                 raise ConflictError('参与员工的身份权限版本已改变')
             await self._foreign_users(tenant, state)
             commit: AbstractContextManager[None] = nullcontext()
@@ -127,6 +133,15 @@ class InMemoryCoordinationStore:
         users |= {r.user_id for r in state.shared.contexts.values()}
         users |= {r.user_id for r in state.shared.dependencies.values()}
         users |= {r.user_id for r in state.shared.notifications.values()}
+        users |= {h.requester_id for h in state.collaboration.handoffs.values()}
+        users |= {h.target_id for h in state.collaboration.handoffs.values() if h.target_kind == 'user'}
+        users |= {h.assignee_id for h in state.collaboration.handoffs.values() if h.assignee_id is not None}
+        users |= {e.actor_id for e in state.collaboration.events.values() if e.actor_id is not None}
+        users |= {d.assignee_id for d in state.collaboration.deliveries.values()}
+        users |= {a.applicant_id for a in state.collaboration.approvals.values()}
+        users |= {step.user_id for a in state.collaboration.approvals.values() for step in a.steps}
+        users |= {d.actor_id for d in state.collaboration.decisions.values()}
+        users |= {n.user_id for n in state.collaboration.notifications.values()}
         for user in sorted(users):
             if await self._identity.get_user(tenant, user) is None:
                 raise NotFoundError('组织关联员工不存在')

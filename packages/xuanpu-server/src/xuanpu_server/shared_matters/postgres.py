@@ -27,12 +27,12 @@ if TYPE_CHECKING:
 
 TABLES: tuple[tuple[str, str, type[BaseModel], tuple[str, ...]], ...] = (
     ('matters', 'shared_matter', SharedMatter, ('owner_id',)),
-    ('grants', 'shared_access_grant', SharedAccessGrant, ('matter_id', 'subject_kind', 'subject_id', 'role_scope_id')),
+    ('grants', 'shared_access_grant', SharedAccessGrant, ('matter_id', 'subject_kind', 'subject_id', 'role_scope_id', 'handoff_id', 'approval_id')),
     ('members', 'shared_member', SharedMember, ('matter_id', 'grant_id', 'subject_kind', 'subject_id')),
     ('history', 'shared_event', SharedEvent, ('matter_id', 'actor_id')),
-    ('materials', 'shared_material', SharedMaterial, ('matter_id', 'publisher_id')),
+    ('materials', 'shared_material', SharedMaterial, ('matter_id', 'publisher_id', 'result_for_handoff')),
     ('revisions', 'shared_material_revision', MaterialRevision, ('matter_id', 'material_id', 'revision', 'publisher_id', 'source_user_id')),
-    ('publications', 'shared_publication', Publication, ('matter_id', 'material_id', 'publisher_id')),
+    ('publications', 'shared_publication', Publication, ('matter_id', 'material_id', 'publisher_id', 'result_for_handoff')),
     ('contexts', 'shared_context', SharedContext, ('user_id', 'runtime_session_id')),
     ('dependencies', 'shared_source_dependency', SourceDependency, ('user_id', 'context_id', 'matter_id', 'material_revision_id', 'grant_id', 'workspace_message_id')),
     ('notifications', 'shared_notification', SharedNotification, ('user_id', 'matter_id', 'event_id', 'semantic_key')),

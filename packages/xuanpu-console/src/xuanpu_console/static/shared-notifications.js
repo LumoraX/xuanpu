@@ -4,7 +4,7 @@ const sharedInbox={cursor:0,permission:null};
 function resetSharedNotifications(){sharedInbox.cursor=0;sharedInbox.permission=null;$("shared-notification-list").replaceChildren();}
 function sharedPermissionChanged(revision){
  if(!revision)return;
- const changed=sharedInbox.permission!==null&&sharedInbox.permission!==revision;sharedInbox.permission=revision;
+ const changed=sharedInbox.permission!==revision;sharedInbox.permission=revision;
  if(changed&&!$("shared-panel").classList.contains("hidden")){
   sharedInvalidate("共享资料或权限已变化，请重新核对当前可见范围。关闭的阅读不会重新启用。");
   $("shared-list").append(sharedButton("重新查看共享事项",()=>openShared()),sharedButton("查看我的共享阅读",()=>sharedReadingList()));

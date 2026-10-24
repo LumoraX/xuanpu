@@ -1,7 +1,7 @@
 """模型只能提出提醒草稿，时间校验与创建权限由玄圃控制。"""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal
 from zoneinfo import ZoneInfo
@@ -60,3 +60,10 @@ class RouteOutcome:
     open_connections: bool = False
     shared_draft: dict[str, Any] | None = None
     open_shared: bool = False
+    handoff_draft: dict[str,Any] | None = None
+    open_collaboration: bool = False
+
+    def saved(self) -> dict[str,Any]:
+        """仅保存可回放结果字段，会话保留稳定引用而不复制运行时对象。"""
+        return {f.name:getattr(self,f.name) for f in fields(self) if f.name!='session'} | {
+            'session_id':self.session.session_id if self.session else None}

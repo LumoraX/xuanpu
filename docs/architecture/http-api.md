@@ -939,3 +939,26 @@ R3-C候选还提供GET /v1/shared-contexts、GET /v1/shared-contexts/{id}、POST
 GET /v1/shared-matters/{id}返回allowed_actions；packet的version是不透明的授权集合选择号，提交来源选择时原样带回，不能自行递增。普通assistant/route新增shared_draft及open_shared响应，草稿只包含title/content，不创建或邀请。共享材料文本阅读及当前任职/职责身份足迹见共享架构。
 
 GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/shared-notifications/{id}/read共用当前ACL；分页包含独立total、unread_total、visibility_revision、permission_revision及前后sequence游标。统一通知SSE新增shared_notification/shared_notifications_changed，共享帧无id行，shared_after_id不覆盖原提醒after_id/Last-Event-ID。permission_revision独立覆盖所有当前可见事项权限，无历史通知也能提示降权。
+
+## R3-D 到人交接与组织审批候选
+
+当前候选未生产部署，详见[协作架构](collaboration.md)。所有员工业务接口使用当前本人身份；Cookie写入沿用CSRF保护，租户上下文不由body覆盖。所有写入明确request_id和confirmed=true，除新建外使用对应expected_version，业务冲突409不自动换版本。
+
+| 路径 | 当前接口 |
+| --- | --- |
+| `/v1/handoffs` | POST明确目标、共享事项版本和资料包；GET本人view=received/sent/assigned/department_queue、limit/cursor，total独立于页长 |
+| `/v1/handoffs/{id}` | GET当前状态、允许动作、责任史及固定交付；越界404 |
+| `/{id}/accept/start/return/request-information/provide-information` | POST本人接收、开始、退回、请求补充、负责人明确新输入 |
+| `/{id}/transfer/cancel/request-cancel/confirm-cancel` | POST明确到人转交及按原状态取消；转交/补充需shared_version及重新选择精确资料 |
+| `/{id}/result-uploads` | POST有界字节；query固定request_id/confirmed/expected_version/shared_version/name，只能新建本次成果 |
+| `/{id}/result-texts` | POST固定本人source_context_id/draft_message_id；正文和来源取自服务端 |
+| `/{id}/result-publications/{publication}` | GET当前本次成果发布状态，不返回对象路径 |
+| `/{id}/deliver/sign-off/dispute/reopen` | POST固定成果交付、精确delivery_version签收、明确争议及重办 |
+| `/v1/approval-policies` | GET当前员工只读可选规则名/id/version |
+| `/v1/admin/approval-policies` | GET/POST企业级管理人查询或预配一至三步策略；PATCH `/{id}`追加修订，不改变旧请求 |
+| `/v1/approval-requests` | POST固定policy_id、target_type=handoff、target_id/version及result_refs；GET当前本人元数据，先授权投影再分页 |
+| `/v1/approval-requests/{id}` | GET当前步骤、允许动作及按当前成果ACL过滤的决定理由 |
+| `/{id}/approve/reject/return/withdraw` | POST当前步骤决定或申请人撤销；不授予工具权限、不代替签收 |
+| `/v1/collaboration-notifications` | GET after_id/before_id/limit/latest的独立总数/未读/权限摘要；POST `/{id}/read`本人CAS标读 |
+
+`/v1/notifications`增加collaboration来源分页；统一SSE增加collaboration_notification、collaboration_notifications_changed，用独立collaboration_after_id，不覆盖个人提醒Last-Event-ID。通知和期限只在站内，无外部写入。

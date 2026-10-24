@@ -13,8 +13,11 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from xuanpu_server.approvals.service import ApprovalService
 from xuanpu_server.assistant import AssistantRouter
 from xuanpu_server.audit import AuditLog
+from xuanpu_server.collaboration.lifecycle import CollaborationLifecycle
+from xuanpu_server.collaboration.notifications import CollaborationNotifications
 from xuanpu_server.connections.broker import CredentialBroker
 from xuanpu_server.connections.managed_http import ManagedHttpTools
 from xuanpu_server.connections.providers.wecom import WeComClient
@@ -27,6 +30,7 @@ from xuanpu_server.errors import (
     PermissionDeniedError,
 )
 from xuanpu_server.evals import EvalRunner
+from xuanpu_server.handoffs.service import HandoffService
 from xuanpu_server.identity.feishu import DEFAULT_TIMEOUT_SECONDS, FeishuClient
 from xuanpu_server.identity.listeners import CLOSE_SESSIONS, CloseUserSessions
 from xuanpu_server.identity.service import IdentityService
@@ -89,6 +93,7 @@ if TYPE_CHECKING:
 
     import httpx
 
+    from xuanpu_server.collaboration.models import CollaborationConfig
     from xuanpu_server.connections.models import ConnectionConfig
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.identity.service import IdentitySettings
@@ -146,6 +151,8 @@ class Platform:
         connections: ConnectionConfig | None = None,
         organization: OrganizationConfig | None = None,
         shared_matters: SharedMatterConfig | None = None,
+        handoffs: CollaborationConfig | None = None,
+        approvals: CollaborationConfig | None = None,
         proactive_interval: float = 1800.0,
         proactive_scan_seconds: float = 60.0,
         now: Callable[[], float] = time.time,
@@ -244,6 +251,11 @@ class Platform:
             objects=self.objects, now=now,
         )
         self.shared_materials = SharedMaterials(self.shared_matters, self.workspace.store, self.objects)
+        self.handoffs = HandoffService(self.shared_materials, config=handoffs)
+        self.approvals = ApprovalService(self.handoffs, config=approvals)
+        self.collaboration_notifications = CollaborationNotifications(self.approvals)
+        self.collaboration_lifecycle = CollaborationLifecycle(self.approvals)
+        self.organization_lifecycle.register(self.collaboration_lifecycle.recover)
         self.shared_contexts = SharedContexts(self.shared_materials)
         self.shared_notifications = SharedNotifications(self.shared_matters)
         self.workspace.source_history.bind(self.shared_contexts)

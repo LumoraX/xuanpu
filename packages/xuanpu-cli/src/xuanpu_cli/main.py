@@ -310,6 +310,8 @@ def build_parser() -> argparse.ArgumentParser:
     add_organization_commands(commands)
     from xuanpu_cli.shared_commands import add_shared_commands
     add_shared_commands(commands)
+    from xuanpu_cli.collaboration_commands import add_collaboration_commands
+    add_collaboration_commands(commands)
     return parser
 
 

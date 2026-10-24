@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 from xuanpu_server.organization.store import OrganizationRepository
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from xuanpu_server.coordination.models import CoordinationTransaction
     from xuanpu_server.coordination.outbox import CoordinationEvent
     from xuanpu_server.organization.service import OrganizationService
@@ -22,6 +24,11 @@ class OrganizationLifecycle:
         """复用控制面、协调事务和当前身份，没有独立身份缓存。"""
         self.org = organization
         self._job: asyncio.Task[None] | None = None
+        self._consumers: list[Callable[[str],Awaitable[int]]] = []
+
+    def register(self, consumer: Callable[[str],Awaitable[int]]) -> None:
+        """同一实例持有权治理周期追加领域收尾，配置时注册而非动态业务加载。"""
+        self._consumers.append(consumer)
 
     async def recover(self, tenant: str) -> int:
         """最多处理100条已持久事件，身份停用事务已在进入前提交。"""
@@ -66,10 +73,14 @@ class OrganizationLifecycle:
         for tenant in await self.org.control.list_tenants():
             if tenant.status == 'active':
                 await self.recover(tenant.tenant_id)
+                for consumer in self._consumers:
+                    await consumer(tenant.tenant_id)
 
     async def on_user_disabled(self, tenant_id: str, user_id: str) -> None:
         """监听者仅加速收尾；崩溃漏通知由持久扫描恢复。"""
         await self.recover(tenant_id)
+        for consumer in self._consumers:
+            await consumer(tenant_id)
 
     def start(self) -> None:
         """只能由平台获得既有实例持有权后启动。"""

@@ -63,6 +63,8 @@ class SharedAccessGrant(SharedRecord):
     role_scope_id: str | None = None
     purpose: Literal['direct', 'handoff', 'approval'] = 'direct'
     scope: Literal['full', 'packet'] = 'full'
+    handoff_id: str | None = None
+    approval_id: str | None = None
     packet_title: str = Field(default='', max_length=500)
     material_revisions: tuple[str, ...] = ()
     include_content: bool = False
@@ -161,6 +163,7 @@ class Publication(SharedRecord):
     error_code: str | None = None
     object_cleaned: bool = False
     result_for_handoff: str | None = None
+    handoff_version: int | None = None
 
 
 class SharedContext(SharedRecord):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 
 from xuanpu_console import static_dir
@@ -15,13 +16,26 @@ def test_static_files_present() -> None:
     assert (directory / "identity.js").is_file()
     assert (directory / "style.css").is_file()
     html = (directory / "index.html").read_text(encoding="utf-8")
-    referenced = set(re.findall(r'(?:src|href)="([^"]+)"', html))
+    referenced = {v.split('?')[0] if not v.startswith('?') else v for v in re.findall(r'(?:src|href)="([^"]+)"', html)}
     assert referenced == {
         "app.js", "identity.js", "reminders.js", "notification-alerts.js", "notification-center.js", "style.css",
         "?admin=1", "?", "workspace.css", "workspace.js", "workspace-forms.js",
+        "collaboration-core.js", "handoffs.js", "handoff-results.js", "organizational-approvals.js", "collaboration-notifications.js",
         "shared-matters.js", "shared-materials.js", "shared-conversation.js", "shared-notifications.js",
         "connections.js", "organization.js", "organization-forms.js", "workspace-files.js", "workspace-chat.js", "proactive.js", "work-tasks.js", "task-definitions.js",
     }
+
+
+def test_asset_urls_change_with_actual_content() -> None:
+    """升级页面不能沿用浏览器缓存的旧脚本，地址指纹跟随实际资源字节。"""
+    directory = static_dir()
+    html = (directory / 'index.html').read_text()
+    urls = re.findall(r'(?:src|href)="([^"?]+\.(?:js|css)(?:\?[^\"]*)?)"', html)
+    assert urls
+    for url in urls:
+        name = url.split('?')[0]
+        digest = hashlib.sha256((directory / name).read_bytes()).hexdigest()[:16]
+        assert url == name + '?v=' + digest, name
 
 
 def test_console_only_talks_to_documented_endpoints() -> None:
@@ -29,6 +43,7 @@ def test_console_only_talks_to_documented_endpoints() -> None:
     script = "\n".join(path.read_text(encoding="utf-8") for path in static_dir().glob("*.js"))
     paths = set(re.findall(r'["`](/(?:v1/[a-z]+|healthz)[^"`?]*)', script))
     allowed_prefixes = (
+        "/v1/handoffs", "/v1/approval-policies", "/v1/admin/approval-policies", "/v1/approval-requests", "/v1/collaboration-notifications",
         "/v1/admin/organization", "/v1/organization", "/v1/admin/connections", "/healthz", "/v1/sessions", "/v1/packages", "/v1/audit", "/v1/usage",
         "/v1/shared-matters", "/v1/shared-contexts", "/v1/shared-notifications", "/v1/workspace", "/v1/me", "/v1/auth", "/v1/users", "/v1/assistant", "/v1/reminders", "/v1/notifications", "/v1/proactive", "/v1/work-tasks", "/v1/task-definitions",
     )  # fmt: skip

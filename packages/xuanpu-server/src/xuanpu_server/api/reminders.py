@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import Field
 
 from xuanpu_server.api.auth import ACT_AS_HEADER, Caller, caller  # noqa: TC001
+from xuanpu_server.api.collaboration_notifications import CollaborationCursor, collaboration_frames
 from xuanpu_server.api.shared_notifications import (
     SharedNotificationCursor,
     shared_notification_frames,
@@ -22,6 +23,7 @@ from xuanpu_server.reminders.models import ReminderInput
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from xuanpu_server.collaboration.notifications import CollaborationNotifications
     from xuanpu_server.platform import Platform
     from xuanpu_server.reminders.models import NotificationRecord, ReminderRecord
     from xuanpu_server.reminders.service import ReminderService
@@ -71,10 +73,12 @@ async def notification_view(
 async def notification_events(
     request: Request, service: ReminderService, who: Principal, after_id: int,
     shared: SharedNotifications | None = None, shared_after_id: int = 0,
+    collaboration: CollaborationNotifications | None = None, collaboration_after_id: int = 0,
 ) -> AsyncIterator[str]:
     """持久表补读，逐轮重新认证 cookie/API key 并给出心跳。"""
     cursor = after_id
     shared_position = SharedNotificationCursor(shared_after_id)
+    collaboration_position = CollaborationCursor(collaboration_after_id)
     while not await request.is_disconnected():
         try:
             current = await caller(
@@ -90,6 +94,9 @@ async def notification_events(
             if shared is not None:
                 async for shared_frame in shared_notification_frames(shared, current, shared_position):
                     yield shared_frame
+            if collaboration is not None:
+                async for collab_frame in collaboration_frames(collaboration,current,collaboration_position):
+                    yield collab_frame
         except PlatformError:
             return
         yield ": heartbeat\n\n"
@@ -143,23 +150,34 @@ def reminders_router(platform: Platform) -> APIRouter:
         limit: Annotated[int, Query(ge=1, le=100)] = 100,
         latest: bool = False,
         shared_after_id: Annotated[int, Query(ge=0, le=9223372036854775807)] = 0,
+        collaboration_after_id: Annotated[int, Query(ge=0, le=9223372036854775807)] = 0,
     ) -> dict[str, Any]:
         """按游标读取通知；latest用于最近窗口初载。"""
         found = await service.notifications(who, after_id, limit, latest=latest)
         return {"items": [await notification_view(service, who, record) for record in found],
-                'shared': await platform.shared_notifications.page(who, after_id=shared_after_id, limit=limit, latest=latest)}
+                'shared': await platform.shared_notifications.page(who, after_id=shared_after_id, limit=limit, latest=latest),
+                'collaboration': await platform.collaboration_notifications.page(who,after_id=collaboration_after_id,limit=limit,latest=latest)}
 
     @router.post("/v1/notifications/{notification_id}/read")
     async def read(notification_id: int, who: Caller) -> dict[str, Any]:
         """幂等标记本人的通知已读。"""
         return await notification_view(service, who, await service.read(who, notification_id))
 
+    _events_routes(router,platform)
+
+    return router
+
+
+def _events_routes(router: APIRouter,platform: Platform) -> None:
+    """统一通知流保留独立来源游标，所有帧仍逐轮重认当前员工。"""
+    service=platform.reminders
     @router.get("/v1/notifications/events")
     async def events(
         request: Request,
         who: Caller,
         after_id: Annotated[int, Query(ge=0, le=9223372036854775807)] = 0,
         shared_after_id: Annotated[int, Query(ge=0, le=9223372036854775807)] = 0,
+        collaboration_after_id: Annotated[int, Query(ge=0, le=9223372036854775807)] = 0,
     ) -> StreamingResponse:
         """EventSource重连使用 Last-Event-ID，超出范围和非法游标拒绝。"""
         await service.require_employee(who)
@@ -174,9 +192,8 @@ def reminders_router(platform: Platform) -> APIRouter:
         if after_id > 9223372036854775807:
             raise InvalidRequestError("通知游标无效")
         return StreamingResponse(
-            notification_events(request, service, who, after_id, platform.shared_notifications, shared_after_id),
+            notification_events(request, service, who, after_id, platform.shared_notifications, shared_after_id,
+                                platform.collaboration_notifications,collaboration_after_id),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
-
-    return router
