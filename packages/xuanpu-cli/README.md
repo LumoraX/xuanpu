@@ -129,3 +129,29 @@ work-tasks提供list/get/events/create/capability/cancel/decide/reconcile；task
 ## 组织与职责
 
 `xuanpu organization --credentials <权限600的私有JSON档案>`使用固定调用身份。支持me、directory、list/get/create/change（集合为units、positions、memberships、roles）、authority、preview-authority、apply-authority、preview-import、get-import、apply-import。写操作用`--body`保留request_id、expected_version及明确selected_changes；分页用`--limit`和`--cursor`。目标user_id不是调用身份覆盖，服务端仍按组织范围授权。
+
+## `xuanpu shared`（R3 候选）
+
+同一员工的共享事项、材料及来源阅读。新增能力尚未生产发布，CLI 不会自动确认或指定他人身份。
+`--credentials` 为权限600的 JSON，字段仅 `base_url`、`api_key`、可选 `act_as_user`（密钥须已有相应委托权）；不要把凭据放进命令参数或输出。
+
+已实际检查帮助：
+
+```bash
+xuanpu shared --help
+xuanpu shared --credentials private.json download --help
+```
+
+子命令 `list/get/create/change/members/invite/revoke/transfer/events` 管理当前可见事项；
+`materials/publish/publish-text/publication/upload/download/withdraw` 管理固定共享副本；
+`context-list/context-create/context-get/context-read/context-close/context-ask` 管理本人独立来源阅读；
+`notifications/read-notification` 读取来源通知。通知不向第三方发送。
+
+写操作的 `--body` 文件保存明确的 `request_id`、`confirmed=true`、`expected_version` 及该动作字段；网络重试重用原文件，409后重新核对。
+创建不要求 `expected_version`；context-ask使用 `request_id/text`，不接受另传身份、租户、来源正文或主机路径。
+`--limit/--cursor/--search` 为列表参数；notifications用 `--after-id`。
+撤销成员用 `--member`；publication用 `--publication`；withdraw/download用 `--material`；
+下载还需明确 `--revision`、新路径 `--output`，经20MiB和SHA验证后创建权限600文件，拒绝覆盖已有文件。
+上传用 `--file`，确认文件中包括名称、事项版本及操作号，实际字节有界读取；publish指明本人文件的固定revision，不追随最新版。
+
+SDK经合成租户的正式ASGI/认证/双后端测试验证，真实员工使用及生产发布另行记录。

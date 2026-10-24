@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from typing import TYPE_CHECKING, Any, Self
 from urllib.parse import quote
 
@@ -24,6 +25,7 @@ from xuanpu_sdk.models import (
     WorkTask,
 )
 from xuanpu_sdk.organization import OrganizationClient
+from xuanpu_sdk.shared_matters import SharedMattersClient
 from xuanpu_sdk.sse import parse_sse
 from xuanpu_sdk.task_definitions import TaskDefinitionClient
 
@@ -90,6 +92,9 @@ class _Http:
                 async for name, payload in parse_sse(response.aiter_lines()):
                     if name in ("turn", "end"):
                         continue
+                    if name == 'error' and isinstance(payload.get('error'), dict):
+                        error = payload['error']
+                        raise XuanpuError(int(error.get('status', 500)), str(error['code']), str(error['message']), {})
                     yield Event(
                         kind=str(payload["kind"]),
                         submission_id=str(payload["submission_id"]),
@@ -99,6 +104,25 @@ class _Http:
                     )
         except httpx.HTTPError as exc:
             raise XuanpuTransportError(f"事件流中断：{type(exc).__name__}") from exc
+
+    async def download(self, path: str, **kwargs: Any) -> bytes:
+        """共享副本有界读取且校验服务器固定SHA，错误不回显正文。"""
+        try:
+            async with self._client.stream('GET', path, **kwargs) as response:
+                if response.status_code >= 400:
+                    await response.aread()
+                    _raise_for(response)
+                chunks = bytearray()
+                async for chunk in response.aiter_bytes():
+                    if len(chunks) + len(chunk) > 20 * 1024 * 1024:
+                        raise XuanpuTransportError('共享材料超过读取上限')
+                    chunks.extend(chunk)
+                checksum = response.headers.get('X-Content-SHA256')
+                if checksum is None or hashlib.sha256(chunks).hexdigest() != checksum:
+                    raise XuanpuTransportError('共享材料校验不一致')
+                return bytes(chunks)
+        except httpx.HTTPError as exc:
+            raise XuanpuTransportError(f'下载未完成：{type(exc).__name__}') from exc
 
     async def close(self) -> None:
         """关闭底层连接。"""
@@ -388,7 +412,7 @@ class Admin:
         return [UserUsage.from_json(item) for item in body["usage"]]
 
 
-class XuanpuClient(TaskDefinitionClient, ConnectionClient, OrganizationClient):
+class XuanpuClient(TaskDefinitionClient, ConnectionClient, OrganizationClient, SharedMattersClient):
     """平台客户端。
 
     用法::

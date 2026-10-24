@@ -1,0 +1,27 @@
+apiVersion: xuanpu/v1
+kind: Package
+metadata:
+  name: shared-reader
+  version: 1.0.0
+  description: 员工明确选择后的共享资料只读核对与有来源草稿
+spec:
+  skills:
+    entries: [read]
+  model:
+    tier: balanced
+  policy:
+    approval: standard
+    sandbox:
+      network: false
+      shell: false
+    budget:
+      maxSessionTokens: 20000
+      maxIterations: 12
+  evals:
+    - name: require-explicit-source
+      entry: read
+      input: 尚未选择共享资料，请告诉我下一步。
+      expect:
+        contains: [选择]
+        notContains: [已经读取, 已核对正文]
+        maxTokens: 1500

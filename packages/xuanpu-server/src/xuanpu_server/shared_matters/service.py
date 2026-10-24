@@ -10,6 +10,7 @@ from xuanpu_server.errors import (
     PermissionDeniedError,
 )
 from xuanpu_server.ids import new_id
+from xuanpu_server.shared_matters.actions import allowed_actions
 from xuanpu_server.shared_matters.models import (
     SharedAccessGrant,
     SharedEvent,
@@ -125,7 +126,8 @@ class SharedMatterService:
         async with self.store.transaction(who.require_tenant(), participants=(who.user_id,)) as tx:
             await self.actor(who)
             matter, grants = access(tx, who, identifier, self.now())
-            return project(matter, grants)
+            actions: list[JsonValue] = list(await allowed_actions(self, tx, who, matter, grants))
+            return {**project(matter, grants), 'allowed_actions': actions}
 
     async def listing(self, who: Principal, *, search: str = '', limit: int = 50, cursor: str | None = None) -> dict[str, JsonValue]:
         """先按当前权限投影，再搜索、计数和分页。"""
@@ -144,7 +146,7 @@ class SharedMatterService:
                 visible = project(matter, grants)
                 if search.casefold() in (str(visible['title']) + '\n' + str(visible['content'])).casefold():
                     records.append(visible)
-            return page(records, limit=limit, cursor=cursor)
+            return {**page(records, limit=limit, cursor=cursor), 'enabled': self.config.allows(tx.tenant_id)}
 
     async def change(self, who: Principal, identifier: str, body: ChangeMatterInput) -> dict[str, JsonValue]:
         """编辑正文或关闭事项，不产生交付或签收。"""

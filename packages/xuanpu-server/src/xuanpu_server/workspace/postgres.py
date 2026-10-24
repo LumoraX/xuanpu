@@ -258,12 +258,13 @@ class PostgresWorkspaceStore:
                 )
         for message in state.messages:
             await conn.execute(
-                f"INSERT INTO {self._t['workspace_message']} (tenant_id,user_id,message_id,request_id,record) VALUES ($1,$2,$3,$4,$5::jsonb)",
+                f"INSERT INTO {self._t['workspace_message']} (tenant_id,user_id,message_id,request_id,record,sources) VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb)",
                 tenant,
                 user,
                 message["id"],
                 message["request_id"],
                 json.dumps(message),
+                json.dumps(message.get('sources', [])),
             )
         await save_reminders(conn, self._t, tenant, user, state)
         await save_tasks(conn, self._t, tenant, user, old, state)
@@ -355,11 +356,15 @@ class PostgresWorkspaceStore:
         matter_id: str | None = None,
         before_id: int | None = None,
         latest: bool = False,
+        private_only: bool = False,
+        source_context_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """按员工复合索引增量读取，始终限定分页窗口。"""
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
-                f"SELECT record FROM {self._t['workspace_message']} WHERE tenant_id=$1 AND user_id=$2 AND message_id>$3 AND ($5::text IS NULL OR record->>'matter_id'=$5) AND ($6::bigint IS NULL OR message_id<$6) ORDER BY message_id "
+                f"SELECT record FROM {self._t['workspace_message']} WHERE tenant_id=$1 AND user_id=$2 AND message_id>$3 AND ($5::text IS NULL OR record->>'matter_id'=$5) AND ($6::bigint IS NULL OR message_id<$6) "
+                "AND (NOT $7::boolean OR (COALESCE(record->>'source_context_id','')='' AND (record->'sources' IS NULL OR record->'sources'='[]'::jsonb))) "
+                "AND ($8::text IS NULL OR record->>'source_context_id'=$8) ORDER BY message_id "
                 + ("DESC" if latest else "ASC")
                 + " LIMIT $4",
                 tenant,
@@ -368,6 +373,8 @@ class PostgresWorkspaceStore:
                 limit,
                 matter_id,
                 before_id,
+                private_only,
+                source_context_id,
             )
         found = [json.loads(row["record"]) for row in rows]
         return list(reversed(found)) if latest else found

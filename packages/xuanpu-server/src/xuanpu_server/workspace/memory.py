@@ -301,6 +301,8 @@ class InMemoryWorkspaceStore:
         matter_id: str | None = None,
         before_id: int | None = None,
         latest: bool = False,
+        private_only: bool = False,
+        source_context_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """返回独立副本，调用者无法修改已保存消息。"""
         state = self._states.get((tenant, user), WorkspaceState())
@@ -310,6 +312,8 @@ class InMemoryWorkspaceStore:
             if m["id"] > after_id
             and (before_id is None or m["id"] < before_id)
             and (matter_id is None or m["matter_id"] == matter_id)
+            and (not private_only or not (m.get('source_context_id') or m.get('sources')))
+            and (source_context_id is None or m.get('source_context_id') == source_context_id)
         ]
         return deepcopy(found[-limit:] if latest else found[:limit])
 

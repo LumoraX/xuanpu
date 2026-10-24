@@ -26,6 +26,10 @@ class OrganizationClient:
         """本人当前任职与业务职责。"""
         return await self._http.request('GET', '/v1/organization/me')
 
+    async def organization_people(self, *, limit: int = 50, cursor: str | None = None) -> dict[str, Any]:
+        """到人协作最小员工选择目录，不要求部门或提供私人联系方式。"""
+        return await self._http.request('GET', '/v1/organization/people', params={'limit': limit, 'cursor': cursor})
+
     async def organization_directory(self, *, limit: int = 50, cursor: str | None = None) -> dict[str, Any]:
         """权限过滤后的最小目录及独立总数。"""
         return await self._http.request('GET', '/v1/organization/directory', params={'limit': limit, 'cursor': cursor})

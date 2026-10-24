@@ -58,3 +58,5 @@ class RouteOutcome:
     task_definition_draft: dict[str, Any] | None = None
     open_task_definitions: bool = False
     open_connections: bool = False
+    shared_draft: dict[str, Any] | None = None
+    open_shared: bool = False

@@ -11,6 +11,7 @@ from xuanpu_server.api.auth import Caller  # noqa: TC001 —— FastAPI依赖
 from xuanpu_server.errors import InvalidRequestError
 from xuanpu_server.shared_matters.schemas import (  # noqa: TC001 —— FastAPI请求模型
     PublishMaterialInput,
+    PublishTextDraft,
     SharedChange,
 )
 
@@ -22,6 +23,12 @@ def shared_materials_router(platform: Platform) -> APIRouter:
     """每个请求独立重新检查当前员工和精确材料版本权限。"""
     router = APIRouter()
     service = platform.shared_matters
+
+    @router.post('/{identifier}/material-texts', status_code=202)
+    async def text_draft(identifier: str, body: PublishTextDraft, who: Caller) -> dict[str, JsonValue]:
+        """原生确认发布本人受保护文本，保留固定来源而不另存私人文件。"""
+        from xuanpu_server.shared_matters.text_drafts import publish_text
+        return await publish_text(platform, who, identifier, body)
 
     @router.post('/{identifier}/materials', status_code=202)
     async def publish(identifier: str, body: PublishMaterialInput, who: Caller) -> dict[str, JsonValue]:

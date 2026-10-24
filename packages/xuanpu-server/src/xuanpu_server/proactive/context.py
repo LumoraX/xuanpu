@@ -10,6 +10,7 @@ from xuanpu_server.workspace.models import fingerprint
 if TYPE_CHECKING:
     from xuanpu_server.controlplane.models import SessionRecord
     from xuanpu_server.controlplane.store import ControlPlaneStore
+    from xuanpu_server.workspace.source_history import SourceHistory
     from xuanpu_server.workspace.store import WorkspaceStore
 
 
@@ -41,7 +42,8 @@ async def business_evidence(control: ControlPlaneStore, tenant: str, user: str,
 
 
 async def restore_evidence(store: WorkspaceStore, tenant: str, user: str,
-                           followups: list[dict[str, Any]], messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+                           followups: list[dict[str, Any]], messages: list[dict[str, Any]],
+                           sources: SourceHistory | None = None) -> list[dict[str, Any]]:
     """周期复查重新读取待跟进承诺的原消息，不能只有增量而丢失证据。"""
     present = {message.get('ref', f"message:{message['id']}") for message in messages}
     result = list(messages)
@@ -52,7 +54,8 @@ async def restore_evidence(store: WorkspaceStore, tenant: str, user: str,
             if ref.startswith('message:') and ref not in present:
                 base, _ = parse_ref(ref)
                 message_id = int(base.split(':')[1])
-                rows = await store.messages(tenant, user, message_id - 1, 1)
+                reader = sources.personal_messages if sources is not None else store.messages
+                rows = await reader(tenant, user, message_id - 1, 1)
                 if rows and rows[0]['id'] == message_id:
                     result.append({**rows[0], 'ref': ref})
                     present.add(ref)
@@ -60,7 +63,8 @@ async def restore_evidence(store: WorkspaceStore, tenant: str, user: str,
 
 
 async def restore_business(control: ControlPlaneStore, tenant: str, user: str,
-                           followups: list[dict[str, Any]], current: list[dict[str, Any]]) -> list[dict[str, Any]]:
+                           followups: list[dict[str, Any]], current: list[dict[str, Any]],
+                           sources: SourceHistory | None = None) -> list[dict[str, Any]]:
     """复查本人业务会话承诺时恢复原审计，不依赖尚未消费的增量。"""
     result = list(current)
     present = {record['ref'] for record in current}
@@ -72,6 +76,8 @@ async def restore_business(control: ControlPlaneStore, tenant: str, user: str,
                 continue
             base, _ = parse_ref(ref)
             _, session_id, audit_id = base.split(':')
+            if sources is not None and await sources.protected_session(tenant, user, session_id):
+                continue
             session = await control.get_session(tenant, session_id)
             if session is None or session.user_id != user:
                 continue

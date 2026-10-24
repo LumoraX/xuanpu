@@ -150,6 +150,12 @@ class RuntimeUnavailableError(PlatformError):
     status = 503
 
 
+class SharedAccessRevokedError(PermissionDeniedError):
+    """受保护来源失效后，旧上下文不得继续补读或送往模型。"""
+
+    code = "shared_access_revoked"
+
+
 class RuntimeCleanupRequiredError(RuntimeUnavailableError):
     """启动失败但仍持有明确资源，宿主必须保留清理动作直到成功。"""
 
@@ -189,4 +195,5 @@ __all__ = [
     "SecretMissingError",
     "SessionBusyError",
     "SessionOwnerDisabledError",
+    "SharedAccessRevokedError",
 ]

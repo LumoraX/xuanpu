@@ -57,3 +57,19 @@ class PublishMaterialInput(SharedChange):
     source_item_id: str = Field(min_length=1, max_length=160)
     source_revision: int = Field(ge=1)
     material_id: str | None = Field(default=None, min_length=1, max_length=160)
+
+
+class CreateSharedContext(SharedChange):
+    """明确选定固定资料来源，不能自行指定上下文员工或来源正文。"""
+    shared_id: str = Field(min_length=1, max_length=160)
+    kind: Literal['assistant_conversation', 'runtime_session']
+    runtime_session_id: str | None = Field(default=None, min_length=1, max_length=160)
+    include_content: bool = True
+    material_revision_ids: tuple[str, ...] = Field(default=(), max_length=8)
+
+
+class PublishTextDraft(SharedChange):
+    """正文来自本人已持久化的受保护助手消息，不接受客户端自报来源或替换文本。"""
+    source_context_id: str = Field(min_length=1, max_length=160)
+    draft_message_id: int = Field(ge=1)
+    name: str = Field(min_length=1, max_length=255)

@@ -62,6 +62,7 @@ from xuanpu_server.runtime.session_requests import (
     scope_for,
     stable_session_id,
 )
+from xuanpu_server.runtime.source_lifecycle import release_idle, release_revoked
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -74,6 +75,7 @@ if TYPE_CHECKING:
     from xuanpu_server.quota import QuotaGuard
     from xuanpu_server.runtime.assembler import RuntimeAssembler, TenantRuntime
     from xuanpu_server.runtime.resolutions import ResolutionWatch
+    from xuanpu_server.shared_matters.context_guard import SharedContexts
     from xuanpu_server.tenancy import Principal
 
 logger = logging.getLogger(__name__)
@@ -174,6 +176,10 @@ class SessionManager:
         """启动租约续期。"""
         if self._heartbeat is None:
             self._heartbeat = asyncio.ensure_future(self._renew_leases())
+
+    def bind_sources(self, contexts: SharedContexts) -> None:
+        """固定正文和继续会话的来源检查，管理元数据仍遵守原有可见范围。"""
+        self._ownership.bind_sources(contexts)
 
     async def create(
         self,
@@ -646,16 +652,20 @@ class SessionManager:
         以审计为准（各实例共享）：最近一次挂起里的请求，减去之后已经核销或到期的。
         """
         record = await self.content(principal, session_id)
-        return await pending_requests(self._store, record.tenant_id, session_id)
+        result = await pending_requests(self._store, record.tenant_id, session_id)
+        await self.content(principal, session_id)
+        return result
 
     async def replay(
         self, principal: Principal, session_id: str, submission_id: str, *, after_seq: int = -1
     ) -> list[dict[str, Any]]:
         """回放一轮对话已经记入审计的事件（流式增量除外；回复全文在 ``turn_text`` 里）。"""
         record = await self.content(principal, session_id)
-        return await replay_turn(
+        result = await replay_turn(
             self._store, record.tenant_id, session_id, submission_id, after_seq=after_seq
         )
+        await self.content(principal, session_id)
+        return result
 
     async def _detach(self, key: SessionKey, *, force: bool) -> bool:
         """释放本实例对会话的持有：关引擎、写完审计、放弃租约。调用方须持有该会话的锁。
@@ -704,24 +714,13 @@ class SessionManager:
             raise ConflictError('任务旧租约在恢复中发生变化')
 
     async def release_idle(self) -> list[str]:
-        """释放空闲超过 ``session_idle_seconds`` 的会话的引擎，返回释放了哪些会话。
-
-        会话本身保持活动；下次对话时从存储续接。内存里不再为每个历史会话常驻一个引擎，
-        这是并发承载量的前提。
-        """
-        deadline = self._now() - self._runtimes.defaults.session_idle_seconds
-        released: list[str] = []
-        for key, live in list(self._live.items()):
-            if live.idle and live.last_used <= deadline:
-                async with self._lock_for(key):
-                    current = self._live.get(key)
-                    if current is live and live.idle and await self._detach(key, force=False):
-                        released.append(key[1])
-        return released
+        """释放空闲引擎并返回会话编号；会话保持活动，下次从持久历史续接。"""
+        return await release_idle(self)
 
     async def maintain(self) -> None:
         """一次维护：续期、释放空闲会话、回收空闲运行时。"""
         await self._renew_leases_once()
+        await release_revoked(self)
         await self.release_idle()
         await self._runtimes.evict_idle()
 

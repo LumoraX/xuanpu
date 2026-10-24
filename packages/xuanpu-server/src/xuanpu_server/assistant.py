@@ -49,6 +49,12 @@ from xuanpu_server.proactive.models import (
 )
 from xuanpu_server.proactive.semantic import routing_context
 from xuanpu_server.quota import usage_day
+from xuanpu_server.shared_matters.routing import (
+    SHARED_ENTRIES,
+    SHARED_PROMPT,
+    SharedProposal,
+    resolve_shared,
+)
 from xuanpu_server.tenancy import Principal
 from xuanpu_server.work_tasks.models import InputFile  # noqa: TC001 — Pydantic解析字段
 from xuanpu_server.work_tasks.routing import accept_office_route
@@ -104,6 +110,7 @@ class RouteBody(BaseModel):
         default_factory=list, max_length=8
     )
     matter_id: str | None = Field(default=None, max_length=128)
+    shared_context_id: str | None = Field(default=None, min_length=1, max_length=128)
     input_files: list[InputFile] = Field(default_factory=list, max_length=8)
 
     @field_validator("timezone")
@@ -128,12 +135,15 @@ class Choice(BaseModel):
     workspace_draft: WorkspaceProposal | None = None
     proactive: ProactiveProposal | None = None
     task_definition: TaskDefinitionProposal | None = None
+    shared_draft: SharedProposal | None = None
 
     @model_validator(mode='after')
     def valid_schedule(self) -> Choice:
         """未来执行建议不能混入立即交办分支。"""
         if self.task_definition is not None and self.package!='@task-definitions':
             raise ValueError('执行草稿不能作为立即交办')
+        if self.shared_draft is not None and self.package != '@shared':
+            raise ValueError('共享草稿不能混入其他业务')
         return self
 
 
@@ -174,6 +184,9 @@ class AssistantRouter:
     async def _with_history(self, who: Principal, body: RouteBody) -> RouteOutcome:
         """请求身份稳定重试；只持久化本人对话，模型建议仍不产生业务写入。"""
         p = self._platform
+        if body.shared_context_id is not None:
+            from xuanpu_server.assistant_shared import route_shared
+            return await route_shared(self, who, body)
         if not who.user_id:
             if body.attachments or body.matter_id:
                 raise ValueError("个人资料需要员工身份")
@@ -181,6 +194,7 @@ class AssistantRouter:
         await p.workspace.require_employee(who)
         if body.session_id:
             await p.sessions.content(who, body.session_id)
+            await p.shared_contexts.require_private_runtime(who, body.session_id)
         request_id = body.request_id or secrets.token_hex(16)
         lock_key = f"{who.tenant_id}:{who.user_id}:{request_id}"
         lock = self._route_locks.setdefault(lock_key, asyncio.Lock())
@@ -209,7 +223,7 @@ class AssistantRouter:
                         saved = dict(prior["metadata"]["route"])
                     else:
                         result = await self._route(who, body, request_id=request_id, claim=claim)
-                        if result.workspace_draft or result.reminder_draft or result.proactive_draft or result.task_definition_draft:
+                        if result.workspace_draft or result.reminder_draft or result.proactive_draft or result.task_definition_draft or result.shared_draft:
                             result = replace(result, proposal_id=request_id)
                         saved = {
                             "session_id": result.session.session_id if result.session else None,
@@ -226,6 +240,7 @@ class AssistantRouter:
                             "task_definition_draft": result.task_definition_draft,
                             "open_task_definitions": result.open_task_definitions,
                             "open_connections": result.open_connections,
+                            "shared_draft": result.shared_draft, "open_shared": result.open_shared,
                         }
                     await p.workspace.complete_route(who, request_id, claim["token"], saved)
                 result = await self._saved_outcome(who, saved)
@@ -280,6 +295,8 @@ class AssistantRouter:
         p = self._platform
         tenant = who.require_tenant()
         current = await p.sessions.content(who, body.session_id) if body.session_id else None
+        if current is not None:
+            await p.shared_contexts.require_private_runtime(who, current.session_id)
         if claim is not None and "choice" in claim:
             choice = Choice.model_validate(claim["choice"])
             if choice.package == "office-assistant":
@@ -296,7 +313,7 @@ class AssistantRouter:
         await p.quota.check_new_turn(tenant)
         catalog = await self._catalog(tenant)
         if who.user_id:
-            catalog = [*WORKSPACE_ENTRIES, *REMINDER_ENTRIES, *PROACTIVE_ENTRIES, *TASK_DEFINITION_ENTRIES, *catalog]
+            catalog = [*SHARED_ENTRIES, *WORKSPACE_ENTRIES, *REMINDER_ENTRIES, *PROACTIVE_ENTRIES, *TASK_DEFINITION_ENTRIES, *catalog]
             if self._platform.connections.config.allows(who.require_tenant()):
                 catalog.append({"package":"@connections","version":"1","entry":"manage",
                     "description":"本人企业只读连接","entry_description":"绑定企业微信、查看本人授权、同意或撤销授权；由员工在原生页面确认"})
@@ -324,9 +341,9 @@ class AssistantRouter:
         await p.sessions.admit_routing(tenant)
         try:
             text = (
-                await self._sample(who, payload, parts)
+                await self._sample(who, payload, parts, private_session_id=current.session_id if current else None)
                 if parts
-                else await self._sample(who, payload)
+                else await self._sample(who, payload, private_session_id=current.session_id if current else None)
             )
         finally:
             p.sessions.release_routing(tenant)
@@ -354,6 +371,10 @@ class AssistantRouter:
     ) -> RouteOutcome:
         """解析后的选择仍须验证能力范围；模型建议不直接执行提醒。"""
         p = self._platform
+        if choice.package == '@shared':
+            if choice.message is not None or any((choice.reminder, choice.workspace_draft, choice.proactive, choice.task_definition)):
+                raise ValueError('共享建议不能夹带其他操作')
+            return await resolve_shared(p, who, choice.entry, choice.shared_draft)
         if choice.package=='@task-definitions':
             return await resolve_definition(p,who,choice.entry,choice.task_definition,input_files,matter_id,request_id)
         if choice.package == '@connections' and who.user_id and self._platform.connections.config.allows(who.require_tenant()):
@@ -500,6 +521,8 @@ class AssistantRouter:
 
     async def _history(self, session: SessionRecord) -> list[dict[str, str]]:
         """只传最后六条文本，扫描有界；过长历史明确失败而不冒充最新。"""
+        who = Principal(role='tenant_member', tenant_id=session.tenant_id, user_id=session.user_id, key_id=None)
+        await self._platform.shared_contexts.require_private_runtime(who, session.session_id)
         latest: deque[dict[str, str]] = deque(maxlen=6)
         after = 0
         for _ in range(20):
@@ -518,6 +541,7 @@ class AssistantRouter:
                         }
                     )
             if len(records) < 500:
+                await self._platform.shared_contexts.require_private_runtime(who, session.session_id)
                 return list(latest)
             after = records[-1].audit_id
         raise RuntimeUnavailableError("此对话历史较长，请开始新对话")
@@ -525,6 +549,8 @@ class AssistantRouter:
     async def _sample(
         self, who: Principal, payload: str, parts: list[dict[str, Any]] | None = None,
         *, system_prompt: str | None = None, audit_kind: str = "assistant_route_sampled",
+        source_context_id: str | None = None,
+        private_session_id: str | None = None,
     ) -> str:
         """只采样文本，完成后按实际用量入账；中断时估算，防取消绕过配额。"""
         cancel = taifeng.CancellationToken()
@@ -533,10 +559,20 @@ class AssistantRouter:
         started = False
         try:
             client = await self._models.create(who.require_tenant(), "fast")
+            if source_context_id is not None or private_session_id is not None:
+                from xuanpu_server.runtime.source_guard import SourceModelClient
+                async def check_source() -> object:
+                    """实际发送及流式输出各块都重新检查持久来源。"""
+                    if source_context_id is not None:
+                        return await self._platform.shared_contexts.check(who, source_context_id)
+                    assert private_session_id is not None
+                    await self._platform.shared_contexts.require_private_runtime(who, private_session_id)
+                    return None
+                client = SourceModelClient(client, check_source)
             request = taifeng.ApiRequest.model_validate(
                 {
                     "model": "fast",
-                    "system_prompt": [system_prompt or (_PROMPT + WORKSPACE_PROMPT + TASK_DEFINITION_PROMPT + PROACTIVE_ROUTING)],
+                    "system_prompt": [system_prompt or (_PROMPT + WORKSPACE_PROMPT + TASK_DEFINITION_PROMPT + PROACTIVE_ROUTING + SHARED_PROMPT)],
                     "input_items": [
                         {
                             "type": "message",
@@ -604,7 +640,7 @@ class AssistantRouter:
         estimated = not usage
         values = usage or {
             "input_tokens": len(payload)
-            + len(prompt or (_PROMPT + WORKSPACE_PROMPT + TASK_DEFINITION_PROMPT + PROACTIVE_ROUTING))
+            + len(prompt or (_PROMPT + WORKSPACE_PROMPT + TASK_DEFINITION_PROMPT + PROACTIVE_ROUTING + SHARED_PROMPT))
             + self._attachment_estimate(parts),
             "output_tokens": len(output),
         }

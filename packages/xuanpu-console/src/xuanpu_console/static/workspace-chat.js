@@ -41,8 +41,9 @@ function workspaceRouteAccepted() {
 async function loadMainConversation() {
   if(!conn.ready || !conn.me?.user_id || chat.sessionId)return;
   const epoch=conn.epoch,generation=chat.generation,loading=++workspaceChat.loading;
-  const {items:records}=await api("GET",workspaceBase+"/messages?latest=true&limit=100");
+  const {items:loaded}=await api("GET",workspaceBase+"/messages?private_only=true&latest=true&limit=100");
   if(epoch!==conn.epoch || generation!==chat.generation || loading!==workspaceChat.loading || chat.sessionId)return;
+  const records=loaded.filter(personalHistoryRecord);
   const {items:files}=await api("GET",workspaceBase+"/items?kind=file");
   if(epoch!==conn.epoch || generation!==chat.generation || loading!==workspaceChat.loading || chat.sessionId)return;
   $("transcript").replaceChildren();
@@ -55,14 +56,18 @@ async function loadMainConversation() {
   if(proactive && !chat.routing)await restoreProactiveDraft(proactive.metadata.route.proactive_draft);
   const scheduled=records.slice().reverse().find(x=>x.metadata?.route?.task_definition_draft);
   if(scheduled && !chat.routing)await restoreTaskDefinitionDraft(scheduled.metadata.route.task_definition_draft);
-  const pending=records.slice().reverse().find(x=>x.metadata?.route?.proposal_id && !x.metadata.route.proactive_draft && !x.metadata.route.task_definition_draft);
+  const pending=records.slice().reverse().find(x=>x.metadata?.route?.proposal_id && !x.metadata.route.proactive_draft && !x.metadata.route.task_definition_draft && !x.metadata.route.shared_draft && !x.metadata.route.open_shared);
   if(pending && !chat.routing)await restoreWorkspaceProposal(pending.metadata.route.proposal_id);
 }
+function personalHistoryRecord(item){return !item.source_context_id&&!item.source_blocked&&!item.sources?.length;}
 function renderWorkspaceHistory(records,files,target) {
   for(const item of records) {
+    if(!personalHistoryRecord(item))continue;
     const node=wsText("div",item.text,"msg "+item.role);
     if(item.metadata?.proposal_id)node.dataset.proposalId=item.metadata.proposal_id;
     target.append(node);
+    if(item.metadata?.route?.shared_draft)target.append(wsButton("核对共享事项草稿",()=>restoreSharedDraft(item.metadata.route.shared_draft,item.metadata.route.proposal_id)));
+    else if(item.metadata?.route?.open_shared)target.append(wsButton("查看共享事项",()=>openShared()));
     if(item.attachments?.length)renderMessageFileCards(files.filter(file=>item.attachments.includes(file.id)),target);
     if(item.metadata?.route?.work_task_id)showWorkTaskCard(item.metadata.route.work_task_id,target).catch(fail);
     if(item.metadata?.route?.session_id)target.append(wsButton("查看业务对话",async()=>openSession(await api("GET","/v1/sessions/"+encodeURIComponent(item.metadata.route.session_id)))));
@@ -75,7 +80,7 @@ function prependOlderHistory(before,files,token) {
     const loading=workspaceChat.loading;
     more.disabled=true;more.textContent="正在加载…";
     try {
-      const {items}=await api("GET",workspaceBase+"/messages?latest=true&limit=100&before_id="+before);
+      const {items}=await api("GET",workspaceBase+"/messages?private_only=true&latest=true&limit=100&before_id="+before);
       if(!current() || loading!==workspaceChat.loading)return;
       const transcript=$("transcript"),height=transcript.scrollHeight,scroll=transcript.scrollTop;
       const fragment=document.createDocumentFragment();renderWorkspaceHistory(items,files,fragment);

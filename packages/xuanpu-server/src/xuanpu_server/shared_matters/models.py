@@ -100,6 +100,9 @@ class SharedSourceRef(BaseModel):
     material_revision_id: str | None = None
     access_epoch: int = Field(ge=1)
     dependency_id: str | None = None
+    matter_version: int = Field(default=1, ge=1)
+    source_scope: Literal['full', 'packet'] = 'full'
+    permission_digest: str | None = None
 
 
 class SharedMaterial(SharedRecord):
@@ -181,11 +184,19 @@ class SourceDependency(SharedRecord):
     grant_epoch: int
     access_epoch: int
     workspace_message_id: int | None = None
+    matter_version: int = Field(default=1, ge=1)
+    source_scope: Literal['full', 'packet'] = 'full'
+    permission_digest: str | None = None
+    authority_digest: str | None = None
+    title_snapshot: str = Field(default='', max_length=500)
+    content_snapshot: str | None = Field(default=None, max_length=20000)
 
 
 class SharedNotification(SharedRecord):
     """站内动态仅存来源引用，补读和数量都重新检查当前ACL。"""
     user_id: str
+    user_epoch: int = Field(default=1, ge=1)
+    sequence: int = Field(default=0, ge=0)
     matter_id: str
     event_id: str
     semantic_key: str

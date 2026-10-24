@@ -52,7 +52,9 @@ from xuanpu_server.runtime.assembler import (
 from xuanpu_server.runtime.connector_process import install_kernel_mcp_log_guard
 from xuanpu_server.runtime.events import SubmissionIndex
 from xuanpu_server.runtime.sessions import SessionManager
+from xuanpu_server.shared_matters.context_guard import SharedContexts
 from xuanpu_server.shared_matters.materials import SharedMaterials
+from xuanpu_server.shared_matters.notifications import SharedNotifications
 from xuanpu_server.shared_matters.object_recovery import PublicationRecovery
 from xuanpu_server.shared_matters.service import SharedMatterService
 from xuanpu_server.task_triggers.models import TriggerConfig
@@ -242,6 +244,9 @@ class Platform:
             objects=self.objects, now=now,
         )
         self.shared_materials = SharedMaterials(self.shared_matters, self.workspace.store, self.objects)
+        self.shared_contexts = SharedContexts(self.shared_materials)
+        self.shared_notifications = SharedNotifications(self.shared_matters)
+        self.workspace.source_history.bind(self.shared_contexts)
         self.shared_publication_recovery = PublicationRecovery(self.shared_materials)
         store.workspace_store.configure_activity(task_activity or ActivityConfig())
         self.quota = QuotaGuard(store, now=now)
@@ -267,6 +272,8 @@ class Platform:
             now=now,
         )
         self.sessions = self._session_manager(submissions, lease_seconds)
+        self.runtimes.bind_sources(self.shared_contexts)
+        self.sessions.bind_sources(self.shared_contexts)
         self.task_actions = ActionProposalService(self.workspace, self.work_tasks.store,
                                                  reminders=self.reminders, now=now)
         self.task_runner = TaskRunner(self.work_tasks.store, self.packages, self.runtimes, self.sessions,
@@ -347,6 +354,8 @@ class Platform:
             self.organization_lifecycle.start()
             await self.shared_publication_recovery.recover_all()
             self.shared_publication_recovery.start()
+            await self.shared_notifications.recover_all()
+            self.shared_notifications.start()
             await self.task_registry.open()
             self.trigger_worker.start()
             self.identity.start()
@@ -365,7 +374,7 @@ class Platform:
             self._closed = True
             self.sessions.stop_accepting()
             errors: list[BaseException] = []
-            actions = (self.shared_publication_recovery.close, self.shared_materials.publications.close,
+            actions = (self.shared_notifications.close, self.shared_publication_recovery.close, self.shared_materials.publications.close,
                        self.organization_lifecycle.close, self.trigger_worker.close, self.task_registry.close, self.proactive_worker.close, self.reminders.close,
                        self.notification_sender.close, self.assistant.close,
                        self.identity.maintenance.close, self.identity.disabling.close,

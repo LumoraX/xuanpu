@@ -34,6 +34,7 @@ from xuanpu_server.workspace.rules import (
     request_key,
     touch,
 )
+from xuanpu_server.workspace.source_history import SourceHistory, protected_message
 
 if TYPE_CHECKING:
     import builtins
@@ -64,6 +65,7 @@ class WorkspaceService:
         self._now = now
         self.quota_bytes, self.max_file_bytes = QUOTA_BYTES, MAX_FILE_BYTES
         self.max_versions = 10000
+        self.source_history = SourceHistory(store)
         from .task_usage import bind_memory_usage
 
         bind_memory_usage(store, control, identity)
@@ -397,6 +399,8 @@ class WorkspaceService:
         latest: bool = False,
         matter_id: str | None = None,
         before_id: int | None = None,
+        private_only: bool = False,
+        source_context_id: str | None = None,
     ) -> builtins.list[dict[str, Any]]:
         """有界游标读取本人持久主对话。"""
         tenant, user = await self.require_employee(who)
@@ -411,14 +415,21 @@ class WorkspaceService:
             )
         ):
             raise InvalidRequestError("主对话分页范围无效")
+        if source_context_id is not None:
+            if private_only or matter_id is not None or not 1 <= len(source_context_id) <= 160:
+                raise InvalidRequestError('共享与个人历史选择不能混用')
+            if self.source_history.contexts is None:
+                raise InvalidRequestError('共享阅读不可用')
+            await self.source_history.contexts.check(who, source_context_id)
         if matter_id is not None:
             async with self._transaction(who) as state:
                 get_item(state, matter_id, kind="matter")
         result = await self.store.messages(
-            tenant, user, after_id, limit, matter_id=matter_id, before_id=before_id, latest=latest
+            tenant, user, after_id, limit, matter_id=matter_id, before_id=before_id, latest=latest,
+            private_only=private_only, source_context_id=source_context_id,
         )
         await self.require_employee(who)
-        return result
+        return await self.source_history.project(who, result)
 
     async def append_message(
         self,
@@ -430,6 +441,8 @@ class WorkspaceService:
         matter_id: str | None = None,
         *,
         metadata: dict[str, Any] | None = None,
+        source_context_id: str | None = None,
+        sources: builtins.list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """保存主对话及本人附件关联；助手角色仅供服务内部调用。"""
         request_key(request_id)
@@ -451,6 +464,9 @@ class WorkspaceService:
             data["metadata"] = json.loads(encoded)
         except (ValueError, TypeError, RecursionError) as exc:
             raise InvalidRequestError("主对话结果元数据无效或超过64 KiB") from exc
+        if source_context_id is not None or sources:
+            data.update(source_context_id=source_context_id, sources=sources or [])
+            await self.source_history.check(who, data)
         payload = {"op": "message", **data}
         async with self._transaction(who, request_id) as state:
             previous = replay(state, request_id, payload)
@@ -478,6 +494,8 @@ class WorkspaceService:
         request_key(request_id)
         result = await self.store.find_message(tenant, user, request_id)
         await self.require_employee(who)
+        if result is not None:
+            await self.source_history.check(who, result)
         return result
 
     async def pending_proposals(self, who: Principal) -> builtins.list[dict[str, Any]]:
@@ -485,7 +503,7 @@ class WorkspaceService:
         tenant, user = await self.require_employee(who)
         result = await self.store.pending_proposals(tenant, user)
         await self.require_employee(who)
-        return result
+        return [row for row in result if not protected_message(row)]
 
     async def reserve_proposal(
         self, who: Principal, request_id: str, action: str, data: dict[str, Any]

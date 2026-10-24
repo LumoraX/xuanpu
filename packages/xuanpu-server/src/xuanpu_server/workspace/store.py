@@ -74,6 +74,8 @@ class WorkspaceStore(Protocol):
         matter_id: str | None = None,
         before_id: int | None = None,
         latest: bool = False,
+        private_only: bool = False,
+        source_context_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """按本人持久游标分页读取主对话。"""
         ...

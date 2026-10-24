@@ -8,6 +8,7 @@ from xuanpu_server.errors import ConflictError, InvalidRequestError, NotFoundErr
 from xuanpu_server.objectstore.base import ObjectNotFoundError, ObjectTooLargeError
 from xuanpu_server.shared_matters.permissions import access
 from xuanpu_server.shared_matters.publication import Publications
+from xuanpu_server.shared_matters.source_dependencies import check_reference_scope
 from xuanpu_server.shared_matters.views import page
 
 if TYPE_CHECKING:
@@ -72,6 +73,7 @@ class SharedMaterials:
         if not any(g.scope == 'full' or selected.id in g.material_revisions for g in grants):
             raise NotFoundError('共享材料不存在')
         for source in selected.source_refs:
+            check_reference_scope(tx, who, source, self.service.now())
             matter, _ = access(tx, who, source.shared_id, self.service.now())
             if matter.access_epoch != source.access_epoch:
                 raise NotFoundError('共享材料来源已失效')

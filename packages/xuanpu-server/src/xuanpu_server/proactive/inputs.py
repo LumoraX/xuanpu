@@ -11,6 +11,7 @@ from xuanpu_server.proactive.context import (
     session_stamp,
 )
 from xuanpu_server.proactive.semantic import bounded_context
+from xuanpu_server.workspace.source_history import protected_message
 
 if TYPE_CHECKING:
     from xuanpu_server.proactive.service import ProactiveService
@@ -49,16 +50,20 @@ async def prepare_context(service: ProactiveService, tenant: str, user: str,
                 source = await service.control.get_session(tenant, ref.split(':')[1])
                 if source and source.user_id == user and source.session_id not in {row.session_id for row in sessions}:
                     sessions.append(source)
+    sources = service.workspace.source_history
+    sessions = [row for row in sessions if not await sources.protected_session(tenant, user, row.session_id)]
     claim['session_ids'] = [row.session_id for row in sessions]
     claim['business_stamp'] = session_stamp(sessions)
     messages = await service.workspace.store.messages(tenant, user, claim['message_cursor'], 100)
     messages = [row for row in messages if row['id'] < claim['next_message_id']]
     claim['message_lengths'] = {row['id']: len(row['text']) for row in messages}
-    messages = await restore_evidence(service.workspace.store, tenant, user, claim['followups'], messages)
+    claim['excluded_message_ids'] = [row['id'] for row in messages if protected_message(row)]
+    messages = [row for row in messages if not protected_message(row)]
+    messages = await restore_evidence(service.workspace.store, tenant, user, claim['followups'], messages, sources)
     business = await business_evidence(service.control, tenant, user, sessions, claim['business_cursors'])
     claim['business_rows'] = [{key: row[key] for key in ('ref', 'cursor_key', 'audit_id')}
         | {'total_length': len(row['text'])} for row in business]
-    business = await restore_business(service.control, tenant, user, claim['followups'], business)
+    business = await restore_business(service.control, tenant, user, claim['followups'], business, sources)
     messages = chunk_messages(messages, claim['partial_offsets'])
     business = chunk_business(business, claim['partial_offsets'])
     items = sorted((row for row in claim['items'] if row['id'] > claim['item_cursor']), key=lambda row: row['id'])[:25]
@@ -75,6 +80,8 @@ async def prepare_context(service: ProactiveService, tenant: str, user: str,
 async def context_current(service: ProactiveService, tenant: str, user: str, claim: dict[str, Any]) -> bool:
     """关联来源会话即使不在当前分页，也必须维持同一活动版本和归属。"""
     sessions = [await service.control.get_session(tenant, sid) for sid in claim['session_ids']]
+    if any([await service.workspace.source_history.protected_session(tenant, user, sid) for sid in claim['session_ids']]):
+        return False
     return bool(session_stamp([row for row in sessions if row and row.user_id == user]) == claim['business_stamp'])
 
 
@@ -83,7 +90,7 @@ def commit_cursors(scan: dict[str, Any], claim: dict[str, Any], evidence: dict[s
     scan.setdefault('message_cursor', claim['message_cursor'])
     offsets = cursor_progress(list(evidence.values()), claim['partial_offsets'])
     for identifier, length in claim['message_lengths'].items():
-        if offsets.get(f'message:{identifier}', -1) < length:
+        if identifier not in claim.get('excluded_message_ids', []) and offsets.get(f'message:{identifier}', -1) < length:
             break
         scan['message_cursor'] = identifier
     cursors = scan.setdefault('business_cursors', {})
