@@ -1,0 +1,112 @@
+{
+  "recorded_date": "2026-10-24",
+  "overall_status": "partial",
+  "release_status": "pilot_deployed_pending_real_employee_acceptance",
+  "source_commit": "2f5b6d5688cb8504cf1efa60f335752f698ad189",
+  "local_main_integrated": true,
+  "remote_main_push": "not_performed",
+  "versions": {
+    "xuanpu-server": "2026.10.24.1",
+    "xuanpu-console": "2026.10.24.1",
+    "xuanpu-cli": "2026.10.24.1",
+    "xuanpu-sdk-py": "2026.10.24.1",
+    "xuanpu-spec": "2026.10.2.7",
+    "taifeng": "2026.10.1.11",
+    "taifeng-sandbox": "2026.10.21.1",
+    "taifeng-stores": "2026.9.29.15"
+  },
+  "deployment": {
+    "public_url": "https://xuanpu.zhice.life/console/",
+    "image": "registry.cn-shanghai.aliyuncs.com/krasuschen/xuanpu:2026.10.24.1.r3-candidate",
+    "digest": "sha256:28b8cde4f29b679be0fd08647b5419c31ebd8ee87379cbe4103f19bc4d7c7ea0",
+    "schema_before": 15,
+    "schema_after": 19,
+    "scope": "explicit_pilot_tenant_only",
+    "installed_files_verified": 414,
+    "public_fingerprinted_assets_verified": 26,
+    "authenticated_real_employee_business_flow": "not_checked"
+  },
+  "source_checks": {
+    "pytest": {"passed": 2551, "skipped": 20, "seconds": 752.31},
+    "ruff_F_S108_I_TC": "passed",
+    "strict_mypy": {"status": "passed", "source_files": 323},
+    "lock_check": "passed",
+    "all_extras_sync": "passed",
+    "diff_check": "passed",
+    "independent_review": "no_remaining_blocking_P1_P2"
+  },
+  "postgres_process_faults": {
+    "claim_approval_delivery_signoff": {"passed": 8, "skipped_memory_variants": 8},
+    "shared_copy_and_cold_source_recovery": {"passed": 4, "skipped_memory_variants": 2}
+  },
+  "browser": {
+    "identity_kind": "local_synthetic_users",
+    "native_file_approval_delivery_signoff": "passed",
+    "fixed_assistant_text_result_publish": "passed",
+    "mobile_width_pixels": 390,
+    "horizontal_overflow": false,
+    "keyboard_focus": "passed",
+    "stale_asset_cache_refresh": "passed",
+    "production_real_employee_flow": "pending"
+  },
+  "real_model": {
+    "identity_and_material_kind": "synthetic",
+    "production_employee_acceptance": false,
+    "self_profile_probe": {"status": "passed", "model_calls": 2},
+    "shared_context_probe": {
+      "status": "passed",
+      "model_calls": 2,
+      "fixed_amount_read": true,
+      "draft_does_not_create_handoff": true,
+      "revoked_context_blocks_model_call": true
+    },
+    "external_business_writes": 0
+  },
+  "migration": {
+    "database_files_config_secrets_and_old_images_backed_up": true,
+    "old_image_layers_verified": true,
+    "legacy_tables_unchanged_at_migration": 46,
+    "legacy_files_unchanged_at_migration": 369,
+    "protected_ledger_table_groups_rechecked_after_start": 8,
+    "legacy_objects_hash_rechecked_after_start": 123,
+    "historical_outcome_unknown_tasks_preserved": 1,
+    "historical_dispatch_intent_effects_preserved": 1
+  },
+  "same_server_isolated_trial": {
+    "identity_kind": "explicit_synthetic_machine_delegation",
+    "single_concurrent_claim": "passed",
+    "fixed_result_bytes": "passed",
+    "pending_approval_restart": "passed",
+    "new_intake_disabled_existing_closeout": "passed",
+    "decision_delivery_signoff_replay": "passed",
+    "deadline_events": 1,
+    "deadline_notifications": 2,
+    "external_business_writes": 0,
+    "temporary_key_revoked": true,
+    "synthetic_tenant_suspended": true,
+    "container_stopped": true,
+    "local_fixtures_and_tunnels_stopped": true
+  },
+  "runtime_isolation": {
+    "platform_uid": 10001,
+    "readonly_root_filesystem": true,
+    "all_capabilities_dropped": true,
+    "independent_rootless_executor_uid": 10002,
+    "executor_service_restart_probe": "passed",
+    "active_execution_and_leases_before_restart": 0,
+    "office_probe_before_and_after_restart": "passed",
+    "shared_host_reboot": "not_repeated",
+    "other_applications_restarted": false
+  },
+  "pending": [
+    "real_second_employee_first_login",
+    "real_two_employee_shared_handoff_approval_delivery_signoff",
+    "real_tenant_admin_directory_consent_preview_and_apply"
+  ],
+  "excluded_or_optional": {
+    "supplier_early_token_invalidation": "excluded_by_user",
+    "four_employee_two_department_trial": "optional_not_run",
+    "departments_required_for_person_to_person_work": false
+  },
+  "evidence_policy": "Raw protocols, credentials, cookies and enterprise materials are private; this file contains only sanitized results."
+}
