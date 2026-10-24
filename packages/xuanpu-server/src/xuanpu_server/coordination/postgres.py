@@ -6,6 +6,9 @@ import json
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
+from xuanpu_server.collaboration.locks import purpose_participants
+from xuanpu_server.collaboration.postgres import load_collaboration, save_collaboration
+from xuanpu_server.collaboration.store import validate_collaboration
 from xuanpu_server.coordination.models import CoordinationState, CoordinationTransaction
 from xuanpu_server.coordination.outbox import CoordinationEvent
 from xuanpu_server.coordination.receipts import CoordinationReceipt, receipt_key
@@ -59,38 +62,47 @@ class PostgresCoordinationStore:
         if not set(allow_inactive) <= set(ordered):
             raise InvalidRequestError('允许停用的员工必须已加入事务')
         async with asyncio.timeout(timeout), self._pool.acquire() as conn, conn.transaction():
-            epochs = await self._lock(conn, tenant, ordered, allow_inactive)
+            await self._lock_tenant(conn, tenant)
             state = await self._load(conn, tenant)
+            expanded = purpose_participants(state, ordered)
+            permitted = tuple(sorted(set(allow_inactive) | (set(expanded) - set(ordered))))
+            epochs, statuses = await self._lock(conn, tenant, expanded, permitted)
             before = state.model_copy(deep=True)
-            tx = CoordinationTransaction(tenant, ordered, state, epochs)
+            tx = CoordinationTransaction(tenant, expanded, state, epochs, statuses)
             with transaction_reads(self._pool, conn):
                 yield tx
             validate_commit(tenant, before, state)
             validate_shared(tx)
+            validate_collaboration(tx)
             validate_profiles(tx)
             await save_organization(conn, self._namespace, tenant, before.organization, state.organization)
             await save_profiles(conn, self._namespace, tx)
             await save_shared(conn, self._namespace, tenant, before.shared, state.shared)
+            await save_collaboration(conn, self._namespace, tenant, before.collaboration, state.collaboration)
             await self._save(conn, tenant, before, state)
 
-    async def _lock(self, conn: Connection, tenant: str, participants: tuple[str, ...], allow_inactive: tuple[str, ...]) -> dict[str, int]:
-        """显式逐行取锁使输入顺序不影响锁序，也复核当前身份。"""
+    async def _lock_tenant(self, conn: Connection, tenant: str) -> None:
+        """先取得租户锁，再读取用途关系以确定完整的排序员工锁集。"""
         row = await conn.fetchrow(f"SELECT status FROM {self._t['tenant']} WHERE tenant_id=$1 FOR UPDATE", tenant)
         if row is None:
             raise NotFoundError('租户不存在')
         if row['status'] != 'active':
             raise PermissionDeniedError('租户已停用')
-        epochs = {}
+
+    async def _lock(self, conn: Connection, tenant: str, participants: tuple[str, ...], allow_inactive: tuple[str, ...]) -> tuple[dict[str, int], dict[str, str]]:
+        """全部员工按ID排序锁定，来源停用只影响相应用途，不阻断无关读取。"""
+        epochs: dict[str, int] = {}
+        statuses: dict[str, str] = {}
         for user in participants:
             row = await conn.fetchrow(f"SELECT status,lifecycle_epoch FROM {self._t['user']} WHERE tenant_id=$1 AND user_id=$2 FOR UPDATE", tenant, user)
             if row is None or (row['status'] != 'active' and user not in allow_inactive):
                 raise PermissionDeniedError('参与员工不存在或已停用')
-            epochs[user] = row['lifecycle_epoch']
-        return epochs
+            epochs[user], statuses[user] = row['lifecycle_epoch'], row['status']
+        return epochs, statuses
 
     async def _load(self, conn: Connection, tenant: str) -> CoordinationState:
         """类型化解析失败明确中止，不能吞掉损坏的记录。"""
-        state = CoordinationState(organization=await load_organization(conn, self._namespace, tenant),
+        state = CoordinationState(collaboration=await load_collaboration(conn, self._namespace, tenant), organization=await load_organization(conn, self._namespace, tenant),
                                   shared=await load_shared(conn, self._namespace, tenant))
         for row in await conn.fetch(f"SELECT record FROM {self._t['coordination_receipt']} WHERE tenant_id=$1", tenant):
             receipt = CoordinationReceipt.model_validate_json(row['record'])

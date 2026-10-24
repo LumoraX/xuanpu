@@ -198,3 +198,27 @@ async def shared_id(shared_http):
         'request_id': 'shared-create', 'confirmed': True, 'title': '共同核对材料', 'content': '仅共享事项正文'})
     assert response.status_code == 201, response.text
     return response.json()['id']
+
+
+@pytest.fixture
+async def handoff_http(shared_http, r3_world):
+    """到人试点无需组织任职，但新受理和新审批均有独立灰度。"""
+    from xuanpu_server.collaboration.models import CollaborationConfig
+    platform = r3_world.platform
+    assert hasattr(platform, 'handoffs'), '尚未装配交接'
+    platform.handoffs.config = CollaborationConfig(enabled=True, tenants=('acme',))
+    platform.approvals.config = CollaborationConfig(enabled=True, tenants=('acme',))
+    return shared_http
+
+
+@pytest.fixture
+async def other_employee(r3_world,r3_http):
+    """自动化额外普通员工用于竞争反例，不代表真实试点增加人数要求。"""
+    now=time.time();uid='usr_carol';token='test-session-carol'
+    await r3_world.platform.identity.store.create_user(UserRecord('acme',uid,'另一位员工',now))
+    await r3_world.platform.identity.store.create_login_session(LoginSession(
+        login_token_hash(token),'acme',uid,now,now+3600,now))
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app(r3_world.platform)),
+            base_url='https://office.test',cookies=_cookies(token),
+            headers={'Origin':'https://office.test','X-Requested-By':'xuanpu'}) as client:
+        yield client

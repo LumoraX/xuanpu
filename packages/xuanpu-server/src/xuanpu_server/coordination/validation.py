@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from xuanpu_server.collaboration.store import validate_history as validate_collaboration_history
 from xuanpu_server.errors import ConflictError
 from xuanpu_server.organization.store import validate_organization
 from xuanpu_server.shared_matters.store import validate_history
@@ -14,6 +15,7 @@ def validate_commit(tenant: str, before: CoordinationState, after: CoordinationS
     """领域记录不能物理删除；已提交回执、事件和确认都只能追加。"""
     validate_organization(tenant, after.organization)
     validate_history(before.shared, after.shared)
+    validate_collaboration_history(before.collaboration, after.collaboration)
     for field in type(before.organization).model_fields:
         previous = getattr(before.organization, field)
         current = getattr(after.organization, field)

@@ -12,6 +12,7 @@ async function openSharedConversation(identifier,matterId=null){
   const messages=sharedNode("section");messages.className="shared-transcript";host.append(messages);
   for(const row of history.items){if(row.source_blocked)continue;const card=sharedNode("article");card.className="function-card";card.append(sharedNode("strong",row.role==="user"?"我":"助手"),sharedNode("p",row.text));messages.append(card);
    if(row.role==="assistant"&&matter.allowed_actions.includes("publish_material"))sharedTextPublication(card,matter,identifier,row);
+   if(row.role==="assistant"&&typeof handoffTextPublication==="function")handoffTextPublication(card,matter,identifier,row);
   }
   sharedForm(host,"向选定资料提问",(form,card)=>{
    const text=sharedField(form,"问题"),submit=sharedSubmit(form,"发送",async()=>{

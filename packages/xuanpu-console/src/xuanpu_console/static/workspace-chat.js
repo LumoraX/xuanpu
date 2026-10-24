@@ -56,7 +56,7 @@ async function loadMainConversation() {
   if(proactive && !chat.routing)await restoreProactiveDraft(proactive.metadata.route.proactive_draft);
   const scheduled=records.slice().reverse().find(x=>x.metadata?.route?.task_definition_draft);
   if(scheduled && !chat.routing)await restoreTaskDefinitionDraft(scheduled.metadata.route.task_definition_draft);
-  const pending=records.slice().reverse().find(x=>x.metadata?.route?.proposal_id && !x.metadata.route.proactive_draft && !x.metadata.route.task_definition_draft && !x.metadata.route.shared_draft && !x.metadata.route.open_shared);
+  const pending=records.slice().reverse().find(x=>x.metadata?.route?.proposal_id && !x.metadata.route.proactive_draft && !x.metadata.route.task_definition_draft && !x.metadata.route.handoff_draft && !x.metadata.route.open_collaboration && !x.metadata.route.shared_draft && !x.metadata.route.open_shared);
   if(pending && !chat.routing)await restoreWorkspaceProposal(pending.metadata.route.proposal_id);
 }
 function personalHistoryRecord(item){return !item.source_context_id&&!item.source_blocked&&!item.sources?.length;}
@@ -66,7 +66,9 @@ function renderWorkspaceHistory(records,files,target) {
     const node=wsText("div",item.text,"msg "+item.role);
     if(item.metadata?.proposal_id)node.dataset.proposalId=item.metadata.proposal_id;
     target.append(node);
-    if(item.metadata?.route?.shared_draft)target.append(wsButton("核对共享事项草稿",()=>restoreSharedDraft(item.metadata.route.shared_draft,item.metadata.route.proposal_id)));
+    if(item.metadata?.route?.handoff_draft)target.append(wsButton("核对交接说明草稿",()=>openCollaboration("received",item.metadata.route.handoff_draft,item.metadata.route.proposal_id)));
+    else if(item.metadata?.route?.open_collaboration)target.append(wsButton("查看我的协作",()=>openCollaboration()));
+    else if(item.metadata?.route?.shared_draft)target.append(wsButton("核对共享事项草稿",()=>restoreSharedDraft(item.metadata.route.shared_draft,item.metadata.route.proposal_id)));
     else if(item.metadata?.route?.open_shared)target.append(wsButton("查看共享事项",()=>openShared()));
     if(item.attachments?.length)renderMessageFileCards(files.filter(file=>item.attachments.includes(file.id)),target);
     if(item.metadata?.route?.work_task_id)showWorkTaskCard(item.metadata.route.work_task_id,target).catch(fail);

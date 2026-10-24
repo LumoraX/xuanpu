@@ -192,3 +192,9 @@ result = await client.decide_work_task(task.task_id, {
 JSON写入保留调用者的操作号、版本及确认，不自动补 `confirmed`。下载在20MiB限制内校验服务端SHA，返回字节，不写本地或私人空间。
 共享历史与上下文不参与普通个人对话；来源失效的SSE `error`帧转成带状态和错误码的 `XuanpuError`，不会误当成内核业务事件。
 `organization_people`仅列本企业可选启用员工的稳定编号和姓名，协作不要求部门。
+
+### 到人协作候选
+
+`XuanpuClient`新增`list_handoffs/get_handoff/submit_handoff/handoff_action`，动作覆盖接收、开始、补充、明确转交、取消、交付、签收和争议；请求原样保留confirmed、expected_version、request_id。`upload_handoff_result`只创建本交接新成果，`publish_handoff_text`引用本人固定助手消息，`handoff_publication`补读发布状态。固定结果下载复用`download_shared_material`的有界字节与SHA检查。
+
+规则通过`list_approval_policies/create_approval_policy/change_approval_policy`访问；管理员可配置一到三步明确员工或部门职责，员工只能选择预配规则。`list_approval_requests/get_approval_request/submit_approval_request/approval_decision`提供当前本人顺序决定；客户端不自动替换审批人或把组织决定当签收。`collaboration_notifications/read_collaboration_notification`使用独立来源序号及当前可见性，不能覆盖调用身份。当前为未部署候选。

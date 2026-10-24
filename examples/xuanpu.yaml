@@ -181,3 +181,13 @@ shared_matters:
   max_storage_bytes: 1073741824
   copy_lease_seconds: 30
   max_concurrent_copies: 2
+
+# R3-D到人/可选部门协作候选；默认关闭，须另行部署验收。
+handoffs:
+  enabled: false
+  tenants: []
+  max_active: 500
+approvals:
+  enabled: false
+  tenants: []
+  max_active: 500

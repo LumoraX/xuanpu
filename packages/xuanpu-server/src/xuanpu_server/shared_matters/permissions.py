@@ -12,9 +12,11 @@ if TYPE_CHECKING:
     from xuanpu_server.tenancy import Principal
 
 
-def grant_active(tx: CoordinationTransaction, grant: SharedAccessGrant, user: str, now: float, *, owns: bool = False) -> bool:
+def grant_active(tx: CoordinationTransaction, grant: SharedAccessGrant, user: str, now: float, *, owns: bool = False, _trail: frozenset[str] = frozenset()) -> bool:
     """部门授权要求当前任职，指定职责还须当前身份代次和范围吻合。"""
     epoch = tx.participant_epochs.get(user)
+    if tx.participant_statuses.get(user) != 'active':
+        return False
     if epoch is None or grant.status != 'active' or (grant.expires_at is not None and grant.expires_at <= now):
         return False
     if grant.subject_kind == 'user':
@@ -36,11 +38,14 @@ def grant_active(tx: CoordinationTransaction, grant: SharedAccessGrant, user: st
                  and scope in descendants(tx.organization, a.scope_id)}
         if not set(grant.required_org_roles) <= roles:
             return False
+    if grant.handoff_id is not None:
+        from xuanpu_server.handoffs.purpose import purpose_valid
+        return purpose_valid(tx, grant, user, now, _trail)
     return True
 
 
 def access(tx: CoordinationTransaction, who: Principal, identifier: str, now: float,
-           *, write: bool = False, owner: bool = False, full: bool = False) -> tuple[SharedMatter, list[SharedAccessGrant]]:
+           *, write: bool = False, owner: bool = False, full: bool = False, _trail: frozenset[str] = frozenset()) -> tuple[SharedMatter, list[SharedAccessGrant]]:
     """所有对象越界统一404；packet成员不能编辑或枚举完整参与者。"""
     matter = tx.shared.matters.get(identifier)
     if matter is None or who.user_id is None:
@@ -48,8 +53,12 @@ def access(tx: CoordinationTransaction, who: Principal, identifier: str, now: fl
     owner_grants = {m.grant_id for m in tx.shared.members.values() if m.matter_id == identifier
                     and m.status == 'active' and m.role == 'owner' and m.subject_kind == 'user'
                     and m.subject_id == who.user_id == matter.owner_id}
-    grants = [g for g in tx.shared.grants.values() if g.matter_id == identifier
-              and grant_active(tx, g, who.user_id, now, owns=g.id in owner_grants)]
+    candidates = [g for g in tx.shared.grants.values() if g.matter_id == identifier]
+    grants = [g for g in candidates if g.handoff_id is None
+              and grant_active(tx, g, who.user_id, now, owns=g.id in owner_grants, _trail=_trail)]
+    # 固定来源仍须返回原用途授权；新增独立full不能使旧packet足迹凭空消失。
+    grants.extend(g for g in candidates if g.handoff_id is not None
+        and grant_active(tx, g, who.user_id, now, _trail=_trail))
     members = [m for m in tx.shared.members.values() if m.matter_id == identifier
                and m.status == 'active' and any(g.id == m.grant_id for g in grants)]
     if not members:

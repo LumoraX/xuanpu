@@ -291,6 +291,7 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
             connections=config.connections,
             organization=config.organization,
             shared_matters=config.shared_matters,
+            handoffs=config.handoffs, approvals=config.approvals,
             instance_id=config.instance_id,
             lease_seconds=config.lease_seconds,
             shutdown_drain_seconds=config.shutdown_drain_seconds,

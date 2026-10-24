@@ -155,3 +155,23 @@ xuanpu shared --credentials private.json download --help
 上传用 `--file`，确认文件中包括名称、事项版本及操作号，实际字节有界读取；publish指明本人文件的固定revision，不追随最新版。
 
 SDK经合成租户的正式ASGI/认证/双后端测试验证，真实员工使用及生产发布另行记录。
+
+### 到人交接和组织审批候选
+
+`xuanpu collaboration --credentials private-employee.json list --view received` 查询本人收到的工作；`--view sent|assigned|department_queue` 分别为发出、承办及可选部门队列。无需先配置部门。
+
+命令使用权限600的固定员工凭据文件（base_url、api_key、可选act_as_user）；有权API key代表员工时，服务端仍检查当前员工及委托权限。写入的`--body`同样须为权限600的JSON文件，明确原request_id、confirmed及版本；断线重试使用同一文件，冲突后必须重新核对。不得通过body覆盖tenant、actor或调用身份。
+
+| 命令 | 用途 |
+| --- | --- |
+| list/get/submit | 本人交接列表、当前详情、原生确认提交 |
+| accept/start/return/request-information/provide-information | 接收、开始、退回、请求补充及明确新输入 |
+| transfer/cancel/request-cancel/confirm-cancel | 明确转交、未接受取消及接受后双方取消确认 |
+| result-upload/result-text/result-publication | `--file`上传本次新成果、固定本人助手消息发布、补读发布状态；上传body含name、mime_type、shared_version及expected_version |
+| policies/policy-create/policy-change | 可选规则名；`--admin`完整规则、创建及追加修订需要企业级管理资格 |
+| approval-list/approval-get/approval-submit | 本人参与的组织审批及固定目标申请 |
+| approve/reject/approval-return/approval-withdraw | 当前步骤决定或申请人撤销，不授予个人工具权限 |
+| deliver/sign-off/dispute/reopen | 固定成果交付、精确delivery_version签收、争议及重新办理 |
+| notifications/read-notification | 当前本人站内动态及幂等标读 |
+
+上传不提升整事项编辑权。组织批准、承办交付和发起人签收分别记录，不能用后台任务成功或模型文字代替。当前为未部署候选；完整功能与生产验收进度以发布证据为准。

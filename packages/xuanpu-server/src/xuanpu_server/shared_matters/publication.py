@@ -13,6 +13,8 @@ from xuanpu_server.errors import (
     NotFoundError,
     RuntimeUnavailableError,
 )
+from xuanpu_server.handoffs.packets import grant_packet
+from xuanpu_server.handoffs.result_publication import require_result
 from xuanpu_server.ids import new_id
 from xuanpu_server.shared_matters.models import MaterialRevision, Publication, SharedMaterial
 from xuanpu_server.shared_matters.permissions import access
@@ -51,7 +53,8 @@ class Publications:
     async def prepare(self, who: Principal, identifier: str, *, request_id: str, expected: int,
                       body: PublishMaterialInput | None = None, data: bytes | None = None,
                       name: str = '', mime: str = 'application/octet-stream',
-                      source_refs: tuple[SharedSourceRef, ...] = (), draft_message_id: int | None = None) -> dict[str, JsonValue]:
+                      source_refs: tuple[SharedSourceRef, ...] = (), draft_message_id: int | None = None,
+                      result_for_handoff: str | None = None, handoff_version: int | None = None) -> dict[str, JsonValue]:
         """固定请求指纹和空间预留，意图、材料、事项版本与回执原子提交。"""
         if self._closed:
             raise RuntimeUnavailableError('共享发布正在停止，请稍后重试')
@@ -61,17 +64,25 @@ class Publications:
         payload: dict[str, JsonValue] = {'action': 'shared.publish', 'id': identifier,
             'body': body.model_dump(mode='json') if body else {'request_id': request_id,
                 'expected_version': expected, 'name': name, 'mime': mime, 'sha256': checksum}}
+        if result_for_handoff is not None:
+            if body is not None or handoff_version is None:
+                raise InvalidRequestError('本交接成果需要固定版本且只能新建材料')
+            payload.update(result_for_handoff=result_for_handoff,handoff_version=handoff_version)
         if source_refs:
             payload.update(source_refs=[ref.model_dump(mode='json') for ref in source_refs], draft_message_id=draft_message_id)
         async with self.service.store.transaction(who.require_tenant(), participants=(who.user_id,)) as tx:
             await self.service.actor(who)
             check_publisher_sources(tx, who, source_refs, self.service.now(), self.materials)
-            access(tx, who, identifier, self.service.now(), write=True)
+            if result_for_handoff is not None:
+                await require_result(tx,self.materials,who,identifier,result_for_handoff)
+            else:
+                access(tx, who, identifier, self.service.now(), write=True)
             old = tx.receipt(who.actor, request_id, payload)
             if old is not None:
                 return old
             self.service.enabled(tx.tenant_id)
-            matter = await self.service.writable(tx, who, identifier, expected)
+            matter = await require_result(tx,self.materials,who,identifier,result_for_handoff,
+                version=handoff_version,shared_version=expected,projected=True) if result_for_handoff is not None else await self.service.writable(tx,who,identifier,expected)
             source: tuple[dict[str, Any], dict[str, Any]] | None = None
             if body is not None:
                 source = await self.source(tx.tenant_id, who.user_id, body.source_item_id, body.source_revision)
@@ -79,18 +90,12 @@ class Publications:
                 size, checksum = source[1]['size'], source[1]['sha256']
             else:
                 size = len(data or b'')
-            try:
-                FileData(name=name, mime_type=mime, size=size)
-            except ValidationError as exc:
-                raise InvalidRequestError('材料名称、格式或大小无效') from exc
-            if size > self.service.config.max_material_bytes:
-                raise InvalidRequestError('共享材料超过单文件上限')
-            used = sum(r.size for r in tx.shared.revisions.values()) + sum(
-                p.expected_size for p in tx.shared.publications.values() if p.status == 'pending' or (p.status in ('failed', 'withdrawn') and not p.object_cleaned))
-            if used + size > self.service.config.max_storage_bytes:
-                raise ConflictError('共享副本和历史版本已达到空间上限')
+            self._check_capacity(tx,name,mime,size)
             now = self.service.now()
             material = self._material(tx, identifier, who.user_id, name, body.material_id if body else None)
+            if result_for_handoff is not None:
+                material=material.model_copy(update={'result_for_handoff':result_for_handoff})
+                tx.shared.materials[material.id]=material
             matter = self.service.bump(tx, matter, now=now)
             publication_id = new_id('pub')
             revision = max((p.revision for p in tx.shared.publications.values() if p.material_id == material.id), default=0) + 1
@@ -98,14 +103,28 @@ class Publications:
                 material_id=material.id, publisher_id=who.user_id, publisher_epoch=tx.participant_epochs[who.user_id],
                 expected_matter_version=matter.version, access_epoch=matter.access_epoch, revision=revision,
                 object_key=f'{tx.tenant_id}/shared/{identifier}/{publication_id}', name=name, mime_type=mime,
-                source_kind='private_file' if body else ('text' if source_refs else 'upload'), source_item_id=body.source_item_id if body else None,
+                source_kind='shared_result' if result_for_handoff is not None else ('private_file' if body else ('text' if source_refs else 'upload')), source_item_id=body.source_item_id if body else None,
                 source_revision=body.source_revision if body else None, source_item_version=source[0]['version'] if source else None,
-                expected_sha256=str(checksum), expected_size=size, source_refs=source_refs, created_at=now, updated_at=now)
+                expected_sha256=str(checksum), expected_size=size, source_refs=source_refs,
+                result_for_handoff=result_for_handoff,handoff_version=handoff_version,created_at=now, updated_at=now)
             tx.shared.publications[publication_id] = publication
             self.service.event(tx, who, matter, 'publication_requested', {'publication_id': publication_id, 'material_id': material.id})
             result: dict[str, JsonValue] = {'id': publication_id, 'material_id': material.id, 'status': 'pending'}
             tx.record_receipt(who.actor, request_id, payload, result)
             return result
+
+    def _check_capacity(self,tx: CoordinationTransaction,name: str,mime: str,size: int) -> None:
+        """文件元数据、单份大小及持久未知writer预留一起计入容量。"""
+        try:
+            FileData(name=name, mime_type=mime, size=size)
+        except ValidationError as exc:
+            raise InvalidRequestError('材料名称、格式或大小无效') from exc
+        if size > self.service.config.max_material_bytes:
+            raise InvalidRequestError('共享材料超过单文件上限')
+        used = sum(r.size for r in tx.shared.revisions.values()) + sum(
+            p.expected_size for p in tx.shared.publications.values() if p.status == 'pending' or (p.status in ('failed', 'withdrawn') and not p.object_cleaned))
+        if used + size > self.service.config.max_storage_bytes:
+            raise ConflictError('共享副本和历史版本已达到空间上限')
 
     def _material(self, tx: CoordinationTransaction, identifier: str, user: str, name: str, material_id: str | None) -> SharedMaterial:
         """新材料独立建档，新增版本不得覆盖既有revision或并行发布。"""
@@ -148,7 +167,10 @@ class Publications:
         if self._closed:
             raise RuntimeUnavailableError('共享发布正在停止')
         self.service.enabled(tx.tenant_id)
-        matter = await self.service.writable(tx, who, publication.matter_id, publication.expected_matter_version)
+        if publication.result_for_handoff is not None and publication.handoff_version is None:
+            raise ConflictError('成果发布缺少固定交接版本')
+        matter = await require_result(tx,self.materials,who,publication.matter_id,publication.result_for_handoff,
+            version=publication.handoff_version,shared_version=publication.expected_matter_version) if publication.result_for_handoff is not None else await self.service.writable(tx, who, publication.matter_id, publication.expected_matter_version)
         if tx.participant_epochs[publication.publisher_id] != publication.publisher_epoch or matter.access_epoch != publication.access_epoch:
             raise ConflictError('发布期间权限已改变')
         check_publisher_sources(tx, who, publication.source_refs, self.service.now(), self.materials)
@@ -241,6 +263,8 @@ class Publications:
                 'version': material.version + 1, 'updated_at': now})
             tx.shared.publications[current.id] = current.model_copy(update={'status': 'ready', 'claim_token': None,
                 'lease_until': 0, 'version': current.version + 1, 'updated_at': now})
+            if current.result_for_handoff is not None:
+                grant_packet(tx,tx.collaboration.handoffs[current.result_for_handoff],current.publisher_id,now,revisions=(revision_id,))
             matter = self.service.bump(tx, tx.shared.matters[current.matter_id], now=now)
             self.service.event(tx, who, matter, 'material_published', {'material_id': current.material_id,
                 'material_revision_id': revision_id, 'sha256': current.expected_sha256, 'size': current.expected_size})

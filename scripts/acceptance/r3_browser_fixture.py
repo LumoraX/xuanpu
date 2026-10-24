@@ -15,6 +15,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from xuanpu_console import static_dir
 from xuanpu_server.api.app import create_app
 from xuanpu_server.controlplane import InMemoryControlPlane
+from xuanpu_server.collaboration.models import CollaborationConfig
 from xuanpu_server.identity.config import IdentityConfig
 from xuanpu_server.identity.cookies import login_token_hash
 from xuanpu_server.identity.models import LoginSession, UserRecord
@@ -39,10 +40,12 @@ async def serve(directory: Path, port: int) -> None:
     platform = world.platform
     platform.organization.config = OrganizationConfig(enabled=True, tenants=('acme',))
     platform.shared_matters.config = SharedMatterConfig(enabled=True, tenants=('acme',))
+    platform.handoffs.config=CollaborationConfig(enabled=True,tenants=('acme',))
+    platform.approvals.config=CollaborationConfig(enabled=True,tenants=('acme',))
     tokens = {}
-    for name in ('alice', 'bob', 'outsider'):
+    for name in ('alice', 'bob', 'outsider','admin'):
         user, token, now = 'usr_' + name, secrets.token_urlsafe(32), time.time()
-        await platform.identity.store.create_user(UserRecord('acme', user, '合成员工 ' + name, now))
+        await platform.identity.store.create_user(UserRecord('acme', user, '合成员工 ' + name, now,role='tenant_admin' if name=='admin' else 'tenant_member'))
         await platform.identity.store.create_login_session(LoginSession(login_token_hash(token), 'acme', user,
             now, now + 7200, now))
         tokens[name] = token

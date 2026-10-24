@@ -38,6 +38,12 @@ from xuanpu_server.assistant_workspace import (
     attachment_parts,
     workspace_context,
 )
+from xuanpu_server.collaboration.routing import (
+    COLLABORATION_ENTRIES,
+    COLLABORATION_PROMPT,
+    HandoffProposal,
+)
+from xuanpu_server.collaboration.routing import resolve as resolve_collaboration
 from xuanpu_server.controlplane.models import AuditQuery
 from xuanpu_server.errors import PlatformError, RuntimeUnavailableError
 from xuanpu_server.proactive.models import (
@@ -136,12 +142,15 @@ class Choice(BaseModel):
     proactive: ProactiveProposal | None = None
     task_definition: TaskDefinitionProposal | None = None
     shared_draft: SharedProposal | None = None
+    handoff_draft: HandoffProposal | None = None
 
     @model_validator(mode='after')
     def valid_schedule(self) -> Choice:
         """未来执行建议不能混入立即交办分支。"""
         if self.task_definition is not None and self.package!='@task-definitions':
             raise ValueError('执行草稿不能作为立即交办')
+        if self.handoff_draft is not None and self.package!='@collaboration':
+            raise ValueError('交接草稿不能混入其他操作')
         if self.shared_draft is not None and self.package != '@shared':
             raise ValueError('共享草稿不能混入其他业务')
         return self
@@ -223,25 +232,9 @@ class AssistantRouter:
                         saved = dict(prior["metadata"]["route"])
                     else:
                         result = await self._route(who, body, request_id=request_id, claim=claim)
-                        if result.workspace_draft or result.reminder_draft or result.proactive_draft or result.task_definition_draft or result.shared_draft:
+                        if result.workspace_draft or result.reminder_draft or result.proactive_draft or result.task_definition_draft or result.shared_draft or result.handoff_draft:
                             result = replace(result, proposal_id=request_id)
-                        saved = {
-                            "session_id": result.session.session_id if result.session else None,
-                            "message": result.message,
-                            "reminder_draft": result.reminder_draft,
-                            "open_reminders": result.open_reminders,
-                            "workspace_draft": result.workspace_draft,
-                            "open_workspace": result.open_workspace,
-                            "proposal_id": result.proposal_id,
-                            "proactive_draft": result.proactive_draft,
-                            "open_proactive": result.open_proactive,
-                            "work_task_id": result.work_task_id,
-                            "preserve_input": result.preserve_input,
-                            "task_definition_draft": result.task_definition_draft,
-                            "open_task_definitions": result.open_task_definitions,
-                            "open_connections": result.open_connections,
-                            "shared_draft": result.shared_draft, "open_shared": result.open_shared,
-                        }
+                        saved = result.saved()
                     await p.workspace.complete_route(who, request_id, claim["token"], saved)
                 result = await self._saved_outcome(who, saved)
                 text = result.message or (
@@ -313,7 +306,7 @@ class AssistantRouter:
         await p.quota.check_new_turn(tenant)
         catalog = await self._catalog(tenant)
         if who.user_id:
-            catalog = [*SHARED_ENTRIES, *WORKSPACE_ENTRIES, *REMINDER_ENTRIES, *PROACTIVE_ENTRIES, *TASK_DEFINITION_ENTRIES, *catalog]
+            catalog = [*COLLABORATION_ENTRIES, *SHARED_ENTRIES, *WORKSPACE_ENTRIES, *REMINDER_ENTRIES, *PROACTIVE_ENTRIES, *TASK_DEFINITION_ENTRIES, *catalog]
             if self._platform.connections.config.allows(who.require_tenant()):
                 catalog.append({"package":"@connections","version":"1","entry":"manage",
                     "description":"本人企业只读连接","entry_description":"绑定企业微信、查看本人授权、同意或撤销授权；由员工在原生页面确认"})
@@ -359,6 +352,24 @@ class AssistantRouter:
             outcome = replace(outcome, preserve_input=True)
         return outcome
 
+    async def _resolve_native(self,who: Principal,choice: Choice,input_files: list[InputFile]|tuple[InputFile,...],
+                              matter_id: str|None,request_id: str|None) -> RouteOutcome|None:
+        """平台协作只提出草稿或原生入口，不从模型文字执行权威状态操作。"""
+        p=self._platform
+        if choice.package=='@collaboration':
+            if choice.message is not None or any((choice.reminder,choice.workspace_draft,choice.proactive,choice.task_definition,choice.shared_draft)):
+                raise ValueError('交接草稿不能夹带其他操作')
+            return await resolve_collaboration(p,who,choice.entry,choice.handoff_draft)
+        if choice.package == '@shared':
+            if choice.message is not None or any((choice.reminder, choice.workspace_draft, choice.proactive, choice.task_definition)):
+                raise ValueError('共享建议不能夹带其他操作')
+            return await resolve_shared(p, who, choice.entry, choice.shared_draft)
+        if choice.package=='@task-definitions':
+            return await resolve_definition(p,who,choice.entry,choice.task_definition,input_files,matter_id,request_id)
+        if choice.package == '@connections' and who.user_id and self._platform.connections.config.allows(who.require_tenant()):
+            return RouteOutcome(message='请在本人连接页查看应用范围并确认；也可以直接撤销已有授权。',open_connections=True)
+        return None
+
     async def _resolve(
         self,
         who: Principal,
@@ -371,14 +382,9 @@ class AssistantRouter:
     ) -> RouteOutcome:
         """解析后的选择仍须验证能力范围；模型建议不直接执行提醒。"""
         p = self._platform
-        if choice.package == '@shared':
-            if choice.message is not None or any((choice.reminder, choice.workspace_draft, choice.proactive, choice.task_definition)):
-                raise ValueError('共享建议不能夹带其他操作')
-            return await resolve_shared(p, who, choice.entry, choice.shared_draft)
-        if choice.package=='@task-definitions':
-            return await resolve_definition(p,who,choice.entry,choice.task_definition,input_files,matter_id,request_id)
-        if choice.package == '@connections' and who.user_id and self._platform.connections.config.allows(who.require_tenant()):
-            return RouteOutcome(message='请在本人连接页查看应用范围并确认；也可以直接撤销已有授权。',open_connections=True)
+        native=await self._resolve_native(who,choice,input_files,matter_id,request_id)
+        if native is not None:
+            return native
         if choice.package == "@proactive":
             if not who.user_id or choice.message is not None or choice.reminder or choice.workspace_draft:
                 raise ValueError("业务跟进建议无效")
@@ -572,7 +578,7 @@ class AssistantRouter:
             request = taifeng.ApiRequest.model_validate(
                 {
                     "model": "fast",
-                    "system_prompt": [system_prompt or (_PROMPT + WORKSPACE_PROMPT + TASK_DEFINITION_PROMPT + PROACTIVE_ROUTING + SHARED_PROMPT)],
+                    "system_prompt": [system_prompt or (_PROMPT + WORKSPACE_PROMPT + TASK_DEFINITION_PROMPT + PROACTIVE_ROUTING + SHARED_PROMPT + COLLABORATION_PROMPT)],
                     "input_items": [
                         {
                             "type": "message",
@@ -640,7 +646,7 @@ class AssistantRouter:
         estimated = not usage
         values = usage or {
             "input_tokens": len(payload)
-            + len(prompt or (_PROMPT + WORKSPACE_PROMPT + TASK_DEFINITION_PROMPT + PROACTIVE_ROUTING + SHARED_PROMPT))
+            + len(prompt or (_PROMPT + WORKSPACE_PROMPT + TASK_DEFINITION_PROMPT + PROACTIVE_ROUTING + SHARED_PROMPT + COLLABORATION_PROMPT))
             + self._attachment_estimate(parts),
             "output_tokens": len(output),
         }

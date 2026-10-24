@@ -290,6 +290,7 @@ $("send").addEventListener("submit", async event => {
       ...extras,
     }});
     if (epoch !== conn.epoch || generation !== chat.generation) return;
+    if (typeof handleCollaborationRoute === "function" && await handleCollaborationRoute(route,text)) return;
     if (typeof handleSharedRoute === "function" && await handleSharedRoute(route,text)) return;
     if (typeof handleConnectionRoute === "function" && await handleConnectionRoute(route,text)) return;
     if (typeof handleTaskDefinitionRoute === "function" && await handleTaskDefinitionRoute(route,text)) return;
