@@ -319,9 +319,12 @@ class PostgresControlPlane:
         )
 
     async def get_secret(self, tenant_id: str, name: str) -> SecretRecord | None:
-        """取一条密钥。"""
+        """协调事务中共享锁固定密文，防止安装提交前被独立更新覆盖。"""
+        sql = f"SELECT tenant_id,name,ciphertext,updated_at,updated_by FROM {self._t['secret']} WHERE tenant_id = $1 AND name = $2"
+        if read_connection(self._pool, sql) is not None:
+            sql += ' FOR SHARE'
         row = await self._fetchrow(
-            f"SELECT * FROM {self._t['secret']} WHERE tenant_id = $1 AND name = $2",
+            sql,
             tenant_id,
             name,
         )

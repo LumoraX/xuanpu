@@ -12,6 +12,7 @@ from urllib.parse import quote
 
 import httpx
 
+from xuanpu_sdk.capabilities import CapabilityClient
 from xuanpu_sdk.collaboration import CollaborationClient
 from xuanpu_sdk.connections import ConnectionClient
 from xuanpu_sdk.errors import XuanpuError, XuanpuTransportError
@@ -413,7 +414,7 @@ class Admin:
         return [UserUsage.from_json(item) for item in body["usage"]]
 
 
-class XuanpuClient(TaskDefinitionClient, ConnectionClient, OrganizationClient, SharedMattersClient, CollaborationClient):
+class XuanpuClient(TaskDefinitionClient, ConnectionClient, OrganizationClient, SharedMattersClient, CollaborationClient, CapabilityClient):
     """平台客户端。
 
     用法::

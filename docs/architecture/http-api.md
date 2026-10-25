@@ -962,3 +962,19 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | `/v1/collaboration-notifications` | GET after_id/before_id/limit/latest的独立总数/未读/权限摘要；POST `/{id}/read`本人CAS标读 |
 
 `/v1/notifications`增加collaboration来源分页；统一SSE增加collaboration_notification、collaboration_notifications_changed，用独立collaboration_after_id，不覆盖个人提醒Last-Event-ID。通知和期限只在站内，无外部写入。
+
+
+## 能力目录与安装（R4-A）
+
+以下接口已实现；写入须固定request_id，Cookie仍须CSRF。输入未知字段/类型422且不回显原值；当前权限不足403、异租户或缺失记录404、前提或CAS变化409。除本人目录外仅租户管理员可用。
+
+| 方法与路径 | 正文或查询 | 返回 |
+| --- | --- | --- |
+| POST /v1/capabilities | request_id、delivery（严格xuanpu-delivery/v1） | 201：capability_id、revision、digest、delivery、can_run=false；相同描述复用修订 |
+| GET /v1/capabilities | limit=1–100，cursor可选 | items、分页前total、next_cursor、installations、configuration_enabled；items为说明修订 |
+| GET /v1/me/capabilities | 无；必须有启用员工身份 | capabilities=[]、total=0、status=not_assigned；A没有分配事实 |
+| POST /v1/capabilities/{id}/install-previews | request_id、revision；可选public_config、secret_refs、connection_refs | 201：id、digest、expires_at、expected_version、requirements、diff、credentials配置状态、can_install、can_run=false |
+| POST /v1/capabilities/{id}/installations | request_id、preview_id、expected_version、confirmed=true | 201：id、capability_id、version、config_revision、status=staged、can_run=false |
+| POST /v1/installations/{id}/state | request_id、expected_version、status=draining/disabled | 当前安装状态与递增version；ready因尚无B/C发布证据409 |
+
+预检有效期默认900秒，内部证据固定归档、策略、完整MCP清单及凭据密文版本，安装前重检。diff仅含公开权限/上一安装权限及配置槽名，不回显配置值、密文指纹或实际秘密引用。新登记/预检/安装要求capability_delivery明确开启并命中租户白名单；查询与停止不受该新受理开关阻断。精确契约见[能力架构](capability-delivery.md)。

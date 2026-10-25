@@ -2067,7 +2067,7 @@ wheels = [
 
 [[package]]
 name = "xuanpu-cli"
-version = "2026.10.24.1"
+version = "2026.10.25.1"
 source = { editable = "packages/xuanpu-cli" }
 dependencies = [
     { name = "xuanpu-console" },
@@ -2086,7 +2086,7 @@ requires-dist = [
 
 [[package]]
 name = "xuanpu-console"
-version = "2026.10.24.1"
+version = "2026.10.25.1"
 source = { editable = "packages/xuanpu-console" }
 
 [[package]]
@@ -2096,7 +2096,7 @@ source = { virtual = "packages/xuanpu-desktop" }
 
 [[package]]
 name = "xuanpu-sdk-py"
-version = "2026.10.24.1"
+version = "2026.10.25.1"
 source = { editable = "packages/xuanpu-sdk-py" }
 dependencies = [
     { name = "httpx" },
@@ -2107,7 +2107,7 @@ requires-dist = [{ name = "httpx", specifier = ">=0.27" }]
 
 [[package]]
 name = "xuanpu-server"
-version = "2026.10.24.1"
+version = "2026.10.25.1"
 source = { editable = "packages/xuanpu-server" }
 dependencies = [
     { name = "cryptography" },

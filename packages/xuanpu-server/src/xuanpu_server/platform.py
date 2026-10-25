@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 from xuanpu_server.approvals.service import ApprovalService
 from xuanpu_server.assistant import AssistantRouter
 from xuanpu_server.audit import AuditLog
+from xuanpu_server.capabilities.bootstrap import build_capabilities
 from xuanpu_server.collaboration.lifecycle import CollaborationLifecycle
 from xuanpu_server.collaboration.notifications import CollaborationNotifications
 from xuanpu_server.connections.broker import CredentialBroker
@@ -93,6 +94,7 @@ if TYPE_CHECKING:
 
     import httpx
 
+    from xuanpu_server.capabilities.config import CapabilityDeliveryConfig
     from xuanpu_server.collaboration.models import CollaborationConfig
     from xuanpu_server.connections.models import ConnectionConfig
     from xuanpu_server.controlplane.store import ControlPlaneStore
@@ -150,6 +152,7 @@ class Platform:
         task_activity: ActivityConfig | None = None,
         connections: ConnectionConfig | None = None,
         organization: OrganizationConfig | None = None,
+        capability_delivery: CapabilityDeliveryConfig | None = None,
         shared_matters: SharedMatterConfig | None = None,
         handoffs: CollaborationConfig | None = None,
         approvals: CollaborationConfig | None = None,
@@ -266,6 +269,8 @@ class Platform:
             store, self.audit, data_dir=data_dir, objects=self.objects, now=now
         )
         self.connections.packages=self.packages
+        self.capabilities = build_capabilities(self.organization, self.packages, self.objects,
+            vault, sandboxes, self.audit, data_dir, defaults, capability_delivery)
         durable = durable_execution or DurableExecutionConfig()
         self.work_tasks = WorkTaskService(self.workspace, self.packages,
             process_owner=self.instance_id, now=now, durable=durable)
@@ -359,6 +364,7 @@ class Platform:
         await self._instance_guard.acquire()
         try:
             await self.packages.start()
+            await self.capabilities.installations.preflight.inventory.recover()
             if self._closed or self._instance_guard.lost:
                 raise RuntimeError("启动准备期间已关闭或丢失持有权")
             await self.sessions.start()
@@ -387,6 +393,7 @@ class Platform:
             self.sessions.stop_accepting()
             errors: list[BaseException] = []
             actions = (self.shared_notifications.close, self.shared_publication_recovery.close, self.shared_materials.publications.close,
+                       self.capabilities.installations.preflight.inventory.close,
                        self.organization_lifecycle.close, self.trigger_worker.close, self.task_registry.close, self.proactive_worker.close, self.reminders.close,
                        self.notification_sender.close, self.assistant.close,
                        self.identity.maintenance.close, self.identity.disabling.close,

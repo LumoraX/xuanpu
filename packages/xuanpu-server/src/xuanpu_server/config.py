@@ -22,6 +22,7 @@ from pydantic import (
     model_validator,
 )
 
+from xuanpu_server.capabilities.config import CapabilityDeliveryConfig
 from xuanpu_server.collaboration.models import CollaborationConfig
 from xuanpu_server.connections.models import ConnectionConfig
 from xuanpu_server.identity.config import IdentityConfig, normalize_origin
@@ -310,6 +311,7 @@ class ServerConfig(_Section):
     task_activity: ActivityConfig = ActivityConfig()
     connections: ConnectionConfig = ConnectionConfig()
     organization: OrganizationConfig = OrganizationConfig()
+    capability_delivery: CapabilityDeliveryConfig = CapabilityDeliveryConfig()
     shared_matters: SharedMatterConfig = SharedMatterConfig()
     handoffs: CollaborationConfig = CollaborationConfig()
     approvals: CollaborationConfig = CollaborationConfig()

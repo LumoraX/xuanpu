@@ -400,6 +400,7 @@ class ConnectorSet:
         startup_timeout_seconds: float = 30.0,
         managed_connections: ManagedHttpTools | None = None,
         package_digest: str = "",
+        strict_cleanup: bool = False,
     ) -> None:
         """
         Args:
@@ -429,6 +430,9 @@ class ConnectorSet:
         self._mcp: list[McpRun] = []
         self._http_clients: list[HttpApiClient] = []
         self._pending: list[_Pending] = []
+        self._observed: dict[str, dict[str, Any]] = {}
+        self._strict_cleanup = strict_cleanup
+        self._failed_closers: list[Callable[[], Awaitable[None]]] = []
         # 工具全名 → 登记信息。来自清单与列出的工具，关闭连接器之后仍然有效
         self._catalog: dict[str, ConnectorToolInfo] = {}
 
@@ -484,7 +488,8 @@ class ConnectorSet:
         spawn = functools.partial(
             run.spawn, spec.command, env=env, cwd=cwd, request_timeout=self._call_timeout
         )
-        return await open_mcp(run, spec, spawn, timeout=self._startup_timeout)
+        return await open_mcp(run, spec, spawn, timeout=self._startup_timeout,
+                              observe=functools.partial(self._observe, spec))
 
     async def _start_remote(self, spec: ConnectorSpec) -> list[McpTool]:
         """连上远端 MCP server 并列出工具。不进沙盒：它本来就是一次网络调用。
@@ -507,7 +512,24 @@ class ConnectorSet:
         )
         self._mcp.append(run)
         connect = functools.partial(run.connect, request_timeout=self._timeout_of(spec))
-        return await open_mcp(run, spec, connect, timeout=self._startup_timeout)
+        return await open_mcp(run, spec, connect, timeout=self._startup_timeout,
+                              observe=functools.partial(self._observe, spec))
+
+    def _observe(self, spec: ConnectorSpec, tools: dict[str, dict[str, Any]]) -> None:
+        """R4预检另外冻结白名单过滤前的完整工具结构，不赋予调用权。"""
+        from xuanpu_server.capabilities.delivery import fingerprint
+
+        for name, tool in tools.items():
+            schema = tool.get('inputSchema')
+            self._observed[spec.tool_name(name)] = {'name': spec.tool_name(name),
+                'schema_sha256': fingerprint(schema if isinstance(schema, dict) else {'type': 'object'}),
+                'effect': spec.effect_of(name)}
+
+    def inventory_digest(self) -> str:
+        """只返回不可变实际清单摘要，工具描述不进入配置或审计。"""
+        from xuanpu_server.capabilities.delivery import fingerprint
+
+        return fingerprint([self._observed[k] for k in sorted(self._observed)])
 
     def _timeout_of(self, spec: ConnectorSpec) -> float:
         """单次调用的超时：http 与 remote 连接器按清单的 ``timeoutSeconds`` 与平台超时取小的。"""
@@ -620,11 +642,23 @@ class ConnectorSet:
         runs, self._mcp = self._mcp, []
         http, self._http_clients = self._http_clients, []
         self._pending = []
-        for closer in [run.close for run in runs] + [client.close for client in http]:
+        closers, self._failed_closers = self._failed_closers + [run.close for run in runs] + [client.close for client in http], []
+        for index, closer in enumerate(closers):
             try:
                 await closer()
-            except Exception:
-                logger.exception("关闭连接器失败")
+            except BaseException as exc:
+                if not isinstance(exc, Exception):
+                    self._failed_closers.extend(closers[index:])
+                    raise
+                self._failed_closers.append(closer)
+                if self._strict_cleanup:
+                    logger.warning("预检连接器关闭失败: %s", type(exc).__name__)
+                else:
+                    logger.exception("关闭连接器失败")
+        if self._strict_cleanup and self._failed_closers:
+            from xuanpu_server.errors import RuntimeCleanupRequiredError
+
+            raise RuntimeCleanupRequiredError('预检连接器尚未退出', self.close)
 
 
 __all__ = [

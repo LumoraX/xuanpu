@@ -1,6 +1,6 @@
 [project]
 name = "xuanpu-sdk-py"
-version = "2026.10.24.1"
+version = "2026.10.25.1"
 description = "xuanpu 平台的 Python 客户端"
 readme = "README.md"
 requires-python = ">=3.12"
