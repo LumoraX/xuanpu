@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from dataclasses import dataclass, field
@@ -86,6 +87,7 @@ class VaultAuthTransport(httpx.AsyncBaseTransport):
         self._tenant_id = tenant_id
         self._vault = vault
         self._closed = False
+        self._close_lock = asyncio.Lock()
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         """加上凭据头后交给内层传输。
@@ -107,10 +109,11 @@ class VaultAuthTransport(httpx.AsyncBaseTransport):
 
     async def aclose(self) -> None:
         """关闭内层传输。重复调用无害。"""
-        if self._closed:
-            return
-        self._closed = True
-        await self._inner.aclose()
+        async with self._close_lock:
+            if self._closed:
+                return
+            await self._inner.aclose()
+            self._closed = True
 
 
 @dataclass

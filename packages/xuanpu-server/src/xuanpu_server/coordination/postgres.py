@@ -6,6 +6,7 @@ import json
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
+from xuanpu_server.capabilities.postgres import load_capabilities, save_capabilities
 from xuanpu_server.collaboration.locks import purpose_participants
 from xuanpu_server.collaboration.postgres import load_collaboration, save_collaboration
 from xuanpu_server.collaboration.store import validate_collaboration
@@ -79,6 +80,7 @@ class PostgresCoordinationStore:
             await save_profiles(conn, self._namespace, tx)
             await save_shared(conn, self._namespace, tenant, before.shared, state.shared)
             await save_collaboration(conn, self._namespace, tenant, before.collaboration, state.collaboration)
+            await save_capabilities(conn, self._namespace, tenant, before.capabilities, state.capabilities)
             await self._save(conn, tenant, before, state)
 
     async def _lock_tenant(self, conn: Connection, tenant: str) -> None:
@@ -102,7 +104,7 @@ class PostgresCoordinationStore:
 
     async def _load(self, conn: Connection, tenant: str) -> CoordinationState:
         """类型化解析失败明确中止，不能吞掉损坏的记录。"""
-        state = CoordinationState(collaboration=await load_collaboration(conn, self._namespace, tenant), organization=await load_organization(conn, self._namespace, tenant),
+        state = CoordinationState(capabilities=await load_capabilities(conn, self._namespace, tenant), collaboration=await load_collaboration(conn, self._namespace, tenant), organization=await load_organization(conn, self._namespace, tenant),
                                   shared=await load_shared(conn, self._namespace, tenant))
         for row in await conn.fetch(f"SELECT record FROM {self._t['coordination_receipt']} WHERE tenant_id=$1", tenant):
             receipt = CoordinationReceipt.model_validate_json(row['record'])

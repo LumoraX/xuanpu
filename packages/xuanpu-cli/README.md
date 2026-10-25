@@ -175,3 +175,7 @@ SDK经合成租户的正式ASGI/认证/双后端测试验证，真实员工使�
 | notifications/read-notification | 当前本人站内动态及幂等标读 |
 
 上传不提升整事项编辑权。组织批准、承办交付和发起人签收分别记录，不能用后台任务成功或模型文字代替。当前为未部署候选；完整功能与生产验收进度以发布证据为准。
+
+## 能力目录与安装（R4-A）
+
+`xuanpu capabilities --credentials <私有JSON> list|mine|register|install-preview|install|state`使用公开SDK。写入传`--body`文件；install-preview/install/state还需精确记录编号。凭据文件权限须仅当前用户可读，含base_url/api_key及可选act_as_user；拒绝正文覆盖身份。保留原操作号重试，confirmed必须由调用者明确提供。当前不激活或分配运行；[手册和实际本地命令](../../docs/guides/capability-delivery.md)。

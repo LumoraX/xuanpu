@@ -172,6 +172,21 @@ class EncryptedVault:
             raise SecretMissingError(f"密钥 {name!r} 尚未配置")
         return self._open(tenant_id, name, record.ciphertext)
 
+    async def get_bound(self, tenant_id: str, name: str, expected_record_digest: str) -> str:
+        """从同一记录校验密文版本再解密，避免校验后另读已换值的秘密。"""
+        import hashlib
+        import hmac
+
+        from xuanpu_server.errors import ConflictError
+
+        record = await self._store.get_secret(tenant_id, name)
+        if record is None:
+            raise SecretMissingError('绑定的密钥尚未配置')
+        actual = hashlib.sha256(record.ciphertext).hexdigest()
+        if not hmac.compare_digest(actual, expected_record_digest):
+            raise ConflictError('密钥记录已变化，请重新预检安装配置')
+        return self._open(tenant_id, name, record.ciphertext)
+
     async def names(self, tenant_id: str) -> list[str]:
         """列出名字。"""
         return await self._store.list_secret_names(tenant_id)

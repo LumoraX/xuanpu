@@ -75,6 +75,7 @@ $("tabs").addEventListener("click", (event) => {
     section.classList.toggle("active", section.id === "tab-" + button.dataset.tab);
   }
   if (button.dataset.tab === "users") loadUsers(true).catch(fail);
+  if (button.dataset.tab === "capabilities") openCapabilities(true).catch(fail);
   if (button.dataset.tab === "usage" && !$("usage-since").value) {
     const today = new Date().toISOString().slice(0, 10);
     $("usage-until").value = today;

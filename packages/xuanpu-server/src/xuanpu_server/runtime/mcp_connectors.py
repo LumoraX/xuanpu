@@ -149,6 +149,7 @@ async def open_mcp(
     connect: Callable[[], Awaitable[taifeng.McpClient]],
     *,
     timeout: float,
+    observe: Callable[[dict[str, dict[str, Any]]], None] | None = None,
 ) -> list[McpTool]:
     """建连、列工具、核对清单声明的工具都在，返回白名单内的工具。
 
@@ -173,6 +174,8 @@ async def open_mcp(
         raise RuntimeUnavailableError(
             f"连接器 {spec.name!r} 启动失败：{type(exc).__name__}"
         ) from None
+    if observe is not None:
+        observe(listed)
     missing = [tool.name for tool in spec.tools if tool.name not in listed]
     if missing:
         logger.error(

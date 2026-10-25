@@ -191,3 +191,12 @@ approvals:
   enabled: false
   tenants: []
   max_active: 500
+
+# R4-A：能力目录与安装默认关闭；staged配置不会授予执行权。
+# capability_delivery:
+#   enabled: false
+#   tenants: []             # 必须同时显式开启并列出租户，空名单始终关闭
+#   max_revisions: 1000     # 1–10000；达到上限明确拒绝，不自动删除历史
+#   max_previews: 1000      # 1–10000
+#   preview_seconds: 900    # 60–900；确认时重查依赖与版本
+#   probe_seconds: 30       # 1–60；只握手/列工具，不调用业务工具或模型

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>玄圃 · 个人工作站</title>
-<link rel="stylesheet" href="style.css?v=7cb32b200f7ee6a6">
+<link rel="stylesheet" href="style.css?v=12bbfd9b857d98f6">
 <link rel="stylesheet" href="workspace.css?v=4ddbccecd3565ccc">
 </head>
 <body>
@@ -37,6 +37,7 @@
   <button data-tab="sessions" class="active">会话</button>
   <button id="functions-tab" data-tab="functions" class="hidden">功能</button>
   <button data-admin data-tab="packages" class="hidden">业务包</button>
+  <button data-admin data-tab="capabilities" class="hidden">能力配置</button>
   <button data-admin data-tab="audit" class="hidden">审计</button>
   <button data-admin data-tab="usage" class="hidden">用量</button>
   <button data-admin data-tab="users" class="hidden">用户</button>
@@ -146,6 +147,7 @@
       <article class="function-card"><h2>工作交接与审批</h2><p>直接交给具体员工，核对成果、审批并独立签收。无需先建部门。</p><button id="open-collaboration" type="button">查看我的协作</button></article>
       <article class="function-card"><h2>共享协作</h2><p>直接邀请具体员工，共同核对资料。部门与岗位可选。</p><button id="open-shared" type="button">查看共享事项</button></article>
       <article class="function-card"><h2>组织与职责</h2><p>查看本人的部门与职责。获授权的同事可配置部门、岗位和业务职责。</p><button id="open-organization" type="button">查看组织与职责</button></article>
+      <article class="function-card"><h2>我的能力</h2><p>查看企业已分配的可运行能力。能力分配与资料读取授权分别核对。</p><button id="open-capabilities" type="button">查看我的能力</button></article>
       <article class="function-card"><h2>我的文件</h2><p>文件夹、附件、版本和回收站，始终属于你的个人空间。</p><button data-workspace="file" type="button">打开文件</button></article>
       <article class="function-card"><h2>事项与待办</h2><p>查看进展、关联资料，记录下一步工作。</p><button data-workspace="matter" type="button">打开事项</button> <button data-workspace="todo" type="button" class="ghost">查看待办</button></article>
       <article class="function-card"><h2>日程</h2><p>安排自己的时间，查看日程和到期提醒。</p><button data-workspace="event" type="button">打开日程</button></article>
@@ -155,6 +157,7 @@
       <article class="function-card"><h2>通知</h2><p>查看到期提醒和送达情况，离线期间的通知也会保留。</p><button id="open-notification-module" type="button" class="ghost">查看通知</button></article>
     </div>
     <div id="reminder-module-host"></div>
+    <div id="capability-employee-host"><section id="capability-panel" class="reminder-preview hidden" aria-label="我的能力与配置"><div class="row"><h2>我的能力与配置</h2><button id="close-capabilities" type="button">收起</button></div><p id="capability-feedback" role="status"></p><div id="capability-list"></div></section></div>
   </section>
 
   <section id="collaboration-panel" class="reminder-preview hidden" aria-label="工作交接与组织审批"><div class="row"><h2>我的协作</h2><button id="close-collaboration" type="button">收起</button></div><p id="collaboration-feedback" role="status"></p><div id="collaboration-list"></div></section>
@@ -163,6 +166,7 @@
   <section id="connections-panel" class="reminder-preview hidden" aria-label="本人的企业连接"><div class="row"><h2>本人的企业连接</h2><button id="close-connections" type="button">收起</button></div><p id="connections-feedback" role="status"></p><div id="connections-list"></div></section>
 
   <!-- 业务包 -->
+  <section id="tab-capabilities" class="tab"><h2>业务能力配置</h2><p>登记和保存配置不会分配人员或执行工作。</p><div id="capability-admin-host"></div></section>
   <section id="tab-packages" class="tab">
     <form id="publish" class="row">
       <input id="archive" type="file" accept=".zip" required>
@@ -230,7 +234,7 @@
   <div id="notification-alert-list"></div>
   <button id="notification-alert-more" type="button" class="notification-alert-more hidden">更多通知，请到通知中心查看</button>
 </aside>
-<script src="app.js?v=00efe2e81ce34b15"></script>
+<script src="app.js?v=d2d645aa8498d4aa"></script>
 <script src="notification-alerts.js?v=792c67bfd3af9709"></script>
 <script src="notification-center.js?v=d05ed649a76b8947"></script>
 <script src="reminders.js?v=4c73365fc2baf257"></script>
@@ -242,6 +246,7 @@
 <script src="task-definitions.js?v=0bd3fb8e2ad1f7dd"></script>
 <script src="proactive.js?v=309c9879b190024a"></script>
 <script src="connections.js?v=123abc4542d2d122"></script>
+<script src="capabilities.js?v=97017d66dac101ae"></script>
 <script src="organization-forms.js?v=9dc49322557870a3"></script>
 <script src="organization.js?v=627d9b5ce73be6cc"></script>
 <script src="shared-matters.js?v=f1e21f19a2b914d3"></script>
@@ -253,6 +258,6 @@
 <script src="handoff-results.js?v=6047171d1525ad0c"></script>
 <script src="organizational-approvals.js?v=ab3d145d4d7d52da"></script>
 <script src="collaboration-notifications.js?v=b01d4131bcb6422e"></script>
-<script src="identity.js?v=a5db4e5fd029ce30"></script>
+<script src="identity.js?v=f97fc36f276c541b"></script>
 </body>
 </html>

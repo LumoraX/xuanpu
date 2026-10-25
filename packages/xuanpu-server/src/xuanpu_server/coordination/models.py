@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 
 from pydantic import BaseModel, Field, JsonValue
 
+from xuanpu_server.capabilities.models import CapabilityState
 from xuanpu_server.collaboration.models import CollaborationState
 from xuanpu_server.coordination.outbox import CoordinationEvent
 from xuanpu_server.coordination.receipts import CoordinationReceipt, fingerprint, receipt_key
@@ -22,6 +23,7 @@ class CoordinationState(BaseModel):
     organization: OrganizationState = Field(default_factory=OrganizationState)
     shared: SharedState = Field(default_factory=SharedState)
     collaboration: CollaborationState = Field(default_factory=CollaborationState)
+    capabilities: CapabilityState = Field(default_factory=CapabilityState)
     receipts: dict[str, CoordinationReceipt] = Field(default_factory=dict)
     events: dict[str, CoordinationEvent] = Field(default_factory=dict)
     acknowledgements: dict[str, set[str]] = Field(default_factory=dict)

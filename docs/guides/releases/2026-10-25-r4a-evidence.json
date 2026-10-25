@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-25",
+  "stage": "R4-A",
+  "source_status": "local_technical_acceptance_passed",
+  "version": "2026.10.25.1",
+  "schema_source": 20,
+  "production": "not_changed_this_stage",
+  "real_employee_acceptance": "deferred_by_user",
+  "admin_directory_preview": "not_checked",
+  "full_pytest": {
+    "passed": 2623,
+    "skipped": 21,
+    "seconds": 796.06,
+    "exit_code": 0
+  },
+  "mypy_source_files": 342,
+  "lint": "passed",
+  "lock": "passed",
+  "native_browser": {
+    "environment": "loopback_synthetic_memory",
+    "desktop": true,
+    "viewport390": true,
+    "scroll_width390": 390,
+    "tab_focus": true,
+    "staged_after_refresh": true,
+    "stop_confirmed": true,
+    "employee_management_absent": true,
+    "model_calls": 0,
+    "logged_out_and_closed": true
+  },
+  "cli_operations": [
+    "list",
+    "register",
+    "install-preview",
+    "install",
+    "state"
+  ],
+  "machine_mine": "denied",
+  "artifact_files_verified": 386,
+  "wheels": [
+    {
+      "wheel": "xuanpu_cli-2026.10.25.1-py3-none-any.whl",
+      "sha256": "56132f1091706fec5e2fe6139eb27402dc21a7778496f1465e76ea9fc23dbc65",
+      "source_files_verified": 9
+    },
+    {
+      "wheel": "xuanpu_console-2026.10.25.1-py3-none-any.whl",
+      "sha256": "5eb5dfcdfe4c65e9be7b500d15ea6292047730097020cc53918b4bd4cf8ec8b3",
+      "source_files_verified": 30
+    },
+    {
+      "wheel": "xuanpu_sdk_py-2026.10.25.1-py3-none-any.whl",
+      "sha256": "5a9af38abd6f626714bd4078a8bf8faf78306fe4f81aa46c7ba2a4717a4dfe47",
+      "source_files_verified": 12
+    },
+    {
+      "wheel": "xuanpu_server-2026.10.25.1-py3-none-any.whl",
+      "sha256": "b2b93cfb06150d289fa8e8f8541327e338a7a4b9d6adeb34f613c5a5ca478072",
+      "source_files_verified": 335
+    }
+  ],
+  "production_image": "not_built",
+  "production_migration": "not_run",
+  "published_legacy_migrations_unchanged": 19,
+  "independent_review": "no_remaining_blocking_P1_P2",
+  "next_stage": "R4-B",
+  "targeted_pytest": {
+    "passed": 59,
+    "skipped": 1,
+    "seconds": 54.69
+  },
+  "docs_pytest": {
+    "passed": 163,
+    "seconds": 2.39
+  },
+  "failed_iterations_retained": true
+}

@@ -13,6 +13,10 @@
   --assistant: #f1f3f5;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
+
+#capability-panel .function-card, #capability-panel p { overflow-wrap: anywhere; }
+#capability-panel label { display: block; margin: .7rem 0; }
+#capability-panel input, #capability-panel select { max-width: 100%; box-sizing: border-box; }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #14171c; --panel: #1c2027; --line: #2b313a; --text: #e6e8eb; --muted: #9aa3ad;
