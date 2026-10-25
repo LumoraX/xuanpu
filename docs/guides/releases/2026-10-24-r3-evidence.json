@@ -2,6 +2,13 @@
   "recorded_date": "2026-10-24",
   "overall_status": "partial",
   "release_status": "pilot_deployed_pending_real_employee_acceptance",
+  "acceptance_update": {
+    "date": "2026-10-25",
+    "real_employee_acceptance": "deferred_by_user",
+    "tenant_admin_directory_preview": "not_checked",
+    "next_stage": "R4_implementation_planning",
+    "historical_deployment_evidence_unchanged": true
+  },
   "source_commit": "2f5b6d5688cb8504cf1efa60f335752f698ad189",
   "local_main_integrated": true,
   "remote_main_push": "not_performed",
