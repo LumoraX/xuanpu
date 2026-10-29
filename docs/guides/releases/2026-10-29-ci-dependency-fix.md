@@ -1,0 +1,13 @@
+# 主线CI依赖版本修复（2026-10-29）
+
+初次主线推送bd37b9f的[CI](https://github.com/LumoraX/xuanpu/actions/runs/40827037809)失败：测试矩阵停在uv.lock检查，静态任务缺少SandboxOperationOutcomeUnknownError、DockerEnvironment.remove和export_files。CI未进入全量测试，不能将本地全量结果当成GitHub通过。
+
+根因是工作流浮动检出taifeng-sandbox远端main（abfed410fcfb90a6c5e318541297049d653890cf，版本2026.9.29.15），而本地完整验收依赖36322dd68fbaf51c7a8a87a77a1ec38b80d109bf（版本2026.10.21.1）。四个既有修复提供清理重试、启动取消回收、固定目录有界成果导出及超时结果未知语义；未在本次重写适配器或内核。
+
+将已验证的依赖提交发布到taifeng-sandbox的ci/xuanpu-runtime-20261029专用分支，不改变该仓库远端main。xuanpu测试及lint两个job都固定该sandbox SHA和stores的086f212be2867f311f6ad59673b8f521d8ea85fe，避免依赖浮动与锁文件漂移。主线运行时代码、taifeng内核和uv.lock均未更改。
+
+CI新增独立finance_postgres服务、finance_test_ci数据库及对应Docker容器ID，平台仍使用原pgvector服务和test库。财务测试不再因缺少FINANCE_TEST_DSN而整体跳过；备份恢复直接使用专属财务容器。全量继续执行冻结依赖，超时设45分钟以覆盖故障租约等待，不缩减测试或业务断言。没有增加部署步骤、正式供应商动作或真实模型配置。
+
+本地核查：干净目录使用远端旧依赖时uv lock --check失败；替换固定sandbox提交后通过。sandbox全量291 passed、17项平台条件skip、1项xfail；Ruff通过、mypy22 source files通过。xuanpu原合并源全量3979 passed/21条件skip，运行时代码未变，本次未重复旧组合全量；冻结依赖的Ruff与mypy489 source files均通过。最终Linux/Python3.12与3.13结果以修复提交对应的GitHub Actions为准。
+
+不部署、不支付，财务独立存储与真人审批保持。本轮不运行财务业务网关模型，原218/240计数不扩大。
