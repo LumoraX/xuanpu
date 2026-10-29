@@ -1,0 +1,55 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____________ test_leaf_sse_waits_for_parent_suspension_persistence _____________
+
+world_opener = <function world_opener.<locals>.opener at 0x10a655e40>
+local_sandboxes = <function local_sandboxes at 0x10958a480>
+step = <class 'packages.xuanpu-server.tests.conftest.Step'>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2340/test_leaf_sse_waits_for_parent0')
+
+    async def test_leaf_sse_waits_for_parent_suspension_persistence(
+        world_opener: Any, local_sandboxes: Any, step: Any, tmp_path: Path,
+    ) -> None:
+        """父挂起未落盘时初始SSE不能先关闭，避免立即冷关闭丢失可恢复链。"""
+        from types import SimpleNamespace
+    
+        from xuanpu_server.controlplane import InMemoryControlPlane
+        from xuanpu_server.runtime import StateBackends
+    
+        gate = ParentAppendGate(tmp_path / 'gated-threads')
+    
+        class States:
+            """把公开MessageStore包装按构造注入运行时。"""
+    
+            async def for_tenant(self, tenant_id: str) -> StateBackends:
+                """本用例仅acme一个租户，完全隔离于其他状态面。"""
+                assert tenant_id == 'acme'
+                return StateBackends(message_store=lambda: gate)
+    
+        world = await world_opener(store=InMemoryControlPlane(), sandboxes=local_sandboxes(),
+                                   states=States())
+        try:
+            async with records_server() as (url, _), httpx.AsyncClient(
+                transport=httpx.ASGITransport(create_app(world.platform)), base_url='http://xuanpu',
+            ) as http:
+                await publish_nested(SimpleNamespace(world=world), tmp_path / 'gated-package', url)
+                headers = {'Authorization': 'Bearer ' + world.member_key}
+                response = await http.post('/v1/sessions', headers=headers,
+                                           json={'package': 'nested-approval'})
+                sid = response.json()['session_id']
+                world.models.script(step(calls=[('delegate', 'call_skill',
+                    {'skill_id': 'child', 'reason': '真实写入'})]),
+                    step(calls=[('write', 'api__records__append', {})]))
+                request = asyncio.create_task(http.post(f'/v1/sessions/{sid}/messages',
+                                                       headers=headers, json={'text': '保存'}))
+                await asyncio.wait_for(gate.entered.wait(), 5)
+                try:
+                    # 这是受控门闩下的完成性断言，不靠睡眠等后台“碰巧”追上。
+>                   with pytest.raises(TimeoutError):
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                   Failed: DID NOT RAISE TimeoutError
+
+packages/xuanpu-server/tests/identity/test_nested_resume.py:239: Failed
+=========================== short test summary info ============================
+FAILED packages/xuanpu-server/tests/identity/test_nested_resume.py::test_leaf_sse_waits_for_parent_suspension_persistence
+1 failed, 4 deselected in 0.45s

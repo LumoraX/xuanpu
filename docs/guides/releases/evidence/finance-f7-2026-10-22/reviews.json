@@ -1,0 +1,35 @@
+{
+  "scope": "F7 internal invoice and reimbursement records",
+  "baseline": "e844796126e2d4dc017cbe9360391abc8230d1f5",
+  "spec_review": {
+    "agent": "f7_gap_audit",
+    "status": "approved",
+    "fixed_findings": [
+      "invoice_information NUL/UTF8",
+      "current attachment replacement",
+      "full text response pagination"
+    ]
+  },
+  "quality_review": {
+    "agent": "f7_quality_review",
+    "status": "approved",
+    "fixed_findings": [
+      "upload operation recovery while editing current form",
+      "funding basis structural changes preserve upload recovery",
+      "expense new line invalidates old confirmation"
+    ]
+  },
+  "frontend_behavior_groups": 16,
+  "external_suppliers": "out_of_f7_scope",
+  "production_status": "not_verified",
+  "release_evidence_review": {
+    "status": "approved",
+    "agent": "f7_quality_review",
+    "full_cases": 2532,
+    "full_skipped": 3,
+    "quick_passed": 107,
+    "quick_skipped": 0,
+    "artifact_and_image_source_equal": true,
+    "cleanup_verified": true
+  }
+}

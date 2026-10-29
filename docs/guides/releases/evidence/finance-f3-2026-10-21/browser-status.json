@@ -1,0 +1,188 @@
+{
+  "invoice": {
+    "id": "c13d164bdd144072874c7b26dc491303",
+    "net": "100.00",
+    "tax": "6.00",
+    "gross": "106.00",
+    "is_red": false,
+    "number": "SYN-COOKIE",
+    "version": 1,
+    "currency": "CNY",
+    "issue_date": "2026-10-21",
+    "line_count": 1,
+    "buyer_tax_id": "BUYER",
+    "usage_status": "confirmed",
+    "seller_tax_id": "SELLER",
+    "ticket_status": "normal",
+    "archive_status": "not_archived",
+    "parser_profile": "urn:xuanpu:finance:synthetic:v1",
+    "posting_status": "not_posted",
+    "legal_entity_id": "company-a",
+    "authority_status": "verified",
+    "available_amount": "106.00",
+    "tax_entry_status": "not_confirmed",
+    "verification_status": "passed",
+    "effective_gross": "106.00",
+    "effective_tax": "6.00",
+    "issued_red_amount": "0.00",
+    "issued_red_tax": "0.00",
+    "available_tax": "6.00",
+    "allocation_shortfall": false,
+    "allocation_frozen": false,
+    "compliance_status": "normal",
+    "compliance_version": 3,
+    "authority_revision": 2,
+    "verification_evidence": {
+      "provider": "tax",
+      "valid_until": "2026-10-21T15:30:15.268126+00:00",
+      "verified_at": "2026-10-21T14:30:15.268126+00:00",
+      "raw_response_ref": "f3receipt_b9edecdd9a654409a601ccbce729ebd0",
+      "authority_revision": 2,
+      "effective_valid_until": "2026-10-21T15:30:15.268126+00:00"
+    }
+  },
+  "compliance": {
+    "id": "c13d164bdd144072874c7b26dc491303",
+    "invoice_id": "c13d164bdd144072874c7b26dc491303",
+    "legal_entity_id": "company-a",
+    "content_version": 1,
+    "version": 3,
+    "authority_revision": 2,
+    "provider": "tax",
+    "configuration_version": 1,
+    "provider_generation": 1,
+    "verification_status": "passed",
+    "invoice_status": "normal",
+    "valid_until": "2026-10-21T15:30:15.268126+00:00",
+    "snapshot": {
+      "kind": "tax",
+      "usage_kind": "vat_deduction",
+      "adjustments": [],
+      "observed_at": "2026-10-21T14:30:15.268126+00:00",
+      "valid_until": "2026-10-21T15:30:15.268126+00:00",
+      "usage_status": "confirmed",
+      "invoice_status": "normal",
+      "verification_id": "v1",
+      "red_letter_cases": [],
+      "tax_entry_status": "unconfirmed",
+      "accounting_period": "2026-10",
+      "authority_revision": 2,
+      "verification_status": "passed",
+      "usage_confirmation_id": "usage1",
+      "tax_entry_confirmation_id": null
+    },
+    "effective_gross": "106.00",
+    "effective_tax": "6.00",
+    "available_amount": "106.00",
+    "available_tax": "6.00",
+    "allocation_shortfall": false,
+    "allocation_frozen": false,
+    "simulation": true
+  },
+  "plans": {
+    "items": [
+      {
+        "id": "f3plan_8dc7062129b843c0bc7acf5eb04eec29",
+        "version": 1,
+        "legal_entity_id": "company-a",
+        "action": "verify_invoice",
+        "target_type": "invoice",
+        "target_id": "c13d164bdd144072874c7b26dc491303",
+        "target_version": 1,
+        "parameters": {},
+        "simulation": true,
+        "expires_at": "2026-10-22T14:19:19.004298+00:00",
+        "required_approvals": [],
+        "effects": [
+          "查询原外部事实，受理不代表查验或封存成功"
+        ],
+        "digest": "a963a9eb23fae0db3c5a36280acfdb874a8e451c02ce76409e1b217d1455bb83",
+        "prepared_by": "usr_34fc731538709ec9e6d70688",
+        "owner_id": "usr_4af016728fe33499fdc19315",
+        "executable": true,
+        "blockers": [],
+        "amount": "106.00"
+      },
+      {
+        "id": "f3plan_8902818fe81349ddb025ce6f822f116d",
+        "version": 1,
+        "legal_entity_id": "company-a",
+        "action": "confirm_usage",
+        "target_type": "invoice",
+        "target_id": "c13d164bdd144072874c7b26dc491303",
+        "target_version": 2,
+        "parameters": {
+          "accounting_period": "2026-10"
+        },
+        "simulation": true,
+        "expires_at": "2026-10-22T14:22:07.732588+00:00",
+        "required_approvals": [
+          "usr_21685ebc5f84e3fc770fb460"
+        ],
+        "effects": [
+          "按固定原始事实执行合规动作，受理不代表权威成功"
+        ],
+        "digest": "b224fb41b494cff46f6413ff7e9e0aab61f59bf8920dd1ad7ac03c45dae44c25",
+        "prepared_by": "usr_34fc731538709ec9e6d70688",
+        "owner_id": "usr_4af016728fe33499fdc19315",
+        "executable": false,
+        "blockers": [
+          "VERSION_CONFLICT:合规目标版本已变化"
+        ],
+        "amount": "106.00",
+        "tax": "6.00",
+        "workflow": {
+          "id": "f3wf_2b3401de1405431e9e40631ce204be38",
+          "version": 2,
+          "status": "approved",
+          "current_step_id": null,
+          "target_version": 1,
+          "policy_version": 1,
+          "provider": "internal",
+          "due_at": "2026-10-22T14:22:07.732588+00:00",
+          "steps": [
+            {
+              "id": "f3step_4a07cae2deba40dfad7d1f2a3950933b",
+              "version": 2,
+              "approver_user_id": "usr_21685ebc5f84e3fc770fb460",
+              "status": "approved",
+              "name": "专用审批"
+            }
+          ]
+        }
+      },
+      {
+        "id": "f3plan_e5d2d57dc6dc41a3b45153d9ed63f10e",
+        "version": 1,
+        "legal_entity_id": "company-a",
+        "action": "approve",
+        "target_type": "action_plan",
+        "target_id": "f3plan_8902818fe81349ddb025ce6f822f116d",
+        "target_version": 1,
+        "parameters": {
+          "workflow_step_id": "f3step_4a07cae2deba40dfad7d1f2a3950933b"
+        },
+        "simulation": true,
+        "expires_at": "2026-10-22T14:22:07.732588+00:00",
+        "required_approvals": [],
+        "effects": [
+          "追加当前实际审批人的明确人工决定"
+        ],
+        "digest": "d8b7e14e18cf660c92549321f09e799f462a95df32f97ec93dbe972daf1ed47b",
+        "prepared_by": "usr_21685ebc5f84e3fc770fb460",
+        "owner_id": "usr_4af016728fe33499fdc19315",
+        "executable": false,
+        "blockers": [
+          "VERSION_CONFLICT:合规目标版本已变化"
+        ]
+      }
+    ],
+    "total": 3,
+    "next_cursor": null
+  },
+  "signed_requests": 43,
+  "origins": [
+    "human"
+  ],
+  "model": "disabled"
+}

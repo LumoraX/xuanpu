@@ -1,0 +1,17 @@
+财务F1独立Compose镜像烟测：通过
+最终镜像：xuanpu-finance:2026.10.21.2
+实际镜像与容器镜像ID：sha256:94cca99627fc7c040d041929a2b4a75a19ce504bc45d6ff22df9d06202640e6f
+项目：finance-f1-smoke-831564629d21
+开始：2026-10-21T08:34:01.180238+00:00
+结束：2026-10-21T08:34:19.849404+00:00
+
+真实容器API流程：internal_record草稿201 → submit预检201 → agent执行403 HUMAN_REQUIRED → human执行202 → under_review → review-queue=1 → restart同一API容器 → 原claim/version/workflow/step均保留，queue仍为1 → 实际分派reviewer预检并human批准202 → approved，queue=0。
+真实EdDSA短期签名、实际HTTP请求摘要绑定与持久防重放、独立PG、UID10001容器、只读根与cap_drop等实际运行。
+数据库检查：{"database": "finance", "version_major": 16, "claims": 1, "approved": 1, "decisions": 1, "grant_scope": "expense_approved", "grant_active": true, "business_operations": 2, "outbox_pending": 2, "invoice_count": 0, "allocation_count": 0, "f0_import_count": 0}
+
+证据边界：在线员工身份为临时鉴权stub，未将此记录称为真实平台cookie/真实员工登录联调。记录及公司均为合成数据，无真实发票、付款、入账、税务验真或消息送达。业务outbox保持pending。
+数据库镜像：本次按授权使用已缓存postgres:16-alpine；正式Compose配置仍为postgres:17-alpine，本记录不证明PG17容器运行。
+
+首次两轮失败属于烟测脚本：临时override使用动态HostPort，Docker restart重新分配端口，客户端仍轮询旧端口。第二轮诊断已确认新端口health200、容器healthy、正常启动日志。只修临时烟测脚本重新读取PortBinding，产品源码未因该问题变更。正式Compose固定8443不存在该脚本端口变化。保留attempt1-failed及attempt2-harness-diagnosis原始失败/诊断；attempt3-prior-image-passed是元数据更新前镜像证明；compose-container-smoke.json为最终镜像证明。
+
+清理：独占project已down --volumes，剩余容器0、卷0、网络0；临时runtime/密钥删除、身份stub关闭。原测试PG60031的容器ID及启动时间前后相同，仅只读inspect确认，没有连接或修改其数据库。

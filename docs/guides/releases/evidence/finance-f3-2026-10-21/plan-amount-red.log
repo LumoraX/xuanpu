@@ -1,0 +1,20 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________ test_human_tax_plan_exposes_derived_amount_and_tax ______________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10c46b650>
+
+    async def test_human_tax_plan_exposes_derived_amount_and_tax(store: Any) -> None:
+        """人工确认卡必须能看到实际推导金额和税额，不能只显示破折号。"""
+        from .test_f3_guards import usage_plan, verified
+    
+        _,tax,_ = await verified(store)
+        plan = await usage_plan(store,tax)
+>       assert plan["amount"] == "100.00" and plan["tax"] == "10.00"
+               ^^^^^^^^^^^^^^
+E       KeyError: 'amount'
+
+packages/xuanpu-finance/tests/test_f3_projection.py:69: KeyError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f3_projection.py::test_human_tax_plan_exposes_derived_amount_and_tax
+1 failed in 0.40s

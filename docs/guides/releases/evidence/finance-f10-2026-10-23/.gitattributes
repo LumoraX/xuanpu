@@ -1,0 +1,3 @@
+# 保留原始测试回溯与构建输出字节，仅以下确切证据文件豁免行尾空白检查。
+backend-red.log -whitespace
+image-build.log -whitespace

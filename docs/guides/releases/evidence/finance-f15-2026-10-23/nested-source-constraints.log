@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/tmp/xuanpu-finance-f15-constraints.py", line 15, in <module>
+    doc=ast.get_docstring(node);assert doc and re.search('[\u4e00-\u9fff]',doc),(name,node.name,'docstring')
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('packages/xuanpu-sdk-py/tests/test_sdk.py', 'handler', 'docstring')

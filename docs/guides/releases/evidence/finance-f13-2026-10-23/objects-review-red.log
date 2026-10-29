@@ -1,0 +1,73 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___ test_material_worker_preserves_failed_responsibility_then_processes_next ___
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10a7b2e70>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0')
+record_property = <function record_property.<locals>.append_property at 0x10b70dc60>
+
+    async def test_material_worker_preserves_failed_responsibility_then_processes_next(
+        store: FinanceStore, tmp_path: Path, record_property: Any
+    ) -> None:
+        """真实材料坏shard失败保留prepared无回执，同一worker随后处理安全不同shard。"""
+        await prepare(store)
+        root, outside = tmp_path/'objects', tmp_path/'outside'
+        root.mkdir()
+        outside.mkdir()
+        (outside/'sentinel').write_bytes(b'external unchanged')
+        before = snapshot(outside)
+        operation = await store.accept_supporting_materials(WHO, 'company-a', [ref('bad', CONTENT)],
+                                                           'f13-bad-shard')
+        objects = EncryptedLocalObjects(root, b'k'*32)
+        key = f'{WHO.tenant_id}/company-a/{operation["id"]}/0/source'
+        objects._path(key).parent.symlink_to(outside, target_is_directory=True)
+        worker = FinanceWorker(store, objects, Gateway({'bad': CONTENT, 'good': CONTENT}))
+        assert await worker.run_once()
+        failed = await store.get_operation(WHO, operation['id'])
+        item = await store.pool.fetchrow('SELECT * FROM finance_item WHERE operation_id=$1', operation['id'])
+        events = await store.pool.fetch('SELECT kind FROM finance_event WHERE aggregate_id=$1', operation['id'])
+        kinds = [event['kind'] for event in events]
+        receipt_count = await store.pool.fetchval('SELECT count(*) FROM finance_receipt')
+        evidence = {'outside_before': before, 'outside_after': snapshot(outside),
+                    'external_snapshot_equal': snapshot(outside) == before,
+                    'failed_state': failed['items'][0]['state'],
+                    'failed_error': failed['items'][0].get('error_code'),
+                    'prepared_count': kinds.count('original.prepared'),
+                    'receipt_count_after_failed': receipt_count,
+                    'material_success_count_after_failed': kinds.count('material.received')}
+        record_property('f13_objects', json.dumps(evidence))
+        assert failed['status'] == 'failed' and failed['items'][0]['state'] == 'failed'
+        assert failed['items'][0]['error_code'] == 'OBJECT_STORAGE_FAILED'
+        assert item is not None and item['object_key'] == key and item['receipt_id'] is None
+        assert item['actual_sha256'] == hashlib.sha256(CONTENT).hexdigest()
+        assert kinds.count('original.prepared') == 1
+        assert receipt_count == 0 and kinds.count('material.received') == 0
+        assert snapshot(outside) == before
+        next_operation = await store.accept_supporting_materials(
+            WHO, 'company-a', [ref('good', CONTENT)], 'f13-next-safe')
+        next_key = f'{WHO.tenant_id}/company-a/{next_operation["id"]}/0/source'
+        if objects._path(next_key).parent == objects._path(key).parent:
+            current = await store.get_operation(WHO, next_operation['id'])
+            await store.cancel_operation(WHO, next_operation['id'], current['version'], 'f13-skip-shard')
+            next_operation = await store.accept_supporting_materials(
+                WHO, 'company-a', [ref('good', CONTENT)], 'f13-next-safe-2')
+            next_key = f'{WHO.tenant_id}/company-a/{next_operation["id"]}/0/source'
+>       assert objects._path(next_key).parent != objects._path(key).parent
+E       AssertionError: assert PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25') != PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25')
+E        +  where PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25') = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25/25928a1e14f3da100968dcf53b8917ee278de2304fc15d22546ad2d527633c76.enc').parent
+E        +    where PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25/25928a1e14f3da100968dcf53b8917ee278de2304fc15d22546ad2d527633c76.enc') = _path('tenant-a/company-a/0000000000000000000000000000020f/0/source')
+E        +      where _path = <xuanpu_finance.objects.EncryptedLocalObjects object at 0x109bc7950>._path
+E        +  and   PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25') = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25/2563970f750fdfc657ffac739259dca59fc5450fe23ba83c55eccfbb41ae5977.enc').parent
+E        +    where PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25/2563970f750fdfc657ffac739259dca59fc5450fe23ba83c55eccfbb41ae5977.enc') = _path('tenant-a/company-a/00000000000000000000000000000001/0/source')
+E        +      where _path = <xuanpu_finance.objects.EncryptedLocalObjects object at 0x109bc7950>._path
+
+packages/xuanpu-finance/tests/test_f13_objects.py:404: AssertionError
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/_pytest/config/__init__.py:1345
+  /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/_pytest/config/__init__.py:1345: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; anyio
+    self._mark_plugins_for_rewrite(hook, disable_autoload)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f13_objects.py::test_material_worker_preserves_failed_responsibility_then_processes_next
+1 failed, 1 warning in 0.94s

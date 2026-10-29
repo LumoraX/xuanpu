@@ -1,0 +1,134 @@
+{
+  "status": "accounted",
+  "total": 21,
+  "finance_skips": 0,
+  "all_skipped_test_files_identical_to_main_parent": true,
+  "cases": [
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_collaboration_faults",
+      "case": "test_sigkill_coordination_replay_is_single_and_atomic[memory-before_commit-accept-handoff.accept]",
+      "reason": "真实进程故障仅对PostgreSQL执行",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_collaboration_faults",
+      "case": "test_sigkill_coordination_replay_is_single_and_atomic[memory-before_commit-approve-organizational_approval.approve]",
+      "reason": "真实进程故障仅对PostgreSQL执行",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_collaboration_faults",
+      "case": "test_sigkill_coordination_replay_is_single_and_atomic[memory-before_commit-deliver-handoff.deliver]",
+      "reason": "真实进程故障仅对PostgreSQL执行",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_collaboration_faults",
+      "case": "test_sigkill_coordination_replay_is_single_and_atomic[memory-before_commit-sign_off-handoff.sign_off]",
+      "reason": "真实进程故障仅对PostgreSQL执行",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_collaboration_faults",
+      "case": "test_sigkill_coordination_replay_is_single_and_atomic[memory-after_commit-accept-handoff.accept]",
+      "reason": "真实进程故障仅对PostgreSQL执行",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_collaboration_faults",
+      "case": "test_sigkill_coordination_replay_is_single_and_atomic[memory-after_commit-approve-organizational_approval.approve]",
+      "reason": "真实进程故障仅对PostgreSQL执行",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_collaboration_faults",
+      "case": "test_sigkill_coordination_replay_is_single_and_atomic[memory-after_commit-deliver-handoff.deliver]",
+      "reason": "真实进程故障仅对PostgreSQL执行",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_collaboration_faults",
+      "case": "test_sigkill_coordination_replay_is_single_and_atomic[memory-after_commit-sign_off-handoff.sign_off]",
+      "reason": "真实进程故障仅对PostgreSQL执行",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_real_model",
+      "case": "test_real_model_reads_managed_profile_without_credentials[postgres]",
+      "reason": "真实模型需显式指定私有配置",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_shared_fault_matrix",
+      "case": "test_sigkill_after_real_object_copy_recovers_once[memory]",
+      "reason": "真实进程持久化故障只对PostgreSQL执行",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_shared_fault_matrix",
+      "case": "test_separate_cold_process_rejects_revoked_context[memory]",
+      "reason": "真实进程持久化故障只对PostgreSQL执行",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r4_contract.test_tool_inventory",
+      "case": "test_secret_rotation_serializes_with_install_commit[memory]",
+      "reason": "本用例核对真实PG行锁，不以memory模拟",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.reminders.test_postgres_order",
+      "case": "test_same_employee_notification_commit_order[memory]",
+      "reason": "本用例验证真实PostgreSQL行锁与事务",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.task_triggers.test_real_model_acceptance",
+      "case": "test_real_gateway_trigger_delivers_verified_total_once[time-postgres]",
+      "reason": "真实网关验收须显式提供私有env路径",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.task_triggers.test_real_model_acceptance",
+      "case": "test_real_gateway_trigger_delivers_verified_total_once[event-postgres]",
+      "reason": "真实网关验收须显式提供私有env路径",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.work_tasks.test_r2_real_experience",
+      "case": "test_real_meeting_keeps_exact_quotes_and_unresolved_deadline[postgres]",
+      "reason": "真实模型需明确指定私有env路径",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.work_tasks.test_r2_real_experience",
+      "case": "test_real_no_attachment_http_task_has_real_read_receipt[postgres]",
+      "reason": "真实模型需明确指定私有env路径",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.work_tasks.test_real_model_acceptance",
+      "case": "test_real_model_frozen_upload_recovery[csv-postgres]",
+      "reason": "真实模型验收需明确提供私有env路径",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.work_tasks.test_real_model_acceptance",
+      "case": "test_real_model_frozen_upload_recovery[xlsx-postgres]",
+      "reason": "真实模型验收需明确提供私有env路径",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.workspace.test_proactive_store",
+      "case": "test_database_source_constraints_are_enforced[memory]",
+      "reason": "仅数据库约束需要直接连接",
+      "source_unchanged_from_main": true
+    },
+    {
+      "class": "packages.xuanpu-server.tests.workspace.test_proactive_store",
+      "case": "test_memory_disable_reenable_fences_open_snapshot[postgres]",
+      "reason": "数据库身份行锁已由共享通知锁测试覆盖",
+      "source_unchanged_from_main": true
+    }
+  ]
+}

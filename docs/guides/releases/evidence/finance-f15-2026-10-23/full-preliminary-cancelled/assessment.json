@@ -1,0 +1,6 @@
+{
+  "status": "cancelled_not_acceptance",
+  "reason": "Independent specification review required missing deterministic tests and existing replay projection expectations; test sources changed while preliminary suite was running. Controlled runner SIGINT terminated only its owned child process group. A fresh final full suite follows stable sources.",
+  "source_final": false,
+  "no_model_calls": true
+}

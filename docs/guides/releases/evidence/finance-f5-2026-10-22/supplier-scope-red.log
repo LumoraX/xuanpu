@@ -1,0 +1,74 @@
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+__ test_collection_reference_cannot_reset_authority_across_supplier_versions ___
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x109ab5430>
+
+    async def test_collection_reference_cannot_reset_authority_across_supplier_versions(store: Any) -> None:
+        """供应商同稳定ID升级版本及新扫描件，不能为同授权编号重置责任额度。"""
+        from .test_f5_domain import material
+        owner,_,_,_=await setup_funding(store)
+        first=draft('entrusted_collection')
+        await store.create_funding_case(owner,first,'first')
+        supplier=await revise_supplier(store)
+        await material(store,'new-scan','c'*64)
+        spec={**first.authority.model_dump(),'evidence_ids':['new-scan']}
+>       with pytest.raises(FinanceError,match='FUNDING_AUTHORITY_CONFLICT'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE FinanceError
+
+packages/xuanpu-finance/tests/test_f5_authorities.py:176: Failed
+____ test_refund_reference_cannot_reset_authority_across_supplier_versions _____
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10a38be00>
+
+    async def test_refund_reference_cannot_reset_authority_across_supplier_versions(store: Any) -> None:
+        """同供应商退款交易跨原预付与供应商版本也只有一个不可变责任额度。"""
+        from .test_f2_domain import provider_result, ref
+        from .test_f5_domain import approve, material
+        from .test_f5_http_e2e import external_plan, paid_parent
+        from .test_f5_reconciliation import refund
+        owner,payer,_,approver,parent=await paid_parent(store)
+        first_refund=await refund(store,owner,parent,'600.00','first-refund')
+        await approve(store,owner,approver,await submit(store,owner,first_refund))
+        supplier=await revise_supplier(store,contract_version=True)
+        contract={**ref('contract','contract'),'version':'v3','sha256':'e'*64}
+        await material(store,'second-parent-material','e'*64)
+        terms={**draft().authority.model_dump(),'evidence_ids':['second-parent-material']}
+        second_parent=await store.create_funding_case(owner,draft(amount='1000.00',supplier_ref=supplier,business_refs=[contract],
+            authority=terms,evidence_ids=['second-parent-material']),'second-parent')
+        second_parent=await approve(store,owner,approver,await submit(store,owner,second_parent))
+        plan=await external_plan(store,payer,approver,second_parent,'execute_payment',payee_ref=ref('supplier_account','account'))
+        await execute(store,payer,plan)
+        job=await store.claim_settlement()
+        request=await store.prepare_settlement_dispatch(job)
+        await store.record_settlement_result(job,provider_result(request),b'second-prepayment-receipt')
+        await material(store,'refund-new-scan','a'*64)
+        spec={**first_refund['content']['authority'],'evidence_ids':['refund-new-scan']}
+>       with pytest.raises(FinanceError,match='FUNDING_AUTHORITY_CONFLICT'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE FinanceError
+
+packages/xuanpu-finance/tests/test_f5_authorities.py:205: Failed
+_ test_prepayment_supplier_upgrade_keeps_same_contract_original_responsibility _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10a929a00>
+
+    async def test_prepayment_supplier_upgrade_keeps_same_contract_original_responsibility(store: Any) -> None:
+        """合同原版本不变时，仅升级供应商主数据不能另起预付条款额度。"""
+        from .test_f5_domain import material
+        owner,_,_,_=await setup_funding(store)
+        await store.create_funding_case(owner,draft(),'first')
+        supplier=await revise_supplier(store)
+        await material(store,'prepayment-new-scan','c'*64)
+        terms={**draft().authority.model_dump(),'evidence_ids':['prepayment-new-scan']}
+>       with pytest.raises(FinanceError,match='FUNDING_AUTHORITY_CONFLICT'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE FinanceError
+
+packages/xuanpu-finance/tests/test_f5_authorities.py:219: Failed
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f5_authorities.py::test_collection_reference_cannot_reset_authority_across_supplier_versions
+FAILED packages/xuanpu-finance/tests/test_f5_authorities.py::test_refund_reference_cannot_reset_authority_across_supplier_versions
+FAILED packages/xuanpu-finance/tests/test_f5_authorities.py::test_prepayment_supplier_upgrade_keeps_same_contract_original_responsibility
+3 failed, 7 deselected in 2.40s

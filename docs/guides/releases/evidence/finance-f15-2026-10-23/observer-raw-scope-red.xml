@@ -1,0 +1,816 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="37" skipped="0" tests="37" time="1.764" timestamp="2026-10-24T12:53:38.940404+08:00" hostname="krasusdeMacBook-Pro"><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_requires_exact_status_and_proposal[createExpenseClaim-201-True]" time="0.001"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'createExpenseClaim', status = 201, accepted = True
+
+    @pytest.mark.parametrize(('operation', 'status', 'accepted'), [
+        ('createExpenseClaim', 201, True), ('createExpenseClaim', 200, False),
+        ('createExpenseClaim', 202, False), ('createExpenseClaim', 204, False),
+        ('previewFinanceAction', 201, True), ('previewFinanceAction', 200, False),
+        ('getExpenseClaim', 200, True), ('getExpenseClaim', 201, False),
+        ('getExpenseClaim', 202, False), ('executeFinanceAction', 200, False),
+    ])
+    def test_successful_tool_requires_exact_status_and_proposal(operation: str, status: int,
+                                                               accepted: bool):
+        """创建/预检须201、读取须200，无completed审计也必须有受控原始HTTP证据。"""
+        calls, trace, scope = tool_success_fixture(operation, status)
+&gt;       actual = checks().successful_tools(calls, [], [trace], **scope)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:227: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_requires_exact_status_and_proposal[createExpenseClaim-200-False]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'createExpenseClaim', status = 200, accepted = False
+
+    @pytest.mark.parametrize(('operation', 'status', 'accepted'), [
+        ('createExpenseClaim', 201, True), ('createExpenseClaim', 200, False),
+        ('createExpenseClaim', 202, False), ('createExpenseClaim', 204, False),
+        ('previewFinanceAction', 201, True), ('previewFinanceAction', 200, False),
+        ('getExpenseClaim', 200, True), ('getExpenseClaim', 201, False),
+        ('getExpenseClaim', 202, False), ('executeFinanceAction', 200, False),
+    ])
+    def test_successful_tool_requires_exact_status_and_proposal(operation: str, status: int,
+                                                               accepted: bool):
+        """创建/预检须201、读取须200，无completed审计也必须有受控原始HTTP证据。"""
+        calls, trace, scope = tool_success_fixture(operation, status)
+&gt;       actual = checks().successful_tools(calls, [], [trace], **scope)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:227: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_requires_exact_status_and_proposal[createExpenseClaim-202-False]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'createExpenseClaim', status = 202, accepted = False
+
+    @pytest.mark.parametrize(('operation', 'status', 'accepted'), [
+        ('createExpenseClaim', 201, True), ('createExpenseClaim', 200, False),
+        ('createExpenseClaim', 202, False), ('createExpenseClaim', 204, False),
+        ('previewFinanceAction', 201, True), ('previewFinanceAction', 200, False),
+        ('getExpenseClaim', 200, True), ('getExpenseClaim', 201, False),
+        ('getExpenseClaim', 202, False), ('executeFinanceAction', 200, False),
+    ])
+    def test_successful_tool_requires_exact_status_and_proposal(operation: str, status: int,
+                                                               accepted: bool):
+        """创建/预检须201、读取须200，无completed审计也必须有受控原始HTTP证据。"""
+        calls, trace, scope = tool_success_fixture(operation, status)
+&gt;       actual = checks().successful_tools(calls, [], [trace], **scope)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:227: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_requires_exact_status_and_proposal[createExpenseClaim-204-False]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'createExpenseClaim', status = 204, accepted = False
+
+    @pytest.mark.parametrize(('operation', 'status', 'accepted'), [
+        ('createExpenseClaim', 201, True), ('createExpenseClaim', 200, False),
+        ('createExpenseClaim', 202, False), ('createExpenseClaim', 204, False),
+        ('previewFinanceAction', 201, True), ('previewFinanceAction', 200, False),
+        ('getExpenseClaim', 200, True), ('getExpenseClaim', 201, False),
+        ('getExpenseClaim', 202, False), ('executeFinanceAction', 200, False),
+    ])
+    def test_successful_tool_requires_exact_status_and_proposal(operation: str, status: int,
+                                                               accepted: bool):
+        """创建/预检须201、读取须200，无completed审计也必须有受控原始HTTP证据。"""
+        calls, trace, scope = tool_success_fixture(operation, status)
+&gt;       actual = checks().successful_tools(calls, [], [trace], **scope)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:227: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_requires_exact_status_and_proposal[previewFinanceAction-201-True]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'previewFinanceAction', status = 201, accepted = True
+
+    @pytest.mark.parametrize(('operation', 'status', 'accepted'), [
+        ('createExpenseClaim', 201, True), ('createExpenseClaim', 200, False),
+        ('createExpenseClaim', 202, False), ('createExpenseClaim', 204, False),
+        ('previewFinanceAction', 201, True), ('previewFinanceAction', 200, False),
+        ('getExpenseClaim', 200, True), ('getExpenseClaim', 201, False),
+        ('getExpenseClaim', 202, False), ('executeFinanceAction', 200, False),
+    ])
+    def test_successful_tool_requires_exact_status_and_proposal(operation: str, status: int,
+                                                               accepted: bool):
+        """创建/预检须201、读取须200，无completed审计也必须有受控原始HTTP证据。"""
+        calls, trace, scope = tool_success_fixture(operation, status)
+&gt;       actual = checks().successful_tools(calls, [], [trace], **scope)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:227: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_requires_exact_status_and_proposal[previewFinanceAction-200-False]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'previewFinanceAction', status = 200, accepted = False
+
+    @pytest.mark.parametrize(('operation', 'status', 'accepted'), [
+        ('createExpenseClaim', 201, True), ('createExpenseClaim', 200, False),
+        ('createExpenseClaim', 202, False), ('createExpenseClaim', 204, False),
+        ('previewFinanceAction', 201, True), ('previewFinanceAction', 200, False),
+        ('getExpenseClaim', 200, True), ('getExpenseClaim', 201, False),
+        ('getExpenseClaim', 202, False), ('executeFinanceAction', 200, False),
+    ])
+    def test_successful_tool_requires_exact_status_and_proposal(operation: str, status: int,
+                                                               accepted: bool):
+        """创建/预检须201、读取须200，无completed审计也必须有受控原始HTTP证据。"""
+        calls, trace, scope = tool_success_fixture(operation, status)
+&gt;       actual = checks().successful_tools(calls, [], [trace], **scope)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:227: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_requires_exact_status_and_proposal[getExpenseClaim-200-True]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'getExpenseClaim', status = 200, accepted = True
+
+    @pytest.mark.parametrize(('operation', 'status', 'accepted'), [
+        ('createExpenseClaim', 201, True), ('createExpenseClaim', 200, False),
+        ('createExpenseClaim', 202, False), ('createExpenseClaim', 204, False),
+        ('previewFinanceAction', 201, True), ('previewFinanceAction', 200, False),
+        ('getExpenseClaim', 200, True), ('getExpenseClaim', 201, False),
+        ('getExpenseClaim', 202, False), ('executeFinanceAction', 200, False),
+    ])
+    def test_successful_tool_requires_exact_status_and_proposal(operation: str, status: int,
+                                                               accepted: bool):
+        """创建/预检须201、读取须200，无completed审计也必须有受控原始HTTP证据。"""
+        calls, trace, scope = tool_success_fixture(operation, status)
+&gt;       actual = checks().successful_tools(calls, [], [trace], **scope)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:227: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_requires_exact_status_and_proposal[getExpenseClaim-201-False]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'getExpenseClaim', status = 201, accepted = False
+
+    @pytest.mark.parametrize(('operation', 'status', 'accepted'), [
+        ('createExpenseClaim', 201, True), ('createExpenseClaim', 200, False),
+        ('createExpenseClaim', 202, False), ('createExpenseClaim', 204, False),
+        ('previewFinanceAction', 201, True), ('previewFinanceAction', 200, False),
+        ('getExpenseClaim', 200, True), ('getExpenseClaim', 201, False),
+        ('getExpenseClaim', 202, False), ('executeFinanceAction', 200, False),
+    ])
+    def test_successful_tool_requires_exact_status_and_proposal(operation: str, status: int,
+                                                               accepted: bool):
+        """创建/预检须201、读取须200，无completed审计也必须有受控原始HTTP证据。"""
+        calls, trace, scope = tool_success_fixture(operation, status)
+&gt;       actual = checks().successful_tools(calls, [], [trace], **scope)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:227: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_requires_exact_status_and_proposal[getExpenseClaim-202-False]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'getExpenseClaim', status = 202, accepted = False
+
+    @pytest.mark.parametrize(('operation', 'status', 'accepted'), [
+        ('createExpenseClaim', 201, True), ('createExpenseClaim', 200, False),
+        ('createExpenseClaim', 202, False), ('createExpenseClaim', 204, False),
+        ('previewFinanceAction', 201, True), ('previewFinanceAction', 200, False),
+        ('getExpenseClaim', 200, True), ('getExpenseClaim', 201, False),
+        ('getExpenseClaim', 202, False), ('executeFinanceAction', 200, False),
+    ])
+    def test_successful_tool_requires_exact_status_and_proposal(operation: str, status: int,
+                                                               accepted: bool):
+        """创建/预检须201、读取须200，无completed审计也必须有受控原始HTTP证据。"""
+        calls, trace, scope = tool_success_fixture(operation, status)
+&gt;       actual = checks().successful_tools(calls, [], [trace], **scope)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:227: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_requires_exact_status_and_proposal[executeFinanceAction-200-False]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'executeFinanceAction', status = 200, accepted = False
+
+    @pytest.mark.parametrize(('operation', 'status', 'accepted'), [
+        ('createExpenseClaim', 201, True), ('createExpenseClaim', 200, False),
+        ('createExpenseClaim', 202, False), ('createExpenseClaim', 204, False),
+        ('previewFinanceAction', 201, True), ('previewFinanceAction', 200, False),
+        ('getExpenseClaim', 200, True), ('getExpenseClaim', 201, False),
+        ('getExpenseClaim', 202, False), ('executeFinanceAction', 200, False),
+    ])
+    def test_successful_tool_requires_exact_status_and_proposal(operation: str, status: int,
+                                                               accepted: bool):
+        """创建/预检须201、读取须200，无completed审计也必须有受控原始HTTP证据。"""
+        calls, trace, scope = tool_success_fixture(operation, status)
+&gt;       actual = checks().successful_tools(calls, [], [trace], **scope)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:227: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_raw_requires_actual_provenance[missing_raw]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">invalid = 'missing_raw'
+
+    @pytest.mark.parametrize('invalid', ['missing_raw', 'call_id', 'proposal_id', 'proposal_name',
+        'phase', 'actor', 'session', 'user', 'assistant', 'raw_error', 'output_name', 'not_http'])
+    def test_successful_tool_raw_requires_actual_provenance(invalid: str):
+        """缺返回或错调用/名称/场景/人员/会话、伪文字、显式错误均不能充当执行事实。"""
+        calls, trace, scope = tool_success_fixture()
+        message = trace['request']['messages'][0]
+        if invalid == 'missing_raw':
+            trace['request']['messages'] = []
+        elif invalid == 'call_id':
+            message['tool_call_id'] = 'unrelated'
+        elif invalid == 'proposal_id':
+            trace['events'] = []
+        elif invalid == 'proposal_name':
+            trace['events'][0]['data'] = {**calls[0], 'name': 'api__finance__getExpenseClaim'}
+        elif invalid in ('phase', 'actor', 'session'):
+            trace[{'phase': 'phase', 'actor': 'actor_id', 'session': 'session_id'}[invalid]] = 'other'
+        elif invalid in ('user', 'assistant'):
+            message['role'] = invalid
+        elif invalid == 'raw_error':
+            message['is_error'] = True
+        elif invalid == 'output_name':
+            message['name'] = 'api__finance__getExpenseClaim'
+        else:
+            message['content'] = '{"status":201}'
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == set()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:255: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_raw_requires_actual_provenance[call_id]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">invalid = 'call_id'
+
+    @pytest.mark.parametrize('invalid', ['missing_raw', 'call_id', 'proposal_id', 'proposal_name',
+        'phase', 'actor', 'session', 'user', 'assistant', 'raw_error', 'output_name', 'not_http'])
+    def test_successful_tool_raw_requires_actual_provenance(invalid: str):
+        """缺返回或错调用/名称/场景/人员/会话、伪文字、显式错误均不能充当执行事实。"""
+        calls, trace, scope = tool_success_fixture()
+        message = trace['request']['messages'][0]
+        if invalid == 'missing_raw':
+            trace['request']['messages'] = []
+        elif invalid == 'call_id':
+            message['tool_call_id'] = 'unrelated'
+        elif invalid == 'proposal_id':
+            trace['events'] = []
+        elif invalid == 'proposal_name':
+            trace['events'][0]['data'] = {**calls[0], 'name': 'api__finance__getExpenseClaim'}
+        elif invalid in ('phase', 'actor', 'session'):
+            trace[{'phase': 'phase', 'actor': 'actor_id', 'session': 'session_id'}[invalid]] = 'other'
+        elif invalid in ('user', 'assistant'):
+            message['role'] = invalid
+        elif invalid == 'raw_error':
+            message['is_error'] = True
+        elif invalid == 'output_name':
+            message['name'] = 'api__finance__getExpenseClaim'
+        else:
+            message['content'] = '{"status":201}'
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == set()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:255: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_raw_requires_actual_provenance[proposal_id]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">invalid = 'proposal_id'
+
+    @pytest.mark.parametrize('invalid', ['missing_raw', 'call_id', 'proposal_id', 'proposal_name',
+        'phase', 'actor', 'session', 'user', 'assistant', 'raw_error', 'output_name', 'not_http'])
+    def test_successful_tool_raw_requires_actual_provenance(invalid: str):
+        """缺返回或错调用/名称/场景/人员/会话、伪文字、显式错误均不能充当执行事实。"""
+        calls, trace, scope = tool_success_fixture()
+        message = trace['request']['messages'][0]
+        if invalid == 'missing_raw':
+            trace['request']['messages'] = []
+        elif invalid == 'call_id':
+            message['tool_call_id'] = 'unrelated'
+        elif invalid == 'proposal_id':
+            trace['events'] = []
+        elif invalid == 'proposal_name':
+            trace['events'][0]['data'] = {**calls[0], 'name': 'api__finance__getExpenseClaim'}
+        elif invalid in ('phase', 'actor', 'session'):
+            trace[{'phase': 'phase', 'actor': 'actor_id', 'session': 'session_id'}[invalid]] = 'other'
+        elif invalid in ('user', 'assistant'):
+            message['role'] = invalid
+        elif invalid == 'raw_error':
+            message['is_error'] = True
+        elif invalid == 'output_name':
+            message['name'] = 'api__finance__getExpenseClaim'
+        else:
+            message['content'] = '{"status":201}'
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == set()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:255: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_raw_requires_actual_provenance[proposal_name]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">invalid = 'proposal_name'
+
+    @pytest.mark.parametrize('invalid', ['missing_raw', 'call_id', 'proposal_id', 'proposal_name',
+        'phase', 'actor', 'session', 'user', 'assistant', 'raw_error', 'output_name', 'not_http'])
+    def test_successful_tool_raw_requires_actual_provenance(invalid: str):
+        """缺返回或错调用/名称/场景/人员/会话、伪文字、显式错误均不能充当执行事实。"""
+        calls, trace, scope = tool_success_fixture()
+        message = trace['request']['messages'][0]
+        if invalid == 'missing_raw':
+            trace['request']['messages'] = []
+        elif invalid == 'call_id':
+            message['tool_call_id'] = 'unrelated'
+        elif invalid == 'proposal_id':
+            trace['events'] = []
+        elif invalid == 'proposal_name':
+            trace['events'][0]['data'] = {**calls[0], 'name': 'api__finance__getExpenseClaim'}
+        elif invalid in ('phase', 'actor', 'session'):
+            trace[{'phase': 'phase', 'actor': 'actor_id', 'session': 'session_id'}[invalid]] = 'other'
+        elif invalid in ('user', 'assistant'):
+            message['role'] = invalid
+        elif invalid == 'raw_error':
+            message['is_error'] = True
+        elif invalid == 'output_name':
+            message['name'] = 'api__finance__getExpenseClaim'
+        else:
+            message['content'] = '{"status":201}'
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == set()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:255: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_raw_requires_actual_provenance[phase]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">invalid = 'phase'
+
+    @pytest.mark.parametrize('invalid', ['missing_raw', 'call_id', 'proposal_id', 'proposal_name',
+        'phase', 'actor', 'session', 'user', 'assistant', 'raw_error', 'output_name', 'not_http'])
+    def test_successful_tool_raw_requires_actual_provenance(invalid: str):
+        """缺返回或错调用/名称/场景/人员/会话、伪文字、显式错误均不能充当执行事实。"""
+        calls, trace, scope = tool_success_fixture()
+        message = trace['request']['messages'][0]
+        if invalid == 'missing_raw':
+            trace['request']['messages'] = []
+        elif invalid == 'call_id':
+            message['tool_call_id'] = 'unrelated'
+        elif invalid == 'proposal_id':
+            trace['events'] = []
+        elif invalid == 'proposal_name':
+            trace['events'][0]['data'] = {**calls[0], 'name': 'api__finance__getExpenseClaim'}
+        elif invalid in ('phase', 'actor', 'session'):
+            trace[{'phase': 'phase', 'actor': 'actor_id', 'session': 'session_id'}[invalid]] = 'other'
+        elif invalid in ('user', 'assistant'):
+            message['role'] = invalid
+        elif invalid == 'raw_error':
+            message['is_error'] = True
+        elif invalid == 'output_name':
+            message['name'] = 'api__finance__getExpenseClaim'
+        else:
+            message['content'] = '{"status":201}'
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == set()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:255: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_raw_requires_actual_provenance[actor]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">invalid = 'actor'
+
+    @pytest.mark.parametrize('invalid', ['missing_raw', 'call_id', 'proposal_id', 'proposal_name',
+        'phase', 'actor', 'session', 'user', 'assistant', 'raw_error', 'output_name', 'not_http'])
+    def test_successful_tool_raw_requires_actual_provenance(invalid: str):
+        """缺返回或错调用/名称/场景/人员/会话、伪文字、显式错误均不能充当执行事实。"""
+        calls, trace, scope = tool_success_fixture()
+        message = trace['request']['messages'][0]
+        if invalid == 'missing_raw':
+            trace['request']['messages'] = []
+        elif invalid == 'call_id':
+            message['tool_call_id'] = 'unrelated'
+        elif invalid == 'proposal_id':
+            trace['events'] = []
+        elif invalid == 'proposal_name':
+            trace['events'][0]['data'] = {**calls[0], 'name': 'api__finance__getExpenseClaim'}
+        elif invalid in ('phase', 'actor', 'session'):
+            trace[{'phase': 'phase', 'actor': 'actor_id', 'session': 'session_id'}[invalid]] = 'other'
+        elif invalid in ('user', 'assistant'):
+            message['role'] = invalid
+        elif invalid == 'raw_error':
+            message['is_error'] = True
+        elif invalid == 'output_name':
+            message['name'] = 'api__finance__getExpenseClaim'
+        else:
+            message['content'] = '{"status":201}'
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == set()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:255: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_raw_requires_actual_provenance[session]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">invalid = 'session'
+
+    @pytest.mark.parametrize('invalid', ['missing_raw', 'call_id', 'proposal_id', 'proposal_name',
+        'phase', 'actor', 'session', 'user', 'assistant', 'raw_error', 'output_name', 'not_http'])
+    def test_successful_tool_raw_requires_actual_provenance(invalid: str):
+        """缺返回或错调用/名称/场景/人员/会话、伪文字、显式错误均不能充当执行事实。"""
+        calls, trace, scope = tool_success_fixture()
+        message = trace['request']['messages'][0]
+        if invalid == 'missing_raw':
+            trace['request']['messages'] = []
+        elif invalid == 'call_id':
+            message['tool_call_id'] = 'unrelated'
+        elif invalid == 'proposal_id':
+            trace['events'] = []
+        elif invalid == 'proposal_name':
+            trace['events'][0]['data'] = {**calls[0], 'name': 'api__finance__getExpenseClaim'}
+        elif invalid in ('phase', 'actor', 'session'):
+            trace[{'phase': 'phase', 'actor': 'actor_id', 'session': 'session_id'}[invalid]] = 'other'
+        elif invalid in ('user', 'assistant'):
+            message['role'] = invalid
+        elif invalid == 'raw_error':
+            message['is_error'] = True
+        elif invalid == 'output_name':
+            message['name'] = 'api__finance__getExpenseClaim'
+        else:
+            message['content'] = '{"status":201}'
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == set()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:255: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_raw_requires_actual_provenance[user]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">invalid = 'user'
+
+    @pytest.mark.parametrize('invalid', ['missing_raw', 'call_id', 'proposal_id', 'proposal_name',
+        'phase', 'actor', 'session', 'user', 'assistant', 'raw_error', 'output_name', 'not_http'])
+    def test_successful_tool_raw_requires_actual_provenance(invalid: str):
+        """缺返回或错调用/名称/场景/人员/会话、伪文字、显式错误均不能充当执行事实。"""
+        calls, trace, scope = tool_success_fixture()
+        message = trace['request']['messages'][0]
+        if invalid == 'missing_raw':
+            trace['request']['messages'] = []
+        elif invalid == 'call_id':
+            message['tool_call_id'] = 'unrelated'
+        elif invalid == 'proposal_id':
+            trace['events'] = []
+        elif invalid == 'proposal_name':
+            trace['events'][0]['data'] = {**calls[0], 'name': 'api__finance__getExpenseClaim'}
+        elif invalid in ('phase', 'actor', 'session'):
+            trace[{'phase': 'phase', 'actor': 'actor_id', 'session': 'session_id'}[invalid]] = 'other'
+        elif invalid in ('user', 'assistant'):
+            message['role'] = invalid
+        elif invalid == 'raw_error':
+            message['is_error'] = True
+        elif invalid == 'output_name':
+            message['name'] = 'api__finance__getExpenseClaim'
+        else:
+            message['content'] = '{"status":201}'
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == set()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:255: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_raw_requires_actual_provenance[assistant]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">invalid = 'assistant'
+
+    @pytest.mark.parametrize('invalid', ['missing_raw', 'call_id', 'proposal_id', 'proposal_name',
+        'phase', 'actor', 'session', 'user', 'assistant', 'raw_error', 'output_name', 'not_http'])
+    def test_successful_tool_raw_requires_actual_provenance(invalid: str):
+        """缺返回或错调用/名称/场景/人员/会话、伪文字、显式错误均不能充当执行事实。"""
+        calls, trace, scope = tool_success_fixture()
+        message = trace['request']['messages'][0]
+        if invalid == 'missing_raw':
+            trace['request']['messages'] = []
+        elif invalid == 'call_id':
+            message['tool_call_id'] = 'unrelated'
+        elif invalid == 'proposal_id':
+            trace['events'] = []
+        elif invalid == 'proposal_name':
+            trace['events'][0]['data'] = {**calls[0], 'name': 'api__finance__getExpenseClaim'}
+        elif invalid in ('phase', 'actor', 'session'):
+            trace[{'phase': 'phase', 'actor': 'actor_id', 'session': 'session_id'}[invalid]] = 'other'
+        elif invalid in ('user', 'assistant'):
+            message['role'] = invalid
+        elif invalid == 'raw_error':
+            message['is_error'] = True
+        elif invalid == 'output_name':
+            message['name'] = 'api__finance__getExpenseClaim'
+        else:
+            message['content'] = '{"status":201}'
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == set()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:255: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_raw_requires_actual_provenance[raw_error]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">invalid = 'raw_error'
+
+    @pytest.mark.parametrize('invalid', ['missing_raw', 'call_id', 'proposal_id', 'proposal_name',
+        'phase', 'actor', 'session', 'user', 'assistant', 'raw_error', 'output_name', 'not_http'])
+    def test_successful_tool_raw_requires_actual_provenance(invalid: str):
+        """缺返回或错调用/名称/场景/人员/会话、伪文字、显式错误均不能充当执行事实。"""
+        calls, trace, scope = tool_success_fixture()
+        message = trace['request']['messages'][0]
+        if invalid == 'missing_raw':
+            trace['request']['messages'] = []
+        elif invalid == 'call_id':
+            message['tool_call_id'] = 'unrelated'
+        elif invalid == 'proposal_id':
+            trace['events'] = []
+        elif invalid == 'proposal_name':
+            trace['events'][0]['data'] = {**calls[0], 'name': 'api__finance__getExpenseClaim'}
+        elif invalid in ('phase', 'actor', 'session'):
+            trace[{'phase': 'phase', 'actor': 'actor_id', 'session': 'session_id'}[invalid]] = 'other'
+        elif invalid in ('user', 'assistant'):
+            message['role'] = invalid
+        elif invalid == 'raw_error':
+            message['is_error'] = True
+        elif invalid == 'output_name':
+            message['name'] = 'api__finance__getExpenseClaim'
+        else:
+            message['content'] = '{"status":201}'
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == set()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:255: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_raw_requires_actual_provenance[output_name]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">invalid = 'output_name'
+
+    @pytest.mark.parametrize('invalid', ['missing_raw', 'call_id', 'proposal_id', 'proposal_name',
+        'phase', 'actor', 'session', 'user', 'assistant', 'raw_error', 'output_name', 'not_http'])
+    def test_successful_tool_raw_requires_actual_provenance(invalid: str):
+        """缺返回或错调用/名称/场景/人员/会话、伪文字、显式错误均不能充当执行事实。"""
+        calls, trace, scope = tool_success_fixture()
+        message = trace['request']['messages'][0]
+        if invalid == 'missing_raw':
+            trace['request']['messages'] = []
+        elif invalid == 'call_id':
+            message['tool_call_id'] = 'unrelated'
+        elif invalid == 'proposal_id':
+            trace['events'] = []
+        elif invalid == 'proposal_name':
+            trace['events'][0]['data'] = {**calls[0], 'name': 'api__finance__getExpenseClaim'}
+        elif invalid in ('phase', 'actor', 'session'):
+            trace[{'phase': 'phase', 'actor': 'actor_id', 'session': 'session_id'}[invalid]] = 'other'
+        elif invalid in ('user', 'assistant'):
+            message['role'] = invalid
+        elif invalid == 'raw_error':
+            message['is_error'] = True
+        elif invalid == 'output_name':
+            message['name'] = 'api__finance__getExpenseClaim'
+        else:
+            message['content'] = '{"status":201}'
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == set()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:255: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_successful_tool_raw_requires_actual_provenance[not_http]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">invalid = 'not_http'
+
+    @pytest.mark.parametrize('invalid', ['missing_raw', 'call_id', 'proposal_id', 'proposal_name',
+        'phase', 'actor', 'session', 'user', 'assistant', 'raw_error', 'output_name', 'not_http'])
+    def test_successful_tool_raw_requires_actual_provenance(invalid: str):
+        """缺返回或错调用/名称/场景/人员/会话、伪文字、显式错误均不能充当执行事实。"""
+        calls, trace, scope = tool_success_fixture()
+        message = trace['request']['messages'][0]
+        if invalid == 'missing_raw':
+            trace['request']['messages'] = []
+        elif invalid == 'call_id':
+            message['tool_call_id'] = 'unrelated'
+        elif invalid == 'proposal_id':
+            trace['events'] = []
+        elif invalid == 'proposal_name':
+            trace['events'][0]['data'] = {**calls[0], 'name': 'api__finance__getExpenseClaim'}
+        elif invalid in ('phase', 'actor', 'session'):
+            trace[{'phase': 'phase', 'actor': 'actor_id', 'session': 'session_id'}[invalid]] = 'other'
+        elif invalid in ('user', 'assistant'):
+            message['role'] = invalid
+        elif invalid == 'raw_error':
+            message['is_error'] = True
+        elif invalid == 'output_name':
+            message['name'] = 'api__finance__getExpenseClaim'
+        else:
+            message['content'] = '{"status":201}'
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == set()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:255: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_explicit_failed_audit_cannot_be_masked_by_raw[201-createExpenseClaim-False-True]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">status = 201, name = 'createExpenseClaim', error = False, accepted = True
+
+    @pytest.mark.parametrize(('status', 'name', 'error', 'accepted'), [
+        (201, 'createExpenseClaim', False, True), (202, 'createExpenseClaim', False, False),
+        (201, 'getExpenseClaim', False, False), (201, 'createExpenseClaim', True, False),
+        (201, 'createExpenseClaim', None, False),
+    ])
+    def test_explicit_failed_audit_cannot_be_masked_by_raw(status: int, name: str,
+                                                         error: bool | None, accepted: bool):
+        """已有审计明确失败、状态或名称不一致时，原始正例不能覆盖矛盾证据。"""
+        calls, trace, scope = tool_success_fixture()
+        segments = [{'events': [{'kind': 'tool_call_completed', 'data': {
+            'call_id': 'actual-call', 'name': 'api__finance__' + name, 'is_error': error,
+            'output': f'HTTP {status}\n{{}}'}}]}]
+&gt;       assert checks().successful_tools(calls, segments, [trace], **scope) == (
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            {calls[0]['name']} if accepted else set())
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:270: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_explicit_failed_audit_cannot_be_masked_by_raw[202-createExpenseClaim-False-False]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">status = 202, name = 'createExpenseClaim', error = False, accepted = False
+
+    @pytest.mark.parametrize(('status', 'name', 'error', 'accepted'), [
+        (201, 'createExpenseClaim', False, True), (202, 'createExpenseClaim', False, False),
+        (201, 'getExpenseClaim', False, False), (201, 'createExpenseClaim', True, False),
+        (201, 'createExpenseClaim', None, False),
+    ])
+    def test_explicit_failed_audit_cannot_be_masked_by_raw(status: int, name: str,
+                                                         error: bool | None, accepted: bool):
+        """已有审计明确失败、状态或名称不一致时，原始正例不能覆盖矛盾证据。"""
+        calls, trace, scope = tool_success_fixture()
+        segments = [{'events': [{'kind': 'tool_call_completed', 'data': {
+            'call_id': 'actual-call', 'name': 'api__finance__' + name, 'is_error': error,
+            'output': f'HTTP {status}\n{{}}'}}]}]
+&gt;       assert checks().successful_tools(calls, segments, [trace], **scope) == (
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            {calls[0]['name']} if accepted else set())
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:270: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_explicit_failed_audit_cannot_be_masked_by_raw[201-getExpenseClaim-False-False]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">status = 201, name = 'getExpenseClaim', error = False, accepted = False
+
+    @pytest.mark.parametrize(('status', 'name', 'error', 'accepted'), [
+        (201, 'createExpenseClaim', False, True), (202, 'createExpenseClaim', False, False),
+        (201, 'getExpenseClaim', False, False), (201, 'createExpenseClaim', True, False),
+        (201, 'createExpenseClaim', None, False),
+    ])
+    def test_explicit_failed_audit_cannot_be_masked_by_raw(status: int, name: str,
+                                                         error: bool | None, accepted: bool):
+        """已有审计明确失败、状态或名称不一致时，原始正例不能覆盖矛盾证据。"""
+        calls, trace, scope = tool_success_fixture()
+        segments = [{'events': [{'kind': 'tool_call_completed', 'data': {
+            'call_id': 'actual-call', 'name': 'api__finance__' + name, 'is_error': error,
+            'output': f'HTTP {status}\n{{}}'}}]}]
+&gt;       assert checks().successful_tools(calls, segments, [trace], **scope) == (
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            {calls[0]['name']} if accepted else set())
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:270: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_explicit_failed_audit_cannot_be_masked_by_raw[201-createExpenseClaim-True-False]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">status = 201, name = 'createExpenseClaim', error = True, accepted = False
+
+    @pytest.mark.parametrize(('status', 'name', 'error', 'accepted'), [
+        (201, 'createExpenseClaim', False, True), (202, 'createExpenseClaim', False, False),
+        (201, 'getExpenseClaim', False, False), (201, 'createExpenseClaim', True, False),
+        (201, 'createExpenseClaim', None, False),
+    ])
+    def test_explicit_failed_audit_cannot_be_masked_by_raw(status: int, name: str,
+                                                         error: bool | None, accepted: bool):
+        """已有审计明确失败、状态或名称不一致时，原始正例不能覆盖矛盾证据。"""
+        calls, trace, scope = tool_success_fixture()
+        segments = [{'events': [{'kind': 'tool_call_completed', 'data': {
+            'call_id': 'actual-call', 'name': 'api__finance__' + name, 'is_error': error,
+            'output': f'HTTP {status}\n{{}}'}}]}]
+&gt;       assert checks().successful_tools(calls, segments, [trace], **scope) == (
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            {calls[0]['name']} if accepted else set())
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:270: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_explicit_failed_audit_cannot_be_masked_by_raw[201-createExpenseClaim-None-False]" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">status = 201, name = 'createExpenseClaim', error = None, accepted = False
+
+    @pytest.mark.parametrize(('status', 'name', 'error', 'accepted'), [
+        (201, 'createExpenseClaim', False, True), (202, 'createExpenseClaim', False, False),
+        (201, 'getExpenseClaim', False, False), (201, 'createExpenseClaim', True, False),
+        (201, 'createExpenseClaim', None, False),
+    ])
+    def test_explicit_failed_audit_cannot_be_masked_by_raw(status: int, name: str,
+                                                         error: bool | None, accepted: bool):
+        """已有审计明确失败、状态或名称不一致时，原始正例不能覆盖矛盾证据。"""
+        calls, trace, scope = tool_success_fixture()
+        segments = [{'events': [{'kind': 'tool_call_completed', 'data': {
+            'call_id': 'actual-call', 'name': 'api__finance__' + name, 'is_error': error,
+            'output': f'HTTP {status}\n{{}}'}}]}]
+&gt;       assert checks().successful_tools(calls, segments, [trace], **scope) == (
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            {calls[0]['name']} if accepted else set())
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:270: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_function_call_output_is_actual_raw_tool_result" time="0.000"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">def test_function_call_output_is_actual_raw_tool_result():
+        """Responses input_items的真实function_call_output与role=tool拥有相同证据要求。"""
+        calls, trace, scope = tool_success_fixture()
+        trace['request']['messages'] = []
+        trace['request']['input_items'] = [{'type': 'function_call_output',
+            'call_id': 'actual-call', 'output': 'HTTP 201\n{"id":"actual-document"}'}]
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == {calls[0]['name']}
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:280: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_journey_success_status_is_declared_by_actual_openapi[createExpenseClaim-201]" time="0.459"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'createExpenseClaim', status = '201'
+
+    @pytest.mark.parametrize(('operation', 'status'), [
+        ('createExpenseClaim', '201'), ('listSupportingMaterialImports', '200'),
+        ('getSupportingMaterialImport', '200'), ('listReviewQueue', '200'),
+        ('getExpenseClaim', '200'), ('listExpenseClaimHistory', '200'),
+        ('updateExpenseClaim', '200'), ('previewFinanceAction', '201'),
+        ('listExpenseClaimSummaries', '200'),
+    ])
+    def test_journey_success_status_is_declared_by_actual_openapi(operation: str, status: str):
+        """旅程九个目标逐条对照发布契约，不把任意2xx或202当成已完成。"""
+        from .test_package import contracts, operations
+    
+        contract = operations(contracts()['finance'])[operation][2]
+        assert set(contract['responses']) - {'default'} == {status}
+        calls, trace, scope = tool_success_fixture(operation, int(status))
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == {calls[0]['name']}
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:299: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_journey_success_status_is_declared_by_actual_openapi[listSupportingMaterialImports-200]" time="0.129"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'listSupportingMaterialImports', status = '200'
+
+    @pytest.mark.parametrize(('operation', 'status'), [
+        ('createExpenseClaim', '201'), ('listSupportingMaterialImports', '200'),
+        ('getSupportingMaterialImport', '200'), ('listReviewQueue', '200'),
+        ('getExpenseClaim', '200'), ('listExpenseClaimHistory', '200'),
+        ('updateExpenseClaim', '200'), ('previewFinanceAction', '201'),
+        ('listExpenseClaimSummaries', '200'),
+    ])
+    def test_journey_success_status_is_declared_by_actual_openapi(operation: str, status: str):
+        """旅程九个目标逐条对照发布契约，不把任意2xx或202当成已完成。"""
+        from .test_package import contracts, operations
+    
+        contract = operations(contracts()['finance'])[operation][2]
+        assert set(contract['responses']) - {'default'} == {status}
+        calls, trace, scope = tool_success_fixture(operation, int(status))
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == {calls[0]['name']}
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:299: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_journey_success_status_is_declared_by_actual_openapi[getSupportingMaterialImport-200]" time="0.146"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'getSupportingMaterialImport', status = '200'
+
+    @pytest.mark.parametrize(('operation', 'status'), [
+        ('createExpenseClaim', '201'), ('listSupportingMaterialImports', '200'),
+        ('getSupportingMaterialImport', '200'), ('listReviewQueue', '200'),
+        ('getExpenseClaim', '200'), ('listExpenseClaimHistory', '200'),
+        ('updateExpenseClaim', '200'), ('previewFinanceAction', '201'),
+        ('listExpenseClaimSummaries', '200'),
+    ])
+    def test_journey_success_status_is_declared_by_actual_openapi(operation: str, status: str):
+        """旅程九个目标逐条对照发布契约，不把任意2xx或202当成已完成。"""
+        from .test_package import contracts, operations
+    
+        contract = operations(contracts()['finance'])[operation][2]
+        assert set(contract['responses']) - {'default'} == {status}
+        calls, trace, scope = tool_success_fixture(operation, int(status))
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == {calls[0]['name']}
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:299: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_journey_success_status_is_declared_by_actual_openapi[listReviewQueue-200]" time="0.129"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'listReviewQueue', status = '200'
+
+    @pytest.mark.parametrize(('operation', 'status'), [
+        ('createExpenseClaim', '201'), ('listSupportingMaterialImports', '200'),
+        ('getSupportingMaterialImport', '200'), ('listReviewQueue', '200'),
+        ('getExpenseClaim', '200'), ('listExpenseClaimHistory', '200'),
+        ('updateExpenseClaim', '200'), ('previewFinanceAction', '201'),
+        ('listExpenseClaimSummaries', '200'),
+    ])
+    def test_journey_success_status_is_declared_by_actual_openapi(operation: str, status: str):
+        """旅程九个目标逐条对照发布契约，不把任意2xx或202当成已完成。"""
+        from .test_package import contracts, operations
+    
+        contract = operations(contracts()['finance'])[operation][2]
+        assert set(contract['responses']) - {'default'} == {status}
+        calls, trace, scope = tool_success_fixture(operation, int(status))
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == {calls[0]['name']}
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:299: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_journey_success_status_is_declared_by_actual_openapi[getExpenseClaim-200]" time="0.129"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'getExpenseClaim', status = '200'
+
+    @pytest.mark.parametrize(('operation', 'status'), [
+        ('createExpenseClaim', '201'), ('listSupportingMaterialImports', '200'),
+        ('getSupportingMaterialImport', '200'), ('listReviewQueue', '200'),
+        ('getExpenseClaim', '200'), ('listExpenseClaimHistory', '200'),
+        ('updateExpenseClaim', '200'), ('previewFinanceAction', '201'),
+        ('listExpenseClaimSummaries', '200'),
+    ])
+    def test_journey_success_status_is_declared_by_actual_openapi(operation: str, status: str):
+        """旅程九个目标逐条对照发布契约，不把任意2xx或202当成已完成。"""
+        from .test_package import contracts, operations
+    
+        contract = operations(contracts()['finance'])[operation][2]
+        assert set(contract['responses']) - {'default'} == {status}
+        calls, trace, scope = tool_success_fixture(operation, int(status))
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == {calls[0]['name']}
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:299: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_journey_success_status_is_declared_by_actual_openapi[listExpenseClaimHistory-200]" time="0.154"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'listExpenseClaimHistory', status = '200'
+
+    @pytest.mark.parametrize(('operation', 'status'), [
+        ('createExpenseClaim', '201'), ('listSupportingMaterialImports', '200'),
+        ('getSupportingMaterialImport', '200'), ('listReviewQueue', '200'),
+        ('getExpenseClaim', '200'), ('listExpenseClaimHistory', '200'),
+        ('updateExpenseClaim', '200'), ('previewFinanceAction', '201'),
+        ('listExpenseClaimSummaries', '200'),
+    ])
+    def test_journey_success_status_is_declared_by_actual_openapi(operation: str, status: str):
+        """旅程九个目标逐条对照发布契约，不把任意2xx或202当成已完成。"""
+        from .test_package import contracts, operations
+    
+        contract = operations(contracts()['finance'])[operation][2]
+        assert set(contract['responses']) - {'default'} == {status}
+        calls, trace, scope = tool_success_fixture(operation, int(status))
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == {calls[0]['name']}
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:299: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_journey_success_status_is_declared_by_actual_openapi[updateExpenseClaim-200]" time="0.131"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'updateExpenseClaim', status = '200'
+
+    @pytest.mark.parametrize(('operation', 'status'), [
+        ('createExpenseClaim', '201'), ('listSupportingMaterialImports', '200'),
+        ('getSupportingMaterialImport', '200'), ('listReviewQueue', '200'),
+        ('getExpenseClaim', '200'), ('listExpenseClaimHistory', '200'),
+        ('updateExpenseClaim', '200'), ('previewFinanceAction', '201'),
+        ('listExpenseClaimSummaries', '200'),
+    ])
+    def test_journey_success_status_is_declared_by_actual_openapi(operation: str, status: str):
+        """旅程九个目标逐条对照发布契约，不把任意2xx或202当成已完成。"""
+        from .test_package import contracts, operations
+    
+        contract = operations(contracts()['finance'])[operation][2]
+        assert set(contract['responses']) - {'default'} == {status}
+        calls, trace, scope = tool_success_fixture(operation, int(status))
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == {calls[0]['name']}
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:299: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_journey_success_status_is_declared_by_actual_openapi[previewFinanceAction-201]" time="0.142"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'previewFinanceAction', status = '201'
+
+    @pytest.mark.parametrize(('operation', 'status'), [
+        ('createExpenseClaim', '201'), ('listSupportingMaterialImports', '200'),
+        ('getSupportingMaterialImport', '200'), ('listReviewQueue', '200'),
+        ('getExpenseClaim', '200'), ('listExpenseClaimHistory', '200'),
+        ('updateExpenseClaim', '200'), ('previewFinanceAction', '201'),
+        ('listExpenseClaimSummaries', '200'),
+    ])
+    def test_journey_success_status_is_declared_by_actual_openapi(operation: str, status: str):
+        """旅程九个目标逐条对照发布契约，不把任意2xx或202当成已完成。"""
+        from .test_package import contracts, operations
+    
+        contract = operations(contracts()['finance'])[operation][2]
+        assert set(contract['responses']) - {'default'} == {status}
+        calls, trace, scope = tool_success_fixture(operation, int(status))
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == {calls[0]['name']}
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:299: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_journey_success_status_is_declared_by_actual_openapi[listExpenseClaimSummaries-200]" time="0.127"><failure message="TypeError: successful_tools() got an unexpected keyword argument 'phase'">operation = 'listExpenseClaimSummaries', status = '200'
+
+    @pytest.mark.parametrize(('operation', 'status'), [
+        ('createExpenseClaim', '201'), ('listSupportingMaterialImports', '200'),
+        ('getSupportingMaterialImport', '200'), ('listReviewQueue', '200'),
+        ('getExpenseClaim', '200'), ('listExpenseClaimHistory', '200'),
+        ('updateExpenseClaim', '200'), ('previewFinanceAction', '201'),
+        ('listExpenseClaimSummaries', '200'),
+    ])
+    def test_journey_success_status_is_declared_by_actual_openapi(operation: str, status: str):
+        """旅程九个目标逐条对照发布契约，不把任意2xx或202当成已完成。"""
+        from .test_package import contracts, operations
+    
+        contract = operations(contracts()['finance'])[operation][2]
+        assert set(contract['responses']) - {'default'} == {status}
+        calls, trace, scope = tool_success_fixture(operation, int(status))
+&gt;       assert checks().successful_tools(calls, [], [trace], **scope) == {calls[0]['name']}
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: successful_tools() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:299: TypeError</failure></testcase></testsuite></testsuites>

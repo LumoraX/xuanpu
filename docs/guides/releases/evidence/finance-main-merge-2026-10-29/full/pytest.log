@@ -1,0 +1,101 @@
+........................................................................ [  1%]
+........................................................................ [  3%]
+........................................................................ [  5%]
+........................................................................ [  7%]
+........................................................................ [  9%]
+........................................................................ [ 10%]
+........................................................................ [ 12%]
+........................................................................ [ 14%]
+........................................................................ [ 16%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 21%]
+........................................................................ [ 23%]
+........................................................................ [ 25%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 30%]
+........................................................................ [ 32%]
+........................................................................ [ 34%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 39%]
+........................................................................ [ 41%]
+........................................................................ [ 43%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 48%]
+........................................................................ [ 50%]
+........................................................................ [ 52%]
+............................................................ssssssss.... [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 57%]
+........................................................................ [ 59%]
+...s............................................................s.s..... [ 61%]
+........................................................................ [ 63%]
+..............................................s......................... [ 64%]
+..............................................s......................... [ 66%]
+..........................ss............................................ [ 68%]
+........................................................................ [ 70%]
+........................................................................ [ 72%]
+........................................................................ [ 73%]
+........................................................................ [ 75%]
+........................................................................ [ 77%]
+........................................................................ [ 79%]
+........................................................................ [ 81%]
+........................................................................ [ 82%]
+........................................................................ [ 84%]
+........................................................................ [ 86%]
+........................................................................ [ 88%]
+..............ssss...................................................... [ 90%]
+........................................................................ [ 91%]
+........................................................................ [ 93%]
+.........................................................s......s....... [ 95%]
+........................................................................ [ 97%]
+........................................................................ [ 99%]
+........................................                                 [100%]
+=============================== warnings summary ===============================
+packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[get-root]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[get-shard]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[get-leaf]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[put-root]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[put-shard]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_rejects_valid_external_cipher[put-leaf]
+  packages/xuanpu-finance/tests/test_f13_objects.py:26: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.parametrize('level', ['root', 'shard', 'leaf'])
+
+packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_cannot_create_external_leaf[root]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_symlink_cannot_create_external_leaf[shard]
+  packages/xuanpu-finance/tests/test_f13_objects.py:66: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.parametrize('level', ['root', 'shard'])
+
+packages/xuanpu-finance/tests/test_f13_objects.py::test_directory_swap_before_open_never_follows_link[get-root]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_directory_swap_before_open_never_follows_link[get-shard]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_directory_swap_before_open_never_follows_link[put-root]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_directory_swap_before_open_never_follows_link[put-shard]
+  packages/xuanpu-finance/tests/test_f13_objects.py:254: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.parametrize('level', ['root', 'shard'])
+
+packages/xuanpu-finance/tests/test_f13_objects.py::test_directory_swap_at_link_uses_opened_directory[root]
+packages/xuanpu-finance/tests/test_f13_objects.py::test_directory_swap_at_link_uses_opened_directory[shard]
+  packages/xuanpu-finance/tests/test_f13_objects.py:296: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.parametrize('level', ['root', 'shard'])
+
+packages/xuanpu-finance/tests/test_f13_objects.py::test_material_worker_preserves_failed_responsibility_then_processes_next
+  packages/xuanpu-finance/tests/test_f13_objects.py:358: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    async def test_material_worker_preserves_failed_responsibility_then_processes_next(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [8] packages/xuanpu-server/tests/r3_contract/test_collaboration_faults.py:51: 真实进程故障仅对PostgreSQL执行
+SKIPPED [1] packages/xuanpu-server/tests/r3_contract/test_real_model.py:55: 真实模型需显式指定私有配置
+SKIPPED [2] packages/xuanpu-server/tests/r3_contract/test_shared_fault_matrix.py:20: 真实进程持久化故障只对PostgreSQL执行
+SKIPPED [1] packages/xuanpu-server/tests/r4_contract/test_tool_inventory.py:103: 本用例核对真实PG行锁，不以memory模拟
+SKIPPED [1] packages/xuanpu-server/tests/reminders/test_postgres_order.py:21: 本用例验证真实PostgreSQL行锁与事务
+SKIPPED [2] packages/xuanpu-server/tests/task_triggers/test_real_model_acceptance.py:23: 真实网关验收须显式提供私有env路径
+SKIPPED [1] packages/xuanpu-server/tests/work_tasks/test_r2_real_experience.py:42: 真实模型需明确指定私有env路径
+SKIPPED [1] packages/xuanpu-server/tests/work_tasks/test_r2_real_experience.py:72: 真实模型需明确指定私有env路径
+SKIPPED [2] packages/xuanpu-server/tests/work_tasks/test_real_model_acceptance.py:59: 真实模型验收需明确提供私有env路径
+SKIPPED [1] packages/xuanpu-server/tests/workspace/test_proactive_store.py:453: 仅数据库约束需要直接连接
+SKIPPED [1] packages/xuanpu-server/tests/workspace/test_proactive_store.py:562: 数据库身份行锁已由共享通知锁测试覆盖
+3979 passed, 21 skipped, 15 warnings in 1311.79s (0:21:51)

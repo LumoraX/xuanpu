@@ -1,0 +1,46 @@
+{
+  "full_final_f14_properties": 13,
+  "bad_cli_rejections": 8,
+  "backup_exit": 0,
+  "restore_exit": 0,
+  "different_databases": true,
+  "confirmations": [
+    403,
+    202,
+    403,
+    202
+  ],
+  "origins": [
+    "agent",
+    "human",
+    "agent",
+    "human"
+  ],
+  "final_status": "approved",
+  "paid": "0.00",
+  "posted": "0.00",
+  "formal_table_counts": {
+    "finance_invoice": 0,
+    "finance_settlement_operation": 0,
+    "finance_compliance_operation": 0
+  },
+  "download_count": 1,
+  "verify": {
+    "status": "completed",
+    "verification_status": "complete",
+    "profile": "internal_records",
+    "production_status": "not_verified",
+    "authenticated_objects": 1,
+    "prepared_missing_count": 0,
+    "unmapped_objects_count": 0,
+    "complete_object_validation": true,
+    "workers_started": false,
+    "business_writes": 0
+  },
+  "process_exits": [
+    -15,
+    -15
+  ],
+  "metadata_initial_pg_skips_closed_in_full": true,
+  "f14_test_cases": 68
+}

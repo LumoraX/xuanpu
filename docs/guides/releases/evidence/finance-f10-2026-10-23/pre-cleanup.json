@@ -1,0 +1,26 @@
+{
+  "owned_resource": {
+    "name": "xuanpu-finance-f10-pg",
+    "id": "acbb759e9e0827c88f631cf64114e7df205eff2b64e9f1bb6d7da6fca29b6155",
+    "port": 49957,
+    "volumes": [
+      "4302ff258a9dc3389521ac25295e9e7dd2a30bbeb78197230f13a1abeea522ba"
+    ]
+  },
+  "databases": [
+    "finance_test_f10",
+    "finance_test_f10_browser",
+    "finance_test_f10_browser_final",
+    "postgres"
+  ],
+  "non_system_roles": [
+    "finance_test"
+  ],
+  "remaining_temporary_schemas": {
+    "finance_test_f10": 0,
+    "finance_test_f10_browser": 0,
+    "finance_test_f10_browser_final": 0,
+    "postgres": 0
+  },
+  "production_touched": false
+}

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="2.415" timestamp="2026-10-23T16:32:47.147237+08:00" hostname="krasusdeMacBook-Pro"><testcase classname="packages.xuanpu-finance.tests.test_f14_process" name="test_bad_credentials_refused_then_restored_target_humans_resume" time="2.195"><failure message="AssertionError">maintenance_database = (&lt;xuanpu_finance.storage.store.FinanceStore object at 0x10df40890&gt;, [MaintenanceOptions(database_dsn_file=PosixPath('/...st:[REDACTED_PASSWORD]@127.0.0.1:53795/finance_restore_3662c869a4754de49e3ceb0bd422992b'])
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2162/test_bad_credentials_refused_t0')
+request = &lt;FixtureRequest for &lt;Coroutine test_bad_credentials_refused_then_restored_target_humans_resume&gt;&gt;
+
+    async def test_bad_credentials_refused_then_restored_target_humans_resume(
+        maintenance_database: Any, tmp_path: Path, request: pytest.FixtureRequest,
+    ) -&gt; None:
+        """真实CLI先拒绝八组坏凭据，合法备份恢复后目标库真人审批且停机verify零写。"""
+        _, fixture_options, dsns = maintenance_database
+        async with process_case(maintenance_database, tmp_path/'process') as case:
+            case.config.objects.root = fixture_options[0].object_root
+            case.config.objects.key_file = fixture_options[0].key_file
+            assert case.config.objects.key_file.read_bytes() == fixture_options[1].key_file.read_bytes()
+            write_config(case.path, case.config)
+            case.signed = RecordedSignedClient(case.signed)
+            async with observed_file_process(case.path, case.outcomes, case.config.port):
+                await wait_for_ready(case.signed.client)
+                doc = await receive_and_submit(case.signed, case.raw)
+                original = await original_identity(case, doc)
+                imported = await receipt_state(case, doc)
+                case.payloads.clear()
+                assert case.payloads == {} and case.downloads == ['pdf']
+            options = [MaintenanceOptions(case.config.database_dsn_file, case.config.objects.root,
+                                          case.config.objects.key_file), fixture_options[1]]
+&gt;           maintenance = await prepare_backup(case, options, dsns, tmp_path/'maintenance')
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f14_process.py:46: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/tests/f14_process_helpers.py:146: in prepare_backup
+    rejected = await bad_credentials('backup', case, options, dsns, directory, package)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+action = 'backup'
+case = ProcessCase(store=&lt;xuanpu_finance.storage.store.FinanceStore object at 0x10df40890&gt;, path=PosixPath('/private/var/fold...ytes': 350, 'stderr_sha256': '00c3511b86fffa03360390dd818dc9fc88f6a0120b950296bc5d5b54f15dbd4a', 'port_closed': True}])
+options = [MaintenanceOptions(database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-kr...ar/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2162/test_bad_credentials_refused_t0/key'))]
+dsns = ['postgresql://finance_test:[REDACTED_PASSWORD]@127.0.0.1:53795/finance_test_backup_b8c7b...est:[REDACTED_PASSWORD]@127.0.0.1:53795/finance_restore_3662c869a4754de49e3ceb0bd422992b']
+directory = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2162/test_bad_credentials_refused_t0/maintenance')
+package = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2162/test_bad_credentials_refused_t0/maintenance/valid-backup')
+
+    async def bad_credentials(action: str, case: ProcessCase, options: list[MaintenanceOptions],
+                              dsns: list[str], directory: Path, package: Path) -&gt; list[dict[str, Any]]:
+        """四组真实CLI拒绝均核对两库全表、原密文、发布目录及PG工具零调用。"""
+        tool, marker = marker_tool(directory)
+        results = []
+        before = [await database_snapshot(dsn, option.object_root)
+                  for dsn, option in zip(dsns, options, strict=True)]
+        assert before[1] == ({}, {}) and not options[1].object_root.exists()
+        for field in ['dsn', 'key']:
+            for mode in ['0644', 'symlink']:
+                name = action+'-'+field+'-'+mode
+                selected = options[0 if action == 'backup' else 1]
+                unsafe = private_copy(selected, directory / name, field, mode)
+                destination = directory / (name+'-package') if action == 'backup' else package
+                result = await actual_cli(action, unsafe, destination, tool)
+                assert result['exit'] == 1
+&gt;               assert result['output'] == {'status': 'failed', 'code': 'MAINTENANCE_INPUT_INVALID'}
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               AssertionError
+
+packages/xuanpu-finance/tests/f14_process_helpers.py:111: AssertionError</failure></testcase></testsuite></testsuites>

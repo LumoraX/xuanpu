@@ -1,0 +1,6 @@
+$ uv run ruff check --select F,S108,I,TC packages/xuanpu-finance/src/xuanpu_finance/local_objects.py packages/xuanpu-finance/src/xuanpu_finance/objects.py packages/xuanpu-finance/tests/test_f13_objects.py packages/xuanpu-finance/tests/f13_objects_helpers.py
+All checks passed!
+exit_code=0
+$ uv run mypy packages/xuanpu-finance/src/xuanpu_finance/local_objects.py packages/xuanpu-finance/src/xuanpu_finance/objects.py
+Success: no issues found in 2 source files
+exit_code=0

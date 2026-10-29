@@ -1,0 +1,61 @@
+{
+  "mode": "pipe",
+  "http_trust_env": false,
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/healthz",
+      "status": 200,
+      "seconds": 0.0007543748943135142,
+      "log_bytes_before": 258,
+      "log_bytes_after": 317
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/tenants",
+      "status": 401,
+      "seconds": 0.0007472920697182417,
+      "log_bytes_before": 317,
+      "log_bytes_after": 395
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/tenants",
+      "status": 201,
+      "seconds": 0.000881417072378099,
+      "log_bytes_before": 395,
+      "log_bytes_after": 469
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/tenants/acme/keys",
+      "error_type": "ReadTimeout",
+      "seconds": 10.00133925001137,
+      "log_bytes_before": 469,
+      "log_bytes_after": 469
+    }
+  ],
+  "sample_exit": 0,
+  "blocked_stack_lines": [
+    "+                                       889 _io_TextIOWrapper_flush  (in libpython3.12.dylib) + 200  [0x103d1d5bc]",
+    "+                                             889 _io__Buffered_flush  (in libpython3.12.dylib) + 228  [0x103b87854]",
+    "+                                               889 _bufferedwriter_flush_unlocked  (in libpython3.12.dylib) + 132  [0x103b87a88]",
+    "+                                                 889 _bufferedwriter_raw_write  (in libpython3.12.dylib) + 208  [0x103b87e34]",
+    "+                                                       889 _io_FileIO_write  (in libpython3.12.dylib) + 168  [0x103d1904c]",
+    "+                                                         889 _Py_write_impl.llvm.7373441956267753097  (in libpython3.12.dylib) + 140  [0x103b75f8c]",
+    "+                                                           889 write  (in libsystem_kernel.dylib) + 8  [0x18b0c3834]",
+    "write  (in libsystem_kernel.dylib)        889"
+  ],
+  "drain_bytes": 469,
+  "health_after_drain": {
+    "status": 200,
+    "seconds": 0.0012031670194119215
+  },
+  "exit": -15,
+  "log_bytes": 763,
+  "log_sha256": "42689e4a69d126e63453bb1d8fd25be54acbd22b11bbf910aa3d83f71dde91e9",
+  "shutdown_complete": true,
+  "key_request_access_logged": true,
+  "log_lines": 14,
+  "port_closed": true
+}

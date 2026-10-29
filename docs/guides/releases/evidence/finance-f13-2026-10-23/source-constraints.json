@@ -1,0 +1,88 @@
+{
+  "status": "passed",
+  "checks": [
+    "future_annotations",
+    "Chinese_module_class_function_docstrings",
+    "file_le_800",
+    "function_le_80",
+    "C901_le_10"
+  ],
+  "files": [
+    {
+      "file": "docker/finance/build_image.py",
+      "lines": 30,
+      "documented_definitions": 1
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/__main__.py",
+      "lines": 68,
+      "documented_definitions": 2
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/api.py",
+      "lines": 223,
+      "documented_definitions": 12
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/local_objects.py",
+      "lines": 108,
+      "documented_definitions": 8
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/objects.py",
+      "lines": 155,
+      "documented_definitions": 19
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/f13_objects_helpers.py",
+      "lines": 53,
+      "documented_definitions": 2
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/f13_process_helpers.py",
+      "lines": 213,
+      "documented_definitions": 11
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f13_objects.py",
+      "lines": 447,
+      "documented_definitions": 21
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f13_process.py",
+      "lines": 71,
+      "documented_definitions": 1
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f7_api.py",
+      "lines": 71,
+      "documented_definitions": 3
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f7_contract.py",
+      "lines": 52,
+      "documented_definitions": 2
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f8_api.py",
+      "lines": 57,
+      "documented_definitions": 1
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f8_contract.py",
+      "lines": 40,
+      "documented_definitions": 2
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_package.py",
+      "lines": 315,
+      "documented_definitions": 12
+    },
+    {
+      "file": "scripts/acceptance/finance_runner.py",
+      "lines": 222,
+      "documented_definitions": 9
+    }
+  ],
+  "production_status": "not_verified"
+}

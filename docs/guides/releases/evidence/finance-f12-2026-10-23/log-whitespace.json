@@ -1,0 +1,260 @@
+{
+  "status": "passed_with_preserved_raw_evidence",
+  "raw_check_exit": 2,
+  "all_other_changes_check_exit": 0,
+  "diagnostic_count": 48,
+  "affected_raw_files": [
+    "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct-junit.xml",
+    "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct.log",
+    "docs/guides/releases/evidence/finance-f12-2026-10-23/full-initial/junit.xml",
+    "docs/guides/releases/evidence/finance-f12-2026-10-23/full-initial/pytest.log",
+    "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/junit.xml",
+    "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/pytest.log",
+    "docs/guides/releases/evidence/finance-f12-2026-10-23/image-build.log",
+    "docs/guides/releases/evidence/finance-f12-2026-10-23/process-initial.log"
+  ],
+  "diagnostics": [
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct-junit.xml",
+      "line": 9,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct-junit.xml",
+      "line": 10,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct-junit.xml",
+      "line": 36,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct-junit.xml",
+      "line": 63,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct-junit.xml",
+      "line": 74,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct-junit.xml",
+      "line": 75,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct-junit.xml",
+      "line": 96,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct-junit.xml",
+      "line": 107,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct-junit.xml",
+      "line": 116,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct-junit.xml",
+      "line": 119,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct.log",
+      "line": 13,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct.log",
+      "line": 14,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct.log",
+      "line": 40,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct.log",
+      "line": 67,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct.log",
+      "line": 78,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct.log",
+      "line": 79,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct.log",
+      "line": 100,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct.log",
+      "line": 111,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct.log",
+      "line": 120,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/cli-direct.log",
+      "line": 123,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-initial/junit.xml",
+      "line": 9,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-initial/junit.xml",
+      "line": 12,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-initial/junit.xml",
+      "line": 18,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-initial/pytest.log",
+      "line": 51,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-initial/pytest.log",
+      "line": 54,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-initial/pytest.log",
+      "line": 60,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/junit.xml",
+      "line": 9,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/junit.xml",
+      "line": 10,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/junit.xml",
+      "line": 39,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/junit.xml",
+      "line": 66,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/junit.xml",
+      "line": 77,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/junit.xml",
+      "line": 78,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/junit.xml",
+      "line": 99,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/junit.xml",
+      "line": 110,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/junit.xml",
+      "line": 119,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/junit.xml",
+      "line": 122,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/pytest.log",
+      "line": 51,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/pytest.log",
+      "line": 52,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/pytest.log",
+      "line": 81,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/pytest.log",
+      "line": 108,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/pytest.log",
+      "line": 119,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/pytest.log",
+      "line": 120,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/pytest.log",
+      "line": 141,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/pytest.log",
+      "line": 152,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/pytest.log",
+      "line": 161,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/full-proxy-attempt/pytest.log",
+      "line": 164,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/image-build.log",
+      "line": 62,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f12-2026-10-23/process-initial.log",
+      "line": 14,
+      "kind": "trailing whitespace."
+    }
+  ],
+  "reason": "原始pytest输出与失败JUnit异常正文保留其空白；仅已声明临时凭据值脱敏，不为格式检查改写原始异常。源代码、文档、JSON与其它JUnit检查通过。",
+  "production_status": "not_verified"
+}

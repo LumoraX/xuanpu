@@ -1,0 +1,437 @@
+{
+  "status": "partial_efficiency_measured_full_acceptance_failed",
+  "runs": [
+    {
+      "journey": "final6",
+      "overall_result": "failed",
+      "failure": "HarnessFailure:SESSION_TERMINAL:05-owner-resubmit",
+      "first_three": {
+        "streams": 35,
+        "input": 199029,
+        "output": 6277,
+        "tokens": 205306
+      },
+      "phases": {
+        "01-clarify:session": {
+          "streams": 9,
+          "input": 45579,
+          "output": 1189,
+          "tools": {
+            "api__finance__getFinanceCapabilities": 2,
+            "call_skill": 1,
+            "api__finance__listLegalEntities": 1,
+            "api__catalog__listExpenseCategories": 1,
+            "api__catalog__listCostCenters": 1,
+            "api__finance__listSupportingMaterialImports": 1
+          }
+        },
+        "02-create:session": {
+          "streams": 15,
+          "input": 79171,
+          "output": 2575,
+          "tools": {
+            "api__finance__getFinanceCapabilities": 3,
+            "call_skill": 2,
+            "api__finance__listLegalEntities": 2,
+            "api__finance__listSupportingMaterialImports": 2,
+            "api__finance__getSupportingMaterialImport": 2,
+            "api__catalog__listExpenseCategories": 1,
+            "api__catalog__listCostCenters": 1,
+            "api__finance__createExpenseClaim": 1
+          }
+        },
+        "03-edit-preview:session": {
+          "streams": 11,
+          "input": 74279,
+          "output": 2513,
+          "tools": {
+            "api__finance__getFinanceCapabilities": 3,
+            "call_skill": 2,
+            "api__finance__listLegalEntities": 1,
+            "api__catalog__listExpenseCategories": 1,
+            "api__catalog__listCostCenters": 1,
+            "api__finance__getExpenseClaim": 1,
+            "api__finance__listSupportingMaterialImports": 1,
+            "api__finance__getSupportingMaterialImport": 1,
+            "api__finance__updateExpenseClaim": 1,
+            "api__finance__previewFinanceAction": 1
+          }
+        }
+      },
+      "trace_evidence": [
+        {
+          "trace": "final6/model-099.json",
+          "sha256": "d3582c9334120ea85557c1a90ef37f674cf42be2a6da58939a3d2360db2b23d1"
+        },
+        {
+          "trace": "final6/model-100.json",
+          "sha256": "19b43b50f672e3b9ae3cc2ed5d2aad525106e885b92512e8a8bf51f21fdf3184"
+        },
+        {
+          "trace": "final6/model-101.json",
+          "sha256": "81c9076504d5f3142bcf0bde21c081b008c11bc5e3c02a901dd800b7aceebbc5"
+        },
+        {
+          "trace": "final6/model-102.json",
+          "sha256": "82c9ee9c1090b7f41eab32b68bb48c7292d8a1dced2b7fcf190d3740e0b6065d"
+        },
+        {
+          "trace": "final6/model-103.json",
+          "sha256": "acb600ce781a2574fbd2acfab2b1955bcd1f111216e2ad65c7d37f96cb645e93"
+        },
+        {
+          "trace": "final6/model-104.json",
+          "sha256": "cd86a7a672eb4bc68d8edaed1b4cc8d0aec62fbe9d1a10839a21339378542472"
+        },
+        {
+          "trace": "final6/model-105.json",
+          "sha256": "1e13b83c65353bb3d182892f0186ec0928b5e922efdb9a81ac0d8d76f7607a02"
+        },
+        {
+          "trace": "final6/model-106.json",
+          "sha256": "fac9119c1061eb64af84b51a9e34125e40610d1715b6e01594eedf647a462408"
+        },
+        {
+          "trace": "final6/model-107.json",
+          "sha256": "e02225136173124a2699c0d45dfaa78ff39f5ba091f180095bd2064c0cd79caf"
+        },
+        {
+          "trace": "final6/model-108.json",
+          "sha256": "c35b8a989e16921736bf49d275c4ace65ded23c3e4c43a1c9312ebf86a34ba71"
+        },
+        {
+          "trace": "final6/model-109.json",
+          "sha256": "e99513b3516992bf96f5048880b24ccf603899de21977d17fbbdbd5e81e1d200"
+        },
+        {
+          "trace": "final6/model-110.json",
+          "sha256": "ce15601234a56870148eb8dfaf9a44d83b765285b862e7761aa8ffe98593cd7a"
+        },
+        {
+          "trace": "final6/model-111.json",
+          "sha256": "4316883f775e3fdb7975d5ff15a413cda9d4481f58f8b4ea18d585fe23029851"
+        },
+        {
+          "trace": "final6/model-112.json",
+          "sha256": "265d84ce87bbdb89a087190d15313b71405e5d7e38d0b75d25f7187459c33880"
+        },
+        {
+          "trace": "final6/model-113.json",
+          "sha256": "570a55345c9d793b85cbccd64fe3c5d1bf6932c1b48a0e4877b6cfd1574bf402"
+        },
+        {
+          "trace": "final6/model-114.json",
+          "sha256": "9dbf8a6742ec2d943bd84540344047fb8733a4cccf34a033ae0ad8dc3149f1a8"
+        },
+        {
+          "trace": "final6/model-115.json",
+          "sha256": "4616f855adbcc7a6f1196c2767a4aa8c5a4837e2361575e9b11a3d262df008f9"
+        },
+        {
+          "trace": "final6/model-116.json",
+          "sha256": "051f7652ebc0f528daafbc49ec99f22a83d9f212ad3fcd189a63311fa6e026fb"
+        },
+        {
+          "trace": "final6/model-117.json",
+          "sha256": "9479cf033502b570034c2d16edc451b95e2971409153fe539d9f6fe46336fc06"
+        },
+        {
+          "trace": "final6/model-118.json",
+          "sha256": "4115a8a8aa7a4ecf6a8eeea63988fe932c0314518e96828aa479e289c537a561"
+        },
+        {
+          "trace": "final6/model-119.json",
+          "sha256": "d0e138ded65df4b99e5723ef9e6f1fb3d04cd72e3bc2df8d4e17b2a756ff941c"
+        },
+        {
+          "trace": "final6/model-120.json",
+          "sha256": "79a53f6de1ad8724b65d0a27bf464eb7a9470e61d5a449fb0229848fb2672fb4"
+        },
+        {
+          "trace": "final6/model-121.json",
+          "sha256": "f1d1481ce84537318df9fd7e8f5d56896c1f906e3c3a96f963b2537cb7e1ff4f"
+        },
+        {
+          "trace": "final6/model-122.json",
+          "sha256": "a3c9ca35fcb9a36521863da1711fa2656c54146dcf2a666f1e64eb3912a1264c"
+        },
+        {
+          "trace": "final6/model-123.json",
+          "sha256": "63a3919150ac99a7b79f12baeb8489522fd03c57cafc94ea43e72b95c3e0dac7"
+        },
+        {
+          "trace": "final6/model-124.json",
+          "sha256": "1e5e44929c188f6fb120989fa11e5e3a8504840332933a0ddd3698ce9bbd865d"
+        },
+        {
+          "trace": "final6/model-125.json",
+          "sha256": "efd3e7ae3e7961dfac630902af6dd3bc41a5671574e7f5006d7715e9c14c1f4b"
+        },
+        {
+          "trace": "final6/model-126.json",
+          "sha256": "ae800c47b1d0782667ee772055f0a2568d1af02f64062969c37b30cfc8eb4d1f"
+        },
+        {
+          "trace": "final6/model-127.json",
+          "sha256": "9f6d2661d4212f194c9c84910b88bd338474302db77175e43642f7285e41ee1f"
+        },
+        {
+          "trace": "final6/model-128.json",
+          "sha256": "159650709b734adcbe0ed6b9133bb40547aa76045b50ac1f78d2281196b56faf"
+        },
+        {
+          "trace": "final6/model-129.json",
+          "sha256": "6a5c3fd3dfb62d307565862ba9884054ba1d742060f5fdbc9d988bc4d2308c1e"
+        },
+        {
+          "trace": "final6/model-130.json",
+          "sha256": "be49d6d19444f66d81f288fda1194aba678c01f079e44c3328f8b29fd6945cd6"
+        },
+        {
+          "trace": "final6/model-131.json",
+          "sha256": "ee581cc168f8c5cf71949361ef02dff57393811136100ef45ac6749a8bd3034c"
+        },
+        {
+          "trace": "final6/model-132.json",
+          "sha256": "6dbc7f75fc5a0cfcebba294bd209a7a92522d0e0e14e12ca857ad8ece10245e6"
+        },
+        {
+          "trace": "final6/model-133.json",
+          "sha256": "ca5e129486c4ccb77b92806bc447ad9d54f14d6b2584017b03284d44e1e96314"
+        }
+      ]
+    },
+    {
+      "journey": "final7",
+      "overall_result": "failed",
+      "failure": "model_revision_draft",
+      "first_three": {
+        "streams": 10,
+        "input": 81518,
+        "output": 1482,
+        "tokens": 83000
+      },
+      "phases": {
+        "01-clarify:session": {
+          "streams": 1,
+          "input": 6433,
+          "output": 150,
+          "tools": {}
+        },
+        "02-create:session": {
+          "streams": 5,
+          "input": 37224,
+          "output": 593,
+          "tools": {
+            "api__finance__getFinanceCapabilities": 1,
+            "api__finance__listLegalEntities": 1,
+            "api__catalog__listExpenseCategories": 1,
+            "api__finance__listSupportingMaterialImports": 1,
+            "api__finance__getSupportingMaterialImport": 1,
+            "api__finance__createExpenseClaim": 1
+          }
+        },
+        "03-edit-preview:session": {
+          "streams": 4,
+          "input": 37861,
+          "output": 739,
+          "tools": {
+            "api__finance__getExpenseClaim": 1,
+            "api__finance__updateExpenseClaim": 1,
+            "api__finance__previewFinanceAction": 1
+          }
+        }
+      },
+      "trace_evidence": [
+        {
+          "trace": "final7/model-145.json",
+          "sha256": "2e02ecf37d79bd8a55616b0631295aae2c33d2278a37c762f16c94090f77b17d"
+        },
+        {
+          "trace": "final7/model-146.json",
+          "sha256": "98933272822880dca78f6fe10eaa9f7f4f25916fd75a4a058d037112cec51065"
+        },
+        {
+          "trace": "final7/model-147.json",
+          "sha256": "e894761d9006b23432267f668a20baae027c1c455164aa44f8ae7824ae9b39d1"
+        },
+        {
+          "trace": "final7/model-148.json",
+          "sha256": "0bc47c5b9839daf85bec4e87fc98d0590aafc1ef1d54a3e34439270d18e33f21"
+        },
+        {
+          "trace": "final7/model-149.json",
+          "sha256": "2bf27db0dfb626ade126c87e39afd5904f127059e5724581587a8039da430130"
+        },
+        {
+          "trace": "final7/model-150.json",
+          "sha256": "55aa51ed60b19980cdcc65d18dbab13dc080ffc2b99cbc9d45d0994046ae6172"
+        },
+        {
+          "trace": "final7/model-151.json",
+          "sha256": "f997febb8ac0d55cef94c1211c23f23a0c3961407d5add7a24501e90a1265b67"
+        },
+        {
+          "trace": "final7/model-152.json",
+          "sha256": "6f770d182800e9d633290fe3ac6e48227af29ff25f1166ffc23847a8845f48c8"
+        },
+        {
+          "trace": "final7/model-153.json",
+          "sha256": "b35ce2af6e5d16f6c58ac11e5a8f262ee662a32d7096a086fc6488426c231298"
+        },
+        {
+          "trace": "final7/model-154.json",
+          "sha256": "f6c65d5cee9b69e55febe6942d5041b93b72cb450a973856a79c5e27c5bde1fd"
+        }
+      ],
+      "measured_reduction": {
+        "calls_percent": 71.43,
+        "tokens_percent": 59.57
+      },
+      "owner_business_session_through_resubmit": {
+        "phase_streams": {
+          "01-clarify:session": 1,
+          "02-create:session": 5,
+          "03-edit-preview:session": 4,
+          "05-owner-resubmit:session": 5
+        },
+        "streams": 15,
+        "known_input_plus_output_tokens": 151436,
+        "session_token_limit": 200000,
+        "within_limit": true,
+        "overall_journey_still_failed": true,
+        "actual_actor_id": "usr_997b5896599fe4fecc7cd6fd",
+        "actual_session_id": "ses_422be9a4222d8b16261e38c9413b55e9",
+        "same_actual_session_verified": true
+      }
+    },
+    {
+      "journey": "final8",
+      "overall_result": "failed",
+      "failure": "fresh_query_semantic_facts",
+      "first_three": {
+        "streams": 10,
+        "input": 83095,
+        "output": 1643,
+        "tokens": 84738
+      },
+      "phases": {
+        "01-clarify:session": {
+          "streams": 1,
+          "input": 6583,
+          "output": 168,
+          "tools": {}
+        },
+        "02-create:session": {
+          "streams": 5,
+          "input": 38011,
+          "output": 633,
+          "tools": {
+            "api__finance__getFinanceCapabilities": 1,
+            "api__finance__listLegalEntities": 1,
+            "api__catalog__listExpenseCategories": 1,
+            "api__finance__listSupportingMaterialImports": 1,
+            "api__finance__getSupportingMaterialImport": 1,
+            "api__finance__createExpenseClaim": 1
+          }
+        },
+        "03-edit-preview:session": {
+          "streams": 4,
+          "input": 38501,
+          "output": 842,
+          "tools": {
+            "api__finance__getExpenseClaim": 1,
+            "api__finance__updateExpenseClaim": 1,
+            "api__finance__previewFinanceAction": 1
+          }
+        }
+      },
+      "trace_evidence": [
+        {
+          "trace": "final8/model-167.json",
+          "sha256": "4d4ebcdf1b5b65a41baebea3a4f46c4abe7359e4736fb4d35454c5bcb11a6fda"
+        },
+        {
+          "trace": "final8/model-168.json",
+          "sha256": "d944221332ce7fcbe8295a68798d443e5b231a0284314fd52f9966a4b654def4"
+        },
+        {
+          "trace": "final8/model-169.json",
+          "sha256": "0270b89cb8f87785c330ef36901877fd85f3862391506cc49fe4479948ff9136"
+        },
+        {
+          "trace": "final8/model-170.json",
+          "sha256": "f60fc851a212c16c6db865ee0696ff8cc3bc32e171e6460e1f81186965369471"
+        },
+        {
+          "trace": "final8/model-171.json",
+          "sha256": "e41e96adf3e881dabed0eb6f5d8d13759019541197e816f4d9c870dee8c1e6d0"
+        },
+        {
+          "trace": "final8/model-172.json",
+          "sha256": "26d509915aa882e24562e472ed4c34033213e43ea9f8d8d8258492a4ac0cb211"
+        },
+        {
+          "trace": "final8/model-173.json",
+          "sha256": "3d6423a1418f000d91335c9c88e806e81563f4b9beeeed575badb94c49b4b029"
+        },
+        {
+          "trace": "final8/model-174.json",
+          "sha256": "e308de5c19bf88ad93c6d11aa68ff41c04f2f800c84517394da4029f1885a678"
+        },
+        {
+          "trace": "final8/model-175.json",
+          "sha256": "450ed41a539c52efd3c8383d9d2b2159c2c3ac58bd1fcc03be6cdf285fecd3f2"
+        },
+        {
+          "trace": "final8/model-176.json",
+          "sha256": "70e53d93cf9af47dd14fae9e986cc3dbe887b99e3a5bbb3d32c562146e1e2632"
+        }
+      ],
+      "measured_reduction": {
+        "calls_percent": 71.43,
+        "tokens_percent": 58.73
+      },
+      "owner_business_session_through_resubmit": {
+        "phase_streams": {
+          "01-clarify:session": 1,
+          "02-create:session": 5,
+          "03-edit-preview:session": 4,
+          "05-owner-resubmit:session": 5
+        },
+        "streams": 15,
+        "known_input_plus_output_tokens": 154106,
+        "session_token_limit": 200000,
+        "within_limit": true,
+        "overall_journey_still_failed": true,
+        "actual_actor_id": "usr_233e582c7b350a1d37d69d0f",
+        "actual_session_id": "ses_7231653f272f8fb9f49277e4662a6765",
+        "same_actual_session_verified": true
+      },
+      "known_unique_id_locator_rule_not_yet_realized": {
+        "actual_trace": "final8/model-183.json",
+        "actual_tool": "api__finance__listExpenseClaimSummaries",
+        "ordinary_owner_session_already_had_created_claim_id": true,
+        "remaining_efficiency_gap": "The one redundant locator query was still emitted despite the offline instruction; do not claim it eliminated.",
+        "no_source_or_model_change_after_final_freeze": true
+      }
+    }
+  ],
+  "required_two_complete_journeys": 2,
+  "actual_complete_journeys": 0,
+  "known_accounting_reconciled": true,
+  "model_streams_all_attempts": 208,
+  "completed_with_usage": 206,
+  "usage_unknown_attempts": [
+    56,
+    59
+  ],
+  "known_input_tokens": 1207876,
+  "known_output_tokens": 30074,
+  "unknown_not_zero": true,
+  "cached_input_included": true,
+  "no_price_estimate": true,
+  "budgets_not_expanded_or_reset": true,
+  "remaining_attempts": 32,
+  "newest_skill_fix_not_yet_model_verified": true
+}

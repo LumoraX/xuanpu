@@ -635,8 +635,8 @@ data: {"submission_id": "sub_…", "overflowed": false}
 ```
 
 - 第一帧 `turn` 给出本轮的 `submission_id`（响应头 `X-Submission-Id` 里也有）。
-- 之后每条内核事件一帧，事件名就是事件类型，`id` 是事件序号。
-- 一轮对话以 `turn_completed`、`turn_failed`（两者要 `data.is_root` 为真）或 `turn_suspended` 结束，最后补一帧 `end`。送回审批的那次请求没有续跑时，以 `suspension_resolve_rejected`（被拒，`data.reason` 说明原因）或 `suspension_partially_resolved`（只核销了一部分待办）结束，见[审批](#审批)。
+- 之后每条内核事件一帧，事件名就是事件类型，`id` 是事件序号。对外 `data.operation_terminal` 是服务端计算的操作级布尔，实时流与审计回放一致；内核事件对象保持不变。未知事件不会自动作为终态。
+- 一轮对话以 `turn_completed`、`turn_failed`（两者要 `data.is_root` 为真）或本操作目标的 `turn_suspended` 结束，最后补一帧 `end`。新消息只以根线程挂起结束；恢复操作还允许当前目标叶线程及其已持久化原链祖先再次挂起时结束，新派生后代的挂起不会提前关闭流。送回审批的那次请求没有续跑时，以 `suspension_resolve_rejected`（被拒，`data.reason` 说明原因）或 `suspension_partially_resolved`（只核销了一部分待办）结束，见[审批](#审批)。
 - 没有事件时每 15 秒发一行 `: keepalive` 注释。
 - 含完整提示词的事件不外发。
 - `end` 里的 `overflowed` 为真，表示调用方读得太慢、这条流被平台放弃（缓冲 8192 条）；对话本身不受影响。
@@ -645,7 +645,7 @@ data: {"submission_id": "sub_…", "overflowed": false}
 
 ### 审批
 
-需要审批时本轮以 `turn_suspended` 结束，`data.pending` 列出待办：
+需要审批时本轮以符合上述操作目标的 `turn_suspended` 结束；子Skill与纯内部 `child_skill` 父挂起也会出现在流中。人工界面通过 `GET /v1/sessions/{id}/pending` 读取当前待办，不能直接把每条事件的 `data.pending` 渲染为确认卡。人工待办项形状：
 
 ```json
 {"request_id": "req_4c060f5db252bc57", "reason": "permission",
@@ -661,7 +661,7 @@ data: {"submission_id": "sub_…", "overflowed": false}
 
 连接器工具的审批，`detail` 里是要调的工具（`target`）、调用参数（`args`）与参数摘要（`arguments_digest`，与这次调用的过闸记录里的是同一个值）。
 
-`GET /v1/sessions/{id}/pending` 随时返回当前的待办：`{"pending": [ … ]}`，没有待办时是空列表。
+`GET /v1/sessions/{id}/pending` 返回当前人工待办：`{"pending": [ … ]}`，没有待办时是空列表。纯内部 `child_skill` 父挂起不覆盖叶子人工待办；混合了人工待办的记录仍保留。终态投递前，该操作的父链已持久化且待办审计已写完，收到 `end` 后立即读取即可取得同一可信批次。
 
 把结果送回：
 
@@ -670,6 +670,8 @@ POST /v1/sessions/{id}/resume
 {"resolutions": {"req_4c060f5db252bc57": {"granted": true}}}
 → 事件流
 ```
+
+恢复目标线程由服务端在会话锁内从当前同会话审计批次推导，客户端不发送线程或挂起记录编号。已知无效线程不会回退根线程；旧审计缺少线程字段时仅兼容根恢复。未知待办仍由当前可信目标的内核显式整次拒绝，不能借请求ID跳到其他线程。
 
 拒绝是 `{"granted": false, "reason": "…"}`。批准后被挂起的那次调用才真正执行；拒绝则不执行，模型收到被拒的结果后继续。`resolutions` 不能为空。会话的主人已停用时是 `403 session_owner_disabled`，什么也不提交（见[主人停用之后](#主人停用之后)）。
 
@@ -744,7 +746,7 @@ GET /v1/sessions/{id}/events?submission_id=sub_…&after_seq=13
               {"kind": "turn_text", "seq": null, "at": 1790753324.87, "data": {"text": "工单 T-1001…"}}]}
 ```
 
-返回这一轮已记入审计的事件：不含流式增量；一轮结束时另有一条 `turn_text` 带着回复全文。`after_seq` 省略时返回全部，给了就只返回序号更大的（`turn_text` 没有序号，总会返回）。
+返回这一轮已记入审计的事件：不含流式增量；一轮结束时另有一条 `turn_text` 带着回复全文。`after_seq` 省略时返回全部，给了就只返回序号更大的（`turn_text` 的 `seq` 为 `null`，SDK保留 `None`，不用于更新 `after_seq` 游标且总会返回）。
 
 ## 审计
 
@@ -978,3 +980,13 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | POST /v1/installations/{id}/state | request_id、expected_version、status=draining/disabled | 当前安装状态与递增version；ready因尚无B/C发布证据409 |
 
 预检有效期默认900秒，内部证据固定归档、策略、完整MCP清单及凭据密文版本，安装前重检。diff仅含公开权限/上一安装权限及配置槽名，不回显配置值、密文指纹或实际秘密引用。新登记/预检/安装要求capability_delivery明确开启并命中租户白名单；查询与停止不受该新受理开关阻断。精确契约见[能力架构](capability-delivery.md)。
+
+## 通用集成身份与固定文件桥
+
+路由模块的相对路径为 `GET /identity` 与 `GET /files/{id}`，统一挂载到 `/v1/integration-gateway`。
+
+`GET /v1/integration-gateway/identity` 返回当前真实员工的 `tenant_id`、`user_id`、`active: true`。使用员工 Cookie 或获准 act-as 的租户 API key；调用时仍核对员工当前启用状态，root 和未代入员工的机器身份不能读取。
+
+`GET /v1/integration-gateway/files/{id}?revision=<整数>&sha256=<64位摘要>` 按本人文件权限返回指定不可变修订的原字节。必须显式绑定版本和摘要，错误引用或无权访问失败关闭，不接受任意URL或存储对象key。响应包含安全 `Content-Disposition` 和原始 MIME；不缓存。本桥要求与工作台相同的身份与文件授权，不能绕过撤回、停用员工或跨租户限制。
+
+此桥不含业务规则。集成服务只持有受限 API 凭据，不取得平台数据库或对象存储凭据；独立业务系统保存自己的材料副本及责任回执。

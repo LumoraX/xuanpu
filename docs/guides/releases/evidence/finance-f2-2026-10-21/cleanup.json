@@ -1,0 +1,10 @@
+{
+  "test_containers": [],
+  "compose_containers": [],
+  "compose_volumes": [],
+  "compose_networks": [],
+  "test_schemas_before_removal": 0,
+  "browser_harness": "stopped",
+  "temporary_compose_secrets": "removed",
+  "original_checkout": "clean"
+}

@@ -1,0 +1,79 @@
+.........F                                                               [100%]
+=================================== FAILURES ===================================
+___________ test_nested_sdk_terminal_boundary_live_and_audit_replay ____________
+
+identity_world = <function identity_world.<locals>.opener at 0x10ec804a0>
+step = <class 'packages.xuanpu-server.tests.conftest.Step'>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2368/test_nested_sdk_terminal_bound0')
+
+    async def test_nested_sdk_terminal_boundary_live_and_audit_replay(
+        identity_world: Any, step: Any, tmp_path: Path,
+    ) -> None:
+        """SDK真实消费初始leaf到根及恢复完成，live与审计投影一致且可提前停在操作终态。"""
+        from xuanpu_sdk import Event, XuanpuClient
+    
+        async with identity_world() as ident, records_server() as (url, writes):
+            await publish_nested(ident, tmp_path / 'sdk-nested', url)
+            transport = httpx.ASGITransport(create_app(ident.world.platform))
+            async with XuanpuClient('http://xuanpu', ident.world.member_key,
+                                    transport=transport) as client:
+                session = await client.sessions.create('nested-approval')
+                sid = session.session_id
+                ident.world.models.script(
+                    step(calls=[('delegate', 'call_skill', {'skill_id': 'child', 'reason': '保存'})]),
+                    step(calls=[('write', 'api__records__append', {})]),
+                    step(text='子任务完成'), step(text='根任务完成'))
+                emitted = []
+                async for item in client.sessions.send(sid, '保存一条合成记录'):
+                    emitted.append(item)
+                    if item.terminal:
+                        break
+                hung = [item for item in emitted if item.kind == 'turn_suspended']
+                assert [item.data['operation_terminal'] for item in hung] == [False, True]
+                assert [item.terminal for item in hung] == [False, True]
+                pending = await client.sessions.pending(sid)
+                assert len(pending) == 1 and pending[0]['reason'] == 'permission'
+                replay = await client.sessions.replay(sid, hung[-1].submission_id)
+                saved = [item for item in replay if item['kind'] == 'turn_suspended']
+                assert [item['data']['operation_terminal'] for item in saved] == [False, True]
+                assert all(item.data == row['data'] for item, row in zip(hung, saved, strict=True))
+                resumed = [item async for item in client.sessions.resume(
+                    sid, {pending[0]['request_id']: {'granted': True}})]
+                assert resumed[-1].terminal and resumed[-1].kind == 'turn_completed'
+                assert writes == ['append']
+>               duplicate = [item async for item in client.sessions.resume(
+                    sid, {pending[0]['request_id']: {'granted': True}})]
+
+packages/xuanpu-server/tests/identity/test_nested_resume.py:420: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <xuanpu_sdk.client._Http object at 0x10e56eb10>
+path = '/v1/sessions/ses_4b05ab279661555744aa3736/resume'
+body = {'resolutions': {'req_832edb6df46f34b5': {'granted': True}}}
+
+    async def stream(self, path: str, body: dict[str, Any]) -> AsyncIterator[Event]:
+        """发一个事件流请求，逐条产出内核事件，直到本轮对话结束。"""
+        try:
+            async with self._client.stream(
+                "POST", path, json=body, timeout=httpx.Timeout(None, connect=30.0)
+            ) as response:
+                if response.status_code >= 400:
+                    await response.aread()
+                    _raise_for(response)
+                async for name, payload in parse_sse(response.aiter_lines()):
+                    if name in ("turn", "end"):
+                        continue
+                    yield Event(
+                        kind=str(payload["kind"]),
+                        submission_id=str(payload["submission_id"]),
+>                       seq=int(payload["seq"]),
+                            ^^^^^^^^^^^^^^^^^^^
+                        at=float(payload["at"]),
+                        data=dict(payload.get("data") or {}),
+                    )
+E                   TypeError: int() argument must be a string, a bytes-like object or a real number, not 'NoneType'
+
+packages/xuanpu-sdk-py/src/xuanpu_sdk/client.py:93: TypeError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-server/tests/identity/test_nested_resume.py::test_nested_sdk_terminal_boundary_live_and_audit_replay
+1 failed, 9 passed in 3.55s

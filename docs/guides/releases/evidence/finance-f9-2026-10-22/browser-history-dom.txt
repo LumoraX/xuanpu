@@ -1,0 +1,168 @@
+Browser tab: 20, Title: "玄圃 · 个人工作站", URL: "http://127.0.0.1:54240/console/".
+0 AXWebArea 玄圃 · 个人工作站, URL: 127.0.0.1:54240/console/
+	1 container
+		2 text 玄圃  个人工作站
+		3 text 已登录 · F8测试财务复核（飞书）
+		4 container current-user
+			5 pop up button (collapsed) 通知, Help: 查看最近100条通知, ID: notification-toggle, Secondary Actions: Expand
+			6 text F8测试财务复核 · 成员
+			7 button 退出, ID: logout
+	8 container tabs
+		9 button 会话
+		10 button 功能, ID: functions-tab
+	47 container
+		48 container 财务记录与审批, ID: workspace-window
+			49 container
+				50 heading 财务记录与审批, Value: 2, ID: workspace-title
+					51 text 财务记录与审批
+				52 button Description: 关闭工作窗口, ID: workspace-close
+			53 container workspace-toolbar
+				54 container
+					55 text 所属公司
+					56 pop up button (collapsed, settable) Description: 所属公司, Value: F9隔离验收公司, Secondary Actions: Expand
+						57 menu
+							58 (selected) F9隔离验收公司
+				59 button 我的收件记录
+				60 button 财务提醒
+				61 button 运行概览
+				62 button 新建报销
+				63 button 本人记录
+				64 button 本人草稿
+				65 button 全部可看记录
+				66 button 待我审批
+				67 button 刷新
+				68 container
+					69 text 记录状态
+					70 pop up button (collapsed, settable) Description: 记录状态, Value: 草稿, Secondary Actions: Expand
+						71 menu
+							72 全部状态
+							73 (selected) 草稿
+							74 已提交
+							75 审批中
+							76 审批通过
+							77 已驳回
+							78 已撤回
+				79 container
+					80 text 单号或事由
+					81 search text field (settable) 单号或事由
+				82 button 查询记录
+			135 text 请核对报销明细、票据依据和审批步骤；审批通过不表示已付款或入账。
+			136 container workspace-content
+				137 heading F9交通 100%_内部记录, Value: 3
+					138 text F9交通 100%_内部记录
+				139 text ¥100.00 · 审批通过 · 版本 6
+				140 text 单号：a7663bc1890d4de2b58fda021ae448d2
+				141 text 隔离测试交通费用 · 2026-10-22 · ¥100.00 · travel
+				142 text 内部报销记录：记录与内部审批不表示已经付款、入账或完成票据验真。
+				143 button (collapsed) 证据记录（1）, Secondary Actions: Expand
+					144 text 证据记录（1）
+				145 heading 发票信息申报（未经查验）, Value: 4
+					146 text 发票信息申报（未经查验）
+				147 text   发票信息：F9-TEST-001
+金额100.00；仅内部申报、未查验  
+				148 text 以上为申请人提供的原文，非正式发票；未作票据验真、付款或记账。
+				149 button 读取原件 4f9a8cc11b574fda974ba19e7ea7b4c6
+				150 button 查看流转历史
+				157 container
+					158 heading 流转历史（9）, Value: 4
+						159 text 流转历史（9）
+					160 text 2026-10-22T13:55:37.162613+00:00
+					161 heading 原单据版本 1 · ¥100.00 · 草稿, Value: 5
+						162 text 原单据版本 1 · ¥100.00 · 草稿
+					163 text F9交通 100%_内部记录
+					164 text 隔离测试交通费用 · 2026-10-22 · ¥100.00
+					165 heading 发票信息申报（未经查验）, Value: 4
+						166 text 发票信息申报（未经查验）
+					167 text   发票信息：F9-TEST-001
+金额100.00；仅内部申报、未查验  
+					168 text 以上为申请人提供的原文，非正式发票；未作票据验真、付款或记账。
+					169 button (collapsed) 证据记录（1）, Secondary Actions: Expand
+						170 text 证据记录（1）
+					171 button 读取原件 05a440cab2924f1a8dafbab868e8722a
+					173 link Description: 下载已核对摘要的原件, Value: blob:http://127.0.0.1:54240/eff8ff3f-3308-42b6-abf7-3aae9e190c30
+					174 text 已读取独立财务原件；这不代表材料内容或银行事实已核实。
+					172 button (disabled) 加载更多历史
+					175 text 2026-10-22T13:56:03.533565+00:00
+					176 heading 原单据版本 2 · ¥100.00 · 审批中, Value: 5
+						177 text 原单据版本 2 · ¥100.00 · 审批中
+					178 text F9交通 100%_内部记录
+					179 text 隔离测试交通费用 · 2026-10-22 · ¥100.00
+					180 heading 发票信息申报（未经查验）, Value: 4
+						181 text 发票信息申报（未经查验）
+					182 text   发票信息：F9-TEST-001
+金额100.00；仅内部申报、未查验  
+					183 text 以上为申请人提供的原文，非正式发票；未作票据验真、付款或记账。
+					184 button (collapsed) 证据记录（1）, Secondary Actions: Expand
+						185 text 证据记录（1）
+					186 button 读取原件 05a440cab2924f1a8dafbab868e8722a
+					187 button (disabled) 加载更多历史
+					188 text 2026-10-22T13:57:34.889264+00:00
+					189 heading 驳回 · 单据版本 2, Value: 5
+						190 text 驳回 · 单据版本 2
+					191 text 实际操作人：usr_1e409024aae5a385eacc5803
+					192 text 意见：请补充交通行程附件
+					193 text c2d83ca65f82444993e88fd5d710ac09 · d3f89093f8e8449a8c1763393ac5af89
+					194 button 加载更多历史
+				151 heading 审批进展, Value: 4
+					152 text 审批进展
+				153 text 流程版本：3 · 制度版本：1
+				154 text 审批期限：2026-10-25T14:00:12.619456+00:00
+				155 text 负责人审批 · 已批准本步骤 · 审批人：usr_1e409024aae5a385eacc5803
+				156 text 财务复核 · 已批准本步骤 · 审批人：usr_c9de58cef8abc75d82e392ab
+		84 container tab-functions
+			85 heading 功能, Value: 1
+				86 text 功能
+			87 text 平时直接在对话里说出需求，也可以在这里查看记录、自己操作。
+			88 container
+				89 heading 交办工作, Value: 2
+					90 text 交办工作
+				91 text 查看材料处理进展，确认行动项并下载成果。关闭页面后仍会继续处理。
+				92 button (collapsed) 查看我的工作, Secondary Actions: Expand
+			93 container
+				94 heading 发票报销记录与审批, Value: 2
+					95 text 发票报销记录与审批
+				96 text 记录发票和报销内容、选择附件、查看流转进展并处理本人审批。
+				97 button (expanded) 打开财务辅助页, Secondary Actions: Collapse
+			98 container
+				99 heading 我的文件, Value: 2
+					100 text 我的文件
+				101 text 文件夹、附件、版本和回收站，始终属于你的个人空间。
+				102 button (collapsed) 打开文件, Secondary Actions: Expand
+			103 container
+				104 heading 事项与待办, Value: 2
+					105 text 事项与待办
+				106 text 查看进展、关联资料，记录下一步工作。
+				107 button (collapsed) 打开事项, Secondary Actions: Expand
+				108 button (collapsed) 查看待办, Secondary Actions: Expand
+			109 container
+				110 heading 日程, Value: 2
+					111 text 日程
+				112 text 安排自己的时间，查看日程和到期提醒。
+				113 button (collapsed) 打开日程, Secondary Actions: Expand
+			114 container
+				115 heading 个人能力与设置, Value: 2
+					116 text 个人能力与设置
+				117 text 沉淀工作方法，设置助手的称呼、风格和时区。
+				118 button (collapsed) 个人能力, Secondary Actions: Expand
+				119 button (collapsed) 助手设置, Secondary Actions: Expand
+			120 container
+				121 heading 提醒, Value: 2
+					122 text 提醒
+				123 text 新建提醒、调整时间，查看已提醒或已取消的记录。
+				124 button 管理提醒, ID: open-reminder-module
+			125 container
+				126 heading 业务跟进, Value: 2
+					127 text 业务跟进
+				128 text 查看需要核实、安排或继续处理的工作，在对话中确认决定。
+				129 button 查看业务跟进, ID: open-proactive-module
+			130 container
+				131 heading 通知, Value: 2
+					132 text 通知
+				133 text 查看到期提醒和送达情况，离线期间的通知也会保留。
+				134 button 查看通知, ID: open-notification-module
+	43 container
+		44 link Description: 管理员入口, Value: 127.0.0.1:54240/console/?admin=1
+		45 text  · 
+		46 link Description: 员工入口, Value: 127.0.0.1:54240/console/?
+
+The focused UI element is 0 AXWebArea 玄圃 · 个人工作站, URL: 127.0.0.1:54240/console/

@@ -1,0 +1,14 @@
+{
+  "finance": {
+    "files_compared": 56,
+    "mismatches": []
+  },
+  "console": {
+    "files_compared": 18,
+    "mismatches": []
+  },
+  "image": {
+    "files_compared": 56,
+    "matches_source": true
+  }
+}

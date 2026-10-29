@@ -1,0 +1,116 @@
+{
+  "status": "source_metadata_and_requested_docs_ready",
+  "baseline": "da624a9",
+  "versions": {
+    "pack": "0.15.0-f14",
+    "finance": "2026.10.23.5",
+    "image": "2026.10.23.5",
+    "console": "2026.10.23.1"
+  },
+  "actual_checks": {
+    "audited_metadata_replacements": true,
+    "uv_lock_offline": {
+      "exit": 0,
+      "change": "xuanpu-finance only, 2026.10.23.4 -> 2026.10.23.5"
+    },
+    "real_contract_check": {
+      "validator": "xuanpu_spec.validate_package + taifeng.FilesystemSkillRegistry",
+      "package_valid": true,
+      "version": "0.15.0-f14",
+      "skills": [
+        "accounts-payable",
+        "archive-audit",
+        "expense-reimbursement",
+        "finance-assistant",
+        "finance-review",
+        "invoice-intake",
+        "posting-reconciliation"
+      ],
+      "api_operations": 77,
+      "contracts": {
+        "finance": 72,
+        "catalog": 5
+      },
+      "internal_operations": 24,
+      "published_files": 20,
+      "design_extra_refs_unchanged": 4,
+      "tool_lists_unchanged": true,
+      "model_shell": false,
+      "production_status": "not_verified"
+    },
+    "pytest_final": {
+      "command": "uv run pytest -q packages/xuanpu-finance/tests/test_package.py packages/xuanpu-finance/tests/test_f7_contract.py::test_internal_records_tools_and_declared_text_contract packages/xuanpu-finance/tests/test_f8_contract.py::test_materials_contract_and_skill_read_tools packages/xuanpu-finance/tests/test_f10_contract.py packages/xuanpu-finance/tests/test_f6_acceptance_runner.py -k \"not test_f2_actual_persisted_results_match_published_contract and not test_configured_integrations_and_unsent_deferred_records_match_contract\"",
+      "exit": 0,
+      "counts": {
+        "tests": 35,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "pg_connected": false
+    },
+    "pytest_initial": {
+      "counts": {
+        "tests": 37,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 2
+      },
+      "note": "未提供PG导致两个既有PG用例skip；保留历史，最终小范围验证明确排除这两项，不计作PG验证。"
+    },
+    "quick": {
+      "modules": 46,
+      "old_modules": 44,
+      "old_order_preserved": true,
+      "new_first_two": [
+        "packages/xuanpu-finance/tests/test_f14_credentials.py",
+        "packages/xuanpu-finance/tests/test_f14_process.py"
+      ]
+    },
+    "skill_readonly_after_update": "skill-scenario-after-update.json",
+    "updated_doc_links": {
+      "checked": 107,
+      "all_targets_exist": true,
+      "scope": "仅本次受影响Markdown及冻结README，不替代主任务最终全仓docs检查"
+    }
+  },
+  "readme_final_before_freeze": true,
+  "skill_change": "internal_records维护异常细节与版本同步；只读baseline原通用规则正确，无虚构红测；工具名单、shell=false保持",
+  "docs_files": [
+    "docs/architecture/finance.md",
+    "docs/guides/finance-gap-register.md",
+    "docs/guides/finance-f10.md",
+    "docs/guides/finance-f11.md",
+    "docs/guides/finance-f12.md",
+    "docs/guides/finance-f13.md",
+    "docs/guides/finance-f14.md",
+    "docs/guides/releases/2026-10-23-finance-f13-acceptance.md",
+    "docs/guides/releases/2026-10-23-finance-f14-acceptance.md"
+  ],
+  "all_new_doc_targets_exist": true,
+  "final_delivery_pending": [
+    "full",
+    "quick",
+    "static final",
+    "artifact/image build",
+    "full-round reviews",
+    "secret scan",
+    "resource cleanup",
+    "local commit"
+  ],
+  "not_verified": [
+    "正式公司/制度/人员",
+    "SSO/独立凭据/IAM/网络",
+    "实际TLS握手/证书链",
+    "真实模型",
+    "生产负载",
+    "实际S3/异机恢复",
+    "Linux完整业务",
+    "正式部署"
+  ],
+  "source_files_sha256": {
+    "packages/xuanpu-finance/README.md": "7c95392088b90c0f2b0ae83e26285c8e2c552fa038458895c191bb5c00db48b4",
+    "uv.lock": "f9b81663997018ef8ca631ec2ad0055e380b537c82e9205ac34db236881623e2",
+    "scripts/acceptance/finance_runner.py": "8677b5bb203a5824d48c809eca11997eac74718104455754708e1f2eb233deca"
+  }
+}

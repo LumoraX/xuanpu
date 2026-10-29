@@ -1,0 +1,12 @@
+{
+  "status": "passed_with_timing_cause_not_checked",
+  "quick_started_at": "2026-10-23T06:26:58.070257+00:00",
+  "quick_finished_at": "2026-10-23T06:38:12.946779+00:00",
+  "process_was_alive_when_sampled": true,
+  "sample_exit": 0,
+  "sample_sha256": "902268259de8a210672b4ce1babe1d29252e8606298866ed8e81fa8977036eb2",
+  "sample_scope": "native_stack_only_not_testcase_or_performance_diagnosis",
+  "reason_for_slower_run": "not_checked",
+  "terminal_result": "332 passed 0 skipped/failure/error, exit 0, within original 1800s limit",
+  "production_performance": "not_verified"
+}

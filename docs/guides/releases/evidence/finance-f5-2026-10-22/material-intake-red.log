@@ -1,0 +1,79 @@
+FFFFF                                                                    [100%]
+=================================== FAILURES ===================================
+_________ test_supporting_pdf_and_image_preserved_without_fake_invoice _________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10c98c920>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1251/test_supporting_pdf_and_image_0')
+
+    async def test_supporting_pdf_and_image_preserved_without_fake_invoice(store: FinanceStore,tmp_path: Path) -> None:
+        """真实PDF与图片独立保全，不建发票、不制造补票异常，也不声称材料已核实。"""
+        await prepare(store)
+        pdf,png=b'%PDF-1.4 contract source',b'\x89PNG\r\n\x1a\npayment proof'
+        files=[ref('contract',pdf),ref('proof',png)]
+>       op=await store.accept_supporting_materials(WHO,'company-a',files,'materials')
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'accept_supporting_materials'
+
+packages/xuanpu-finance/tests/test_f5_materials.py:25: AttributeError
+_______________ test_import_purpose_cannot_change_under_same_key _______________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ca00bc0>
+
+    async def test_import_purpose_cannot_change_under_same_key(store: FinanceStore) -> None:
+        """相同key不能把发票解析请求换成材料收件或相反，异内容也拒绝。"""
+        await prepare(store)
+        raw=b'%PDF-1.4 original'
+        files=[ref('a',raw)]
+        await store.accept_import(WHO,'company-a',files,'same')
+        with pytest.raises(FinanceError,match='IDEMPOTENCY_CONFLICT'):
+>           await store.accept_supporting_materials(WHO,'company-a',files,'same')
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'FinanceStore' object has no attribute 'accept_supporting_materials'
+
+packages/xuanpu-finance/tests/test_f5_materials.py:52: AttributeError
+_________ test_material_hash_mismatch_never_becomes_accepted_evidence __________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ca01f40>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1251/test_material_hash_mismatch_ne0')
+
+    async def test_material_hash_mismatch_never_becomes_accepted_evidence(store: FinanceStore,tmp_path: Path) -> None:
+        """持久材料来源摘要错误须隔离，不能凭收到bytes跳过与固定版本的核对。"""
+        await prepare(store)
+>       op=await store.accept_supporting_materials(WHO,'company-a',[FileRef(file_id='bad',revision=1,sha256='0'*64)],'bad')
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'accept_supporting_materials'
+
+packages/xuanpu-finance/tests/test_f5_materials.py:63: AttributeError
+___________ test_material_recovers_original_after_source_disappears ____________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ca03080>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1251/test_material_recovers_origina0')
+
+    async def test_material_recovers_original_after_source_disappears(store: FinanceStore,tmp_path: Path) -> None:
+        """对象已写而回执未落库时，重启凭责任索引恢复，不重新依赖平台原件。"""
+        await prepare(store)
+        raw=b'%PDF-1.4 retained source'
+>       op=await store.accept_supporting_materials(WHO,'company-a',[ref('source',raw)],'retained')
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'accept_supporting_materials'
+
+packages/xuanpu-finance/tests/test_f5_materials.py:76: AttributeError
+___________ test_material_operation_does_not_cross_owner_or_company ____________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ca032f0>
+
+    async def test_material_operation_does_not_cross_owner_or_company(store: FinanceStore) -> None:
+        """支持材料与F0使用相同的真实租户、公司和员工可见边界。"""
+        await prepare(store)
+>       op=await store.accept_supporting_materials(WHO,'company-a',[ref('source',b'original')],'access')
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'accept_supporting_materials'
+
+packages/xuanpu-finance/tests/test_f5_materials.py:92: AttributeError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f5_materials.py::test_supporting_pdf_and_image_preserved_without_fake_invoice
+FAILED packages/xuanpu-finance/tests/test_f5_materials.py::test_import_purpose_cannot_change_under_same_key
+FAILED packages/xuanpu-finance/tests/test_f5_materials.py::test_material_hash_mismatch_never_becomes_accepted_evidence
+FAILED packages/xuanpu-finance/tests/test_f5_materials.py::test_material_recovers_original_after_source_disappears
+FAILED packages/xuanpu-finance/tests/test_f5_materials.py::test_material_operation_does_not_cross_owner_or_company
+5 failed in 2.85s

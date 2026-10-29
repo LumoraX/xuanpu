@@ -1,0 +1,22 @@
+{
+  "counts": {
+    "finance_invoice": 0,
+    "finance_settlement_operation": 0,
+    "finance_compliance_operation": 0,
+    "finance_operation": 2,
+    "finance_receipt": 2
+  },
+  "model_calls": 0,
+  "model_attempts": 2,
+  "blocked_attempts": 2,
+  "blocked_entries": {
+    "runtime": 0,
+    "factory": 2,
+    "session": 0
+  },
+  "people": {
+    "owner": "usr_f990ef20ae6a127b1055000e",
+    "manager": "usr_5fd1ff32f971e52dda27b60e",
+    "finance": "usr_b287b5dbc6f9bf87b152cd0d"
+  }
+}

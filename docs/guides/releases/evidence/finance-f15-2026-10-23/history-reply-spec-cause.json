@@ -1,0 +1,87 @@
+{
+  "status": "actual_complete_history_seen_but_prior_decision_omitted_from_final_reply",
+  "scope": "08-fresh-query:session actual archived raw only",
+  "history_pages": [
+    {
+      "call_id": "call_fa5c084f393a4ffa99e0fd0905f0b809",
+      "proposed_in": "206",
+      "raw_seen_in": "207",
+      "items": 5,
+      "total": 10,
+      "has_next_cursor": true
+    },
+    {
+      "call_id": "call_6ab9d0e7ca164fef9b890a6dc3250cc9",
+      "proposed_in": "207",
+      "raw_seen_in": "208",
+      "items": 5,
+      "total": 10,
+      "has_next_cursor": false
+    }
+  ],
+  "cursor_chain_matches": true,
+  "actual_decisions": [
+    {
+      "id": "decision:2e2605faf9ae4fb58c2904d13dcb982e",
+      "action": "reject",
+      "workflow_id": "94f455f895764ea0802af85c179bd1de",
+      "actor_id": "usr_78285a69546d865b8bad5012",
+      "reason": "请补充客户拜访事由"
+    },
+    {
+      "id": "decision:cd2dc133a09443eabacdd9da857ab4cd",
+      "action": "approve",
+      "workflow_id": "9920fda03ad54df897225a1706bfc518",
+      "actor_id": "usr_78285a69546d865b8bad5012",
+      "reason": "客户拜访事由已补充"
+    },
+    {
+      "id": "decision:1d5fe14283ed45f58ed852c24256a959",
+      "action": "approve",
+      "workflow_id": "9920fda03ad54df897225a1706bfc518",
+      "actor_id": "usr_6ff99f80ea1780c3a75d2583",
+      "reason": "内部记录已复核"
+    }
+  ],
+  "omitted_actual_reason": "请补充客户拜访事由",
+  "final_reply_contains_all_actual_approvals": true,
+  "final_reply_omits_old_rejection": true,
+  "summary_queries": [
+    {
+      "call_id": "call_2694809f1ed44de79bc50844da0d8517",
+      "proposed_in": "204",
+      "raw_seen_in": "205",
+      "q": "交通",
+      "total": 0,
+      "returned_items": 0
+    },
+    {
+      "call_id": "call_040eda1bd420404aaacdc837e63f2da3",
+      "proposed_in": "205",
+      "raw_seen_in": "206",
+      "q": null,
+      "total": 1,
+      "returned_items": 1
+    }
+  ],
+  "not_a_pagination_or_checker_failure": true,
+  "journey_promoted_to_success": false,
+  "evidence_sha256": {
+    "final8/model-204.json": "8098d556d3946bf1dea5dbb8446476e101d746b8464f30a873a0a8e028cdab15",
+    "final8/model-205.json": "cc8ef149f63fc677b6132f34216fa565d1ebd2905cf7cf947a38d485aed9c12c",
+    "final8/model-206.json": "a550b752f5d7893a90284b456cbc1c3fc1ccf9ae3bc8171fc03d537e62c4c6df",
+    "final8/model-207.json": "d48707553a9894eb4c06f5a4d26bfeb2e69e53a0d6676b59889a3e37ef5bcb2f",
+    "final8/model-208.json": "295b9eae4d0d9947c71c60f63a8057b56f13be336581a01691598473d83dcc37"
+  },
+  "limitations": [
+    "Read existing real-model traces for synthetic acceptance facts only; no new model sampling, live PG, private configuration or private ledger access.",
+    "Observed3 actual decisions belong to this archived case; proposed generic instruction must not require a fixed count or fixture reasons."
+  ],
+  "raw_source_binding": {
+    "phase": "08-fresh-query:session",
+    "reader_actor_id": "usr_233e582c7b350a1d37d69d0f",
+    "session_id": "ses_23b81f8a8c31b4b426d898409ae96b08",
+    "all_204_through_208_same_scope": true,
+    "tool_return_matching": "actual role=tool HTTP200 content matched to actual prior proposal call_id and tool name; target and cursor chain checked"
+  }
+}

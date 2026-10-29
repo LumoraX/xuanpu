@@ -1,0 +1,51 @@
+{
+  "status": "observed",
+  "model_requests": 6,
+  "business_tool_calls": 6,
+  "rows": [
+    {
+      "attempt": 213,
+      "phase": "08-fresh-query:route",
+      "tools": []
+    },
+    {
+      "attempt": 214,
+      "phase": "08-fresh-query:session",
+      "tools": [
+        "api__finance__getFinanceCapabilities",
+        "api__finance__listLegalEntities"
+      ]
+    },
+    {
+      "attempt": 215,
+      "phase": "08-fresh-query:session",
+      "tools": [
+        "api__finance__listExpenseClaimSummaries"
+      ]
+    },
+    {
+      "attempt": 216,
+      "phase": "08-fresh-query:session",
+      "tools": [
+        "api__finance__getExpenseClaim",
+        "api__finance__listExpenseClaimHistory"
+      ]
+    },
+    {
+      "attempt": 217,
+      "phase": "08-fresh-query:session",
+      "tools": [
+        "api__finance__listExpenseClaimHistory"
+      ]
+    },
+    {
+      "attempt": 218,
+      "phase": "08-fresh-query:session",
+      "tools": []
+    }
+  ],
+  "same_turn_independent_reads_batched": true,
+  "child_skill_delegations": 0,
+  "paid_or_posted": false,
+  "full_flow": false
+}

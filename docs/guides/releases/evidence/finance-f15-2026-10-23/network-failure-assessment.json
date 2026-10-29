@@ -1,0 +1,42 @@
+{
+  "status": "stopped_awaiting_explicit_user_authorization",
+  "journey": "final2",
+  "failure": "HTTP/1.1 incomplete chunked read; TransientNetworkError after partial events; no completed/usage",
+  "attempt": 56,
+  "attempts": 56,
+  "completed": 55,
+  "known_input_tokens": 218271,
+  "known_output_tokens": 6597,
+  "usage_unknown_attempts": [
+    56
+  ],
+  "unknown_usage_is_not_zero": true,
+  "partial_event_kinds": [
+    "created",
+    "server_model",
+    "tool_call_done",
+    "tool_call_done",
+    "tool_call_done"
+  ],
+  "tool_proposals": [
+    "api__catalog__listExpenseCategories",
+    "api__catalog__listCostCenters",
+    "api__finance__listSupportingMaterialImports"
+  ],
+  "tool_proposal_is_not_execution_proof": true,
+  "trace_sha256": "8d02388140f87a6d2f0ec51592cf08dfa84c66e9450a3e54cbf97f32d17e5f9a",
+  "ledger_sha256": "3444ebb987ef9683a1588efcbf029ffcd3b36f3a09b3f850968aff47f19e5eed",
+  "pg_counts_after_failure": {
+    "finance_expense_claim": 0,
+    "finance_expense_history": 0,
+    "finance_decision": 0,
+    "finance_business_operation": 0,
+    "finance_invoice": 0,
+    "finance_settlement_operation": 0,
+    "finance_compliance_operation": 0
+  },
+  "source_changed": false,
+  "new_model_calls_after_halt": 0,
+  "continuation_requested_from_user": true,
+  "failed_journey_not_final_pass": true
+}

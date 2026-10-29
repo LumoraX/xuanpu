@@ -1,0 +1,10 @@
+{
+  "image": "xuanpu-finance:2026.10.23.2",
+  "network": "none",
+  "maintenance_help_exit": 0,
+  "verify_action_available": true,
+  "service_help_exit": 0,
+  "service_title": "F0–F11",
+  "business_runtime": "not_started",
+  "production_status": "not_verified"
+}

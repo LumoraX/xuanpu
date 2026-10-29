@@ -1,0 +1,25 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_________ test_internal_readiness_response_has_exact_bounded_metadata __________
+
+    def test_internal_readiness_response_has_exact_bounded_metadata() -> None:
+        """正式已验、正文、额外配置和未知状态均不属于报告契约。"""
+>       path, method, op = operations(contracts()['finance'])['getInternalRecordsReadiness']
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'getInternalRecordsReadiness'
+
+packages/xuanpu-finance/tests/test_f10_contract.py:35: KeyError
+________ test_review_skill_can_read_internal_report_but_cannot_approve _________
+
+    def test_review_skill_can_read_internal_report_but_cannot_approve() -> None:
+        """报告只读工具不构成人工执行、原件或通用外部准备授权。"""
+        text = (PACKAGE/'skills/finance-review/SKILL.md').read_text()
+        frontmatter = yaml.safe_load(text.split('---', 2)[1])
+>       assert 'api__finance__getInternalRecordsReadiness' in frontmatter['tool_names']
+E       AssertionError: assert 'api__finance__getInternalRecordsReadiness' in ['api__finance__getFinanceCapabilities', 'api__finance__getFinanceReadiness', 'api__finance__getFinanceOverview', 'api__finance__listFinanceNotifications', 'api__finance__getInvoiceCompliance', 'api__finance__listInvoiceVerifications', ...]
+
+packages/xuanpu-finance/tests/test_f10_contract.py:60: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f10_contract.py::test_internal_readiness_response_has_exact_bounded_metadata
+FAILED packages/xuanpu-finance/tests/test_f10_contract.py::test_review_skill_can_read_internal_report_but_cannot_approve
+2 failed in 0.54s

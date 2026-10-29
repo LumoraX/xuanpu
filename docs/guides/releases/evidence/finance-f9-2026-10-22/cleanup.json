@@ -1,0 +1,40 @@
+{
+  "scope": "owned F9 isolated resources only",
+  "container": "xuanpu-finance-f9-pg",
+  "container_id": "c35983a482c79a659535bfdd8c0c3b6df2242b98bbd4f0e9e8e84b49c39b9448",
+  "anonymous_volume_cleanup": "docker rm -f -v succeeded; all inspected owned anonymous volumes verified absent before cleanup report",
+  "databases_before_removal": [
+    "finance_test_f9",
+    "finance_test_f9_browser",
+    "finance_test_f9_browser_final",
+    "postgres"
+  ],
+  "non_system_roles_before_removal": [
+    "finance_test"
+  ],
+  "temporary_schemas_before_removal": 0,
+  "removed_private_dsn_files": [
+    "/tmp/xuanpu-finance-f9-dsn",
+    "/tmp/xuanpu-finance-f9-browser-dsn",
+    "/tmp/xuanpu-finance-f9-browser-final-dsn"
+  ],
+  "removed_own_downloads": [
+    "财务材料-b9a28c2aa5b349c7b6e0987a26281920.pdf",
+    "财务材料-05a440cab2924f1a8dafbab868e8722a.pdf",
+    "财务材料-4f9a8cc11b574fda974ba19e7ea7b4c6.pdf",
+    "财务材料-05a440cab2924f1a8dafbab868e8722a (1).pdf"
+  ],
+  "ports_closed": [
+    55729,
+    64333,
+    64334,
+    54240,
+    54241
+  ],
+  "browser_temporary_directories_removed": true,
+  "original_checkout_clean": true,
+  "retained_artifacts": "/tmp/xuanpu-finance-f9-build",
+  "retained_local_image": "xuanpu-finance:2026.10.22.6",
+  "production_touched": false,
+  "cleanup_report_check_note": "container/files were already removed when a relative path in final original-checkout check failed; corrected absolute-path check passes, no additional deletion needed"
+}

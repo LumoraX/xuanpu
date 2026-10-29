@@ -1,0 +1,4 @@
+{
+  "scripts/acceptance/finance_model_checks.py": "717760cfd0ab253181c54c2aa7ae7265cf938be5d9d88301ccea5d075d374832",
+  "packages/xuanpu-finance/tests/test_f15_model_harness.py": "826c2b29223ac5bee56830e16e065a86c8feda28e565acd502ab17cfdb6ae1de"
+}

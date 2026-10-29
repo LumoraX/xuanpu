@@ -1,0 +1,70 @@
+...F.......................F                                             [100%]
+=================================== FAILURES ===================================
+____________ test_internal_record_policy_cannot_claim_funding_ready ____________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10c4b47a0>
+
+    async def test_internal_record_policy_cannot_claim_funding_ready(store: Any) -> None:
+        """内部台账制度无法支撑资金执行，即使其他四类配置都完整。"""
+        from xuanpu_finance.expenses.models import ExpensePolicy
+        from xuanpu_finance.storage.common import decode
+        payer=await fully_configured(store)
+        first=await store.get_finance_readiness(payer,'e')
+        assert first['status']=='configured_simulation'
+        raw=decode(await store.pool.fetchval("SELECT r.data FROM finance_expense_policy p JOIN finance_expense_policy_revision r USING(tenant_id,legal_entity_id,version) WHERE p.tenant_id='t' AND p.legal_entity_id='e'"))
+        raw.update(version=raw['version']+1,record_mode='internal_record',require_verified_invoice=False)
+        await store.configure_expenses([ExpensePolicy.model_validate(raw)])
+        report=await store.get_finance_readiness(payer,'e')
+>       assert report['status']=='blocked'
+E       AssertionError: assert 'configured_simulation' == 'blocked'
+E
+E         - blocked
+E         + configured_simulation
+
+packages/xuanpu-finance/tests/test_f6_readiness.py:140: AssertionError
+_______________ test_preflight_cli_unexpected_error_is_redacted ________________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1601/test_preflight_cli_unexpected_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c292930>
+capsys = <_pytest.capture.CaptureFixture object at 0x10c292510>
+
+    def test_preflight_cli_unexpected_error_is_redacted(tmp_path: Path,monkeypatch: Any,capsys: Any) -> None:
+        """检查执行期未知异常也不得通过CLI回显秘密正文。"""
+        from xuanpu_finance import __main__ as cli
+        monkeypatch.setattr(cli,'load_config',lambda _:configured(tmp_path))
+        async def broken(_: Any) -> Any:
+            """模拟资源读取之外的故障仍携带秘密。"""
+            raise ValueError('private-dsn-secret')
+        monkeypatch.setattr(cli,'preflight',broken)
+        monkeypatch.setattr('sys.argv',['finance','--config','unused','--preflight'])
+>       with pytest.raises(SystemExit) as error: cli.main()
+                                                 ^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:266:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+packages/xuanpu-finance/src/xuanpu_finance/__main__.py:44: in main
+    report = asyncio.run(preflight(config))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+_ = FinanceConfig(database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasusch...es=[], compliance_providers=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+
+    async def broken(_: Any) -> Any:
+        """模拟资源读取之外的故障仍携带秘密。"""
+>       raise ValueError('private-dsn-secret')
+E       ValueError: private-dsn-secret
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:263: ValueError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f6_readiness.py::test_internal_record_policy_cannot_claim_funding_ready
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_preflight_cli_unexpected_error_is_redacted
+2 failed, 26 passed in 1.93s

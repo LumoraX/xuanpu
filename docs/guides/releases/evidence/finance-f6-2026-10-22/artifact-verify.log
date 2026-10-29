@@ -1,0 +1,36 @@
+{
+  "finance": {
+    "version": "2026.10.22.3",
+    "wheel": "xuanpu_finance-2026.10.22.3-py3-none-any.whl",
+    "sha256": "a3037971fdd8c1370f5fe10c6f566aa9c516b798b8ae73c28c58edc3085d26a5",
+    "sdist": "xuanpu_finance-2026.10.22.3.tar.gz",
+    "sdist_sha256": "e99f69aa43cdc347d101afa1ea73036ac6314ef0185d0146c75e37ff09bf7ff4",
+    "source_files": 124,
+    "byte_matching": true,
+    "source_tree_sha256": "bddde1693b2e3995ec63c665d0fa456f5b10fab4bf288017cef897213fe3f818"
+  },
+  "console": {
+    "version": "2026.10.22.2",
+    "wheel": "xuanpu_console-2026.10.22.2-py3-none-any.whl",
+    "sha256": "a5457e53191cc9e485f77bccff555af69d867f61d8fd5b5a45b706affbf6fc02",
+    "sdist": "xuanpu_console-2026.10.22.2.tar.gz",
+    "sdist_sha256": "75301298356b6b4fe1ce39158b80f42e5b6f7f9f82d1c19fdd78887630b547fc",
+    "source_files": 21,
+    "byte_matching": true,
+    "source_tree_sha256": "d1a0d042bb813b0f0d43a46cd530a2756a62e6985dadce56cf01678ad392c29b",
+    "reused_f5_artifact_source_unchanged": true
+  },
+  "image": {
+    "tag": "xuanpu-finance:2026.10.22.3",
+    "id": "sha256:46927de8ab8a6296c2c9f1ed054e8bef7bb90168e7d9c57e289626b08967c3b2",
+    "uid": 10001,
+    "source_files": 124,
+    "byte_matching": true,
+    "pypdf": "6.21.2",
+    "pillow": "13.0.0"
+  },
+  "lock_sha256": {
+    "uv.lock": "0727343d081a55ae2d7a79f0131f7b5d5ffede50056946179c15a713024986a7",
+    "docker/finance/requirements.lock": "c8b31202517962a500e794e7991738bdb59ccd326768a2718e1d2e527cd4b933"
+  }
+}

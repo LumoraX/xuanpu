@@ -1,0 +1,66 @@
+{
+  "design": {
+    "reviewer": "f11_spec_review",
+    "status": "Approved",
+    "scope": "F11设计，单次凭据与停机只读原件核对"
+  },
+  "startup_spec": {
+    "reviewer": "f11_spec_review",
+    "status": "Approved",
+    "independent_test": "F11 startup + F6 preflight: 62 passed",
+    "scope": "仅任务一实现"
+  },
+  "production_status": "not_verified",
+  "startup_quality": {
+    "reviewer": "f11_startup_quality",
+    "status": "Approved",
+    "independent_tests": "64 + 74 passed; 34 passed/3 non-PG skips exploratory",
+    "static": "ruff,C901,mypy140,9文件约束通过",
+    "scope": "仅任务一实现"
+  },
+  "verify_spec": {
+    "reviewer": "f11_spec_review",
+    "status": "Approved",
+    "independent_test": "unexpected_internal_failure_is_safe: 1 passed",
+    "static": "任务二文件ruff通过",
+    "scope": "仅任务二，不并行PG"
+  },
+  "verify_quality": {
+    "reviewer": "f11_verify_quality",
+    "status": "Approved",
+    "independent_test": "47 passed 17.76s, 0 skip",
+    "static": "6文件ruff/C901/约束、3源文件mypy通过",
+    "scope": "仅任务二"
+  },
+  "process_spec": {
+    "reviewer": "f11_spec_review",
+    "status": "Approved",
+    "independent_test": "2 passed 4.45s, 0 skip",
+    "scope": "任务三联合进程、metadata、Skill、quick与当前文档"
+  },
+  "process_quality": {
+    "reviewer": "f11_final_quality",
+    "status": "Approved",
+    "independent_test": "2 passed 5.40s, 0 skip",
+    "scope": "任务三联合进程、metadata、Skill、quick与当前文档"
+  },
+  "final_spec": {
+    "reviewer": "f11_spec_review",
+    "status": "Approved",
+    "evidence": "full2749pass/3非财务skip、quick309pass/0skip、712冻结源、14JUnit事实、5制品/镜像/清理实时核对",
+    "scope": "F11整轮规格与证据"
+  },
+  "final_quality": {
+    "reviewer": "f11_final_quality",
+    "status": "Approved",
+    "evidence": "artifact-quality.json，712冻结文件、5制品/镜像实际字节、full/quick独立计数/14props、清理实时核对",
+    "independent_static": "ruff/mypy310/lock109/25Python约束/C901全过",
+    "scope": "F11整轮质量与制品；未重跑已清理PG的full/quick"
+  },
+  "raw_log_format_review": {
+    "reviewer": "f11_final_quality",
+    "status": "Approved",
+    "independent_check": "199条行尾空格仅3份原始日志，排除log后exit0；新增说明准确，712冻结文件及artifact-quality原字节未变",
+    "scope": "只读核对收尾日志格式例外"
+  }
+}

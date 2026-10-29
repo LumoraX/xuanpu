@@ -1,0 +1,9 @@
+# F2独立规格与代码质量复核
+
+规格复核覆盖provider/worker/callback/runtime与领域全部F2文件及F1接线。四项初审问题：stale原字节丢失、采购目录防复活、撤回取消明细一致性、历史分派人降权列表泄漏，均修复并实PG回归，规格Approved，17项领域/HTTP定向通过。
+
+代码质量复核发现公开Integration/ResourceRef/record状态schema漂移、伪造job错挂stale证据、极深JSON使后台停止。采用实际响应schema回归、不可变历史lease归属及受控解析错误修复。实际PG/provider/console81项及深JSON2项独立复跑通过；质量Approved，无剩余P1/P2。
+
+浏览器发现本地审批成功误标渠道完成，新增实际approve Operation形状Node回归并修复；控制台11项通过。root另完成最终全量、容器和浏览器验收，准确范围见总验收记录。
+
+最后发送准备小重构保持三处实时门禁与授权顺序，独立复核仍Approved；provider/worker及新增HTTP契约/迁移42项通过。新增集成测试按函数≤80行拆为自然helper，F1既有测试逐字保留；相关实际PG与console16项通过。最终制品逐文件与工作区匹配，详见artifact-source-check.json。

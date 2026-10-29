@@ -1,0 +1,30 @@
+.......F.                                                                [100%]
+=================================== FAILURES ===================================
+_______ test_nested_resume_ownership_unknown_batch_and_thread_injection ________
+
+identity_world = <function identity_world.<locals>.opener at 0x10d404720>
+step = <class 'packages.xuanpu-server.tests.conftest.Step'>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2357/test_nested_resume_ownership_u0')
+
+    async def test_nested_resume_ownership_unknown_batch_and_thread_injection(
+        identity_world: Any, step: Any, tmp_path: Path,
+    ) -> None:
+        """其他员工、未知混批及客户端线程字段均不能执行当前叶写操作。"""
+        async with identity_world() as ident, records_server() as (url, writes):
+            await publish_nested(ident, tmp_path / 'ownership', url)
+            sid, owner, pending, _ = await suspended(ident, step)
+            stranger = await ident.user(name='其他员工')
+            foreign = {**ident.cookie(await ident.login(stranger)), 'X-Requested-By': 'xuanpu'}
+            payload = {'resolutions': {pending['request_id']: {'granted': True}}}
+            response = await ident.http.post(f'/v1/sessions/{sid}/resume', headers=foreign, json=payload)
+            assert response.status_code == 404 and writes == []
+            response = await ident.http.post(f'/v1/sessions/{sid}/resume', headers=owner,
+                                             json={**payload, 'thread_id': 'foreign-thread'})
+>           assert response.status_code == 422 and writes == []
+E           assert (400 == 422)
+E            +  where 400 = <Response [400 Bad Request]>.status_code
+
+packages/xuanpu-server/tests/identity/test_nested_resume.py:361: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-server/tests/identity/test_nested_resume.py::test_nested_resume_ownership_unknown_batch_and_thread_injection
+1 failed, 8 passed in 3.08s

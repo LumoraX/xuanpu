@@ -1,0 +1,13 @@
+
+==================================== ERRORS ====================================
+____ ERROR collecting packages/xuanpu-finance/tests/test_f4_maintenance.py _____
+ImportError while importing test module '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance/tests/test_f4_maintenance.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+packages/xuanpu-finance/tests/test_f4_maintenance.py:13: in <module>
+    from xuanpu_finance.maintenance import MaintenanceError, MaintenanceOptions, backup, restore
+E   ModuleNotFoundError: No module named 'xuanpu_finance.maintenance'
+=========================== short test summary info ============================
+ERROR packages/xuanpu-finance/tests/test_f4_maintenance.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.05s

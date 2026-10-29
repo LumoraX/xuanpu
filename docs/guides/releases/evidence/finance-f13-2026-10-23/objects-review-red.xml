@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.936" timestamp="2026-10-23T15:25:15.227377+08:00" hostname="krasusdeMacBook-Pro"><testcase classname="packages.xuanpu-finance.tests.test_f13_objects" name="test_material_worker_preserves_failed_responsibility_then_processes_next" file="packages/xuanpu-finance/tests/test_f13_objects.py" line="357" time="0.893"><properties><property name="f13_objects" value="{&quot;outside_before&quot;: {&quot;sentinel&quot;: &quot;1091d6f8378399e280d6b6b825ec9d3041b6c4df8612cdd0c1c3dd21043f46fc&quot;}, &quot;outside_after&quot;: {&quot;sentinel&quot;: &quot;1091d6f8378399e280d6b6b825ec9d3041b6c4df8612cdd0c1c3dd21043f46fc&quot;}, &quot;external_snapshot_equal&quot;: true, &quot;failed_state&quot;: &quot;failed&quot;, &quot;failed_error&quot;: &quot;OBJECT_STORAGE_FAILED&quot;, &quot;prepared_count&quot;: 1, &quot;receipt_count_after_failed&quot;: 0, &quot;material_success_count_after_failed&quot;: 0}" /></properties><failure message="AssertionError: assert PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25') != PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25')&#10; +  where PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25') = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25/25928a1e14f3da100968dcf53b8917ee278de2304fc15d22546ad2d527633c76.enc').parent&#10; +    where PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25/25928a1e14f3da100968dcf53b8917ee278de2304fc15d22546ad2d527633c76.enc') = _path('tenant-a/company-a/0000000000000000000000000000020f/0/source')&#10; +      where _path = &lt;xuanpu_finance.objects.EncryptedLocalObjects object at 0x109bc7950&gt;._path&#10; +  and   PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25') = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25/2563970f750fdfc657ffac739259dca59fc5450fe23ba83c55eccfbb41ae5977.enc').parent&#10; +    where PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25/2563970f750fdfc657ffac739259dca59fc5450fe23ba83c55eccfbb41ae5977.enc') = _path('tenant-a/company-a/00000000000000000000000000000001/0/source')&#10; +      where _path = &lt;xuanpu_finance.objects.EncryptedLocalObjects object at 0x109bc7950&gt;._path">store = &lt;xuanpu_finance.storage.store.FinanceStore object at 0x10a7b2e70&gt;
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x10b70dc60&gt;
+
+    async def test_material_worker_preserves_failed_responsibility_then_processes_next(
+        store: FinanceStore, tmp_path: Path, record_property: Any
+    ) -&gt; None:
+        """真实材料坏shard失败保留prepared无回执，同一worker随后处理安全不同shard。"""
+        await prepare(store)
+        root, outside = tmp_path/'objects', tmp_path/'outside'
+        root.mkdir()
+        outside.mkdir()
+        (outside/'sentinel').write_bytes(b'external unchanged')
+        before = snapshot(outside)
+        operation = await store.accept_supporting_materials(WHO, 'company-a', [ref('bad', CONTENT)],
+                                                           'f13-bad-shard')
+        objects = EncryptedLocalObjects(root, b'k'*32)
+        key = f'{WHO.tenant_id}/company-a/{operation["id"]}/0/source'
+        objects._path(key).parent.symlink_to(outside, target_is_directory=True)
+        worker = FinanceWorker(store, objects, Gateway({'bad': CONTENT, 'good': CONTENT}))
+        assert await worker.run_once()
+        failed = await store.get_operation(WHO, operation['id'])
+        item = await store.pool.fetchrow('SELECT * FROM finance_item WHERE operation_id=$1', operation['id'])
+        events = await store.pool.fetch('SELECT kind FROM finance_event WHERE aggregate_id=$1', operation['id'])
+        kinds = [event['kind'] for event in events]
+        receipt_count = await store.pool.fetchval('SELECT count(*) FROM finance_receipt')
+        evidence = {'outside_before': before, 'outside_after': snapshot(outside),
+                    'external_snapshot_equal': snapshot(outside) == before,
+                    'failed_state': failed['items'][0]['state'],
+                    'failed_error': failed['items'][0].get('error_code'),
+                    'prepared_count': kinds.count('original.prepared'),
+                    'receipt_count_after_failed': receipt_count,
+                    'material_success_count_after_failed': kinds.count('material.received')}
+        record_property('f13_objects', json.dumps(evidence))
+        assert failed['status'] == 'failed' and failed['items'][0]['state'] == 'failed'
+        assert failed['items'][0]['error_code'] == 'OBJECT_STORAGE_FAILED'
+        assert item is not None and item['object_key'] == key and item['receipt_id'] is None
+        assert item['actual_sha256'] == hashlib.sha256(CONTENT).hexdigest()
+        assert kinds.count('original.prepared') == 1
+        assert receipt_count == 0 and kinds.count('material.received') == 0
+        assert snapshot(outside) == before
+        next_operation = await store.accept_supporting_materials(
+            WHO, 'company-a', [ref('good', CONTENT)], 'f13-next-safe')
+        next_key = f'{WHO.tenant_id}/company-a/{next_operation["id"]}/0/source'
+        if objects._path(next_key).parent == objects._path(key).parent:
+            current = await store.get_operation(WHO, next_operation['id'])
+            await store.cancel_operation(WHO, next_operation['id'], current['version'], 'f13-skip-shard')
+            next_operation = await store.accept_supporting_materials(
+                WHO, 'company-a', [ref('good', CONTENT)], 'f13-next-safe-2')
+            next_key = f'{WHO.tenant_id}/company-a/{next_operation["id"]}/0/source'
+&gt;       assert objects._path(next_key).parent != objects._path(key).parent
+E       AssertionError: assert PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25') != PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25')
+E        +  where PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25') = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25/25928a1e14f3da100968dcf53b8917ee278de2304fc15d22546ad2d527633c76.enc').parent
+E        +    where PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25/25928a1e14f3da100968dcf53b8917ee278de2304fc15d22546ad2d527633c76.enc') = _path('tenant-a/company-a/0000000000000000000000000000020f/0/source')
+E        +      where _path = &lt;xuanpu_finance.objects.EncryptedLocalObjects object at 0x109bc7950&gt;._path
+E        +  and   PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25') = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25/2563970f750fdfc657ffac739259dca59fc5450fe23ba83c55eccfbb41ae5977.enc').parent
+E        +    where PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2108/test_material_worker_preserves0/objects/25/2563970f750fdfc657ffac739259dca59fc5450fe23ba83c55eccfbb41ae5977.enc') = _path('tenant-a/company-a/00000000000000000000000000000001/0/source')
+E        +      where _path = &lt;xuanpu_finance.objects.EncryptedLocalObjects object at 0x109bc7950&gt;._path
+
+packages/xuanpu-finance/tests/test_f13_objects.py:404: AssertionError</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "file": "packages/xuanpu-server/src/xuanpu_server/runtime/sessions.py",
+  "reason": "合并后807行超出800行约束；仅精简模块说明，保留所有租约与恢复限制",
+  "tested_sha256": "657a0bce7994d51b219ef743dc9f158e078d7e53e32d29927024a2c1ca9c83f4",
+  "final_sha256": "264ea56885f593a75489399dd7c224e5868f85463d70e7d3260346523930e379",
+  "before_lines": 807,
+  "after_lines": 800,
+  "only_module_docstring_changed": true,
+  "executable_ast_identical": true
+}

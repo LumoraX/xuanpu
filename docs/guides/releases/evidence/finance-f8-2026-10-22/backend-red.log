@@ -1,0 +1,430 @@
+FFFFFFFFFFFFFFF                                                          [100%]
+=================================== FAILURES ===================================
+___________ test_pending_restarted_material_metadata_and_idempotency ___________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10dba63f0>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1769/test_pending_restarted_materia0')
+
+    async def test_pending_restarted_material_metadata_and_idempotency(store: FinanceStore, tmp_path: Path) -> None:
+        """待收件不编造元数据，重建store只读真实回执，重试不增操作或回执。"""
+        await prepare(store)
+        files = [ref('proof', RAW)]
+        op = await store.accept_supporting_materials(WHO, 'company-a', files, 'f8-proof')
+>       pending = await store.get_supporting_material_import(WHO, op['id'])
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'get_supporting_material_import'
+
+packages/xuanpu-finance/tests/test_f8_materials.py:47: AttributeError
+____________ test_owner_purpose_tenant_and_current_grant_isolation _____________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10dd5e7e0>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1769/test_owner_purpose_tenant_and_0')
+
+    async def test_owner_purpose_tenant_and_current_grant_isolation(store: FinanceStore, tmp_path: Path) -> None:
+        """所有其他岗位均不能越过owner，发票导入与撤权也不可借新入口读取。"""
+        op, _ = await completed(store, tmp_path)
+        for role in ['collector', 'reviewer', 'approver']:
+            await store.grant(WHO.tenant_id, role, 'company-a', role)
+            other = FinancePrincipal(WHO.tenant_id, role)
+>           assert (await store.list_supporting_material_imports(other, 'company-a'))['total'] == 0
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'FinanceStore' object has no attribute 'list_supporting_material_imports'
+
+packages/xuanpu-finance/tests/test_f8_materials.py:79: AttributeError
+______ test_equal_timestamp_desc_pages_bind_person_company_and_direction _______
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10dd5f800>
+
+    async def test_equal_timestamp_desc_pages_bind_person_company_and_direction(store: FinanceStore) -> None:
+        """同时间倒序复合键无重复，游标不能跨人、公司、方向或格式复用。"""
+        await prepare(store)
+        await store.seed_company(WHO.tenant_id, 'company-b', 'B', 'B')
+        await store.grant(WHO.tenant_id, WHO.user_id, 'company-b')
+        operations = [await store.accept_supporting_materials(WHO, 'company-a', [ref(str(n), RAW)], str(n)) for n in range(5)]
+        await store.accept_supporting_materials(WHO, 'company-b', [ref('b', RAW)], 'b')
+        await store.pool.execute("UPDATE finance_operation SET created_at='2026-10-22T00:00:00Z'")
+>       first = await store.list_supporting_material_imports(WHO, 'company-a', limit=2)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'list_supporting_material_imports'
+
+packages/xuanpu-finance/tests/test_f8_materials.py:108: AttributeError
+_____________ test_broken_responsibility_never_selectable[receipt] _____________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10dd5e150>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1769/test_broken_responsibility_nev0')
+tamper = 'receipt'
+
+    @pytest.mark.parametrize('tamper', ['receipt', 'position', 'hash', 'ref', 'object', 'size', 'type', 'owner', 'simulation'])
+    async def test_broken_responsibility_never_selectable(store: FinanceStore, tmp_path: Path, tamper: str) -> None:
+        """收件状态不能替代回执与逐项、所有者和环境的完整责任链。"""
+        op, _ = await completed(store, tmp_path)
+        sql = {
+            'receipt': "UPDATE finance_item SET receipt_id='missing'",
+            'position': 'UPDATE finance_item SET position=1',
+            'hash': "UPDATE finance_item SET actual_sha256=repeat('0',64)",
+            'ref': "UPDATE finance_receipt SET file_ref=jsonb_set(file_ref,'{revision}','2')",
+            'object': "UPDATE finance_item SET object_key='other-object'",
+            'size': 'UPDATE finance_item SET size_bytes=0',
+            'type': 'UPDATE finance_item SET content_type=NULL',
+            'owner': "UPDATE finance_receipt SET owner_id='other'",
+            'simulation': 'UPDATE finance_operation SET source_simulation=true',
+        }
+        if tamper == 'position':
+            constraint = await store.pool.fetchval("SELECT conname FROM pg_constraint WHERE conrelid='finance_receipt'::regclass AND contype='f'")
+            await store.pool.execute(f'ALTER TABLE finance_receipt DROP CONSTRAINT "{constraint}"')
+        await store.pool.execute(sql[tamper])
+>       detail = await store.get_supporting_material_import(WHO, op['id'])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'get_supporting_material_import'
+
+packages/xuanpu-finance/tests/test_f8_materials.py:148: AttributeError
+____________ test_broken_responsibility_never_selectable[position] _____________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10de87860>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1769/test_broken_responsibility_nev1')
+tamper = 'position'
+
+    @pytest.mark.parametrize('tamper', ['receipt', 'position', 'hash', 'ref', 'object', 'size', 'type', 'owner', 'simulation'])
+    async def test_broken_responsibility_never_selectable(store: FinanceStore, tmp_path: Path, tamper: str) -> None:
+        """收件状态不能替代回执与逐项、所有者和环境的完整责任链。"""
+        op, _ = await completed(store, tmp_path)
+        sql = {
+            'receipt': "UPDATE finance_item SET receipt_id='missing'",
+            'position': 'UPDATE finance_item SET position=1',
+            'hash': "UPDATE finance_item SET actual_sha256=repeat('0',64)",
+            'ref': "UPDATE finance_receipt SET file_ref=jsonb_set(file_ref,'{revision}','2')",
+            'object': "UPDATE finance_item SET object_key='other-object'",
+            'size': 'UPDATE finance_item SET size_bytes=0',
+            'type': 'UPDATE finance_item SET content_type=NULL',
+            'owner': "UPDATE finance_receipt SET owner_id='other'",
+            'simulation': 'UPDATE finance_operation SET source_simulation=true',
+        }
+        if tamper == 'position':
+            constraint = await store.pool.fetchval("SELECT conname FROM pg_constraint WHERE conrelid='finance_receipt'::regclass AND contype='f'")
+            await store.pool.execute(f'ALTER TABLE finance_receipt DROP CONSTRAINT "{constraint}"')
+        await store.pool.execute(sql[tamper])
+>       detail = await store.get_supporting_material_import(WHO, op['id'])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'get_supporting_material_import'
+
+packages/xuanpu-finance/tests/test_f8_materials.py:148: AttributeError
+______________ test_broken_responsibility_never_selectable[hash] _______________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10de849b0>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1769/test_broken_responsibility_nev2')
+tamper = 'hash'
+
+    @pytest.mark.parametrize('tamper', ['receipt', 'position', 'hash', 'ref', 'object', 'size', 'type', 'owner', 'simulation'])
+    async def test_broken_responsibility_never_selectable(store: FinanceStore, tmp_path: Path, tamper: str) -> None:
+        """收件状态不能替代回执与逐项、所有者和环境的完整责任链。"""
+        op, _ = await completed(store, tmp_path)
+        sql = {
+            'receipt': "UPDATE finance_item SET receipt_id='missing'",
+            'position': 'UPDATE finance_item SET position=1',
+            'hash': "UPDATE finance_item SET actual_sha256=repeat('0',64)",
+            'ref': "UPDATE finance_receipt SET file_ref=jsonb_set(file_ref,'{revision}','2')",
+            'object': "UPDATE finance_item SET object_key='other-object'",
+            'size': 'UPDATE finance_item SET size_bytes=0',
+            'type': 'UPDATE finance_item SET content_type=NULL',
+            'owner': "UPDATE finance_receipt SET owner_id='other'",
+            'simulation': 'UPDATE finance_operation SET source_simulation=true',
+        }
+        if tamper == 'position':
+            constraint = await store.pool.fetchval("SELECT conname FROM pg_constraint WHERE conrelid='finance_receipt'::regclass AND contype='f'")
+            await store.pool.execute(f'ALTER TABLE finance_receipt DROP CONSTRAINT "{constraint}"')
+        await store.pool.execute(sql[tamper])
+>       detail = await store.get_supporting_material_import(WHO, op['id'])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'get_supporting_material_import'
+
+packages/xuanpu-finance/tests/test_f8_materials.py:148: AttributeError
+_______________ test_broken_responsibility_never_selectable[ref] _______________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10de85d90>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1769/test_broken_responsibility_nev3')
+tamper = 'ref'
+
+    @pytest.mark.parametrize('tamper', ['receipt', 'position', 'hash', 'ref', 'object', 'size', 'type', 'owner', 'simulation'])
+    async def test_broken_responsibility_never_selectable(store: FinanceStore, tmp_path: Path, tamper: str) -> None:
+        """收件状态不能替代回执与逐项、所有者和环境的完整责任链。"""
+        op, _ = await completed(store, tmp_path)
+        sql = {
+            'receipt': "UPDATE finance_item SET receipt_id='missing'",
+            'position': 'UPDATE finance_item SET position=1',
+            'hash': "UPDATE finance_item SET actual_sha256=repeat('0',64)",
+            'ref': "UPDATE finance_receipt SET file_ref=jsonb_set(file_ref,'{revision}','2')",
+            'object': "UPDATE finance_item SET object_key='other-object'",
+            'size': 'UPDATE finance_item SET size_bytes=0',
+            'type': 'UPDATE finance_item SET content_type=NULL',
+            'owner': "UPDATE finance_receipt SET owner_id='other'",
+            'simulation': 'UPDATE finance_operation SET source_simulation=true',
+        }
+        if tamper == 'position':
+            constraint = await store.pool.fetchval("SELECT conname FROM pg_constraint WHERE conrelid='finance_receipt'::regclass AND contype='f'")
+            await store.pool.execute(f'ALTER TABLE finance_receipt DROP CONSTRAINT "{constraint}"')
+        await store.pool.execute(sql[tamper])
+>       detail = await store.get_supporting_material_import(WHO, op['id'])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'get_supporting_material_import'
+
+packages/xuanpu-finance/tests/test_f8_materials.py:148: AttributeError
+_____________ test_broken_responsibility_never_selectable[object] ______________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10de87a40>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1769/test_broken_responsibility_nev4')
+tamper = 'object'
+
+    @pytest.mark.parametrize('tamper', ['receipt', 'position', 'hash', 'ref', 'object', 'size', 'type', 'owner', 'simulation'])
+    async def test_broken_responsibility_never_selectable(store: FinanceStore, tmp_path: Path, tamper: str) -> None:
+        """收件状态不能替代回执与逐项、所有者和环境的完整责任链。"""
+        op, _ = await completed(store, tmp_path)
+        sql = {
+            'receipt': "UPDATE finance_item SET receipt_id='missing'",
+            'position': 'UPDATE finance_item SET position=1',
+            'hash': "UPDATE finance_item SET actual_sha256=repeat('0',64)",
+            'ref': "UPDATE finance_receipt SET file_ref=jsonb_set(file_ref,'{revision}','2')",
+            'object': "UPDATE finance_item SET object_key='other-object'",
+            'size': 'UPDATE finance_item SET size_bytes=0',
+            'type': 'UPDATE finance_item SET content_type=NULL',
+            'owner': "UPDATE finance_receipt SET owner_id='other'",
+            'simulation': 'UPDATE finance_operation SET source_simulation=true',
+        }
+        if tamper == 'position':
+            constraint = await store.pool.fetchval("SELECT conname FROM pg_constraint WHERE conrelid='finance_receipt'::regclass AND contype='f'")
+            await store.pool.execute(f'ALTER TABLE finance_receipt DROP CONSTRAINT "{constraint}"')
+        await store.pool.execute(sql[tamper])
+>       detail = await store.get_supporting_material_import(WHO, op['id'])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'get_supporting_material_import'
+
+packages/xuanpu-finance/tests/test_f8_materials.py:148: AttributeError
+______________ test_broken_responsibility_never_selectable[size] _______________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10de851c0>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1769/test_broken_responsibility_nev5')
+tamper = 'size'
+
+    @pytest.mark.parametrize('tamper', ['receipt', 'position', 'hash', 'ref', 'object', 'size', 'type', 'owner', 'simulation'])
+    async def test_broken_responsibility_never_selectable(store: FinanceStore, tmp_path: Path, tamper: str) -> None:
+        """收件状态不能替代回执与逐项、所有者和环境的完整责任链。"""
+        op, _ = await completed(store, tmp_path)
+        sql = {
+            'receipt': "UPDATE finance_item SET receipt_id='missing'",
+            'position': 'UPDATE finance_item SET position=1',
+            'hash': "UPDATE finance_item SET actual_sha256=repeat('0',64)",
+            'ref': "UPDATE finance_receipt SET file_ref=jsonb_set(file_ref,'{revision}','2')",
+            'object': "UPDATE finance_item SET object_key='other-object'",
+            'size': 'UPDATE finance_item SET size_bytes=0',
+            'type': 'UPDATE finance_item SET content_type=NULL',
+            'owner': "UPDATE finance_receipt SET owner_id='other'",
+            'simulation': 'UPDATE finance_operation SET source_simulation=true',
+        }
+        if tamper == 'position':
+            constraint = await store.pool.fetchval("SELECT conname FROM pg_constraint WHERE conrelid='finance_receipt'::regclass AND contype='f'")
+            await store.pool.execute(f'ALTER TABLE finance_receipt DROP CONSTRAINT "{constraint}"')
+        await store.pool.execute(sql[tamper])
+>       detail = await store.get_supporting_material_import(WHO, op['id'])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'get_supporting_material_import'
+
+packages/xuanpu-finance/tests/test_f8_materials.py:148: AttributeError
+______________ test_broken_responsibility_never_selectable[type] _______________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10dd5efc0>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1769/test_broken_responsibility_nev6')
+tamper = 'type'
+
+    @pytest.mark.parametrize('tamper', ['receipt', 'position', 'hash', 'ref', 'object', 'size', 'type', 'owner', 'simulation'])
+    async def test_broken_responsibility_never_selectable(store: FinanceStore, tmp_path: Path, tamper: str) -> None:
+        """收件状态不能替代回执与逐项、所有者和环境的完整责任链。"""
+        op, _ = await completed(store, tmp_path)
+        sql = {
+            'receipt': "UPDATE finance_item SET receipt_id='missing'",
+            'position': 'UPDATE finance_item SET position=1',
+            'hash': "UPDATE finance_item SET actual_sha256=repeat('0',64)",
+            'ref': "UPDATE finance_receipt SET file_ref=jsonb_set(file_ref,'{revision}','2')",
+            'object': "UPDATE finance_item SET object_key='other-object'",
+            'size': 'UPDATE finance_item SET size_bytes=0',
+            'type': 'UPDATE finance_item SET content_type=NULL',
+            'owner': "UPDATE finance_receipt SET owner_id='other'",
+            'simulation': 'UPDATE finance_operation SET source_simulation=true',
+        }
+        if tamper == 'position':
+            constraint = await store.pool.fetchval("SELECT conname FROM pg_constraint WHERE conrelid='finance_receipt'::regclass AND contype='f'")
+            await store.pool.execute(f'ALTER TABLE finance_receipt DROP CONSTRAINT "{constraint}"')
+        await store.pool.execute(sql[tamper])
+>       detail = await store.get_supporting_material_import(WHO, op['id'])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'get_supporting_material_import'
+
+packages/xuanpu-finance/tests/test_f8_materials.py:148: AttributeError
+______________ test_broken_responsibility_never_selectable[owner] ______________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10de84c80>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1769/test_broken_responsibility_nev7')
+tamper = 'owner'
+
+    @pytest.mark.parametrize('tamper', ['receipt', 'position', 'hash', 'ref', 'object', 'size', 'type', 'owner', 'simulation'])
+    async def test_broken_responsibility_never_selectable(store: FinanceStore, tmp_path: Path, tamper: str) -> None:
+        """收件状态不能替代回执与逐项、所有者和环境的完整责任链。"""
+        op, _ = await completed(store, tmp_path)
+        sql = {
+            'receipt': "UPDATE finance_item SET receipt_id='missing'",
+            'position': 'UPDATE finance_item SET position=1',
+            'hash': "UPDATE finance_item SET actual_sha256=repeat('0',64)",
+            'ref': "UPDATE finance_receipt SET file_ref=jsonb_set(file_ref,'{revision}','2')",
+            'object': "UPDATE finance_item SET object_key='other-object'",
+            'size': 'UPDATE finance_item SET size_bytes=0',
+            'type': 'UPDATE finance_item SET content_type=NULL',
+            'owner': "UPDATE finance_receipt SET owner_id='other'",
+            'simulation': 'UPDATE finance_operation SET source_simulation=true',
+        }
+        if tamper == 'position':
+            constraint = await store.pool.fetchval("SELECT conname FROM pg_constraint WHERE conrelid='finance_receipt'::regclass AND contype='f'")
+            await store.pool.execute(f'ALTER TABLE finance_receipt DROP CONSTRAINT "{constraint}"')
+        await store.pool.execute(sql[tamper])
+>       detail = await store.get_supporting_material_import(WHO, op['id'])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'get_supporting_material_import'
+
+packages/xuanpu-finance/tests/test_f8_materials.py:148: AttributeError
+___________ test_broken_responsibility_never_selectable[simulation] ____________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10dd5d880>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1769/test_broken_responsibility_nev8')
+tamper = 'simulation'
+
+    @pytest.mark.parametrize('tamper', ['receipt', 'position', 'hash', 'ref', 'object', 'size', 'type', 'owner', 'simulation'])
+    async def test_broken_responsibility_never_selectable(store: FinanceStore, tmp_path: Path, tamper: str) -> None:
+        """收件状态不能替代回执与逐项、所有者和环境的完整责任链。"""
+        op, _ = await completed(store, tmp_path)
+        sql = {
+            'receipt': "UPDATE finance_item SET receipt_id='missing'",
+            'position': 'UPDATE finance_item SET position=1',
+            'hash': "UPDATE finance_item SET actual_sha256=repeat('0',64)",
+            'ref': "UPDATE finance_receipt SET file_ref=jsonb_set(file_ref,'{revision}','2')",
+            'object': "UPDATE finance_item SET object_key='other-object'",
+            'size': 'UPDATE finance_item SET size_bytes=0',
+            'type': 'UPDATE finance_item SET content_type=NULL',
+            'owner': "UPDATE finance_receipt SET owner_id='other'",
+            'simulation': 'UPDATE finance_operation SET source_simulation=true',
+        }
+        if tamper == 'position':
+            constraint = await store.pool.fetchval("SELECT conname FROM pg_constraint WHERE conrelid='finance_receipt'::regclass AND contype='f'")
+            await store.pool.execute(f'ALTER TABLE finance_receipt DROP CONSTRAINT "{constraint}"')
+        await store.pool.execute(sql[tamper])
+>       detail = await store.get_supporting_material_import(WHO, op['id'])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'get_supporting_material_import'
+
+packages/xuanpu-finance/tests/test_f8_materials.py:148: AttributeError
+_______ test_partial_or_cancel_preserves_received_item_selection[False] ________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10dd5e240>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1769/test_partial_or_cancel_preserv0')
+cancel = False
+
+    @pytest.mark.parametrize('cancel', [False, True])
+    async def test_partial_or_cancel_preserves_received_item_selection(store: FinanceStore, tmp_path: Path, cancel: bool) -> None:
+        """实际部分成功或中途取消均保留已收件项可选，失败项不能选择。"""
+        await prepare(store)
+    
+        class PausingGateway(PdfGateway):
+            """第二项暂停，允许真实取消或真实下载错误。"""
+    
+            async def download(self, who: FinancePrincipal, file: FileRef) -> tuple[bytes, str, str]:
+                """首项实际完成后阻塞下一下载。"""
+                if file.file_id == 'second':
+                    ready.set()
+                    await resume.wait()
+                return await super().download(who, file)
+    
+        ready, resume = asyncio.Event(), asyncio.Event()
+        op = await store.accept_supporting_materials(WHO, 'company-a', [ref('first', RAW), ref('second', RAW)], 'mixed')
+        task = asyncio.create_task(FinanceWorker(store, EncryptedLocalObjects(tmp_path, b'k' * 32), PausingGateway({'first': RAW})).run_once())
+        await asyncio.wait_for(ready.wait(), 10)
+        if cancel:
+            current = await store.get_operation(WHO, op['id'])
+            await store.cancel_operation(WHO, op['id'], current['version'], 'cancel-mixed')
+        resume.set()
+        assert await task
+>       detail = await store.get_supporting_material_import(WHO, op['id'])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'get_supporting_material_import'
+
+packages/xuanpu-finance/tests/test_f8_materials.py:177: AttributeError
+________ test_partial_or_cancel_preserves_received_item_selection[True] ________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10dea66f0>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1769/test_partial_or_cancel_preserv1')
+cancel = True
+
+    @pytest.mark.parametrize('cancel', [False, True])
+    async def test_partial_or_cancel_preserves_received_item_selection(store: FinanceStore, tmp_path: Path, cancel: bool) -> None:
+        """实际部分成功或中途取消均保留已收件项可选，失败项不能选择。"""
+        await prepare(store)
+    
+        class PausingGateway(PdfGateway):
+            """第二项暂停，允许真实取消或真实下载错误。"""
+    
+            async def download(self, who: FinancePrincipal, file: FileRef) -> tuple[bytes, str, str]:
+                """首项实际完成后阻塞下一下载。"""
+                if file.file_id == 'second':
+                    ready.set()
+                    await resume.wait()
+                return await super().download(who, file)
+    
+        ready, resume = asyncio.Event(), asyncio.Event()
+        op = await store.accept_supporting_materials(WHO, 'company-a', [ref('first', RAW), ref('second', RAW)], 'mixed')
+        task = asyncio.create_task(FinanceWorker(store, EncryptedLocalObjects(tmp_path, b'k' * 32), PausingGateway({'first': RAW})).run_once())
+        await asyncio.wait_for(ready.wait(), 10)
+        if cancel:
+            current = await store.get_operation(WHO, op['id'])
+            await store.cancel_operation(WHO, op['id'], current['version'], 'cancel-mixed')
+        resume.set()
+        assert await task
+>       detail = await store.get_supporting_material_import(WHO, op['id'])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'get_supporting_material_import'
+
+packages/xuanpu-finance/tests/test_f8_materials.py:177: AttributeError
+___________ test_signed_list_detail_params_modes_and_agent_read_only ___________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10dea6000>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1769/test_signed_list_detail_params0')
+
+    async def test_signed_list_detail_params_modes_and_agent_read_only(store: FinanceStore, tmp_path: Path) -> None:
+        """参数签名经真实校验，agent只能读元数据，停用拒绝且读取无业务写入。"""
+        op, _ = await completed(store, tmp_path)
+        key = Ed25519PrivateKey.generate()
+        app = app_for(store, EncryptedLocalObjects(tmp_path, b'k' * 32), Gateway({}), key)
+        prefix = '/v1/finance/supporting-material-imports'
+        before = await store.get_operation(WHO, op['id'])
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url='https://finance') as http:
+            signed = SignedClient(http, key)
+            for mode in ['enabled', 'read_only', 'draining']:
+                app.state.mode = mode
+                response = await signed.call('GET', prefix, params={'legal_entity_id': 'company-a'})
+>               assert response.status_code == 200, response.text
+E               AssertionError: {"detail":"Method Not Allowed"}
+E               assert 405 == 200
+E                +  where 405 = <Response [405 Method Not Allowed]>.status_code
+
+packages/xuanpu-finance/tests/test_f8_api.py:33: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f8_materials.py::test_pending_restarted_material_metadata_and_idempotency
+FAILED packages/xuanpu-finance/tests/test_f8_materials.py::test_owner_purpose_tenant_and_current_grant_isolation
+FAILED packages/xuanpu-finance/tests/test_f8_materials.py::test_equal_timestamp_desc_pages_bind_person_company_and_direction
+FAILED packages/xuanpu-finance/tests/test_f8_materials.py::test_broken_responsibility_never_selectable[receipt]
+FAILED packages/xuanpu-finance/tests/test_f8_materials.py::test_broken_responsibility_never_selectable[position]
+FAILED packages/xuanpu-finance/tests/test_f8_materials.py::test_broken_responsibility_never_selectable[hash]
+FAILED packages/xuanpu-finance/tests/test_f8_materials.py::test_broken_responsibility_never_selectable[ref]
+FAILED packages/xuanpu-finance/tests/test_f8_materials.py::test_broken_responsibility_never_selectable[object]
+FAILED packages/xuanpu-finance/tests/test_f8_materials.py::test_broken_responsibility_never_selectable[size]
+FAILED packages/xuanpu-finance/tests/test_f8_materials.py::test_broken_responsibility_never_selectable[type]
+FAILED packages/xuanpu-finance/tests/test_f8_materials.py::test_broken_responsibility_never_selectable[owner]
+FAILED packages/xuanpu-finance/tests/test_f8_materials.py::test_broken_responsibility_never_selectable[simulation]
+FAILED packages/xuanpu-finance/tests/test_f8_materials.py::test_partial_or_cancel_preserves_received_item_selection[False]
+FAILED packages/xuanpu-finance/tests/test_f8_materials.py::test_partial_or_cancel_preserves_received_item_selection[True]
+FAILED packages/xuanpu-finance/tests/test_f8_api.py::test_signed_list_detail_params_modes_and_agent_read_only
+15 failed in 3.65s

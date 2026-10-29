@@ -1,0 +1,13 @@
+AssertionError [ERR_ASSERTION]: 取消新材料确认不得禁用已有有效回执草稿的保存
+
+true !== false
+
+    at abandonedMaterialConfirmationKeepsExistingDraftEditable (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_funding_behavior.cjs:15:833)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_funding_behavior.cjs:16:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: true,
+  expected: false,
+  operator: 'strictEqual',
+  diff: 'simple'
+}

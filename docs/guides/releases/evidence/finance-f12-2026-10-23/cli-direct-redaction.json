@@ -1,0 +1,16 @@
+{
+  "temporary_test_root_key_only": [
+    {
+      "file": "cli-direct.log",
+      "count": 1,
+      "original_sha256": "3f330bb5ed98015a419b3ea7090dade2b39b649bb40fb360197f9693e683751d",
+      "redacted_sha256": "c345a0ada809707bf08c585d9fddbebf6c22240ba19761ef87acfb6a0ed77ac5"
+    },
+    {
+      "file": "cli-direct-junit.xml",
+      "count": 1,
+      "original_sha256": "f17ad755abfcab55e04f5f309537d44f7b41bf4e779c3feb765769d097b329a2",
+      "redacted_sha256": "ab0f336a677621f0cdfdda990e224704c5cfb6d631da6ee44975384b574df216"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+# 合并到基础配置；供应商和正式profile未验收，缺省全部关闭。
+# 示例人员和公司须由实际平台身份/财务授权配置，不能作为真实授权。
+compliance_providers: []
+compliance_policies:
+- tenant_id: acme
+  legal_entity_id: company-a
+  version: 1
+  enabled: false
+  tax_enabled: false
+  archive_enabled: false
+  tax_executor_user_ids: []
+  archive_executor_user_ids: []
+  tax_steps: []
+  archive_steps: []
+  open_periods: []
+  supported_invoice_profiles: []
+  plan_hours: 24
+  verification_max_age_hours: 24
+  archive_profile_id: null
+  archive_profile_version: null
+  retention_class: unconfigured
+  retention_days: 3650
+  retention_anchor: archived_at
+  required_lock_mode: COMPLIANCE
+  required_legal_hold: false

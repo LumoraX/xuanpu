@@ -1,0 +1,17 @@
+All checks passed!
+{
+  "test_f13_process.py": {
+    "sha256": "c737c34f0d44a65eb3b52e9da98b7f52c6eb08b88742d2a6e086469763d191b4",
+    "lines": 71,
+    "max_function_lines": 45,
+    "all_chinese_docstrings": true,
+    "future_annotations": true
+  },
+  "f13_process_helpers.py": {
+    "sha256": "704ada7dc100aab2ffdbeabc10ec6f6f63f5ea3edfa538964abfbdc956ef50e5",
+    "lines": 213,
+    "max_function_lines": 36,
+    "all_chinese_docstrings": true,
+    "future_annotations": true
+  }
+}

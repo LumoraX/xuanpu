@@ -1,0 +1,1020 @@
+{
+  "production_status": "not_verified",
+  "source": "full-final/junit.xml",
+  "facts": [
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_crash.test_sigkill_after_cipher_before_receipt_recovers_naturally",
+      "name": "f12_crash",
+      "value": {
+        "fault_boundary": "cipher_authenticated_before_receipt_commit",
+        "operation_id": "dba6b2ee1e8f4fa2a3b50035f2dc7217",
+        "replay_operation_id": "dba6b2ee1e8f4fa2a3b50035f2dc7217",
+        "receipt_id": "4e8606951b2a4aa884574369ef24c4be",
+        "original_sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+        "checkpoint": {
+          "backend": 4582,
+          "cipher_authenticated": true,
+          "receipt_count": 0,
+          "item_state": "pending"
+        },
+        "crash": {
+          "pid": 33005,
+          "signal_exit": -9,
+          "port_closed": true,
+          "instance_lock_released": true,
+          "lease_unchanged_after_crash": true
+        },
+        "timing": {
+          "recovery_poll_seconds": 59.68342329200823,
+          "natural_expiry_elapsed_seconds": 60.237821,
+          "lease_unchanged_polls": 359,
+          "pending_statuses": [
+            "running"
+          ],
+          "bytes_received": 431,
+          "claimed_at": "2026-10-23T06:17:42.974567+00:00",
+          "checkpoint_observed_at": "2026-10-23T06:17:43.008252+00:00",
+          "lease_until": "2026-10-23T06:18:42.974567+00:00",
+          "recovered_at": "2026-10-23T06:18:43.212388+00:00"
+        },
+        "cleanup": {
+          "trigger_absent": true,
+          "function_absent": true,
+          "guard_lock_absent": true
+        },
+        "download_count": 1,
+        "event_counts": {
+          "import.accepted": 1,
+          "import.claimed": 2,
+          "import.completed": 1,
+          "material.received": 1,
+          "original.prepared": 1,
+          "original.received": 1
+        },
+        "human_approvals": {
+          "approvals": [
+            {
+              "original": {
+                "reader": "manager",
+                "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+                "bytes_equal": true
+              },
+              "model_rejection": {},
+              "human_execution": {
+                "id": "f1op_4e1d38619d4b4377ae80b3a5349678b7",
+                "version": 1,
+                "status": "succeeded",
+                "business_result": "succeeded",
+                "trace_id": "bfc79b1a265442f58fa62a0b22460fc4",
+                "items": [],
+                "result_refs": [],
+                "resources": [
+                  {
+                    "kind": "expense_claim",
+                    "id": "db770a8be2c44a758bc5f3dad883c646"
+                  }
+                ]
+              },
+              "signed_origin": "human",
+              "reason": "manager已核对独立原件"
+            },
+            {
+              "original": {
+                "reader": "finance-reviewer",
+                "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+                "bytes_equal": true
+              },
+              "model_rejection": {},
+              "human_execution": {
+                "id": "f1op_7a0ed227d63f4ce191041a450c758017",
+                "version": 1,
+                "status": "succeeded",
+                "business_result": "succeeded",
+                "trace_id": "3bbdb22db38342298dcdbf79fa8d7b61",
+                "items": [],
+                "result_refs": [],
+                "resources": [
+                  {
+                    "kind": "expense_claim",
+                    "id": "db770a8be2c44a758bc5f3dad883c646"
+                  }
+                ]
+              },
+              "signed_origin": "human",
+              "reason": "finance-reviewer已核对独立原件"
+            }
+          ],
+          "decisions": [
+            {
+              "id": "52c8cc560b3f4afdb9b6fe62891d13a9",
+              "actor_id": "manager",
+              "action": "approve",
+              "step_id": "c1c571adf9df426f868696bf9134700d",
+              "data": {
+                "origin": "human",
+                "plan_id": "44d7dd6be5c24098a613474b5971d6e0",
+                "parameters": {
+                  "reason": "manager已核对独立原件",
+                  "workflow_step_id": "c1c571adf9df426f868696bf9134700d"
+                },
+                "target_version": 2
+              }
+            },
+            {
+              "id": "bf07c96b9dcb40eb9b0e7a8a9ee90533",
+              "actor_id": "finance-reviewer",
+              "action": "approve",
+              "step_id": "d9342007774d45ccbce39b6ecc7d3dc5",
+              "data": {
+                "origin": "human",
+                "plan_id": "8328bcc4d67345278ff1800bf6828d8b",
+                "parameters": {
+                  "reason": "finance-reviewer已核对独立原件",
+                  "workflow_step_id": "d9342007774d45ccbce39b6ecc7d3dc5"
+                },
+                "target_version": 2
+              }
+            }
+          ],
+          "original": {
+            "reader": "finance-reviewer",
+            "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+            "bytes_equal": true
+          },
+          "status": "approved",
+          "paid_amount": "0.00",
+          "posted_amount": "0.00",
+          "source_text_preserved": true,
+          "external_table_counts": {
+            "finance_invoice": 0,
+            "finance_settlement_operation": 0,
+            "finance_compliance_operation": 0
+          }
+        },
+        "verify": {
+          "exit": 0,
+          "output": {
+            "status": "completed",
+            "verification_status": "complete",
+            "profile": "internal_records",
+            "production_status": "not_verified",
+            "authenticated_objects": 1,
+            "prepared_missing_count": 0,
+            "unmapped_objects_count": 0,
+            "complete_object_validation": true,
+            "workers_started": false,
+            "business_writes": 0
+          },
+          "snapshot_equal": true
+        },
+        "processes": [
+          {
+            "exit": -15,
+            "ended": true,
+            "graceful_shutdown": true,
+            "stdout_empty": true
+          }
+        ],
+        "finance_port_closed": true,
+        "gateway_port_closed": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_hitl.test_eight_human_confirmations_same_plan_execute_once",
+      "name": "f12_hitl",
+      "value": {
+        "scenario": "eight_humans_same_plan",
+        "http_statuses": [
+          202,
+          202,
+          202,
+          202,
+          202,
+          202,
+          202,
+          202
+        ],
+        "signed_requests": [
+          {
+            "origin": "human",
+            "sub": "manager",
+            "jti": "752fc4092c504ca6bde07b0ac57b5430",
+            "call_id": "dece7b4ebe394665b9b0feab71ab3325",
+            "request_sha256": "4ae2981d8d2520e53b435ae7fe920b5fb57e85405d830a01c5d934980fb802f0",
+            "idempotency_key": "eight-human",
+            "body_sha256": "c65a4cf4da095bada395d7e7de40a5f8fdc43287fa343f0a9cad24ac2e7d8696"
+          },
+          {
+            "origin": "human",
+            "sub": "manager",
+            "jti": "2a10425fd172424ab1976173ba1fb837",
+            "call_id": "3f7b9a46bd9e4d5e8b157c8c81145e43",
+            "request_sha256": "4ae2981d8d2520e53b435ae7fe920b5fb57e85405d830a01c5d934980fb802f0",
+            "idempotency_key": "eight-human",
+            "body_sha256": "c65a4cf4da095bada395d7e7de40a5f8fdc43287fa343f0a9cad24ac2e7d8696"
+          },
+          {
+            "origin": "human",
+            "sub": "manager",
+            "jti": "e377e4c3597249f3822405876df97df1",
+            "call_id": "8dca023bfa584109aa5b4ccc653b92ae",
+            "request_sha256": "4ae2981d8d2520e53b435ae7fe920b5fb57e85405d830a01c5d934980fb802f0",
+            "idempotency_key": "eight-human",
+            "body_sha256": "c65a4cf4da095bada395d7e7de40a5f8fdc43287fa343f0a9cad24ac2e7d8696"
+          },
+          {
+            "origin": "human",
+            "sub": "manager",
+            "jti": "f40f6d20b0c1494995d80763933fc0fd",
+            "call_id": "02c103f139f241e8a2854175e0d6fd40",
+            "request_sha256": "4ae2981d8d2520e53b435ae7fe920b5fb57e85405d830a01c5d934980fb802f0",
+            "idempotency_key": "eight-human",
+            "body_sha256": "c65a4cf4da095bada395d7e7de40a5f8fdc43287fa343f0a9cad24ac2e7d8696"
+          },
+          {
+            "origin": "human",
+            "sub": "manager",
+            "jti": "0336dcdd16f645fcb44750b5d83e3985",
+            "call_id": "a310a1049a904f0da2d06259d55ec1fe",
+            "request_sha256": "4ae2981d8d2520e53b435ae7fe920b5fb57e85405d830a01c5d934980fb802f0",
+            "idempotency_key": "eight-human",
+            "body_sha256": "c65a4cf4da095bada395d7e7de40a5f8fdc43287fa343f0a9cad24ac2e7d8696"
+          },
+          {
+            "origin": "human",
+            "sub": "manager",
+            "jti": "594f0e3cb3d1401ba163af4a9f14c3db",
+            "call_id": "49e4371c03d44fd0bdd181a7729cce1e",
+            "request_sha256": "4ae2981d8d2520e53b435ae7fe920b5fb57e85405d830a01c5d934980fb802f0",
+            "idempotency_key": "eight-human",
+            "body_sha256": "c65a4cf4da095bada395d7e7de40a5f8fdc43287fa343f0a9cad24ac2e7d8696"
+          },
+          {
+            "origin": "human",
+            "sub": "manager",
+            "jti": "543c8bbc6a2e4c208c9a8984a3e6ee9b",
+            "call_id": "35117f76409f493ab7a661f031db8d16",
+            "request_sha256": "4ae2981d8d2520e53b435ae7fe920b5fb57e85405d830a01c5d934980fb802f0",
+            "idempotency_key": "eight-human",
+            "body_sha256": "c65a4cf4da095bada395d7e7de40a5f8fdc43287fa343f0a9cad24ac2e7d8696"
+          },
+          {
+            "origin": "human",
+            "sub": "manager",
+            "jti": "ce73e52735cf4be7868580d2871cc1d2",
+            "call_id": "564fa9f76394451881c01d1c930fd3f8",
+            "request_sha256": "4ae2981d8d2520e53b435ae7fe920b5fb57e85405d830a01c5d934980fb802f0",
+            "idempotency_key": "eight-human",
+            "body_sha256": "c65a4cf4da095bada395d7e7de40a5f8fdc43287fa343f0a9cad24ac2e7d8696"
+          }
+        ],
+        "same_operation_id": "f1op_c116207d47d4476e9c9f35bf3e38503a",
+        "changed_idempotency_replay": "f1op_c116207d47d4476e9c9f35bf3e38503a",
+        "before": {
+          "claim": {
+            "version": 2,
+            "status": "under_review"
+          },
+          "workflow": {
+            "id": "992fcf30fd934c87aae12133d9599186",
+            "version": 1,
+            "status": "under_review"
+          },
+          "steps": [
+            {
+              "id": "849a6555bcd344ddbc4c488f9eb96044",
+              "version": 1,
+              "status": "pending",
+              "approver_user_id": "manager"
+            },
+            {
+              "id": "0428472102c6402b966bea21aa914a1b",
+              "version": 1,
+              "status": "waiting",
+              "approver_user_id": "finance-reviewer"
+            }
+          ]
+        },
+        "after": {
+          "claim": {
+            "version": 2,
+            "status": "under_review"
+          },
+          "workflow": {
+            "id": "992fcf30fd934c87aae12133d9599186",
+            "version": 2,
+            "status": "under_review"
+          },
+          "steps": [
+            {
+              "id": "849a6555bcd344ddbc4c488f9eb96044",
+              "version": 2,
+              "status": "approved",
+              "approver_user_id": "manager"
+            },
+            {
+              "id": "0428472102c6402b966bea21aa914a1b",
+              "version": 2,
+              "status": "pending",
+              "approver_user_id": "finance-reviewer"
+            }
+          ]
+        },
+        "database": {
+          "decision": {
+            "id": "7c40326042994ec7a968949e3bcc0db8",
+            "actor_id": "manager",
+            "action": "approve",
+            "step_id": "849a6555bcd344ddbc4c488f9eb96044",
+            "data": {
+              "origin": "human",
+              "plan_id": "858e7faf028e4d58af9d32607d6f2447",
+              "parameters": {
+                "reason": "本人已核对独立原件",
+                "workflow_step_id": "849a6555bcd344ddbc4c488f9eb96044"
+              },
+              "target_version": 2
+            }
+          },
+          "operation_id": "f1op_c116207d47d4476e9c9f35bf3e38503a",
+          "decision_count": 1,
+          "operation_count": 1,
+          "outbox_count": 1,
+          "outbox_id": "69e328a628ca48e6b55a8a396df77914"
+        },
+        "final_review": {
+          "approval": {
+            "original": {
+              "reader": "finance-reviewer",
+              "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+              "bytes_equal": true
+            },
+            "model_rejection": {},
+            "human_execution": {
+              "id": "f1op_74ebbf8167d740b29258827cac66ee42",
+              "version": 1,
+              "status": "succeeded",
+              "business_result": "succeeded",
+              "trace_id": "f323280ccd864f84aced3735b5012e5f",
+              "items": [],
+              "result_refs": [],
+              "resources": [
+                {
+                  "kind": "expense_claim",
+                  "id": "8d481b63995e47698c0709a6eb10ee8e"
+                }
+              ]
+            },
+            "signed_origin": "human",
+            "reason": "finance-reviewer已核对独立原件"
+          },
+          "before": {
+            "claim": {
+              "version": 2,
+              "status": "under_review"
+            },
+            "workflow": {
+              "id": "992fcf30fd934c87aae12133d9599186",
+              "version": 2,
+              "status": "under_review"
+            },
+            "steps": [
+              {
+                "id": "849a6555bcd344ddbc4c488f9eb96044",
+                "version": 2,
+                "status": "approved",
+                "approver_user_id": "manager"
+              },
+              {
+                "id": "0428472102c6402b966bea21aa914a1b",
+                "version": 2,
+                "status": "pending",
+                "approver_user_id": "finance-reviewer"
+              }
+            ]
+          },
+          "after": {
+            "claim": {
+              "version": 3,
+              "status": "approved"
+            },
+            "workflow": {
+              "id": "992fcf30fd934c87aae12133d9599186",
+              "version": 3,
+              "status": "approved"
+            },
+            "steps": [
+              {
+                "id": "849a6555bcd344ddbc4c488f9eb96044",
+                "version": 2,
+                "status": "approved",
+                "approver_user_id": "manager"
+              },
+              {
+                "id": "0428472102c6402b966bea21aa914a1b",
+                "version": 3,
+                "status": "approved",
+                "approver_user_id": "finance-reviewer"
+              }
+            ]
+          },
+          "paid_amount": "0.00",
+          "posted_amount": "0.00",
+          "source_text_preserved": true,
+          "external_table_counts": {
+            "finance_invoice": 0,
+            "finance_settlement_operation": 0,
+            "finance_compliance_operation": 0
+          }
+        },
+        "download_count": 1,
+        "processes": [
+          {
+            "exit": -15,
+            "ended": true,
+            "graceful_shutdown": true,
+            "stdout_empty": true
+          }
+        ],
+        "finance_port_closed": true,
+        "gateway_port_closed": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_hitl.test_human_approve_and_reject_same_version_have_one_winner",
+      "name": "f12_hitl",
+      "value": {
+        "scenario": "opposite_human_decisions",
+        "http_statuses": [
+          409,
+          202
+        ],
+        "signed_requests": [
+          {
+            "origin": "human",
+            "sub": "manager",
+            "jti": "6bee746eb1b84a21bd26bc31fdf6acff",
+            "call_id": "e4d53de2e93849f1ac9782a7804eb6be",
+            "request_sha256": "eb3e789b715a492eedc72571a9dcd2e0da966c6b20bdce51715896a07481643b",
+            "idempotency_key": "opposite-73c64380b6ea4cd8870aca0dee99926d",
+            "body_sha256": "bdaea960da376d41c5f6c41960c1f3ce358302e14012cf025bb6a0feacb299b1"
+          },
+          {
+            "origin": "human",
+            "sub": "manager",
+            "jti": "759775a353224223bdd3b4f8631274f4",
+            "call_id": "ccf85aaa7dfa4c9c9de4b47e1a660ac9",
+            "request_sha256": "9854c38faef87b25555c6e77080d3c6f62c003c9c62741f142f585fcdece48b9",
+            "idempotency_key": "opposite-edba97e02cbe4a1499002fa86e8c1bea",
+            "body_sha256": "da36919202a57aa5aa3700d864ef82a411ac043a8223426e30e540bb06446b92"
+          }
+        ],
+        "winner_action": "reject",
+        "before": {
+          "claim": {
+            "version": 2,
+            "status": "under_review"
+          },
+          "workflow": {
+            "id": "a20f0ee76c024a35b75828c1e92b3bee",
+            "version": 1,
+            "status": "under_review"
+          },
+          "steps": [
+            {
+              "id": "83b350c4967b4b05ad67d91a38f9991a",
+              "version": 1,
+              "status": "pending",
+              "approver_user_id": "manager"
+            },
+            {
+              "id": "e1096d0a44f74971813200ef9531e551",
+              "version": 1,
+              "status": "waiting",
+              "approver_user_id": "finance-reviewer"
+            }
+          ]
+        },
+        "after": {
+          "claim": {
+            "version": 3,
+            "status": "rejected"
+          },
+          "workflow": {
+            "id": "a20f0ee76c024a35b75828c1e92b3bee",
+            "version": 2,
+            "status": "rejected"
+          },
+          "steps": [
+            {
+              "id": "83b350c4967b4b05ad67d91a38f9991a",
+              "version": 2,
+              "status": "rejected",
+              "approver_user_id": "manager"
+            },
+            {
+              "id": "e1096d0a44f74971813200ef9531e551",
+              "version": 2,
+              "status": "cancelled",
+              "approver_user_id": "finance-reviewer"
+            }
+          ]
+        },
+        "database": {
+          "decision": {
+            "id": "a299d038c87f4a03b2d552c420b2c982",
+            "actor_id": "manager",
+            "action": "reject",
+            "step_id": "83b350c4967b4b05ad67d91a38f9991a",
+            "data": {
+              "origin": "human",
+              "plan_id": "edba97e02cbe4a1499002fa86e8c1bea",
+              "parameters": {
+                "reason": "本人已核对独立原件",
+                "workflow_step_id": "83b350c4967b4b05ad67d91a38f9991a"
+              },
+              "target_version": 2
+            }
+          },
+          "operation_id": "f1op_0d9dcfb04c0c4fa1ba75eabfc99a3e15",
+          "decision_count": 1,
+          "operation_count": 1,
+          "outbox_count": 1,
+          "outbox_id": "26289b320c754e6a8ad57da0e2d5de51"
+        },
+        "loser_operation_count": 0,
+        "original": {
+          "reader": "user-a",
+          "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+          "bytes_equal": true
+        },
+        "record": {
+          "source_text_preserved": true,
+          "reason_preserved": true,
+          "paid_amount": "0.00",
+          "posted_amount": "0.00"
+        },
+        "external_table_counts": {
+          "finance_invoice": 0,
+          "finance_settlement_operation": 0,
+          "finance_compliance_operation": 0
+        },
+        "processes": [
+          {
+            "exit": -15,
+            "ended": true,
+            "graceful_shutdown": true,
+            "stdout_empty": true
+          }
+        ],
+        "finance_port_closed": true,
+        "gateway_port_closed": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_hitl.test_lost_human_confirmation_response_retries_original_operation_after_restart",
+      "name": "f12_hitl",
+      "value": {
+        "scenario": "human_response_delivery_lost",
+        "proxy": {
+          "upstream_status": 202,
+          "operation_id": "f1op_8759fd502987491a931db3fdf255065e",
+          "body_sha256": "eecbc9151c0a534b007e4fd11a32c1af439fd508ebe6218e5b203d5cc2d93b6f",
+          "forwarded_body_equal": true,
+          "context_header_equal": true,
+          "idempotency_header_equal": true
+        },
+        "client_status": 503,
+        "retry_statuses": [
+          202,
+          202
+        ],
+        "signed_requests": [
+          {
+            "origin": "human",
+            "sub": "manager",
+            "jti": "7c8edd3b33f44919817e801ec490fa56",
+            "call_id": "25a873d8c8ec4e0390b0a440775bb87d",
+            "request_sha256": "4deb43fd459ad0e859a8dae3be00bd058059f964950bfba0cc347fd951da7642",
+            "idempotency_key": "lost-human",
+            "body_sha256": "eecbc9151c0a534b007e4fd11a32c1af439fd508ebe6218e5b203d5cc2d93b6f"
+          },
+          {
+            "origin": "human",
+            "sub": "manager",
+            "jti": "320185e7243d4a2bbffa195eebd08494",
+            "call_id": "2a1c13b1f16b4517809dbad9e56b45f4",
+            "request_sha256": "4deb43fd459ad0e859a8dae3be00bd058059f964950bfba0cc347fd951da7642",
+            "idempotency_key": "lost-human",
+            "body_sha256": "eecbc9151c0a534b007e4fd11a32c1af439fd508ebe6218e5b203d5cc2d93b6f"
+          },
+          {
+            "origin": "human",
+            "sub": "manager",
+            "jti": "bd16847fc709450c88f89696ddb84dde",
+            "call_id": "78094538f7f4422bac4ff0e4cc77b921",
+            "request_sha256": "4deb43fd459ad0e859a8dae3be00bd058059f964950bfba0cc347fd951da7642",
+            "idempotency_key": "lost-human",
+            "body_sha256": "eecbc9151c0a534b007e4fd11a32c1af439fd508ebe6218e5b203d5cc2d93b6f"
+          }
+        ],
+        "agent_status": 403,
+        "agent_origin": "agent",
+        "database_before_restart": {
+          "decision": {
+            "id": "5741deb1def344e4b76ab34fb3460ec1",
+            "actor_id": "manager",
+            "action": "approve",
+            "step_id": "1fa6b9e2ad484187aa8499c0f5f8993c",
+            "data": {
+              "origin": "human",
+              "plan_id": "8bc1561435be4143ad854c933054786f",
+              "parameters": {
+                "reason": "本人已核对独立原件",
+                "workflow_step_id": "1fa6b9e2ad484187aa8499c0f5f8993c"
+              },
+              "target_version": 2
+            }
+          },
+          "operation_id": "f1op_8759fd502987491a931db3fdf255065e",
+          "decision_count": 1,
+          "operation_count": 1,
+          "outbox_count": 1,
+          "outbox_id": "c717e1afd7e34ea7a55cf8a7b0e710fc"
+        },
+        "database_after_restart": {
+          "decision": {
+            "id": "5741deb1def344e4b76ab34fb3460ec1",
+            "actor_id": "manager",
+            "action": "approve",
+            "step_id": "1fa6b9e2ad484187aa8499c0f5f8993c",
+            "data": {
+              "origin": "human",
+              "plan_id": "8bc1561435be4143ad854c933054786f",
+              "parameters": {
+                "reason": "本人已核对独立原件",
+                "workflow_step_id": "1fa6b9e2ad484187aa8499c0f5f8993c"
+              },
+              "target_version": 2
+            }
+          },
+          "operation_id": "f1op_8759fd502987491a931db3fdf255065e",
+          "decision_count": 1,
+          "operation_count": 1,
+          "outbox_count": 1,
+          "outbox_id": "c717e1afd7e34ea7a55cf8a7b0e710fc"
+        },
+        "before": {
+          "claim": {
+            "version": 2,
+            "status": "under_review"
+          },
+          "workflow": {
+            "id": "c73ea7f44b1c4c2e829ce776cd3a54b2",
+            "version": 1,
+            "status": "under_review"
+          },
+          "steps": [
+            {
+              "id": "1fa6b9e2ad484187aa8499c0f5f8993c",
+              "version": 1,
+              "status": "pending",
+              "approver_user_id": "manager"
+            },
+            {
+              "id": "10b8ee5cf4f9498e971fd81e91725dd4",
+              "version": 1,
+              "status": "waiting",
+              "approver_user_id": "finance-reviewer"
+            }
+          ]
+        },
+        "after": {
+          "claim": {
+            "version": 2,
+            "status": "under_review"
+          },
+          "workflow": {
+            "id": "c73ea7f44b1c4c2e829ce776cd3a54b2",
+            "version": 2,
+            "status": "under_review"
+          },
+          "steps": [
+            {
+              "id": "1fa6b9e2ad484187aa8499c0f5f8993c",
+              "version": 2,
+              "status": "approved",
+              "approver_user_id": "manager"
+            },
+            {
+              "id": "10b8ee5cf4f9498e971fd81e91725dd4",
+              "version": 2,
+              "status": "pending",
+              "approver_user_id": "finance-reviewer"
+            }
+          ]
+        },
+        "final_review": {
+          "approval": {
+            "original": {
+              "reader": "finance-reviewer",
+              "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+              "bytes_equal": true
+            },
+            "model_rejection": {},
+            "human_execution": {
+              "id": "f1op_7d2b3a8cdf0b436d852d818f62b2e2cc",
+              "version": 1,
+              "status": "succeeded",
+              "business_result": "succeeded",
+              "trace_id": "3919739d4e6945ee9c21320101318408",
+              "items": [],
+              "result_refs": [],
+              "resources": [
+                {
+                  "kind": "expense_claim",
+                  "id": "eb784f72e53749d9954d9050cd023e50"
+                }
+              ]
+            },
+            "signed_origin": "human",
+            "reason": "finance-reviewer已核对独立原件"
+          },
+          "before": {
+            "claim": {
+              "version": 2,
+              "status": "under_review"
+            },
+            "workflow": {
+              "id": "c73ea7f44b1c4c2e829ce776cd3a54b2",
+              "version": 2,
+              "status": "under_review"
+            },
+            "steps": [
+              {
+                "id": "1fa6b9e2ad484187aa8499c0f5f8993c",
+                "version": 2,
+                "status": "approved",
+                "approver_user_id": "manager"
+              },
+              {
+                "id": "10b8ee5cf4f9498e971fd81e91725dd4",
+                "version": 2,
+                "status": "pending",
+                "approver_user_id": "finance-reviewer"
+              }
+            ]
+          },
+          "after": {
+            "claim": {
+              "version": 3,
+              "status": "approved"
+            },
+            "workflow": {
+              "id": "c73ea7f44b1c4c2e829ce776cd3a54b2",
+              "version": 3,
+              "status": "approved"
+            },
+            "steps": [
+              {
+                "id": "1fa6b9e2ad484187aa8499c0f5f8993c",
+                "version": 2,
+                "status": "approved",
+                "approver_user_id": "manager"
+              },
+              {
+                "id": "10b8ee5cf4f9498e971fd81e91725dd4",
+                "version": 3,
+                "status": "approved",
+                "approver_user_id": "finance-reviewer"
+              }
+            ]
+          },
+          "paid_amount": "0.00",
+          "posted_amount": "0.00",
+          "source_text_preserved": true,
+          "external_table_counts": {
+            "finance_invoice": 0,
+            "finance_settlement_operation": 0,
+            "finance_compliance_operation": 0
+          }
+        },
+        "download_count": 1,
+        "processes": [
+          {
+            "exit": -15,
+            "ended": true,
+            "graceful_shutdown": true,
+            "stdout_empty": true
+          },
+          {
+            "exit": -15,
+            "ended": true,
+            "graceful_shutdown": true,
+            "stdout_empty": true
+          }
+        ],
+        "finance_port_closed": true,
+        "gateway_port_closed": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[downloaded]",
+      "name": "f12_window",
+      "value": "downloaded"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[downloaded]",
+      "name": "f12_operation_id",
+      "value": "6784c2aed855485186f755abc592fa0d"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[downloaded]",
+      "name": "f12_item_state",
+      "value": "failed"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[downloaded]",
+      "name": "f12_error_code",
+      "value": "COMPANY_FORBIDDEN"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[downloaded]",
+      "name": "f12_receipt_count",
+      "value": "0"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[downloaded]",
+      "name": "f12_target_cipher_count",
+      "value": "0"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[downloaded]",
+      "name": "f12_next_operation_status",
+      "value": "succeeded"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[downloaded]",
+      "name": "f12_next_item_state",
+      "value": "material_received"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[downloaded]",
+      "name": "f12_db_event_kinds",
+      "value": "[\"import.accepted\", \"import.claimed\", \"import.item_exception\", \"import.completed\"]"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[downloaded]",
+      "name": "f12_original_source",
+      "value": "F7 configured/source + actual PDF + real FinanceStore/local objects"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[downloaded]",
+      "name": "f12_worker",
+      "value": {
+        "f12_window": "downloaded",
+        "f12_operation_id": "6784c2aed855485186f755abc592fa0d",
+        "f12_item_state": "failed",
+        "f12_error_code": "COMPANY_FORBIDDEN",
+        "f12_receipt_count": 0,
+        "f12_target_cipher_count": 0,
+        "f12_next_operation_status": "succeeded",
+        "f12_next_item_state": "material_received",
+        "f12_db_event_kinds": "[\"import.accepted\", \"import.claimed\", \"import.item_exception\", \"import.completed\"]",
+        "f12_original_source": "F7 configured/source + actual PDF + real FinanceStore/local objects"
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[written]",
+      "name": "f12_window",
+      "value": "written"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[written]",
+      "name": "f12_operation_id",
+      "value": "69ec8b278d3f4034af6770ab726a79ba"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[written]",
+      "name": "f12_item_state",
+      "value": "failed"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[written]",
+      "name": "f12_error_code",
+      "value": "COMPANY_FORBIDDEN"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[written]",
+      "name": "f12_receipt_count",
+      "value": "0"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[written]",
+      "name": "f12_target_cipher_count",
+      "value": "1"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[written]",
+      "name": "f12_next_operation_status",
+      "value": "succeeded"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[written]",
+      "name": "f12_next_item_state",
+      "value": "material_received"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[written]",
+      "name": "f12_db_event_kinds",
+      "value": "[\"import.accepted\", \"import.claimed\", \"original.prepared\", \"import.item_exception\", \"import.completed\"]"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[written]",
+      "name": "f12_original_source",
+      "value": "F7 configured/source + actual PDF + real FinanceStore/local objects"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[written]",
+      "name": "f12_worker",
+      "value": {
+        "f12_window": "written",
+        "f12_operation_id": "69ec8b278d3f4034af6770ab726a79ba",
+        "f12_item_state": "failed",
+        "f12_error_code": "COMPANY_FORBIDDEN",
+        "f12_receipt_count": 0,
+        "f12_target_cipher_count": 1,
+        "f12_next_operation_status": "succeeded",
+        "f12_next_item_state": "material_received",
+        "f12_db_event_kinds": "[\"import.accepted\", \"import.claimed\", \"original.prepared\", \"import.item_exception\", \"import.completed\"]",
+        "f12_original_source": "F7 configured/source + actual PDF + real FinanceStore/local objects"
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[received]",
+      "name": "f12_window",
+      "value": "received"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[received]",
+      "name": "f12_operation_id",
+      "value": "17280f6c2b6348f8b0423eeab847c991"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[received]",
+      "name": "f12_item_state",
+      "value": "failed"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[received]",
+      "name": "f12_error_code",
+      "value": "COMPANY_FORBIDDEN"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[received]",
+      "name": "f12_receipt_count",
+      "value": "1"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[received]",
+      "name": "f12_target_cipher_count",
+      "value": "1"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[received]",
+      "name": "f12_next_operation_status",
+      "value": "succeeded"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[received]",
+      "name": "f12_next_item_state",
+      "value": "material_received"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[received]",
+      "name": "f12_db_event_kinds",
+      "value": "[\"import.accepted\", \"import.claimed\", \"original.prepared\", \"original.received\", \"import.item_exception\", \"import.completed\"]"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[received]",
+      "name": "f12_original_source",
+      "value": "F7 configured/source + actual PDF + real FinanceStore/local objects"
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f12_worker.test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[received]",
+      "name": "f12_worker",
+      "value": {
+        "f12_window": "received",
+        "f12_operation_id": "17280f6c2b6348f8b0423eeab847c991",
+        "f12_item_state": "failed",
+        "f12_error_code": "COMPANY_FORBIDDEN",
+        "f12_receipt_count": 1,
+        "f12_target_cipher_count": 1,
+        "f12_next_operation_status": "succeeded",
+        "f12_next_item_state": "material_received",
+        "f12_db_event_kinds": "[\"import.accepted\", \"import.claimed\", \"original.prepared\", \"original.received\", \"import.item_exception\", \"import.completed\"]",
+        "f12_original_source": "F7 configured/source + actual PDF + real FinanceStore/local objects"
+      }
+    }
+  ]
+}

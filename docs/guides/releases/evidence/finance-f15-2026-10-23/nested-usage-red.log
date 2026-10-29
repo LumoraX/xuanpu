@@ -1,0 +1,196 @@
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+______ test_nested_cookie_resume_normal_cold_deny_and_replay[False-False] ______
+
+identity_world = <function identity_world.<locals>.opener at 0x10e742c00>
+step = <class 'packages.xuanpu-server.tests.conftest.Step'>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2351/test_nested_cookie_resume_norm0')
+cold = False, granted = False
+
+    @pytest.mark.parametrize('cold', [False, True])
+    @pytest.mark.parametrize('granted', [False, True])
+    async def test_nested_cookie_resume_normal_cold_deny_and_replay(
+        identity_world: Any, step: Any, tmp_path: Path, cold: bool, granted: bool,
+    ) -> None:
+        """真实父子挂起在正常或冷恢复后批准/拒绝，重复恢复不重复执行。"""
+        async with identity_world() as ident, records_server() as (url, writes):
+            await publish_nested(ident, tmp_path / 'nested', url)
+            sid, headers, pending, emitted = await suspended(ident, step)
+            leaf = next(item['data'] for item in emitted if item.get('kind') == 'turn_suspended')
+            assert leaf['thread_id'] == pending['detail']['thread_id']
+            assert writes == []
+            platform, http = ident.world.platform, ident.http
+            sibling = None
+            if cold:
+                await platform.close()
+                sibling = ident.world.sibling('nested-cold', data_dir=ident.world.data_dir)
+                await sibling.start()
+                platform = sibling
+                http = httpx.AsyncClient(transport=httpx.ASGITransport(create_app(sibling)),
+                                         base_url=str(ident.http.base_url))
+            audit = await ident.audit('turn_suspended')
+            assert [item.data['pending'][0]['reason'] for item in audit] == ['permission', 'child_skill']
+            payload = {'resolutions': {pending['request_id']: {'granted': granted}}}
+            try:
+                resumed = events(await http.post(f'/v1/sessions/{sid}/resume', headers=headers, json=payload))
+                rejected = [item for item in resumed if item.get('kind') == 'suspension_resolve_rejected']
+                assert rejected == [], rejected
+                assert any(item.get('kind') == 'turn_completed' and item['data'].get('is_root')
+                           and item['data'].get('success') for item in resumed), resumed
+                assert writes == (['append'] if granted else [])
+                sampled = len(ident.world.models.requests)
+                stamp = next(item['at'] for item in reversed(resumed) if item.get('kind') == 'turn_completed')
+                usage = await platform.store.get_usage('acme', datetime.fromtimestamp(stamp, UTC).date().isoformat())
+                assert usage.turns == 2
+>               assert usage.total_tokens == sampled * 120
+E               AssertionError: assert 360 == (4 * 120)
+E                +  where 360 = UsageRecord(tenant_id='acme', day='2026-10-23', input_tokens=300, output_tokens=60, total_tokens=360, turns=2).total_tokens
+
+packages/xuanpu-server/tests/identity/test_nested_resume.py:151: AssertionError
+______ test_nested_cookie_resume_normal_cold_deny_and_replay[False-True] _______
+
+identity_world = <function identity_world.<locals>.opener at 0x10e828900>
+step = <class 'packages.xuanpu-server.tests.conftest.Step'>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2351/test_nested_cookie_resume_norm1')
+cold = True, granted = False
+
+    @pytest.mark.parametrize('cold', [False, True])
+    @pytest.mark.parametrize('granted', [False, True])
+    async def test_nested_cookie_resume_normal_cold_deny_and_replay(
+        identity_world: Any, step: Any, tmp_path: Path, cold: bool, granted: bool,
+    ) -> None:
+        """真实父子挂起在正常或冷恢复后批准/拒绝，重复恢复不重复执行。"""
+        async with identity_world() as ident, records_server() as (url, writes):
+            await publish_nested(ident, tmp_path / 'nested', url)
+            sid, headers, pending, emitted = await suspended(ident, step)
+            leaf = next(item['data'] for item in emitted if item.get('kind') == 'turn_suspended')
+            assert leaf['thread_id'] == pending['detail']['thread_id']
+            assert writes == []
+            platform, http = ident.world.platform, ident.http
+            sibling = None
+            if cold:
+                await platform.close()
+                sibling = ident.world.sibling('nested-cold', data_dir=ident.world.data_dir)
+                await sibling.start()
+                platform = sibling
+                http = httpx.AsyncClient(transport=httpx.ASGITransport(create_app(sibling)),
+                                         base_url=str(ident.http.base_url))
+            audit = await ident.audit('turn_suspended')
+            assert [item.data['pending'][0]['reason'] for item in audit] == ['permission', 'child_skill']
+            payload = {'resolutions': {pending['request_id']: {'granted': granted}}}
+            try:
+                resumed = events(await http.post(f'/v1/sessions/{sid}/resume', headers=headers, json=payload))
+                rejected = [item for item in resumed if item.get('kind') == 'suspension_resolve_rejected']
+                assert rejected == [], rejected
+                assert any(item.get('kind') == 'turn_completed' and item['data'].get('is_root')
+                           and item['data'].get('success') for item in resumed), resumed
+                assert writes == (['append'] if granted else [])
+                sampled = len(ident.world.models.requests)
+                stamp = next(item['at'] for item in reversed(resumed) if item.get('kind') == 'turn_completed')
+                usage = await platform.store.get_usage('acme', datetime.fromtimestamp(stamp, UTC).date().isoformat())
+                assert usage.turns == 2
+>               assert usage.total_tokens == sampled * 120
+E               AssertionError: assert 360 == (4 * 120)
+E                +  where 360 = UsageRecord(tenant_id='acme', day='2026-10-23', input_tokens=300, output_tokens=60, total_tokens=360, turns=2).total_tokens
+
+packages/xuanpu-server/tests/identity/test_nested_resume.py:151: AssertionError
+______ test_nested_cookie_resume_normal_cold_deny_and_replay[True-False] _______
+
+identity_world = <function identity_world.<locals>.opener at 0x10ec71080>
+step = <class 'packages.xuanpu-server.tests.conftest.Step'>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2351/test_nested_cookie_resume_norm2')
+cold = False, granted = True
+
+    @pytest.mark.parametrize('cold', [False, True])
+    @pytest.mark.parametrize('granted', [False, True])
+    async def test_nested_cookie_resume_normal_cold_deny_and_replay(
+        identity_world: Any, step: Any, tmp_path: Path, cold: bool, granted: bool,
+    ) -> None:
+        """真实父子挂起在正常或冷恢复后批准/拒绝，重复恢复不重复执行。"""
+        async with identity_world() as ident, records_server() as (url, writes):
+            await publish_nested(ident, tmp_path / 'nested', url)
+            sid, headers, pending, emitted = await suspended(ident, step)
+            leaf = next(item['data'] for item in emitted if item.get('kind') == 'turn_suspended')
+            assert leaf['thread_id'] == pending['detail']['thread_id']
+            assert writes == []
+            platform, http = ident.world.platform, ident.http
+            sibling = None
+            if cold:
+                await platform.close()
+                sibling = ident.world.sibling('nested-cold', data_dir=ident.world.data_dir)
+                await sibling.start()
+                platform = sibling
+                http = httpx.AsyncClient(transport=httpx.ASGITransport(create_app(sibling)),
+                                         base_url=str(ident.http.base_url))
+            audit = await ident.audit('turn_suspended')
+            assert [item.data['pending'][0]['reason'] for item in audit] == ['permission', 'child_skill']
+            payload = {'resolutions': {pending['request_id']: {'granted': granted}}}
+            try:
+                resumed = events(await http.post(f'/v1/sessions/{sid}/resume', headers=headers, json=payload))
+                rejected = [item for item in resumed if item.get('kind') == 'suspension_resolve_rejected']
+                assert rejected == [], rejected
+                assert any(item.get('kind') == 'turn_completed' and item['data'].get('is_root')
+                           and item['data'].get('success') for item in resumed), resumed
+                assert writes == (['append'] if granted else [])
+                sampled = len(ident.world.models.requests)
+                stamp = next(item['at'] for item in reversed(resumed) if item.get('kind') == 'turn_completed')
+                usage = await platform.store.get_usage('acme', datetime.fromtimestamp(stamp, UTC).date().isoformat())
+                assert usage.turns == 2
+>               assert usage.total_tokens == sampled * 120
+E               AssertionError: assert 360 == (4 * 120)
+E                +  where 360 = UsageRecord(tenant_id='acme', day='2026-10-23', input_tokens=300, output_tokens=60, total_tokens=360, turns=2).total_tokens
+
+packages/xuanpu-server/tests/identity/test_nested_resume.py:151: AssertionError
+_______ test_nested_cookie_resume_normal_cold_deny_and_replay[True-True] _______
+
+identity_world = <function identity_world.<locals>.opener at 0x10f0f3060>
+step = <class 'packages.xuanpu-server.tests.conftest.Step'>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2351/test_nested_cookie_resume_norm3')
+cold = True, granted = True
+
+    @pytest.mark.parametrize('cold', [False, True])
+    @pytest.mark.parametrize('granted', [False, True])
+    async def test_nested_cookie_resume_normal_cold_deny_and_replay(
+        identity_world: Any, step: Any, tmp_path: Path, cold: bool, granted: bool,
+    ) -> None:
+        """真实父子挂起在正常或冷恢复后批准/拒绝，重复恢复不重复执行。"""
+        async with identity_world() as ident, records_server() as (url, writes):
+            await publish_nested(ident, tmp_path / 'nested', url)
+            sid, headers, pending, emitted = await suspended(ident, step)
+            leaf = next(item['data'] for item in emitted if item.get('kind') == 'turn_suspended')
+            assert leaf['thread_id'] == pending['detail']['thread_id']
+            assert writes == []
+            platform, http = ident.world.platform, ident.http
+            sibling = None
+            if cold:
+                await platform.close()
+                sibling = ident.world.sibling('nested-cold', data_dir=ident.world.data_dir)
+                await sibling.start()
+                platform = sibling
+                http = httpx.AsyncClient(transport=httpx.ASGITransport(create_app(sibling)),
+                                         base_url=str(ident.http.base_url))
+            audit = await ident.audit('turn_suspended')
+            assert [item.data['pending'][0]['reason'] for item in audit] == ['permission', 'child_skill']
+            payload = {'resolutions': {pending['request_id']: {'granted': granted}}}
+            try:
+                resumed = events(await http.post(f'/v1/sessions/{sid}/resume', headers=headers, json=payload))
+                rejected = [item for item in resumed if item.get('kind') == 'suspension_resolve_rejected']
+                assert rejected == [], rejected
+                assert any(item.get('kind') == 'turn_completed' and item['data'].get('is_root')
+                           and item['data'].get('success') for item in resumed), resumed
+                assert writes == (['append'] if granted else [])
+                sampled = len(ident.world.models.requests)
+                stamp = next(item['at'] for item in reversed(resumed) if item.get('kind') == 'turn_completed')
+                usage = await platform.store.get_usage('acme', datetime.fromtimestamp(stamp, UTC).date().isoformat())
+                assert usage.turns == 2
+>               assert usage.total_tokens == sampled * 120
+E               AssertionError: assert 360 == (4 * 120)
+E                +  where 360 = UsageRecord(tenant_id='acme', day='2026-10-23', input_tokens=300, output_tokens=60, total_tokens=360, turns=2).total_tokens
+
+packages/xuanpu-server/tests/identity/test_nested_resume.py:151: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-server/tests/identity/test_nested_resume.py::test_nested_cookie_resume_normal_cold_deny_and_replay[False-False]
+FAILED packages/xuanpu-server/tests/identity/test_nested_resume.py::test_nested_cookie_resume_normal_cold_deny_and_replay[False-True]
+FAILED packages/xuanpu-server/tests/identity/test_nested_resume.py::test_nested_cookie_resume_normal_cold_deny_and_replay[True-False]
+FAILED packages/xuanpu-server/tests/identity/test_nested_resume.py::test_nested_cookie_resume_normal_cold_deny_and_replay[True-True]
+4 failed, 3 deselected in 2.31s

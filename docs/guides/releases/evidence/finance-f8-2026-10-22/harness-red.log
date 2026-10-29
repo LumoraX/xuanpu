@@ -1,0 +1,19 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_______ test_browser_harness_rejects_non_test_database_before_listening ________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1767/test_browser_harness_rejects_n0')
+
+    def test_browser_harness_rejects_non_test_database_before_listening(tmp_path: Path) -> None:
+        """不合格数据库必须明确失败且不写ready文件或输出凭据。"""
+        script=Path(__file__).resolve().parents[3]/'scripts/acceptance/finance_browser.py'
+>       assert script.is_file(),'缺少F8实际浏览器验收入口'
+E       AssertionError: 缺少F8实际浏览器验收入口
+E       assert False
+E        +  where False = is_file()
+E        +    where is_file = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_browser.py').is_file
+
+packages/xuanpu-finance/tests/test_f8_harness.py:12: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f8_harness.py::test_browser_harness_rejects_non_test_database_before_listening
+1 failed in 0.04s

@@ -1,0 +1,43 @@
+{
+  "status": "Approved",
+  "reviews": {
+    "task1-spec": {
+      "status": "Approved",
+      "evidence": "task1-spec.json",
+      "sha256": "61e00ae508dde07d76283291760f1715881a2119f6a8ebbd8fa5132b95c3cd4b"
+    },
+    "task1-quality": {
+      "status": "Approved",
+      "evidence": "task1-quality.json",
+      "sha256": "c2f67c1b5176b26dfbd375c4b6731f2c67ea2968685080c6f8e430586da756d4"
+    },
+    "task2-spec": {
+      "status": "Approved",
+      "evidence": "task2-spec.json",
+      "sha256": "4aa91ca1779e62475264d55b217b41a86840f749f0191edbca35872cad76689b"
+    },
+    "task2-quality": {
+      "status": "Approved",
+      "evidence": "task2-quality.json",
+      "sha256": "304ff8ce2b0c9784e24d1771d8f53422d6663a9d4e8a4a9fe5d4039b45bfae9b"
+    },
+    "whole-spec": {
+      "status": "Approved",
+      "evidence": "whole-spec.json",
+      "sha256": "ea89b474cec99e0271e308a0a059efdb1c958ceb6019d9d9469fa7ab4e3fe965"
+    },
+    "whole-quality": {
+      "status": "Approved",
+      "evidence": "whole-quality.json",
+      "sha256": "5433170cb048a62f2caac60dbf7f521d947465b438b6c82d18fcfcaeb7a56d2a"
+    },
+    "artifact-quality": {
+      "status": "Approved",
+      "evidence": "artifact-quality.json",
+      "sha256": "26e07d988f901eac0d3f3d426a969da4208b2b0e9e3247ef3e64766aa942b8d9"
+    }
+  },
+  "production_status": "not_verified",
+  "independent_full_or_quick_rerun": false,
+  "note": "全量与quick由主执行者独占PG运行；独立审查重算JUnit与实际制品。任务一/二质量各有独立专项PG复跑，不能等同独立重跑全量。"
+}

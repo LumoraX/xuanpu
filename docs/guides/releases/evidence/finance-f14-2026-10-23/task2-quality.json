@@ -1,0 +1,196 @@
+{
+  "task": "F14 Task2 独立代码质量与真实PG专项复跑",
+  "status": "Approved",
+  "reviewer": "f14_task2_quality",
+  "reviewed_at_utc": "2026-10-23T08:43:11.608849+00:00",
+  "scope": "仅阅读、运行Task2单一专项与独立静态约束检查，新增本报告及专项证据；未改产品或测试、未提交、未运行全仓或旧回归。",
+  "reviewed_files": [
+    {
+      "file": "AGENTS.md",
+      "bytes": 4876,
+      "sha256": "d0b7c2dc6abb72a0af2666d7a01b21df6fa72702a437bcd93190b47e358f05fc"
+    },
+    {
+      "file": "docs/superpowers/specs/2026-10-23-finance-f14-design.md",
+      "bytes": 6061,
+      "sha256": "add3fa446435911768f39104ecf9ad152c085f86c64045db23d41759f7e58fc1"
+    },
+    {
+      "file": "docs/superpowers/plans/2026-10-23-finance-f14.md",
+      "bytes": 8795,
+      "sha256": "9cb5946e7dd8841010535aeb4ccd90f05c7acea23cca240339789e4902a4d907"
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/task2-spec-initial.json",
+      "bytes": 12150,
+      "sha256": "d02701021a2e83da16b9d0a07b02f4f8e886e0c745a747bd2dde372d219005c4"
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/task2-spec.json",
+      "bytes": 14320,
+      "sha256": "e9f35d741805b437ff98297a6edae1014893d2ef4b2cb024bd7f8fa0682730f1"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f14_process.py",
+      "bytes": 4322,
+      "sha256": "a99348f382382e0159235967e31e2270b55e36ca0df2fb25009f7d7b0b5d3651"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/f14_process_helpers.py",
+      "bytes": 11591,
+      "sha256": "df7e42f52ca2f5cf2c2241f728657de0760234db3d32efc749e5f8491dc538dc"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f4_maintenance.py",
+      "bytes": 15791,
+      "sha256": "318194501332c41304cf62920d188c7da68c3d17e985ead24357de1ef3d4773f"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/f13_process_helpers.py",
+      "bytes": 11128,
+      "sha256": "704ada7dc100aab2ffdbeabc10ec6f6f63f5ea3edfa538964abfbdc956ef50e5"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/f12_process_helpers.py",
+      "bytes": 25821,
+      "sha256": "5597956d2e236ddf12b99a0469b4dfe7cd9b51466cd461c83f2c6e146903936d"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/f11_process_helpers.py",
+      "bytes": 5242,
+      "sha256": "069d95015b8686060059194e7b250fec36677d4236d836a4f44653a77391beea"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/f11_verify_helpers.py",
+      "bytes": 3211,
+      "sha256": "5acef3f23d4889e319852efa9fab2bb367dda4865303d36e4da942b5da82512d"
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+      "bytes": 8740,
+      "sha256": "be3e4a95d8d8d150e83a3fb9e8e3ffe232dd182f9019741f1f12902b1bcc2746"
+    }
+  ],
+  "actual_test": {
+    "command": "uv run pytest -q packages/xuanpu-finance/tests/test_f14_process.py --junitxml=docs/guides/releases/evidence/finance-f14-2026-10-23/task2-quality.xml",
+    "environment": "Python从私有DSN文件设置FINANCE_TEST_DSN；FINANCE_TEST_PG_CONTAINER=xuanpu-finance-f14-pg；NO_PROXY/no_proxy=127.0.0.1,localhost,::1",
+    "exit": 0,
+    "junit_counts": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "xml_parse_valid": true
+  },
+  "checks": [
+    {
+      "requirement": "真实执行边界",
+      "result": "pass",
+      "evidence": "两随机独立public库，test/internal_records配置；真实HTTP+EdDSA收件及本人提交；actual_cli启动当前Python产品模块；pg_tools只转发docker exec到真实pg_dump/pg_restore，无维护实现替身。resolved_product_modules保存实际源码路径和SHA。"
+    },
+    {
+      "requirement": "八坏凭据拒绝与最小stage修复",
+      "result": "pass",
+      "evidence": "backup/restore × dsn/key × 0644/symlink八组均真实退出1/MAINTENANCE_INPUT_INVALID、stderr空且无凭据/路径/堆栈；marker零调用；逐库全表/逐文件密文不变，空目标root未建。staging_snapshot已覆盖实际destination.parent及源/目标object_root.parent，八组全部三位置前后清单为空，不再只搜maintenance子树。"
+    },
+    {
+      "requirement": "合法配套备份恢复",
+      "result": "pass",
+      "evidence": "真实CLI备份和恢复均退出0；HMAC有效、原件认证1、源/备份/目标密文精确相同、全部public表一致，目标恢复前确为空且root不存在。未复制独立密钥文件，未放宽产品空库保护。"
+    },
+    {
+      "requirement": "实际目标池与原operation/receipt",
+      "result": "pass",
+      "evidence": "target_store写入目标配置并建立目标asyncpg pool，case.store切为FinanceStore(target_pool)，current_database实际不同；恢复前后完整receipt/operation字段相同；目标审批后的源库全表/密文仍等于停机快照。"
+    },
+    {
+      "requirement": "两级签名拒绝/人工执行和数据库事实",
+      "result": "pass",
+      "evidence": "四次实际确认状态403/202/403/202，验证EdDSA签名、request fingerprint及origin agent/human/agent/human；两次agent拒绝前后完整单据相同。目标库实际两决定actor manager/finance-reviewer、origin均human，逐计划决定/operation/outbox各1且ID关联。"
+    },
+    {
+      "requirement": "最终业务边界",
+      "result": "pass",
+      "evidence": "approved，原文/理由保持，paid_amount=posted_amount=0.00；finance_invoice/finance_settlement_operation/finance_compliance_operation均0；实际原件SHA、对象键和原操作/回执保留，平台源空且download_count=1。"
+    },
+    {
+      "requirement": "只读verify与进程资源回收",
+      "result": "pass",
+      "evidence": "恢复目标停机后真实verify退出0且complete、完整十字段匹配，workers_started=false/business_writes=0，前后全表/密文快照相同；两个业务进程均-15/graceful=true/forced_kill=false，业务和网关端口关闭。数据库、会话和advisory锁清理均独立查询为0。"
+    },
+    {
+      "requirement": "取消/超时清理与可维护性",
+      "result": "pass_with_limit",
+      "evidence": "新增actual_cli对communicate设60秒上限，finally在未退出时kill并15秒有界回收；业务进程复用TemporaryFile双输出及SIGTERM后15秒强杀兜底。目标池在finally关闭并恢复源store；只执行正常全链路，未注入取消/超时。继承F11 verify CLI的超时路径未在本专项新增覆盖。"
+    },
+    {
+      "requirement": "静态工程约束",
+      "result": "pass",
+      "evidence": "新两文件Ruff F/S108/I/TC/C901=10通过；分别73/220行，函数最大48/39行，future annotations及全部中文module/function docstring通过AST核验。"
+    },
+    {
+      "requirement": "凭据精确扫描与证据完整性",
+      "result": "pass",
+      "evidence": "本次日志/XML精确扫描实际DSN、编码及解码password，替换0处；前后SHA已记录且XML可解析。证据SHA清册和run.json保留本轮真实JUnit属性，未复用前轮随机ID。"
+    }
+  ],
+  "findings": [],
+  "resource_cleanup": {
+    "generated_test_databases_remaining": 0,
+    "temporary_finance_databases_remaining": 0,
+    "other_client_sessions": 0,
+    "advisory_locks": 0,
+    "container_volume_dsn_preserved": true
+  },
+  "credential_scan": [
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/task2-quality.log",
+      "bytes": 98,
+      "before_sha256": "35161239b5393a8e1f6a492d2f94f1df23b506403cb706bbed6f17bfe3c076ea",
+      "sha256": "35161239b5393a8e1f6a492d2f94f1df23b506403cb706bbed6f17bfe3c076ea",
+      "exact_secret_replacements": 0
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/task2-quality.xml",
+      "bytes": 21571,
+      "before_sha256": "801f34271278e1b323d0da17c178d53039b40cb92c0957f5e4631280e4079025",
+      "sha256": "801f34271278e1b323d0da17c178d53039b40cb92c0957f5e4631280e4079025",
+      "exact_secret_replacements": 0
+    }
+  ],
+  "evidence": [
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/task2-quality.log",
+      "bytes": 98,
+      "sha256": "35161239b5393a8e1f6a492d2f94f1df23b506403cb706bbed6f17bfe3c076ea"
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/task2-quality.xml",
+      "bytes": 21571,
+      "sha256": "801f34271278e1b323d0da17c178d53039b40cb92c0957f5e4631280e4079025"
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/task2-quality-run.json",
+      "bytes": 21568,
+      "sha256": "28c2826ef44254e94350708ac47370a8b95c323efc3b169468cdc2524539a079"
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/task2-quality-ruff.log",
+      "bytes": 19,
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/task2-quality-structure.json",
+      "bytes": 3325,
+      "sha256": "c123ff2acfa3380de9a1d1d3b7081ec04d37f04244a3708cb640939428f0fdc5"
+    }
+  ],
+  "limitations": [
+    "本次human为隔离测试客户端实际签名来源，只证明公开HTTP/HITL鉴权及DB行为，不等于真实正式人员验收、真实员工SSO/IAM或模型语义验收。",
+    "真实坏凭据路径只证明工具零调用、目录前后无发布及数据/密文不变，不根据快照推断零数据库连接；未做系统调用跟踪。",
+    "取消/超时回收经过源码审查，本专项未注入取消、异常kill或PG工具卡死；复用F11 verify CLI既有超时边界不属于本次独立验证结论。",
+    "仅复跑Task2单一专项；旧F10/F11/F12/F13回归、全仓、全轮mypy/构建/发布制品和Task3最终门禁由主任务独立负责。",
+    "不代表生产TLS握手、网络/IAM、生产负载、S3/异机灾备、Linux完整业务或正式部署通过。"
+  ]
+}

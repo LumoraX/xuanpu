@@ -1,0 +1,75 @@
+{
+  "status": "passed",
+  "environment": "isolated_loopback_test",
+  "platform_origin": "http://127.0.0.1:53690",
+  "finance_origin": "http://127.0.0.1:53691",
+  "browser": "ChatGPT in-app browser",
+  "identity": "ephemeral employee sessions issued by test-only bootstrap; browser automation plays test users; no production SSO/personnel claim",
+  "transport": "real TCP platform and finance; actual employee cookie/CSRF and signed human gateway; actual independent PostgreSQL and AES-GCM originals",
+  "claim_id": "ac7d47fdc1a741aa804b7c2c7c6d971f",
+  "version": 6,
+  "status_in_database": "approved",
+  "amount": "100.00",
+  "history": {
+    "immutable_revisions": 6,
+    "decisions": 3,
+    "items": 9,
+    "actions": [
+      "reject",
+      "approve",
+      "approve"
+    ],
+    "all_decision_origin_human": true,
+    "reject_reason": "请补充交通行程附件",
+    "owner_self_approval": false
+  },
+  "ui_steps": [
+    "upload original; explicit import confirmation",
+    "full refresh; recover original operation; no new batch",
+    "fill unsaved reason/lines and select received original inline",
+    "save draft; preview and explicit owner submit",
+    "manager read original; reject with reason via preview and explicit confirmation",
+    "owner remove current original, import supplement, revise and explicitly resubmit",
+    "remove exactly the two test original objects from platform storage; retain pack object",
+    "manager download supplement from independent finance storage and approve",
+    "finance reviewer separately preview and approve",
+    "read immutable original version and download replaced original; inspect reject decision"
+  ],
+  "invoice_verification": "not_checked",
+  "counts": {
+    "finance_invoice": 0,
+    "finance_settlement_operation": 0,
+    "finance_compliance_operation": 0,
+    "finance_operation": 2,
+    "finance_receipt": 2
+  },
+  "model_calls": 0,
+  "blocked_attempts": 2,
+  "blocked_entries": {
+    "runtime": 0,
+    "factory": 2,
+    "session": 0
+  },
+  "models": "all factory/session/runtime entry points denied before Platform.start; background attempts remain visible",
+  "payment_or_external_execution": false,
+  "production_status": "not_verified",
+  "artifacts": {
+    "path": "/tmp/xuanpu-finance-f8-build/finance-0.9.0-f8.zip",
+    "sha256": "511a2582e6dc1adf74ba24dca0d994b7928d007c57e9bc625c10a4b52b249b72",
+    "source_files": 20,
+    "source_equal": true,
+    "mirror_equal": true
+  },
+  "evidence_sha256": {
+    "browser-history-original.png": "30d33c2699658bd74b97ea479f32f64f74c3dab9bb9ddf01cb86eccd84e77fc1",
+    "browser-database.json": "dcb900109ec71528bf56d4ed47b2c76d0cc713a10500a4b2b7af15556da26472",
+    "browser-source-removal.json": "9ee79133dc9706c985b6c98f1f31e2c87868223241e0f1f89686066e875cd262",
+    "browser-service-evidence.json": "a9c0d5132d2fc08e111016e374bd6b86ad007a58dd6df66c1dfb326b5d991628",
+    "browser-dom.txt": "0dc2d34ed302f865e8dc639b00c882eefa5cdfd2597ec7e6c4dd625b4b8f98ae",
+    "browser-history-reason.png": "44c837f3b5f64c66c92a69d2184fb428b40d31cf968286b2072b50f3641eddb2",
+    "browser-bytes.json": "63cb4abd0f6febb5c58c90afd424dfcdfd04bfe118889ee2a4d9e38096948427",
+    "browser-approved.png": "ef7f8f913fb4907213202e3636607cc82f1d1a7a6ecd4c8cc2ccdf1a8ad1e123",
+    "browser-recovered.png": "aa5d508fdce296f473db5d6451b6b7077de89eff050ccad396d580dad33a9bfd",
+    "browser-service-interim.json": "4f119b05993397f006a26e5b805efc4bdb6f65f58db294f772fc5713f12561a4"
+  }
+}

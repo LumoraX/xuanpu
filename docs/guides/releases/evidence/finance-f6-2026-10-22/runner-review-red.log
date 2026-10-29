@@ -1,0 +1,304 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+___________ test_inherited_database_and_pytest_selection_are_removed ___________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109c196a0>
+
+    def test_inherited_database_and_pytest_selection_are_removed(monkeypatch) -> None:
+        """遗留平台库地址和测试选择参数不能绕过显式隔离DSN。"""
+        monkeypatch.setenv('XUANPU_TEST_PG_DSN','postgresql://private-platform')
+        monkeypatch.setenv('PGHOST','private-platform')
+        monkeypatch.setenv('PYTEST_PLUGINS','untrusted_plugin')
+>       env=runner().child_environment('explicit-test-dsn')
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'finance_runner' has no attribute 'child_environment'
+
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:182: AttributeError
+___________ test_exited_group_leader_does_not_leave_pipe_descendant ____________
+
+fut = <Future cancelled>, timeout = 1
+
+    async def wait_for(fut, timeout):
+        """Wait for the single Future or coroutine to complete, with timeout.
+
+        Coroutine will be wrapped in Task.
+
+        Returns result of the Future or coroutine.  When a timeout occurs,
+        it cancels the task and raises TimeoutError.  To avoid the task
+        cancellation, wrap it in shield().
+
+        If the wait is cancelled, the task is also cancelled.
+
+        If the task suppresses the cancellation and returns a value instead,
+        that value is returned.
+
+        This function is a coroutine.
+        """
+        # The special case for timeout <= 0 is for the following case:
+        #
+        # async def test_waitfor():
+        #     func_started = False
+        #
+        #     async def func():
+        #         nonlocal func_started
+        #         func_started = True
+        #
+        #     try:
+        #         await asyncio.wait_for(func(), 0)
+        #     except asyncio.TimeoutError:
+        #         assert not func_started
+        #     else:
+        #         assert False
+        #
+        # asyncio.run(test_waitfor())
+
+
+        if timeout is not None and timeout <= 0:
+            fut = ensure_future(fut)
+
+            if fut.done():
+                return fut.result()
+
+            await _cancel_and_wait(fut)
+            try:
+                return fut.result()
+            except exceptions.CancelledError as exc:
+                raise TimeoutError from exc
+
+        async with timeouts.timeout(timeout):
+>           return await fut
+                   ^^^^^^^^^
+E           asyncio.exceptions.CancelledError
+
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/tasks.py:520: CancelledError
+
+The above exception was the direct cause of the following exception:
+
+root = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1609/test_exited_group_leader_does_0')
+dsn_file = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1609/test_exited_group_leader_does_0/dsn')
+output = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1609/test_exited_group_leader_does_0/evidence')
+suite = 'quick', timeout = 1
+
+    async def run_acceptance(*, root: Path, dsn_file: Path, output: Path, suite: str, timeout: int) -> dict[str,Any]:
+        """执行固定pytest入口，实际结果及失败均以证据形式保全。"""
+        if suite not in {'quick','full'} or not 1<=timeout<=7200:
+            raise ValueError('ACCEPTANCE_INPUT_INVALID')
+        info=dsn_file.stat()
+        if not stat.S_ISREG(info.st_mode) or info.st_mode & 0o077 or info.st_size>65536:
+            raise ValueError('DSN_FILE_PRIVATE_REQUIRED')
+        dsn=await asyncio.to_thread(dsn_file.read_text)
+        dsn=dsn.strip()
+        await check_database(dsn)
+        identity=await asyncio.to_thread(source_state,root)
+        output.mkdir(mode=0o700,parents=False,exist_ok=False)
+        modules=QUICK_MODULES if suite=='quick' else ['packages']
+        args=[sys.executable,'-m','pytest',*modules,'-q','-ra','--junitxml='+str(output/'junit.xml')]
+        env={**os.environ,'FINANCE_TEST_DSN':dsn,'PYTEST_ADDOPTS':''}
+        started=datetime.now(UTC).isoformat();diagnostic=None;raw=b'';code=-1
+        process=await asyncio.create_subprocess_exec(*args,cwd=root,env=env,
+            stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT,start_new_session=True)
+        communication=asyncio.create_task(process.communicate())
+        try:
+>           raw,_=await asyncio.wait_for(asyncio.shield(communication),timeout)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+scripts/acceptance/finance_runner.py:149:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/tasks.py:519: in wait_for
+    async with timeouts.timeout(timeout):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Timeout [expired]>
+exc_type = <class 'asyncio.exceptions.CancelledError'>
+exc_val = CancelledError(), exc_tb = <traceback object at 0x109d437c0>
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> Optional[bool]:
+        assert self._state in (_State.ENTERED, _State.EXPIRING)
+
+        if self._timeout_handler is not None:
+            self._timeout_handler.cancel()
+            self._timeout_handler = None
+
+        if self._state is _State.EXPIRING:
+            self._state = _State.EXPIRED
+
+            if self._task.uncancel() <= self._cancelling and exc_type is exceptions.CancelledError:
+                # Since there are no new cancel requests, we're
+                # handling this.
+>               raise TimeoutError from exc_val
+E               TimeoutError
+
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/timeouts.py:115: TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+fut = <coroutine object run_acceptance at 0x109bc0950>, timeout = 8
+
+    async def wait_for(fut, timeout):
+        """Wait for the single Future or coroutine to complete, with timeout.
+
+        Coroutine will be wrapped in Task.
+
+        Returns result of the Future or coroutine.  When a timeout occurs,
+        it cancels the task and raises TimeoutError.  To avoid the task
+        cancellation, wrap it in shield().
+
+        If the wait is cancelled, the task is also cancelled.
+
+        If the task suppresses the cancellation and returns a value instead,
+        that value is returned.
+
+        This function is a coroutine.
+        """
+        # The special case for timeout <= 0 is for the following case:
+        #
+        # async def test_waitfor():
+        #     func_started = False
+        #
+        #     async def func():
+        #         nonlocal func_started
+        #         func_started = True
+        #
+        #     try:
+        #         await asyncio.wait_for(func(), 0)
+        #     except asyncio.TimeoutError:
+        #         assert not func_started
+        #     else:
+        #         assert False
+        #
+        # asyncio.run(test_waitfor())
+
+
+        if timeout is not None and timeout <= 0:
+            fut = ensure_future(fut)
+
+            if fut.done():
+                return fut.result()
+
+            await _cancel_and_wait(fut)
+            try:
+                return fut.result()
+            except exceptions.CancelledError as exc:
+                raise TimeoutError from exc
+
+        async with timeouts.timeout(timeout):
+>           return await fut
+                   ^^^^^^^^^
+
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/tasks.py:520:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+scripts/acceptance/finance_runner.py:154: in run_acceptance
+    raw,_=await communication
+          ^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/subprocess.py:201: in communicate
+    stdin, stdout, stderr = await tasks.gather(stdin, stdout, stderr)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/subprocess.py:181: in _read_stream
+    output = await stream.read()
+             ^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/streams.py:706: in read
+    block = await self.read(self._limit)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/streams.py:713: in read
+    await self._wait_for_data('read')
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <StreamReader transport=<_UnixReadPipeTransport fd=14 polling>>
+func_name = 'read'
+
+    async def _wait_for_data(self, func_name):
+        """Wait until feed_data() or feed_eof() is called.
+
+        If stream was paused, automatically resume it.
+        """
+        # StreamReader uses a future to link the protocol feed_data() method
+        # to a read coroutine. Running two read coroutines at the same time
+        # would have an unexpected behaviour. It would not possible to know
+        # which coroutine would get the next data.
+        if self._waiter is not None:
+            raise RuntimeError(
+                f'{func_name}() called while another coroutine is '
+                f'already waiting for incoming data')
+
+        assert not self._eof, '_wait_for_data after EOF'
+
+        # Waiting for data while paused will make deadlock, so prevent it.
+        # This is essential for readexactly(n) for case when n > self._limit.
+        if self._paused:
+            self._paused = False
+            self._transport.resume_reading()
+
+        self._waiter = self._loop.create_future()
+        try:
+>           await self._waiter
+E           asyncio.exceptions.CancelledError
+
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/streams.py:545: CancelledError
+
+The above exception was the direct cause of the following exception:
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1609/test_exited_group_leader_does_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109c700e0>
+
+    async def test_exited_group_leader_does_not_leave_pipe_descendant(tmp_path: Path,monkeypatch) -> None:
+        """主pytest已退出但后代仍持stdout时，期限仍终止进程组并返回。"""
+        import asyncio
+        import os
+        import signal
+        module=runner()
+        async def checked(dsn):
+            """只检查输入，避免本子进程机制测试依赖数据库。"""
+            module.validate_dsn(dsn)
+        monkeypatch.setattr(module,'check_database',checked)
+        monkeypatch.setattr(module,'source_state',lambda root:{'head':'unit','worktree_sha256':'unit'})
+        monkeypatch.setattr(module,'QUICK_MODULES',['test_probe.py'])
+        (tmp_path/'test_probe.py').write_text('import subprocess,sys\nfrom pathlib import Path\ndef test_orphan(capfd):\n with capfd.disabled():\n  p=subprocess.Popen([sys.executable,"-c","import time; time.sleep(120)"])\n  Path("descendant.pid").write_text(str(p.pid))\n')
+        key=tmp_path/'dsn';key.write_text('postgresql://u:private@127.0.0.1:5432/finance_test');key.chmod(0o600)
+        child_pid=None
+        try:
+>           result=await asyncio.wait_for(module.run_acceptance(root=tmp_path,dsn_file=key,
+                output=tmp_path/'evidence',suite='quick',timeout=1),8)
+
+packages/xuanpu-finance/tests/test_f6_acceptance_runner.py:203:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/tasks.py:519: in wait_for
+    async with timeouts.timeout(timeout):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Timeout [expired]>
+exc_type = <class 'asyncio.exceptions.CancelledError'>
+exc_val = CancelledError(), exc_tb = <traceback object at 0x109d4d040>
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> Optional[bool]:
+        assert self._state in (_State.ENTERED, _State.EXPIRING)
+
+        if self._timeout_handler is not None:
+            self._timeout_handler.cancel()
+            self._timeout_handler = None
+
+        if self._state is _State.EXPIRING:
+            self._state = _State.EXPIRED
+
+            if self._task.uncancel() <= self._cancelling and exc_type is exceptions.CancelledError:
+                # Since there are no new cancel requests, we're
+                # handling this.
+>               raise TimeoutError from exc_val
+E               TimeoutError
+
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/asyncio/timeouts.py:115: TimeoutError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f6_acceptance_runner.py::test_inherited_database_and_pytest_selection_are_removed
+FAILED packages/xuanpu-finance/tests/test_f6_acceptance_runner.py::test_exited_group_leader_does_not_leave_pipe_descendant
+2 failed, 13 deselected in 8.08s

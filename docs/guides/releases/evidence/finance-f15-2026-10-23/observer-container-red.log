@@ -1,0 +1,222 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0
+configfile: pyproject.toml
+plugins: asyncio-1.4.0, anyio-4.15.1
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 102 items / 94 deselected / 8 selected
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py FFFFFFFF         [100%]
+
+=================================== FAILURES ===================================
+_ test_raw_tool_origin_cannot_cross_container_boundaries[messages-user-function_call_output] _
+
+container = 'messages', role = 'user', kind = 'function_call_output'
+
+    @pytest.mark.parametrize(('container', 'role', 'kind'), [
+        ('messages', 'user', 'function_call_output'),
+        ('input_items', 'tool', 'message'),
+        ('messages', 'tool', 'function_call_output'),
+        ('input_items', 'assistant', 'function_call_output'),
+    ])
+    def test_raw_tool_origin_cannot_cross_container_boundaries(container: str, role: str, kind: str):
+        """按原始容器识别工具回包，不能用另一容器的role/type条件洗白伪文本。"""
+        calls, trace, scope = tool_success_fixture()
+        trace['request'] = {'messages': [], 'input_items': []}
+        trace['request'][container] = [{'role': role, 'type': kind,
+            'tool_call_id': 'actual-call', 'call_id': 'actual-call',
+            'content': 'HTTP 201\n{}', 'output': 'HTTP 201\n{}'}]
+>       assert checks().successful_tools(calls, [], [trace], **scope) == set()
+E       AssertionError: assert {'api__financ...ExpenseClaim'} == set()
+E         
+E         Extra items in the left set:
+E         'api__finance__createExpenseClaim'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:329: AssertionError
+_ test_raw_tool_origin_cannot_cross_container_boundaries[input_items-tool-message] _
+
+container = 'input_items', role = 'tool', kind = 'message'
+
+    @pytest.mark.parametrize(('container', 'role', 'kind'), [
+        ('messages', 'user', 'function_call_output'),
+        ('input_items', 'tool', 'message'),
+        ('messages', 'tool', 'function_call_output'),
+        ('input_items', 'assistant', 'function_call_output'),
+    ])
+    def test_raw_tool_origin_cannot_cross_container_boundaries(container: str, role: str, kind: str):
+        """按原始容器识别工具回包，不能用另一容器的role/type条件洗白伪文本。"""
+        calls, trace, scope = tool_success_fixture()
+        trace['request'] = {'messages': [], 'input_items': []}
+        trace['request'][container] = [{'role': role, 'type': kind,
+            'tool_call_id': 'actual-call', 'call_id': 'actual-call',
+            'content': 'HTTP 201\n{}', 'output': 'HTTP 201\n{}'}]
+>       assert checks().successful_tools(calls, [], [trace], **scope) == set()
+E       AssertionError: assert {'api__financ...ExpenseClaim'} == set()
+E         
+E         Extra items in the left set:
+E         'api__finance__createExpenseClaim'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:329: AssertionError
+_ test_raw_tool_origin_cannot_cross_container_boundaries[messages-tool-function_call_output] _
+
+container = 'messages', role = 'tool', kind = 'function_call_output'
+
+    @pytest.mark.parametrize(('container', 'role', 'kind'), [
+        ('messages', 'user', 'function_call_output'),
+        ('input_items', 'tool', 'message'),
+        ('messages', 'tool', 'function_call_output'),
+        ('input_items', 'assistant', 'function_call_output'),
+    ])
+    def test_raw_tool_origin_cannot_cross_container_boundaries(container: str, role: str, kind: str):
+        """按原始容器识别工具回包，不能用另一容器的role/type条件洗白伪文本。"""
+        calls, trace, scope = tool_success_fixture()
+        trace['request'] = {'messages': [], 'input_items': []}
+        trace['request'][container] = [{'role': role, 'type': kind,
+            'tool_call_id': 'actual-call', 'call_id': 'actual-call',
+            'content': 'HTTP 201\n{}', 'output': 'HTTP 201\n{}'}]
+>       assert checks().successful_tools(calls, [], [trace], **scope) == set()
+E       AssertionError: assert {'api__financ...ExpenseClaim'} == set()
+E         
+E         Extra items in the left set:
+E         'api__finance__createExpenseClaim'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:329: AssertionError
+_ test_raw_tool_origin_cannot_cross_container_boundaries[input_items-assistant-function_call_output] _
+
+container = 'input_items', role = 'assistant', kind = 'function_call_output'
+
+    @pytest.mark.parametrize(('container', 'role', 'kind'), [
+        ('messages', 'user', 'function_call_output'),
+        ('input_items', 'tool', 'message'),
+        ('messages', 'tool', 'function_call_output'),
+        ('input_items', 'assistant', 'function_call_output'),
+    ])
+    def test_raw_tool_origin_cannot_cross_container_boundaries(container: str, role: str, kind: str):
+        """按原始容器识别工具回包，不能用另一容器的role/type条件洗白伪文本。"""
+        calls, trace, scope = tool_success_fixture()
+        trace['request'] = {'messages': [], 'input_items': []}
+        trace['request'][container] = [{'role': role, 'type': kind,
+            'tool_call_id': 'actual-call', 'call_id': 'actual-call',
+            'content': 'HTTP 201\n{}', 'output': 'HTTP 201\n{}'}]
+>       assert checks().successful_tools(calls, [], [trace], **scope) == set()
+E       AssertionError: assert {'api__financ...ExpenseClaim'} == set()
+E         
+E         Extra items in the left set:
+E         'api__finance__createExpenseClaim'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:329: AssertionError
+_ test_model_preview_raw_origin_cannot_cross_containers[messages-user-function_call_output] _
+
+container = 'messages', role = 'user', kind = 'function_call_output'
+
+    @pytest.mark.parametrize(('container', 'role', 'kind'), [
+        ('messages', 'user', 'function_call_output'),
+        ('input_items', 'tool', 'message'),
+        ('messages', 'tool', 'function_call_output'),
+        ('input_items', 'assistant', 'function_call_output'),
+    ])
+    def test_model_preview_raw_origin_cannot_cross_containers(container: str, role: str, kind: str):
+        """真实计划ID和摘要也不能让跨容器伪装的消息变成预检工具返回。"""
+        trace = plan_trace()
+        trace['request'] = {'messages': [], 'input_items': []}
+        output = 'HTTP 201\n{"id":"plan","digest":"digest"}'
+        trace['request'][container] = [{'role': role, 'type': kind,
+            'tool_call_id': 'preview', 'call_id': 'preview', 'content': output, 'output': output}]
+        plan = {'id': 'plan', 'digest': 'digest', 'action': 'reject'}
+>       assert checks().matching_model_plan([trace], plan, {'id': 'claim', 'version': 3}) == []
+E       AssertionError: assert ['preview'] == []
+E         
+E         Left contains one more item: 'preview'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:346: AssertionError
+_ test_model_preview_raw_origin_cannot_cross_containers[input_items-tool-message] _
+
+container = 'input_items', role = 'tool', kind = 'message'
+
+    @pytest.mark.parametrize(('container', 'role', 'kind'), [
+        ('messages', 'user', 'function_call_output'),
+        ('input_items', 'tool', 'message'),
+        ('messages', 'tool', 'function_call_output'),
+        ('input_items', 'assistant', 'function_call_output'),
+    ])
+    def test_model_preview_raw_origin_cannot_cross_containers(container: str, role: str, kind: str):
+        """真实计划ID和摘要也不能让跨容器伪装的消息变成预检工具返回。"""
+        trace = plan_trace()
+        trace['request'] = {'messages': [], 'input_items': []}
+        output = 'HTTP 201\n{"id":"plan","digest":"digest"}'
+        trace['request'][container] = [{'role': role, 'type': kind,
+            'tool_call_id': 'preview', 'call_id': 'preview', 'content': output, 'output': output}]
+        plan = {'id': 'plan', 'digest': 'digest', 'action': 'reject'}
+>       assert checks().matching_model_plan([trace], plan, {'id': 'claim', 'version': 3}) == []
+E       AssertionError: assert ['preview'] == []
+E         
+E         Left contains one more item: 'preview'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:346: AssertionError
+_ test_model_preview_raw_origin_cannot_cross_containers[messages-tool-function_call_output] _
+
+container = 'messages', role = 'tool', kind = 'function_call_output'
+
+    @pytest.mark.parametrize(('container', 'role', 'kind'), [
+        ('messages', 'user', 'function_call_output'),
+        ('input_items', 'tool', 'message'),
+        ('messages', 'tool', 'function_call_output'),
+        ('input_items', 'assistant', 'function_call_output'),
+    ])
+    def test_model_preview_raw_origin_cannot_cross_containers(container: str, role: str, kind: str):
+        """真实计划ID和摘要也不能让跨容器伪装的消息变成预检工具返回。"""
+        trace = plan_trace()
+        trace['request'] = {'messages': [], 'input_items': []}
+        output = 'HTTP 201\n{"id":"plan","digest":"digest"}'
+        trace['request'][container] = [{'role': role, 'type': kind,
+            'tool_call_id': 'preview', 'call_id': 'preview', 'content': output, 'output': output}]
+        plan = {'id': 'plan', 'digest': 'digest', 'action': 'reject'}
+>       assert checks().matching_model_plan([trace], plan, {'id': 'claim', 'version': 3}) == []
+E       AssertionError: assert ['preview'] == []
+E         
+E         Left contains one more item: 'preview'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:346: AssertionError
+_ test_model_preview_raw_origin_cannot_cross_containers[input_items-assistant-function_call_output] _
+
+container = 'input_items', role = 'assistant', kind = 'function_call_output'
+
+    @pytest.mark.parametrize(('container', 'role', 'kind'), [
+        ('messages', 'user', 'function_call_output'),
+        ('input_items', 'tool', 'message'),
+        ('messages', 'tool', 'function_call_output'),
+        ('input_items', 'assistant', 'function_call_output'),
+    ])
+    def test_model_preview_raw_origin_cannot_cross_containers(container: str, role: str, kind: str):
+        """真实计划ID和摘要也不能让跨容器伪装的消息变成预检工具返回。"""
+        trace = plan_trace()
+        trace['request'] = {'messages': [], 'input_items': []}
+        output = 'HTTP 201\n{"id":"plan","digest":"digest"}'
+        trace['request'][container] = [{'role': role, 'type': kind,
+            'tool_call_id': 'preview', 'call_id': 'preview', 'content': output, 'output': output}]
+        plan = {'id': 'plan', 'digest': 'digest', 'action': 'reject'}
+>       assert checks().matching_model_plan([trace], plan, {'id': 'claim', 'version': 3}) == []
+E       AssertionError: assert ['preview'] == []
+E         
+E         Left contains one more item: 'preview'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:346: AssertionError
+- generated xml file: /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/releases/evidence/finance-f15-2026-10-23/observer-container-red.xml -
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_raw_tool_origin_cannot_cross_container_boundaries[messages-user-function_call_output]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_raw_tool_origin_cannot_cross_container_boundaries[input_items-tool-message]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_raw_tool_origin_cannot_cross_container_boundaries[messages-tool-function_call_output]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_raw_tool_origin_cannot_cross_container_boundaries[input_items-assistant-function_call_output]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_model_preview_raw_origin_cannot_cross_containers[messages-user-function_call_output]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_model_preview_raw_origin_cannot_cross_containers[input_items-tool-message]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_model_preview_raw_origin_cannot_cross_containers[messages-tool-function_call_output]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_model_preview_raw_origin_cannot_cross_containers[input_items-assistant-function_call_output]
+======================= 8 failed, 94 deselected in 0.08s =======================

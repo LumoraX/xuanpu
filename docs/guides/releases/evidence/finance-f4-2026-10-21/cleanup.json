@@ -1,0 +1,16 @@
+{
+  "test_container_removed": true,
+  "test_anonymous_volumes_removed": [
+    "133f7c826c721b75c872c669d9bd7fd499d9791cecd1b6de7f3d40607894e6a4",
+    "901aa465d2268a9f9caa5cba9cc916197ddc6afefb6d3a8145543e30b1f3355d"
+  ],
+  "compose_project_volumes_removed": true,
+  "ports_closed": {
+    "60034": true,
+    "60552": true
+  },
+  "browser_tab_closed": true,
+  "original_checkout_clean": true,
+  "scope": "only_named_f4_disposable_resources",
+  "pytest_temporary_files": "synthetic pytest scratch not claimed globally purged"
+}

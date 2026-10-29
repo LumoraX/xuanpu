@@ -103,9 +103,9 @@ async for event in client.sessions.send(session.session_id, "查一下工单 T-1
 
 一轮对话以这三种事件之一结束：`turn_completed`、`turn_failed`、`turn_suspended`。
 
-有子 skill 参与时，子 skill 自己的完成事件也会出现在流里。区分办法是看 `data.is_root`：`turn_completed` 和 `turn_failed` 只有 `is_root` 为真才是这一轮的结束；`turn_suspended` 出现即结束。送回审批（`resume`）没有续跑时，事件流以 `suspension_resolve_rejected`（被拒）或 `suspension_partially_resolved`（只处理了一部分待办）结束。客户端的 `event.terminal` 已经按这些规则算好了。
+有子 skill 参与时，子 skill 自己的完成事件也会出现在流里。区分办法是看 `data.is_root`：`turn_completed` 和 `turn_failed` 只有 `is_root` 为真才是这一轮的结束；`turn_suspended` 还可能来自子Skill，不能看到第一条就停止读取。新消息等根线程挂起；恢复操作等目标叶线程或其原链祖先再次挂起。送回审批（`resume`）没有续跑时，事件流以 `suspension_resolve_rejected`（被拒）或 `suspension_partially_resolved`（只处理了一部分待办）结束。`2026.10.23.1`起SDK的 `event.terminal` 优先读取服务端 `data.operation_terminal` 布尔；新服务端在实时流与审计回放中提供相同操作级标记。旧服务端缺字段时兼容旧规则；旧SDK会将任何挂起视为终态，处理嵌套会话时应升级或让迭代器读到本次HTTP响应结束。
 
-直接读 HTTP 响应的话更简单：平台在一轮结束后补一帧 `event: end`，读到它就结束。
+直接读 HTTP 响应时，平台在本操作安全结束后补一帧 `event: end`，读到它才结束。终态前父链与待办审计已经落盘；随后调用 `pending` 读取当前人工待办，纯内部父挂起不会成为人工确认卡。恢复只传决定，目标线程由服务端按本人会话的可信审计定位。
 
 同一个会话请串行发送：等上一轮结束再发下一条。
 
@@ -255,7 +255,7 @@ print(events[-1]["data"]["text"])    # 这一轮回复的全文
 - 没有 `assistant_text` 这样的流式增量。一轮结束时另有一条 `turn_text`，里面是拼好的回复全文；
 - 审计是成批写入的，一轮还没结束时回放到的事件可能比实时流少一点。看到终结事件才算完整。
 
-`after_seq` 参数可以只取序号大于某个值的事件，用来接着上次读到的位置继续。
+`after_seq` 参数只筛选有序号的事件，用来接着上次读到的位置继续。审计合成的 `turn_text` 全文没有流序号，`seq` 为 `null`（SDK为 `None`），总会返回，不用它更新游标。
 
 ## 错误
 

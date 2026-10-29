@@ -1,0 +1,24 @@
+{
+  "owned_container": "xuanpu-finance-f8-pg",
+  "container_id_before_removal": "05be36fb135c7782ae12557f45a3c3336f1e3db1efdb8fba66a68d9729e634f6",
+  "container_and_anonymous_volume_removed": true,
+  "databases_before_removal": [
+    "finance_test_f8",
+    "finance_test_f8_browser",
+    "postgres"
+  ],
+  "non_system_roles_before_removal": [
+    "finance_test"
+  ],
+  "temporary_finance_schemas_before_removal": 0,
+  "ports_closed": {
+    "51793": true,
+    "53690": true,
+    "53691": true
+  },
+  "private_dsn_files_removed": true,
+  "test_downloads_removed": true,
+  "original_checkout_clean": true,
+  "retained_artifacts": "/tmp/xuanpu-finance-f8-build",
+  "production_deployed": false
+}

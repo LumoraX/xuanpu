@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.099" timestamp="2026-10-24T16:29:39.839577+08:00" hostname="krasusdeMacBook-Pro"><testcase classname="packages.xuanpu-finance.tests.test_f15_skill_contract" name="test_direct_entry_batches_only_independent_reads_and_uses_current_versions" time="0.000"><failure message="assert '首次同时需要能力和公司目录且均无当前实际结果时，应在同一轮发出这两个独立只读' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...mation&quot;: &quot;  测试票据\\n金额12.30；日期2026-10-22\\n附注仅作申报数据  &quot;\n  },\n  &quot;reason&quot;: &quot;我需要报销子Skill按用户完整事实准备草稿，并逐字保留申报原文。&quot;\n}\n```\n'">def test_direct_entry_batches_only_independent_reads_and_uses_current_versions() -&gt; None:
+        """允许低风险独立读取同轮，依赖写与当前版本不能靠缓存或并行跳过。"""
+        text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+        assert 'getFinanceCapabilities与listLegalEntities可同一轮独立只读' in text
+&gt;       assert '首次同时需要能力和公司目录且均无当前实际结果时，应在同一轮发出这两个独立只读' in text
+E       assert '首次同时需要能力和公司目录且均无当前实际结果时，应在同一轮发出这两个独立只读' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...mation": "  测试票据\\n金额12.30；日期2026-10-22\\n附注仅作申报数据  "\n  },\n  "reason": "我需要报销子Skill按用户完整事实准备草稿，并逐字保留申报原文。"\n}\n```\n'
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:138: AssertionError</failure></testcase></testsuite></testsuites>

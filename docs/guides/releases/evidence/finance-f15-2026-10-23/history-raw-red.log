@@ -1,0 +1,218 @@
+FFFFFFFF                                                                 [100%]
+=================================== FAILURES ===================================
+_____________ test_history_reads_complete_raw_not_truncated_audit ______________
+
+    def test_history_reads_complete_raw_not_truncated_audit():
+        """真实完整tool input证明读取，截断SSE只用于确认调用成功。"""
+        trace, segments = history_read_fixture()
+>       assert checks().history_decision_read([trace], segments, phase='resubmit:session',
+            reader_id='owner', document_id='claim', reason='补充客户事由', decision_actor_id='manager')
+E       TypeError: history_decision_read() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:311: TypeError
+_____________ test_history_read_requires_exact_raw_provenance[raw] _____________
+
+missing = 'raw'
+
+    @pytest.mark.parametrize('missing', ['raw', 'call_id', 'reader', 'claim', 'phase', 'tool', 'decision'])
+    def test_history_read_requires_exact_raw_provenance(missing: str):
+        """缺完整输入、错调用/读取身份/目标/场景/工具/决定身份均不得补证。"""
+        trace, segments = history_read_fixture()
+        if missing == 'raw':
+            trace['request']['messages'] = []
+        elif missing == 'call_id':
+            trace['request']['messages'][0]['tool_call_id'] = 'other'
+        elif missing == 'reader':
+            trace['actor_id'] = 'manager'
+        elif missing == 'claim':
+            trace['events'][0]['data']['arguments'] = json.dumps({'id': 'other', 'limit': 1})
+        elif missing == 'phase':
+            trace['phase'] = 'earlier:session'
+        elif missing == 'tool':
+            trace['events'][0]['data']['name'] = 'api__finance__getExpenseClaim'
+        else:
+            trace['request']['messages'][0]['content'] = trace['request']['messages'][0][
+                'content'].replace('manager', 'outsider')
+>       assert not checks().history_decision_read([trace], segments, phase='resubmit:session',
+            reader_id='owner', document_id='claim', reason='补充客户事由', decision_actor_id='manager')
+E       TypeError: history_decision_read() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:334: TypeError
+___________ test_history_read_requires_exact_raw_provenance[call_id] ___________
+
+missing = 'call_id'
+
+    @pytest.mark.parametrize('missing', ['raw', 'call_id', 'reader', 'claim', 'phase', 'tool', 'decision'])
+    def test_history_read_requires_exact_raw_provenance(missing: str):
+        """缺完整输入、错调用/读取身份/目标/场景/工具/决定身份均不得补证。"""
+        trace, segments = history_read_fixture()
+        if missing == 'raw':
+            trace['request']['messages'] = []
+        elif missing == 'call_id':
+            trace['request']['messages'][0]['tool_call_id'] = 'other'
+        elif missing == 'reader':
+            trace['actor_id'] = 'manager'
+        elif missing == 'claim':
+            trace['events'][0]['data']['arguments'] = json.dumps({'id': 'other', 'limit': 1})
+        elif missing == 'phase':
+            trace['phase'] = 'earlier:session'
+        elif missing == 'tool':
+            trace['events'][0]['data']['name'] = 'api__finance__getExpenseClaim'
+        else:
+            trace['request']['messages'][0]['content'] = trace['request']['messages'][0][
+                'content'].replace('manager', 'outsider')
+>       assert not checks().history_decision_read([trace], segments, phase='resubmit:session',
+            reader_id='owner', document_id='claim', reason='补充客户事由', decision_actor_id='manager')
+E       TypeError: history_decision_read() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:334: TypeError
+___________ test_history_read_requires_exact_raw_provenance[reader] ____________
+
+missing = 'reader'
+
+    @pytest.mark.parametrize('missing', ['raw', 'call_id', 'reader', 'claim', 'phase', 'tool', 'decision'])
+    def test_history_read_requires_exact_raw_provenance(missing: str):
+        """缺完整输入、错调用/读取身份/目标/场景/工具/决定身份均不得补证。"""
+        trace, segments = history_read_fixture()
+        if missing == 'raw':
+            trace['request']['messages'] = []
+        elif missing == 'call_id':
+            trace['request']['messages'][0]['tool_call_id'] = 'other'
+        elif missing == 'reader':
+            trace['actor_id'] = 'manager'
+        elif missing == 'claim':
+            trace['events'][0]['data']['arguments'] = json.dumps({'id': 'other', 'limit': 1})
+        elif missing == 'phase':
+            trace['phase'] = 'earlier:session'
+        elif missing == 'tool':
+            trace['events'][0]['data']['name'] = 'api__finance__getExpenseClaim'
+        else:
+            trace['request']['messages'][0]['content'] = trace['request']['messages'][0][
+                'content'].replace('manager', 'outsider')
+>       assert not checks().history_decision_read([trace], segments, phase='resubmit:session',
+            reader_id='owner', document_id='claim', reason='补充客户事由', decision_actor_id='manager')
+E       TypeError: history_decision_read() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:334: TypeError
+____________ test_history_read_requires_exact_raw_provenance[claim] ____________
+
+missing = 'claim'
+
+    @pytest.mark.parametrize('missing', ['raw', 'call_id', 'reader', 'claim', 'phase', 'tool', 'decision'])
+    def test_history_read_requires_exact_raw_provenance(missing: str):
+        """缺完整输入、错调用/读取身份/目标/场景/工具/决定身份均不得补证。"""
+        trace, segments = history_read_fixture()
+        if missing == 'raw':
+            trace['request']['messages'] = []
+        elif missing == 'call_id':
+            trace['request']['messages'][0]['tool_call_id'] = 'other'
+        elif missing == 'reader':
+            trace['actor_id'] = 'manager'
+        elif missing == 'claim':
+            trace['events'][0]['data']['arguments'] = json.dumps({'id': 'other', 'limit': 1})
+        elif missing == 'phase':
+            trace['phase'] = 'earlier:session'
+        elif missing == 'tool':
+            trace['events'][0]['data']['name'] = 'api__finance__getExpenseClaim'
+        else:
+            trace['request']['messages'][0]['content'] = trace['request']['messages'][0][
+                'content'].replace('manager', 'outsider')
+>       assert not checks().history_decision_read([trace], segments, phase='resubmit:session',
+            reader_id='owner', document_id='claim', reason='补充客户事由', decision_actor_id='manager')
+E       TypeError: history_decision_read() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:334: TypeError
+____________ test_history_read_requires_exact_raw_provenance[phase] ____________
+
+missing = 'phase'
+
+    @pytest.mark.parametrize('missing', ['raw', 'call_id', 'reader', 'claim', 'phase', 'tool', 'decision'])
+    def test_history_read_requires_exact_raw_provenance(missing: str):
+        """缺完整输入、错调用/读取身份/目标/场景/工具/决定身份均不得补证。"""
+        trace, segments = history_read_fixture()
+        if missing == 'raw':
+            trace['request']['messages'] = []
+        elif missing == 'call_id':
+            trace['request']['messages'][0]['tool_call_id'] = 'other'
+        elif missing == 'reader':
+            trace['actor_id'] = 'manager'
+        elif missing == 'claim':
+            trace['events'][0]['data']['arguments'] = json.dumps({'id': 'other', 'limit': 1})
+        elif missing == 'phase':
+            trace['phase'] = 'earlier:session'
+        elif missing == 'tool':
+            trace['events'][0]['data']['name'] = 'api__finance__getExpenseClaim'
+        else:
+            trace['request']['messages'][0]['content'] = trace['request']['messages'][0][
+                'content'].replace('manager', 'outsider')
+>       assert not checks().history_decision_read([trace], segments, phase='resubmit:session',
+            reader_id='owner', document_id='claim', reason='补充客户事由', decision_actor_id='manager')
+E       TypeError: history_decision_read() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:334: TypeError
+____________ test_history_read_requires_exact_raw_provenance[tool] _____________
+
+missing = 'tool'
+
+    @pytest.mark.parametrize('missing', ['raw', 'call_id', 'reader', 'claim', 'phase', 'tool', 'decision'])
+    def test_history_read_requires_exact_raw_provenance(missing: str):
+        """缺完整输入、错调用/读取身份/目标/场景/工具/决定身份均不得补证。"""
+        trace, segments = history_read_fixture()
+        if missing == 'raw':
+            trace['request']['messages'] = []
+        elif missing == 'call_id':
+            trace['request']['messages'][0]['tool_call_id'] = 'other'
+        elif missing == 'reader':
+            trace['actor_id'] = 'manager'
+        elif missing == 'claim':
+            trace['events'][0]['data']['arguments'] = json.dumps({'id': 'other', 'limit': 1})
+        elif missing == 'phase':
+            trace['phase'] = 'earlier:session'
+        elif missing == 'tool':
+            trace['events'][0]['data']['name'] = 'api__finance__getExpenseClaim'
+        else:
+            trace['request']['messages'][0]['content'] = trace['request']['messages'][0][
+                'content'].replace('manager', 'outsider')
+>       assert not checks().history_decision_read([trace], segments, phase='resubmit:session',
+            reader_id='owner', document_id='claim', reason='补充客户事由', decision_actor_id='manager')
+E       TypeError: history_decision_read() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:334: TypeError
+__________ test_history_read_requires_exact_raw_provenance[decision] ___________
+
+missing = 'decision'
+
+    @pytest.mark.parametrize('missing', ['raw', 'call_id', 'reader', 'claim', 'phase', 'tool', 'decision'])
+    def test_history_read_requires_exact_raw_provenance(missing: str):
+        """缺完整输入、错调用/读取身份/目标/场景/工具/决定身份均不得补证。"""
+        trace, segments = history_read_fixture()
+        if missing == 'raw':
+            trace['request']['messages'] = []
+        elif missing == 'call_id':
+            trace['request']['messages'][0]['tool_call_id'] = 'other'
+        elif missing == 'reader':
+            trace['actor_id'] = 'manager'
+        elif missing == 'claim':
+            trace['events'][0]['data']['arguments'] = json.dumps({'id': 'other', 'limit': 1})
+        elif missing == 'phase':
+            trace['phase'] = 'earlier:session'
+        elif missing == 'tool':
+            trace['events'][0]['data']['name'] = 'api__finance__getExpenseClaim'
+        else:
+            trace['request']['messages'][0]['content'] = trace['request']['messages'][0][
+                'content'].replace('manager', 'outsider')
+>       assert not checks().history_decision_read([trace], segments, phase='resubmit:session',
+            reader_id='owner', document_id='claim', reason='补充客户事由', decision_actor_id='manager')
+E       TypeError: history_decision_read() got an unexpected keyword argument 'phase'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:334: TypeError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_history_reads_complete_raw_not_truncated_audit
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_history_read_requires_exact_raw_provenance[raw]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_history_read_requires_exact_raw_provenance[call_id]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_history_read_requires_exact_raw_provenance[reader]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_history_read_requires_exact_raw_provenance[claim]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_history_read_requires_exact_raw_provenance[phase]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_history_read_requires_exact_raw_provenance[tool]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_history_read_requires_exact_raw_provenance[decision]
+8 failed, 41 deselected in 0.07s

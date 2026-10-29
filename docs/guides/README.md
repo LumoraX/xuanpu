@@ -42,3 +42,5 @@
 - [2026-10-24 R3到人协作灰度与分层验收](releases/2026-10-24-r3-acceptance.md)
 
 - [2026-10-25 R4-A目录与安装本地验收](releases/2026-10-25-r4a-acceptance.md)
+
+发票与报销内部试用见[F15真实模型验收指南](finance-f15.md)、[公司制度和人员资料缺项](finance-company-readiness.md)及[当轮验收记录](releases/2026-10-23-finance-f15-acceptance.md)。

@@ -1,0 +1,104 @@
+$ uv run ruff check packages/xuanpu-finance/tests/test_f15_skill_contract.py
+E501 Line too long (135 > 100)
+   --> packages/xuanpu-finance/tests/test_f15_skill_contract.py:153:81
+    |
+151 | …L.md').read_text()
+152 | … 原记录实际状态' in text
+153 | … 具备getOperation的expense-reimbursement或finance-review恢复，或交人工核对' in text
+    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+154 | …reate/update或批准' in text
+155 | …
+    |
+
+E501 Line too long (123 > 100)
+   --> packages/xuanpu-finance/tests/test_f15_skill_contract.py:175:71
+    |
+173 |     """已真实创建的唯一单据仍查当前详情，无必要的摘要重定位不应发生。"""
+174 |     text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+175 |     assert '本会话自己真实创建且唯一的单据已有实际ID时，直接当前getExpenseClaim，不先重复listExpenseClaimSummaries' in text
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^
+176 |     assert '仅复用该ID定位，不复用旧授权、version或状态' in text
+177 |     assert '歧义、无实际ID、身份/公司变化、授权拒绝或显式刷新时，按实际情况读取对应最小范围' in text
+    |
+
+E501 Line too long (101 > 100)
+   --> packages/xuanpu-finance/tests/test_f15_skill_contract.py:201:101
+    |
+199 |     else:
+200 |         draft['lines'][0]['reason'] = addition
+201 |     proposed = ExpenseUpdate.model_validate({'expected_version': current['version'], 'draft': draft})
+    |                                                                                                     ^
+202 |     api = parse_openapi((PACKAGE / 'apis/finance.yaml').read_text())
+203 |     _, _, _, headers, outgoing = build_request('http://127.0.0.1:1',
+    |
+
+E501 Line too long (128 > 100)
+   --> packages/xuanpu-finance/tests/test_f15_skill_contract.py:259:58
+    |
+257 |     """历史已读理由须进入最终答复，不能用当前工作流覆盖驳回轮次。"""
+258 |     text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+259 |     assert '用户询问原审批意见或历史审批意见时，最终答复按轮次列出实际人工决定及真实理由，包含驳回/重提前意见和后续批准' in text
+    |                                                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+260 |     assert '不能仅列当前workflow.steps' in text
+261 |     assert 'cancelled不是实际人工决定' in text
+    |
+
+E501 Line too long (103 > 100)
+   --> packages/xuanpu-finance/tests/test_f15_skill_contract.py:280:101
+    |
+279 | @pytest.mark.parametrize('prior_rejections', [1, 3])
+280 | def test_history_fixture_current_workflow_cannot_replace_prior_decision(prior_rejections: int) -> None:
+    |                                                                                                     ^^^
+281 |     """离线历史样例覆盖多轮人工决定，当前批准不能代替之前驳回。"""
+282 |     import sys
+    |
+
+E501 Line too long (101 > 100)
+   --> packages/xuanpu-finance/tests/test_f15_skill_contract.py:306:101
+    |
+304 |         {'id': 'decision:' + cancelled['id'], 'kind': 'decision', 'data': cancelled}],
+305 |         'claim-current', [], decisions)
+306 |     assert history[0]['data']['parameters']['reason'] == decisions[0]['data']['parameters']['reason']
+    |                                                                                                     ^
+
+E501 Line too long (104 > 100)
+   --> packages/xuanpu-finance/tests/test_f15_skill_contract.py:310:101
+    |
+309 | @pytest.mark.parametrize('missing', [None, 'page', 'call_id', 'claim', 'reader'])
+310 | def test_paged_history_fixture_requires_original_raw_scope_for_all_reasons(missing: str | None) -> None:
+    |                                                                                                     ^^^^
+311 |     """两页离线原回包保留游标与调用来源，缺第二页等不能证明读到所有意见。"""
+312 |     from copy import deepcopy
+    |
+
+E501 Line too long (101 > 100)
+   --> packages/xuanpu-finance/tests/test_f15_skill_contract.py:348:101
+    |
+347 | @pytest.mark.parametrize('selection', ['omitted', 'null', 'current_literal'])
+348 | def test_summary_protocol_supports_scoped_mine_without_q_or_explicit_literal(selection: str) -> None:
+    |                                                                                                     ^
+349 |     """真实请求构造器支持本人无q查询和显式当前字面筛选，不扩大范围。"""
+350 |     from xuanpu_server.runtime.http_api import build_request
+    |
+
+E501 Line too long (103 > 100)
+   --> packages/xuanpu-finance/tests/test_f15_skill_contract.py:383:101
+    |
+382 | @pytest.mark.parametrize('skill', ['expense-reimbursement', 'invoice-intake', 'finance-review'])
+383 | def test_independent_reads_wait_for_real_company_without_unnecessary_serial_rounds(skill: str) -> None:
+    |                                                                                                     ^^^
+384 |     """真实公司依赖先满足，互不依赖的必要只读不强制拆成多轮。"""
+385 |     text = (PACKAGE / 'skills' / skill / 'SKILL.md').read_text()
+    |
+
+ASYNC240 Async functions should not perform blocking pathlib.Path operations
+   --> packages/xuanpu-finance/tests/test_f15_skill_contract.py:452:28
+    |
+450 |     from xuanpu_server.runtime.http_api import build_request
+451 |     from xuanpu_spec import parse_openapi
+452 |     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    |                            ^^^^^^^^^^^^^^^^^^^^^^
+453 |     from scripts.acceptance.finance_browser import free_port, listen
+    |
+
+Found 10 errors.

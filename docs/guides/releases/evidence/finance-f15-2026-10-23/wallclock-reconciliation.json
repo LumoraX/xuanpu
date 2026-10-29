@@ -1,0 +1,14 @@
+[
+  {
+    "journey": "baseline",
+    "old_stream_seconds": 43.4287483721273,
+    "environment_to_result_wall_seconds": 44.994874715805054,
+    "added_seconds": 1.5661263436777517
+  },
+  {
+    "journey": "baseline2",
+    "old_stream_seconds": 42.3442034580512,
+    "environment_to_result_wall_seconds": 44.05642747879028,
+    "added_seconds": 1.712224020739086
+  }
+]

@@ -37,6 +37,7 @@ from xuanpu_server.identity.listeners import CLOSE_SESSIONS, CloseUserSessions
 from xuanpu_server.identity.service import IdentityService
 from xuanpu_server.identity.wecom_login import WeComLogin
 from xuanpu_server.ids import new_id
+from xuanpu_server.manual_connectors import ManualConnectorService
 from xuanpu_server.metrics import PlatformMetrics
 from xuanpu_server.objectstore import LocalObjectStore
 from xuanpu_server.organization.lifecycle import OrganizationLifecycle
@@ -54,6 +55,7 @@ from xuanpu_server.runtime.assembler import (
     RuntimeDefaults,
     StateBackendFactory,
 )
+from xuanpu_server.runtime.call_context import CallContextSigner, HumanContextSigner
 from xuanpu_server.runtime.connector_process import install_kernel_mcp_log_guard
 from xuanpu_server.runtime.events import SubmissionIndex
 from xuanpu_server.runtime.sessions import SessionManager
@@ -96,6 +98,7 @@ if TYPE_CHECKING:
 
     from xuanpu_server.capabilities.config import CapabilityDeliveryConfig
     from xuanpu_server.collaboration.models import CollaborationConfig
+    from xuanpu_server.config import CallContextConfig
     from xuanpu_server.connections.models import ConnectionConfig
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.identity.service import IdentitySettings
@@ -139,6 +142,7 @@ class Platform:
         data_dir: Path,
         root_key_hash: str,
         metrics_token_hash: str | None = None,
+        call_context: CallContextConfig | None = None,
         instance_guard: InstanceGuard | None = None,
         objects: ObjectStore | None = None,
         states: StateBackendFactory | None = None,
@@ -156,6 +160,7 @@ class Platform:
         shared_matters: SharedMatterConfig | None = None,
         handoffs: CollaborationConfig | None = None,
         approvals: CollaborationConfig | None = None,
+        manual_http_transport: httpx.AsyncBaseTransport | None = None,
         proactive_interval: float = 1800.0,
         proactive_scan_seconds: float = 60.0,
         now: Callable[[], float] = time.time,
@@ -175,6 +180,7 @@ class Platform:
             root_key_hash: 平台根凭据的摘要。
             metrics_token_hash: 指标抓取令牌的摘要；None 不开指标端点。指标本身总在计，
                 只是不对外。
+            call_context: 可选的部署级 HTTP 调用签名配置；None 不为连接器签发身份。
             objects: 对象存储，业务包归档的正本放在这里；None 用 ``<data_dir>/objects``
                 下的本机目录（只适合单机试用，多实例必须注入共用的对象存储）。
             states: 状态面后端工厂；None 用内核的本机默认实现。
@@ -272,6 +278,9 @@ class Platform:
         self.capabilities = build_capabilities(self.organization, self.packages, self.objects,
             vault, sandboxes, self.audit, data_dir, defaults, capability_delivery)
         durable = durable_execution or DurableExecutionConfig()
+        self.manual_connectors = ManualConnectorService(packages=self.packages, vault=vault,
+            audit=self.audit, signer=None if call_context is None else HumanContextSigner(
+                config=call_context, vault=vault, now=now), transport=manual_http_transport)
         self.work_tasks = WorkTaskService(self.workspace, self.packages,
             process_owner=self.instance_id, now=now, durable=durable)
         submissions = SubmissionIndex()
@@ -285,6 +294,8 @@ class Platform:
             audit=self.audit,
             submissions=submissions,
             managed_connections=self.managed_connections,
+            context_signer=None if call_context is None else CallContextSigner(
+                config=call_context, store=store, vault=vault, now=now),
             defaults=defaults,
             now=now,
         )

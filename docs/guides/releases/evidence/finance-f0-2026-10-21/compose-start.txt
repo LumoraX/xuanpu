@@ -1,0 +1,7 @@
+ Container finance-f0-smoke-finance-db-1 Running
+ Container finance-f0-smoke-finance-api-1 Recreate
+ Container finance-f0-smoke-finance-api-1 Recreated
+ Container finance-f0-smoke-finance-db-1 Waiting
+ Container finance-f0-smoke-finance-db-1 Healthy
+ Container finance-f0-smoke-finance-api-1 Starting
+ Container finance-f0-smoke-finance-api-1 Started

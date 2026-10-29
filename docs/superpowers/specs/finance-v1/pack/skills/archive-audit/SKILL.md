@@ -1,25 +1,70 @@
 ---
 name: archive-audit
-description: 查询财务证据链及缺口，按适用清册组织归档，并核对四性检测和存储锁定证据。
-version: 0.1.0-design.1
+description: 查询发票查验、税务确认、红字和档案证据，准备受控税务或归档计划并核对审计缺口。
+version: 0.16.0-f15
+entry: false
 type: composite
 tool_names:
-  - api__finance__getActionPlan
-  - api__finance__getInvoice
-  - api__finance__getInvoiceEvidence
-  - api__finance__getPayment
-  - api__finance__getPosting
-  - api__finance__getArchive
-  - api__finance__previewFinanceAction
-  - api__finance__executeFinanceAction
-  - api__finance__getOperation
+- api__finance__getFinanceCapabilities
+- api__finance__listFinanceNotifications
+- api__finance__listLegalEntities
+- api__finance__getInvoice
+- api__finance__getInvoiceEvidence
+- api__finance__verifyInvoice
+- api__finance__listInvoiceVerifications
+- api__finance__getInvoiceCompliance
+- api__finance__getComplianceOptions
+- api__finance__listCompliancePlans
+- api__finance__listTaxConfirmations
+- api__finance__listRedLetterCases
+- api__finance__getRedLetterCase
+- api__finance__refreshRedLetterCase
+- api__finance__listTaxAdjustments
+- api__finance__listArchives
+- api__finance__getArchive
+- api__finance__getArchiveManifest
+- api__finance__getArchiveTests
+- api__finance__getArchiveEvidence
+- api__finance__listArchiveSupplements
+- api__finance__auditArchive
+- api__finance__getArchiveAudits
+- api__finance__previewFinanceAction
+- api__finance__getActionPlan
+- api__finance__getOperation
+- api__finance__getFundingCase
+- api__finance__listFundingCases
+- api__finance__getFundingOptions
 ---
-# 归档与审计
+# 查验、红字与档案核对
 
-先读取[共用执行规则](references/execution-rules.md)。从业务记录和证据接口确认适用归档清册，不自行拼造凭证、回单或标准元素。
-action=archive 预检后展示缺件与检测问题，满足资格才执行。
-只有 getArchive 的 archived 及其检测、清册摘要和锁定证据一致时报告归档完成。
+先调用getFinanceCapabilities；读取失败或字段非法时停止并说明。profile=internal_records时只处理内部收件元数据、普通报销草稿、记录查询和人工动作预检；不调用应付、资金、支付、记账、查验、红字、正式档案或通用接入检查接口。实例能力不是个人授权、审批或上线验收。
 
-文件上传、哈希一致或生成 ZIP 均不单独表示合规归档。尚未付款的已入账应付按适用阶段清册判断，不能虚构付款回单凑齐。
-归档后出现付款、红冲或冲回，需要追加补充包并保留原包摘要；不能覆盖旧文件后重新称为原始档案。
-审计摘要分别列出已核实、未核实和不适用项目，只展示有权访问的脱敏引用。
+## internal_records 分支
+
+备份、恢复或停机核对失败时保留实际失败与原操作线索，交受信管理员核对固定凭据和独立备份；模型不得读取凭据、调整权限、执行维护或代发批准。管理员恢复合法输入并核对实际维护结果后，再按当前岗位与单据状态续办；维护成功不等于业务批准或生产验收。
+
+遇到OBJECT_PATH_UNSAFE或原件存储异常时，先保留原operation和持久收件事实，交受信管理员核对独立原件目录；管理员恢复合法文件后再查询原操作，并按当前资格补充或续办。模型不能删除文件、替换链接、读取原件正文、执行维护或代发人工批准。原件存在不等于材料处理成功。
+
+profile=internal_records：此实例不处理查验、税务、红字或正式归档。内部历史转报销Skill的listExpenseClaimHistory，原件交人工入口；本Skill停止，不读取资金规则或调用下文general工具。
+
+## general 分支
+
+以下仅在profile=general时执行。
+
+先读取受权公司和getComplianceOptions；未配置通道或正式profile未验收时说明缺口，不模拟正式成功。查询getInvoiceCompliance取得合规version；票面getInvoice.version仅用于分配。
+
+verifyInvoice绑定当前合规version发起实际查验；按getOperation及查验历史恢复，passed须有权威回执且未过期。用途确认confirm_usage、税务入账confirm_tax_entry以invoice为目标，仅参数accounting_period，金额由服务推导，不能聊天指定。两者与ERP记账分别记录。
+
+红字确认单必须来自实际权威快照。读取getRedLetterCase，核对我方确认分支、确认单ID和原始截止时间；confirm_red_letter目标red_letter_case、参数confirmation_id。超过适用原发起72小时只能refresh回查，不能延长计划复活。confirmed不等于issued；实际红票需独立原件与查验，关联交本人。调整材料收到不等于已申报或已转出。
+
+归档先查看材料、支付回单、凭证与检测缺口，再用archive准备invoice/expense_claim/payable计划；补包同时绑定parent_manifest_hash和真实source_event_ids。专用审批后仍由原经办本人执行。模型不调用executeFinanceAction、人工红票关联、人工调整补件、cancelOperation或reconcileOperation，聊天确认不升级human身份。
+
+受理/dispatching/outcome_unknown均不是完成。未知结果只查原请求，不能换键重发。getArchiveManifest/Tests/Evidence核对全部成员具体版本、真实字节摘要、保留锁与独立封存证明；auditArchive只读核对，失败追加健康告警，历史包不会改写。新付款/红冲/调整后supplement_required须另建补包。
+
+当前simulation-archive-v1只验证隔离协议，四性报告有明确范围；不能解释成官方标准材料、真实税务效力、正式WORM或法定归档认证。
+
+F4原生提醒由listFinanceNotifications读取当前来源，未读计数独立于当前页；提醒已读不表示审批或渠道成功。模型不调用readFinanceNotification；待审/未知应恢复原目标和原计划，不从提醒正文代批或重发。站内提醒不等于飞书、企业微信或邮件送达。
+
+F5专用资金先读[资金规则](references/funding-rules.md)。材料先真实收件并读取source回执；申报不是核实，模型仅准备草稿/预检，实际决定交员工。资金业务使用funding-cases专用入口，不伪装普通应付。
+
+F7内部报销流转留存使用listExpenseClaimHistory及独立原件；这是内部历史查询，不是正式archive成功或WORM证明。当前仅记录流程不自动准备归档执行。

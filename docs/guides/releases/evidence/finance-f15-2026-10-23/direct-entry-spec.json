@@ -1,0 +1,178 @@
+{
+  "status": "Approved",
+  "review_date": "2026-10-24",
+  "scope": "Task1b direct-entry narrowed specification review: exactly two root finance-assistant copies plus existing contract test file; phase1 remains separately reviewed",
+  "findings": [],
+  "closed_findings": [
+    {
+      "id": "DE-S01",
+      "status": "closed",
+      "resolution": "Unknown write result first uses existing root reads; only when original operation access is required, delegate existing expense/review recovery or human. Explicit internal_records exception does not run general actions, expand root tools, change original keys or repeat writes; ordinary success path remains direct."
+    }
+  ],
+  "specification_assessment": {
+    "intent": "Only new draft missing necessary facts asks without tools. Existing query/revision/review restores actual records; embedded invoice instructions remain raw data and do not become outer user intent or business authority.",
+    "routing": "Ordinary internal_records create/update/owner preview/review preview are direct root operations. General/professional tasks preserve six children and complete self-contained raw delegation example. Internal readiness exception is explicitly constrained.",
+    "tool_distribution": "Root exposure deliberately changes1to13; all13 were in old expense/review union. Overall model API union remains68, declared APIs77, internal24, Skills7, shellfalse. No execute/original/pay/post/funding/maintenance tool added to root; no service authority change.",
+    "capability_and_dependencies": "Initial needed caps/company may batch only as independent reads, wait for actual valid caps before dependent business; existing actual results need not be re-read. Current GET/queue/RLS/version/step remain required. GET→update→preview uses returned latest version and cannot run across dependencies.",
+    "raw_and_history": "Original whitespace/newlines/single serialization/injection handling preserved. Receipt must be actual selectable/material_received; unchanged fields from current real detail, refresh minimal. Actual history5/1 is bounded by raw completeness and real cursor; all requested decisions must actually be read.",
+    "permissions_and_origin": "Actual root effects fed to production permission policy: three writes all suspend, ten reads allow. Existing actual signed request/agent context, cookie/CSRF human gateway and finance signature-origin authentication regressions independently pass. These prove protocol boundaries, not a full finance workflow.",
+    "scope_unchanged_elsewhere": "Compared complete frozen candidate4 plus phase1 snapshot, only three permitted files changed. All six professional Skill bytes and remaining runtime/SDK/kernel/finance/API/policy/budget/runner/natural-user-prompt/business-gate files unchanged."
+  },
+  "checks": [
+    {
+      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-spec-tests-final.xml",
+      "returncode": 0,
+      "passed": 126,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "direct-entry-spec-tests-final.log",
+      "log_sha256": "fe0eaf5176f00ca84861b9212d1e318e1c0724608fb05678c77f26787564d084",
+      "xml": "direct-entry-spec-tests-final.xml",
+      "xml_sha256": "5ea2c9e9d13510be7b384aafb913e155587297370f3525e5b40de523c948455a"
+    },
+    {
+      "command": "uv run pytest packages/xuanpu-server/tests/test_call_context.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-spec-agent-context.xml",
+      "returncode": 0,
+      "passed": 10,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "direct-entry-spec-agent-context.log",
+      "log_sha256": "505b048eca0d279784a20a5e90abdc0747042c3bbb94819870216bec62b927e6",
+      "xml": "direct-entry-spec-agent-context.xml",
+      "xml_sha256": "bf7dfb3fd5c796a211eeacda272e33311616c4f137cc3b0bb4b729f06a1844e5"
+    },
+    {
+      "command": "uv run pytest packages/xuanpu-server/tests/identity/test_manual_connectors.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-spec-human-context.xml",
+      "returncode": 0,
+      "passed": 19,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "direct-entry-spec-human-context.log",
+      "log_sha256": "cc3f9cf1ad891c06e5990e94eb6ff3ebf02de128b47a21b12bd95a0992e23c24",
+      "xml": "direct-entry-spec-human-context.xml",
+      "xml_sha256": "cf46ae755227975eea76c0baceb8e1111d355a2e9bddc073d2f7825c842f642b"
+    },
+    {
+      "command": "uv run pytest packages/xuanpu-finance/tests/test_auth.py packages/xuanpu-finance/tests/test_f1_auth.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-spec-finance-auth.xml",
+      "returncode": 0,
+      "passed": 18,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "direct-entry-spec-finance-auth.log",
+      "log_sha256": "b8ca048f0946101b9accfffdabe21a0018aba495fc55f437a1d4cb99053365c0",
+      "xml": "direct-entry-spec-finance-auth.xml",
+      "xml_sha256": "32a5ae45857737044c31aacb21a34e96474fc4d6e7e520a1eddb97bd47afbf26"
+    }
+  ],
+  "unique_passed_cases": 173,
+  "lint": {
+    "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+    "returncode": 0,
+    "log": "direct-entry-spec-ruff-final.log",
+    "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+  },
+  "registry_validation": {
+    "evidence": "direct-entry-spec-contract-validation.json",
+    "sha256": "8bf608108b51dccd0232419fad4c8615204f0eff14eefb4639cb1ec01a6d5ccb",
+    "method": "Actual xuanpu_spec.validate_package and taifeng.FilesystemSkillRegistry, both package validation and model union checks"
+  },
+  "permission_protocol": {
+    "evidence": "direct-entry-spec-permission-protocol.json",
+    "sha256": "8938f8be85d56f5452f2f4cd8e62759818fbef65b0b2aac53ca735bafcc18472",
+    "root_writes_suspend": 3,
+    "root_reads_allow": 10,
+    "service_or_model_invoked": false
+  },
+  "source_sha256": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "c1bf092059c1261b5e2821451172b3f1966fea9fdd42cc634eb64c1fce1a19bb"
+  },
+  "only_changes_against_phase1_snapshot": [
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
+    "examples/finance/skills/finance-assistant/SKILL.md",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+  ],
+  "phase1_snapshot_sha256": "6d0aa59421d7a4bd428fc731f18985d4564a03769ea61dd0ebe685de6a348755",
+  "implementation_report_sha256": "fcf0da43aa49607e076e9f6f2bfe0c5f1583020208e61e7be6b957cc5c730ec8",
+  "design_sha256": "cc8276ed45f2d29d33414c2ad0e5f5e78b5cf2be96adebeffce30d8f5a1c72d9",
+  "design_review_sha256": "b8f414103658dfa64ee6968d71622c362ab5111a365e5f20d125789cd479c984",
+  "TDD_evidence_assessment": "Archived initial RED7 failures, intent RED2, batch RED1 and recovery RED1 inspected through implementation/log evidence; independent final126 GREEN. Revised phase1-only handoff/company assertions align with approved direct-entry architecture while raw/current-version/human/generic harness gates remain. No shared-source revert by reviewer.",
+  "remaining_gates": [
+    "Sequential quality review, new complete source freeze and affected artifact validation.",
+    "Two fresh real-model full journeys under original unchanged budget; actual route/phase/actor/tool/usage and independent finance facts/three human decisions/original isolation/negative gates.",
+    "Actual usage comparison and full owner session<200000 without splitting; no claim45 streams or efficiency target reached by static evidence.",
+    "Full/quick/static/docs/artifact/global review/secret scan/owned cleanup/local commit remain parent responsibilities."
+  ],
+  "limitations": [
+    "No real model, PG, private config or private ledger accessed.",
+    "Permission/signer/auth regressions use public protocol and isolated test fixtures; they are not actual employee/SSO/business finance acceptance.",
+    "No product/Skill/harness/test source modified or committed by reviewer."
+  ],
+  "history": [
+    {
+      "status": "Needs revision",
+      "scope": "Task1b direct-entry three-file narrowed specification review",
+      "findings": [
+        {
+          "id": "DE-S01",
+          "priority": "P2",
+          "finding": "Root has no getOperation/getActionPlan, but unknown-write paragraph only says query original record/operation; specialized paragraph currently limits delegation to general and internal readiness. The approved uncertain_results contract requires an explicit constrained recovery exit rather than inventing a missing root tool.",
+          "required": "Only in unknown-result exception, query with existing root reads, then use existing expense/review original-operation recovery or manual path if necessary. Do not expand root13 or repeat writes; ordinary path remains direct without delegation."
+        }
+      ],
+      "nonblocking_note": "General section explicitly permits only the internal readiness exception and does not need extra normal-path reads.",
+      "already_verified": {
+        "registry": "Actually loaded published registry, exact root13 all subset of existing expense/review union, model API union68 unchanged, declared77/internal24/7Skills, shellfalse/policy unchanged.",
+        "permissions": "Actual manifest effects fed to production build_policy: all three root writes SuspendSignal, ten reads allowed. Existing agent signer/manual gateway/finance auth tests remain GREEN; these are protocol regressions, not a full finance user journey.",
+        "current_version_and_raw": "Current GET/queue/version, independent-read batching versus dependent writes, exact raw including spaces/newlines, actual history, embedded note versus outer intent, human business decision and forbidden root tools preserved."
+      },
+      "checks": [
+        {
+          "evidence": "direct-entry-spec-tests",
+          "passed": 125,
+          "log_sha256": "3287fb41c97d339b3232c74cc15f68f38987c12f8e4530ee4c9af043f11b2e30",
+          "xml_sha256": "93b16981e13a5bd618f08e0e843188d6f09508a3e6bd8701bf2a15fccf1550db"
+        },
+        {
+          "evidence": "direct-entry-spec-agent-context",
+          "passed": 10,
+          "log_sha256": "505b048eca0d279784a20a5e90abdc0747042c3bbb94819870216bec62b927e6",
+          "xml_sha256": "bf7dfb3fd5c796a211eeacda272e33311616c4f137cc3b0bb4b729f06a1844e5"
+        },
+        {
+          "evidence": "direct-entry-spec-human-context",
+          "passed": 19,
+          "log_sha256": "cc3f9cf1ad891c06e5990e94eb6ff3ebf02de128b47a21b12bd95a0992e23c24",
+          "xml_sha256": "cf46ae755227975eea76c0baceb8e1111d355a2e9bddc073d2f7825c842f642b"
+        },
+        {
+          "evidence": "direct-entry-spec-finance-auth",
+          "passed": 18,
+          "log_sha256": "b8ca048f0946101b9accfffdabe21a0018aba495fc55f437a1d4cb99053365c0",
+          "xml_sha256": "32a5ae45857737044c31aacb21a34e96474fc4d6e7e520a1eddb97bd47afbf26"
+        }
+      ],
+      "unique_passed_cases": 172,
+      "protocol_evidence": "direct-entry-spec-permission-protocol-before-recovery.json",
+      "registry_evidence": "direct-entry-spec-contract-validation.json",
+      "source_sha256": {
+        "examples/finance/skills/finance-assistant/SKILL.md": "685bab88a4a5dbedd3c050e07566ebc4b75043ca80fed52dc82f4811ddf75f18",
+        "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "685bab88a4a5dbedd3c050e07566ebc4b75043ca80fed52dc82f4811ddf75f18",
+        "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "bfb69954851acd0590baf8fa0d7d9e13be2532ffe2f264fd6f4310e22e8b9ceb"
+      },
+      "limitations": [
+        "No PG, model API, private config or private ledger accessed.",
+        "Direct registry/instruction/permission/source checks and existing protocol tests do not prove actual model efficiency or a completed finance workflow.",
+        "Reviewer changed evidence only, no source or commit."
+      ],
+      "history": [],
+      "source_binding_correction": "Initial125-case run and read bound to implementation-declared stable685bab88 root/bfb69954 test. Concurrent implementer added the recovery RED test before this report was serialized; its c1bf0920 hash was mistakenly sampled at report-write time. Corrected to the actually tested pre-recovery source; no new-test success claimed."
+    }
+  ]
+}

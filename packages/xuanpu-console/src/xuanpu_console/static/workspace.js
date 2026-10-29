@@ -1,7 +1,7 @@
 // 原生个人工作区：所有模块使用同一权限、数据与版本规则。
 "use strict";
 const workspace = {kind:null, generation:0, parent:null, trashed:false, search:"", items:[], settings:null, summary:null, matter:null, picking:false};
-const workspaceNames = {file:"我的文件",folder:"文件夹",matter:"我的事项",todo:"我的待办",event:"我的日程",skill:"个人能力",settings:"助手设置",proactive:"业务跟进",task:"我的工作",definition:"执行安排"};
+const workspaceNames = {file:"我的文件",folder:"文件夹",matter:"我的事项",todo:"我的待办",event:"我的日程",skill:"个人能力",settings:"助手设置",proactive:"业务跟进",task:"我的工作",definition:"执行安排",finance:"财务记录与审批"};
 const workspaceBase = "/v1/workspace";
 function wsButton(text, action, kind="ghost") {
   const button=document.createElement("button"); button.type="button"; button.className=kind; button.textContent=text;
@@ -21,6 +21,7 @@ function resetWorkspace() {
   if(typeof resetTaskDefinitions==="function")resetTaskDefinitions();
   if(typeof resetWorkTasks==="function")resetWorkTasks();
   if(typeof resetProactive==="function")resetProactive();
+  if(typeof resetFinance==="function")resetFinance();
 }
 async function startWorkspace() {
   if (!conn.me?.user_id || !conn.ready) return;
@@ -57,6 +58,10 @@ async function refreshWorkspace() {
   try {
     if(kind==="definition") {
       await renderTaskDefinitionList(generation,epoch);
+      return;
+    }
+    if(kind==="finance") {
+      await renderFinanceList(generation,epoch);
     } else if(kind==="task") {
       await renderWorkTaskList(generation,epoch);
     } else if(kind==="proactive") {
@@ -78,7 +83,7 @@ async function refreshWorkspace() {
       if(kind==="event" && !workspace.trashed)await appendCalendarReminders(generation,epoch);
       if(kind==="todo" && !workspace.trashed)await appendWorkspaceApprovals(generation,epoch);
     }
-    if(workspaceCurrent(generation,epoch))$("workspace-feedback").textContent="";
+    if(kind!=="finance" && workspaceCurrent(generation,epoch))$("workspace-feedback").textContent="";
   } catch(error) {
     if(!workspaceCurrent(generation,epoch)||error.name==="AbortError")return;
     $("workspace-feedback").textContent=error.message;

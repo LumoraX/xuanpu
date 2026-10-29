@@ -1,0 +1,112 @@
+{
+  "reviewed_at": "2026-10-29T05:41:34.531885+00:00",
+  "review_type": "只读静态合并审查",
+  "skill": "superpowers:requesting-code-review",
+  "verdict": "Approved",
+  "ready_to_merge": true,
+  "main_parent": "60b6797f4127739359edf2be1adb6e4d1d77599c",
+  "finance_parent": "f44a989a886cb535f045fd8fc57c099e635e0875",
+  "conflict_files_reviewed": [
+    "docs/README.md",
+    "docs/architecture/http-api.md",
+    "docs/guides/README.md",
+    "docs/guides/operations.md",
+    "examples/xuanpu.yaml",
+    "packages/xuanpu-console/README.md",
+    "packages/xuanpu-console/pyproject.toml",
+    "packages/xuanpu-console/src/xuanpu_console/static/index.html",
+    "packages/xuanpu-console/src/xuanpu_console/static/workspace.js",
+    "packages/xuanpu-console/tests/test_static.py",
+    "packages/xuanpu-sdk-py/pyproject.toml",
+    "packages/xuanpu-server/pyproject.toml",
+    "packages/xuanpu-server/src/xuanpu_server/api/app.py",
+    "packages/xuanpu-server/src/xuanpu_server/api/sse.py",
+    "packages/xuanpu-server/src/xuanpu_server/config.py",
+    "packages/xuanpu-server/src/xuanpu_server/platform.py",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/assembler.py",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/connectors.py",
+    "uv.lock"
+  ],
+  "additional_files_reviewed": [
+    "packages/xuanpu-server/src/xuanpu_server/runtime/events.py",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/sessions.py",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/call_context.py",
+    "packages/xuanpu-server/src/xuanpu_server/connections/managed_http.py",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/session_history.py",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/task_recovery_guard.py",
+    "packages/xuanpu-server/src/xuanpu_server/bootstrap.py",
+    "packages/xuanpu-sdk-py/src/xuanpu_sdk/client.py",
+    "packages/xuanpu-sdk-py/src/xuanpu_sdk/models.py"
+  ],
+  "strengths": [
+    "19个冲突文件保留两侧能力，未发现冲突解决导致的功能或权限丢失。",
+    "ConnectorGate在原审批闸门之后用bind_call_context包住invoke/invoke_context两条分支；ManagedHttpTools仍按不可变绑定进入员工broker，静态HTTP请求继续使用部署级签名器。",
+    "RuntimeAssembler与Platform同时注入managed_connections和context_signer；共享来源隔离、任务权限/预算包装以及财务人工网关均保留。",
+    "SSE同时保留外发帧前共享来源复查、订阅取消清理与operation_terminal投影；自动合并保留嵌套恢复、任务恢复闸门、SDK nullable seq和共享来源错误映射。",
+    "Console保留执行安排与财务分支、各自reset、全部入口和脚本；34个JS/CSS地址均匹配当前文件SHA256前16位。",
+    "server/console/sdk版本均保持2026.10.25.1且与uv.lock一致；finance版本2026.10.23.5、spec版本2026.10.21.1与锁文件一致。"
+  ],
+  "blocking_findings": [],
+  "findings": [
+    {
+      "severity": "P3",
+      "blocking": false,
+      "file": "packages/xuanpu-server/src/xuanpu_server/runtime/events.py",
+      "line_start": 366,
+      "line_end": 370,
+      "title": "持久任务用量缓存没有在终态清理",
+      "description": "合并后第302-304行会为每个含usage的终态累计_operation_usage，但R2持久任务在_account的_task_accounted分支提前返回，跳过第370行pop。因此已经由TaskModelClient记账的各轮usage仍在hub内保留至会话/hub释放。该问题不会重复计费，也不影响本次财务或恢复功能；属于非阻塞的生命周期内内存保留。",
+      "recommendation": "将当前submission的_operation_usage.pop移到_task_accounted判断之前，任务分支丢弃该局部缓存后继续提前返回。"
+    }
+  ],
+  "existing_evidence_read": {
+    "targeted_tests": 147,
+    "targeted_failures": 0,
+    "targeted_errors": 0,
+    "targeted_skipped": 0,
+    "targeted_xml": "docs/guides/releases/evidence/finance-main-merge-2026-10-29/targeted.xml",
+    "source_snapshot_files": 1117,
+    "source_snapshot": "docs/guides/releases/evidence/finance-main-merge-2026-10-29/source-tested.json"
+  },
+  "static_checks": {
+    "git_diff_check": "passed",
+    "remaining_conflict_markers": 0,
+    "console_asset_fingerprints_checked": 34,
+    "console_asset_fingerprint_mismatches": 0
+  },
+  "limits": [
+    "本审查未启动pytest、PostgreSQL、Docker、服务或真实模型调用。合并全量由主代理负责，当前审查不代替其最终结果。",
+    "完整真实模型双轮仍为0/2，按用户本次功能实现范围合并授权列为已知未验项，不据此阻塞合并。",
+    "审查结论仅适用于本地合并，不代表push、部署、支付、ERP入账或生产验收；独立PG/AES和真人审批边界保持。"
+  ],
+  "reviewed_file_sha256": {
+    "docs/README.md": "dc601419db83934b38cf4e44ce72a01e9021b2eeeeae48bd743e422ba92151d3",
+    "docs/architecture/http-api.md": "f7ef4862182e0fdbdbe2f5299bd0c43023fdf80f0b91a991d90f69849e6dfb42",
+    "docs/guides/README.md": "ac423cb04a31ebba5167f74d385a8ba8e133180f65f6901d0211f1ee741ffbe4",
+    "docs/guides/operations.md": "a1a294263ab44b00bc7b165665866d11387eea0a2021f88f017a5bc12a65acc4",
+    "examples/xuanpu.yaml": "030a10767d991fcad81e9161e71ed9c94c1abc4ca4025d96c99bfa58f358612f",
+    "packages/xuanpu-console/README.md": "fefc5e1e0d12378f8658070128e182218598502b54488cd3965744f579645932",
+    "packages/xuanpu-console/pyproject.toml": "aa9fd00c1d5e0f3472a6a796986ef21ed5579afd4f41154f49db5f4c39fe959d",
+    "packages/xuanpu-console/src/xuanpu_console/static/index.html": "1cce0a4b455bb927e75ef268edcfcd5a1baaece0e10883964c264ccc42cd5c65",
+    "packages/xuanpu-console/src/xuanpu_console/static/workspace.js": "4ae92a4a51aa4b1ca0d6ddfbb12bfe71f5bbb767a514a5b688e04e0fe95d7522",
+    "packages/xuanpu-console/tests/test_static.py": "c2d2d7547e62622afa84366437ceb12831310e25159646bba854a2171b00c344",
+    "packages/xuanpu-sdk-py/pyproject.toml": "f150ed5a1066e39c6e911acac276b5aaace286fc170e895afd137b472fa2639c",
+    "packages/xuanpu-server/pyproject.toml": "48105a736fff445748df3aa38b2c096211692706283da6548d73212a98c125f7",
+    "packages/xuanpu-server/src/xuanpu_server/api/app.py": "25d718ac8b00de0045b5c44420d8c7ae264b60944944c96b189080c9ff87cd75",
+    "packages/xuanpu-server/src/xuanpu_server/api/sse.py": "93ac34f86d32d2f19c12ae8a130f7e486aebff2f4ec0da8e992508e16567f240",
+    "packages/xuanpu-server/src/xuanpu_server/config.py": "bffa7f1cdccfe127cc64fbe8e53e5e9a611c821caa56eff51f559c5cb628b7ec",
+    "packages/xuanpu-server/src/xuanpu_server/platform.py": "dbf9e41aba216a72d206800079abf6c1893f2dffdc8e5e0605c354cc9948bfcd",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/assembler.py": "979f805379c8b9f92b47f9307e802659492423babc3f4dc9d1ac215e2734eaf2",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/connectors.py": "d43d1127cf9ea22e7ddad51b6373d00af0227466ee14c222ba43935f409aac7e",
+    "uv.lock": "e3e5a17a455c6766e37122796e4e298ef6777fd2d3221e7772a81184b777c92d",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/events.py": "f7c2fa17999784369f11aba13d65b940fb7e86cfd9f41580def65f9e8f32ce8f",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/sessions.py": "657a0bce7994d51b219ef743dc9f158e078d7e53e32d29927024a2c1ca9c83f4",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/call_context.py": "2761977b44e18983f0ec5efc551ead5f94e1d931fcfc4960c1cecb89f89d2c0b",
+    "packages/xuanpu-server/src/xuanpu_server/connections/managed_http.py": "1e54716a3f78a178fad621587ae9fdcd1129533e4901436f670c928b00dfd2ae",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/session_history.py": "928d510eb92bc10dab988579cd020b198d2f5899deeb78be89c8289e2cee4176",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/task_recovery_guard.py": "82f2e850a890fd7cb7a6887da55c9ed850a8d2507ae8496465152b95ccea7d17",
+    "packages/xuanpu-server/src/xuanpu_server/bootstrap.py": "621f9b2616d0cb3bffb5d5ae58c3c4ec8bdbc823450add48ec82dba033088370",
+    "packages/xuanpu-sdk-py/src/xuanpu_sdk/client.py": "ea390b8fb13792c7e48eec88455fae8e236d1b9e65600f5a8826573d0bfa7677",
+    "packages/xuanpu-sdk-py/src/xuanpu_sdk/models.py": "d83af379c37be6ad6b6caf07fb7a26f1c443cade107dc231a6061ef57afe7b6b"
+  }
+}

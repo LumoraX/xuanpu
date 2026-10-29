@@ -23,6 +23,7 @@ function headers(extra) {
 async function api(method, path, options = {}) {
   const epoch = conn.epoch;
   const init = { ...requestOptions(), method, headers: headers(options.headers) };
+  if(options.signal)init.signal=options.signal;
   if (options.json !== undefined) {
     init.headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(options.json);

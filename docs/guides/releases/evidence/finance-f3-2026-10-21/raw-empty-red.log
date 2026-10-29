@@ -1,0 +1,58 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________ test_empty_error_body_is_preserved_as_zero_byte_raw_evidence _________
+
+self = <xuanpu_finance.compliance.archive.ArchivePipeline object at 0x10ca40f50>
+request = {'protocol_version': '1', 'tenant_id': 't1', 'legal_entity_id': 'c1', 'operation_id': 'f3op_a1', ...}
+
+    async def preflight(self, request: dict[str, Any]) -> dict[str, Any]:
+        """实际读取每项材料并生成确定性清册和加密物化包。"""
+        self.registry._request_config(request, submit=True)
+        try:
+>           snapshot = ArchiveSnapshot.model_validate(request["payload"]["archive_snapshot"])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           pydantic_core._pydantic_core.ValidationError: 1 validation error for ArchiveSnapshot
+E           artifacts.1.size
+E             Input should be greater than or equal to 1 [type=greater_than_equal, input_value=0, input_type=int]
+E               For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal
+
+packages/xuanpu-finance/src/xuanpu_finance/compliance/archive.py:58: ValidationError
+
+The above exception was the direct cause of the following exception:
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1058/test_empty_error_body_is_prese0')
+
+    async def test_empty_error_body_is_preserved_as_zero_byte_raw_evidence(tmp_path: Any) -> None:
+        """HTTP空错误体也是实际收到的字节，不能使后续档案永久不可封存。"""
+        request = archive_request()
+        snapshot = request["payload"]["archive_snapshot"]
+        snapshot["artifacts"].append(dict(id="empty-receipt",path="receipts/empty.bin",kind="tax_receipt",
+            sha256=hashlib.sha256(b"").hexdigest(),media_type="application/octet-stream",size=0,
+            source={"content_base64":""}))
+        snapshot["source_snapshot_hash"] = request_digest({k:v for k,v in snapshot.items() if k!="source_snapshot_hash"})
+        request["payload_hash"] = request_digest({k:v for k,v in request.items() if k!="payload_hash"})
+        async with httpx.AsyncClient() as client:
+            pipeline = ArchivePipeline(provider(tmp_path,client),EncryptedLocalObjects(tmp_path/"o",b"x"*32))
+>           descriptor = await pipeline.preflight(request)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/provider/test_archive_pipeline.py:237: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <xuanpu_finance.compliance.archive.ArchivePipeline object at 0x10ca40f50>
+request = {'protocol_version': '1', 'tenant_id': 't1', 'legal_entity_id': 'c1', 'operation_id': 'f3op_a1', ...}
+
+    async def preflight(self, request: dict[str, Any]) -> dict[str, Any]:
+        """实际读取每项材料并生成确定性清册和加密物化包。"""
+        self.registry._request_config(request, submit=True)
+        try:
+            snapshot = ArchiveSnapshot.model_validate(request["payload"]["archive_snapshot"])
+            validate_profile(snapshot, request)
+        except (ValidationError, KeyError, ValueError) as error:
+>           raise FinanceError("ARCHIVE_SNAPSHOT_INVALID", 409, "档案输入缺件或格式无效") from error
+E           xuanpu_finance.errors.FinanceError: ARCHIVE_SNAPSHOT_INVALID: 档案输入缺件或格式无效
+
+packages/xuanpu-finance/src/xuanpu_finance/compliance/archive.py:61: FinanceError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/provider/test_archive_pipeline.py::test_empty_error_body_is_preserved_as_zero_byte_raw_evidence
+1 failed in 0.08s

@@ -1,0 +1,504 @@
+FFFFFFFFFFFFFF                                                           [100%]
+=================================== FAILURES ===================================
+_______________ test_offline_never_claims_production_and_redacts _______________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1584/test_offline_never_claims_prod0')
+
+    async def test_offline_never_claims_production_and_redacts(tmp_path: Path) -> None:
+        """有效资源仍保留正式未验且JSON不含秘密引用。"""
+        config = configured(tmp_path)
+>       result = await report(config)
+                 ^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:45:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+config = FinanceConfig(database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasusch...es=[], compliance_providers=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+
+    async def report(config: FinanceConfig) -> dict[str, Any]:
+        """缺失入口使用明确断言记录RED。"""
+>       assert importlib.util.find_spec('xuanpu_finance.readiness'), '缺少F6 readiness包'
+E       AssertionError: 缺少F6 readiness包
+E       assert None
+E        +  where None = <function find_spec at 0x105c12160>('xuanpu_finance.readiness')
+E        +    where <function find_spec at 0x105c12160> = <module 'importlib.util' (frozen)>.find_spec
+E        +      where <module 'importlib.util' (frozen)> = importlib.util
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:37: AssertionError
+________ test_offline_rejects_unsafe_resource_without_echo[permissions] ________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1584/test_offline_rejects_unsafe_re0')
+failure = 'permissions'
+
+    @pytest.mark.parametrize('failure', ['permissions','reuse_bytes','reuse_path','short_aes','bad_public','bad_dsn','oversize','directory','symlink','tls'])
+    async def test_offline_rejects_unsafe_resource_without_echo(tmp_path: Path, failure: str) -> None:
+        """权限、文件类型、格式、长度与共享令牌失败只输出稳定code。"""
+        config = configured(tmp_path)
+        if failure == 'permissions': config.service_token_file.chmod(0o640)
+        if failure == 'reuse_bytes': config.gateway.tenant_token_files['acme'].write_bytes(b'service-secret')
+        if failure == 'reuse_path': config.gateway.tenant_token_files['acme'] = config.service_token_file
+        if failure == 'short_aes': config.objects.key_file.write_bytes(b'x')
+        if failure == 'bad_public': config.public_key_files['k'].write_bytes(b'private key invalid')
+        if failure == 'bad_dsn': config.database_dsn_file.write_bytes(b'private invalid dsn')
+        if failure == 'oversize': config.service_token_file.write_bytes(b'x'*70000)
+        if failure == 'directory': config.service_token_file = tmp_path
+        if failure == 'symlink':
+            link = tmp_path/'link'; link.symlink_to(config.service_token_file); config.service_token_file=link
+        if failure == 'tls': config.gateway.base_url='http://platform.example'
+>       result = await report(config)
+                 ^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:70:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+config = FinanceConfig(database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasusch...es=[], compliance_providers=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+
+    async def report(config: FinanceConfig) -> dict[str, Any]:
+        """缺失入口使用明确断言记录RED。"""
+>       assert importlib.util.find_spec('xuanpu_finance.readiness'), '缺少F6 readiness包'
+E       AssertionError: 缺少F6 readiness包
+E       assert None
+E        +  where None = <function find_spec at 0x105c12160>('xuanpu_finance.readiness')
+E        +    where <function find_spec at 0x105c12160> = <module 'importlib.util' (frozen)>.find_spec
+E        +      where <module 'importlib.util' (frozen)> = importlib.util
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:37: AssertionError
+________ test_offline_rejects_unsafe_resource_without_echo[reuse_bytes] ________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1584/test_offline_rejects_unsafe_re1')
+failure = 'reuse_bytes'
+
+    @pytest.mark.parametrize('failure', ['permissions','reuse_bytes','reuse_path','short_aes','bad_public','bad_dsn','oversize','directory','symlink','tls'])
+    async def test_offline_rejects_unsafe_resource_without_echo(tmp_path: Path, failure: str) -> None:
+        """权限、文件类型、格式、长度与共享令牌失败只输出稳定code。"""
+        config = configured(tmp_path)
+        if failure == 'permissions': config.service_token_file.chmod(0o640)
+        if failure == 'reuse_bytes': config.gateway.tenant_token_files['acme'].write_bytes(b'service-secret')
+        if failure == 'reuse_path': config.gateway.tenant_token_files['acme'] = config.service_token_file
+        if failure == 'short_aes': config.objects.key_file.write_bytes(b'x')
+        if failure == 'bad_public': config.public_key_files['k'].write_bytes(b'private key invalid')
+        if failure == 'bad_dsn': config.database_dsn_file.write_bytes(b'private invalid dsn')
+        if failure == 'oversize': config.service_token_file.write_bytes(b'x'*70000)
+        if failure == 'directory': config.service_token_file = tmp_path
+        if failure == 'symlink':
+            link = tmp_path/'link'; link.symlink_to(config.service_token_file); config.service_token_file=link
+        if failure == 'tls': config.gateway.base_url='http://platform.example'
+>       result = await report(config)
+                 ^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:70:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+config = FinanceConfig(database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasusch...es=[], compliance_providers=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+
+    async def report(config: FinanceConfig) -> dict[str, Any]:
+        """缺失入口使用明确断言记录RED。"""
+>       assert importlib.util.find_spec('xuanpu_finance.readiness'), '缺少F6 readiness包'
+E       AssertionError: 缺少F6 readiness包
+E       assert None
+E        +  where None = <function find_spec at 0x105c12160>('xuanpu_finance.readiness')
+E        +    where <function find_spec at 0x105c12160> = <module 'importlib.util' (frozen)>.find_spec
+E        +      where <module 'importlib.util' (frozen)> = importlib.util
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:37: AssertionError
+________ test_offline_rejects_unsafe_resource_without_echo[reuse_path] _________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1584/test_offline_rejects_unsafe_re2')
+failure = 'reuse_path'
+
+    @pytest.mark.parametrize('failure', ['permissions','reuse_bytes','reuse_path','short_aes','bad_public','bad_dsn','oversize','directory','symlink','tls'])
+    async def test_offline_rejects_unsafe_resource_without_echo(tmp_path: Path, failure: str) -> None:
+        """权限、文件类型、格式、长度与共享令牌失败只输出稳定code。"""
+        config = configured(tmp_path)
+        if failure == 'permissions': config.service_token_file.chmod(0o640)
+        if failure == 'reuse_bytes': config.gateway.tenant_token_files['acme'].write_bytes(b'service-secret')
+        if failure == 'reuse_path': config.gateway.tenant_token_files['acme'] = config.service_token_file
+        if failure == 'short_aes': config.objects.key_file.write_bytes(b'x')
+        if failure == 'bad_public': config.public_key_files['k'].write_bytes(b'private key invalid')
+        if failure == 'bad_dsn': config.database_dsn_file.write_bytes(b'private invalid dsn')
+        if failure == 'oversize': config.service_token_file.write_bytes(b'x'*70000)
+        if failure == 'directory': config.service_token_file = tmp_path
+        if failure == 'symlink':
+            link = tmp_path/'link'; link.symlink_to(config.service_token_file); config.service_token_file=link
+        if failure == 'tls': config.gateway.base_url='http://platform.example'
+>       result = await report(config)
+                 ^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:70:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+config = FinanceConfig(database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasusch...es=[], compliance_providers=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+
+    async def report(config: FinanceConfig) -> dict[str, Any]:
+        """缺失入口使用明确断言记录RED。"""
+>       assert importlib.util.find_spec('xuanpu_finance.readiness'), '缺少F6 readiness包'
+E       AssertionError: 缺少F6 readiness包
+E       assert None
+E        +  where None = <function find_spec at 0x105c12160>('xuanpu_finance.readiness')
+E        +    where <function find_spec at 0x105c12160> = <module 'importlib.util' (frozen)>.find_spec
+E        +      where <module 'importlib.util' (frozen)> = importlib.util
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:37: AssertionError
+_________ test_offline_rejects_unsafe_resource_without_echo[short_aes] _________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1584/test_offline_rejects_unsafe_re3')
+failure = 'short_aes'
+
+    @pytest.mark.parametrize('failure', ['permissions','reuse_bytes','reuse_path','short_aes','bad_public','bad_dsn','oversize','directory','symlink','tls'])
+    async def test_offline_rejects_unsafe_resource_without_echo(tmp_path: Path, failure: str) -> None:
+        """权限、文件类型、格式、长度与共享令牌失败只输出稳定code。"""
+        config = configured(tmp_path)
+        if failure == 'permissions': config.service_token_file.chmod(0o640)
+        if failure == 'reuse_bytes': config.gateway.tenant_token_files['acme'].write_bytes(b'service-secret')
+        if failure == 'reuse_path': config.gateway.tenant_token_files['acme'] = config.service_token_file
+        if failure == 'short_aes': config.objects.key_file.write_bytes(b'x')
+        if failure == 'bad_public': config.public_key_files['k'].write_bytes(b'private key invalid')
+        if failure == 'bad_dsn': config.database_dsn_file.write_bytes(b'private invalid dsn')
+        if failure == 'oversize': config.service_token_file.write_bytes(b'x'*70000)
+        if failure == 'directory': config.service_token_file = tmp_path
+        if failure == 'symlink':
+            link = tmp_path/'link'; link.symlink_to(config.service_token_file); config.service_token_file=link
+        if failure == 'tls': config.gateway.base_url='http://platform.example'
+>       result = await report(config)
+                 ^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:70:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+config = FinanceConfig(database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasusch...es=[], compliance_providers=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+
+    async def report(config: FinanceConfig) -> dict[str, Any]:
+        """缺失入口使用明确断言记录RED。"""
+>       assert importlib.util.find_spec('xuanpu_finance.readiness'), '缺少F6 readiness包'
+E       AssertionError: 缺少F6 readiness包
+E       assert None
+E        +  where None = <function find_spec at 0x105c12160>('xuanpu_finance.readiness')
+E        +    where <function find_spec at 0x105c12160> = <module 'importlib.util' (frozen)>.find_spec
+E        +      where <module 'importlib.util' (frozen)> = importlib.util
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:37: AssertionError
+________ test_offline_rejects_unsafe_resource_without_echo[bad_public] _________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1584/test_offline_rejects_unsafe_re4')
+failure = 'bad_public'
+
+    @pytest.mark.parametrize('failure', ['permissions','reuse_bytes','reuse_path','short_aes','bad_public','bad_dsn','oversize','directory','symlink','tls'])
+    async def test_offline_rejects_unsafe_resource_without_echo(tmp_path: Path, failure: str) -> None:
+        """权限、文件类型、格式、长度与共享令牌失败只输出稳定code。"""
+        config = configured(tmp_path)
+        if failure == 'permissions': config.service_token_file.chmod(0o640)
+        if failure == 'reuse_bytes': config.gateway.tenant_token_files['acme'].write_bytes(b'service-secret')
+        if failure == 'reuse_path': config.gateway.tenant_token_files['acme'] = config.service_token_file
+        if failure == 'short_aes': config.objects.key_file.write_bytes(b'x')
+        if failure == 'bad_public': config.public_key_files['k'].write_bytes(b'private key invalid')
+        if failure == 'bad_dsn': config.database_dsn_file.write_bytes(b'private invalid dsn')
+        if failure == 'oversize': config.service_token_file.write_bytes(b'x'*70000)
+        if failure == 'directory': config.service_token_file = tmp_path
+        if failure == 'symlink':
+            link = tmp_path/'link'; link.symlink_to(config.service_token_file); config.service_token_file=link
+        if failure == 'tls': config.gateway.base_url='http://platform.example'
+>       result = await report(config)
+                 ^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:70:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+config = FinanceConfig(database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasusch...es=[], compliance_providers=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+
+    async def report(config: FinanceConfig) -> dict[str, Any]:
+        """缺失入口使用明确断言记录RED。"""
+>       assert importlib.util.find_spec('xuanpu_finance.readiness'), '缺少F6 readiness包'
+E       AssertionError: 缺少F6 readiness包
+E       assert None
+E        +  where None = <function find_spec at 0x105c12160>('xuanpu_finance.readiness')
+E        +    where <function find_spec at 0x105c12160> = <module 'importlib.util' (frozen)>.find_spec
+E        +      where <module 'importlib.util' (frozen)> = importlib.util
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:37: AssertionError
+__________ test_offline_rejects_unsafe_resource_without_echo[bad_dsn] __________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1584/test_offline_rejects_unsafe_re5')
+failure = 'bad_dsn'
+
+    @pytest.mark.parametrize('failure', ['permissions','reuse_bytes','reuse_path','short_aes','bad_public','bad_dsn','oversize','directory','symlink','tls'])
+    async def test_offline_rejects_unsafe_resource_without_echo(tmp_path: Path, failure: str) -> None:
+        """权限、文件类型、格式、长度与共享令牌失败只输出稳定code。"""
+        config = configured(tmp_path)
+        if failure == 'permissions': config.service_token_file.chmod(0o640)
+        if failure == 'reuse_bytes': config.gateway.tenant_token_files['acme'].write_bytes(b'service-secret')
+        if failure == 'reuse_path': config.gateway.tenant_token_files['acme'] = config.service_token_file
+        if failure == 'short_aes': config.objects.key_file.write_bytes(b'x')
+        if failure == 'bad_public': config.public_key_files['k'].write_bytes(b'private key invalid')
+        if failure == 'bad_dsn': config.database_dsn_file.write_bytes(b'private invalid dsn')
+        if failure == 'oversize': config.service_token_file.write_bytes(b'x'*70000)
+        if failure == 'directory': config.service_token_file = tmp_path
+        if failure == 'symlink':
+            link = tmp_path/'link'; link.symlink_to(config.service_token_file); config.service_token_file=link
+        if failure == 'tls': config.gateway.base_url='http://platform.example'
+>       result = await report(config)
+                 ^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:70:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+config = FinanceConfig(database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasusch...es=[], compliance_providers=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+
+    async def report(config: FinanceConfig) -> dict[str, Any]:
+        """缺失入口使用明确断言记录RED。"""
+>       assert importlib.util.find_spec('xuanpu_finance.readiness'), '缺少F6 readiness包'
+E       AssertionError: 缺少F6 readiness包
+E       assert None
+E        +  where None = <function find_spec at 0x105c12160>('xuanpu_finance.readiness')
+E        +    where <function find_spec at 0x105c12160> = <module 'importlib.util' (frozen)>.find_spec
+E        +      where <module 'importlib.util' (frozen)> = importlib.util
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:37: AssertionError
+_________ test_offline_rejects_unsafe_resource_without_echo[oversize] __________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1584/test_offline_rejects_unsafe_re6')
+failure = 'oversize'
+
+    @pytest.mark.parametrize('failure', ['permissions','reuse_bytes','reuse_path','short_aes','bad_public','bad_dsn','oversize','directory','symlink','tls'])
+    async def test_offline_rejects_unsafe_resource_without_echo(tmp_path: Path, failure: str) -> None:
+        """权限、文件类型、格式、长度与共享令牌失败只输出稳定code。"""
+        config = configured(tmp_path)
+        if failure == 'permissions': config.service_token_file.chmod(0o640)
+        if failure == 'reuse_bytes': config.gateway.tenant_token_files['acme'].write_bytes(b'service-secret')
+        if failure == 'reuse_path': config.gateway.tenant_token_files['acme'] = config.service_token_file
+        if failure == 'short_aes': config.objects.key_file.write_bytes(b'x')
+        if failure == 'bad_public': config.public_key_files['k'].write_bytes(b'private key invalid')
+        if failure == 'bad_dsn': config.database_dsn_file.write_bytes(b'private invalid dsn')
+        if failure == 'oversize': config.service_token_file.write_bytes(b'x'*70000)
+        if failure == 'directory': config.service_token_file = tmp_path
+        if failure == 'symlink':
+            link = tmp_path/'link'; link.symlink_to(config.service_token_file); config.service_token_file=link
+        if failure == 'tls': config.gateway.base_url='http://platform.example'
+>       result = await report(config)
+                 ^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:70:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+config = FinanceConfig(database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasusch...es=[], compliance_providers=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+
+    async def report(config: FinanceConfig) -> dict[str, Any]:
+        """缺失入口使用明确断言记录RED。"""
+>       assert importlib.util.find_spec('xuanpu_finance.readiness'), '缺少F6 readiness包'
+E       AssertionError: 缺少F6 readiness包
+E       assert None
+E        +  where None = <function find_spec at 0x105c12160>('xuanpu_finance.readiness')
+E        +    where <function find_spec at 0x105c12160> = <module 'importlib.util' (frozen)>.find_spec
+E        +      where <module 'importlib.util' (frozen)> = importlib.util
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:37: AssertionError
+_________ test_offline_rejects_unsafe_resource_without_echo[directory] _________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1584/test_offline_rejects_unsafe_re7')
+failure = 'directory'
+
+    @pytest.mark.parametrize('failure', ['permissions','reuse_bytes','reuse_path','short_aes','bad_public','bad_dsn','oversize','directory','symlink','tls'])
+    async def test_offline_rejects_unsafe_resource_without_echo(tmp_path: Path, failure: str) -> None:
+        """权限、文件类型、格式、长度与共享令牌失败只输出稳定code。"""
+        config = configured(tmp_path)
+        if failure == 'permissions': config.service_token_file.chmod(0o640)
+        if failure == 'reuse_bytes': config.gateway.tenant_token_files['acme'].write_bytes(b'service-secret')
+        if failure == 'reuse_path': config.gateway.tenant_token_files['acme'] = config.service_token_file
+        if failure == 'short_aes': config.objects.key_file.write_bytes(b'x')
+        if failure == 'bad_public': config.public_key_files['k'].write_bytes(b'private key invalid')
+        if failure == 'bad_dsn': config.database_dsn_file.write_bytes(b'private invalid dsn')
+        if failure == 'oversize': config.service_token_file.write_bytes(b'x'*70000)
+        if failure == 'directory': config.service_token_file = tmp_path
+        if failure == 'symlink':
+            link = tmp_path/'link'; link.symlink_to(config.service_token_file); config.service_token_file=link
+        if failure == 'tls': config.gateway.base_url='http://platform.example'
+>       result = await report(config)
+                 ^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:70:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+config = FinanceConfig(database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasusch...es=[], compliance_providers=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+
+    async def report(config: FinanceConfig) -> dict[str, Any]:
+        """缺失入口使用明确断言记录RED。"""
+>       assert importlib.util.find_spec('xuanpu_finance.readiness'), '缺少F6 readiness包'
+E       AssertionError: 缺少F6 readiness包
+E       assert None
+E        +  where None = <function find_spec at 0x105c12160>('xuanpu_finance.readiness')
+E        +    where <function find_spec at 0x105c12160> = <module 'importlib.util' (frozen)>.find_spec
+E        +      where <module 'importlib.util' (frozen)> = importlib.util
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:37: AssertionError
+__________ test_offline_rejects_unsafe_resource_without_echo[symlink] __________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1584/test_offline_rejects_unsafe_re8')
+failure = 'symlink'
+
+    @pytest.mark.parametrize('failure', ['permissions','reuse_bytes','reuse_path','short_aes','bad_public','bad_dsn','oversize','directory','symlink','tls'])
+    async def test_offline_rejects_unsafe_resource_without_echo(tmp_path: Path, failure: str) -> None:
+        """权限、文件类型、格式、长度与共享令牌失败只输出稳定code。"""
+        config = configured(tmp_path)
+        if failure == 'permissions': config.service_token_file.chmod(0o640)
+        if failure == 'reuse_bytes': config.gateway.tenant_token_files['acme'].write_bytes(b'service-secret')
+        if failure == 'reuse_path': config.gateway.tenant_token_files['acme'] = config.service_token_file
+        if failure == 'short_aes': config.objects.key_file.write_bytes(b'x')
+        if failure == 'bad_public': config.public_key_files['k'].write_bytes(b'private key invalid')
+        if failure == 'bad_dsn': config.database_dsn_file.write_bytes(b'private invalid dsn')
+        if failure == 'oversize': config.service_token_file.write_bytes(b'x'*70000)
+        if failure == 'directory': config.service_token_file = tmp_path
+        if failure == 'symlink':
+            link = tmp_path/'link'; link.symlink_to(config.service_token_file); config.service_token_file=link
+        if failure == 'tls': config.gateway.base_url='http://platform.example'
+>       result = await report(config)
+                 ^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:70:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+config = FinanceConfig(database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasusch...es=[], compliance_providers=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+
+    async def report(config: FinanceConfig) -> dict[str, Any]:
+        """缺失入口使用明确断言记录RED。"""
+>       assert importlib.util.find_spec('xuanpu_finance.readiness'), '缺少F6 readiness包'
+E       AssertionError: 缺少F6 readiness包
+E       assert None
+E        +  where None = <function find_spec at 0x105c12160>('xuanpu_finance.readiness')
+E        +    where <function find_spec at 0x105c12160> = <module 'importlib.util' (frozen)>.find_spec
+E        +      where <module 'importlib.util' (frozen)> = importlib.util
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:37: AssertionError
+____________ test_offline_rejects_unsafe_resource_without_echo[tls] ____________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1584/test_offline_rejects_unsafe_re9')
+failure = 'tls'
+
+    @pytest.mark.parametrize('failure', ['permissions','reuse_bytes','reuse_path','short_aes','bad_public','bad_dsn','oversize','directory','symlink','tls'])
+    async def test_offline_rejects_unsafe_resource_without_echo(tmp_path: Path, failure: str) -> None:
+        """权限、文件类型、格式、长度与共享令牌失败只输出稳定code。"""
+        config = configured(tmp_path)
+        if failure == 'permissions': config.service_token_file.chmod(0o640)
+        if failure == 'reuse_bytes': config.gateway.tenant_token_files['acme'].write_bytes(b'service-secret')
+        if failure == 'reuse_path': config.gateway.tenant_token_files['acme'] = config.service_token_file
+        if failure == 'short_aes': config.objects.key_file.write_bytes(b'x')
+        if failure == 'bad_public': config.public_key_files['k'].write_bytes(b'private key invalid')
+        if failure == 'bad_dsn': config.database_dsn_file.write_bytes(b'private invalid dsn')
+        if failure == 'oversize': config.service_token_file.write_bytes(b'x'*70000)
+        if failure == 'directory': config.service_token_file = tmp_path
+        if failure == 'symlink':
+            link = tmp_path/'link'; link.symlink_to(config.service_token_file); config.service_token_file=link
+        if failure == 'tls': config.gateway.base_url='http://platform.example'
+>       result = await report(config)
+                 ^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:70:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+config = FinanceConfig(database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasusch...es=[], compliance_providers=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+
+    async def report(config: FinanceConfig) -> dict[str, Any]:
+        """缺失入口使用明确断言记录RED。"""
+>       assert importlib.util.find_spec('xuanpu_finance.readiness'), '缺少F6 readiness包'
+E       AssertionError: 缺少F6 readiness包
+E       assert None
+E        +  where None = <function find_spec at 0x105c12160>('xuanpu_finance.readiness')
+E        +    where <function find_spec at 0x105c12160> = <module 'importlib.util' (frozen)>.find_spec
+E        +      where <module 'importlib.util' (frozen)> = importlib.util
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:37: AssertionError
+____________ test_preflight_cli_load_error_redacted_without_runtime ____________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1584/test_preflight_cli_load_error_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d35f320>
+capsys = <_pytest.capture.CaptureFixture object at 0x10d35f2f0>
+
+    def test_preflight_cli_load_error_redacted_without_runtime(tmp_path: Path, monkeypatch: Any, capsys: Any) -> None:
+        """结构错误不会启动资源且异常原文不进入stdout/stderr。"""
+        from xuanpu_finance import __main__ as cli
+        config = tmp_path/'private-config.yaml'; config.write_text('private-secret: [',encoding='utf-8')
+        monkeypatch.setattr('sys.argv',['finance','--config',str(config),'--preflight'])
+        with pytest.raises(SystemExit) as error:
+            cli.main()
+        assert error.value.code==2
+        captured=capsys.readouterr()
+        assert 'private' not in captured.out+captured.err
+>       assert json.loads(captured.out)['status']=='blocked'
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f6_preflight.py:86:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/json/__init__.py:346: in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/json/decoder.py:338: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <json.decoder.JSONDecoder object at 0x1061af0b0>, s = '', idx = 0
+
+    def raw_decode(self, s, idx=0):
+        """Decode a JSON document from ``s`` (a ``str`` beginning with
+        a JSON document) and return a 2-tuple of the Python
+        representation and the index in ``s`` where the document ended.
+
+        This can be used to decode a JSON document from a string that may
+        have extraneous data at the end.
+
+        """
+        try:
+            obj, end = self.scan_once(s, idx)
+        except StopIteration as err:
+>           raise JSONDecodeError("Expecting value", s, err.value) from None
+E           json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/json/decoder.py:356: JSONDecodeError
+__________ test_current_roles_company_isolation_digest_and_no_writes ___________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10d128fb0>
+
+    async def test_current_roles_company_isolation_digest_and_no_writes(store: Any) -> None:
+        """撤权、账户当前绑定及启停改变摘要；检查本身不写业务状态。"""
+        owner,payer,_,approver=await setup_funding(store)
+>       assert hasattr(store,'get_finance_readiness'), '缺少F6只读readiness接口'
+E       AssertionError: 缺少F6只读readiness接口
+E       assert False
+E        +  where False = hasattr(<xuanpu_finance.storage.store.FinanceStore object at 0x10d128fb0>, 'get_finance_readiness')
+
+packages/xuanpu-finance/tests/test_f6_readiness.py:17: AssertionError
+________________ test_readiness_signed_api_runtime_and_reviewer ________________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10c9b5c70>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1584/test_readiness_signed_api_runt0')
+
+    async def test_readiness_signed_api_runtime_and_reviewer(store: Any,tmp_path: Path) -> None:
+        """当前岗位与实时故障独立反映；任何GET不能产生执行许可。"""
+        await setup_funding(store)
+        key=Ed25519PrivateKey.generate()
+        app=app_for(store,EncryptedLocalObjects(tmp_path,b'k'*32),Gateway({}),key)
+        app.state.mode='read_only'; app.state.instance_lock_lost=True
+        app.state.worker_error='private-exception'
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app),base_url='https://finance') as client:
+            signed=SignedClient(client,key)
+            response=await signed.call('GET','/v1/finance/readiness',tenant='t',user='payer',params={'legal_entity_id':'e'})
+>           assert response.status_code==200,response.text
+E           AssertionError: {"detail":"Not Found"}
+E           assert 404 == 200
+E            +  where 404 = <Response [404 Not Found]>.status_code
+
+packages/xuanpu-finance/tests/test_f6_api.py:28: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_offline_never_claims_production_and_redacts
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_offline_rejects_unsafe_resource_without_echo[permissions]
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_offline_rejects_unsafe_resource_without_echo[reuse_bytes]
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_offline_rejects_unsafe_resource_without_echo[reuse_path]
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_offline_rejects_unsafe_resource_without_echo[short_aes]
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_offline_rejects_unsafe_resource_without_echo[bad_public]
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_offline_rejects_unsafe_resource_without_echo[bad_dsn]
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_offline_rejects_unsafe_resource_without_echo[oversize]
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_offline_rejects_unsafe_resource_without_echo[directory]
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_offline_rejects_unsafe_resource_without_echo[symlink]
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_offline_rejects_unsafe_resource_without_echo[tls]
+FAILED packages/xuanpu-finance/tests/test_f6_preflight.py::test_preflight_cli_load_error_redacted_without_runtime
+FAILED packages/xuanpu-finance/tests/test_f6_readiness.py::test_current_roles_company_isolation_digest_and_no_writes
+FAILED packages/xuanpu-finance/tests/test_f6_api.py::test_readiness_signed_api_runtime_and_reviewer
+14 failed in 1.24s

@@ -1,0 +1,106 @@
+Codex SSE 跳过非协议帧（疑似中转网关注入）：event:response.metadata；终态保证不受影响——输出事实仍由 done items + completed 完成门把关
+Codex SSE 跳过非协议帧（疑似中转网关注入）：event:response.metadata；终态保证不受影响——输出事实仍由 done items + completed 完成门把关
+Codex SSE 跳过非协议帧（疑似中转网关注入）：event:response.metadata；终态保证不受影响——输出事实仍由 done items + completed 完成门把关
+Codex SSE 跳过非协议帧（疑似中转网关注入）：event:response.metadata；终态保证不受影响——输出事实仍由 done items + completed 完成门把关
+Codex SSE 跳过非协议帧（疑似中转网关注入）：event:response.metadata；终态保证不受影响——输出事实仍由 done items + completed 完成门把关
+Codex SSE 跳过非协议帧（疑似中转网关注入）：event:response.metadata；终态保证不受影响——输出事实仍由 done items + completed 完成门把关
+turn failed
+Traceback (most recent call last):
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 271, in __aiter__
+    async for part in self._httpcore_stream:
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 407, in __aiter__
+    raise exc from None
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 403, in __aiter__
+    async for part in self._stream:
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 342, in __aiter__
+    raise exc
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 334, in __aiter__
+    async for chunk in self._connection._receive_response_body(**kwargs):
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 203, in _receive_response_body
+    event = await self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 213, in _receive_event
+    with map_exceptions({h11.RemoteProtocolError: RemoteProtocolError}):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/taifeng/llm/providers/codex/responses.py", line 147, in stream
+    async for line in iter_lines_with_cancel(response, self._cancel):
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/taifeng/llm/providers/_shared.py", line 463, in iter_lines_with_cancel
+    line = line_task.result()
+           ^^^^^^^^^^^^^^^^^^
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/httpx/_models.py", line 1031, in aiter_lines
+    async for text in self.aiter_text():
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/httpx/_models.py", line 1018, in aiter_text
+    async for byte_content in self.aiter_bytes():
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/httpx/_models.py", line 997, in aiter_bytes
+    async for raw_bytes in self.aiter_raw():
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/httpx/_models.py", line 1055, in aiter_raw
+    async for raw_stream_bytes in self.stream:
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/httpx/_client.py", line 176, in __aiter__
+    async for chunk in self._stream:
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 270, in __aiter__
+    with map_httpcore_exceptions():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_runtime.py", line 196, in stream
+    async for event in self.inner.stream(request):
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/taifeng/llm/providers/codex/responses.py", line 166, in stream
+    raise transport_error(exc, provider="codex") from exc
+taifeng.llm.errors.TransientNetworkError: codex transport error (stream): RemoteProtocolError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/taifeng/loop/turn.py", line 489, in run
+    round_text, had_tool_calls = await self._sample_once(rounds)
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/taifeng/loop/turn.py", line 694, in _sample_once
+    return await self._sample.sample_once(iteration)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/taifeng/loop/turn_sample.py", line 341, in sample_once
+    async for ev in s.stream(request):
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/taifeng/llm/retrying.py", line 165, in stream
+    async for event in active.stream(request):
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_runtime.py", line 211, in stream
+    budget.finish(usage, time.monotonic() - started)
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_runtime.py", line 148, in finish
+    self.halt('USAGE_MISSING')
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_runtime.py", line 114, in halt
+    raise HarnessFailure(self.data['halted'])
+scripts.acceptance.finance_model_runtime.HarnessFailure: USAGE_MISSING
+turn failed
+Traceback (most recent call last):
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/taifeng/loop/turn.py", line 489, in run
+    round_text, had_tool_calls = await self._sample_once(rounds)
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/taifeng/loop/turn.py", line 694, in _sample_once
+    return await self._sample.sample_once(iteration)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/taifeng/loop/turn_sample.py", line 341, in sample_once
+    async for ev in s.stream(request):
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/lib/python3.12/site-packages/taifeng/llm/retrying.py", line 165, in stream
+    async for event in active.stream(request):
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_runtime.py", line 182, in stream
+    budget.begin(len(encoded(raw)))
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_runtime.py", line 120, in begin
+    raise HarnessFailure('BUDGET_HALTED:' + self.data['halted'])
+scripts.acceptance.finance_model_runtime.HarnessFailure: BUDGET_HALTED:USAGE_MISSING
+FINANCE_MODEL_FAILED:HarnessFailure

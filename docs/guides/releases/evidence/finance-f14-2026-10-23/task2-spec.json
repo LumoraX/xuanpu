@@ -1,0 +1,305 @@
+{
+  "task": "F14 Task2 独立规格审查（最终）",
+  "status": "Approved",
+  "baseline": "da624a9",
+  "reviewer": "f14_task2_spec",
+  "scope": "仅审查Task2规格、源码调用链、最小修复与保存证据；未连接PG、未执行产品/测试、未修改产品或测试、未提交。保留首次报告，仅新增本最终报告。",
+  "reviewed_files": [
+    {
+      "file": "AGENTS.md",
+      "sha256": "d0b7c2dc6abb72a0af2666d7a01b21df6fa72702a437bcd93190b47e358f05fc"
+    },
+    {
+      "file": "docs/superpowers/specs/2026-10-23-finance-f14-design.md",
+      "sha256": "add3fa446435911768f39104ecf9ad152c085f86c64045db23d41759f7e58fc1"
+    },
+    {
+      "file": "docs/superpowers/plans/2026-10-23-finance-f14.md",
+      "sha256": "9cb5946e7dd8841010535aeb4ccd90f05c7acea23cca240339789e4902a4d907"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f14_process.py",
+      "sha256": "a99348f382382e0159235967e31e2270b55e36ca0df2fb25009f7d7b0b5d3651"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/f14_process_helpers.py",
+      "sha256": "df7e42f52ca2f5cf2c2241f728657de0760234db3d32efc749e5f8491dc538dc"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/f13_process_helpers.py",
+      "sha256": "704ada7dc100aab2ffdbeabc10ec6f6f63f5ea3edfa538964abfbdc956ef50e5"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/f12_process_helpers.py",
+      "sha256": "5597956d2e236ddf12b99a0469b4dfe7cd9b51466cd461c83f2c6e146903936d"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/f11_process_helpers.py",
+      "sha256": "069d95015b8686060059194e7b250fec36677d4236d836a4f44653a77391beea"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/f11_verify_helpers.py",
+      "sha256": "5acef3f23d4889e319852efa9fab2bb367dda4865303d36e4da942b5da82512d"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/f10_recovery_helpers.py",
+      "sha256": "3f384c89744dcb348c9681a4e880a42a7dec7326c47ab85b16a52c2a134658af"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f4_maintenance.py",
+      "sha256": "318194501332c41304cf62920d188c7da68c3d17e985ead24357de1ef3d4773f"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f7_process.py",
+      "sha256": "b6d8d04562de58378408be39c1564146ca56ed955167f2e1a4d9c90519f93be2"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f0_e2e.py",
+      "sha256": "4369c2cc8acf718a1fb64d5269abda9fa70b013a973c4d62a92b004e2ca81468"
+    },
+    {
+      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+      "sha256": "be3e4a95d8d8d150e83a3fb9e8e3ffe232dd182f9019741f1f12902b1bcc2746"
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-evidence.json",
+      "sha256": "ad0a11ffa2aa6933540d8a2bc5866e487299b3c4b1dd259db7ba4a525f2ab526"
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-redaction.json",
+      "sha256": "8c6e68f832db24fb508020e51e96fc7b64832b685027c02211efc3989c3a98fe"
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-structure.json",
+      "sha256": "65977cca55f18d77fe8294ed3cf9bdb2c63a8173249a44ea38365f0009a1b4eb"
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/task2-spec-initial.json",
+      "sha256": "d02701021a2e83da16b9d0a07b02f4f8e886e0c745a747bd2dde372d219005c4"
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-review-structure.json",
+      "sha256": "a77b48abfb9b9454860ab90377d841b8b2cd4fa33b4f031d95e99b70de8013ce"
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-evidence-before-stage-review.json",
+      "sha256": "c025968e8ed838e318d31944ffc4d645995015e0c032ef1c6384443277fc29a3"
+    }
+  ],
+  "checks": [
+    {
+      "requirement": "两独立public库、真实CLI/HTTP收件与本人提交",
+      "result": "pass",
+      "evidence": "F4 fixture创建随机源/目标DB，process_case核对public/test/internal_records；receive_and_submit通过签名HTTP/真实worker生成receipt/operation，未手填。"
+    },
+    {
+      "requirement": "八组实际坏凭据拒绝、PG marker零调用和库/密文不变",
+      "result": "pass",
+      "evidence": "bad_credentials对backup/restore × dsn/key × 0644/symlink运行实际CLI，断言exit1/MAINTENANCE_INPUT_INVALID、无secret/path/trace，逐库全表和逐文件bytes相同；明确未由快照推断零DB连接。"
+    },
+    {
+      "requirement": "拒绝路径无恢复暂存目录",
+      "result": "pass",
+      "evidence": "f14_process_helpers.py:95-101实际列出backup destination.parent、source object_root.parent与restore target object_root.parent下两个stage前缀；:118-129每次CLI前后核对清单为空且相等，:137-140记录实际结果。新process-review-final.xml的八组拒绝均保留三位置前后空清单。"
+    },
+    {
+      "requirement": "合法真实pg_dump/pg_restore、HMAC/原件认证、不带key且空目标约束保留",
+      "result": "pass",
+      "evidence": "prepare_backup调用未替代的F4 pg_tools，verify_manifest用AES key验HMAC，源/备份/目标密文字典相等，源与恢复后全部public行相等；目标初始({}, {})且root不存在。"
+    },
+    {
+      "requirement": "目标新库/root重启且case.store真正切目标pool",
+      "result": "pass",
+      "evidence": "target_store更新实际config DSN/root/key并创建目标asyncpg pool，case.store=FinanceStore(pool)，current_database不同；原receipt及operation全字段在重启前后保留，源库在目标审批后仍全表/密文不变。"
+    },
+    {
+      "requirement": "逐级agent403状态不变到human202、真实签名和DB决定",
+      "result": "pass",
+      "evidence": "RecordedSignedClient验证真实request EdDSA与fingerprint；approve比较403前后完整单据，test核对403/202/403/202及agent/human；document_decisions与single_execution直接查询当前目标库，两批准人/来源/计划/operation/outbox实际关联。"
+    },
+    {
+      "requirement": "approved/原文理由/零资金/正式三表0/平台源空且下载1",
+      "result": "pass",
+      "evidence": "two_human_approvals及preserved_record、external_counts断言状态approved，invoice_information和reason保持、paid/posted=0.00、正式三表0；实际收件identity的receipt/operation/key/SHA和原字节认证保持；payloads空且downloads恰[pdf]。"
+    },
+    {
+      "requirement": "停机verify完整且零写/零worker/全快照不变、进程退出与端口关闭",
+      "result": "pass",
+      "evidence": "readonly_verify在目标进程退出后调用真实维护CLI，核对完整十字段和全public/密文快照相同；observed_file_process用TemporaryFile和有界清理，两个实际exit=-15、graceful=true、forced=false，finance/gateway端口关闭。"
+    },
+    {
+      "requirement": "JUnit/汇总/红测/脱敏哈希与XML",
+      "result": "pass_with_limit",
+      "evidence": "独立解析当前全部13份XML（含baseline/junit.xml）和脱敏清册12项SHA全部吻合；历史专项1 pass、回归28 pass、隔离基线1 fail保留；修复后process-review-final.xml实际1 pass且f14_process与更新汇总完全相等。早期失败密码/DSN脱敏前后SHA保留，XML可解析；原始值已不存，未独立重做原值精确替换。"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F14-T2-SPEC-01",
+      "priority": "P2",
+      "file": "packages/xuanpu-finance/tests/f14_process_helpers.py",
+      "line": 117,
+      "title": "恢复暂存目录断言检查了错误父目录",
+      "detail": "四组restore拒绝检查directory/maintenance下的.finance-restore-*，而产品mkdtemp的dir为options.object_root.parent，位于本例tmp_path根；temporary_stage_absent=true因此没有实际检查目标所在父目录。",
+      "required_change": "检查每次实际backup destination.parent与restore options.object_root.parent的对应stage前缀，并从真实检查结果记录证据。保持产品及空目标约束不变；重跑Task2专项并更新JUnit/证据/脱敏哈希后复核。",
+      "status": "resolved",
+      "resolution": "增加staging_snapshot在实际三类父目录glob两个stage前缀，八组CLI拒绝前后实际清单均空且相等。仅测试helper改动，产品与空目标约束不变。",
+      "resolution_evidence": "process-review-final.log/xml：1 passed in 7.43s，JUnit 1 tests/0 failures/errors/skipped；process-evidence.json显式记录final_f14_junit及修复前历史。"
+    }
+  ],
+  "evidence_verified": [
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-green.log",
+      "sha256": "2a19b9d1c2215658daacf8379a832d3e2118029ebdffd826d276d0e7652bdfa9",
+      "bytes": 98,
+      "redaction_hash_matches": true
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-green.xml",
+      "sha256": "31c80272e91d20417c559876b97a511d4c290d29fe94a8334e01ae9b8ef6d61e",
+      "bytes": 18259,
+      "redaction_hash_matches": true,
+      "counts": {
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-red-baseline.log",
+      "sha256": "20d9fac52070d83c04afc1e347720393f0928b9a3027bfc0e05405d6d92c6075",
+      "bytes": 5461,
+      "redaction_hash_matches": true
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-red-baseline.xml",
+      "sha256": "58547e5edfd88ec92e49dfc2ffde839a94763ca521b639eb43d80d591017a94a",
+      "bytes": 5495,
+      "redaction_hash_matches": true,
+      "counts": {
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-red-baseline-final.log",
+      "sha256": "07ee89a25066dadb084fe9a040088ce36955acfbc849251620536eef42bdd446",
+      "bytes": 1434,
+      "redaction_hash_matches": true
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-red-baseline-final.xml",
+      "sha256": "da5c86fad65880bba6abfa20e128101778abb82048513e36609e29a13ac17f3d",
+      "bytes": 1598,
+      "redaction_hash_matches": true,
+      "counts": {
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-regression.log",
+      "sha256": "9919d7e71e3e33461efcf403dc1bed1e42ae4fc696bc3df210c4d5a095f8eefe",
+      "bytes": 110,
+      "redaction_hash_matches": true
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-regression.xml",
+      "sha256": "d334eada506759f87c33bb65441eb73af10ac0adf9eb71a69a1452e09308006f",
+      "bytes": 74909,
+      "redaction_hash_matches": true,
+      "counts": {
+        "tests": 28,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-ruff.log",
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "bytes": 19,
+      "redaction_hash_matches": true
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-review-final.log",
+      "sha256": "33c7b60665f4da1009562335ef3ea06c7bda053daf058e0883848f0ca741df49",
+      "bytes": 98,
+      "redaction_hash_matches": true
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-review-final.xml",
+      "sha256": "74de2ab51999f79330fa2de60ea1d86c1ded911850c20ce4e20ac7972098c45f",
+      "bytes": 21571,
+      "redaction_hash_matches": true,
+      "counts": {
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-review-ruff.log",
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "bytes": 19,
+      "redaction_hash_matches": true
+    }
+  ],
+  "accepted_existing_results": {
+    "specialized": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "sequential_regression": {
+      "tests": 28,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "isolated_baseline_red": {
+      "tests": 1,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "actual_code": "PG_TOOL_FAILED",
+      "pg_tool_called": true
+    },
+    "post_review_fix_specialized": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit": "process-review-final.xml"
+    }
+  },
+  "limitations": [
+    "本次按父任务要求未接PG和未重跑测试；真实运行事实来自保存JUnit/日志并通过源码断言追踪，独立质量复跑另行进行。",
+    "隔离da624a9仅替换maintenance.py/maintenance_cli.py的执行来源与PG资源释放状态来自process-evidence记录，未独立复建基线或查询资源。",
+    "未从快照推导真实坏凭据零数据库连接；此层只证实实际库内容/密文不变和marker工具零调用。",
+    "不代表真实员工/模型、生产SSO/IAM/TLS握手、生产负载、S3/异机灾备、Linux全业务或部署验证。",
+    "Task3发布和整轮最终门禁不属于本报告。",
+    "28项顺序回归是最小测试helper修复之前的历史运行，已明确保留且未冒称修复后重新执行；修复后新专项覆盖全部八组拒绝及完整备份恢复/目标审批链。"
+  ],
+  "summary": "唯一开放发现已由测试helper最小修复并以新的真实PG专项证据关闭；Task2规格符合，无开放发现。",
+  "open_findings": 0,
+  "independent_validation": {
+    "pg_connected": false,
+    "tests_executed": false,
+    "product_modified": false,
+    "tests_modified": false,
+    "initial_report_preserved_sha256": "d02701021a2e83da16b9d0a07b02f4f8e886e0c745a747bd2dde372d219005c4",
+    "all_current_evidence_xml_parseable": 13,
+    "redaction_manifest_entries_hashed": 12,
+    "final_property_matches_summary": true,
+    "bad_cli_stage_checks_verified": 8,
+    "secret_or_body_prefix_in_final_property": false
+  }
+}

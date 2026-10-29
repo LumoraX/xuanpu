@@ -1,0 +1,3 @@
+# 原始机器验收输出按SHA逐字节保全，不改写其行尾空白。
+full-before-doc-finalization/pytest.log -whitespace
+full-before-doc-finalization/junit.xml -whitespace

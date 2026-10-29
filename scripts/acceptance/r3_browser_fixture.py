@@ -14,8 +14,8 @@ import uvicorn
 from fastapi.responses import HTMLResponse, RedirectResponse
 from xuanpu_console import static_dir
 from xuanpu_server.api.app import create_app
-from xuanpu_server.controlplane import InMemoryControlPlane
 from xuanpu_server.collaboration.models import CollaborationConfig
+from xuanpu_server.controlplane import InMemoryControlPlane
 from xuanpu_server.identity.config import IdentityConfig
 from xuanpu_server.identity.cookies import login_token_hash
 from xuanpu_server.identity.models import LoginSession, UserRecord

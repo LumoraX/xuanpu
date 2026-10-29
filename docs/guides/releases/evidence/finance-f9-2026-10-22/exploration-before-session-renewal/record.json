@@ -1,0 +1,32 @@
+{
+  "counts": {
+    "finance_invoice": 0,
+    "finance_settlement_operation": 0,
+    "finance_compliance_operation": 0,
+    "finance_operation": 1,
+    "finance_receipt": 1
+  },
+  "model_calls": 0,
+  "model_attempts": 0,
+  "blocked_attempts": 0,
+  "blocked_entries": {
+    "runtime": 0,
+    "factory": 0,
+    "session": 0
+  },
+  "people": {
+    "owner": "usr_6f723866a1eefff17c2f9816",
+    "manager": "usr_c252ef3a6151dbafdf0e0954",
+    "finance": "usr_9f00a50bc15f89a71ace5031"
+  },
+  "claims": [
+    {
+      "id": "b98671e840534587b2482342ce7dfaa3",
+      "status": "rejected",
+      "version": 3
+    }
+  ],
+  "status": "incomplete_exploration",
+  "reason": "preissued test fixture sessions expire after 3600 seconds; ready age was 3691 seconds",
+  "product_changes": false
+}

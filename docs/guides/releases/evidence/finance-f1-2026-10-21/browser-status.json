@@ -1,0 +1,14 @@
+{
+  "signed_requests": 24,
+  "origins": [
+    "human"
+  ],
+  "claims": [
+    {
+      "id": "3a878f4b311a475e8ef5162260c67be6",
+      "status": "approved",
+      "total": "25.00"
+    }
+  ],
+  "models_disabled": true
+}

@@ -1,0 +1,19 @@
+$ uv run pytest packages/xuanpu-finance/tests/test_f8_harness.py -q
+......................                                                   [100%]
+22 passed in 3.29s
+exit_code=0
+
+$ uv run ruff check --select F,S108,I,TC scripts packages/xuanpu-finance/tests/test_f8_harness.py
+All checks passed!
+exit_code=0
+
+$ uv run ruff check --select C901 scripts/acceptance/finance_browser.py packages/xuanpu-finance/tests/test_f8_harness.py
+All checks passed!
+exit_code=0
+
+$ MYPYPATH=packages/xuanpu-finance/src uv run mypy scripts/acceptance/finance_browser.py
+Success: no issues found in 1 source file
+exit_code=0
+
+scripts/acceptance/finance_browser.py max_function_lines=39 sha256=dc8607974d38c097976049ca8746b1378fe2febab20d57fdc8f21a330c276079
+packages/xuanpu-finance/tests/test_f8_harness.py max_function_lines=37 sha256=f043db7243da341afb60ee28ccfd1b041d18c895c2ad02d25141f2339a57ef61

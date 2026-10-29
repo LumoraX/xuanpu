@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="1.789" timestamp="2026-10-23T15:33:14.604385+08:00" hostname="krasusdeMacBook-Pro"><testcase classname="packages.xuanpu-finance.tests.test_f13_process" name="test_unsafe_original_refused_then_humans_resume_after_explicit_restore" time="1.597"><failure message="AssertionError: {'status': 200, 'code': None, 'content_base64_present': True}">packages/xuanpu-finance/tests/test_f13_process.py:49: in test_unsafe_original_refused_then_humans_resume_after_explicit_restore
+    refusal = await refused_original(
+packages/xuanpu-finance/tests/f13_process_helpers.py:166: in refused_original
+    assert response.status_code == 500, {'status': response.status_code,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: {'status': 200, 'code': None, 'content_base64_present': True}</failure></testcase></testsuite></testsuites>

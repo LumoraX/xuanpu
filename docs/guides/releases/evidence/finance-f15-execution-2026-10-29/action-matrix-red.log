@@ -1,0 +1,556 @@
+..FF......FF..FF..FF......FF..FF..FF......FF..FF..FF......FF..FF         [100%]
+=================================== FAILURES ===================================
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u4ed8\u6b3e-before-\u6267\u884c-\u5b9e\u9645-\u5df2] _
+
+prefix = '已', actual = '实际', verb = '执行', position = 'before', alias = '付款'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '已实际执行付款'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u4ed8\u6b3e-before-\u6267\u884c-\u5b9e\u9645-\u5df2\u7ecf] _
+
+prefix = '已经', actual = '实际', verb = '执行', position = 'before', alias = '付款'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '已经实际执行付款'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u4ed8\u6b3e-after-\u6267\u884c-\u5b9e\u9645-\u5df2] _
+
+prefix = '已', actual = '实际', verb = '执行', position = 'after', alias = '付款'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '付款已实际执行'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u4ed8\u6b3e-after-\u6267\u884c-\u5b9e\u9645-\u5df2\u7ecf] _
+
+prefix = '已经', actual = '实际', verb = '执行', position = 'after', alias = '付款'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '付款已经实际执行'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u4ed8\u6b3e-after-\u5b8c\u6210-\u5b9e\u9645-\u5df2] _
+
+prefix = '已', actual = '实际', verb = '完成', position = 'after', alias = '付款'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '付款已实际完成'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u4ed8\u6b3e-after-\u5b8c\u6210-\u5b9e\u9645-\u5df2\u7ecf] _
+
+prefix = '已经', actual = '实际', verb = '完成', position = 'after', alias = '付款'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '付款已经实际完成'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u652f\u4ed8-before-\u6267\u884c-\u5b9e\u9645-\u5df2] _
+
+prefix = '已', actual = '实际', verb = '执行', position = 'before', alias = '支付'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '已实际执行支付'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u652f\u4ed8-before-\u6267\u884c-\u5b9e\u9645-\u5df2\u7ecf] _
+
+prefix = '已经', actual = '实际', verb = '执行', position = 'before', alias = '支付'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '已经实际执行支付'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u652f\u4ed8-after-\u6267\u884c-\u5b9e\u9645-\u5df2] _
+
+prefix = '已', actual = '实际', verb = '执行', position = 'after', alias = '支付'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '支付已实际执行'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u652f\u4ed8-after-\u6267\u884c-\u5b9e\u9645-\u5df2\u7ecf] _
+
+prefix = '已经', actual = '实际', verb = '执行', position = 'after', alias = '支付'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '支付已经实际执行'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u652f\u4ed8-after-\u5b8c\u6210-\u5b9e\u9645-\u5df2] _
+
+prefix = '已', actual = '实际', verb = '完成', position = 'after', alias = '支付'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '支付已实际完成'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u652f\u4ed8-after-\u5b8c\u6210-\u5b9e\u9645-\u5df2\u7ecf] _
+
+prefix = '已经', actual = '实际', verb = '完成', position = 'after', alias = '支付'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '支付已经实际完成'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u8bb0\u8d26-before-\u6267\u884c-\u5b9e\u9645-\u5df2] _
+
+prefix = '已', actual = '实际', verb = '执行', position = 'before', alias = '记账'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '已实际执行记账'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u8bb0\u8d26-before-\u6267\u884c-\u5b9e\u9645-\u5df2\u7ecf] _
+
+prefix = '已经', actual = '实际', verb = '执行', position = 'before', alias = '记账'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '已经实际执行记账'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u8bb0\u8d26-after-\u6267\u884c-\u5b9e\u9645-\u5df2] _
+
+prefix = '已', actual = '实际', verb = '执行', position = 'after', alias = '记账'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '记账已实际执行'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u8bb0\u8d26-after-\u6267\u884c-\u5b9e\u9645-\u5df2\u7ecf] _
+
+prefix = '已经', actual = '实际', verb = '执行', position = 'after', alias = '记账'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '记账已经实际执行'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u8bb0\u8d26-after-\u5b8c\u6210-\u5b9e\u9645-\u5df2] _
+
+prefix = '已', actual = '实际', verb = '完成', position = 'after', alias = '记账'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '记账已实际完成'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u8bb0\u8d26-after-\u5b8c\u6210-\u5b9e\u9645-\u5df2\u7ecf] _
+
+prefix = '已经', actual = '实际', verb = '完成', position = 'after', alias = '记账'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '记账已经实际完成'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u5165\u8d26-before-\u6267\u884c-\u5b9e\u9645-\u5df2] _
+
+prefix = '已', actual = '实际', verb = '执行', position = 'before', alias = '入账'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '已实际执行入账'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u5165\u8d26-before-\u6267\u884c-\u5b9e\u9645-\u5df2\u7ecf] _
+
+prefix = '已经', actual = '实际', verb = '执行', position = 'before', alias = '入账'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '已经实际执行入账'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u5165\u8d26-after-\u6267\u884c-\u5b9e\u9645-\u5df2] _
+
+prefix = '已', actual = '实际', verb = '执行', position = 'after', alias = '入账'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '入账已实际执行'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u5165\u8d26-after-\u6267\u884c-\u5b9e\u9645-\u5df2\u7ecf] _
+
+prefix = '已经', actual = '实际', verb = '执行', position = 'after', alias = '入账'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '入账已经实际执行'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u5165\u8d26-after-\u5b8c\u6210-\u5b9e\u9645-\u5df2] _
+
+prefix = '已', actual = '实际', verb = '完成', position = 'after', alias = '入账'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '入账已实际完成'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+_ test_zero_fields_never_hide_explicit_execution_word_matrix[\u5165\u8d26-after-\u5b8c\u6210-\u5b9e\u9645-\u5df2\u7ecf] _
+
+prefix = '已经', actual = '实际', verb = '完成', position = 'after', alias = '入账'
+
+    @pytest.mark.parametrize('prefix', ['已', '已经'])
+    @pytest.mark.parametrize('actual', ['', '实际'])
+    @pytest.mark.parametrize('verb', ['执行', '完成'])
+    @pytest.mark.parametrize('position', ['before', 'after'])
+    @pytest.mark.parametrize('alias', ['付款', '支付', '记账', '入账'])
+    def test_zero_fields_never_hide_explicit_execution_word_matrix(
+        prefix: str, actual: str, verb: str, position: str, alias: str,
+    ):
+        """完整固定词形矩阵覆盖两维前后置动作，不靠零金额取消后续执行。"""
+        action = prefix + actual + verb
+        statement = action + alias if position == 'before' else alias + action
+>       assert not checks().financial_reply_is_zero('已付款：0元；已记账：0元；' + statement)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x109c15c60>(('已付款：0元；已记账：0元；' + '入账已经实际完成'))
+E        +    where <function financial_reply_is_zero at 0x109c15c60> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:491: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u4ed8\u6b3e-before-\u6267\u884c-\u5b9e\u9645-\u5df2]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u4ed8\u6b3e-before-\u6267\u884c-\u5b9e\u9645-\u5df2\u7ecf]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u4ed8\u6b3e-after-\u6267\u884c-\u5b9e\u9645-\u5df2]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u4ed8\u6b3e-after-\u6267\u884c-\u5b9e\u9645-\u5df2\u7ecf]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u4ed8\u6b3e-after-\u5b8c\u6210-\u5b9e\u9645-\u5df2]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u4ed8\u6b3e-after-\u5b8c\u6210-\u5b9e\u9645-\u5df2\u7ecf]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u652f\u4ed8-before-\u6267\u884c-\u5b9e\u9645-\u5df2]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u652f\u4ed8-before-\u6267\u884c-\u5b9e\u9645-\u5df2\u7ecf]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u652f\u4ed8-after-\u6267\u884c-\u5b9e\u9645-\u5df2]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u652f\u4ed8-after-\u6267\u884c-\u5b9e\u9645-\u5df2\u7ecf]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u652f\u4ed8-after-\u5b8c\u6210-\u5b9e\u9645-\u5df2]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u652f\u4ed8-after-\u5b8c\u6210-\u5b9e\u9645-\u5df2\u7ecf]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u8bb0\u8d26-before-\u6267\u884c-\u5b9e\u9645-\u5df2]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u8bb0\u8d26-before-\u6267\u884c-\u5b9e\u9645-\u5df2\u7ecf]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u8bb0\u8d26-after-\u6267\u884c-\u5b9e\u9645-\u5df2]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u8bb0\u8d26-after-\u6267\u884c-\u5b9e\u9645-\u5df2\u7ecf]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u8bb0\u8d26-after-\u5b8c\u6210-\u5b9e\u9645-\u5df2]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u8bb0\u8d26-after-\u5b8c\u6210-\u5b9e\u9645-\u5df2\u7ecf]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u5165\u8d26-before-\u6267\u884c-\u5b9e\u9645-\u5df2]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u5165\u8d26-before-\u6267\u884c-\u5b9e\u9645-\u5df2\u7ecf]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u5165\u8d26-after-\u6267\u884c-\u5b9e\u9645-\u5df2]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u5165\u8d26-after-\u6267\u884c-\u5b9e\u9645-\u5df2\u7ecf]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u5165\u8d26-after-\u5b8c\u6210-\u5b9e\u9645-\u5df2]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_fields_never_hide_explicit_execution_word_matrix[\u5165\u8d26-after-\u5b8c\u6210-\u5b9e\u9645-\u5df2\u7ecf]
+24 failed, 40 passed, 128 deselected in 0.18s

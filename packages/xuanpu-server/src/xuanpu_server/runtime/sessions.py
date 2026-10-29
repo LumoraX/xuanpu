@@ -1,26 +1,17 @@
 """会话管理：建会话、发消息、取事件流、送回审批结果、关闭。
 
-一个会话对应内核里的一个线程，由某一个平台实例持有（单写者）。持有权是带期限的租约：
-持有者定期续期；持有者崩溃后租约到期，别的实例才能接手，并从会话存储里续接。
-会话存储放在哪里由状态面决定：postgres 状态面下在库里，各实例各用各的数据目录；
-local 状态面下是数据目录里的本机文件，只适合单实例——多实例用 postgres。
-
-准备引擎（解包、组装运行时、续接历史）期间没人续期，所以续接之前、放进本实例之前
-各确认一次持有权，并改用确认时拿到的最新会话记录：这期间别的实例可能接手过（建了线程、
-写过几轮）或关闭了会话。确认失败就丢掉刚建的引擎并上抛，不在别人的租约下写，也不拿
-过时的记录续接。租约中途到期过（哪怕又续上了）同样算失败，见 ``leases`` 模块。
-
+一个会话对应内核线程，由一个平台实例持有期限租约；续期失败或持有者崩溃后，其他实例可接手。
+会话主存由state配置选择：local只适合单实例；postgres允许各实例以独立数据目录访问共享存储。
+解包、装配和续接历史期间无人续期；接手前及放入本实例前都核验持有权，并采用最新会话记录。
+核验失败丢弃新引擎，不读写别人的租约；中途到期过即使后来续上也失败，见leases模块。
 已知限制：
-
-- 续期间隔受维护耗时影响。续期与释放空闲会话、回收空闲运行时在同一个维护循环里
-  串行执行，实际间隔是「租约时长的三分之一 + 一次维护的耗时」；维护卡住（关闭运行时
-  很慢、控制面调用迟迟不返回）超过「期限减续期间隔」时，租约可能在持有者还在写时到期。
-- 租约期限按各实例自己的墙钟判断（写入与比较用的都是调用方给的时间），依赖 NTP：
-  两个实例的时钟偏差超过「期限减续期间隔」时，后来者可能在原持有者还在续期时拿到租约，
-  直到原持有者下一次续期失败放手为止，两边可能短暂同时写。
-- 存储层没有 fencing：会话存储不核对租约，单写者完全靠持有者及时察觉、及时停写。
-- 停止生成不拿会话锁：会话正在准备引擎（还没放进本实例）时取消返回 ``[]``，随后开始的那一轮
-  不受影响。不拿锁的前提是非审计模式下 ``submit`` 与登记在途之间不让出（见 ``_submit``）。
+- 续期与空闲会话、运行时回收在同一维护循环串行执行，实际间隔为租约三分之一加维护耗时。
+  若维护超过剩余期限，持有者可能尚在写入时租约已经到期。
+- 各实例以自己的墙钟比较租约，依赖NTP；时钟偏差超过剩余期限时可能误判他人租约过期。
+  旧持有者下一次续期察觉失败前，两边可能短暂同时写入。
+- 存储层没有fencing；会话主存不核验租约，单写者依赖持有者及时察觉并停写。
+- 停止生成不拿会话锁；准备中的会话尚未登记时取消返回空列表，随后开始的轮次不受影响。
+  前提是非审计模式的submit与在途登记之间不让出，见_submit。
 """
 
 from __future__ import annotations
@@ -54,7 +45,12 @@ from xuanpu_server.runtime.gate_audit import RejectionAudit
 from xuanpu_server.runtime.leases import SessionKey, SessionLeases
 from xuanpu_server.runtime.ownership import SessionOwnership, require_active
 from xuanpu_server.runtime.receipt_watch import ReceiptWatch, ReplayedTurn
-from xuanpu_server.runtime.session_history import pending_requests, replay_turn
+from xuanpu_server.runtime.session_history import (
+    pending_requests,
+    replay_turn,
+    resume_suspension_threads,
+    resume_thread_id,
+)
 from xuanpu_server.runtime.session_metadata import validate_metadata
 from xuanpu_server.runtime.session_requests import (
     check_request,
@@ -467,6 +463,7 @@ class SessionManager:
         op: Any,
         *,
         make_watch: Callable[[str], ResolutionWatch | None] | None = None,
+        suspension_threads: frozenset[str] | None = None,
     ) -> Turn:
         """提交一个操作并登记它的事件流（送回审批时连同等内核结论的一方）。
 
@@ -475,7 +472,7 @@ class SessionManager:
         """
         submission_id = await live.engine.submit(op)
         # 提交与登记之间不能有让出点，否则内核先发出的事件会漏掉
-        stream = live.hub.open_stream(submission_id)
+        stream = live.hub.open_stream(submission_id, suspension_threads=suspension_threads)
         watch = make_watch(submission_id) if make_watch is not None else None
         if watch is not None:
             live.hub.watch_resolution(submission_id, watch)
@@ -553,6 +550,7 @@ class SessionManager:
         task = asyncio.ensure_future(work)
         self._receipt_tasks.add(task)
         def settled(done: asyncio.Task[None]) -> None:
+            """移除已结束的回执任务，记录真实结算异常。"""
             self._receipt_tasks.discard(done)
             if not done.cancelled() and done.exception() is not None:
                 logger.error("审批回执结算失败", exc_info=done.exception())
@@ -586,9 +584,13 @@ class SessionManager:
             async with self._lock_for((record.tenant_id, session_id)):
                 await self._ownership.writable(principal, session_id)
                 self._check_preparation(intent)
+                target = await resume_thread_id(self._store, record.tenant_id, session_id,
+                                                resolutions, live.engine.thread_id)
+                ancestors = await resume_suspension_threads(self._store, record.tenant_id,
+                                                           session_id, target, live.engine.thread_id)
                 may_have_submitted = True
                 turn = await self._submit(live,
-                    taifeng.Resume(thread_id=live.engine.thread_id, resolutions=resolutions),
+                    taifeng.Resume(thread_id=target, resolutions=resolutions), suspension_threads=ancestors,
                     make_watch=lambda submission: ReceiptWatch(receipts, record, receipt.operation_id,
                         submission, self._rejections.watch(rejected, live.runtime.connectors.describe),
                         self._track_receipt, self._now, frozenset(resolutions)))

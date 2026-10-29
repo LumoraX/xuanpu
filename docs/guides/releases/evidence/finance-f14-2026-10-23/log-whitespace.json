@@ -1,0 +1,567 @@
+{
+  "status": "passed_with_preserved_raw_evidence",
+  "raw_check_exit": 2,
+  "all_other_changes_check_exit": 0,
+  "diagnostic_count": 107,
+  "affected_raw_files": [
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/build-image.log",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.log",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.xml",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.log",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.xml",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/docs-initial.log",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/docs-initial.xml",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/process-red-baseline.log",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/process-red-baseline.xml"
+  ],
+  "diagnostics": [
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/build-image.log",
+      "line": 62,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.log",
+      "line": 410,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.log",
+      "line": 417,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.log",
+      "line": 424,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.log",
+      "line": 480,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.log",
+      "line": 487,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.log",
+      "line": 494,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.log",
+      "line": 751,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.log",
+      "line": 760,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.log",
+      "line": 769,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.log",
+      "line": 778,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.log",
+      "line": 787,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.log",
+      "line": 796,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.log",
+      "line": 916,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.xml",
+      "line": 365,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.xml",
+      "line": 370,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.xml",
+      "line": 375,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.xml",
+      "line": 423,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.xml",
+      "line": 428,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.xml",
+      "line": 433,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.xml",
+      "line": 670,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.xml",
+      "line": 677,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.xml",
+      "line": 684,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.xml",
+      "line": 691,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.xml",
+      "line": 698,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.xml",
+      "line": 705,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.xml",
+      "line": 809,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 7,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 14,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 21,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 28,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 35,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 42,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 49,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 56,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 63,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 70,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 77,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 84,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 249,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 256,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 263,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 270,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 277,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 284,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 291,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 298,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 305,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 312,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 319,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 326,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 627,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 634,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 641,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 648,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.log",
+      "line": 655,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 4,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 9,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 14,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 19,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 24,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 29,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 34,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 39,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 44,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 49,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 54,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 59,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 210,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 215,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 220,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 225,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 230,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 235,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 240,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 245,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 250,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 255,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 260,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 265,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 530,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 535,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 540,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 545,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+      "line": 550,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.log",
+      "line": 410,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.log",
+      "line": 417,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.log",
+      "line": 424,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.log",
+      "line": 480,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.log",
+      "line": 487,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.log",
+      "line": 494,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.log",
+      "line": 886,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.xml",
+      "line": 365,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.xml",
+      "line": 370,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.xml",
+      "line": 375,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.xml",
+      "line": 423,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.xml",
+      "line": 428,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.xml",
+      "line": 433,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.xml",
+      "line": 779,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/docs-initial.log",
+      "line": 14,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/docs-initial.xml",
+      "line": 8,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-red-baseline.log",
+      "line": 32,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-red-baseline.log",
+      "line": 33,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-red-baseline.log",
+      "line": 37,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-red-baseline.xml",
+      "line": 28,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-red-baseline.xml",
+      "line": 29,
+      "kind": "trailing whitespace."
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f14-2026-10-23/process-red-baseline.xml",
+      "line": 33,
+      "kind": "trailing whitespace."
+    }
+  ],
+  "failed_junit_files_parsed": [
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-baseline-replay.xml",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-green.xml",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red-initial.xml",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/credentials-red.xml",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/docs-initial.xml",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/process-red-baseline-final.xml",
+    "docs/guides/releases/evidence/finance-f14-2026-10-23/process-red-baseline.xml"
+  ],
+  "reason": "保留原始pytest日志与失败JUnit异常正文空白；已声明测试凭据仅精确值脱敏并保留摘要。源代码、文档、JSON及其它JUnit均check0。",
+  "production_status": "not_verified"
+}

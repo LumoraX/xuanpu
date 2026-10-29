@@ -1,0 +1,25 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________ test_overview_excludes_revoked_recipients_old_unread_notices _________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x108340d40>
+
+    async def test_overview_excludes_revoked_recipients_old_unread_notices(store: Any) -> None:
+        """当前无人可读的旧审批提醒不能永久算作无法清理的未读积压。"""
+        from xuanpu_finance.models import FinancePrincipal
+        from .test_expense_domain import invoice as expense_invoice
+        from .test_expense_domain import setup, submitted
+        owner,approvers=await setup(store)
+        await expense_invoice(store);await submitted(store,owner)
+        await store.refresh_finance_notifications()
+        operator=FinancePrincipal('t','operator','human');await store.grant('t','operator','e','reviewer')
+        await store.grant('t',approvers[0].user_id,'e','collector')
+        expected=sum([(await store.list_finance_notifications(who,'e'))['unread_total'] for who in [owner,*approvers,operator]])
+        overview=await store.get_finance_overview(operator,'e')
+>       assert overview['notifications']['unread']==expected
+E       assert 2 == 1
+
+packages/xuanpu-finance/tests/test_f4_overview.py:67: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f4_overview.py::test_overview_excludes_revoked_recipients_old_unread_notices
+1 failed in 0.51s

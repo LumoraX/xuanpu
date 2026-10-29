@@ -1,0 +1,253 @@
+{
+  "status": "Approved",
+  "review_type": "独立设计与现有实现可行性静态审查",
+  "review_date": "2026-10-23",
+  "baseline": "eb15fa49",
+  "reviewed_design": "docs/superpowers/specs/2026-10-23-finance-f15-design.md",
+  "reviewed_design_sha256": "8efc73826c5c945f29dfac6cbc2fe3e8873aa3fec12313ea89b07bb8ee669d11",
+  "scope": [
+    "生产GatewayModelClientFactory、主对话route、业务session、发布Skill、真实TCP签名财务API与专用PG链路的设计可行性",
+    "模型工具批准与独立cookie/CSRF人工业务决定的边界",
+    "澄清、真实收件、草稿修改、驳回补充重提、两级审批、历史与独立原件、越权和注入挑战",
+    "原始响应、持久业务事实、独立语义判断、两次新状态旅程及未验边界",
+    "机密、资源成本限制、模型身份、版本策略和真实公司资料缺项",
+    "实测后可选query参数null语义和OpenAPI3.0至3.1迁移的契约完整性",
+    "子Skill工具许可恢复的可信thread路由、会话权限、部分核销、幂等回放及终态持久化竞态"
+  ],
+  "files_read": [
+    "AGENTS.md",
+    "docs/superpowers/specs/2026-10-23-finance-f15-design.md",
+    "scripts/acceptance/finance_browser.py",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/models.py",
+    "packages/xuanpu-server/src/xuanpu_server/api/assistant.py",
+    "packages/xuanpu-server/src/xuanpu_server/assistant.py",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/assembler.py",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/call_context.py",
+    "packages/xuanpu-server/src/xuanpu_server/manual_connectors.py",
+    "examples/finance/skills/finance-assistant/SKILL.md",
+    "examples/finance/skills/invoice-intake/SKILL.md",
+    "examples/finance/skills/expense-reimbursement/SKILL.md",
+    "examples/finance/skills/finance-review/SKILL.md",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/http_api.py",
+    "packages/xuanpu-spec/src/xuanpu_spec/openapi.py",
+    "examples/finance/apis/finance.yaml",
+    "examples/finance/apis/catalog.yaml",
+    "docs/guides/releases/evidence/finance-f15-2026-10-23/baseline/result.json",
+    "docs/guides/releases/evidence/finance-f15-2026-10-23/baseline2/result.json",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/session_history.py",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/sessions.py",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/events.py",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/resolutions.py",
+    "packages/xuanpu-server/src/xuanpu_server/api/schemas.py",
+    "packages/xuanpu-sdk-py/src/xuanpu_sdk/models.py",
+    "packages/xuanpu-sdk-py/src/xuanpu_sdk/client.py",
+    "packages/xuanpu-server/src/xuanpu_server/api/sse.py",
+    "scripts/acceptance/finance_model_checks.py"
+  ],
+  "limitations": [
+    "仅静态审查；未实现产品或验收脚本，未运行测试，未调用模型或连接PG，未读取私有模型配置，未提交",
+    "设计提及的既有model-probe及其模型身份未由本审查复验",
+    "此审查不构成真实模型旅程、真实员工/SSO、实际浏览器、正式票据、生产或上线验收"
+  ],
+  "implementation_checks": [
+    "主对话/v1/assistant/route只采样分流并解析/创建会话；验收需分别记录该采样与后续业务session采样，不能用route成功代替Skill执行。现有route总超时30秒应继续生效，90秒客户端请求配置不应被误报为route允许90秒。",
+    "旧finance_browser.py明确注入ModelBlocker且替换runtime入口；新验收必须装配真实生产工厂和真实runtime，不可只换掉一个blocker引用。",
+    "包装工厂时保留配置档位到固定请求模型的映射；TieredModelClient在底层改写model，外层ApiRequest.model可能仍是档位。配置名、真正请求名及客户端server_model事件值分列；该事件不是服务端自报，私有网关后端身份无独立响应字段时保持not_verified。",
+    "冻结设计、业务包/Skill字节、验收脚本与用户语句并记录哈希；最终两次分别关联route/session/tool调用、验签后的agent/human origin、持久决定与PG状态。",
+    "安全挑战应同时检查模型是否泄露无权记录正文以及是否发生越权写入；只检查决定计数不能排除只读数据泄露。"
+  ],
+  "accepted_design_boundaries": [
+    "所有业务草稿、选择、工具调用均由真实模型产生；合成测试人驱动器只操作已授权公开人工入口",
+    "模型没有cookie、私钥或executeFinanceAction；工具批准不升级为业务human origin",
+    "合成PDF、公司、制度和人员仅是测试fixture，不代替正式资料；真实缺项保持missing",
+    "原始模型报告与独立业务/语义判定分离；最终两次通过仅证明两次所测旅程，不推断稳定率",
+    "本地提交，不push、merge或deploy；不支付、不进行官方查验/记账/生产验收"
+  ],
+  "resolution": "当前完整设计Approved；历次结论保留。三层祖先终态、平台权威operation_terminal及SDK兼容、完整raw取证均限于已发现问题，不扩业务授权/工具/预算。实现必须验证祖先冷恢复、live/audit/replay一致与raw成功调用的目标身份精确匹配，再重新冻结并完成两次fresh真实HTTP模型旅程；确定性协议回归不能替代真实模型验收。",
+  "previous_review": {
+    "status": "ChangesRequested",
+    "design_sha256": "02cd5c3b7e654ecfa14f0265213d7887f449db66d0e31d4fd9493d23eb8f7410",
+    "required_change_ids": [
+      "F15-D01",
+      "F15-D02"
+    ]
+  },
+  "resolved_changes": [
+    {
+      "id": "F15-D01",
+      "priority": "P1",
+      "design_lines": [
+        15
+      ],
+      "title": "补齐全局token、证据体积和成本预算",
+      "finding": "每次120轮stream、1200秒及90秒单请求只限制次数和时间，不能约束每轮增长的上下文、输出token、记录体积和累计成本；反复修复新运行也可无限重置预算。",
+      "required": "明确单次旅程和整个F15执行的有限输入/输出或总token预算、证据体积上限及累计调用上限，覆盖探针、失败、重试、修复和最终两次；说明预算如何在实际采样前/流中落实、超限如何取消并失败。计费价格未核实或网关不返回完整用量时保持unknown，使用明确的可实施token/调用限制，不能把估算标成已核实成本。",
+      "status": "Resolved",
+      "resolution": "修订明确240次stream/5400秒模型阶段墙钟/300万input tokens/15万output tokens/32MiB请求/128MiB事件的持久全局预算，涵盖探针、失败、修复与最终两次；每旅程及单请求另限额，4096输出预留，usage缺失即停止；最多一请求input在途增量明确披露，未知价格不承诺金额、不充值、不自动扩额。包装只允许收紧max_output_tokens，不改变业务提示或模型选择。"
+    },
+    {
+      "id": "F15-D02",
+      "priority": "P2",
+      "design_lines": [
+        38
+      ],
+      "title": "版本递增应取决于实际交付变更",
+      "finding": "无条件升级业务包0.16.0-f15及20个对应发布文件，与只按实际变更升级的要求不一致；若仅新增验收证据或脚本，则没有业务包升级依据。产品源修复也不能一概归到finance版本。",
+      "required": "将版本策略改为：仅验收/报告/夹具变更不触发业务包或服务版本；Skill/业务包实际内容变化才升级业务包并同步对应文件；finance/console等组件有实际产品源变化时分别升级受影响组件及其安装制品。保留API、工具和shell=false边界，任何必要调整先给窄化设计。",
+      "status": "Resolved",
+      "resolution": "修订明确验收脚本/文档/夹具不触发业务包或服务版本；Skill/包内容变化才升级包，finance和console分别仅在实际产品源变化时升级并同步对应制品。"
+    },
+    {
+      "id": "F15-D03",
+      "priority": "P1",
+      "title": "OpenAPI3.1迁移须保持已有nullable契约真实语义",
+      "finding": "当前finance.yaml包含75处nullable:true，catalog.yaml包含4处；包括ExpenseDraft.invoice_information请求字段和各Page.next_cursor响应字段。3.1中仅修改openapi版本与optional query联合类型不会保留3.0 nullable语义，其他字段接受null的契约可能被收窄，不能据此宣称只改变optional query。",
+      "required": "在设计中明确扫描两份完整文档并把已有3.0 nullable字段做保持原接受集合的3.1等价转换，核对type、enum、$ref等组合；这仅保留既有可空性，不把其他body字段一概可空。通过跨版本语义对比及代表性请求/响应null正反例验证，ActionParameters动作矩阵、required/path/query字段、权限与HTTP分页均不扩大。",
+      "status": "Resolved",
+      "resolution": "修订新增对两份完整文档全部既有nullable:true做保持原语义的3.1类型联合/anyOf等价迁移；以eb15基线按3.0规范化后全schema比对，差异只允许optional query新增null与说明及meta版本标题状态，其他body/required/动作矩阵/response不变。离线、真实build_request和HTTP门槛先行，之后才重放真实模型。"
+    }
+  ],
+  "required_changes": [],
+  "followup_review": {
+    "scope": "复读修订后的完整设计并核对D01、D02及route/session证据补充；不重新运行产品或外部服务。",
+    "evidence_chain": "已明确route请求/采样与session业务回合分开，每角色记录实际Skill装配输入、工具名、签名origin、终态与PG断言。",
+    "budget_boundary": "300万input tokens门槛允许至多一请求在途增量，设计已明示这一限制；未知网关货币成本不是已审计金额。"
+  },
+  "review_history": [
+    {
+      "status": "Approved",
+      "design_sha256": "c964500243b5d16d0bec5846cd770f833fb953338a2046b96a7f52b56be8e342",
+      "scope": "预算/版本初次修订复审通过，D01/D02已关闭"
+    },
+    {
+      "status": "ChangesRequested",
+      "design_sha256": "88ae9c3893df261500f624ced594e4c1194427f9ae87d9412d3984307564e5db",
+      "scope": "可选query-null窄化与3.1迁移初审，D03提出"
+    },
+    {
+      "status": "Approved",
+      "design_sha256": "29b1764d5a159ada23996009b8c07ff6511d0ac08c255fee38c3711bb10c0e38",
+      "scope": "D03全nullable等价迁移及模型身份证据修订通过"
+    },
+    {
+      "status": "Approved",
+      "design_sha256": "9ed514fc80eb5dea5fdd716824f566477d21d3f4b919216c51ef91f96e49d06e",
+      "scope": "可信thread路由的子Skill恢复设计通过；随后确定性RED发现leaf提前结流race，追加本轮终态修订"
+    },
+    {
+      "status": "Approved",
+      "design_sha256": "35b3d696955a104af5cd48993d91fdfdd99502f8bd05f4dd1a7b97ca32146768",
+      "scope": "operation终态及纯wrapper过滤修订通过；本轮新增三层祖先、SDK marker与完整raw观察判定"
+    }
+  ],
+  "query_null_review": {
+    "status": "Approved",
+    "accepted": [
+      "optional query的JSON null在生产build_request中完全省略，等价于未传；required参数None会被拒绝，故不用更改HTTP分页实现",
+      "使用OpenAPI3.1真正JSON Schema类型联合，并同步optional enum的null许可，比在3.0文档混用类型数组准确",
+      "现有空串、空格、伪游标失败证据可复读确认；服务侧保留严格拒绝，模型/工具/业务事实不由脚本替换",
+      "网关严格标准化只是有据推断，本审查未观察私有网关wire行为；不能确定该修复必然解决所有模型失败",
+      "包内容实际变化触发0.16.0-f15，finance/console未改源版本保持合理"
+    ],
+    "required_offline_http_gates": [
+      "完整3.1文档语法和语义有效性，不仅检查仓库parse_openapi的3.x前缀接受",
+      "optional string/integer/boolean/enum query分别验证omit和null同等省略、真实值保留；required null拒绝",
+      "真实HTTP验证省略/null到达相同首屏，合法next_cursor分页，空/空格/伪造cursor仍失败",
+      "确认ActionParameters、requestBody及服务权限/签名未被放宽，工具/API/内部操作计数不变",
+      "所有门槛通过后才恢复原自然语句的真实模型重放并继续共用现有预算账本"
+    ],
+    "local_evidence": "baseline listLegalEntities cursor为空；baseline2依次可见空串、空格、__omit__、0等无效字符串。两个result均one_model_created_claim失败。",
+    "limits": "仅本地静态审查，未读私有配置、未访问PG或调用模型；离线/HTTP回归仍由实现者执行。",
+    "migration_resolution": "D03已关闭：全量既有nullable语义转换及全schema对比门槛已写入设计，避免3.1混合方言和既有请求/响应可空性丢失。",
+    "approval_boundary": "仅批准窄化设计进入实现；实际offline/schema/build_request/真实HTTP门槛必须通过且冻结输入后才开始下一轮模型消费。本审查未执行这些门槛，不代表修复有效或真实旅程已通过。"
+  },
+  "model_identity_correction": {
+    "status": "Accepted",
+    "finding": "修订明确Codex客户端server_model来自请求payload.model，不能认作服务端自报。",
+    "required_reporting": "配置模型名、真正dispatch请求模型名和客户端server_model事件值分别记录；网关实际后端身份无独立响应证据时保持not_verified；真实网关调用与后端身份验证分开。",
+    "limitation": "本次仅复读设计，没有读取私有模型配置或重新复验客户端/网关wire。",
+    "editorial_note": "目标与边界段也已同步改为配置模型名、实际请求名与客户端事件名，消除了旧“服务端报告名”称呼。"
+  },
+  "nested_resume_review": {
+    "status": "Approved",
+    "scope": "只批准新末段所述最小server修复设计，保留前次设计、预算和query-null结论。",
+    "verified_current_source": [
+      "ResumeBody只有resolutions，无客户端thread选择字段",
+      "sessions.resume在会话锁内目前把taifeng.Resume.thread_id固定为live.engine.thread_id",
+      "_PendingTracker.snapshot只保留submission/requests/settled，丢弃可信审计记录顶层thread_id",
+      "事件枢纽把任意turn_suspended当本次stream终态，实际leaf到parent事件顺序需要独立回归验证"
+    ],
+    "accepted_design": [
+      "在当前租户/会话的可信engine审计中恢复实际thread_id；默认None只用于旧记录根兼容，不能把已知无效thread静默回退为根",
+      "持同会话锁重新核当前pending/request_ids并检查所有权，实际线程只来自服务端可信快照，通过稳定taifeng.Resume交给内核继续谱系校验",
+      "无新客户端thread/身份字段，不修改taifeng内部，不把模型工具许可变成人工财务决定",
+      "只升级实际改变的server、对应lock和制品，finance/console未改源版本保持；同步平台架构与指南",
+      "保留final1/旧freeze失败证据，新实现通过后重新冻结并重跑两次fresh真实旅程，继续原账本不扩额"
+    ],
+    "mandatory_implementation_gates": [
+      "用实际发布父子Skill与确定性模型，经公开HTTP得到原实现RED和最小修复GREEN；这类回归证据不得充当真实模型旅程",
+      "覆盖根与leaf、允许与拒绝、partial核销、已核销后重复、unknown/混合无关batch及跨会话/租户与非owner拒绝，不能发生多leaf隐式分拆执行",
+      "保持operation_receipts既有精确幂等重试回放；“已核销拒绝”针对新非法/混合请求，不应破坏合法同一请求的原提交回放，也不能使工具重复执行",
+      "真实冷打开保留leaf thread与pending关联，检查旧无thread审计根兼容；已知非法thread不得被当旧记录兼容吞掉",
+      "用可控同步阻塞/事件门闩等确定性方式验证leaf SSE终态和parent挂起审计落盘次序，确认新resume读取当前稳定snapshot；不得靠sleep/无界重试掩盖竞态",
+      "核验恢复后的parent/child终态、审批回执、审计及工具实际执行次数；未知/拒绝不新增财务业务决定",
+      "源码全量pytest/Ruff/strict mypy及独立规格/质量审查通过后才恢复最终真实模型消费"
+    ],
+    "limitations": [
+      "仅静态读设计与上述平台源码；未访问PG、模型API或私有配置，未执行RED/GREEN或产品测试",
+      "parent报告的final1精确模型参数、已安装内核叶线程谱系能力未由本次外部调用复验；实现门槛必须以实际发布链路证明"
+    ],
+    "finding": "设计将缺失路由元数据补回可信平台恢复链，不扩大客户端或业务授权；race被明确列为需证明并在现成平台同步机制内修复的前置门槛，因此可批准设计进入实现。"
+  },
+  "operation_terminal_review": {
+    "status": "Approved",
+    "scope": "仅审查新追加的当前operation终态边界、纯内部child_skill wrapper过滤与确定性落盘race门槛；不扩大多leaf聚合或业务授权。",
+    "source_findings": [
+      "现有is_terminal无条件将turn_suspended判终态，并被TurnStream、Hub移流及_finish共同调用，leaf因此可令初始UserMessage提前结束",
+      "Hub._handle目前先向stream推事件，再记审计/_finish/_flush；仅改变目标判定不能自动证明公共pending审计先于SSE终态可见",
+      "pending_suspension先找最后turn_suspended，再用tracker重放；跳过纯wrapper需两个阶段一致，不能只修公开pending表象"
+    ],
+    "accepted_design": [
+      "以每次操作的可信目标区分初始UserMessage和Resume：前者等根挂起，后者可在可信targetleaf再次挂起时结束；完成/失败仍保留is_root边界",
+      "TurnStream、Hub在途集合/移流/指标使用同一判定，不能只让HTTP多等而后台已错误结束",
+      "纯内部child_skill wrapper在_last和tracker中一致跳过，从可信审计暴露真实leaf待办；不将wrapper转成人工许可",
+      "实际发布父子Skill，用公开MessageStore协议包装和asyncio.Event门闩阻父wrapper append，证明原提前结流RED与窄修GREEN，无sleep重试或内核内部修改",
+      "旧freeze/final1与本次RED保留，server版本及安装制品按实际变更升级，后续真模型继续同预算重新冻结两次fresh旅程"
+    ],
+    "mandatory_implementation_gates": [
+      "门闩未释放时明确assert SSE未结束、在途仍有效；释放后父wrapper持久化才结束，立即关闭/冷打开/公开resume完成",
+      "确定性证明SSE终态返回后立即GET pending及resume读取的leaf快照已持久可见；若先推终态再flush仍有race，使用平台事件/审计现有同步机制先持久终态所需审计再交付，不能加sleep重试",
+      "过滤仅用于整个pending集合均为内部child_skill请求的纯wrapper；不得因混合pending中含child_skill就丢弃真实人工请求，异常结构需明确失败或保守保留",
+      "覆盖Resume目标leaf再次挂起、根直接挂起、partial核销、精确幂等重复回放、未知/已核销/混合无关请求、坏thread、旧无thread根兼容、冷owner/跨会话和租户权限",
+      "确认每operation仅结流/移除在途/结算指标一次；child与parent相同submission后继事件不得引起重复用量和回执结算，失败取消语义保持",
+      "公开真实父子HTTP回归和全部必要源码检查通过后，方可重新冻结并继续最终真实模型旅程"
+    ],
+    "limitations": "只读本地设计及平台源码；未访问模型/PG/私有配置，未运行产品测试。设计批准不证明本次事件终态修复已实现或验证。"
+  },
+  "ancestor_sdk_observer_review": {
+    "status": "Approved",
+    "scope": "只批准三层旧wrapper祖先终态、平台operation_terminal协议兼容和完整raw工具返回语义取证的窄化调整，不批准模型事实替换或额外预算。",
+    "source_findings": [
+      "已读当前SDK Event.terminal规则：所有turn_suspended均true；即使send/resume读取到EOF，用户按Event.terminal提前break仍会被leaf事件误导",
+      "已读平台api/sse.event_payload与session_history.replay_turn：两种对外路径需获得同一平台终态标记，不能只改实时SSE",
+      "当前history_decision_read直接json.loads显示output，不能处理sanitize截断后的非JSON；完整模型ApiRequest中的匹配工具返回才可证明模型实际收到何种历史"
+    ],
+    "accepted_design": [
+      "Resume可结束的挂起thread集来自同会话可信旧wrapper原链祖先及原leaf，不仅root+leaf；恢复后新descendant不得先于原链祖先wrapper持久化触发结流",
+      "operation_terminal是平台按本operation计算并对外添加的明确bool，审计/replay同值，不修改内核事件对象，不接受工具或客户端声明该值",
+      "SDK优先服务端显式bool，false必须覆盖旧的turn_suspended判定；缺字段按旧server旧规则兼容，不把未知事件自动推定为终态",
+      "观察层仅更正取证位置：用同phase/读取者actor的真实成功call_id匹配原始ApiRequest中的完整HTTP工具返回，SSE只佐证成功；不json.loads截断显示、不补造数据",
+      "SDK实际源变化触发2026.10.23.1及README/lock/制品，server同版；finance.5/console.1保持；确定性SDK回归与真实HTTP模型旅程分开陈述"
+    ],
+    "mandatory_implementation_gates": [
+      "main→B→A恢复后B→C再次挂起及恢复的真实父子HTTP确定性路径必须GREEN；验证新C leaf非终态、旧链B持久挂起可终态，cold恢复可读当前真实leaf；不扩多leaf批量能力",
+      "live SSE、持久audit、replay同seq/同submission的operation_terminal一致，含根/leaf/旧祖先、completed/failed、aborted、partial、rejected；终态前必要审计已持久化",
+      "operation_terminal由平台最后覆盖同名data键，不依赖tool/client字段；bool类型严格识别，false不能被truthiness fallback吞掉，未知kind不因缺字段变终态；旧无marker事件兼容行为有明示用例",
+      "SDK调用方按Event.terminal break的协议回归不能在非终态leaf停止；重放/冷打开同标记结果；不得把确定性模型SDK回归冒称新增真实SDK模型旅程",
+      "完整raw语义取证同时绑定phase、读取者actor、成功call_id、工具名及当前目标claim id/相应分页；历史决定actor与读取者actor分开核对，并精确匹配reason；错phase/读取者/callid/目标或缺raw都不能通过",
+      "截断SSE+完整raw为正例，缺raw/错callid/错目标为反例；若最终一轮没有后续ApiRequest携带完整工具返回，不得仅凭服务执行成功声称模型已看到历史",
+      "所有修复冻结后在原240次stream账本内完成两次fresh真实旅程；当前50次消费与失败阶段保留，不自动扩额"
+    ],
+    "limitations": "仅静态读取本地设计与相应SDK、平台和观察检查源码；未运行测试、访问PG/私有配置或调用模型。root所述三层GREEN与final1截断示例未由本次运行复验；实现质量和最后两次真实旅程仍需独立证据。"
+  }
+}

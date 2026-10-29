@@ -1,0 +1,28 @@
+{
+  "status": "NeedsRevision",
+  "finding_id": "EL-Z01",
+  "source_sha256_before_fix": "ece36259649da8fef15d3f24d6d79ae91fe80baad48e65c37488480c860b8aca",
+  "finding": "Only suffix after positive-match start is checked, so narrative prefixes are discarded and zero balance exemption becomes an executed-action exemption.",
+  "cases": [
+    {
+      "reply": "实际已付款：0.00元；未记账",
+      "expected": false,
+      "actual": true
+    },
+    {
+      "reply": "本次已付款：0.00元；未入账",
+      "expected": false,
+      "actual": true
+    },
+    {
+      "reply": "操作已支付：0.00元；未记账",
+      "expected": false,
+      "actual": true
+    }
+  ],
+  "required": "Validate the complete field fragment including prefix (only whitespace/list marker), not the positive suffix alone; retain all same/later-clause execution and signed nonzero checks.",
+  "pure_offline_only": true,
+  "model_calls": 0,
+  "postgres_access": false,
+  "raw_second_run_status": "failed"
+}

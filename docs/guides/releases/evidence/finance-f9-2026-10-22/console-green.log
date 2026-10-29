@@ -1,0 +1,77 @@
+.................                                                        [100%]
+17 passed in 0.82s
+capabilitiesFirstAndInternalEntries passed
+malformedCapabilitiesStopAllCalls passed
+summariesKeepIndependentTotalAndNoOriginal passed
+filtersUseMineDraftAndTrimmedQuery passed
+delayedResponsesCannotReplaceNewPage passed
+paginationSerializesAndRejectsObsoleteButtons passed
+pendingWritesPreserveFiltersAndRequest passed
+internalOverviewAndOperationNoticesUseAllowedCalls passed
+failedPaginationCanRetrySameCursor passed
+lateCapabilityAndGeneralModeStayScoped passed
+supersededPaginationAndFailuresStayQuiet passed
+node --check packages/xuanpu-console/src/xuanpu_console/static/finance.js: exit 0
+node --check packages/xuanpu-console/src/xuanpu_console/static/finance_operations.js: exit 0
+node --check packages/xuanpu-console/tests/finance_records_behavior.cjs: exit 0
+node --check packages/xuanpu-console/tests/finance_records_list_behavior.cjs: exit 0
+uv run ruff check --select F,S108,I,TC packages/xuanpu-console: exit 0
+All checks passed!
+
+Unicode与内部异常通知修复后的最终验证
+uv run pytest packages/xuanpu-console/tests -q: exit 0
+.................                                                        [100%]
+17 passed in 0.80s
+node packages/xuanpu-console/tests/finance_records_list_behavior.cjs packages/xuanpu-console/src/xuanpu_console/static: exit 0
+capabilitiesFirstAndInternalEntries passed
+malformedCapabilitiesStopAllCalls passed
+summariesKeepIndependentTotalAndNoOriginal passed
+filtersUseMineDraftAndTrimmedQuery passed
+delayedResponsesCannotReplaceNewPage passed
+paginationSerializesAndRejectsObsoleteButtons passed
+pendingWritesPreserveFiltersAndRequest passed
+internalOverviewAndOperationNoticesUseAllowedCalls passed
+failedPaginationCanRetrySameCursor passed
+lateCapabilityAndGeneralModeStayScoped passed
+supersededPaginationAndFailuresStayQuiet passed
+summaryReasonAndSearchRespectUnicodeCharacters passed
+internalExceptionUsesExactOwnerMaterialMetadata passed
+internalExceptionSearchIsBoundedAndManual passed
+internalExceptionUnmappedAndDeniedNeverGuess passed
+internalExceptionRespectsPendingAndLateNavigation passed
+uv run ruff check --select F,S108,I,TC packages/xuanpu-console: exit 0
+All checks passed!
+git diff --check -- packages/xuanpu-console: exit 0
+node --check packages/xuanpu-console/src/xuanpu_console/static/finance.js: exit 0
+node --check packages/xuanpu-console/src/xuanpu_console/static/finance_operations.js: exit 0
+node --check packages/xuanpu-console/tests/finance_records_behavior.cjs: exit 0
+node --check packages/xuanpu-console/tests/finance_records_list_behavior.cjs: exit 0
+
+异常定位分页失败原游标重试修复验证
+uv run pytest packages/xuanpu-console/tests -q: exit 0
+.................                                                        [100%]
+17 passed in 0.81s
+node packages/xuanpu-console/tests/finance_records_list_behavior.cjs packages/xuanpu-console/src/xuanpu_console/static: exit 0
+capabilitiesFirstAndInternalEntries passed
+malformedCapabilitiesStopAllCalls passed
+summariesKeepIndependentTotalAndNoOriginal passed
+filtersUseMineDraftAndTrimmedQuery passed
+delayedResponsesCannotReplaceNewPage passed
+paginationSerializesAndRejectsObsoleteButtons passed
+pendingWritesPreserveFiltersAndRequest passed
+internalOverviewAndOperationNoticesUseAllowedCalls passed
+failedPaginationCanRetrySameCursor passed
+lateCapabilityAndGeneralModeStayScoped passed
+supersededPaginationAndFailuresStayQuiet passed
+summaryReasonAndSearchRespectUnicodeCharacters passed
+internalExceptionUsesExactOwnerMaterialMetadata passed
+internalExceptionSearchIsBoundedAndManual passed
+internalExceptionUnmappedAndDeniedNeverGuess passed
+internalExceptionRespectsPendingAndLateNavigation passed
+internalExceptionPaginationFailureRetriesSameCursor passed
+internalExceptionOldPaginationFailureCannotRestoreOldScope passed
+node --check packages/xuanpu-console/src/xuanpu_console/static/finance_operations.js: exit 0
+node --check packages/xuanpu-console/tests/finance_records_list_behavior.cjs: exit 0
+uv run ruff check --select F,S108,I,TC packages/xuanpu-console: exit 0
+All checks passed!
+git diff --check -- packages/xuanpu-console: exit 0

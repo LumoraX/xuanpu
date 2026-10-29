@@ -1,0 +1,12 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____ test_unsafe_original_refused_then_humans_resume_after_explicit_restore ____
+packages/xuanpu-finance/tests/test_f13_process.py:49: in test_unsafe_original_refused_then_humans_resume_after_explicit_restore
+    refusal = await refused_original(
+packages/xuanpu-finance/tests/f13_process_helpers.py:166: in refused_original
+    assert response.status_code == 500, {'status': response.status_code,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: {'status': 200, 'code': None, 'content_base64_present': True}
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f13_process.py::test_unsafe_original_refused_then_humans_resume_after_explicit_restore
+1 failed in 2.45s

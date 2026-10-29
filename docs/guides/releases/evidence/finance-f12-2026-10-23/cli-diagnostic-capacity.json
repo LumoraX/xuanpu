@@ -1,0 +1,8 @@
+{
+  "pipe_capacity_single_byte_writes": 512,
+  "pipe_atomic_write_limit": 512,
+  "observed_undrained_bytes_before_key_log": 469,
+  "key_access_log_bytes": 84,
+  "bytes_required_with_next_atomic_log_write": 553,
+  "required_exceeds_capacity": true
+}

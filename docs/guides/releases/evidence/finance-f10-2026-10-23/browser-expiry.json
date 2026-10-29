@@ -1,0 +1,8 @@
+{
+  "ready_age_seconds": 3787.051867723465,
+  "fixture_ttl_seconds": 3600,
+  "observed_console_error": "notification polling credentials invalid at 2026-10-23T01:00:08.072Z",
+  "source": "IdentityWorld.login(expires_in=3600)",
+  "product_authentication_changed": false,
+  "note": "initial reviewer success and collector403 verified; retry attempted after fixture session expired; repeat with new isolated harness"
+}

@@ -1,0 +1,67 @@
+...F.F.                                                                  [100%]
+=================================== FAILURES ===================================
+___________ test_replay_returns_audited_events_with_full_text[local] ___________
+
+world = World(platform=<xuanpu_server.platform.Platform object at 0x10a7a3410>, models=<packages.xuanpu-server.tests.conftest....gEwOUwWbXsj2MBhn9NQ', states=None, python='/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/bin/python')
+step = <class 'packages.xuanpu-server.tests.conftest.Step'>
+read_turn = <function collect at 0x101ed6980>
+
+    async def test_replay_returns_audited_events_with_full_text(
+        world: Any, step: Any, read_turn: Any
+    ) -> None:
+        """回放拿到本轮的事件与拼好的回复全文；``after_seq`` 只取之后的。"""
+        await world.publish()
+        session = await world.platform.sessions.create(world.member, package="support-desk")
+        world.models.script(step(text="第一句。第二句。"))
+        turn = await world.platform.sessions.send_message(world.member, session.session_id, "你好")
+        live = await read_turn(turn)
+    
+        replayed = await world.platform.sessions.replay(
+            world.member, session.session_id, turn.submission_id
+        )
+        kinds = [event["kind"] for event in replayed]
+        assert kinds[0] == "turn_started"
+        assert kinds[-2:] == ["turn_completed", "turn_text"]
+        assert "assistant_text" not in kinds
+>       assert replayed[-1]["data"] == {"text": "第一句。第二句。"}
+E       AssertionError: assert {'text': '第一句...rminal': True} == {'text': '第一句。第二句。'}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Left contains 1 more item:
+E         {'operation_terminal': True}
+E         Use -v to get more diff
+
+packages/xuanpu-server/tests/test_pending_and_replay.py:127: AssertionError
+___________________ test_pending_and_replay_over_http[local] ___________________
+
+world = World(platform=<xuanpu_server.platform.Platform object at 0x10a8751f0>, models=<packages.xuanpu-server.tests.conftest....rAOMYhO8egXa2wm9Yfk', states=None, python='/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/.venv/bin/python')
+step = <class 'packages.xuanpu-server.tests.conftest.Step'>
+
+    async def test_pending_and_replay_over_http(world: Any, step: Any) -> None:
+        """经 HTTP 与 SDK。"""
+        await world.publish()
+        transport = httpx.ASGITransport(app=create_app(world.platform))
+        async with XuanpuClient("http://xuanpu", world.member_key, transport=transport) as client:
+            session = await client.sessions.create("support-desk")
+            world.models.script(
+                step(text="要更新", calls=[("c1", "mcp__crm__update_ticket", {"id": "T-1"})])
+            )
+            events = [event async for event in client.sessions.send(session.session_id, "更新")]
+            pending = await client.sessions.pending(session.session_id)
+            assert pending[0]["request_id"] == events[-1].data["pending"][0]["request_id"]
+            replayed = await client.sessions.replay(session.session_id, events[0].submission_id)
+>           assert replayed[-1] == {
+                "kind": "turn_text", "seq": None, "at": replayed[-1]["at"], "data": {"text": "要更新"},
+            }  # fmt: skip
+E           AssertionError: assert {'kind': 'tur...minal': True}} == {'kind': 'tur...text': '要更新'}}
+E             
+E             Omitting 3 identical items, use -vv to show
+E             Differing items:
+E             {'data': {'text': '要更新', 'operation_terminal': True}} != {'data': {'text': '要更新'}}
+E             Use -v to get more diff
+
+packages/xuanpu-server/tests/test_pending_and_replay.py:167: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-server/tests/test_pending_and_replay.py::test_replay_returns_audited_events_with_full_text[local]
+FAILED packages/xuanpu-server/tests/test_pending_and_replay.py::test_pending_and_replay_over_http[local]
+2 failed, 5 passed in 1.23s

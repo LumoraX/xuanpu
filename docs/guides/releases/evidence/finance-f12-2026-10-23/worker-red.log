@@ -1,0 +1,34 @@
+FFFFF...........                                                         [100%]
+=================================== FAILURES ===================================
+_ test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[downloaded] _
+packages/xuanpu-finance/tests/test_f12_worker.py:75: in test_revocation_at_original_checkpoint_preserves_responsibility_and_worker
+    assert failure is None, f"预期公司撤权不应终止worker：{failure!r}"
+E   AssertionError: 预期公司撤权不应终止worker：ExceptionGroup('unhandled errors in a TaskGroup', [FinanceError('COMPANY_FORBIDDEN: 未获公司财务授权')])
+E   assert ExceptionGroup('unhandled errors in a TaskGroup', [FinanceError('COMPANY_FORBIDDEN: 未获公司财务授权')]) is None
+_ test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[written] _
+packages/xuanpu-finance/tests/test_f12_worker.py:75: in test_revocation_at_original_checkpoint_preserves_responsibility_and_worker
+    assert failure is None, f"预期公司撤权不应终止worker：{failure!r}"
+E   AssertionError: 预期公司撤权不应终止worker：ExceptionGroup('unhandled errors in a TaskGroup', [FinanceError('COMPANY_FORBIDDEN: 未获公司财务授权')])
+E   assert ExceptionGroup('unhandled errors in a TaskGroup', [FinanceError('COMPANY_FORBIDDEN: 未获公司财务授权')]) is None
+_ test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[received] _
+packages/xuanpu-finance/tests/test_f12_worker.py:75: in test_revocation_at_original_checkpoint_preserves_responsibility_and_worker
+    assert failure is None, f"预期公司撤权不应终止worker：{failure!r}"
+E   AssertionError: 预期公司撤权不应终止worker：ExceptionGroup('unhandled errors in a TaskGroup', [FinanceError('COMPANY_FORBIDDEN: 未获公司财务授权')])
+E   assert ExceptionGroup('unhandled errors in a TaskGroup', [FinanceError('COMPANY_FORBIDDEN: 未获公司财务授权')]) is None
+_ test_direct_original_checkpoint_checks_current_authority_and_lease[False-prepare] _
+packages/xuanpu-finance/tests/test_f12_worker.py:106: in test_direct_original_checkpoint_checks_current_authority_and_lease
+    with pytest.raises(FinanceError, match="LEASE_LOST" if expired else "COMPANY_FORBIDDEN"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE FinanceError
+_ test_direct_original_checkpoint_checks_current_authority_and_lease[False-receive] _
+packages/xuanpu-finance/tests/test_f12_worker.py:106: in test_direct_original_checkpoint_checks_current_authority_and_lease
+    with pytest.raises(FinanceError, match="LEASE_LOST" if expired else "COMPANY_FORBIDDEN"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE FinanceError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f12_worker.py::test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[downloaded]
+FAILED packages/xuanpu-finance/tests/test_f12_worker.py::test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[written]
+FAILED packages/xuanpu-finance/tests/test_f12_worker.py::test_revocation_at_original_checkpoint_preserves_responsibility_and_worker[received]
+FAILED packages/xuanpu-finance/tests/test_f12_worker.py::test_direct_original_checkpoint_checks_current_authority_and_lease[False-prepare]
+FAILED packages/xuanpu-finance/tests/test_f12_worker.py::test_direct_original_checkpoint_checks_current_authority_and_lease[False-receive]
+5 failed, 11 passed in 6.77s

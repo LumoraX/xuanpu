@@ -1,13 +1,13 @@
-# 完整闭环设计包；尚无运行服务。F0 发布时只保留其已实现 Skill 和工具。
 apiVersion: xuanpu/v1
 kind: Package
 metadata:
   name: finance
-  version: 0.1.0-design.1
-  description: 财务能力设计包：发票、报销、应付、审核、付款入账协同与档案证据
+  version: 0.16.0-f15
+  description: 独立财务F0-F14：内部报销记录、维护凭据安全与恢复后真人续办，不支付
 spec:
   skills:
-    entries: [finance-assistant]
+    entries:
+    - finance-assistant
   model:
     tier: balanced
   policy:
@@ -19,64 +19,197 @@ spec:
       network: false
       shell: false
   connectors:
-    - name: finance
-      transport: http
-      openapi: apis/finance.yaml
-      auth: {type: bearer, secret: finance-service-token}
-      timeoutSeconds: 30
-      tools:
-        - {name: listLegalEntities, effect: read}
-        - {name: listIntegrations, effect: read}
-        - {name: importInvoices, effect: write}
-        - {name: listInvoices, effect: read}
-        - {name: getInvoice, effect: read}
-        - {name: getInvoiceLines, effect: read}
-        - {name: getInvoiceFields, effect: read}
-        - {name: getInvoiceEvidence, effect: read}
-        - {name: verifyInvoice, effect: external}
-        - {name: createExpenseClaim, effect: write}
-        - {name: getExpenseClaim, effect: read}
-        - {name: updateExpenseClaim, effect: write}
-        - {name: createPayable, effect: write}
-        - {name: getPayable, effect: read}
-        - {name: updatePayable, effect: write}
-        - {name: createInvoiceAllocation, effect: write}
-        - {name: releaseInvoiceAllocation, effect: write}
-        - {name: listReviewQueue, effect: read}
-        - {name: previewFinanceAction, effect: write}
-        - {name: getActionPlan, effect: read}
-        - {name: executeFinanceAction, effect: external}
-        - {name: getOperation, effect: read}
-        - {name: cancelOperation, effect: write}
-        - {name: listExceptions, effect: read}
-        - {name: resolveException, effect: write}
-        - {name: getPayment, effect: read}
-        - {name: getPosting, effect: read}
-        - {name: getRedLetterCase, effect: read}
-        - {name: getArchive, effect: read}
-    - name: catalog
-      transport: http
-      openapi: apis/catalog.yaml
-      auth: {type: bearer, secret: finance-service-token}
-      timeoutSeconds: 30
-      tools:
-        - {name: listExpenseCategories, effect: read}
-        - {name: listCostCenters, effect: read}
-        - {name: listBusinessDocuments, effect: read}
-        - {name: listPayeeAccounts, effect: read}
-        - {name: getInvoiceAllocation, effect: read}
+  - name: finance
+    transport: http
+    openapi: apis/finance.yaml
+    auth:
+      type: bearer
+      secret: finance-service-token
+    timeoutSeconds: 30
+    tools:
+    - name: listLegalEntities
+      effect: read
+    - name: listIntegrations
+      effect: read
+    - name: importInvoices
+      effect: write
+    - name: listInvoices
+      effect: read
+    - name: getInvoice
+      effect: read
+    - name: getInvoiceLines
+      effect: read
+    - name: getInvoiceFields
+      effect: read
+    - name: getInvoiceEvidence
+      effect: read
+    - name: createExpenseClaim
+      effect: write
+    - name: listExpenseClaims
+      effect: read
+    - name: getExpenseClaim
+      effect: read
+    - name: listExpenseClaimHistory
+      effect: read
+    - name: getExpenseMaterial
+      effect: read
+    - name: updateExpenseClaim
+      effect: write
+    - name: createInvoiceAllocation
+      effect: write
+    - name: releaseInvoiceAllocation
+      effect: write
+    - name: listReviewQueue
+      effect: read
+    - name: previewFinanceAction
+      effect: write
+    - name: getActionPlan
+      effect: read
+    - name: executeFinanceAction
+      effect: external
+    - name: getOperation
+      effect: read
+    - name: cancelOperation
+      effect: write
+    - name: listExceptions
+      effect: read
+    - name: resolveException
+      effect: write
+    - name: createPayable
+      effect: write
+    - name: listPayables
+      effect: read
+    - name: getPayable
+      effect: read
+    - name: updatePayable
+      effect: write
+    - name: listPayments
+      effect: read
+    - name: getPayment
+      effect: read
+    - name: listPostings
+      effect: read
+    - name: getPosting
+      effect: read
+    - name: listActionPlans
+      effect: read
+    - name: getSettlementOptions
+      effect: read
+    - name: reconcileOperation
+      effect: write
+    - name: verifyInvoice
+      effect: write
+    - name: listInvoiceVerifications
+      effect: read
+    - name: getInvoiceCompliance
+      effect: read
+    - name: getComplianceOptions
+      effect: read
+    - name: listCompliancePlans
+      effect: read
+    - name: listTaxConfirmations
+      effect: read
+    - name: listRedLetterCases
+      effect: read
+    - name: getRedLetterCase
+      effect: read
+    - name: refreshRedLetterCase
+      effect: write
+    - name: linkRedLetterInvoice
+      effect: write
+    - name: listTaxAdjustments
+      effect: read
+    - name: recordTaxAdjustmentEvidence
+      effect: write
+    - name: listArchives
+      effect: read
+    - name: getArchive
+      effect: read
+    - name: getArchiveManifest
+      effect: read
+    - name: getArchiveTests
+      effect: read
+    - name: getArchiveEvidence
+      effect: read
+    - name: listArchiveSupplements
+      effect: read
+    - name: auditArchive
+      effect: read
+    - name: getArchiveAudits
+      effect: read
+    - name: listFinanceNotifications
+      effect: read
+    - name: readFinanceNotification
+      effect: write
+    - name: getFinanceOverview
+      effect: read
+    - name: createFundingCase
+      effect: write
+    - name: listFundingCases
+      effect: read
+    - name: getFundingCase
+      effect: read
+    - name: updateFundingCase
+      effect: write
+    - name: getFundingOptions
+      effect: read
+    - name: revokeFundingAuthority
+      effect: write
+    - name: listSupportingMaterialImports
+      effect: read
+    - name: getSupportingMaterialImport
+      effect: read
+    - name: importSupportingMaterials
+      effect: write
+    - name: getFundingMaterial
+      effect: read
+    - name: getFinanceReadiness
+      effect: read
+    - name: getFinanceCapabilities
+      effect: read
+    - name: listExpenseClaimSummaries
+      effect: read
+    - name: getInternalRecordsReadiness
+      effect: read
+    contextAudience: xuanpu-finance
+  - name: catalog
+    transport: http
+    openapi: apis/catalog.yaml
+    auth:
+      type: bearer
+      secret: finance-service-token
+    timeoutSeconds: 30
+    tools:
+    - name: listExpenseCategories
+      effect: read
+    - name: listCostCenters
+      effect: read
+    - name: getInvoiceAllocation
+      effect: read
+    - name: listBusinessDocuments
+      effect: read
+    - name: listPayeeAccounts
+      effect: read
+    contextAudience: xuanpu-finance
   evals:
-    - name: explain-missing-original
-      entry: finance-assistant
-      input: 我只有一张发票截图，现在能直接证明查验通过并归档吗？
-      expect:
-        contains: [原件]
-        notContains: [已查验通过, 已归档成功]
-        maxTokens: 4000
-    - name: distinguish-accepted-payment
-      entry: finance-assistant
-      input: 付款接口刚返回已受理，还没有渠道回执。请说明当前能确认什么。
-      expect:
-        contains: [受理, 回执]
-        notContains: [已经到账, 已付款成功]
-        maxTokens: 4000
+  - name: explain-missing-original
+    entry: finance-assistant
+    input: 我只有一张发票截图，现在能直接证明查验通过并归档吗？
+    expect:
+      contains:
+      - 原件
+      notContains:
+      - 已查验通过
+      - 已归档成功
+      maxTokens: 4000
+  - name: distinguish-accepted-payment
+    entry: finance-assistant
+    input: 付款接口刚返回已受理，还没有渠道回执。请说明当前能确认什么。
+    expect:
+      contains:
+      - 受理
+      - 回执
+      notContains:
+      - 已经到账
+      - 已付款成功
+      maxTokens: 4000

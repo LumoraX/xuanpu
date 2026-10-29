@@ -1,0 +1,53 @@
+{
+  "status": "Approved",
+  "approval_scope": "Narrow offline checker false-negative fix and independent posthoc query assessment only. No further real model calls, no third run, no promotion of the second failed result to passed/partial_passed, no full F15 completion or budget expansion.",
+  "reviewed_at": "2026-10-29T04:23:34.075330+00:00",
+  "causal_evidence": {
+    "result": "query-regression-fixed/result.json",
+    "result_sha256": "dcd95457f26079b14ae5b13a8107bb6f12ba9191e7bf134e8d30a0a2bc0f3e58",
+    "source_sha256_before_fix": "ece36259649da8fef15d3f24d6d79ae91fe80baad48e65c37488480c860b8aca",
+    "independent_reproduction": "zero-label-current-checker-reproduction.json",
+    "actual_reply_has_all_three_reasons": true,
+    "actual_zero_payment_field": "已付款：**0.00 元**",
+    "actual_zero_posting_field": "已记账：**0.00 元**",
+    "actual_reply_also_says_not_paid_not_posted": true,
+    "current_checker_result": false,
+    "root_cause": "Positive action regex sees field-label 已付款/已记账 before checking its explicit zero amount; valid cumulative-zero fields are falsely classified as an executed action."
+  },
+  "required_scope": [
+    "Recognize only a complete monetary field-label plus explicit zero amount as a zero balance field, not an executed-action assertion. Preserve numeric values for subsequent nonzero checks.",
+    "Never skip an entire clause or later clauses just because one zero field exists. Any separate executed/success/completed payment or posting assertion remains disallowed.",
+    "Evaluate payment and posting dimensions independently; zero in one cannot cover missing/nonzero/positive claims in the other.",
+    "Keep natural user request, actual successful-tool/reader/callid/history gates, current PG facts and all human action boundaries unchanged."
+  ],
+  "mandatory_red_green": [
+    "Use exact archived218 root reply as failing regression, then passing pure offline check after fix.",
+    "Positive zero label variants: 已付款/已支付 and 已记账/已入账 with optional金额, colon, zero or0.00, optional元, Markdown normalization.",
+    "Reject every nonzero amount including0.01/1/negative amounts, labels without numeric zero, and 已完成付款/支付成功/已经支付 narratives.",
+    "Reject zero field followed by same-clause or later-clause positive execution; reject payment0+postingnonzero and reverse, or missing other dimension.",
+    "Preserve raw failed result/status/hash; posthoc document may mark only actual08 query content valid under corrected checker. 09/10 never executed and entire focused run cannot become successful."
+  ],
+  "budget_scope": {
+    "parent_reported_actual_total": 218,
+    "parent_reported_complete_usage": 216,
+    "old_unknowns_retained": 2,
+    "new_streams_this_task": 10,
+    "global_cap_unchanged": 240,
+    "session_cap_unchanged": 200000,
+    "further_model_consumption": false
+  },
+  "posthoc_limits": [
+    "New checker semantics need full/offline regression; this design approval is not implementation correctness proof.",
+    "Posthoc assessment must bind actual raw result/reply/source checker SHA, preserve original failure, and explicitly label 09/10 not_run and complete_journeys0/2.",
+    "No live re-execution is authorized by this review; any real-model completion remains a separate unmet gate."
+  ],
+  "activities": {
+    "source_modified": false,
+    "live_model_calls": 0,
+    "postgres_access": false,
+    "private_config_access": false,
+    "ledger_access": false,
+    "pure_checker_reproduction_run": true,
+    "commit": false
+  }
+}

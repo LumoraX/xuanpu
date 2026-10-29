@@ -1,0 +1,21 @@
+{
+  "finance": {
+    "wheel": "xuanpu_finance-2026.10.21.4-py3-none-any.whl",
+    "sha256": "01552af0ecf37387c9ee7ebb7dfcef6dd42f4797747809f307062d248398dabd",
+    "source_files": 89,
+    "byte_matching": true
+  },
+  "image": {
+    "tag": "xuanpu-finance:2026.10.21.4",
+    "id": "sha256:6f20ac8e1fc4a1a039233d0d7aa95bda919c489c834ab5775d2c37e61e61d0f6",
+    "uid": 10001,
+    "source_files": 89,
+    "byte_matching": true
+  },
+  "console": {
+    "wheel": "xuanpu_console-2026.10.21.5-py3-none-any.whl",
+    "sha256": "5e78112444f5a893de2bc039a40313af29ab09aeda5123bc3896bfabf6d5d19c",
+    "source_files": 19,
+    "byte_matching": true
+  }
+}

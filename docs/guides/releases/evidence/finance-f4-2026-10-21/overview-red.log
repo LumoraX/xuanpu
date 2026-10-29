@@ -1,0 +1,36 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+____ test_integrations_reflect_configured_simulation_and_internal_approval _____
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10bd70920>
+
+    async def test_integrations_reflect_configured_simulation_and_internal_approval(store: Any) -> None:
+        """F3隔离通道和内部审批不能继续固定显示未配置。"""
+        owner,tax,_=await configured(store)
+        items={item['kind']:item for item in (await store.list_integrations(owner,'e'))['items']}
+>       assert items['tax']['status']=='configured_simulation'
+E       AssertionError: assert 'unconfigured' == 'configured_simulation'
+E         
+E         - configured_simulation
+E         + unconfigured
+
+packages/xuanpu-finance/tests/test_f4_overview.py:16: AssertionError
+________ test_overview_counts_real_scoped_queues_and_rejects_collector _________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10be776b0>
+
+    async def test_overview_counts_real_scoped_queues_and_rejects_collector(store: Any) -> None:
+        """当前reviewer可见独立聚合，collector没有公司运营数据权限。"""
+        owner,tax,_=await configured(store)
+        await invoice(store)
+        op=await store.verify_invoice(owner,'blue',1,'v')
+        await store.seed_company('t','other','另一公司','OTHER')
+>       overview=await store.get_finance_overview(tax,'e')
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'FinanceStore' object has no attribute 'get_finance_overview'
+
+packages/xuanpu-finance/tests/test_f4_overview.py:29: AttributeError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f4_overview.py::test_integrations_reflect_configured_simulation_and_internal_approval
+FAILED packages/xuanpu-finance/tests/test_f4_overview.py::test_overview_counts_real_scoped_queues_and_rejects_collector
+2 failed in 0.69s

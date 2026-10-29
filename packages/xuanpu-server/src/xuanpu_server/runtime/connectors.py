@@ -30,6 +30,7 @@ from xuanpu_spec import OpenApiError, load_openapi
 
 from xuanpu_server.audit import digest_arguments
 from xuanpu_server.errors import PackageInvalidError, PlatformError, RuntimeUnavailableError
+from xuanpu_server.runtime.call_context import bind_call_context
 from xuanpu_server.runtime.connector_process import ObservingExecutor
 from xuanpu_server.runtime.gate_audit import CANCELLED, ConnectorToolInfo, gate_call_data
 from xuanpu_server.runtime.http_api import ConnectorCallError, HttpApiClient, resolve_base_url
@@ -50,6 +51,7 @@ if TYPE_CHECKING:
 
     from xuanpu_server.audit import AuditLog
     from xuanpu_server.connections.managed_http import ManagedHttpTools
+    from xuanpu_server.runtime.call_context import CallContextSigner
     from xuanpu_server.runtime.events import SubmissionIndex
     from xuanpu_server.runtime.mcp_connectors import Invoke, McpRun, McpTool
     from xuanpu_server.secrets import SecretVault
@@ -341,7 +343,12 @@ class ConnectorGate:
             )
         effect_store, receipt = await self._task_intent(ctx,digest)
         try:
-            text, is_error = await asyncio.wait_for(self._invoke(args) if self._invoke_context is None else self._invoke_context(args,ctx), timeout=self._timeout)
+            session = self._submissions.session_of(ctx.extras.get("submission_id"), ctx.thread_id)
+            with bind_call_context(session, ctx.call_id):
+                text, is_error = await asyncio.wait_for(
+                    self._invoke(args) if self._invoke_context is None else self._invoke_context(args, ctx),
+                    timeout=self._timeout,
+                )
         except TimeoutError:
             await self._record(
                 ctx, digest, decision="allowed", started=started, is_error=True, detail="timeout"
@@ -401,6 +408,7 @@ class ConnectorSet:
         managed_connections: ManagedHttpTools | None = None,
         package_digest: str = "",
         strict_cleanup: bool = False,
+        context_signer: CallContextSigner | None = None,
     ) -> None:
         """
         Args:
@@ -415,6 +423,7 @@ class ConnectorSet:
             call_timeout_seconds: 单次工具调用的超时（http 与 remote 连接器另受清单里的
                 超时约束，取小的）。
             startup_timeout_seconds: 启动（或连上）连接器并列出工具的超时。
+            context_signer: 平台部署配置允许的调用签名器；None 表示未启用。
         """
         self._managed_connections=managed_connections
         self._package_digest=package_digest
@@ -426,6 +435,7 @@ class ConnectorSet:
         self._base_env = dict(base_env)
         self._call_timeout = call_timeout_seconds
         self._startup_timeout = startup_timeout_seconds
+        self._context_signer = context_signer
         # stdio 与 remote 两种 MCP 连接器的运行实例；先登记再启动，启动到一半失败也归 close() 收拾
         self._mcp: list[McpRun] = []
         self._http_clients: list[HttpApiClient] = []
@@ -554,8 +564,15 @@ class ConnectorSet:
             # 而不是跑到一半才失败。
             # 取值不保留，调用时再现取
             await self._vault.get(self._tenant_id, spec.auth.secret)
+        base_url = resolve_base_url(spec, document)
+        if spec.context_audience is not None:
+            if self._context_signer is None:
+                raise PackageInvalidError("连接器要求调用签名，但平台未配置 call_context")
+            self._context_signer.require_audience(base_url, spec.context_audience)
         client = HttpApiClient(
-            base_url=resolve_base_url(spec, document),
+            base_url=base_url,
+            context_audience=spec.context_audience,
+            context_signer=self._context_signer,
             auth=spec.auth,
             tenant_id=self._tenant_id,
             vault=self._vault,

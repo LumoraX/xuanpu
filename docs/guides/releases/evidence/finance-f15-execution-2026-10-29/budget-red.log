@@ -1,0 +1,32 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_______________ test_local_budget_mismatch_records_failed_scope ________________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2893/test_local_budget_mismatch_rec0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c69a9f0>
+
+    @pytest.mark.asyncio
+    async def test_local_budget_mismatch_records_failed_scope(tmp_path: Path, monkeypatch):
+        """旅程额度冲突也必须留failed，不留下看似仍运行的局部报告。"""
+        ledger = tmp_path / 'budget.json'
+        runtime.Budget(ledger, 'focus', max_streams=12)
+        monkeypatch.setattr(cli, 'private_text', lambda path:
+                            'postgresql://test:unused@127.0.0.1:5432/finance_test')
+        monkeypatch.setattr(cli, 'model_config', lambda path: {'api_key': 'offline',
+                                                            'base_url': 'http://offline'})
+        options = SimpleNamespace(scenario='full', dsn_file=tmp_path / 'dsn',
+            model_config=tmp_path / 'config', state=tmp_path / 'state',
+            evidence=tmp_path / 'evidence', ledger=ledger, journey='focus')
+        with pytest.raises(ValueError, match='JOURNEY_LIMIT_MISMATCH'):
+            await cli.run(options)
+        result = json.loads((options.evidence / 'result.json').read_text())
+>       assert result['status'] == 'failed'
+E       AssertionError: assert 'running' == 'failed'
+E         
+E         - failed
+E         + running
+
+packages/xuanpu-finance/tests/test_f15_execution.py:170: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f15_execution.py::test_local_budget_mismatch_records_failed_scope
+1 failed in 0.96s

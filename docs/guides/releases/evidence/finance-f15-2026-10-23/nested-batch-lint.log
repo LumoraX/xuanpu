@@ -1,0 +1,112 @@
+C901 `assistant_actions_router` is too complex (18 > 10)
+  --> packages/xuanpu-server/src/xuanpu_server/api/assistant_actions.py:25:5
+   |
+25 | def assistant_actions_router(platform: Platform) -> APIRouter:
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+26 |     """恢复、确认、取消草稿都须通过当前员工身份。"""
+27 |     router = APIRouter(prefix="/v1/assistant/proposals")
+   |
+
+C901 `reminders_router` is too complex (13 > 10)
+  --> packages/xuanpu-server/src/xuanpu_server/api/reminders.py:91:5
+   |
+91 | def reminders_router(platform: Platform) -> APIRouter:
+   |     ^^^^^^^^^^^^^^^^
+92 |     """注册本人提醒、通知及事件路由。"""
+93 |     router = APIRouter()
+   |
+
+C901 `workspace_router` is too complex (15 > 10)
+  --> packages/xuanpu-server/src/xuanpu_server/api/workspace.py:58:5
+   |
+58 | def workspace_router(platform: Platform) -> APIRouter:
+   |     ^^^^^^^^^^^^^^^^
+59 |     """路由仅翻译请求，不复制领域授权和校验规则。"""
+60 |     router = APIRouter(prefix="/v1/workspace")
+   |
+
+C901 `_with_history` is too complex (11 > 10)
+   --> packages/xuanpu-server/src/xuanpu_server/assistant.py:160:15
+    |
+158 |             self._tasks.discard(task)
+159 |
+160 |     async def _with_history(self, who: Principal, body: RouteBody) -> RouteOutcome:
+    |               ^^^^^^^^^^^^^
+161 |         """请求身份稳定重试；只持久化本人对话，模型建议仍不产生业务写入。"""
+162 |         p = self._platform
+    |
+
+C901 `_resolve` is too complex (22 > 10)
+   --> packages/xuanpu-server/src/xuanpu_server/assistant.py:324:15
+    |
+322 |         return outcome
+323 |
+324 |     async def _resolve(
+    |               ^^^^^^^^
+325 |         self,
+326 |         who: Principal,
+    |
+
+C901 `_sample` is too complex (11 > 10)
+   --> packages/xuanpu-server/src/xuanpu_server/assistant.py:499:15
+    |
+497 |         raise RuntimeUnavailableError("此对话历史较长，请开始新对话")
+498 |
+499 |     async def _sample(
+    |               ^^^^^^^
+500 |         self, who: Principal, payload: str, parts: list[dict[str, Any]] | None = None,
+501 |         *, system_prompt: str | None = None, audit_kind: str = "assistant_route_sampled",
+    |
+
+C901 `_apply` is too complex (15 > 10)
+  --> packages/xuanpu-server/src/xuanpu_server/proactive/actions.py:65:5
+   |
+65 | def _apply(service: ProactiveService, state: WorkspaceState, record: dict[str, Any], body: ActionInput, now: float) -> None:
+   |     ^^^^^^
+66 |     """仅修改用户明确选择的字段，保留已核实和推测的边界。"""
+67 |     item = state.items.get(record.get('item_id', ''))
+   |
+
+C901 `_followup` is too complex (11 > 10)
+   --> packages/xuanpu-server/src/xuanpu_server/proactive/service.py:256:9
+    |
+254 |             return True
+255 |
+256 |     def _followup(self, state: WorkspaceState, tenant: str, user: str, candidate: dict[str, Any],
+    |         ^^^^^^^^^
+257 |                   evidence: dict[str, dict[str, Any]], now: float) -> None:
+258 |         """稳定事项身份、证据版本和用户决定共同避免重复催办。"""
+    |
+
+C901 `_prepare_reminders` is too complex (11 > 10)
+   --> packages/xuanpu-server/src/xuanpu_server/reminders/memory.py:152:9
+    |
+150 |         }
+151 |
+152 |     def _prepare_reminders(
+    |         ^^^^^^^^^^^^^^^^^^
+153 |         self,
+154 |         tenant: str,
+    |
+
+C901 `_launch` is too complex (11 > 10)
+   --> packages/xuanpu-server/src/xuanpu_server/runtime/sandbox.py:378:15
+    |
+376 |         )
+377 |
+378 |     async def _launch(
+    |               ^^^^^^^
+379 |         self,
+380 |         package: ResolvedPackage,
+    |
+
+C901 `recycle` is too complex (14 > 10)
+   --> packages/xuanpu-server/src/xuanpu_server/workspace/rules.py:120:5
+    |
+120 | def recycle(
+    |     ^^^^^^^
+121 |     state: WorkspaceState, item: dict[str, Any], restoring: bool, now: float
+122 | ) -> list[dict[str, Any]]:
+    |
+
+Found 11 errors.

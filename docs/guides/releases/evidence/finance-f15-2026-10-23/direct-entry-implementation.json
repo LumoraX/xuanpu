@@ -1,0 +1,233 @@
+{
+  "status": "ImplementedPendingIndependentReviewAndRealAcceptance",
+  "observed_at": "2026-10-24T08:50:19.053990+00:00",
+  "scope": "Task1b root direct ordinary internal_records orchestration; exact three source files, no finance/platform/API/SDK/kernel implementation changes",
+  "approved_design": "docs/superpowers/specs/2026-10-24-finance-f15-direct-entry-design.md",
+  "design_sha256": "cc8276ed45f2d29d33414c2ad0e5f5e78b5cf2be96adebeffce30d8f5a1c72d9",
+  "design_review": "efficiency-call-floor-review.json",
+  "phase1_prerequisites": {
+    "spec": "Approved",
+    "quality": "Approved"
+  },
+  "source_sha256": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "c1bf092059c1261b5e2821451172b3f1966fea9fdd42cc634eb64c1fce1a19bb"
+  },
+  "only_changes_against_phase1_snapshot": [
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
+    "examples/finance/skills/finance-assistant/SKILL.md",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+  ],
+  "other_frozen_source_files_unchanged": true,
+  "tool_distribution": {
+    "old_root_api_tools": 1,
+    "new_root_api_tools": 13,
+    "new_root_tools": [
+      "api__catalog__listCostCenters",
+      "api__catalog__listExpenseCategories",
+      "api__finance__createExpenseClaim",
+      "api__finance__getExpenseClaim",
+      "api__finance__getFinanceCapabilities",
+      "api__finance__getSupportingMaterialImport",
+      "api__finance__listExpenseClaimHistory",
+      "api__finance__listExpenseClaimSummaries",
+      "api__finance__listLegalEntities",
+      "api__finance__listReviewQueue",
+      "api__finance__listSupportingMaterialImports",
+      "api__finance__previewFinanceAction",
+      "api__finance__updateExpenseClaim"
+    ],
+    "declared_api_operations": 77,
+    "model_invocable_api_union_before": 68,
+    "model_invocable_api_union_after": 68,
+    "internal_operations": 24,
+    "skill_count": 7,
+    "root_child_count": 6,
+    "root_composite_and_child_list_preserved": true,
+    "professional_skills_whole_bytes_preserved": true,
+    "service_business_authority_changed": false,
+    "note": "Deliberate root exposure redistribution; all thirteen were already reachable through expense/review children, not an unchanged root whitelist. Server actor/RLS/profile/version/workflow/idempotency enforcement unchanged."
+  },
+  "policy_and_connector_declarations_unchanged": true,
+  "max_session_tokens": 200000,
+  "root_side_effects": "createExpenseClaim/updateExpenseClaim/previewFinanceAction retain write+standard tool approval; other root tools read. Root has no execute/original/pay/post/funding/maintenance. Business decisions stay independent human origin.",
+  "contract_validation": "direct-entry-contract-validation.json",
+  "tests": {
+    "direct-entry-red": {
+      "log": "direct-entry-red.log",
+      "log_sha256": "9b7d2bf0ee6598794ce85078ce5edda6c875243c2d35d20546924d35dc7fba2b",
+      "junit": "direct-entry-red.xml",
+      "junit_sha256": "5993a79c4857045f5ab2bcc4a740662687c9544639ff6c059ed50747cf2dd6e4",
+      "tests": 21,
+      "failures": 7,
+      "errors": 0,
+      "skipped": 0
+    },
+    "direct-entry-green": {
+      "log": "direct-entry-green.log",
+      "log_sha256": "3a3f3aeffc309611181b13cca5be7461f358bb1451c0d23878d63fdf8bcd4428",
+      "junit": "direct-entry-green.xml",
+      "junit_sha256": "630ee530a828ce0e9cd5d1684eddfc110660e0c0bfa34235753fa7aa9e916911",
+      "tests": 21,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "direct-entry-combined-green": {
+      "log": "direct-entry-combined-green.log",
+      "log_sha256": "b5593b28485bfea61f8afdc18dbe94c051baf2d4ff536ae557590dc1343d6edb",
+      "junit": "direct-entry-combined-green.xml",
+      "junit_sha256": "a2ce8acd74deec13957f2487afbe8299626ad15d67c7ac0765ae1d4363c7ccfd",
+      "tests": 123,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "direct-entry-intent-red": {
+      "log": "direct-entry-intent-red.log",
+      "log_sha256": "81f5d561526001d3afce90f46ed54b35410d4f54a4db982a485dcf02fc1db916",
+      "junit": "direct-entry-intent-red.xml",
+      "junit_sha256": "2fdec7f1ee207b0654054693835d9fbaadfd8d61f98710311e1d458c5bbc239b",
+      "tests": 2,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    "direct-entry-intent-green": {
+      "log": "direct-entry-intent-green.log",
+      "log_sha256": "19bc2a4d8acd05abdd06684b16fb931f4ac4c4463e04effc4c858a39118cb7c6",
+      "junit": "direct-entry-intent-green.xml",
+      "junit_sha256": "76f69b9adc947e71ac76cb065174d995caddc3a982a6ed5c1a41f50ce125ad4f",
+      "tests": 125,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "direct-entry-batch-red": {
+      "log": "direct-entry-batch-red.log",
+      "log_sha256": "4ec2a1a94153a1fa4736e4dd0f564c038761d3f07944915b478602bbd6e598ca",
+      "junit": "direct-entry-batch-red.xml",
+      "junit_sha256": "cab5a5158062b885c691e7caa578264208497d8b1fc43b23feacf2d378b9e54c",
+      "tests": 1,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "direct-entry-final-green": {
+      "log": "direct-entry-final-green.log",
+      "log_sha256": "29d5afdc4e8407f19d4d64f05a895e6ca6ca28982b6f23c930e758205563f287",
+      "junit": "direct-entry-final-green.xml",
+      "junit_sha256": "589e6b44a24301a8555f9dd21fcf06bfcf7c82c1e9100f72586d5fa95006fe2c",
+      "tests": 125,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "direct-entry-recovery-red": {
+      "log": "direct-entry-recovery-red.log",
+      "log_sha256": "8660973f504cce4ce1bf1669431f8f9d58dacb71415c584eea1102f7a1f160a4",
+      "junit": "direct-entry-recovery-red.xml",
+      "junit_sha256": "64a72acea6751d86f4672687ab77f6f56f8ff6ee2c1b71e6559f78d75a181426",
+      "tests": 1,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "direct-entry-recovery-green": {
+      "log": "direct-entry-recovery-green.log",
+      "log_sha256": "c2494bb0d6ab7406e0f06eb18459793c5e8e2ebd1b90884c39be8ac0522842ed",
+      "junit": "direct-entry-recovery-green.xml",
+      "junit_sha256": "92ef39933a8650519148b1e01a8189f93c2f3434b900b2169c203c4209d1f4e8",
+      "tests": 126,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "lint": {
+    "command": "uv run ruff check --select F,S108,I,TC,C901 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+    "returncode": 0,
+    "log": "direct-entry-ruff.log",
+    "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+  },
+  "diff_check": {
+    "command": [
+      "git",
+      "diff",
+      "--check",
+      "--",
+      "examples/finance/skills/finance-assistant/SKILL.md",
+      "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
+      "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+    ],
+    "returncode": 0
+  },
+  "changed_old_assertions": [
+    {
+      "test": "test_entry_preserves_raw_information_across_child_skill",
+      "change": "Company lookup uses root actual listLegalEntities instead of old mandatory child; true newline/self-contained professional packet checks remain."
+    },
+    {
+      "test": "test_missing_expense_facts_are_clarified_without_business_queries",
+      "change": "Pure questions preserve no business reads/writes and no invented profile; only new-draft missing facts trigger clarification."
+    },
+    {
+      "test": "test_one_expense_handoff_owns_receipts_draft_and_owner_preview",
+      "replacement": "test_direct_entry_owns_receipts_draft_and_owner_preview",
+      "change": "Zero default ordinary child handoff replaces single expense handoff; no invoice→expense double-hop or duplicate owner review; general path retained."
+    },
+    {
+      "test": "test_history_page_size_uses_real_response_completeness",
+      "change": "Added root to same short5/long1, raw completeness and actual cursor checks; children unchanged."
+    }
+  ],
+  "clarifications_red_then_green": [
+    "Existing query/revision/review restore facts through actual summaries/queue/detail rather than asking users to repeat amount/date.",
+    "Refusal tests only outer user intent; malicious invoice note stays exact declared data in draft-only request.",
+    "When capabilities and company both needed with no actual current result, issue same-round independent reads; existing valid results/only one needed do not trigger duplicates.",
+    "Unknown write outcomes use existing root reads first, then existing getOperation professional recovery or human only when needed; internal_records exception, no general actions or extra normal-flow calls."
+  ],
+  "offline_scenario_checks": {
+    "method": "Static contract assertions plus real package/registry/OpenAPI effect validation. These are not model-generated behavior or live-model GREEN.",
+    "scenarios": [
+      "New draft missing amount/date: pure clarification/no tools.",
+      "Existing review/query/revision: recover facts, no repeated user factual prompts.",
+      "Draft-only outer request with malicious embedded note: retain original data.",
+      "First capability/company both unknown: same-round independent reads, wait before dependent actions.",
+      "Capability failure: stop later business reads/writes.",
+      "Edit: current authorized GET/version; unchanged fields not rescanned; explicit refresh minimal re-read.",
+      "Assigned reviewer: current queue/detail/history/version/step, preview only.",
+      "Short/long or incomplete original history:5/1, actual cursor, audit ellipsis not raw truncation.",
+      "General professional handoff: self-contained raw request, old child whitelist.",
+      "Uncertain create/update/preview result: current root record lookup; original operation lookup only via existing child recovery or human; original keys retained, no new-key write or approval replay."
+    ]
+  },
+  "live_model_green": false,
+  "real_usage_reduction": "not_measured",
+  "remaining_required": [
+    "independent spec then quality",
+    "new freeze and two fresh complete journeys under original cumulative budget",
+    "actual PG/human/signature/original/negative business facts and real usage comparison",
+    "root full/quick/static/docs/artifacts/cleanup/precommit/local commit"
+  ],
+  "prohibited_activity": {
+    "postgres_access": false,
+    "external_api_or_live_model_calls": false,
+    "private_model_config_access": false,
+    "ledger_access_or_reset": false,
+    "runtime_budget_change": false,
+    "natural_user_prompt_or_business_gate_change": false,
+    "full_or_quick_suite_run": false,
+    "commit_push_merge_deploy": false
+  },
+  "latest_combined_green": "direct-entry-recovery-green",
+  "latest_combined_green_tests": 126,
+  "independent_spec_feedback_fix": {
+    "issue": "Root has no getOperation; prior unknown-write rule lacked an allowed internal_records recovery path.",
+    "change": "Exception only: root existing reads check actual original record first; if original operation is needed delegate existing expense-reimbursement/finance-review getOperation recovery or human. Preserve original idempotency/plan/operation hints; never replay create/update/approval with new keys. No delegation/read added to ordinary success flow.",
+    "source_scope": "same exact three files; root13/API union68/declared77/budget unchanged",
+    "red": "direct-entry-recovery-red",
+    "green": "direct-entry-recovery-green"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "status": "assessed",
+  "configured_model": "gpt-5.6-luna",
+  "protocol": "codex_responses",
+  "client_event_name": "server_model",
+  "client_event_value": "gpt-5.6-luna",
+  "event_source": "CodexResponsesSession.stream emits payload.model before performing network POST",
+  "installed_client_sha256": "76f1a459a9b35cbbf3d6156a4f8a9e245fb5076c4ca6051d2d295560254cd9b7",
+  "event_source_line": [
+    124
+  ],
+  "actual_gateway_api_calls": "verified_by_successful_streams_and_usage",
+  "gateway_backend_identity": "not_independently_verified",
+  "probe_raw_preserved": true,
+  "production_status": "not_verified"
+}

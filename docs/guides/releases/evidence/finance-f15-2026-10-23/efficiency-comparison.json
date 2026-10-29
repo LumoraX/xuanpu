@@ -1,0 +1,360 @@
+{
+  "status": "baseline_only",
+  "baseline": {
+    "journey": "final6",
+    "first_three": {
+      "streams": 35,
+      "input": 199029,
+      "output": 6277,
+      "cached_input": 42240,
+      "tokens": 205306
+    },
+    "phases": {
+      "01-clarify:session": {
+        "streams": 9,
+        "input": 45579,
+        "output": 1189,
+        "tools": {
+          "api__finance__getFinanceCapabilities": 2,
+          "call_skill": 1,
+          "api__finance__listLegalEntities": 1,
+          "api__catalog__listExpenseCategories": 1,
+          "api__catalog__listCostCenters": 1,
+          "api__finance__listSupportingMaterialImports": 1
+        },
+        "delegates": [
+          "expense-reimbursement"
+        ]
+      },
+      "02-create:session": {
+        "streams": 15,
+        "input": 79171,
+        "output": 2575,
+        "tools": {
+          "api__finance__getFinanceCapabilities": 3,
+          "call_skill": 2,
+          "api__finance__listLegalEntities": 2,
+          "api__finance__listSupportingMaterialImports": 2,
+          "api__finance__getSupportingMaterialImport": 2,
+          "api__catalog__listExpenseCategories": 1,
+          "api__catalog__listCostCenters": 1,
+          "api__finance__createExpenseClaim": 1
+        },
+        "delegates": [
+          "invoice-intake",
+          "expense-reimbursement"
+        ]
+      },
+      "03-edit-preview:session": {
+        "streams": 11,
+        "input": 74279,
+        "output": 2513,
+        "tools": {
+          "api__finance__getFinanceCapabilities": 3,
+          "call_skill": 2,
+          "api__finance__listLegalEntities": 1,
+          "api__catalog__listExpenseCategories": 1,
+          "api__catalog__listCostCenters": 1,
+          "api__finance__getExpenseClaim": 1,
+          "api__finance__listSupportingMaterialImports": 1,
+          "api__finance__getSupportingMaterialImport": 1,
+          "api__finance__updateExpenseClaim": 1,
+          "api__finance__previewFinanceAction": 1
+        },
+        "delegates": [
+          "expense-reimbursement",
+          "finance-review"
+        ]
+      }
+    },
+    "trace_evidence": [
+      {
+        "trace": "final6/model-099.json",
+        "sha256": "d3582c9334120ea85557c1a90ef37f674cf42be2a6da58939a3d2360db2b23d1",
+        "phase": "01-clarify:session",
+        "input": 2342,
+        "output": 144,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-100.json",
+        "sha256": "19b43b50f672e3b9ae3cc2ed5d2aad525106e885b92512e8a8bf51f21fdf3184",
+        "phase": "01-clarify:session",
+        "input": 2415,
+        "output": 222,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-101.json",
+        "sha256": "81c9076504d5f3142bcf0bde21c081b008c11bc5e3c02a901dd800b7aceebbc5",
+        "phase": "01-clarify:session",
+        "input": 6076,
+        "output": 44,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-102.json",
+        "sha256": "82c9ee9c1090b7f41eab32b68bb48c7292d8a1dced2b7fcf190d3740e0b6065d",
+        "phase": "01-clarify:session",
+        "input": 6149,
+        "output": 45,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-103.json",
+        "sha256": "acb600ce781a2574fbd2acfab2b1955bcd1f111216e2ad65c7d37f96cb645e93",
+        "phase": "01-clarify:session",
+        "input": 6263,
+        "output": 181,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-104.json",
+        "sha256": "cd86a7a672eb4bc68d8edaed1b4cc8d0aec62fbe9d1a10839a21339378542472",
+        "phase": "01-clarify:session",
+        "input": 6499,
+        "output": 38,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-105.json",
+        "sha256": "1e13b83c65353bb3d182892f0186ec0928b5e922efdb9a81ac0d8d76f7607a02",
+        "phase": "01-clarify:session",
+        "input": 6419,
+        "output": 35,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-106.json",
+        "sha256": "fac9119c1061eb64af84b51a9e34125e40610d1715b6e01594eedf647a462408",
+        "phase": "01-clarify:session",
+        "input": 6473,
+        "output": 357,
+        "cached_input": 4608
+      },
+      {
+        "trace": "final6/model-107.json",
+        "sha256": "e02225136173124a2699c0d45dfaa78ff39f5ba091f180095bd2064c0cd79caf",
+        "phase": "01-clarify:session",
+        "input": 2943,
+        "output": 123,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-108.json",
+        "sha256": "c35b8a989e16921736bf49d275c4ace65ded23c3e4c43a1c9312ebf86a34ba71",
+        "phase": "02-create:session",
+        "input": 3280,
+        "output": 65,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-109.json",
+        "sha256": "e99513b3516992bf96f5048880b24ccf603899de21977d17fbbdbd5e81e1d200",
+        "phase": "02-create:session",
+        "input": 3285,
+        "output": 444,
+        "cached_input": 2304
+      },
+      {
+        "trace": "final6/model-110.json",
+        "sha256": "ce15601234a56870148eb8dfaf9a44d83b765285b862e7761aa8ffe98593cd7a",
+        "phase": "02-create:session",
+        "input": 4103,
+        "output": 90,
+        "cached_input": 2304
+      },
+      {
+        "trace": "final6/model-111.json",
+        "sha256": "4316883f775e3fdb7975d5ff15a413cda9d4481f58f8b4ea18d585fe23029851",
+        "phase": "02-create:session",
+        "input": 4247,
+        "output": 38,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-112.json",
+        "sha256": "265d84ce87bbdb89a087190d15313b71405e5d7e38d0b75d25f7187459c33880",
+        "phase": "02-create:session",
+        "input": 4347,
+        "output": 47,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-113.json",
+        "sha256": "570a55345c9d793b85cbccd64fe3c5d1bf6932c1b48a0e4877b6cfd1574bf402",
+        "phase": "02-create:session",
+        "input": 4468,
+        "output": 41,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-114.json",
+        "sha256": "9dbf8a6742ec2d943bd84540344047fb8733a4cccf34a033ae0ad8dc3149f1a8",
+        "phase": "02-create:session",
+        "input": 4931,
+        "output": 366,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-115.json",
+        "sha256": "4616f855adbcc7a6f1196c2767a4aa8c5a4837e2361575e9b11a3d262df008f9",
+        "phase": "02-create:session",
+        "input": 3922,
+        "output": 548,
+        "cached_input": 2304
+      },
+      {
+        "trace": "final6/model-116.json",
+        "sha256": "051f7652ebc0f528daafbc49ec99f22a83d9f212ad3fcd189a63311fa6e026fb",
+        "phase": "02-create:session",
+        "input": 6412,
+        "output": 48,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-117.json",
+        "sha256": "9479cf033502b570034c2d16edc451b95e2971409153fe539d9f6fe46336fc06",
+        "phase": "02-create:session",
+        "input": 6485,
+        "output": 64,
+        "cached_input": 4608
+      },
+      {
+        "trace": "final6/model-118.json",
+        "sha256": "4115a8a8aa7a4ecf6a8eeea63988fe932c0314518e96828aa479e289c537a561",
+        "phase": "02-create:session",
+        "input": 6574,
+        "output": 142,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-119.json",
+        "sha256": "d0e138ded65df4b99e5723ef9e6f1fb3d04cd72e3bc2df8d4e17b2a756ff941c",
+        "phase": "02-create:session",
+        "input": 6973,
+        "output": 52,
+        "cached_input": 5888
+      },
+      {
+        "trace": "final6/model-120.json",
+        "sha256": "79a53f6de1ad8724b65d0a27bf464eb7a9470e61d5a449fb0229848fb2672fb4",
+        "phase": "02-create:session",
+        "input": 7444,
+        "output": 216,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-121.json",
+        "sha256": "f1d1481ce84537318df9fd7e8f5d56896c1f906e3c3a96f963b2537cb7e1ff4f",
+        "phase": "02-create:session",
+        "input": 8027,
+        "output": 206,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-122.json",
+        "sha256": "a3c9ca35fcb9a36521863da1711fa2656c54146dcf2a666f1e64eb3912a1264c",
+        "phase": "02-create:session",
+        "input": 4673,
+        "output": 208,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-123.json",
+        "sha256": "63a3919150ac99a7b79f12baeb8489522fd03c57cafc94ea43e72b95c3e0dac7",
+        "phase": "03-edit-preview:session",
+        "input": 5144,
+        "output": 120,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-124.json",
+        "sha256": "1e5e44929c188f6fb120989fa11e5e3a8504840332933a0ddd3698ce9bbd865d",
+        "phase": "03-edit-preview:session",
+        "input": 5132,
+        "output": 596,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-125.json",
+        "sha256": "efd3e7ae3e7961dfac630902af6dd3bc41a5671574e7f5006d7715e9c14c1f4b",
+        "phase": "03-edit-preview:session",
+        "input": 6428,
+        "output": 74,
+        "cached_input": 4608
+      },
+      {
+        "trace": "final6/model-126.json",
+        "sha256": "ae800c47b1d0782667ee772055f0a2568d1af02f64062969c37b30cfc8eb4d1f",
+        "phase": "03-edit-preview:session",
+        "input": 6501,
+        "output": 86,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-127.json",
+        "sha256": "9f6d2661d4212f194c9c84910b88bd338474302db77175e43642f7285e41ee1f",
+        "phase": "03-edit-preview:session",
+        "input": 6590,
+        "output": 208,
+        "cached_input": 6400
+      },
+      {
+        "trace": "final6/model-128.json",
+        "sha256": "159650709b734adcbe0ed6b9133bb40547aa76045b50ac1f78d2281196b56faf",
+        "phase": "03-edit-preview:session",
+        "input": 7469,
+        "output": 59,
+        "cached_input": 4608
+      },
+      {
+        "trace": "final6/model-129.json",
+        "sha256": "6a5c3fd3dfb62d307565862ba9884054ba1d742060f5fdbc9d988bc4d2308c1e",
+        "phase": "03-edit-preview:session",
+        "input": 7931,
+        "output": 230,
+        "cached_input": 4608
+      },
+      {
+        "trace": "final6/model-130.json",
+        "sha256": "be49d6d19444f66d81f288fda1194aba678c01f079e44c3328f8b29fd6945cd6",
+        "phase": "03-edit-preview:session",
+        "input": 8582,
+        "output": 130,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-131.json",
+        "sha256": "ee581cc168f8c5cf71949361ef02dff57393811136100ef45ac6749a8bd3034c",
+        "phase": "03-edit-preview:session",
+        "input": 8941,
+        "output": 298,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-132.json",
+        "sha256": "6dbc7f75fc5a0cfcebba294bd209a7a92522d0e0e14e12ca857ad8ece10245e6",
+        "phase": "03-edit-preview:session",
+        "input": 6033,
+        "output": 649,
+        "cached_input": 0
+      },
+      {
+        "trace": "final6/model-133.json",
+        "sha256": "ca5e129486c4ccb77b92806bc447ad9d54f14d6b2584017b03284d44e1e96314",
+        "phase": "03-edit-preview:session",
+        "input": 5528,
+        "output": 63,
+        "cached_input": 0
+      }
+    ],
+    "whole_journey_streams": 46,
+    "result_sha256": "7af8b3ad0c13a530315636b9e64bb345a92f52a2d0462f7263e3fd55bad69f04"
+  },
+  "runs": [],
+  "measurement": "actual completed raw usage input+output, cached tokens remain included; no price or wire traffic estimate",
+  "same_user_prompt_business_checks_and_original_budget": true,
+  "two_complete_journeys_required": true,
+  "not_production_or_real_employee_acceptance": true
+}

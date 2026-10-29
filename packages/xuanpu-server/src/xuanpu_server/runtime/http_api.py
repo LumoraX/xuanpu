@@ -18,13 +18,15 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import quote, urlsplit
 
 import httpx
+from xuanpu_spec.call_context import CONTEXT_HEADER
 
-from xuanpu_server.errors import InvalidRequestError, PackageInvalidError
+from xuanpu_server.errors import InvalidRequestError, PackageInvalidError, PermissionDeniedError
 
 if TYPE_CHECKING:
     from xuanpu_spec import ApiDocument, Operation
     from xuanpu_spec.manifest import ConnectorSpec, HttpAuth
 
+    from xuanpu_server.runtime.call_context import CallContextSigner
     from xuanpu_server.secrets import SecretVault
 
 MAX_RESPONSE_BYTES = 1024 * 1024
@@ -84,6 +86,22 @@ def _scalar(value: Any) -> str:
     return str(value)
 
 
+def _check_parameters(operation: Operation, args: dict[str, Any]) -> None:
+    """拒绝保留头、大小写重复头及未声明参数，避免HTTP语义与模型输入分歧。"""
+    if any(parameter.name.lower() == CONTEXT_HEADER.lower() for parameter in operation.parameters):
+        raise ValueError("平台签名头不能作为工具参数")
+    if any(name.lower() == CONTEXT_HEADER.lower() for name in args):
+        raise ValueError("平台签名头不能由模型提供")
+    header_names = [p.name.lower() for p in operation.parameters if p.location == "header"]
+    if len(set(header_names)) != len(header_names):
+        raise ValueError("头参数大小写不敏感，不能重复声明")
+    declared = {parameter.name for parameter in operation.parameters}
+    allowed = declared | ({"body"} if operation.request_body is not None else set())
+    unknown = sorted(set(args) - allowed)
+    if unknown:
+        raise ValueError(f"未声明的参数：{', '.join(unknown)}")
+
+
 def build_request(
     base_url: str, operation: Operation, args: dict[str, Any]
 ) -> tuple[str, str, list[tuple[str, str]], dict[str, str], Any]:
@@ -92,11 +110,7 @@ def build_request(
     Raises:
         ValueError: 缺必填参数，或给了 operation 没声明的参数。
     """
-    declared = {parameter.name for parameter in operation.parameters}
-    allowed = declared | ({"body"} if operation.request_body is not None else set())
-    unknown = sorted(set(args) - allowed)
-    if unknown:
-        raise ValueError(f"未声明的参数：{', '.join(unknown)}")
+    _check_parameters(operation, args)
     path = operation.path
     query: list[tuple[str, str]] = []
     headers: dict[str, str] = {}
@@ -134,6 +148,8 @@ class HttpApiClient:
         vault: SecretVault,
         timeout_seconds: float,
         transport: httpx.AsyncBaseTransport | None = None,
+        context_audience: str | None = None,
+        context_signer: CallContextSigner | None = None,
     ) -> None:
         """
         Args:
@@ -143,7 +159,10 @@ class HttpApiClient:
             vault: 密钥保管库。
             timeout_seconds: 单次请求的超时。
             transport: 自定义传输，测试时用。
+            context_audience: 连接器请求的平台身份受众；None 不附带签名。
+            context_signer: 部署配置限定可信源和受众的签名器。
         """
+        self._context_audience, self._context_signer = context_audience, context_signer
         self._base_url = base_url
         self._auth = auth
         self._tenant_id = tenant_id
@@ -167,7 +186,21 @@ class HttpApiClient:
         name, value = await auth_header(self._auth, tenant_id=self._tenant_id, vault=self._vault)
         return {name: value}, []
 
-    async def call(self, operation: Operation, args: dict[str, Any]) -> tuple[str, bool]:
+    async def _sign_request(self, prepared: httpx.Request, body: Any) -> None:
+        """从最终唯一HTTP头和URL签名，不再重建即将发送的请求。"""
+        if self._context_audience is None:
+            return
+        if self._context_signer is None:
+            raise PermissionDeniedError("平台未配置调用签名")
+        prepared.headers[CONTEXT_HEADER] = await self._context_signer.sign(
+            tenant_id=self._tenant_id, audience=self._context_audience,
+            url=str(prepared.url), method=prepared.method,
+            query=list(prepared.url.params.multi_items()), body=body,
+            idempotency_key=prepared.headers.get("Idempotency-Key", ""),
+            content_type=prepared.headers.get("Content-Type", ""),
+        )
+
+    async def _perform(self, operation: Operation, args: dict[str, Any]) -> tuple[httpx.Response, bytes] | str:
         """调用一个 operation，返回 ``(给模型看的文本, 是否出错)``。
 
         4xx / 5xx 算出错但不抛异常：状态码与响应体对模型有用。
@@ -176,25 +209,67 @@ class HttpApiClient:
         try:
             method, url, query, headers, body = build_request(self._base_url, operation, args)
         except ValueError as exc:
-            return f"invalid_arguments: {exc}", True
+            return f"invalid_arguments: {exc}"
         auth_headers, auth_query = await self._credentials()
+        if {name.lower() for name in headers} & {name.lower() for name in auth_headers}:
+            return "invalid_arguments: 工具头参数与平台凭据头冲突"
+        outgoing_headers = httpx.Headers({**headers, **auth_headers})
+        if CONTEXT_HEADER in outgoing_headers:
+            raise PermissionDeniedError("平台签名头不能由连接器凭据覆盖")
+        if "Accept" not in outgoing_headers:
+            outgoing_headers["Accept"] = "application/json"
+        if self._context_audience is not None and "Content-Type" not in outgoing_headers:
+            outgoing_headers["Content-Type"] = "application/json"
+        # 构造一次真实请求；摘要读取其最终头与 URL，签名后发送同一对象，避免重建差异。
+        prepared = self._client.build_request(
+            method, url, params=[*query, *auth_query], headers=outgoing_headers,
+            json=body if body is not None else None,
+        )
+        await self._sign_request(prepared, body)
         try:
-            async with self._client.stream(
-                method,
-                url,
-                params=[*query, *auth_query],
-                headers={**headers, **auth_headers, "Accept": "application/json"},
-                json=body if body is not None else None,
-            ) as response:
+            response = await self._client.send(prepared, stream=True)
+            try:
                 raw = bytearray()
                 async for chunk in response.aiter_bytes():
                     raw.extend(chunk)
                     if len(raw) > MAX_RESPONSE_BYTES:
                         break
-                return _render(response, bytes(raw)), response.status_code >= 400
+                return response, bytes(raw)
+            finally:
+                await response.aclose()
         except httpx.HTTPError as exc:
             # 异常文本里可能带完整 URL（含查询参数里的凭据），只报类型
             raise ConnectorCallError(f"请求失败：{type(exc).__name__}") from exc
+
+    async def call(self, operation: Operation, args: dict[str, Any]) -> tuple[str, bool]:
+        """保留模型工具原有的文本响应契约。"""
+        result = await self._perform(operation, args)
+        if isinstance(result, str):
+            return result, True
+        response, raw = result
+        return _render(response, raw), response.status_code >= 400
+
+    async def call_structured(self, operation: Operation, args: dict[str, Any]) -> dict[str, Any]:
+        """人工辅助入口返回有界结构化结果，不把业务状态改写成操作成功。"""
+        result = await self._perform(operation, args)
+        if isinstance(result, str):
+            raise InvalidRequestError(result)
+        response, raw = result
+        truncated = len(raw) > MAX_RESPONSE_BYTES
+        content_type = response.headers.get("content-type", "").lower()
+        body: Any = None
+        if raw and not 300 <= response.status_code < 400:
+            if content_type.startswith(_TEXT_TYPES) or "json" in content_type:
+                body = raw[:MAX_RESPONSE_BYTES].decode(response.encoding or "utf-8", errors="replace")
+                if "json" in content_type and not truncated:
+                    try:
+                        body = json.loads(body)
+                    except ValueError:
+                        raise ConnectorCallError("响应 JSON 不合法") from None
+            else:
+                body = {"content_type": content_type, "bytes": min(len(raw), MAX_RESPONSE_BYTES)}
+        return {"status": response.status_code, "body": body,
+                "is_error": response.status_code >= 400, "truncated": truncated}
 
     async def close(self) -> None:
         """关闭连接。"""

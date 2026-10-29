@@ -1,0 +1,14 @@
+{
+  "cause": "Private closing aggregator expected status but original design review correctly used verdict=Approved; missing aggregate reviews.json caused one Markdown-link failure. Product/frozen sources/artifacts unchanged.",
+  "correction": "Explicit design-review verdict field mapping, all other reviews status; regenerate real pending index, then rerun affected docs suite",
+  "preserved_initial_docs": [
+    {
+      "file": "docs-initial.log",
+      "sha256": "73a64c89112317cf76bd50916a6f70f8aef50f9f091872aaa362d8a65a5e5300"
+    },
+    {
+      "file": "docs-initial.xml",
+      "sha256": "3cf6ead18fbedcce44dda420118771d246df0188a8982cf5545396a864fecf60"
+    }
+  ]
+}

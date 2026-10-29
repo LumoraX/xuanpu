@@ -1,0 +1,2 @@
+{"probe": "cancel_during_capture", "cancel_propagated": true, "opened": 2, "closed": 2, "connect_calls": 0, "bounded_thread_completed": true}
+{"probe": "cancel_in_session", "cancel_propagated": true, "instrumented_connection_closed": true}

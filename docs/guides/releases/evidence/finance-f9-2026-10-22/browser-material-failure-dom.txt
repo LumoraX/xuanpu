@@ -1,0 +1,116 @@
+Browser tab: 21, Title: "玄圃 · 个人工作站", URL: "http://127.0.0.1:54240/console/".
+0 AXWebArea 玄圃 · 个人工作站, URL: 127.0.0.1:54240/console/
+	1 container
+		2 text 玄圃  个人工作站
+		3 text 已登录 · F8测试报销人（飞书）
+		4 container current-user
+			5 pop up button (collapsed) 通知, Help: 查看最近100条通知, ID: notification-toggle, Secondary Actions: Expand
+			6 text F8测试报销人 · 成员
+			7 button 退出, ID: logout
+	8 container tabs
+		9 button 会话
+		10 button 功能, ID: functions-tab
+	49 container
+		50 container 财务记录与审批, ID: workspace-window
+			51 container
+				52 heading 财务记录与审批, Value: 2, ID: workspace-title
+					53 text 财务记录与审批
+				54 button Description: 关闭工作窗口, ID: workspace-close
+			55 container workspace-toolbar
+				56 container
+					57 text 所属公司
+					58 pop up button (collapsed, settable) Description: 所属公司, Value: F9隔离验收公司, Secondary Actions: Expand
+						59 menu
+							60 (selected) F9隔离验收公司
+				61 button 我的收件记录
+				62 button 财务提醒
+				63 button 运行概览
+				64 button 新建报销
+				65 button 本人记录
+				66 button 本人草稿
+				67 button 全部可看记录
+				68 button 待我审批
+				69 button 刷新
+				70 container
+					71 text 记录状态
+					72 pop up button (collapsed, settable) Description: 记录状态, Value: 全部状态, Secondary Actions: Expand
+						73 menu
+							74 (selected) 全部状态
+							75 草稿
+							76 已提交
+							77 审批中
+							78 审批通过
+							79 已驳回
+							80 已撤回
+				81 container
+					82 text 单号或事由
+					83 search text field (settable) 单号或事由
+				84 button 查询记录
+			158 text 财务提醒（3）
+			86 container workspace-content
+				159 heading 财务材料需要核对, Value: 3
+					160 text 财务材料需要核对
+				161 text 事项编号：91448fb1a9b14cc8b7e236e8535b064e
+				162 text 原收件批次：84f8b5f86021477ebf1ae4718edb2fee
+				163 text 原件 1
+				164 text 原件接收状态：处理失败
+				165 text 接收原因代码：FILE_DOWNLOAD_FAILED
+				166 text 重新上传会形成新的收件记录，不会自动解除此异常。请联系财务核对原事项。
+				167 button 查看我的收件记录
+		107 container tab-functions
+			108 heading 功能, Value: 1
+				109 text 功能
+			110 text 平时直接在对话里说出需求，也可以在这里查看记录、自己操作。
+			111 container
+				112 heading 交办工作, Value: 2
+					113 text 交办工作
+				114 text 查看材料处理进展，确认行动项并下载成果。关闭页面后仍会继续处理。
+				115 button (collapsed) 查看我的工作, Secondary Actions: Expand
+			116 container
+				117 heading 发票报销记录与审批, Value: 2
+					118 text 发票报销记录与审批
+				119 text 记录发票和报销内容、选择附件、查看流转进展并处理本人审批。
+				120 button (expanded) 打开财务辅助页, Secondary Actions: Collapse
+			121 container
+				122 heading 我的文件, Value: 2
+					123 text 我的文件
+				124 text 文件夹、附件、版本和回收站，始终属于你的个人空间。
+				125 button (collapsed) 打开文件, Secondary Actions: Expand
+			126 container
+				127 heading 事项与待办, Value: 2
+					128 text 事项与待办
+				129 text 查看进展、关联资料，记录下一步工作。
+				130 button (collapsed) 打开事项, Secondary Actions: Expand
+				131 button (collapsed) 查看待办, Secondary Actions: Expand
+			132 container
+				133 heading 日程, Value: 2
+					134 text 日程
+				135 text 安排自己的时间，查看日程和到期提醒。
+				136 button (collapsed) 打开日程, Secondary Actions: Expand
+			137 container
+				138 heading 个人能力与设置, Value: 2
+					139 text 个人能力与设置
+				140 text 沉淀工作方法，设置助手的称呼、风格和时区。
+				141 button (collapsed) 个人能力, Secondary Actions: Expand
+				142 button (collapsed) 助手设置, Secondary Actions: Expand
+			143 container
+				144 heading 提醒, Value: 2
+					145 text 提醒
+				146 text 新建提醒、调整时间，查看已提醒或已取消的记录。
+				147 button 管理提醒, ID: open-reminder-module
+			148 container
+				149 heading 业务跟进, Value: 2
+					150 text 业务跟进
+				151 text 查看需要核实、安排或继续处理的工作，在对话中确认决定。
+				152 button 查看业务跟进, ID: open-proactive-module
+			153 container
+				154 heading 通知, Value: 2
+					155 text 通知
+				156 text 查看到期提醒和送达情况，离线期间的通知也会保留。
+				157 button 查看通知, ID: open-notification-module
+	45 container
+		46 link Description: 管理员入口, Value: 127.0.0.1:54240/console/?admin=1
+		47 text  · 
+		48 link Description: 员工入口, Value: 127.0.0.1:54240/console/?
+
+The focused UI element is 0 AXWebArea 玄圃 · 个人工作站, URL: 127.0.0.1:54240/console/
