@@ -27,3 +27,11 @@ Sandbox依赖提交15aefcb21ecb6498ae66b59436d2a5142e3fc127使用Linux UAPI固�
 [8c7c117预检](https://github.com/LumoraX/xuanpu/actions/runs/40840743581)为4 failed/21 passed，及时阻止全量：本机解释器ENOENT，以及独立office_worker直接构造DockerSandboxConfig时未传UID。后者与已修复的私有目录问题相同，补充该夹具的显式身份即可，不改权限。
 
 解释器缺失已在Linux实际复现：uv按3.13次版本创建的venv先链接cpython-3.13-linux-…别名，再指向cpython-3.13.18-…版本目录。原fixture仅授权sys.prefix及sys.base_prefix解析后的目录，别名在空根沙盒中缺失。只在测试确实使用uv管理解释器时，加入setup-uv显式指定的UV_PYTHON_INSTALL_DIR专用只读根；系统Python不挂载无关目录，全盘、顶层目录、用户家及临时根拒绝。保留原venv命令及依赖，不将其改成基底Python，不扩大生产沙盒策略。真实Linux验证中原命令成功且sys.prefix仍为venv，专用目录之外的秘密文件不可见。新增回归先3 failed，根目录/别名与相关预检一起复验；sandbox源码仍15aefcb，无新增依赖修改。
+
+## 工作区外写入的隔离回归
+
+[ed4d812运行](https://github.com/LumoraX/xuanpu/actions/runs/40843452468)的静态检查及两个Python版本的Linux预检通过；Python3.12和3.13全量均缩小到2 failed、3977 passed、21 skipped，分别耗时42分23秒和25分55秒。失败均为本机MCP连接器及脚本的工作区外写入探针，财务用例无失败。仅禁止修改宿主原文件不能满足只写工作区的约束；沙盒私有视图中也不能任意新建工作区外文件。
+
+根因已在真实Linux复现：restricted空根及两种read_scope的遮蔽tmpfs仍为可写，探针可在私有视图创建工作区外文件，宿主原件未改。Sandbox提交af3e54585d075e1ad75b6dd8882d7ca3c2c908c1在全部挂载创建后，非递归重挂载这些tmpfs为只读，合法工作区的独立bind继续可写；嵌套遮蔽按父先子后挂载，声明顺序不改变边界。新增真实Linux回归先3 failed，补充反序嵌套再现2 failed，最终5 passed；越界写返回EROFS，合法产物实际落盘，根/遮蔽为ro而工作区为rw。Linux适配器全量284 passed/38平台条件skip，bwrap用例无跳过；macOS全量291 passed/30平台条件skip/1既有seatbelt xfail，Ruff与两平台mypy通过。专属Linux测试容器已清理。
+
+CI先行预检加入原有test_connector_sandbox.py与test_sandbox_isolation.py整组用例，保留全部读写、跨租户、环境和网络断言；本地49项、文档284项、Ruff和mypy489 source files通过。两个CI任务均固定新sandbox提交，依赖仍发布到专用CI分支，不更改sandbox远端main。最终结果需新提交对应的两个版本全量确认，不能用macOS通过代替Linux隔离证据。
