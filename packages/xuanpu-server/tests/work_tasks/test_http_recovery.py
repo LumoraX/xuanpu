@@ -15,6 +15,8 @@ from xuanpu_server.work_tasks.decisions import ToolApprovalDecision
 from xuanpu_server.work_tasks.models import CapabilityTaskInput
 from xuanpu_spec import pack_package
 
+from ..conftest import docker_test_user
+
 
 @pytest.fixture
 async def http_world(identity_stores, world_opener, office_image):
@@ -35,7 +37,7 @@ async def http_world(identity_stores, world_opener, office_image):
     control, identity = identity_stores
     config = DurableExecutionConfig(enabled=True, verified_text_bounds=True,
                                    stateless_http_tools=('api__counter__read',))
-    provider = DockerSandboxProvider(image=office_image, memory_mb=512,
+    provider = DockerSandboxProvider(user=docker_test_user(), image=office_image, memory_mb=512,
         docker_env={'PATH':'/usr/local/bin:/usr/bin:/bin','HOME':str(Path.home())},
         labels={'xuanpu.test':'r2-http'})
     world = await world_opener(store=control, identity_store=identity, sandboxes=provider, durable_execution=config)

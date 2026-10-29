@@ -9,6 +9,8 @@ from xuanpu_server.tenancy import Principal
 from xuanpu_server.work_tasks.config import DurableExecutionConfig
 from xuanpu_server.work_tasks.models import CapabilityTaskInput
 
+from ..conftest import docker_test_user
+
 
 @pytest.fixture
 async def capability_world(identity_stores, world_opener, office_image):
@@ -18,7 +20,7 @@ async def capability_world(identity_stores, world_opener, office_image):
     from xuanpu_server.runtime.sandbox import DockerSandboxProvider
 
     control, identity = identity_stores
-    world = await world_opener(store=control, identity_store=identity, sandboxes=DockerSandboxProvider(image=office_image, memory_mb=512,
+    world = await world_opener(store=control, identity_store=identity, sandboxes=DockerSandboxProvider(user=docker_test_user(), image=office_image, memory_mb=512,
             docker_env={'PATH':'/usr/local/bin:/usr/bin:/bin', 'HOME':str(Path.home())},
             labels={'xuanpu.test':'r2-capability'}),
         durable_execution=DurableExecutionConfig(enabled=True, verified_text_bounds=True))

@@ -5,6 +5,8 @@ import pytest
 from xuanpu_server.errors import PermissionDeniedError
 from xuanpu_server.tenancy import Principal
 
+from ..conftest import docker_test_user
+
 
 async def test_cold_recovery_does_not_adopt_new_consent(r3_world,r3_http,r3_connected):
     """撤销再同意也不授权原任务，旧引用失效为明确阻塞。"""
@@ -103,7 +105,7 @@ async def test_inflight_task_revoke_blocks_before_terminal_result(r3_world,r3_ht
     from pathlib import Path
 
     from xuanpu_server.runtime.sandbox import DockerSandboxProvider
-    platform.runtimes._sandboxes=DockerSandboxProvider(image="python:3.12-slim",memory_mb=512,
+    platform.runtimes._sandboxes=DockerSandboxProvider(user=docker_test_user(), image="python:3.12-slim",memory_mb=512,
         docker_env={'PATH':'/usr/local/bin:/usr/bin:/bin','HOME':str(Path.home())},
         labels={'xuanpu.test':'r3-active-revoke'})
     started,release=asyncio.Event(),asyncio.Event()

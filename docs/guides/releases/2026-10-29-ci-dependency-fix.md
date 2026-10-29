@@ -11,3 +11,12 @@ CI新增独立finance_postgres服务、finance_test_ci数据库及对应Docker�
 本地核查：干净目录使用远端旧依赖时uv lock --check失败；替换固定sandbox提交后通过。sandbox全量291 passed、17项平台条件skip、1项xfail；Ruff通过、mypy22 source files通过。xuanpu原合并源全量3979 passed/21条件skip，运行时代码未变，本次未重复旧组合全量；冻结依赖的Ruff与mypy489 source files均通过。最终Linux/Python3.12与3.13结果以修复提交对应的GitHub Actions为准。
 
 不部署、不支付，财务独立存储与真人审批保持。本轮不运行财务业务网关模型，原218/240计数不扩大。
+
+
+## Linux完整运行暴露的第二批问题
+
+[980d169的实际CI](https://github.com/LumoraX/xuanpu/actions/runs/40834481674)静态与锁检查通过，但Python3.13全量为180 failed、3785 passed、21 skipped，财务用例无失败；Python3.12超时取消。失败集中于本机沙盒缺少Python导出的F_ADD_SEALS常量，以及rootful容器默认UID 0在cap-drop ALL后不能访问宿主用户的私有目录，造成会话启动、工具读取与办公任务级联失败。没有删除这些用例或放宽原断言。
+
+Sandbox依赖提交15aefcb21ecb6498ae66b59436d2a5142e3fc127使用Linux UAPI固定封口常量兼容缺失符号，继续实际内核封口、失败关闭fd并传播异常；Linux专项从6 failed/2 passed到8 passed，并验证不可写入、扩缩容和追加封口。宿主全量291 passed/25平台条件skip/1既有xfail，Ruff及mac/Linux目标mypy通过。
+
+平台增加显式sandbox.user数字身份配置，默认None维持镜像及rootless语义；Linux rootful测试使用宿主UID/GID。受控Linux私有卷验证：默认UID和其他UID均被拒绝，匹配1001:1001可实际读写，0700目录与0600输入权限不变；专属卷和容器已清理。新增配置传递与权限保持回归先3 failed，再85 passed相关回归。CI增加先行Linux沙盒预检，防止同类启动问题等待整套运行才发现；全量仍保留全部用例并输出耗时和超时栈诊断。

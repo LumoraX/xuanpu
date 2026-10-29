@@ -50,7 +50,7 @@ async def main():
             value['wait'] = asyncio.Event()
         steps.append(module.Step(**value))
     models.script(*steps)
-    provider = DockerSandboxProvider(image=config['image'], memory_mb=512,
+    provider = DockerSandboxProvider(user=module.docker_test_user(), image=config['image'], memory_mb=512,
         docker_env={'PATH':'/usr/local/bin:/usr/bin:/bin','HOME':str(Path.home())},
         labels={'xuanpu.test':'r2-restart'})
     platform = Platform(store=control, identity_store=PostgresIdentityStore(pool, namespace=namespace),
