@@ -1,0 +1,44 @@
+{
+  "validator": "xuanpu_spec.validate_package + taifeng.FilesystemSkillRegistry",
+  "package_valid": true,
+  "version": "0.16.0-f15",
+  "skills": [
+    "accounts-payable",
+    "archive-audit",
+    "expense-reimbursement",
+    "finance-assistant",
+    "finance-review",
+    "invoice-intake",
+    "posting-reconciliation"
+  ],
+  "api_operations": 77,
+  "contracts": {
+    "finance": 72,
+    "catalog": 5
+  },
+  "internal_operations": 24,
+  "published_files": 20,
+  "design_extra_refs_unchanged": 4,
+  "professional_child_tool_lists_unchanged": true,
+  "root_api_tools_before": 1,
+  "root_api_tools_after": 13,
+  "root_tools": [
+    "api__catalog__listCostCenters",
+    "api__catalog__listExpenseCategories",
+    "api__finance__createExpenseClaim",
+    "api__finance__getExpenseClaim",
+    "api__finance__getFinanceCapabilities",
+    "api__finance__getSupportingMaterialImport",
+    "api__finance__listExpenseClaimHistory",
+    "api__finance__listExpenseClaimSummaries",
+    "api__finance__listLegalEntities",
+    "api__finance__listReviewQueue",
+    "api__finance__listSupportingMaterialImports",
+    "api__finance__previewFinanceAction",
+    "api__finance__updateExpenseClaim"
+  ],
+  "effective_model_api_union_unchanged": true,
+  "effective_model_api_union_count": 68,
+  "model_shell": false,
+  "production_status": "not_verified"
+}

@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0
+configfile: pyproject.toml
+plugins: asyncio-1.4.0, anyio-4.15.1
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 133 items
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py ................ [ 12%]
+........................................................................ [ 66%]
+..............                                                           [ 76%]
+packages/xuanpu-finance/tests/test_f15_skill_contract.py ............... [ 87%]
+................                                                         [100%]
+
+- generated xml file: /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/releases/evidence/finance-f15-2026-10-23/reason-revision-green.xml -
+============================= 133 passed in 3.08s ==============================

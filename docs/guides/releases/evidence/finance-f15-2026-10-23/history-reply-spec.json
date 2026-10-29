@@ -1,0 +1,138 @@
+{
+  "status": "Approved",
+  "approval_scope": "offline_skill_and_test_fix_only",
+  "reviewer": "independent specification reviewer /root/f15_final_spec",
+  "reviewed_at": "2026-10-24T09:11:52.968762+00:00",
+  "approved_design": {
+    "path": "history-reply-design-review.json",
+    "sha256": "6316298d3b82324354d7617bf8bf6c9ae2381bde7bd49d820fa261d0fb0435e8",
+    "status": "Approved"
+  },
+  "source_sha256_before": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "5927be1ccc071598edd695fe7aaf40b7e058e9df129bc63501fec1a34dc8ed6f"
+  },
+  "source_sha256_after": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "5927be1ccc071598edd695fe7aaf40b7e058e9df129bc63501fec1a34dc8ed6f"
+  },
+  "source_stable_across_independent_tests": true,
+  "source_scope": {
+    "baseline": "frozen-candidate6.json",
+    "baseline_sha256": "3da051c6a952e5cfc607dde2deb56327ea3e7a71a38fc5ee94ab671f313d9d28",
+    "frozen_file_count": 740,
+    "only_changed_files": [
+      "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
+      "examples/finance/skills/finance-assistant/SKILL.md",
+      "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+    ],
+    "two_root_skill_copies_byte_identical": true,
+    "six_professional_skills_and_harness_natural_prompts_checker_budget_runtime_unchanged": true
+  },
+  "findings": [],
+  "verified_requirements": [
+    "Archived final8 actual model204-208 share phase, reader and session. Complete actual HTTP200 history pages contain prior reject and subsequent approvals, real next_cursor chain closes with null; final reply omits known prior rejection. This is response semantics, not missing pages or checker error.",
+    "Generic root instructions require requested actual human decisions and reasons across workflows, including rejection before resubmission and later approval. Current workflow.steps cannot replace history; cancelled is not a human decision. No fixed decision count, fixture reason or version number is mandated.",
+    "Latest-only requests retain their scope; complete already-read history is consolidated into the reply without redundant fetching. Existing real raw, pagination, current GET, RLS/version and human-decision requirements remain.",
+    "Summary q matches only current claim id/current content.reason literal text, confirmed in storage/f9_summaries.py. Category/old-reason references use authorized mine with omitted/null q. Explicit current literal filters remain exact; zero results are explained without silent widening, ambiguous candidates are confirmed.",
+    "Production parse_openapi/build_request and unmodified history provenance checkers are exercised by offline fixtures. Fixture tests distinguish multiple prior workflows, current-only omission, cancelled pseudo-decisions, missing/wrong reader/target/call-id raw pages and omitted/null/explicit q.",
+    "Both actual package validators and public FilesystemSkillRegistry pass. Root13 APIs, model union68, declared77 APIs, internal24, 7 Skills/6 children, original policy/no shell and budgets remain. No payment, authorization or human approval expansion."
+  ],
+  "independent_verification": {
+    "pytest": {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "packages/xuanpu-finance/tests/test_f15_model_harness.py",
+        "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+        "-q",
+        "--junitxml=/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/releases/evidence/finance-f15-2026-10-23/history-reply-spec-tests.xml"
+      ],
+      "returncode": 0,
+      "tests": 145,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "history-reply-spec-tests.log",
+      "junit": "history-reply-spec-tests.xml",
+      "input_snapshot": "history-reply-spec-test-input.json"
+    },
+    "declared_test_lint_gate": {
+      "command": "uv run ruff check --select F,S108,I,TC,C901 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "returncode": 0,
+      "log": "history-reply-spec-ruff.log"
+    },
+    "additional_lint_probe": {
+      "command": "uv run ruff check packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "returncode": 1,
+      "log": "history-reply-spec-default-ruff.log",
+      "scope": "broader default test-style probe, outside declared selected test gate; 9 E501 and 1 ASYNC240 findings, no edits made. ALL-rule exploratory invocation also failed with unrelated style/security-test rules and is not represented as passing."
+    },
+    "diff_check": {
+      "returncode": 0,
+      "log": "history-reply-spec-diff-check.log"
+    },
+    "actual_registry_and_package_validation": {
+      "path": "history-reply-spec-contract-validation.json",
+      "sha256": "8bf608108b51dccd0232419fad4c8615204f0eff14eefb4639cb1ec01a6d5ccb",
+      "package_valid": true,
+      "root_api_tools": 13,
+      "effective_model_api_union": 68,
+      "declared_api": 77,
+      "internal": 24,
+      "skills": 7,
+      "published_files_equal": 20
+    },
+    "preserved_tdd_red": [
+      {
+        "junit": "history-reply-red.xml",
+        "sha256": "2a0a4cc0605c03ddaf6461cf9108f3cde8c84c349f5d4503db3bb5c3e796cd41",
+        "tests": 2,
+        "failures": 2,
+        "source": "preserved implementation RED, not rerun by reviewer"
+      },
+      {
+        "junit": "history-reply-scope-red.xml",
+        "sha256": "4fd424940c7c5d17a74edba08dadb1d9cfde246285b82ec9bf6656cbeb4aae1e",
+        "tests": 2,
+        "failures": 2,
+        "source": "preserved implementation RED, not rerun by reviewer"
+      }
+    ],
+    "actual_failure_causal_review": "history-reply-spec-cause.json"
+  },
+  "implementation_report": {
+    "path": "history-reply-implementation.json",
+    "sha256": "ec56653cc212076320caf4349a3a1519ef676b8b796905070a2c7fbe7e62da64",
+    "reviewed": true
+  },
+  "acceptance_limits": {
+    "final8": "failed fresh_query_semantic_facts, preserved",
+    "final8_phase09_and_10": "not_executed",
+    "final_source_real_model_behavior": "not_retested; offline GREEN does not prove corrected real-model behavior",
+    "two_complete_real_journeys": "not_completed",
+    "F15_overall": "not_complete",
+    "new_real_model_consumption": false,
+    "increase_limits": false,
+    "completion_commit": false,
+    "merge_or_deploy": false,
+    "root_owned_PG_offline_full_quick_build_docs": "may continue under existing root scope; not performed by this reviewer"
+  },
+  "activity_limits": [
+    "No PG, new model/API sampling, private configuration or private ledger access.",
+    "No product, Skill, test or harness source edited; only review evidence written; no commit.",
+    "Partial PG/human/storage facts remain archived evidence and were not independently queried live during this review."
+  ],
+  "evidence_sha256": {
+    "history-reply-spec-tests.log": "c5be4a1698208558e026b7cd0dc58c0b06a56b8cb3961dbededb4e94b6c28f2c",
+    "history-reply-spec-tests.xml": "3f9a62013b251dce87becd7926f86f069908a7133b48b4b4970bc26f3e197bd2",
+    "history-reply-spec-test-input.json": "bad0034c3a35f727b3b4225289247434fd59409afba4cf435eec4ca306d062cf",
+    "history-reply-spec-ruff.log": "8e6ec2bc15bcb513e24e9630ed7e988208677a25b9e52523300f3e70ace83115",
+    "history-reply-spec-default-ruff.log": "1e9cba6de41260b87fb92c1ccbf4ebdb46cfc1f13f0334dd4a82c8633a37d3f7",
+    "history-reply-spec-diff-check.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "history-reply-spec-cause.json": "2f72a0b921184a234b0447fb5ce3da2f9e8fbeafb493abd78039ba23e45914f6"
+  }
+}

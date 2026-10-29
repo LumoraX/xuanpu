@@ -1,0 +1,95 @@
+{
+  "status": "Approved",
+  "approval_scope": "offline_skill_and_test_fix_only",
+  "review_date": "2026-10-24",
+  "scope": "仅root发布/设计Skill与契约测试三文件；不是最终F15业务验收或完成提交批准。",
+  "findings": [],
+  "required_changes": [],
+  "assessment": [
+    {
+      "file": "examples/finance/skills/finance-assistant/SKILL.md",
+      "line": 53,
+      "result": "按用户所问原/历史意见范围整合跨轮次实际人工决定和理由；旧驳回不因当前approved消失，current workflow.steps不替代历史。cancelled不被编造成decision；最新意见查询保持所问范围，完整raw已读时不靠重复查询补漏答。规则generic，无固定数量/fixture理由/版本答案。"
+    },
+    {
+      "file": "examples/finance/skills/finance-assistant/SKILL.md",
+      "line": 51,
+      "result": "q限定当前单号/单据事由字面；类别或旧事由线索从授权mine无q定位，明确当前字面筛选仍按原值。0结果不静默扩大、多候选需确认，真实公司/游标/RLS及当前详情历史门槛保留。已只读核storage/f9_summaries.py实际q仅对id和当前content.reason做不区分大小写子串匹配。"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "lines": [
+        256,
+        368
+      ],
+      "result": "包含多轮历史构造、旧驳回遗漏/cancelled伪决定负例、两页raw provenance缺页/错目标/读取者/call-id反例及实际build_request对无q/null/显式q传参。测试使用未改检查函数及正式schema，只证明离线规则/协议，不能证明模型新答复正确。"
+    }
+  ],
+  "independent_actual_failure_check": {
+    "source": "final8/model206-208本地归档",
+    "full_history_pages": 2,
+    "items_per_page": [
+      5,
+      5
+    ],
+    "last_next_cursor_null": true,
+    "actual_decisions": [
+      "reject",
+      "approve",
+      "approve"
+    ],
+    "known_old_rejection_omitted_in_final_root_reply": true,
+    "original_final8_status": "failed",
+    "conclusion": "已读后答复遗漏，不能改checker或将当前两批准代替全部原意见。本审查未执行新模型或PG查询。"
+  },
+  "checks": [
+    {
+      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q",
+      "exit_code": 0,
+      "result": "145 passed in 3.54s",
+      "boundary": "实际包含既有null-query loopback HTTP；无PG、真实模型/外部API或私有配置访问。"
+    },
+    {
+      "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "exit_code": 0,
+      "result": "All checks passed!",
+      "scope": "仅声明的选定门禁，不能写成所有lint通过。"
+    },
+    {
+      "check": "实际两包validate_package/FilesystemSkillRegistry/pack_package内存ZIP",
+      "result": "均通过；root13、模型API并集68、7Skills保持，公共20成员字节相同，设计额外4引用未动。manifest/API/internal/权限/预算/harness/自然语句/checker为冻结原字节。",
+      "published_zip_sha256": "8435cb8d649c10c9bfbbc697af901acbc873c86569c456b32077fcc34e833193",
+      "design_zip_sha256": "c9848021203a38ae17e2ee35e7f4508a0222faff84e9450dd64bd51cc4b8541a",
+      "artifact_persisted": false
+    },
+    {
+      "check": "740冻结项重新SHA比较",
+      "reference_sha256": "3da051c6a952e5cfc607dde2deb56327ea3e7a71a38fc5ee94ab671f313d9d28",
+      "result": "仅两root副本和test_f15_skill_contract.py三项不同；source与Approved spec一致，包检查前后未漂移。"
+    }
+  ],
+  "known_nonblocking_lint_findings": {
+    "source": "实读history-reply-spec-default-ruff.log；该default探针由规格审查者执行，本审查未冒称自己重跑",
+    "result": "exit1，9 E501及1 ASYNC240；ALL探索探针也未通过。",
+    "quality_assessment": "E501为测试说明/断言等长行；ASYNC240为既有离线loopback fixture中的小型Path.resolve操作。没有产品执行或验收真实性影响，不阻断本次offline窄修；保留为已知风格项，不宣称全规则lint绿。"
+  },
+  "source_sha256": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "5927be1ccc071598edd695fe7aaf40b7e058e9df129bc63501fec1a34dc8ed6f"
+  },
+  "baseline_root_sha256": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
+  "baseline_test_sha256": "a5242549807c99b49fc14da5c00fa04f61a86af09f88b919691c6bcca4407c37",
+  "design_review_sha256": "6316298d3b82324354d7617bf8bf6c9ae2381bde7bd49d820fa261d0fb0435e8",
+  "limits": {
+    "latest_source_real_model_retested": false,
+    "two_complete_fresh_journeys": false,
+    "F15_complete": false,
+    "final8": "failed; phase09/10未执行",
+    "new_real_model_consumption_authorized": false,
+    "completion_commit_authorized": false,
+    "source_or_product_edited_by_reviewer": false,
+    "PG_or_private_ledger_accessed": false
+  },
+  "remaining": "root可继续既有授权的独占PG离线full/quick、文档和制品检查；结果须与真实模型业务未完成分列。该报告不允许扩额、重标final8、以离线GREEN替代两次fresh旅程或完成提交。"
+}

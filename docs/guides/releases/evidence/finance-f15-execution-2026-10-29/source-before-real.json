@@ -1,0 +1,15 @@
+{
+  "files": {
+    "scripts/acceptance/finance_model.py": "e8672fcc06599cb523f2a6d25e01843c548ed8e9f3dc7e7de8a4baa854d2ee5a",
+    "scripts/acceptance/finance_model_runtime.py": "932772adcbfae83608e3d751de7b62f41e290d5c398d9a20ecf788510968127b",
+    "scripts/acceptance/finance_model_journey.py": "1af8c3d0648a3de00bf0632cb9d816167c92e7adb01cf9e17775111580ae28a4",
+    "scripts/acceptance/finance_model_focus.py": "1e70ac2daa8d37513a4d9128c591a0867037827e8d2f00874218c162c5dacdc6",
+    "packages/xuanpu-finance/tests/test_f15_execution.py": "3112c00d92a61572a9f5850ff92b84acbfb1f771be5700d0b8fdb5e5cc4decae"
+  },
+  "model_streams_before": 208,
+  "model_streams_offline_fixture": 0,
+  "global_stream_cap": 240,
+  "focused_cap": 12,
+  "session_tokens": 200000,
+  "counts_as_complete_journey": false
+}

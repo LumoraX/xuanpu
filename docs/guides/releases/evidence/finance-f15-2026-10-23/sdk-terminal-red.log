@@ -1,0 +1,18 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______ test_operation_terminal_projection_overrides_leaf_and_allows_abort ______
+
+    def test_operation_terminal_projection_overrides_leaf_and_allows_abort() -> None:
+        """新服务端的操作级布尔优先，旧服务器和未知事件仍保持明确边界。"""
+        from xuanpu_sdk import Event
+    
+>       assert not Event(kind='turn_suspended', submission_id='s', seq=1, at=1,
+                         data={'operation_terminal': False}).terminal
+E       AssertionError: assert not True
+E        +  where True = Event(kind='turn_suspended', submission_id='s', seq=1, at=1, data={'operation_terminal': False}).terminal
+E        +    where Event(kind='turn_suspended', submission_id='s', seq=1, at=1, data={'operation_terminal': False}) = <class 'xuanpu_sdk.models.Event'>(kind='turn_suspended', submission_id='s', seq=1, at=1, data={'operation_terminal': False})
+
+packages/xuanpu-sdk-py/tests/test_sdk.py:213: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-sdk-py/tests/test_sdk.py::test_operation_terminal_projection_overrides_leaf_and_allows_abort
+1 failed, 10 deselected in 0.04s

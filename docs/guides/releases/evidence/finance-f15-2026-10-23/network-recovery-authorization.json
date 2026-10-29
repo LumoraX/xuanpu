@@ -1,0 +1,22 @@
+{
+  "status": "completed",
+  "authorization": {
+    "id": "resume-unknown-56",
+    "source": "direct user reply to request_user_input_async",
+    "question_call_id": "call_00dabb09d02d4b128886f64b2253480e",
+    "question": "真实网关在第56次调用时断流，未返回用量，已触发F15设计的硬停止。是否允许保留这1次未知用量记录，在原240次调用上限内恢复消费，继续完成两次完整验收？",
+    "answer": "允许在原上限内继续",
+    "observed_at": "2026-10-23T12:00:20.629781+00:00",
+    "scope": "one manual exception for unknown attempt 56; original 240 stream and other limits unchanged; future missing usage halts again",
+    "execution_authorized": true
+  },
+  "original_ledger_sha256": "3444ebb987ef9683a1588efcbf029ffcd3b36f3a09b3f850968aff47f19e5eed",
+  "new_ledger_sha256": "7c16bd58a1631dbda3efce208519c1146747a8e7c3785e9a01a6bee08e39d052",
+  "original_counts_unchanged": true,
+  "unknown_usage_not_zero": true,
+  "completed_not_incremented": true,
+  "future_usage_missing_still_halts": true,
+  "source_frozen_files_unchanged": 740,
+  "new_model_calls_during_recovery": 0,
+  "snapshot": "model-budget-before-authorized-resume.json"
+}

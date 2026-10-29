@@ -1,0 +1,101 @@
+FFFFF.........                                                           [100%]
+=================================== FAILURES ===================================
+________ test_actual_query_zero_amount_labels_are_not_execution_claims _________
+
+    def test_actual_query_zero_amount_labels_are_not_execution_claims():
+        """真实模型金额字段为零，不应把字段名本身误判为已执行付款。"""
+        path = (Path(__file__).resolve().parents[3] /
+            'docs/guides/releases/evidence/finance-f15-execution-2026-10-29/'
+            'query-regression-fixed/result.json')
+        result = json.loads(path.read_text())
+        reply = next(c['actual'] for c in result['checks'] if c['name'] == 'fresh_query_semantic_facts')
+>       assert checks().financial_reply_is_zero(reply)
+E       AssertionError: assert False
+E        +  where False = <function financial_reply_is_zero at 0x1096e3380>('已找到你的交通报销：\n\n- **报销单 ID**：`3fc3238e541d434ca1e538bfb9b0670c`\n- **事由**：拜访上海客户讨论项目需求\n- **明细**：出差交通，发生日期 **2026-10-22...0.00 元**\n- 待记账：**0.00 元**\n- 冲回金额：**0.00 元**\n\n因此，这笔报销目前只是内部审批完成，**尚未付款，也尚未记账**。另外，所附材料仍标记为 **未经查验**，不能据此视为正式发票验真结果。')
+E        +    where <function financial_reply_is_zero at 0x1096e3380> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:440: AssertionError
+_ test_explicit_zero_amount_field_labels_are_not_action_statements[\u5df2\u4ed8\u6b3e\uff1a0.00 \u5143\uff1b\u5df2\u8bb0\u8d26\uff1a0.00 \u5143] _
+
+reply = '已付款：0.00 元；已记账：0.00 元'
+
+    @pytest.mark.parametrize('reply', [
+        '已付款：0.00 元；已记账：0.00 元',
+        '**已支付金额**：**0.00元**；已入账金额：0元',
+        '已经实际付款：0.00 CNY；已记账：0.00元',
+        '已入账：0；未付款',
+    ])
+    def test_explicit_zero_amount_field_labels_are_not_action_statements(reply: str):
+        """仅明确金额标签的零值可接受，仍要求两个独立维度。"""
+>       assert checks().financial_reply_is_zero(reply)
+E       AssertionError: assert False
+E        +  where False = <function financial_reply_is_zero at 0x1096e3380>('已付款：0.00 元；已记账：0.00 元')
+E        +    where <function financial_reply_is_zero at 0x1096e3380> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:451: AssertionError
+_ test_explicit_zero_amount_field_labels_are_not_action_statements[**\u5df2\u652f\u4ed8\u91d1\u989d**\uff1a**0.00\u5143**\uff1b\u5df2\u5165\u8d26\u91d1\u989d\uff1a0\u5143] _
+
+reply = '**已支付金额**：**0.00元**；已入账金额：0元'
+
+    @pytest.mark.parametrize('reply', [
+        '已付款：0.00 元；已记账：0.00 元',
+        '**已支付金额**：**0.00元**；已入账金额：0元',
+        '已经实际付款：0.00 CNY；已记账：0.00元',
+        '已入账：0；未付款',
+    ])
+    def test_explicit_zero_amount_field_labels_are_not_action_statements(reply: str):
+        """仅明确金额标签的零值可接受，仍要求两个独立维度。"""
+>       assert checks().financial_reply_is_zero(reply)
+E       AssertionError: assert False
+E        +  where False = <function financial_reply_is_zero at 0x1096e3380>('**已支付金额**：**0.00元**；已入账金额：0元')
+E        +    where <function financial_reply_is_zero at 0x1096e3380> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:451: AssertionError
+_ test_explicit_zero_amount_field_labels_are_not_action_statements[\u5df2\u7ecf\u5b9e\u9645\u4ed8\u6b3e\uff1a0.00 CNY\uff1b\u5df2\u8bb0\u8d26\uff1a0.00\u5143] _
+
+reply = '已经实际付款：0.00 CNY；已记账：0.00元'
+
+    @pytest.mark.parametrize('reply', [
+        '已付款：0.00 元；已记账：0.00 元',
+        '**已支付金额**：**0.00元**；已入账金额：0元',
+        '已经实际付款：0.00 CNY；已记账：0.00元',
+        '已入账：0；未付款',
+    ])
+    def test_explicit_zero_amount_field_labels_are_not_action_statements(reply: str):
+        """仅明确金额标签的零值可接受，仍要求两个独立维度。"""
+>       assert checks().financial_reply_is_zero(reply)
+E       AssertionError: assert False
+E        +  where False = <function financial_reply_is_zero at 0x1096e3380>('已经实际付款：0.00 CNY；已记账：0.00元')
+E        +    where <function financial_reply_is_zero at 0x1096e3380> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:451: AssertionError
+_ test_explicit_zero_amount_field_labels_are_not_action_statements[\u5df2\u5165\u8d26\uff1a0\uff1b\u672a\u4ed8\u6b3e] _
+
+reply = '已入账：0；未付款'
+
+    @pytest.mark.parametrize('reply', [
+        '已付款：0.00 元；已记账：0.00 元',
+        '**已支付金额**：**0.00元**；已入账金额：0元',
+        '已经实际付款：0.00 CNY；已记账：0.00元',
+        '已入账：0；未付款',
+    ])
+    def test_explicit_zero_amount_field_labels_are_not_action_statements(reply: str):
+        """仅明确金额标签的零值可接受，仍要求两个独立维度。"""
+>       assert checks().financial_reply_is_zero(reply)
+E       AssertionError: assert False
+E        +  where False = <function financial_reply_is_zero at 0x1096e3380>('已入账：0；未付款')
+E        +    where <function financial_reply_is_zero at 0x1096e3380> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:451: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_actual_query_zero_amount_labels_are_not_execution_claims
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_explicit_zero_amount_field_labels_are_not_action_statements[\u5df2\u4ed8\u6b3e\uff1a0.00 \u5143\uff1b\u5df2\u8bb0\u8d26\uff1a0.00 \u5143]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_explicit_zero_amount_field_labels_are_not_action_statements[**\u5df2\u652f\u4ed8\u91d1\u989d**\uff1a**0.00\u5143**\uff1b\u5df2\u5165\u8d26\u91d1\u989d\uff1a0\u5143]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_explicit_zero_amount_field_labels_are_not_action_statements[\u5df2\u7ecf\u5b9e\u9645\u4ed8\u6b3e\uff1a0.00 CNY\uff1b\u5df2\u8bb0\u8d26\uff1a0.00\u5143]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_explicit_zero_amount_field_labels_are_not_action_statements[\u5df2\u5165\u8d26\uff1a0\uff1b\u672a\u4ed8\u6b3e]
+5 failed, 9 passed, 102 deselected in 0.09s

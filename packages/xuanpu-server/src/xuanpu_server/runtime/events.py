@@ -104,15 +104,17 @@ class SubmissionIndex:
         return _UNKNOWN
 
 
-def is_terminal(event: taifeng.EventMsg) -> bool:
+def is_terminal(event: taifeng.EventMsg, suspension_threads: frozenset[str] | None = None) -> bool:
     """这条事件是否结束了它所属的那一轮对话。
 
     子 skill 的完成 / 失败事件也带着同一个 submission 标识，但它们发生在根 turn 的执行
-    窗口之内，不算结束；挂起事件没有这层区分，出现即结束。送回审批被拒或只核销了一部分
+    窗口之内，不算结束；挂起按操作的可信目标线程判定。送回审批被拒或只核销了一部分
     （``RESUME_ENDING_KINDS``，带的是那次送回的 submission）同样出现即结束。
     """
     kind = event.msg.kind
-    if (kind == "turn_suspended" or kind in RESUME_ENDING_KINDS
+    if kind == "turn_suspended":
+        return suspension_threads is None or event.msg.data.get('thread_id') in suspension_threads
+    if (kind in RESUME_ENDING_KINDS
             or (kind == "suspension_resolved" and event.msg.data.get("aborted") is True)):
         return True
     return kind in TERMINAL_KINDS and bool(event.msg.data.get("is_root", False))
@@ -132,9 +134,10 @@ def turn_outcome(event: taifeng.EventMsg) -> str:
 class TurnStream:
     """一轮对话的事件流。"""
 
-    def __init__(self, submission_id: str) -> None:
-        """绑定一个 submission。"""
+    def __init__(self, submission_id: str, suspension_threads: frozenset[str] | None = None) -> None:
+        """绑定操作及其可信的挂起终结线程。"""
         self.submission_id = submission_id
+        self.suspension_threads = suspension_threads
         self._queue: asyncio.Queue[taifeng.EventMsg | None] = asyncio.Queue(_STREAM_BUFFER)
         self._closed = False
         self.overflowed = False
@@ -164,7 +167,7 @@ class TurnStream:
             if event is None:
                 return
             yield event
-            if is_terminal(event):
+            if is_terminal(event, self.suspension_threads):
                 return
 
 
@@ -217,6 +220,9 @@ class EngineEventHub:
         # 引擎每次被创建是一条新的事件流，序号从头计
         self._stream_id = "st_" + secrets.token_hex(8)
         self._streams: dict[str, TurnStream] = {}
+        self._suspension_targets: dict[str, frozenset[str]] = {}
+        self._finished: set[str] = set()
+        self._operation_usage: dict[str, dict[str, dict[str, Any]]] = {}
         self._resolutions = ResolutionLedger(session_id)
         # 每轮对话的流式文本：增量本身不进审计，结束时落一条拼好的全文供回放
         self._texts: dict[str, list[str]] = {}
@@ -224,6 +230,7 @@ class EngineEventHub:
         self._expected_delivery = 0
         self._task: asyncio.Task[None] | None = None
         self._flusher: asyncio.Task[None] | None = None
+        self._flush_lock = asyncio.Lock()
 
     async def start(self) -> None:
         """建立全量订阅。返回时订阅已经登记到引擎上，之后发出的事件不会漏。"""
@@ -234,9 +241,11 @@ class EngineEventHub:
         self._task = asyncio.ensure_future(self._consume(source, first))
         self._flusher = asyncio.ensure_future(self._flush_periodically())
 
-    def open_stream(self, submission_id: str) -> TurnStream:
+    def open_stream(self, submission_id: str, *, suspension_threads: frozenset[str] | None = None) -> TurnStream:
         """登记一轮对话的事件流。必须在提交返回之后、任何让出点之前调用。"""
-        stream = TurnStream(submission_id)
+        targets = suspension_threads or frozenset({self._engine.thread_id})
+        self._suspension_targets[submission_id] = targets
+        stream = TurnStream(submission_id, targets)
         self._streams[submission_id] = stream
         return stream
 
@@ -285,39 +294,46 @@ class EngineEventHub:
         if kind in RESOLUTION_KINDS:
             # 先让等这次送回结论的一方做完（例如补过闸记录），调用方看到结论时审计已经齐了
             await self._resolutions.settle(event)
+        targets = self._suspension_targets.get(event.submission_id)
+        terminal = is_terminal(event, targets) and event.submission_id not in self._finished
+        if kind in TERMINAL_KINDS and isinstance(event.msg.data.get('usage'), dict):
+            thread = str(event.msg.data.get('thread_id', self._engine.thread_id))
+            self._operation_usage.setdefault(event.submission_id, {})[thread] = event.msg.data['usage']
+        if kind == "assistant_text":
+            self._texts.setdefault(event.submission_id, []).append(str(event.msg.data.get("delta", "")))
+        if kind not in STREAMING_KINDS and (kind not in SENSITIVE_KINDS or self._capture_requests):
+            self._buffer.append(self._record(kind, event, dict(event.msg.data), seq=event.seq))
+        if terminal:
+            # 确认终态的审计/用量先完成，客户端紧接着读pending不会看到旧快照。
+            await self._finish(event)
+            self._finished.add(event.submission_id)
+            self._suspension_targets.pop(event.submission_id, None)
+        elif len(self._buffer) >= _FLUSH_SIZE:
+            await self._flush()
         stream = self._streams.get(event.submission_id)
         if stream is not None:
             stream.push(event)
-            if is_terminal(event) or stream.overflowed:
+            if terminal or stream.overflowed:
                 self._streams.pop(event.submission_id, None)
-
-        if kind == "assistant_text":
-            self._texts.setdefault(event.submission_id, []).append(
-                str(event.msg.data.get("delta", ""))
-            )
-        if kind not in STREAMING_KINDS and (kind not in SENSITIVE_KINDS or self._capture_requests):
-            self._buffer.append(self._record(kind, event, dict(event.msg.data), seq=event.seq))
-        if is_terminal(event):
-            await self._finish(event)
-        elif len(self._buffer) >= _FLUSH_SIZE:
-            await self._flush()
 
     async def _finish(self, event: taifeng.EventMsg) -> None:
         """一轮（或送回审批的那一次）结束：移出在途、落回复全文、入账，并写出审计。"""
-        if self._on_turn_end is not None:
-            self._on_turn_end(event.submission_id)
         outcome = turn_outcome(event)
         # 以取消结束、又没有结论的送回（排队中被停）内核没处理，不算等不到结论
         # 只有排队时的 turn_failed(cancelled) 证明根本没有开始应用决定。
         await self._resolutions.ended(event.submission_id,
             cancelled=event.msg.kind == "turn_failed" and outcome == "cancelled")
-        self._metrics.turn_ended(outcome)
         text = "".join(self._texts.pop(event.submission_id, []))
         # 送回审批被拒或只核销了一部分：没有采样，不落回复全文、不计一轮
         if event.msg.kind not in RESUME_ENDING_KINDS and outcome != "aborted":
             self._buffer.append(self._record("turn_text", event, {"text": text}, seq=None))
             await self._account(event)
         await self._flush()
+        if self._buffer:
+            raise RuntimeError('终态审计尚未落盘，不发布成功终态')
+        if self._on_turn_end is not None:
+            self._on_turn_end(event.submission_id)
+        self._metrics.turn_ended(outcome)
 
     def _record(
         self, kind: str, event: taifeng.EventMsg, data: dict[str, Any], *, seq: int | None
@@ -332,7 +348,9 @@ class EngineEventHub:
             session_id=self._session_id,
             stream=self._stream_id if seq is not None else None,
             seq=seq,
-            data={"submission_id": event.submission_id, **sanitize(data)},
+            data={"submission_id": event.submission_id, **sanitize(data),
+                  'operation_terminal': is_terminal(event, self._suspension_targets.get(event.submission_id))
+                  and event.submission_id not in self._finished},
             user_id=self._user_id,
         )
 
@@ -344,6 +362,12 @@ class EngineEventHub:
         租户总量（员工那笔失败只让按员工的少算）。"""
         data = event.msg.data
         usage = data.get("subtree_usage") or data.get("usage") or {}
+        collected = self._operation_usage.pop(event.submission_id, {})
+        if collected:
+            # 子链Resume的根subtree_usage可能只含根续跑；每线程终态usage是不重叠的实测下限。
+            usage = {key: max(int(usage.get(key) or 0),
+                     sum(int(part.get(key) or 0) for part in collected.values()))
+                     for key in ('input_tokens', 'output_tokens', 'total_tokens')}
         if not isinstance(usage, dict):
             return
         input_tokens = int(usage.get("input_tokens") or 0)
@@ -409,16 +433,15 @@ class EngineEventHub:
 
     async def _flush(self) -> None:
         """把缓冲里的审计记录写出去。写失败时放回缓冲，等下一次重试。"""
-        if not self._buffer:
-            return
-        batch, self._buffer = self._buffer, []
-        try:
-            await self._audit.engine(batch)
-        except Exception:
-            logger.exception(
-                "会话 %s 的 %d 条审计记录写入失败，稍后重试", self._session_id, len(batch)
-            )
-            self._buffer = batch + self._buffer
+        async with self._flush_lock:
+            if not self._buffer:
+                return
+            batch, self._buffer = self._buffer, []
+            try:
+                await self._audit.engine(batch)
+            except Exception:
+                logger.exception("会话 %s 的 %d 条审计记录写入失败，稍后重试", self._session_id, len(batch))
+                self._buffer = batch + self._buffer
 
     async def _flush_periodically(self) -> None:
         """定时把攒着的审计记录写出去。"""

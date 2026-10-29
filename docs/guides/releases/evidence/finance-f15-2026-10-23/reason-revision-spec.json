@@ -1,0 +1,98 @@
+{
+  "status": "Approved",
+  "review_date": "2026-10-24",
+  "scope": "reason-revision narrowed specification review: root published/design Skill and existing contract test only",
+  "findings": [],
+  "causal_assessment": {
+    "evidence": "reason-revision-spec-cause.json",
+    "sha256": "2f9f7f9e3008b54ce8df8c742cd21f20e94a811e2f2ab67e594f119c0a2efb28",
+    "result": "Independently read model163 actual update: expected_version4, draft.reason old, line.reason new. Real HTTP200 raw result and existing readonly PG export agree on draft v5/top old/line new. Original user request is document reason supplementation, and unchanged content.reason assertion correctly rejects this. Not an observer/network defect.",
+    "locator": "Earlier same actor/session create201 already supplied exact real ID; subsequent summary locator is redundant. Direct current GET/history/RLS/version are still necessary.",
+    "PG_boundary": "Existing actual-pg-reason-failure.json export only, not reviewer live query."
+  },
+  "specification_assessment": {
+    "reason_scope": "Document/expense reason maps draft.reason to persistent content.reason; line.reason alone cannot substitute. Explicit line-only request changes only that line and keeps current top reason/other fields. Review approve/reject reason remains preview parameters as shown in unchanged actual schema and constructed protocol tests.",
+    "current_fields": "Current authorized GET/version still precedes update; unrequested amount/date/category/raw/receipt fields preserved. Update result new version drives preview, no parallel dependency or old version reuse.",
+    "locator": "Only same actual session, self-created unique real ID can skip summary relocation; ID is a location hint, not authorization/version/status cache. Missing/ambiguous/other identity/company/permission/refresh uses current minimal source or stops; fresh query remains summary/detail/history.",
+    "safety_and_scope": "Root13, union68, declared77, internal24,7Skills, ordinary zero-delegation direct flow and existing exception recovery preserved. Complete740-file frozen candidate5 comparison shows only permitted three files changed, so natural prompts/checker/runtime/model/budget/service/permissions remain exact bytes.",
+    "proof_limit": "Constructed ExpenseUpdate/ActionPreview and build_request examples verify field/serialization contracts, including raw preservation and line-only negative meaning. They are not real model-generated successful revisions; final7 remains failed."
+  },
+  "checks": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "packages/xuanpu-finance/tests/test_f15_model_harness.py",
+        "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+        "-q",
+        "--junitxml=/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/releases/evidence/finance-f15-2026-10-23/reason-revision-spec-tests.xml"
+      ],
+      "returncode": 0,
+      "passed": 133,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "reason-revision-spec-tests.log",
+      "log_sha256": "b426b938fbf056b097f98422b78a222298a34c9c441931821ec3ac10bfeb92dd",
+      "xml": "reason-revision-spec-tests.xml",
+      "xml_sha256": "355a7684e529d519e963ad862cc7b99c40fcda22a00c21d28ad884ee14a41d0a",
+      "test_input_snapshot": "reason-revision-spec-test-input.json",
+      "test_input_snapshot_sha256": "44d3d426d6c638319bc28d842b9a04341fec3bfbbb93185487ad886c04d4cdcc",
+      "source_sha256_before_and_after_equal": true
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "--select",
+        "F,S108,I,TC,C901",
+        "--config",
+        "lint.mccabe.max-complexity=10",
+        "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+      ],
+      "returncode": 0,
+      "log": "reason-revision-spec-ruff.log",
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "check": "Actual package validation/FilesystemSkillRegistry and policy/API/copy consistency",
+      "status": "passed",
+      "evidence": "reason-revision-spec-contract-validation.json",
+      "sha256": "8bf608108b51dccd0232419fad4c8615204f0eff14eefb4639cb1ec01a6d5ccb"
+    },
+    {
+      "check": "Archived RED and actual business RED inspected",
+      "static_red": "reason-revision-red.log2failed/24deselected",
+      "real_red": "final7/model163 and actual service/PG-export agreement",
+      "limitation": "Reviewer did not revert shared source or rerun a paid/model RED."
+    }
+  ],
+  "source_sha256": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "a5242549807c99b49fc14da5c00fa04f61a86af09f88b919691c6bcca4407c37"
+  },
+  "baseline_frozen_sha256": "28196d6b483d898c98b889622ef5da84fc180501a28de6c6824c98f457b85091",
+  "only_changed_frozen_files": [
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
+    "examples/finance/skills/finance-assistant/SKILL.md",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+  ],
+  "approved_design_review_sha256": "b35cdd70bd19e69d58123ec3aa6e3892d1379045633b98d05ac2a058d44ca4a3",
+  "implementation_report_sha256": "febcf3b15562b72b518f5cd0aa2c4cc35d43b45e2d608166a673b0024e9fbc1a",
+  "remaining_gates": [
+    "Sequential quality, new full source freeze and affected artifacts.",
+    "Fresh real full user journeys retain original content.reason, amount/date/raw/receipt/history/human/original/security assertions. No full-pass promotion of final7.",
+    "Original240 stream and200000 owner-session limits remain; reported75 remaining is not a promise two complete runs fit, and cannot justify omitted safety reads, a split owner session, hidden reset or expanded budget.",
+    "Final full/quick/static/docs/artifacts/global review/secret scan/owned cleanup and complete-only local commit remain parent responsibilities."
+  ],
+  "limitations": [
+    "No PG/model API/private configuration/private ledger accessed; no new real-model improvement or completion claim.",
+    "No product/Skill/harness/test source changed or committed by reviewer.",
+    "This is field/locator specification approval, not full F15 business acceptance or production readiness."
+  ],
+  "history": []
+}

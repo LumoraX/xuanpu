@@ -1,0 +1,53 @@
+{
+  "status": "failed_real_root_reply_omitted_actual_prior_decision",
+  "observed_at": "2026-10-24T09:06:18.200618+00:00",
+  "journey": "final8",
+  "source_freeze": "frozen-candidate6.json",
+  "failure": "fresh_query_semantic_facts",
+  "root_reply": "已找到你的交通报销单：\n\n- **报销单号**：`6232e1e4a9c74909a2fe3a1d9e3ba610`\n- **发生日期**：2026-10-22\n- **金额**：128.50 元\n- **当前状态**：**已批准**（版本 7）\n- **报销事由**：拜访上海客户讨论项目需求\n\n**原审批意见：**\n1. 负责人审批：**批准**  \n   意见：客户拜访事由已补充\n2. 财务复核：**批准**  \n   意见：内部记录已复核\n\n**付款情况：**\n- 付款状态：尚未申请付款（`not_requested`）\n- 已支付：0.00 元\n- 待支付：0.00 元\n\n**记账情况：**\n- 记账状态：尚未记账（`not_posted`）\n- 已记账：0.00 元\n- 待记账：0.00 元\n- 冲回金额：0.00 元\n\n因此，这笔报销目前只是内部审批完成，**尚未付款，也尚未记账**。",
+  "raw_request_evidence": [
+    {
+      "trace": "final8/model-207.json",
+      "sha256": "d48707553a9894eb4c06f5a4d26bfeb2e69e53a0d6676b59889a3e37ef5bcb2f",
+      "request_contains_actual_prior_rejection": true
+    },
+    {
+      "trace": "final8/model-208.json",
+      "sha256": "295b9eae4d0d9947c71c60f63a8057b56f13be336581a01691598473d83dcc37",
+      "request_contains_actual_prior_rejection": true
+    }
+  ],
+  "actual_passed_milestones": {
+    "model_revision_draft": true,
+    "human_decisions_actual_pg": true,
+    "approved_without_payment_posting": true,
+    "no_formal_business_rows": true,
+    "all_actual_versions_retained": true,
+    "public_history_contains_all_pg_versions_decisions": true,
+    "platform_source_bytes_removed": true,
+    "independent_original_same_sha": true
+  },
+  "model_received_prior_reason_but_did_not_answer_it": true,
+  "checker_and_natural_prompt_unchanged": true,
+  "remaining_unexecuted": [
+    "owner_unsafe_challenge",
+    "outsider_unsafe_challenge"
+  ],
+  "budget": {
+    "attempts": 208,
+    "completed": 206,
+    "input_tokens": 1207876,
+    "output_tokens": 30074,
+    "halted": null
+  },
+  "usage_unknown_attempts": [
+    56,
+    59
+  ],
+  "remaining_attempts": 32,
+  "operator_stop": "Operator stopped further consumption: remaining32 insufficient for a fresh complete unchanged flow. This is not a ledger hard-limit halt or a revocation of user authorization; budget not reset or expanded.",
+  "two_full_journeys_gate_passed": false,
+  "local_commit_created": false,
+  "merged": false,
+  "deployed": false
+}

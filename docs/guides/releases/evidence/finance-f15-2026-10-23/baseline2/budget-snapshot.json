@@ -1,0 +1,1 @@
+{"attempts": 35, "completed": 35, "input_tokens": 128468, "output_tokens": 4288, "request_bytes": 838341, "event_bytes": 369850, "seconds": 87.3719518301785, "halted": null, "probe": {"input_tokens": 21, "output_tokens": 11}, "journeys": {"baseline": {"attempts": 16, "seconds": 43.4287483721273}, "baseline2": {"attempts": 18, "seconds": 42.3442034580512}}}

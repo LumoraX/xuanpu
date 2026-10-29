@@ -1,0 +1,25 @@
+{
+  "status": "actual_business_failure_confirmed_not_observer_fault",
+  "user_phase": "05-owner-resubmit:session",
+  "user_requested_document_reason_supplement": true,
+  "update_call_id": "call_59711e7c44894839ad1194e060e0c402",
+  "expected_version": 4,
+  "new_persisted_version": 5,
+  "raw_update_top_reason": "出差交通待补充",
+  "raw_update_line_reason": "拜访上海客户讨论项目需求",
+  "actual_raw_response_matches_existing_PG_export": true,
+  "final7_status": "failed",
+  "earlier_same_actor_session_create201_already_supplied_actual_id": true,
+  "repeated_summary_locator_in_model161": true,
+  "locator_does_not_replace_current_GET_history_or_authorization": true,
+  "PG_boundary": "Only existing actual-pg-reason-failure.json export read; no live PG query by this reviewer",
+  "evidence_sha256": {
+    "final7/model-150.json": "55aa51ed60b19980cdcc65d18dbab13dc080ffc2b99cbc9d45d0994046ae6172",
+    "final7/model-161.json": "765506c7e420dda6fbfa28a9f3c740cf6c645cc64c943aa5353649aaa611117c",
+    "final7/model-162.json": "343d140c4cfeeb87c786bfdd9ebc082d38b5d32dee1a8886179bb420ef1f1263",
+    "final7/model-163.json": "50edb937e1726bbf7fb4089ec0e355d584e780c67ee7f92a8d65beb1c1421a80",
+    "final7/model-164.json": "0773f149d521bffc5a46951693a5a7c4be2de4dd396cc8b2e70f574bd84f4cb5",
+    "final7/05-owner-resubmit-session.json": "cb4d35f28efccfd648946701bba47fd60cc96c63ff21660c460baa3ac6a9fa23",
+    "final7/actual-pg-reason-failure.json": "435013d7d8b7f7ab6322dbb92850752af6166e7083c79f667680b3d6e0631ca1"
+  }
+}

@@ -1,0 +1,21 @@
+....F.                                                                   [100%]
+=================================== FAILURES ===================================
+_________ test_optional_query_schema_accepts_null_required_ids_do_not __________
+
+    def test_optional_query_schema_accepts_null_required_ids_do_not() -> None:
+        """Responses可用null表示未填写，必填公司仍不能用null越过契约。"""
+        import jsonschema
+    
+        from .test_package import contracts, operations
+    
+        for document in contracts().values():
+>           assert document['openapi'] == '3.1.0'
+E           AssertionError: assert '3.0.3' == '3.1.0'
+E             
+E             - 3.1.0
+E             + 3.0.3
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:37: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f15_skill_contract.py::test_optional_query_schema_accepts_null_required_ids_do_not
+1 failed, 5 passed in 0.85s

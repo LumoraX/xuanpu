@@ -1,0 +1,80 @@
+{
+  "status": "passed",
+  "method": "Actual published root tools/effects + production build_policy + public PermissionRequest/check/SuspendSignal",
+  "rows": [
+    {
+      "name": "api__finance__getFinanceCapabilities",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__finance__listLegalEntities",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__finance__listSupportingMaterialImports",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__finance__getSupportingMaterialImport",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__finance__listExpenseClaimSummaries",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__finance__getExpenseClaim",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__finance__listExpenseClaimHistory",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__finance__createExpenseClaim",
+      "effect": "write",
+      "result": "suspended_for_permission"
+    },
+    {
+      "name": "api__finance__updateExpenseClaim",
+      "effect": "write",
+      "result": "suspended_for_permission"
+    },
+    {
+      "name": "api__finance__previewFinanceAction",
+      "effect": "write",
+      "result": "suspended_for_permission"
+    },
+    {
+      "name": "api__finance__listReviewQueue",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__catalog__listExpenseCategories",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__catalog__listCostCenters",
+      "effect": "read",
+      "result": "allowed_read"
+    }
+  ],
+  "read_allowed": 10,
+  "write_suspended": 3,
+  "service_or_PG_or_model_invoked": false,
+  "source_sha256": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
+    "examples/finance/xuanpu.yaml": "223e69f25953f8fff447b66a93a7ec9ceeede56fb5ac5947787a75c573bb3f71",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/approval.py": "e3a6bd0298e8dc5a6ccade3fa893d64dfbfc267d13b4831b9fc9f5384fa4bf5d"
+  },
+  "limitation": "Permission protocol only; separate signed-context/auth tests do not replace complete finance HTTP/model acceptance."
+}

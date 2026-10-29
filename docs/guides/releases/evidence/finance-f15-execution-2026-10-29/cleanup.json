@@ -1,0 +1,26 @@
+{
+  "status": "passed",
+  "owned_container_removed": "xuanpu-finance-exec-20261029",
+  "label_verified": true,
+  "owned_volumes_removed": 1,
+  "database_before_cleanup": {
+    "other_client_sessions": 0,
+    "advisory_locks": 0
+  },
+  "private_dsn_and_state_removed": [
+    "dsn",
+    "queryfix-dsn",
+    "suite-dsn",
+    "query-state",
+    "queryfix-state"
+  ],
+  "model_config_unchanged": true,
+  "public_evidence_and_private_ledger_retained": true,
+  "durable_artifacts_retained": true,
+  "original_sibling_clean": true,
+  "model_attempts": 218,
+  "merged": false,
+  "deployed": false,
+  "pushed": false,
+  "local_commit_created": false
+}

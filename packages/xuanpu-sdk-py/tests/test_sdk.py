@@ -45,6 +45,7 @@ async def test_error_mapping() -> None:
     """平台的错误响应映射成异常，附带额外字段。"""
 
     def handler(request: httpx.Request) -> httpx.Response:
+        """返回本用例预设的公开HTTP响应。"""
         assert request.headers["authorization"] == "Bearer k"
         return httpx.Response(
             409,
@@ -64,6 +65,7 @@ async def test_non_platform_error_is_transport_error() -> None:
     """不是平台格式的错误响应（比如反向代理的 502 页面）按传输错误处理。"""
 
     def handler(request: httpx.Request) -> httpx.Response:
+        """返回本用例预设的公开HTTP响应。"""
         return httpx.Response(502, text="<html>bad gateway</html>")
 
     async with XuanpuClient("http://x", "k", transport=_stub(handler)) as client:
@@ -114,6 +116,7 @@ async def test_stream_yields_events_until_terminal() -> None:
     body = "".join(f"event: {name}\ndata: {json.dumps(data)}\n\n" for name, data in frames)
 
     def handler(request: httpx.Request) -> httpx.Response:
+        """返回本用例预设的公开HTTP响应。"""
         assert json.loads(request.content) == {"text": "hi"}
         return httpx.Response(200, text=body, headers={"content-type": "text/event-stream"})
 
@@ -141,6 +144,7 @@ async def test_stream_error_response_raises() -> None:
     """事件流请求被拒时抛平台错误。"""
 
     def handler(request: httpx.Request) -> httpx.Response:
+        """返回本用例预设的公开HTTP响应。"""
         return httpx.Response(404, json={"error": {"code": "not_found", "message": "没有"}})
 
     async with XuanpuClient("http://x", "k", transport=_stub(handler)) as client:
@@ -154,6 +158,7 @@ async def test_truncated_stream_is_reported() -> None:
     body = 'event: turn\ndata: {"session_id": "s", "submission_id": "sub"}\n\nevent: assistant_text\ndata: {"kind": "assistant_text", "submission_id": "sub", "seq": 1, "at": 1.0, "data": {"delta": "半"}}\n\n'
 
     def handler(request: httpx.Request) -> httpx.Response:
+        """返回本用例预设的公开HTTP响应。"""
         return httpx.Response(200, text=body)
 
     async with XuanpuClient("http://x", "k", transport=_stub(handler)) as client:
@@ -166,6 +171,7 @@ async def test_cancel_posts_to_the_session() -> None:
     seen: list[tuple[str, str, dict[str, Any]]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
+        """返回本用例预设的公开HTTP响应。"""
         body = json.loads(request.content)
         seen.append((request.method, request.url.path, body))
         cancelled = [body["submission_id"]] if "submission_id" in body else ["sub_a", "sub_b"]
@@ -188,6 +194,7 @@ async def test_audit_pagination() -> None:
     }
 
     def handler(request: httpx.Request) -> httpx.Response:
+        """返回本用例预设的公开HTTP响应。"""
         after = int(request.url.params["after_id"])
         page = pages[after]
         records = [
@@ -204,3 +211,47 @@ async def test_audit_pagination() -> None:
     async with XuanpuClient("http://x", "k", transport=_stub(handler)) as client:
         ids = [record.audit_id async for record in client.admin.audit(limit=2)]
     assert ids == [1, 2, 3]
+
+
+def test_operation_terminal_projection_overrides_leaf_and_allows_abort() -> None:
+    """新服务端的操作级布尔优先，旧服务器和未知事件仍保持明确边界。"""
+    from xuanpu_sdk import Event
+
+    assert not Event(kind='turn_suspended', submission_id='s', seq=1, at=1,
+                     data={'operation_terminal': False}).terminal
+    assert Event(kind='turn_suspended', submission_id='s', seq=2, at=1,
+                 data={'operation_terminal': True}).terminal
+    assert Event(kind='suspension_resolved', submission_id='s', seq=3, at=1,
+                 data={'aborted': True, 'operation_terminal': True}).terminal
+    assert not Event(kind='future_kind', submission_id='s', seq=4, at=1,
+                     data={'operation_terminal': True}).terminal
+    assert Event(kind='turn_suspended', submission_id='s', seq=5, at=1).terminal
+
+
+@pytest.mark.parametrize('seq', [None, 7])
+async def test_replay_event_preserves_nullable_or_integer_sequence(seq: int | None) -> None:
+    """回放合成全文没有流序号，SDK原样保留None而不伪造整数。"""
+    def handler(request: httpx.Request) -> httpx.Response:
+        """返回公开回放可出现的真实帧形状。"""
+        payload = {'kind': 'turn_text', 'submission_id': 'sub', 'seq': seq,
+                   'at': 1, 'data': {'text': '完整回复', 'operation_terminal': True}}
+        return httpx.Response(200, text='event: turn_text\ndata: ' + json.dumps(payload) + '\n\n')
+
+    async with XuanpuClient('http://x', 'k', transport=_stub(handler)) as client:
+        events = [item async for item in client.sessions.resume('s', {'r': {'granted': True}})]
+    assert events[0].seq == seq and not events[0].terminal
+
+
+@pytest.mark.parametrize('seq', ['missing', False, 1.2, '3', {}])
+async def test_replay_event_rejects_missing_or_invalid_sequence(seq: Any) -> None:
+    """缺字段或错误类型不能当作可空审计序号悄悄接受。"""
+    def handler(request: httpx.Request) -> httpx.Response:
+        """让公开SDK解析器面对不合法的服务端事件帧。"""
+        payload = {'kind': 'turn_text', 'submission_id': 'sub', 'at': 1, 'data': {}}
+        if seq != 'missing':
+            payload['seq'] = seq
+        return httpx.Response(200, text='event: turn_text\ndata: ' + json.dumps(payload) + '\n\n')
+
+    async with XuanpuClient('http://x', 'k', transport=_stub(handler)) as client:
+        with pytest.raises(XuanpuTransportError, match='seq'):
+            _ = [item async for item in client.sessions.resume('s', {'r': {'granted': True}})]

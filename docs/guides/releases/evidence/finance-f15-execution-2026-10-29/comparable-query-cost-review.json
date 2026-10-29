@@ -1,0 +1,104 @@
+{
+  "status": "measured_same_query_phase_comparison",
+  "scope": "Actual08 route+business streams only; both natural requests identical, datasets use distinct synthetic identities/documents and model-vs-human fixture provenance differs. Not full production flow savings.",
+  "runs": [
+    {
+      "run": "final8",
+      "streams": 7,
+      "input": 53973,
+      "output": 984,
+      "rows": [
+        {
+          "file": "finance-f15-2026-10-23/final8/model-202.json",
+          "phase": "08-fresh-query:route",
+          "input": 2053,
+          "output": 61
+        },
+        {
+          "file": "finance-f15-2026-10-23/final8/model-203.json",
+          "phase": "08-fresh-query:session",
+          "input": 6603,
+          "output": 79
+        },
+        {
+          "file": "finance-f15-2026-10-23/final8/model-204.json",
+          "phase": "08-fresh-query:session",
+          "input": 6776,
+          "output": 65
+        },
+        {
+          "file": "finance-f15-2026-10-23/final8/model-205.json",
+          "phase": "08-fresh-query:session",
+          "input": 6862,
+          "output": 78
+        },
+        {
+          "file": "finance-f15-2026-10-23/final8/model-206.json",
+          "phase": "08-fresh-query:session",
+          "input": 7094,
+          "output": 123
+        },
+        {
+          "file": "finance-f15-2026-10-23/final8/model-207.json",
+          "phase": "08-fresh-query:session",
+          "input": 10811,
+          "output": 231
+        },
+        {
+          "file": "finance-f15-2026-10-23/final8/model-208.json",
+          "phase": "08-fresh-query:session",
+          "input": 13774,
+          "output": 347
+        }
+      ]
+    },
+    {
+      "run": "query-regression-fixed",
+      "streams": 6,
+      "input": 48396,
+      "output": 908,
+      "rows": [
+        {
+          "file": "finance-f15-execution-2026-10-29/query-regression-fixed/model-213.json",
+          "phase": "08-fresh-query:route",
+          "input": 2007,
+          "output": 45
+        },
+        {
+          "file": "finance-f15-execution-2026-10-29/query-regression-fixed/model-214.json",
+          "phase": "08-fresh-query:session",
+          "input": 6905,
+          "output": 90
+        },
+        {
+          "file": "finance-f15-execution-2026-10-29/query-regression-fixed/model-215.json",
+          "phase": "08-fresh-query:session",
+          "input": 7078,
+          "output": 72
+        },
+        {
+          "file": "finance-f15-execution-2026-10-29/query-regression-fixed/model-216.json",
+          "phase": "08-fresh-query:session",
+          "input": 7309,
+          "output": 138
+        },
+        {
+          "file": "finance-f15-execution-2026-10-29/query-regression-fixed/model-217.json",
+          "phase": "08-fresh-query:session",
+          "input": 11067,
+          "output": 239
+        },
+        {
+          "file": "finance-f15-execution-2026-10-29/query-regression-fixed/model-218.json",
+          "phase": "08-fresh-query:session",
+          "input": 14030,
+          "output": 324
+        }
+      ]
+    }
+  ],
+  "saved_streams": 1,
+  "both_original_run_statuses": "failed",
+  "new_query_reply_semantics": "requires corrected-checker posthoc;09/10 not_run",
+  "cache_read_tokens_still_in_input": true
+}

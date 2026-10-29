@@ -1,0 +1,20 @@
+{
+  "status": "stopped_pending_bounded_user_authorization",
+  "attempts": 59,
+  "completed": 57,
+  "usage_unknown_attempts": [
+    56,
+    59
+  ],
+  "known_input_tokens": 222126,
+  "known_output_tokens": 6689,
+  "failure": "TransientNetworkError:codex transport error (stream): RemoteProtocolError",
+  "partial_event_kinds": [
+    "created",
+    "server_model"
+  ],
+  "trace_sha256": "cbcf1fcd93d706bcc37bcb7c3839a8fcab2857dfc27d8a3146f194c22c0d5086",
+  "ledger_sha256": "19436babf1045e39374a23c1699ef8b35e3b9c7eb80ea3979885073f4c7c0779",
+  "new_model_calls_after_halt": 0,
+  "source_changed": false
+}

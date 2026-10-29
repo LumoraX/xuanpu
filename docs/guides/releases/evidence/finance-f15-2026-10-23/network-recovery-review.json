@@ -1,0 +1,66 @@
+{
+  "status": "Approved",
+  "approval_scope": "只批准待用户授权的单次手工恢复方案设计；不批准立即执行或任何新模型/PG消费。",
+  "execution_authorized": false,
+  "user_authorization_status": "pending_not_observed_by_reviewer",
+  "review_date": "2026-10-23",
+  "review_type": "独立只读故障证据与单次人工例外恢复设计审查",
+  "files_read": [
+    "scripts/acceptance/finance_model_runtime.py",
+    "docs/guides/releases/evidence/finance-f15-2026-10-23/final2/model-056.json",
+    "docs/guides/releases/evidence/finance-f15-2026-10-23/final2/budget-snapshot.json",
+    "docs/guides/releases/evidence/finance-f15-2026-10-23/final2/result.json"
+  ],
+  "verified_fault": {
+    "attempt": 56,
+    "trace_sha256": "8d02388140f87a6d2f0ec51592cf08dfa84c66e9450a3e54cbf97f32d17e5f9a",
+    "trace_failure": "TransientNetworkError:codex transport error (stream): RemoteProtocolError",
+    "event_count": 5,
+    "event_kinds": [
+      "created",
+      "server_model",
+      "tool_call_done",
+      "tool_call_done",
+      "tool_call_done"
+    ],
+    "usage": null,
+    "has_completed_event": false,
+    "correction": "当前归档trace不是events=[]，有created、客户端server_model及3个tool_call_done。缺completed/usage结论成立；不能据提议事件认定工具实际执行。",
+    "diagnostic_limit": "本审查确认TransientNetworkError/RemoteProtocolError原始故障字符串；未独立读取网关wire以复验HTTP/1.1 incomplete chunked read细节。",
+    "budget_snapshot_sha256": "0ac6ca45b0ccde6b972c86a1fb5f21418992bf3c1f6c2dc2ae5b9e6fb74eb2fc",
+    "attempts": 56,
+    "completed": 55,
+    "known_input_tokens": 218271,
+    "known_output_tokens": 6597,
+    "request_bytes": 1412774,
+    "event_bytes": 596463,
+    "seconds": 165.39762015356774,
+    "halted": "USAGE_MISSING",
+    "known_accounting_equation": "55 completed + 1 usage-unknown attempt = 56 attempts"
+  },
+  "decision": {
+    "classification": "允许由真实用户明确授权的单次手工scope例外，不属于既有自动重试授权。",
+    "reason": "Budget在usage缺失后正确持久halt，原设计要求继续前取得用户新增授权。方案保留未知消费和所有计数，不伪造usage、不提升原资源上限、不改代码和模型行为，因而可作为具体可审计的单次人工例外；审查通过本身不能替代该授权。",
+    "necessary_user_disclosure": "用户应获知这是1次已有模型请求的未知token/可能计费，非零消费证明；已知token累计不等于全部精确token总额。授权范围仅为登记这一例外并继续原240调用上限内两次全新旅程，后续缺usage仍halt。"
+  },
+  "required_before_any_mutation_or_consumption": [
+    "取得实际用户对上述具体例外的明确同意；保存原文和真实时间/来源引用，不能用沉默、review Approved或代理推断代替。若用户未回复或拒绝，保持USAGE_MISSING，不新发模型请求或PG调用。",
+    "确保没有验收运行器在并发改账本；只读核验当前私有ledger仍对应attempts56/completed55/USAGE_MISSING及预期hash，任何漂移先停并核对。",
+    "在任何变更前对原私有ledger做字节一致、不可覆盖snapshot并记录SHA/权限；原ledger halt及final2全trace/result和SHA继续保留，不能在原失败证据中修写事件或usage。",
+    "经用户授权后才一次性登记usage_unknown_attempts attempt56、usage:null、精确trace_sha、failure和授权记录；保留halt历史，原子地只清当前已授权的USAGE_MISSING，不清其他原因。",
+    "attempts/completed/已知input/output tokens/request/event bytes/seconds/journey历史均保留；completed不补0、不递增；240 streams及其余3M input/150k output/时间/字节限制不提高、不重置，原Budget代码/产品/Skill/模型不变。"
+  ],
+  "required_after_authorized_recovery": [
+    "前后账本对比确认只增加该unknown登记、授权/历史并清本次halt；count不漂移、unknown attempt唯一，completed+unique unknown=attempts，所有既有已完成usage可追溯。",
+    "未知用量不是0，3M/150k等可观察token限制只作用于已知累计，完整真实token金额因1未知不能声称精确或已完全受token计量证明；240实际attempt上限仍包括56。",
+    "后续任一次missing/invalid usage继续由未修改Budget立即halt；本授权不预授权第二次未知例外，也不设置自动反复clear/retry。",
+    "fresh final3和final4各完成完整旅程；final2保持failed且不计成功。所有新消费继续同ledger，预算不足则报告未完成，不隐藏扩额。",
+    "最终报告/检查明确总量为已知值+1未知attempt，不声称全usage对齐、全token精确或货币成本精确。precommit验证completed+unknown=attempts并确认原失败raw/hash、授权与snapshot证据可追溯。"
+  ],
+  "not_required": "无需新增通用重试框架或修改产品/Skill来处理本单次传输故障；已有源码/制品检查本审查未重跑，不能据此另行扩充其通过结论。",
+  "limitations": [
+    "仅读取本地已脱敏归档与Budget源码，没有读取或修改私有ledger/模型config，没有调用PG/模型API，没有执行恢复或运行测试。",
+    "未独立观察用户授权响应，execution_authorized=false；root后续必须以真实用户回复判断，不能据本文件执行。",
+    "本审查不证明恢复后的完整业务流程或模型稳定率。"
+  ]
+}

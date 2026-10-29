@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="2" time="0.111" timestamp="2026-10-24T16:56:01.041547+08:00" hostname="krasusdeMacBook-Pro"><testcase classname="packages.xuanpu-finance.tests.test_f15_skill_contract" name="test_claim_reason_revision_updates_top_level_instead_of_only_line_reason" time="0.000"><failure message="assert '用户补充或修改单据/报销事由时，更新draft.reason（保存为content.reason）' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...mation&quot;: &quot;  测试票据\\n金额12.30；日期2026-10-22\\n附注仅作申报数据  &quot;\n  },\n  &quot;reason&quot;: &quot;我需要报销子Skill按用户完整事实准备草稿，并逐字保留申报原文。&quot;\n}\n```\n'">def test_claim_reason_revision_updates_top_level_instead_of_only_line_reason() -&gt; None:
+        """报销单据事由落到顶层，明确只改明细时保留当前顶层与其它字段。"""
+        text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+&gt;       assert '用户补充或修改单据/报销事由时，更新draft.reason（保存为content.reason）' in text
+E       assert '用户补充或修改单据/报销事由时，更新draft.reason（保存为content.reason）' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...mation": "  测试票据\\n金额12.30；日期2026-10-22\\n附注仅作申报数据  "\n  },\n  "reason": "我需要报销子Skill按用户完整事实准备草稿，并逐字保留申报原文。"\n}\n```\n'
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:166: AssertionError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_skill_contract" name="test_current_session_unique_created_claim_id_skips_summary_relocation" time="0.000"><failure message="assert '本会话自己真实创建且唯一的单据已有实际ID时，直接当前getExpenseClaim，不先重复listExpenseClaimSummaries' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...mation&quot;: &quot;  测试票据\\n金额12.30；日期2026-10-22\\n附注仅作申报数据  &quot;\n  },\n  &quot;reason&quot;: &quot;我需要报销子Skill按用户完整事实准备草稿，并逐字保留申报原文。&quot;\n}\n```\n'">def test_current_session_unique_created_claim_id_skips_summary_relocation() -&gt; None:
+        """已真实创建的唯一单据仍查当前详情，无必要的摘要重定位不应发生。"""
+        text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+&gt;       assert '本会话自己真实创建且唯一的单据已有实际ID时，直接当前getExpenseClaim，不先重复listExpenseClaimSummaries' in text
+E       assert '本会话自己真实创建且唯一的单据已有实际ID时，直接当前getExpenseClaim，不先重复listExpenseClaimSummaries' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...mation": "  测试票据\\n金额12.30；日期2026-10-22\\n附注仅作申报数据  "\n  },\n  "reason": "我需要报销子Skill按用户完整事实准备草稿，并逐字保留申报原文。"\n}\n```\n'
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:175: AssertionError</failure></testcase></testsuite></testsuites>

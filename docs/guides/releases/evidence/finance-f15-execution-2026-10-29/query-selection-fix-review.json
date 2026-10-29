@@ -1,0 +1,66 @@
+{
+  "status": "Approved",
+  "approval_scope": "Narrow API parameter-description fix design only; no source change, model consumption, budget expansion, or complete-journey approval by this review. Root must explicitly amend the original single-run execution plan before any second run.",
+  "reviewed_at": "2026-10-29T04:17:44.455485+00:00",
+  "causal_evidence": {
+    "trace_sha256": {
+      "query-regression/model-210.json": "dc283ebe9bd1ab95f180eb994165149773c6542735ab84bac4857bbc19d2860f",
+      "query-regression/model-211.json": "bb67c6d10c59a940bcae4228a5fd5ac223320ca07c1c1c9367c9489c8f9d0752",
+      "query-regression/model-212.json": "a270042405ad3f8af16bbc6cebe11e2442f81b20d21b9e7ed238ad38b2a62645"
+    },
+    "model_actual_q": "交通",
+    "description_already_reaches_model": "trim后按字面量忽略大小写匹配单号/事由，不查询原文；未填写可省略或传null，由HTTP出口省略。",
+    "missing_tools_from_actual_run": [
+      "api__finance__getExpenseClaim",
+      "api__finance__listExpenseClaimHistory"
+    ],
+    "history_not_read": true,
+    "original_failure_preserved": true,
+    "failure_is_not_checker_error": true,
+    "model_usage_all_four_new_streams_known": true,
+    "new_streams": 4,
+    "input_tokens": 22875,
+    "output_tokens": 469
+  },
+  "approved_scope": [
+    "Only published finance.yaml and corresponding design-pack finance.yaml q parameter description; no API names, count, parameter types/requiredness, HTTP filtering or role policy changes.",
+    "Put the selection rule in actual q tool property description; Operation.input_schema already propagates parameter.description, verified both source and actual210–212 requests.",
+    "Category/old reason/pronominal hints default to omitted/null q; zero lexical matches cannot support a claim that the employee has no records. Explicit current-text constraints must remain respected."
+  ],
+  "wording_requirement": "Preserve current substring/fragment and case-insensitive semantics. A user explicitly asking current reason contains 交通 may legitimately use q=交通; do not ban category-example words unconditionally or require knowing an entire exact reason/ID. Only semantic category/old-reason/that-one hints are not q filters.",
+  "required_regressions": [
+    "Actual parsed/runtime input_schema.q includes new guidance and null alternative; all schema details except q.description are byte/semantic unchanged.",
+    "Omitted/null q is omitted by HTTP build_request; explicit current literal fragment, including 交通, is passed unchanged.",
+    "Both YAML copies equal; original summary query/RLS/current version/history gates and natural user prompt/checker unchanged.",
+    "New freeze and fresh evidence/state before second controlled focused run; first209–212 remains failed, no promotion or reused source hash."
+  ],
+  "budget_revision": {
+    "initial_parent_reported_attempts": 208,
+    "first_observed_new_streams": 4,
+    "next_focused_max": 12,
+    "max_new_streams_this_task": 16,
+    "max_expected_global_attempts_after_two_runs": 224,
+    "global_cap_unchanged": 240,
+    "session_tokens_unchanged": 200000,
+    "original_unknown_count_parent_reported": 2,
+    "unknown_history_not_reset": true,
+    "max_focused_runs_this_task": 2,
+    "automatic_retry": false,
+    "third_focused_run_forbidden": true,
+    "on_any_second_result_stop": true
+  },
+  "limits": [
+    "No proof the new description will make the model choose correctly; second run must be measured, not assumed.",
+    "This is a defect fix to model tool guidance; not proof of production call/token savings or full F15 acceptance.",
+    "User current test/optimization request supports the bounded original-budget work, not expansion to320. Earlier one-run self-plan must be amended transparently, not silently relabeled as the same attempt."
+  ],
+  "activities": {
+    "source_modified": false,
+    "postgres_access": false,
+    "model_calls": 0,
+    "private_config_access": false,
+    "ledger_access": false,
+    "tests_run": false,
+    "commit": false
+  }
+}

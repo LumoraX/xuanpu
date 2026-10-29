@@ -1,0 +1,32 @@
+{
+  "status": "NeedsRevision",
+  "finding_id": "EL-Z02",
+  "source_sha256_before_fix": "717760cfd0ab253181c54c2aa7ae7265cf938be5d9d88301ccea5d075d374832",
+  "finding": "After valid zero field labels, explicit later 已执行<dimension> and <dimension>已经完成 are not recognized by the positive-action regex.",
+  "cases": [
+    {
+      "reply": "已付款：0元；已记账：0元；已执行付款",
+      "expected": false,
+      "actual": true
+    },
+    {
+      "reply": "已付款：0元；已记账：0元；付款已经完成",
+      "expected": false,
+      "actual": true
+    },
+    {
+      "reply": "已付款：0元；已记账：0元；已执行记账",
+      "expected": false,
+      "actual": true
+    },
+    {
+      "reply": "已付款：0元；已记账：0元；记账已经完成",
+      "expected": false,
+      "actual": true
+    }
+  ],
+  "required": "Add only these explicit execution word forms for both independent financial dimensions, retain negation and entire-field label rule.",
+  "pure_offline_only": true,
+  "model_calls": 0,
+  "postgres_access": false
+}

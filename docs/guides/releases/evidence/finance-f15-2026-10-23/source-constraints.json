@@ -1,0 +1,108 @@
+{
+  "status": "passed",
+  "checks": [
+    "future_annotations",
+    "Chinese_module_class_function_docstrings",
+    "file_le_800",
+    "function_le_80",
+    "C901_le_10"
+  ],
+  "files": [
+    {
+      "file": "packages/xuanpu-finance/tests/test_f15_model_harness.py",
+      "lines": 499,
+      "documented_definitions": 39
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "lines": 471,
+      "documented_definitions": 29
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f7_contract.py",
+      "lines": 52,
+      "documented_definitions": 2
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f8_contract.py",
+      "lines": 40,
+      "documented_definitions": 2
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f9_contract.py",
+      "lines": 68,
+      "documented_definitions": 3
+    },
+    {
+      "file": "packages/xuanpu-sdk-py/src/xuanpu_sdk/client.py",
+      "lines": 497,
+      "documented_definitions": 54
+    },
+    {
+      "file": "packages/xuanpu-sdk-py/src/xuanpu_sdk/models.py",
+      "lines": 174,
+      "documented_definitions": 17
+    },
+    {
+      "file": "packages/xuanpu-sdk-py/tests/test_sdk.py",
+      "lines": 257,
+      "documented_definitions": 24
+    },
+    {
+      "file": "packages/xuanpu-server/src/xuanpu_server/api/sse.py",
+      "lines": 77,
+      "documented_definitions": 3
+    },
+    {
+      "file": "packages/xuanpu-server/src/xuanpu_server/runtime/events.py",
+      "lines": 475,
+      "documented_definitions": 29
+    },
+    {
+      "file": "packages/xuanpu-server/src/xuanpu_server/runtime/session_history.py",
+      "lines": 269,
+      "documented_definitions": 16
+    },
+    {
+      "file": "packages/xuanpu-server/src/xuanpu_server/runtime/sessions.py",
+      "lines": 800,
+      "documented_definitions": 47
+    },
+    {
+      "file": "packages/xuanpu-server/tests/identity/test_nested_resume.py",
+      "lines": 572,
+      "documented_definitions": 34
+    },
+    {
+      "file": "packages/xuanpu-server/tests/test_pending_and_replay.py",
+      "lines": 216,
+      "documented_definitions": 9
+    },
+    {
+      "file": "scripts/acceptance/finance_model.py",
+      "lines": 199,
+      "documented_definitions": 8
+    },
+    {
+      "file": "scripts/acceptance/finance_model_checks.py",
+      "lines": 266,
+      "documented_definitions": 15
+    },
+    {
+      "file": "scripts/acceptance/finance_model_journey.py",
+      "lines": 404,
+      "documented_definitions": 18
+    },
+    {
+      "file": "scripts/acceptance/finance_model_runtime.py",
+      "lines": 243,
+      "documented_definitions": 28
+    },
+    {
+      "file": "scripts/acceptance/finance_runner.py",
+      "lines": 228,
+      "documented_definitions": 9
+    }
+  ],
+  "production_status": "not_verified"
+}

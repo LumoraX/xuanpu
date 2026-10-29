@@ -1,0 +1,108 @@
+{
+  "status": "ApprovedProposalAwaitingUserAuthorization",
+  "execution_authorized": false,
+  "user_authorization_status": "not_observed_pending",
+  "review_date": "2026-10-24",
+  "scope": "只读审查原总240/单会话200000提高至总400/单会话600000的必要性、资源约束与应用门槛，不批准执行。",
+  "verified_stop": {
+    "assessment_sha256": "866e0e17db20bea726df0829ebf0aaa445d773ca65317cf8083c5e4e30428bad",
+    "session_trace_sha256": "9d88e778f1b51f7d5e7e2e1c3cba74243809151730c411352b1d296006c35a92",
+    "resource_limit_events": [
+      {
+        "submission_id": "sub_75bfc6865c83",
+        "seq": 1469,
+        "at": 1792818189.394361,
+        "kind": "resource_limit_exceeded",
+        "data": {
+          "limit_kind": "session_tokens",
+          "used": 205306,
+          "limit": 200000,
+          "scope": "turn_refused",
+          "operation_terminal": false
+        }
+      }
+    ],
+    "turn_failure_events": [
+      {
+        "submission_id": "sub_75bfc6865c83",
+        "seq": 1470,
+        "at": 1792818189.394415,
+        "kind": "turn_failed",
+        "data": {
+          "error": "session_token_limit_exceeded",
+          "kind": "resource_limit_exceeded",
+          "iterations": 0,
+          "is_root": true,
+          "operation_terminal": true
+        }
+      }
+    ],
+    "attempts": 143,
+    "completed": 141,
+    "known_input_tokens": 645864,
+    "known_output_tokens": 20245,
+    "observed_unknown_attempts": [
+      56,
+      59
+    ],
+    "budget_halted": null,
+    "counter_equation": true,
+    "boundary": "引擎以session_token_limit_exceeded拒绝新的turn，iterations=0；归档显示没有新的模型请求。Budget.halted=None是引擎先拒绝而非中央Budget已halt，不意味着用户新增预算已获准。",
+    "business_state_from_export": "已导出证据显示rejected/128.50，1个origin=human驳回决定，正式invoice/settlement/compliance均0；未直接连接PG复验。"
+  },
+  "independent_source_findings": [
+    {
+      "path": "scripts/acceptance/finance_model.py",
+      "finding": "隔离验收显式RuntimeDefaults.max_session_tokens=200000、max_iterations=20。"
+    },
+    {
+      "path": "examples/finance/xuanpu.yaml",
+      "finding": "实际发布业务包spec.model.budget.maxSessionTokens=200000、maxIterations=40；这是另一处有效限制。"
+    },
+    {
+      "path": "packages/xuanpu-server/src/xuanpu_server/runtime/assembler.py",
+      "finding": "实际有效session cap为min(包budget.max_session_tokens, RuntimeDefaults.max_session_tokens)，因此只改harness default为600000仍不能解除包200000限制。"
+    },
+    {
+      "path": "packages/xuanpu-server/src/xuanpu_server/config.py",
+      "finding": "LimitsConfig源码默认max_session_tokens=2000000、max_iterations=60；RuntimeDefaults源码同2M。未查看生产私有配置，不能声称生产实际限制已核实。"
+    },
+    {
+      "path": "scripts/acceptance/finance_model_runtime.py",
+      "finding": "中央Budget仍硬编码总stream240、单journey120、全局已知input3M/output150k、5400秒与每journey1200秒等。"
+    }
+  ],
+  "proposal_assessment": {
+    "necessity": "提高单会话cap有实际停止证据支持，可继续完整驳回补充旅程而不通过重置会话绕过既有上限。总stream当前143尚未达240，但余97不能保证容纳两个各最多120的全新旅程，提出有界扩展合理；400不是唯一或最小必需数。",
+    "capacity_arithmetic": {
+      "already_attempted": 143,
+      "two_journeys_max_each": 120,
+      "two_journeys_total": 240,
+      "subtotal": 383,
+      "proposed_cap": 400,
+      "headroom": 17
+    },
+    "scope": "仅两个资源配置：总stream240→400、每会话200000→600000。600000仍低于源码默认2M，但这不构成性能/成本或最终业务通过证明。单journey120、max_iterations20和所有其他原限制继续生效。",
+    "no_success_guarantee": "400与600000仅给定容量，不能保证网关稳定、剩余模型语义、每journey120步、时间/字节/全局token门槛足够，也不能保证最终两次完整通过。",
+    "unknown_accounting": "56和59两次usage继续null，不补0、不增completed；任何全量token/货币金额仍写已知累计+2未知（或之后实际未知数），原账本与失败阶段不重置。",
+    "implementation_scope_confirmed": "提案明确同时修改harness RuntimeDefaults及发布/设计两份manifest maxSessionTokens至600000，中央Budget总stream至400和对应边界回归；新freeze/ZIP/必要安装制品与门禁全部同步。未授权前不应用。"
+  },
+  "required_before_change_or_consumption": [
+    "取得用户对总400与单会话600000这两项具体提高的明确答复并保存原文/时间/来源；当前pending时不改cap、源码、发布包或账本，不新发模型请求。审查ApprovedProposal不是用户批准。",
+    "若获授权，记录新旧两个资源上限与原始账本快照/hash，所有既有attempt/completed/known token/bytes/time/unknown/halt授权历史逐项不重置；新增授权与已有第5未知停止授权组合记录。",
+    "用户明确授权后，harness RuntimeDefaults与发布/设计两份manifest预算一致改600000，并核有效min=600000；Budget总stream改400及对应边界回归。全部为提案内资源声明一致性修改，不扩业务权限、动作或工具。",
+    "只修改总stream硬门槛与明确session资源配置，不提高全局已知input3M/output150k、请求/事件字节、时间、输出4096、单journey120、max_iterations20或累计第5未知停止边界。",
+    "已有网络恢复helper仍硬断言max_streams240/attempt<240；若新授权后还需恢复同类断流，必须依据组合后的实际授权更新/复审相应临时恢复helper，不能因新版400而隐藏重置或忽略第5未知停止。"
+  ],
+  "required_postauthorization_validation": [
+    "同步设计与授权资源说明，必要检查验证包预算与RuntimeDefaults实际min=600000、中央总limit400，以及超过新上限仍拒绝；保留旧200000有效拒绝证据。",
+    "所有影响模型输入或运行资源的修改、同步ZIP和必要安装制品纳入新freeze，完成新门禁后用fresh final7/final8两次全新资源完整旅程，不复用final6被驳回状态或把它晋升通过。",
+    "逐次报告真实模型/工具/签名/PG事实与原始轨迹、两级决定和独立语义判断；使用400容量不放宽业务事实门槛。",
+    "若用户拒绝或未答复，保持当前不完整验收状态，报告已证实行为和剩余项，不继续消费，不按完成本地commit；不push/merge/deploy。"
+  ],
+  "limitations": [
+    "只读本地归档和公开源码配置，未读取生产/私有模型config或当前私有ledger，未连接PG/模型API，未运行测试或修改任何源码/预算。",
+    "源码生产默认2M是静态默认值，不是生产实际配置或运行验收证据。",
+    "本审查仅写本JSON，不能替代真实用户对资源增加的审批。"
+  ]
+}

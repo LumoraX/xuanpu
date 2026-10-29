@@ -1,0 +1,6 @@
+{
+  "status": "resolved",
+  "finding": "The initial complete sdist equality check detected finance test updates made after its earlier build. Rebuilt finance and server source distributions from current tests; final artifact verifier validates all non-generated sdist entries and all 9 current artifacts. This was packaging staleness during implementation, not a successful model journey or a runtime behavior change.",
+  "final_evidence": "artifacts.json",
+  "runtime_inputs_changed_after_freeze": false
+}

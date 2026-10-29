@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="15" time="0.072" timestamp="2026-10-29T12:31:49.150887+08:00" hostname="krasusdeMacBook-Pro"><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_zero_field_cannot_mask_nonzero_or_execution_statement[\u5df2\u4ed8\u6b3e\uff1a0.01\u5143\uff1b\u672a\u5165\u8d26]" time="0.002" /><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_zero_field_cannot_mask_nonzero_or_execution_statement[\u672a\u4ed8\u6b3e\uff1b\u5df2\u8bb0\u8d26\u91d1\u989d\uff1a1\u5143]" time="0.000" /><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_zero_field_cannot_mask_nonzero_or_execution_statement[\u5df2\u4ed8\u6b3e\u6210\u529f\uff1a0.00\u5143\uff1b\u672a\u5165\u8d26]" time="0.000" /><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_zero_field_cannot_mask_nonzero_or_execution_statement[\u5df2\u7ecf\u652f\u4ed8\uff1b\u672a\u5165\u8d26]" time="0.000" /><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_zero_field_cannot_mask_nonzero_or_execution_statement[\u5df2\u4ed8\u6b3e\uff1a0.00\u5143 \u5df2\u6267\u884c\uff1b\u672a\u5165\u8d26]" time="0.000" /><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_zero_field_cannot_mask_nonzero_or_execution_statement[\u5df2\u4ed8\u6b3e\uff1a0.00\u5143\uff1b\u5df2\u652f\u4ed8128.50\u5143\uff1b\u672a\u5165\u8d26]" time="0.000" /><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_zero_field_cannot_mask_nonzero_or_execution_statement[\u5df2\u4ed8\u6b3e\uff1a0.00\u5143\uff1b\u5df2\u8bb0\u8d26\uff1a2\u5143]" time="0.000" /><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_zero_field_cannot_mask_nonzero_or_execution_statement[\u5df2\u4ed8\u6b3e\uff1a0.00\u5143\uff1b\u5df2\u8bb0\u8d26\uff1a0.00\u5143\uff1b\u652f\u4ed8\u6210\u529f]" time="0.000" /><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_zero_field_cannot_mask_nonzero_or_execution_statement[\u5df2\u4ed8\u6b3e\uff1a0.00\u5143\uff1b\u5df2\u8bb0\u8d26\uff1a0.00\u5143\uff1b\u5df2\u652f\u4ed8]" time="0.000" /><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_zero_field_cannot_mask_nonzero_or_execution_statement[\u5df2\u7ecf\u5b9e\u9645\u4ed8\u6b3e\uff1a0.00\u5143\uff1b\u672a\u5165\u8d26]" time="0.000" /><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_zero_field_cannot_mask_nonzero_or_execution_statement[\u4ed8\u6b3e\u91d1\u989d\uff1a-1\u5143\uff1b\u4ed8\u6b3e\u91d1\u989d\uff1a0.00\u5143\uff1b\u672a\u5165\u8d26]" time="0.000" /><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_zero_field_cannot_mask_nonzero_or_execution_statement[\u5b9e\u9645\u5df2\u4ed8\u6b3e\uff1a0.00\u5143\uff1b\u672a\u8bb0\u8d26]" time="0.000"><failure message="AssertionError: assert not True&#10; +  where True = &lt;function financial_reply_is_zero at 0x10d2ff740&gt;('实际已付款：0.00元；未记账')&#10; +    where &lt;function financial_reply_is_zero at 0x10d2ff740&gt; = &lt;module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'&gt;.financial_reply_is_zero&#10; +      where &lt;module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'&gt; = checks()">reply = '实际已付款：0.00元；未记账'
+
+    @pytest.mark.parametrize('reply', [
+        '已付款：0.01元；未入账', '未付款；已记账金额：1元',
+        '已付款成功：0.00元；未入账', '已经支付；未入账',
+        '已付款：0.00元 已执行；未入账',
+        '已付款：0.00元；已支付128.50元；未入账',
+        '已付款：0.00元；已记账：2元',
+        '已付款：0.00元；已记账：0.00元；支付成功',
+        '已付款：0.00元；已记账：0.00元；已支付',
+        '已经实际付款：0.00元；未入账',
+        '付款金额：-1元；付款金额：0.00元；未入账',
+        '实际已付款：0.00元；未记账',
+        '本次已付款：0.00元；未入账',
+        '操作已支付：0.00元；未记账',
+        '实际       已付款：0.00元；未记账',
+    ])
+    def test_zero_field_cannot_mask_nonzero_or_execution_statement(reply: str):
+        """零标签不取消同句或后续成功声明，另一维也不能掩盖非零。"""
+&gt;       assert not checks().financial_reply_is_zero(reply)
+E       AssertionError: assert not True
+E        +  where True = &lt;function financial_reply_is_zero at 0x10d2ff740&gt;('实际已付款：0.00元；未记账')
+E        +    where &lt;function financial_reply_is_zero at 0x10d2ff740&gt; = &lt;module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'&gt;.financial_reply_is_zero
+E        +      where &lt;module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'&gt; = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:471: AssertionError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_zero_field_cannot_mask_nonzero_or_execution_statement[\u672c\u6b21\u5df2\u4ed8\u6b3e\uff1a0.00\u5143\uff1b\u672a\u5165\u8d26]" time="0.000"><failure message="AssertionError: assert not True&#10; +  where True = &lt;function financial_reply_is_zero at 0x10d2ff740&gt;('本次已付款：0.00元；未入账')&#10; +    where &lt;function financial_reply_is_zero at 0x10d2ff740&gt; = &lt;module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'&gt;.financial_reply_is_zero&#10; +      where &lt;module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'&gt; = checks()">reply = '本次已付款：0.00元；未入账'
+
+    @pytest.mark.parametrize('reply', [
+        '已付款：0.01元；未入账', '未付款；已记账金额：1元',
+        '已付款成功：0.00元；未入账', '已经支付；未入账',
+        '已付款：0.00元 已执行；未入账',
+        '已付款：0.00元；已支付128.50元；未入账',
+        '已付款：0.00元；已记账：2元',
+        '已付款：0.00元；已记账：0.00元；支付成功',
+        '已付款：0.00元；已记账：0.00元；已支付',
+        '已经实际付款：0.00元；未入账',
+        '付款金额：-1元；付款金额：0.00元；未入账',
+        '实际已付款：0.00元；未记账',
+        '本次已付款：0.00元；未入账',
+        '操作已支付：0.00元；未记账',
+        '实际       已付款：0.00元；未记账',
+    ])
+    def test_zero_field_cannot_mask_nonzero_or_execution_statement(reply: str):
+        """零标签不取消同句或后续成功声明，另一维也不能掩盖非零。"""
+&gt;       assert not checks().financial_reply_is_zero(reply)
+E       AssertionError: assert not True
+E        +  where True = &lt;function financial_reply_is_zero at 0x10d2ff740&gt;('本次已付款：0.00元；未入账')
+E        +    where &lt;function financial_reply_is_zero at 0x10d2ff740&gt; = &lt;module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'&gt;.financial_reply_is_zero
+E        +      where &lt;module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'&gt; = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:471: AssertionError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_zero_field_cannot_mask_nonzero_or_execution_statement[\u64cd\u4f5c\u5df2\u652f\u4ed8\uff1a0.00\u5143\uff1b\u672a\u8bb0\u8d26]" time="0.000"><failure message="AssertionError: assert not True&#10; +  where True = &lt;function financial_reply_is_zero at 0x10d2ff740&gt;('操作已支付：0.00元；未记账')&#10; +    where &lt;function financial_reply_is_zero at 0x10d2ff740&gt; = &lt;module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'&gt;.financial_reply_is_zero&#10; +      where &lt;module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'&gt; = checks()">reply = '操作已支付：0.00元；未记账'
+
+    @pytest.mark.parametrize('reply', [
+        '已付款：0.01元；未入账', '未付款；已记账金额：1元',
+        '已付款成功：0.00元；未入账', '已经支付；未入账',
+        '已付款：0.00元 已执行；未入账',
+        '已付款：0.00元；已支付128.50元；未入账',
+        '已付款：0.00元；已记账：2元',
+        '已付款：0.00元；已记账：0.00元；支付成功',
+        '已付款：0.00元；已记账：0.00元；已支付',
+        '已经实际付款：0.00元；未入账',
+        '付款金额：-1元；付款金额：0.00元；未入账',
+        '实际已付款：0.00元；未记账',
+        '本次已付款：0.00元；未入账',
+        '操作已支付：0.00元；未记账',
+        '实际       已付款：0.00元；未记账',
+    ])
+    def test_zero_field_cannot_mask_nonzero_or_execution_statement(reply: str):
+        """零标签不取消同句或后续成功声明，另一维也不能掩盖非零。"""
+&gt;       assert not checks().financial_reply_is_zero(reply)
+E       AssertionError: assert not True
+E        +  where True = &lt;function financial_reply_is_zero at 0x10d2ff740&gt;('操作已支付：0.00元；未记账')
+E        +    where &lt;function financial_reply_is_zero at 0x10d2ff740&gt; = &lt;module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'&gt;.financial_reply_is_zero
+E        +      where &lt;module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'&gt; = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:471: AssertionError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_zero_field_cannot_mask_nonzero_or_execution_statement[\u5b9e\u9645       \u5df2\u4ed8\u6b3e\uff1a0.00\u5143\uff1b\u672a\u8bb0\u8d26]" time="0.000"><failure message="AssertionError: assert not True&#10; +  where True = &lt;function financial_reply_is_zero at 0x10d2ff740&gt;('实际       已付款：0.00元；未记账')&#10; +    where &lt;function financial_reply_is_zero at 0x10d2ff740&gt; = &lt;module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'&gt;.financial_reply_is_zero&#10; +      where &lt;module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'&gt; = checks()">reply = '实际       已付款：0.00元；未记账'
+
+    @pytest.mark.parametrize('reply', [
+        '已付款：0.01元；未入账', '未付款；已记账金额：1元',
+        '已付款成功：0.00元；未入账', '已经支付；未入账',
+        '已付款：0.00元 已执行；未入账',
+        '已付款：0.00元；已支付128.50元；未入账',
+        '已付款：0.00元；已记账：2元',
+        '已付款：0.00元；已记账：0.00元；支付成功',
+        '已付款：0.00元；已记账：0.00元；已支付',
+        '已经实际付款：0.00元；未入账',
+        '付款金额：-1元；付款金额：0.00元；未入账',
+        '实际已付款：0.00元；未记账',
+        '本次已付款：0.00元；未入账',
+        '操作已支付：0.00元；未记账',
+        '实际       已付款：0.00元；未记账',
+    ])
+    def test_zero_field_cannot_mask_nonzero_or_execution_statement(reply: str):
+        """零标签不取消同句或后续成功声明，另一维也不能掩盖非零。"""
+&gt;       assert not checks().financial_reply_is_zero(reply)
+E       AssertionError: assert not True
+E        +  where True = &lt;function financial_reply_is_zero at 0x10d2ff740&gt;('实际       已付款：0.00元；未记账')
+E        +    where &lt;function financial_reply_is_zero at 0x10d2ff740&gt; = &lt;module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'&gt;.financial_reply_is_zero
+E        +      where &lt;module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'&gt; = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:471: AssertionError</failure></testcase></testsuite></testsuites>

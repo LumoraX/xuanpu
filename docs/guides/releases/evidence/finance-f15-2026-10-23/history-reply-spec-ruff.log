@@ -1,0 +1,2 @@
+$ uv run ruff check --select F,S108,I,TC,C901 packages/xuanpu-finance/tests/test_f15_skill_contract.py
+All checks passed!

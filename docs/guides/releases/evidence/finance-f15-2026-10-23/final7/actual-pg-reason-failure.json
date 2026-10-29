@@ -1,0 +1,14 @@
+{
+  "status": "confirmed_failure",
+  "actual_pg_claims": [
+    {
+      "id": "db5d3f58f66746479ae0b8d52fdc7c0d",
+      "version": 5,
+      "status": "draft",
+      "total": "128.50",
+      "reason": "出差交通待补充",
+      "line_reason": "拜访上海客户讨论项目需求"
+    }
+  ],
+  "mutations": false
+}

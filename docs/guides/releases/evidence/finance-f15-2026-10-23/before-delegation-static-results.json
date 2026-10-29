@@ -1,0 +1,63 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "check": "ruff",
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "--select",
+        "F,S108,I,TC",
+        "packages",
+        "scripts"
+      ],
+      "returncode": 0,
+      "log": "static-ruff.log",
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "check": "mypy",
+      "command": [
+        "uv",
+        "run",
+        "mypy",
+        "packages/xuanpu-cli/src",
+        "packages/xuanpu-console/src",
+        "packages/xuanpu-finance/src",
+        "packages/xuanpu-sdk-py/src",
+        "packages/xuanpu-server/src",
+        "packages/xuanpu-spec/src"
+      ],
+      "returncode": 0,
+      "log": "static-mypy.log",
+      "sha256": "fb137be3de18a936fec5be2f8945360343e7552c7904ff5a51e61547cae8b7a6"
+    },
+    {
+      "check": "lock",
+      "command": [
+        "uv",
+        "lock",
+        "--check",
+        "--offline"
+      ],
+      "returncode": 0,
+      "log": "static-lock.log",
+      "sha256": "b8a9fa2fc7aaaf2878e07c0f9fb2fb05e2879fd58906900fc205844601f605e3"
+    },
+    {
+      "check": "constraints",
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "/tmp/xuanpu-finance-f15-constraints.py"
+      ],
+      "returncode": 0,
+      "log": "static-constraints.log",
+      "sha256": "733d6f1097471dc573865db222dc11a5ad93a4bb0bc86e5099c8dffcd921c4e9"
+    }
+  ],
+  "production_status": "not_verified"
+}

@@ -2,7 +2,7 @@ apiVersion: xuanpu/v1
 kind: Package
 metadata:
   name: finance
-  version: 0.15.0-f14
+  version: 0.16.0-f15
   description: 独立财务F0-F14：内部报销记录、维护凭据安全与恢复后真人续办，不支付
 spec:
   skills:

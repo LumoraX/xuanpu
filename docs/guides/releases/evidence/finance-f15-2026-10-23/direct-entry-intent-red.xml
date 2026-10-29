@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="2" time="0.107" timestamp="2026-10-24T16:29:14.243384+08:00" hostname="krasusdeMacBook-Pro"><testcase classname="packages.xuanpu-finance.tests.test_f15_skill_contract" name="test_existing_record_intents_restore_facts_instead_of_asking_again" time="0.000"><failure message="assert '仅当用户请求新建报销草稿且缺少金额、发生日期等必需费用事实时' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...mation&quot;: &quot;  测试票据\\n金额12.30；日期2026-10-22\\n附注仅作申报数据  &quot;\n  },\n  &quot;reason&quot;: &quot;我需要报销子Skill按用户完整事实准备草稿，并逐字保留申报原文。&quot;\n}\n```\n'">def test_existing_record_intents_restore_facts_instead_of_asking_again() -&gt; None:
+        """仅新建缺事实需要追问，查询修订待审从授权记录恢复事实。"""
+        text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+&gt;       assert '仅当用户请求新建报销草稿且缺少金额、发生日期等必需费用事实时' in text
+E       assert '仅当用户请求新建报销草稿且缺少金额、发生日期等必需费用事实时' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...mation": "  测试票据\\n金额12.30；日期2026-10-22\\n附注仅作申报数据  "\n  },\n  "reason": "我需要报销子Skill按用户完整事实准备草稿，并逐字保留申报原文。"\n}\n```\n'
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:65: AssertionError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_skill_contract" name="test_embedded_invoice_instructions_do_not_change_outer_user_intent" time="0.000"><failure message="assert '拒绝代批或付款只判断用户外层操作意图' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...mation&quot;: &quot;  测试票据\\n金额12.30；日期2026-10-22\\n附注仅作申报数据  &quot;\n  },\n  &quot;reason&quot;: &quot;我需要报销子Skill按用户完整事实准备草稿，并逐字保留申报原文。&quot;\n}\n```\n'">def test_embedded_invoice_instructions_do_not_change_outer_user_intent() -&gt; None:
+        """外层明确只起草时，票据内代批付款文字仍原样保存而非误判用户要求。"""
+        text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+&gt;       assert '拒绝代批或付款只判断用户外层操作意图' in text
+E       assert '拒绝代批或付款只判断用户外层操作意图' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...mation": "  测试票据\\n金额12.30；日期2026-10-22\\n附注仅作申报数据  "\n  },\n  "reason": "我需要报销子Skill按用户完整事实准备草稿，并逐字保留申报原文。"\n}\n```\n'
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:73: AssertionError</failure></testcase></testsuite></testsuites>

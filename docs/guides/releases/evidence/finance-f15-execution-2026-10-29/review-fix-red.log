@@ -1,0 +1,69 @@
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+______________________ test_missing_probe_records_failure ______________________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2912/test_missing_probe_records_fai0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a83f9b0>
+
+    @pytest.mark.asyncio
+    async def test_missing_probe_records_failure(tmp_path: Path, monkeypatch):
+        """探针文件不可读也不能把已创建的结果遗留为running。"""
+        monkeypatch.setattr(cli, 'ROOT', tmp_path)
+        monkeypatch.setattr(cli, 'private_text', lambda path:
+                            'postgresql://test:unused@127.0.0.1:5432/finance_test')
+        monkeypatch.setattr(cli, 'model_config', lambda path: {'api_key': 'offline',
+                                                            'base_url': 'http://offline'})
+        options = SimpleNamespace(scenario='query-regression', dsn_file=tmp_path / 'dsn',
+            model_config=tmp_path / 'config', state=tmp_path / 'state',
+            evidence=tmp_path / 'evidence', ledger=tmp_path / 'budget', journey='missing-probe')
+        with pytest.raises(FileNotFoundError):
+            await cli.run(options)
+>       assert json.loads((options.evidence / 'result.json').read_text())['status'] == 'failed'
+E       AssertionError: assert 'running' == 'failed'
+E         
+E         - failed
+E         + running
+
+packages/xuanpu-finance/tests/test_f15_execution.py:186: AssertionError
+____________________ test_scenario_contract_records_source _____________________
+
+    def test_scenario_contract_records_source():
+        """环境和结果共用同一个显式来源契约，不悄悄将局部变成完整。"""
+>       assert cli.scenario_metadata('query-regression') == {'scenario': 'query-regression',
+               ^^^^^^^^^^^^^^^^^^^^^
+            'fixture_source': 'public_human_http', 'counts_as_complete_journey': False}
+E       AttributeError: module 'scripts.acceptance.finance_model' has no attribute 'scenario_metadata'
+
+packages/xuanpu-finance/tests/test_f15_execution.py:191: AttributeError
+_______________ test_human_fixture_rejects_full_before_any_http ________________
+
+    @pytest.mark.asyncio
+    async def test_human_fixture_rejects_full_before_any_http():
+        """完整场景禁止误调用人工前置fixture。"""
+        module = importlib.import_module('scripts.acceptance.finance_model_focus')
+        with pytest.raises(runtime.HarnessFailure, match='FIXTURE_SCENARIO_REQUIRED'):
+>           await module.prepare_query_fixture(SimpleNamespace(scenario='full'))
+
+packages/xuanpu-finance/tests/test_f15_execution.py:203: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/acceptance/finance_model_focus.py:54: in prepare_query_fixture
+    receipt, raw, file = await upload(context)
+                         ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+context = namespace(scenario='full', claim_source='human_fixture')
+
+    async def upload(context: Any) -> tuple[str, bytes, dict[str, Any]]:
+        """有效合成PDF通过公开个人上传和公开财务人工收件，后台worker真实保全。"""
+        from scripts.acceptance.finance_browser import create_fixtures
+    
+>       path = Path(create_fixtures(context.directory)[0])
+                                    ^^^^^^^^^^^^^^^^^
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'directory'
+
+scripts/acceptance/finance_model_journey.py:199: AttributeError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f15_execution.py::test_missing_probe_records_failure
+FAILED packages/xuanpu-finance/tests/test_f15_execution.py::test_scenario_contract_records_source
+FAILED packages/xuanpu-finance/tests/test_f15_execution.py::test_human_fixture_rejects_full_before_any_http
+3 failed, 14 deselected in 0.07s

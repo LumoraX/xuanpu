@@ -1,7 +1,7 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: 玄圃财务 F1—F2 受控目录 API
-  version: 0.15.0-f14
+  version: 0.16.0-f15
   description: 已实现独立财务原件、报销、应付、持久人工审批及可替换HTTP付款/记账结果闭环；供应商未选定，仅隔离模拟通道验证。正式执行仍受有效查验与真实专用批准阻断；不包含F3税务或正式归档。
 servers:
 - url: http://127.0.0.1:8443
@@ -41,10 +41,13 @@ paths:
       - name: kind
         in: query
         schema:
-          type: string
-          enum:
-          - department
-          - project
+          anyOf:
+          - type: string
+            enum:
+            - department
+            - project
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       responses:
         '200':
           description: 分摊归属分页
@@ -97,8 +100,11 @@ paths:
         in: query
         required: false
         schema:
-          type: string
-          maxLength: 128
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       responses:
         '200':
           description: 受权业务查询结果
@@ -164,16 +170,22 @@ components:
       name: cursor
       in: query
       schema:
-        type: string
-        maxLength: 2048
+        anyOf:
+        - type: string
+          maxLength: 2048
+        - type: 'null'
+      description: 未填写可省略或传null，由HTTP出口省略。首次cursor使用null，后续仅真实next_cursor。
     Limit:
       name: limit
       in: query
       schema:
-        type: integer
-        minimum: 1
-        maximum: 100
-        default: 50
+        anyOf:
+        - type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+        - type: 'null'
+      description: 未填写可省略或传null，由HTTP出口省略。
   responses:
     Error:
       description: 400 格式非法；401 认证失败；403 主体无效；404 不存在或无数据权限；503 目录不可用
@@ -378,8 +390,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     CostCenterPage:
       type: object
       additionalProperties: false
@@ -397,8 +410,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     BusinessRefPage:
       type: object
       additionalProperties: false
@@ -416,8 +430,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     PayeePage:
       type: object
       additionalProperties: false
@@ -435,5 +450,6 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'

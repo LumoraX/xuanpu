@@ -1,0 +1,16 @@
+{
+  "status": "failed",
+  "candidate": "final1",
+  "source_manifest": "frozen-candidate1.json",
+  "last_global_stream_count": 50,
+  "facts_passed": [
+    "null-query directory and dependent metadata actual calls",
+    "missing-facts root clarification and no draft",
+    "model draft proposal contains exact expense and original text plus real receipt"
+  ],
+  "failure": "public resume routes leaf request_id to root thread; unknown_request_ids",
+  "classification": "platform nested Skill confirmation resume defect; no business approval or payment performed",
+  "next": "deterministic public parent-child regression, minimal server fix, independent reviews and a new freeze before two fresh complete runs",
+  "model_budget_reset": false,
+  "production_status": "not_verified"
+}

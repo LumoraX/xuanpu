@@ -1,0 +1,88 @@
+{
+  "status": "Approved",
+  "review_date": "2026-10-24",
+  "scope": "Task3a narrow pre-freeze specification re-review, exactly two root finance-assistant Skill copies plus test_f15_skill_contract.py; this is not final global/business acceptance",
+  "findings": [],
+  "observed_real_failure": {
+    "journey": "final4",
+    "parent_trace": "final4/model-075.json",
+    "child_trace": "final4/model-079.json",
+    "phase": "02-create:session",
+    "call_id": "call_df3b15e82fc4409cb8b4bebe6cf2f357",
+    "original_raw_present_in_parent_request": true,
+    "delegation_args_keys": [
+      "request"
+    ],
+    "original_raw_absent_in_delegation_values": true,
+    "child_initial_seed_equals_actual_delegation_args": true,
+    "child_asked_for_missing_raw": true,
+    "explanation": "Parent had user facts but supplied formatting directions instead of the invoice_information value. The isolated child cannot recover absent parent text; its clarification is reasonable. This identifies a root delegation defect, not a need to weaken create or raw preservation acceptance."
+  },
+  "implementation_assessment": {
+    "self_contained_input": "call_skill args.request must contain the complete original user request and args.invoice_information the provided exact value; no placeholder reference or formatting-only substitute.",
+    "receipt_first_flow": "Explicitly preserves parent original facts/raw after metadata lookup and adds actual metadata separately; child summaries cannot overwrite the original request.",
+    "exact_string_semantics": "JSON example decodes to an exact request/raw match, leading/trailing spaces and two real newlines; one serialization round trip preserves raw. The example is clearly marked illustrative, not an executable business request.",
+    "missing_facts": "Genuine missing facts trigger clarification; when parent already received the facts it must repair omitted delegation args rather than ask the user to repeat them.",
+    "untrusted_invoice": "Invoice notes remain declared data, never business approval/payment authority.",
+    "authorization": "Both Skill copies byte-equal. Frontmatter tools and child whitelist match baseline except already-approved F15 version. No policy/tool/server/SDK/finance storage or human-confirmation change. Actual published call_skill schema accepts the example args object.",
+    "harness_and_gates": "Against the prior frozen manifest, exactly these three permitted files changed; harness runtime, natural user prompts, budget/accounting, complete journey assertions and product source bytes are unchanged."
+  },
+  "checks": [
+    {
+      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_skill_contract.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/delegation-spec-tests.xml",
+      "returncode": 0,
+      "passed": 7,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "delegation-spec-tests.log",
+      "log_sha256": "c88b9bf5c6176614944c46df98c430fe341641be012659656b18fa92444d7795",
+      "xml": "delegation-spec-tests.xml",
+      "xml_sha256": "4462cec058b2e043fafa0f71c405c454b9917f4fe757d37dcf28b0d1810ecfda"
+    },
+    {
+      "check": "Archived RED actual JUnit and log inspected",
+      "selected": 1,
+      "failed": 1,
+      "deselected": 6,
+      "failure": "test_entry_delegation_packet_is_self_contained missing isolation/value-carry rule before implementation",
+      "reexecuted_red_on_shared_worktree": false
+    },
+    {
+      "check": "Example validated against actual model-075 call_skill input_schema; copy bytes and baseline frontmatter capabilities checked",
+      "status": "passed"
+    }
+  ],
+  "source_sha256": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "b1529e5deefde27cc2309dfcb859bdb043370b4ba4ccd0781d30cad4ef5c268a",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "b1529e5deefde27cc2309dfcb859bdb043370b4ba4ccd0781d30cad4ef5c268a",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "50f60d2b1c3a16270a64b8925d38efaafc819e41ae464581f48d278626af0811"
+  },
+  "reference_freeze_sha256": "7121ae02eca37bb15285426010f5aa14c2c86862db7b4105266bc1d88194f90b",
+  "changed_reference_frozen_files": [
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
+    "examples/finance/skills/finance-assistant/SKILL.md",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+  ],
+  "raw_evidence_sha256": {
+    "final4/model-075.json": "b7d3e7307bd41a7fd8d0837798e5a48c45c22273cbd8d0ccde6834901299cd94",
+    "final4/model-079.json": "fd215a6ccba3fd1a857d3feb95ddce842b1f6e343917567b13c06d2de6bd403c",
+    "final4/result.json": "2d52972227d3a90e4a175559d73d75aef986d72a0c5a72869f3b1d4abcb5cbde",
+    "delegation-red.log": "74976a616cef916b6115f0fe5bccac6ec86721dc86e110f4e1341de26993551b",
+    "delegation-red.xml": "9325bdfa3d384de6292fadb6fd1764a6386c61d19eb71c0a50de6f054707421e",
+    "delegation-green.log": "dc076d5d84fe88e0bf7fcea5cd22c594794f6a979c7055b16f61d097fab59aba",
+    "delegation-green.xml": "b1e2f4a4206e555fb1ac2d485458e2042f99d1b99560fbac321fc78db349baff",
+    "delegation-failure-and-fix.json": "7f8043d9865fdd7d3bad2aa76888cc0c7cbc0300a175e353fe93fa86ea6f970e"
+  },
+  "remaining_gates": [
+    "Create a new frozen input set and rebuild affected business pack artifact; prior final4 remains failed.",
+    "Complete two fresh real-model full user journeys within the existing authorized persistent budget; verify actual parent request→call_skill args→child input→create tool→persisted raw equality and all original workflow/negative gates.",
+    "Perform separate final global specification/quality review after real runs, full checks and artifacts."
+  ],
+  "limitations": [
+    "No PG, private model configuration, private usage ledger, real model API or production data accessed.",
+    "The independent seven-case check proves the delivered Skill contract/example and existing pagination rules; it does not prove an actual model will obey delegation instructions.",
+    "RED is independently inspected archived evidence; only GREEN was executed by this reviewer.",
+    "No product/harness/test source changed by this reviewer; only review evidence written."
+  ]
+}

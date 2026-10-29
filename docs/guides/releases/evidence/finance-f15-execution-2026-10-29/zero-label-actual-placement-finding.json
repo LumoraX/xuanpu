@@ -1,0 +1,32 @@
+{
+  "status": "NeedsRevision",
+  "finding_id": "EL-Z03",
+  "source_sha256_before_fix": "8bdec0aadecc68f078b728142dcae575721001b5ae06c7be8b4a61c5cfe181cf",
+  "finding": "New executed/completed prefix/suffix forms place optional 实际 after the verb, missing its ordinary pre-verb placement.",
+  "cases": [
+    {
+      "reply": "已付款：0元；已记账：0元；已实际执行付款",
+      "expected": false,
+      "actual": true
+    },
+    {
+      "reply": "已付款：0元；已记账：0元；已经实际执行付款",
+      "expected": false,
+      "actual": true
+    },
+    {
+      "reply": "已付款：0元；已记账：0元；付款已实际执行",
+      "expected": false,
+      "actual": true
+    },
+    {
+      "reply": "已付款：0元；已记账：0元；记账已经实际完成",
+      "expected": false,
+      "actual": true
+    }
+  ],
+  "required_bounded_grammar": "Share action=已(?:经)?(?:实际)?(?:执行|完成) in the prefix/suffix alternatives; test this finite grammar once for both financial dimensions, not a broad semantic parser.",
+  "pure_offline_only": true,
+  "model_calls": 0,
+  "postgres_access": false
+}

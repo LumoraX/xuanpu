@@ -1,0 +1,69 @@
+{
+  "status": "Approved",
+  "approval_scope": "Final narrow offline checker implementation only; no further model consumption, no third focused run, no complete F15 acceptance, no budget expansion or completion commit. Root may rerun latest-source offline/full gates.",
+  "reviewed_at": "2026-10-29T04:40:25.721894+00:00",
+  "source_sha256": {
+    "scripts/acceptance/finance_model_checks.py": "90c8199cf148476adf6978ff2038dfecd15f76c76cdd36ab4ed0cd72f609432c",
+    "packages/xuanpu-finance/tests/test_f15_model_harness.py": "12336329b7975322527b2806c30582368ccad344215809a020f887bed4149d2d"
+  },
+  "source_sha_unchanged_before_after_tests": true,
+  "findings": [],
+  "closed_findings": [
+    {
+      "id": "EL-Z01",
+      "evidence": "zero-label-prefix-finding.json",
+      "resolution": "Zero exemption now validates entire clause with only whitespace or a single list marker prefix; narrative prefixes are rejected, not trimmed away."
+    },
+    {
+      "id": "EL-Z02",
+      "evidence": "zero-label-action-forms-finding.json",
+      "resolution": "Explicit 已执行/已经执行 and 已完成/已经完成 forms are recognized before and after either financial dimension."
+    },
+    {
+      "id": "EL-Z03",
+      "evidence": "zero-label-actual-placement-finding.json",
+      "resolution": "One bounded action expression 已(?:经)?(?:实际)?(?:执行|完成) supports the normal 实际 placement, covered by64 prefix/placement/dimension combinations."
+    }
+  ],
+  "verification": {
+    "independent_pytest_command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py -q --junitxml=docs/guides/releases/evidence/finance-f15-execution-2026-10-29/final-review-offline.xml",
+    "independent_pytest_passed": 192,
+    "skipped": 0,
+    "log": "final-review-offline.log",
+    "junit": "final-review-offline.xml",
+    "junit_sha256": "4344f746436643771e21ae9fb61a857f72970ebf007546627a0a24750d547ace",
+    "independent_direct_negative_matrix_cases": 64,
+    "extra_prefix_and_signed_amount_rechecks": 5,
+    "required_ruff_F_S108_I_TC_C901_returncode": 0
+  },
+  "assessments": {
+    "zero_label": "Only a complete cumulative-zero monetary field is exempted from positive-action recognition. Numeric values remain checked, and no entire remaining sentence or later clause is skipped.",
+    "financial_gates": "Payment/posting independently require explicit zero or nonexecution. Nonzero including negative amounts, contradictory execution, missing dimension, narrative prefixes and canonical explicit execution forms fail. No history/current tool/provenance or human business gate changed.",
+    "actual_reply": "Exact218 root reply has three recorded reasons,128.50 approved state and separate paid/posted0 fields. Its former label false negative is fixed in a pure offline replay.",
+    "raw_result": "Second original result remains failed; no posthoc result can claim09/10 or a complete focused/full journey."
+  },
+  "posthoc_binding": {
+    "original_result_sha256": "dcd95457f26079b14ae5b13a8107bb6f12ba9191e7bf134e8d30a0a2bc0f3e58",
+    "original_status": "failed",
+    "expected_checker_sha256": "90c8199cf148476adf6978ff2038dfecd15f76c76cdd36ab4ed0cd72f609432c",
+    "expected_reply_sha256": "d163aa2c7a9224aa930cc6ef93fc5e69b5058931663906f076971e00ef19a6bf",
+    "required_final_artifact": "semantic-reassessment.json must be regenerated with these checker/reply hashes before handoff; not an additional model run.",
+    "negative_challenges_09_10": "not_run",
+    "complete_real_journeys": 0,
+    "required_complete_real_journeys": 2
+  },
+  "limitations": [
+    "This bounded regex correction is not a claim of general natural-language financial understanding.",
+    "Reviewer performed only pure/noPG tests and source review; root full/PG tests and real budget state are not independently rerun by this review.",
+    "No actual model calls, PG connection, private config/ledger read, source edits or commits by reviewer."
+  ],
+  "activities": {
+    "source_modified": false,
+    "pure_tests_run": true,
+    "model_calls": 0,
+    "postgres_access": false,
+    "private_config_access": false,
+    "ledger_access": false,
+    "commit": false
+  }
+}

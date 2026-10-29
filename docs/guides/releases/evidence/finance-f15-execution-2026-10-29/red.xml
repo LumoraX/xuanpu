@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="12" skipped="0" tests="12" time="0.290" timestamp="2026-10-29T12:02:23.939085+08:00" hostname="krasusdeMacBook-Pro"><testcase classname="packages.xuanpu-finance.tests.test_f15_execution" name="test_focused_budget_stops_before_thirteenth_stream" time="0.001"><failure message="TypeError: Budget.__init__() got an unexpected keyword argument 'max_streams'">tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2886/test_focused_budget_stops_befo0')
+
+    def test_focused_budget_stops_before_thirteenth_stream(tmp_path: Path):
+        """定点只可收紧到十二次，不花掉后续完整验收额度。"""
+&gt;       budget = runtime.Budget(tmp_path / 'budget.json', 'focus', max_streams=12)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: Budget.__init__() got an unexpected keyword argument 'max_streams'
+
+packages/xuanpu-finance/tests/test_f15_execution.py:23: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_execution" name="test_invalid_budget_cannot_create_ledger[0]" time="0.001"><failure message="TypeError: Budget.__init__() got an unexpected keyword argument 'max_streams'">tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2886/test_invalid_budget_cannot_cre0')
+limit = 0
+
+    @pytest.mark.parametrize('limit', [0, 121, True])
+    def test_invalid_budget_cannot_create_ledger(tmp_path: Path, limit):
+        """非法局部额度不得落盘，更不能放大一百二十次原限制。"""
+        path = tmp_path / 'budget.json'
+        with pytest.raises(ValueError):
+&gt;           runtime.Budget(path, 'focus', max_streams=limit)
+E           TypeError: Budget.__init__() got an unexpected keyword argument 'max_streams'
+
+packages/xuanpu-finance/tests/test_f15_execution.py:39: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_execution" name="test_invalid_budget_cannot_create_ledger[121]" time="0.000"><failure message="TypeError: Budget.__init__() got an unexpected keyword argument 'max_streams'">tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2886/test_invalid_budget_cannot_cre1')
+limit = 121
+
+    @pytest.mark.parametrize('limit', [0, 121, True])
+    def test_invalid_budget_cannot_create_ledger(tmp_path: Path, limit):
+        """非法局部额度不得落盘，更不能放大一百二十次原限制。"""
+        path = tmp_path / 'budget.json'
+        with pytest.raises(ValueError):
+&gt;           runtime.Budget(path, 'focus', max_streams=limit)
+E           TypeError: Budget.__init__() got an unexpected keyword argument 'max_streams'
+
+packages/xuanpu-finance/tests/test_f15_execution.py:39: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_execution" name="test_invalid_budget_cannot_create_ledger[True]" time="0.000"><failure message="TypeError: Budget.__init__() got an unexpected keyword argument 'max_streams'">tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2886/test_invalid_budget_cannot_cre2')
+limit = True
+
+    @pytest.mark.parametrize('limit', [0, 121, True])
+    def test_invalid_budget_cannot_create_ledger(tmp_path: Path, limit):
+        """非法局部额度不得落盘，更不能放大一百二十次原限制。"""
+        path = tmp_path / 'budget.json'
+        with pytest.raises(ValueError):
+&gt;           runtime.Budget(path, 'focus', max_streams=limit)
+E           TypeError: Budget.__init__() got an unexpected keyword argument 'max_streams'
+
+packages/xuanpu-finance/tests/test_f15_execution.py:39: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_execution" name="test_reopen_cannot_expand_persisted_local_budget" time="0.000"><failure message="TypeError: Budget.__init__() got an unexpected keyword argument 'max_streams'">tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2886/test_reopen_cannot_expand_pers0')
+
+    def test_reopen_cannot_expand_persisted_local_budget(tmp_path: Path):
+        """同名定点旅程不能通过重开默认模式变大上限。"""
+        path = tmp_path / 'budget.json'
+&gt;       runtime.Budget(path, 'focus', max_streams=12)
+E       TypeError: Budget.__init__() got an unexpected keyword argument 'max_streams'
+
+packages/xuanpu-finance/tests/test_f15_execution.py:46: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_execution" name="test_partial_result_never_counts_as_complete[False]" time="0.000"><failure message="TypeError: Evidence.complete() got an unexpected keyword argument 'partial'">tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2886/test_partial_result_never_coun0')
+failed = False
+
+    @pytest.mark.parametrize('failed', [False, True])
+    def test_partial_result_never_counts_as_complete(tmp_path: Path, failed: bool):
+        """局部成功有独立状态，旧通过选择器也不会误计整条旅程。"""
+        evidence = runtime.Evidence(tmp_path / 'evidence', [])
+        if failed:
+            evidence.fail('observed_failure')
+&gt;       evidence.complete(partial=True)
+E       TypeError: Evidence.complete() got an unexpected keyword argument 'partial'
+
+packages/xuanpu-finance/tests/test_f15_execution.py:59: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_execution" name="test_partial_result_never_counts_as_complete[True]" time="0.001"><failure message="TypeError: Evidence.complete() got an unexpected keyword argument 'partial'">tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2886/test_partial_result_never_coun1')
+failed = True
+
+    @pytest.mark.parametrize('failed', [False, True])
+    def test_partial_result_never_counts_as_complete(tmp_path: Path, failed: bool):
+        """局部成功有独立状态，旧通过选择器也不会误计整条旅程。"""
+        evidence = runtime.Evidence(tmp_path / 'evidence', [])
+        if failed:
+            evidence.fail('observed_failure')
+&gt;       evidence.complete(partial=True)
+E       TypeError: Evidence.complete() got an unexpected keyword argument 'partial'
+
+packages/xuanpu-finance/tests/test_f15_execution.py:59: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_execution" name="test_explicit_scenario_and_default_are_bounded[full]" time="0.000"><failure message="AttributeError: module 'scripts.acceptance.finance_model' has no attribute 'parse_options'">scenario = 'full'
+
+    @pytest.mark.parametrize('scenario', ['full', 'query-regression'])
+    def test_explicit_scenario_and_default_are_bounded(scenario: str):
+        """CLI显式选择场景，默认仍完整，不提供放大预算的开关。"""
+        args = ['--allow-real-model', '--journey', 'test']
+        for key in ['dsn-file', 'model-config', 'state', 'evidence', 'ledger']:
+            args += ['--' + key, '/unused/' + key]
+&gt;       assert cli.parse_options(args).scenario == 'full'
+               ^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'scripts.acceptance.finance_model' has no attribute 'parse_options'
+
+packages/xuanpu-finance/tests/test_f15_execution.py:71: AttributeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_execution" name="test_explicit_scenario_and_default_are_bounded[query-regression]" time="0.000"><failure message="AttributeError: module 'scripts.acceptance.finance_model' has no attribute 'parse_options'">scenario = 'query-regression'
+
+    @pytest.mark.parametrize('scenario', ['full', 'query-regression'])
+    def test_explicit_scenario_and_default_are_bounded(scenario: str):
+        """CLI显式选择场景，默认仍完整，不提供放大预算的开关。"""
+        args = ['--allow-real-model', '--journey', 'test']
+        for key in ['dsn-file', 'model-config', 'state', 'evidence', 'ledger']:
+            args += ['--' + key, '/unused/' + key]
+&gt;       assert cli.parse_options(args).scenario == 'full'
+               ^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'scripts.acceptance.finance_model' has no attribute 'parse_options'
+
+packages/xuanpu-finance/tests/test_f15_execution.py:71: AttributeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_execution" name="test_full_orchestration_keeps_same_actor_sessions" time="0.006"><failure message="StopIteration">def test_full_orchestration_keeps_same_actor_sessions():
+        """调度契约锁住两处续会话，新的回查和跨角色入口不合并。"""
+        tree = ast.parse((ROOT / 'scripts/acceptance/finance_model_journey.py').read_text())
+        calls = {}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                if node.func.id == 'message':
+                    label = ast.literal_eval(node.args[3])
+                    calls[label] = node
+        for label, expected in [('06-manager-approve', 'manager_session'),
+                                ('09-owner-unsafe', 'query_session')]:
+&gt;           session = next(k.value for k in calls[label].keywords if k.arg == 'session')
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           StopIteration
+
+packages/xuanpu-finance/tests/test_f15_execution.py:88: StopIteration</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_execution" name="test_message_reuse_skips_router_and_rejects_wrong_actor" time="0.002"><failure message="TypeError: message() got an unexpected keyword argument 'session'">tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2886/test_message_reuse_skips_route0')
+
+    @pytest.mark.asyncio
+    async def test_message_reuse_skips_router_and_rejects_wrong_actor(tmp_path: Path):
+        """实际HTTP驱动续会话仅发业务消息，错身份在发请求前拒绝。"""
+        requests = []
+    
+        def respond(request):
+            """仅提供公开路由和SSE固定协议，不调用任何模型。"""
+            requests.append(request)
+            if request.url.path == '/v1/assistant/route':
+                return httpx.Response(200, json={'session': {
+                    'package': 'finance', 'session_id': 'manager-session'}})
+            if request.method == 'GET':
+                return httpx.Response(200, json={'messages': []})
+            event = {'kind': 'turn_completed', 'data': {'success': True, 'is_root': True}}
+            return httpx.Response(200, text='data: ' + json.dumps(event) + '\n\n')
+    
+        async with httpx.AsyncClient(base_url='http://offline',
+                                     transport=httpx.MockTransport(respond)) as http:
+            context = SimpleNamespace(http=http, models=SimpleNamespace(),
+                people={actor: SimpleNamespace(user_id=actor) for actor in ['manager', 'owner']},
+                cookies={actor: {'Cookie': 'session=' + actor} for actor in ['manager', 'owner']},
+                session_actors={}, origin='http://offline',
+                evidence=runtime.Evidence(tmp_path / 'evidence', []))
+            session = await driver.message(context, 'manager', '查看待审', '04')
+&gt;           await driver.message(context, 'manager', '继续审批', '06', session=session)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           TypeError: message() got an unexpected keyword argument 'session'
+
+packages/xuanpu-finance/tests/test_f15_execution.py:119: TypeError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_execution" name="test_fixture_claim_is_not_labeled_model_created" time="0.001"><failure message="AssertionError: assert ['one_model_created_claim'] == ['one_fixture_created_claim']&#10;  &#10;  At index 0 diff: 'one_model_created_claim' != 'one_fixture_created_claim'&#10;  Use -v to get more diff">tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2886/test_fixture_claim_is_not_labe0')
+
+    @pytest.mark.asyncio
+    async def test_fixture_claim_is_not_labeled_model_created(tmp_path: Path):
+        """同一计数观察器按来源记录，人工fixture不能冒称模型创建。"""
+        async def fetch(query):
+            """提供仅一个ID的计数结果，实际HTTP契约另行集成验证。"""
+            return [{'id': 'fixture-claim'}]
+    
+        async def respond(request):
+            """模拟公开人工代理外层，不注入模型结果。"""
+            return httpx.Response(200, json={'is_error': False, 'truncated': False,
+                                           'body': {'id': 'fixture-claim'}})
+    
+        async with httpx.AsyncClient(base_url='http://offline',
+                                     transport=httpx.MockTransport(respond)) as http:
+            context = SimpleNamespace(http=http, pool=SimpleNamespace(fetch=fetch),
+                claim_source='human_fixture', cookies={'owner': {'Cookie': 'test'}},
+                origin='http://offline', evidence=runtime.Evidence(tmp_path / 'evidence', []))
+            await driver.claim(context)
+&gt;           assert [x['name'] for x in context.evidence.result['checks']] == [
+                'one_fixture_created_claim']
+E           AssertionError: assert ['one_model_created_claim'] == ['one_fixture_created_claim']
+E             
+E             At index 0 diff: 'one_model_created_claim' != 'one_fixture_created_claim'
+E             Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_execution.py:148: AssertionError</failure></testcase></testsuite></testsuites>

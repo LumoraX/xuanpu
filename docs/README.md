@@ -14,3 +14,5 @@
 当前办公任务使用与验收见[办公交办](guides/work-tasks.md)、[任务架构](architecture/work-tasks.md)和[R1验收](guides/releases/2026-10-21-r1-acceptance.md)。
 
 财务 F0 当前实现见[架构](architecture/finance.md)、[接入指南](guides/finance-f0.md)和[分层验收记录](guides/releases/2026-10-21-finance-f0-acceptance.md)。后续闭环以[批准设计](superpowers/specs/2026-10-21-finance-capability-design.md)为准；F0 不代表报销、付款或官方查验已经上线。
+
+当前发票与报销内部记录范围见[F15指南](guides/finance-f15.md)、[公司制度和人员资料缺项](guides/finance-company-readiness.md)及[F15分层验收](guides/releases/2026-10-23-finance-f15-acceptance.md)。不支付、独立存储、真人审批；正式环境状态按验收记录分别核对。

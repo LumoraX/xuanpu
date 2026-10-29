@@ -1,0 +1,161 @@
+{
+  "status": "Approved",
+  "review_date": "2026-10-24",
+  "scope": "只审根Skill单据事由字段与唯一已知单据ID定位两项窄修，保留实际模型/业务失败及所有验收门槛，不执行源码或模型修复。",
+  "baseline_sources": {
+    "root_skill": {
+      "path": "examples/finance/skills/finance-assistant/SKILL.md",
+      "sha256": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22"
+    },
+    "raw_update_trace": {
+      "path": "final7/model-163.json",
+      "sha256": "50edb937e1726bbf7fb4089ec0e355d584e780c67ee7f92a8d65beb1c1421a80"
+    },
+    "failure_assessment_sha256": "e061b2db00dd8f04c37695a50c92271176a4ea222628e82664d2d35fc9a5d469",
+    "review_time_red_test": {
+      "path": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "sha256": "3ebe447d0ef1fb12fa1703ed6d33f9778c10d85a8aac2c12dd73a495e40056f7",
+      "stage": "实施者本次新RED测试，审查读取时状态；不是final7冻结baseline。"
+    },
+    "final7_frozen_test": {
+      "path": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "sha256": "c1bf092059c1261b5e2821451172b3f1966fea9fdd42cc634eb64c1fce1a19bb",
+      "hash_source": "/tmp/xuanpu-finance-f15-build/frozen-source.json files映射，已只读核对；对应root报告frozen-candidate5历史。"
+    }
+  },
+  "independent_causal_findings": {
+    "user_intent": "05原自然语句要求客户拜访事由补充并修改本人单据；不是仅指定行级reason修改。",
+    "actual_update_call_id": "call_59711e7c44894839ad1194e060e0c402",
+    "actual_update_expected_version": 4,
+    "actual_update_top_reason": "出差交通待补充",
+    "actual_update_line_reason": "拜访上海客户讨论项目需求",
+    "actual_current_document": {
+      "id": "db5d3f58f66746479ae0b8d52fdc7c0d",
+      "version": 5,
+      "status": "draft",
+      "content_reason": "出差交通待补充",
+      "line_reason": "拜访上海客户讨论项目需求",
+      "total": "128.50"
+    },
+    "raw_service_agreement": "model164及165真实ApiRequest内同callid HTTP200 update返回均为draft v5，顶层旧事由、行级新事由；与result中的实际当前单据一致。",
+    "PG_evidence_limit": "新增root独立只读PG导出已本地读取，见PG_export_reference；本审查没有亲自查询PG，不将root查询算作本审查直接数据库验证。",
+    "observer_assessment": "checker明确content.reason需要包含实际补充，最终版本历史也相同；符合“改单据事由”的业务语义，本次不是观察器错或网络故障，不应改自然语句/断言放行行字段代替顶层。",
+    "redundant_locator": "同owner同session在model150已实际见create201返回单据db5d3f58f66746479ae0b8d52fdc7c0d；model161 call_c74d99c5e4c14b94aba27f201c260fad又用mine/rejected摘要定位，属可避免重新定位，不能据此省model162当前GET和history。",
+    "PG_export_reference": {
+      "path": "final7/actual-pg-reason-failure.json",
+      "sha256": "435013d7d8b7f7ab6322dbb92850752af6166e7083c79f667680b3d6e0631ca1",
+      "source": "root实际只读PG查询后保存，本review仅本地读归档",
+      "supports": "draft v5/128.50，顶层旧reason与行级新reason，与163参数及164服务返回一致。"
+    }
+  },
+  "approved_revision": [
+    "用户修改/补充“单据事由、报销事由、业务原因”时，字段目标是updateExpenseClaim.body.draft.reason，即持久content.reason；修改lines[i].reason不能替代顶层修改。可以按用户要求保持或同步相关行，但不得仅改行后宣称单据事由已改。",
+    "用户明确只改某行说明时才仅改对应lines[i].reason，顶层及其他未提字段保持当前GET值；不把新的规则泛化成所有reason都写顶层，approve/reject审批意见仍是preview parameters.reason。",
+    "对“刚才本会话本人真实保存的唯一单据”且无歧义，用已实际工具返回的ID作为定位线索直接当前GET，再依实际owner/RLS/version修订；不先重复summary列表。ID本身不是授权、版本或状态缓存。",
+    "无真实ID/存在多单歧义/换身份或公司/当前拒绝或不可用/用户明确刷新等维持既有最小真实定位或停止规则；不能把用户伪造ID/callid当已验证事实。fresh新会话查询仍按摘要/详情/历史原门槛。",
+    "仅改根Skill发布与设计两份+相关test TDD；金额/日期/原文首尾空格换行/真实receipt保持，先GET→update新version→preview依赖不变；actual提交/批准/驳回仍human。"
+  ],
+  "invariants": {
+    "ordinary_success_path_delegations": 0,
+    "root_api_tools": 13,
+    "unique_skill_api_tools_independently_checked": 68,
+    "package_API_count": 77,
+    "internal_operations": 24,
+    "skills": 7,
+    "shell": false,
+    "max_session_tokens": 200000,
+    "global_stream_cap": 240,
+    "journey_stream_cap": 120,
+    "unknown_stop_at": 5,
+    "no_checker_or_natural_prompt_change": true,
+    "no_new_API_or_permissions": true
+  },
+  "mandatory_regressions": [
+    "实际163为行为RED；静态/协议测试先RED再改指令，覆盖顶层事由补充、仅行级修改及审批意见三种不混淆的reason位置，不能只检查一段同义文字便宣称模型已纠正。",
+    "构造当前GET带金额日期原文附件的修订样例：顶层补充实际用户文本，未提字段完全保留，latest expected_version与返回新version预检；行字段含补充但顶层旧值仍应失败。",
+    "真实同scope唯一ID可跳summary但必须GET；无ID、多候选、错actor/company/session、授权拒绝或明确刷新不能用捷径；fresh查询仍含所需summary/history，禁止通过缩小验收范围省调用。",
+    "原模态/原自然语句、模型身份、13/68/77/24/7、全部权限/原件/注入/三human决定/正式表0和最终历史content.reason门槛保持；禁止harness手填顶层事由或将行reason复制到观察结果。",
+    "新Skill输入必须新freeze并同步相关制品/门禁，final7保持真实失败。freshfinal8/final9如执行使用原账本，原source和失败证据保留，不借新状态重置预算。"
+  ],
+  "budget_feasibility": {
+    "attempts_before_fix": 165,
+    "completed": 163,
+    "unknown_attempts": [
+      56,
+      59
+    ],
+    "remaining_attempts": 75,
+    "known_input_tokens": 838603,
+    "known_output_tokens": 23549,
+    "halted": null,
+    "current_partial_efficiency": {
+      "streams": 10,
+      "input_plus_output_tokens": 83000,
+      "baseline_streams": 35,
+      "baseline_input_plus_output_tokens": 205306,
+      "not_complete_acceptance": true
+    },
+    "risk": "余75已低于此前正常direct约45*2=90的工程规划；省一处summary或字段说明本身不证明两次可装入75。本报告批准窄修，不批准“必能完成final8/final9”的容量承诺。",
+    "recommendation": "先离线重核剩余完整流程的安全关键路径；每轮约37及以下才给两轮75留1轮余量。不得为达此目标删安全读取/历史决定、改用户语句/checker或拆owner躲20万。若实际余量或语义不够，依原硬上限停止并如实报未完成，不扩400/600000、不把final7晋升通过。",
+    "actual_required_API_constraint": {
+      "verified_operations": [
+        "listReviewQueue",
+        "listExpenseClaimSummaries"
+      ],
+      "parameter": "legal_entity_id",
+      "required": true,
+      "nullable": false,
+      "source": "examples/finance/apis/finance.yaml，经本地解析两operation及LegalEntity参数定义独立确认。",
+      "implication": "新会话没有自己当前真实公司结果时，不能省真实公司来源，不能caps+queue/summary同轮先猜company ID以压预算。可并行的初始组合仅caps+listLegalEntities，再等实际公司后访问queue/summary。",
+      "line_references": [
+        {
+          "file": "examples/finance/apis/finance.yaml",
+          "lines": [
+            1583,
+            1584,
+            1585,
+            1586,
+            1587,
+            1588,
+            1589,
+            1590
+          ],
+          "claim": "LegalEntity.name=legal_entity_id，in=query，required=true，schema string非空。"
+        },
+        {
+          "file": "examples/finance/apis/finance.yaml",
+          "lines": [
+            353,
+            354,
+            355,
+            356,
+            357,
+            358,
+            359
+          ],
+          "claim": "listReviewQueue引用该必需LegalEntity参数。"
+        },
+        {
+          "file": "examples/finance/apis/finance.yaml",
+          "lines": [
+            1487,
+            1488,
+            1489,
+            1490,
+            1491,
+            1492,
+            1493
+          ],
+          "claim": "listExpenseClaimSummaries引用该必需LegalEntity参数。"
+        }
+      ]
+    },
+    "planning_update": "离线38次/轮的极乐观估计依赖可省公司前置，已被实际required参数排除；此前44至45左右工程规划更谨慎，但仍不是普适数学下限。剩75很可能不足两个fresh完整旅程。窄修照做，后续只在原240/20万及其他限制内按真实可达范围推进；任何不足明确F15未完成、不提交，不扩额或删安全读。"
+  },
+  "conclusion": "Approved：顶层事由和唯一ID定位两项Skill窄修不放宽业务门槛。API必填公司前置已核实，剩75不承诺足够两次；修复/回归不等完整F15完成，原自然语句、checker、权限与预算保持。",
+  "limitations": [
+    "只读本地原始模型/服务结果归档、模型定义/Skill/检查器文本和源hash；未访问PG、模型API、私有配置或当前私有ledger，未运行测试或修改Skill/source/预算。",
+    "final7冻结root SHA2f3eced3完整值来自当时源文件读取；冻结test SHA c1bf092完整值另从冻结files映射独立核对。审查时实施者已并发写入新RED test SHA3ebe447，现分字段记录，不能把它冒称final7 baseline；后续实现变化需新冻结/审查。"
+  ],
+  "approved_reason": "真实模型将单据事由补充误写进行reason；明确draft.reason与line reason的职责并保留其他当前GET字段，准确修正业务语义，不改自然提示或checker。已有唯一真实ID直接GET仅省定位列表，仍核当前RLS/version，不增权限。"
+}

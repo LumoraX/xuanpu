@@ -1,0 +1,40 @@
+............F                                                            [100%]
+=================================== FAILURES ===================================
+___________ test_nested_leaf_partial_resolution_then_remaining_batch ___________
+
+identity_world = <function identity_world.<locals>.opener at 0x10b1a6840>
+step = <class 'packages.xuanpu-server.tests.conftest.Step'>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2400/test_nested_leaf_partial_resol0')
+
+    async def test_nested_leaf_partial_resolution_then_remaining_batch(
+        identity_world: Any, step: Any, tmp_path: Path,
+    ) -> None:
+        """叶批次只核销一项即结束本操作，余项仍待确认且重复回放不重复写。"""
+        async with identity_world() as ident, records_server() as (url, writes):
+            await publish_nested(ident, tmp_path / 'leaf-partial', url)
+            headers = {'Authorization': 'Bearer ' + ident.world.member_key}
+            response = await ident.http.post('/v1/sessions', headers=headers,
+                                             json={'package': 'nested-approval'})
+            sid = response.json()['session_id']
+            ident.world.models.script(
+                step(calls=[('delegate', 'call_skill', {'skill_id': 'child', 'reason': '批次保存'})]),
+                step(calls=[('write-a', 'api__records__append', {}), ('write-b', 'api__records__append', {})]),
+                step(text='叶批次完成'), step(text='根任务完成'))
+            events(await ident.http.post(f'/v1/sessions/{sid}/messages', headers=headers, json={'text': '保存两条'}))
+            first, second = (await ident.http.get(f'/v1/sessions/{sid}/pending', headers=headers)).json()['pending']
+            assert first['detail']['thread_id'] == second['detail']['thread_id']
+            payload = {'resolutions': {first['request_id']: {'granted': True}}}
+            async with asyncio.timeout(5):
+                partial = events(await ident.http.post(f'/v1/sessions/{sid}/resume', headers=headers, json=payload))
+            assert partial[-2]['kind'] == 'suspension_partially_resolved'
+            assert partial[-2]['data']['operation_terminal'] is True
+>           assert writes == [] and len(ident.world.models.requests) == 2
+E           AssertionError: assert (['append'] == []
+E             
+E             Left contains one more item: 'append'
+E             Use -v to get more diff)
+
+packages/xuanpu-server/tests/identity/test_nested_resume.py:546: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-server/tests/identity/test_nested_resume.py::test_nested_leaf_partial_resolution_then_remaining_batch
+1 failed, 12 passed in 4.23s

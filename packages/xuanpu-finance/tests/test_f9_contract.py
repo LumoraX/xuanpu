@@ -25,10 +25,10 @@ def test_summary_contract_has_bounded_exact_projection() -> None:
     assert schemas['ExpenseClaimSummary']['additionalProperties'] is False
     assert schemas['ExpenseClaimSummaryPage']['properties']['items']['maxItems'] == 50
     params = {item['name']: item for item in operation['parameters'] if 'name' in item}
-    assert params['limit']['schema'] == {'type': 'integer', 'minimum': 1,
+    assert params['limit']['schema']['anyOf'][0] == {'type': 'integer', 'minimum': 1,
                                        'maximum': 50, 'default': 20}
-    assert params['view']['schema']['default'] == 'mine'
-    assert params['q']['schema']['maxLength'] == 128
+    assert params['view']['schema']['anyOf'][0]['default'] == 'mine'
+    assert params['q']['schema']['anyOf'][0]['maxLength'] == 128
     item = {'id': 'claim', 'legal_entity_id': 'e', 'owner_id': 'u', 'version': 1,
             'status': 'draft', 'total': '10.00', 'reason': '\x01' * 2000,
             'created_at': '2026-10-22T00:00:00Z', 'record_mode': 'internal_record'}

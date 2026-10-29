@@ -1,0 +1,294 @@
+本日志为隔离空实现目录重放最初9条测试的RED，非首次运行原始日志。原首次运行9失败已留在工具调用记录。
+FFFFFFFFF                                                                [100%]
+=================================== FAILURES ===================================
+_________________________ test_budget_survives_reopen __________________________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2265/test_budget_survives_reopen0')
+
+    def test_budget_survives_reopen(tmp_path: Path):
+        """失败及新旅程仍累计同一全局用量。"""
+>       module = harness()
+                 ^^^^^^^^^
+
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:20: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:15: in harness
+    return importlib.import_module('scripts.acceptance.finance_model_runtime')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'scripts.acceptance.finance_model_runtime'
+import_ = <function _gcd_import at 0x1049cc0e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts.acceptance.finance_model_runtime'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+____________________ test_missing_usage_blocks_next_request ____________________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2265/test_missing_usage_blocks_next0')
+
+    def test_missing_usage_blocks_next_request(tmp_path: Path):
+        """缺usage必须落盘并永久阻止后续自动消费。"""
+>       module = harness()
+                 ^^^^^^^^^
+
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:33: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:15: in harness
+    return importlib.import_module('scripts.acceptance.finance_model_runtime')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'scripts.acceptance.finance_model_runtime'
+import_ = <function _gcd_import at 0x1049cc0e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts.acceptance.finance_model_runtime'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+______________________ test_event_limit_preserves_failure ______________________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2265/test_event_limit_preserves_fai0')
+
+    def test_event_limit_preserves_failure(tmp_path: Path):
+        """原始事件超限也必须保存失败诊断。"""
+>       module = harness()
+                 ^^^^^^^^^
+
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:15: in harness
+    return importlib.import_module('scripts.acceptance.finance_model_runtime')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'scripts.acceptance.finance_model_runtime'
+import_ = <function _gcd_import at 0x1049cc0e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts.acceptance.finance_model_runtime'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+_ test_model_confirmation_never_executes_business_decision[executeFinanceAction] _
+
+target = 'executeFinanceAction'
+
+    @pytest.mark.parametrize('target', ['executeFinanceAction', 'payInvoice', 'readReceiptOriginal',
+                                         'api__finance__executeFinanceAction', 'shell'])
+    def test_model_confirmation_never_executes_business_decision(target: str):
+        """精确白名单不允许确认执行、支付、原件或任意shell。"""
+>       assert not harness().allowed_approval(target)
+                   ^^^^^^^^^
+
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:15: in harness
+    return importlib.import_module('scripts.acceptance.finance_model_runtime')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'scripts.acceptance.finance_model_runtime'
+import_ = <function _gcd_import at 0x1049cc0e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts.acceptance.finance_model_runtime'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+_____ test_model_confirmation_never_executes_business_decision[payInvoice] _____
+
+target = 'payInvoice'
+
+    @pytest.mark.parametrize('target', ['executeFinanceAction', 'payInvoice', 'readReceiptOriginal',
+                                         'api__finance__executeFinanceAction', 'shell'])
+    def test_model_confirmation_never_executes_business_decision(target: str):
+        """精确白名单不允许确认执行、支付、原件或任意shell。"""
+>       assert not harness().allowed_approval(target)
+                   ^^^^^^^^^
+
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:15: in harness
+    return importlib.import_module('scripts.acceptance.finance_model_runtime')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'scripts.acceptance.finance_model_runtime'
+import_ = <function _gcd_import at 0x1049cc0e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts.acceptance.finance_model_runtime'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+_ test_model_confirmation_never_executes_business_decision[readReceiptOriginal] _
+
+target = 'readReceiptOriginal'
+
+    @pytest.mark.parametrize('target', ['executeFinanceAction', 'payInvoice', 'readReceiptOriginal',
+                                         'api__finance__executeFinanceAction', 'shell'])
+    def test_model_confirmation_never_executes_business_decision(target: str):
+        """精确白名单不允许确认执行、支付、原件或任意shell。"""
+>       assert not harness().allowed_approval(target)
+                   ^^^^^^^^^
+
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:15: in harness
+    return importlib.import_module('scripts.acceptance.finance_model_runtime')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'scripts.acceptance.finance_model_runtime'
+import_ = <function _gcd_import at 0x1049cc0e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts.acceptance.finance_model_runtime'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+_ test_model_confirmation_never_executes_business_decision[api__finance__executeFinanceAction] _
+
+target = 'api__finance__executeFinanceAction'
+
+    @pytest.mark.parametrize('target', ['executeFinanceAction', 'payInvoice', 'readReceiptOriginal',
+                                         'api__finance__executeFinanceAction', 'shell'])
+    def test_model_confirmation_never_executes_business_decision(target: str):
+        """精确白名单不允许确认执行、支付、原件或任意shell。"""
+>       assert not harness().allowed_approval(target)
+                   ^^^^^^^^^
+
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:15: in harness
+    return importlib.import_module('scripts.acceptance.finance_model_runtime')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'scripts.acceptance.finance_model_runtime'
+import_ = <function _gcd_import at 0x1049cc0e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts.acceptance.finance_model_runtime'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+_______ test_model_confirmation_never_executes_business_decision[shell] ________
+
+target = 'shell'
+
+    @pytest.mark.parametrize('target', ['executeFinanceAction', 'payInvoice', 'readReceiptOriginal',
+                                         'api__finance__executeFinanceAction', 'shell'])
+    def test_model_confirmation_never_executes_business_decision(target: str):
+        """精确白名单不允许确认执行、支付、原件或任意shell。"""
+>       assert not harness().allowed_approval(target)
+                   ^^^^^^^^^
+
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:15: in harness
+    return importlib.import_module('scripts.acceptance.finance_model_runtime')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'scripts.acceptance.finance_model_runtime'
+import_ = <function _gcd_import at 0x1049cc0e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts.acceptance.finance_model_runtime'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+____________________ test_failed_result_cannot_turn_success ____________________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2265/test_failed_result_cannot_turn0')
+
+    def test_failed_result_cannot_turn_success(tmp_path: Path):
+        """失败报告不能在finally写盘时变成成功。"""
+>       module = harness()
+                 ^^^^^^^^^
+
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:62: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py:15: in harness
+    return importlib.import_module('scripts.acceptance.finance_model_runtime')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'scripts.acceptance.finance_model_runtime'
+import_ = <function _gcd_import at 0x1049cc0e0>
+
+>   ???
+E   ModuleNotFoundError: No module named 'scripts.acceptance.finance_model_runtime'
+
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError
+=========================== short test summary info ============================
+FAILED ../../../../../../../var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py::test_budget_survives_reopen
+FAILED ../../../../../../../var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py::test_missing_usage_blocks_next_request
+FAILED ../../../../../../../var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py::test_event_limit_preserves_failure
+FAILED ../../../../../../../var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py::test_model_confirmation_never_executes_business_decision[executeFinanceAction]
+FAILED ../../../../../../../var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py::test_model_confirmation_never_executes_business_decision[payInvoice]
+FAILED ../../../../../../../var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py::test_model_confirmation_never_executes_business_decision[readReceiptOriginal]
+FAILED ../../../../../../../var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py::test_model_confirmation_never_executes_business_decision[api__finance__executeFinanceAction]
+FAILED ../../../../../../../var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py::test_model_confirmation_never_executes_business_decision[shell]
+FAILED ../../../../../../../var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/f15-red-replay-scdph7dt/packages/xuanpu-finance/tests/test_f15_model_harness.py::test_failed_result_cannot_turn_success
+9 failed in 0.04s

@@ -1,0 +1,607 @@
+{
+  "status": "Approved",
+  "review_date": "2026-10-24",
+  "scope": "First-stage nine-file Skill instruction optimization and existing contract tests only; excludes subsequent proposed entry-tool centralization and any runtime/API/budget change",
+  "findings": [],
+  "closed_findings": [
+    {
+      "id": "EFF-S01",
+      "status": "closed",
+      "resolution": "Three directory paragraphs now require actual company before dependent queries, then permit independent necessary reads in the same round. Blanket serial wording removed; no parallel dependent writes introduced."
+    },
+    {
+      "id": "EFF-S02",
+      "status": "closed",
+      "resolution": "Expense instructions explicitly re-read the corresponding minimal real scope when user asks refresh/current material verification, even for unchanged fields; prohibit full directory/receipt rescan."
+    }
+  ],
+  "specification_assessment": {
+    "clarification": "Missing amount/date facts cause direct root clarification with no capability/directory/receipt calls or child delegation; pure routing is distinguished from actual business operations.",
+    "delegation": "Ordinary receipt-backed draft is one expense handoff rather than invoice-then-expense. Owner edit/submit/withdraw preview stays in expense; finance-review handles assigned approve/reject/preparation. Complete request/raw packet and single-escape example remain.",
+    "fresh_authorized_data": "Child first checks actual capabilities. Revision first GETs current authorized claim/version; cross-thread args only locate. Current unchanged fields can be retained, changed or user-refreshed fields require minimal real re-read. Permission/version/company/identity/missing-data issues require re-evaluation; service per-call authorization and version guards unchanged.",
+    "history": "Current raw<=2000 uses5 as heuristic, long or actual raw incomplete/malformed uses1 from last trusted cursor; SSE display omission is not raw truncation. Must actually read requested versions/decision reasons and all requested opinions; storage/permission/history gates remain.",
+    "frontmatter_and_limits": "Four published/design pairs byte-equal; existing0.16.0-f15 version/frontmatter capabilities remain. Entry still only getFinanceCapabilities tool. All other frozen inputs, including API, tool policies, budget, runtime/harness/natural user prompts and business assertions, are byte-identical to prior740-file frozen candidate. No new tool or cache in this stage.",
+    "evidence_boundary": "Existing final6 raw is real behavior RED; instruction/JSON contract GREEN is offline structural evidence, not real-model efficiency or completed workflow acceptance."
+  },
+  "checks": [
+    {
+      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/efficiency-narrow-spec-tests-final.xml",
+      "returncode": 0,
+      "passed": 119,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "efficiency-narrow-spec-tests-final.log",
+      "log_sha256": "f7904705872219f1db6e8ba2cfb6cd7df56e9e6c0440a27c7560a7c25762740f",
+      "xml": "efficiency-narrow-spec-tests-final.xml",
+      "xml_sha256": "0401b0d11ceae24bcd06ba3e82aba9a7371afd4fb2f5d8813f8330595316392b"
+    },
+    {
+      "check": "Archived RED reviewed",
+      "original_contract": "6failed/7passed",
+      "spec_revision": "4failed/13passed",
+      "limitation": "Did not revert shared source; independent GREEN executed."
+    },
+    {
+      "check": "Four full frontmatters/copy pairs and all frozen file hashes independently checked",
+      "frozen_count": 740,
+      "changed_files": [
+        "docs/superpowers/specs/finance-v1/pack/skills/expense-reimbursement/SKILL.md",
+        "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
+        "docs/superpowers/specs/finance-v1/pack/skills/finance-review/SKILL.md",
+        "docs/superpowers/specs/finance-v1/pack/skills/invoice-intake/SKILL.md",
+        "examples/finance/skills/expense-reimbursement/SKILL.md",
+        "examples/finance/skills/finance-assistant/SKILL.md",
+        "examples/finance/skills/finance-review/SKILL.md",
+        "examples/finance/skills/invoice-intake/SKILL.md",
+        "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+      ],
+      "status": "passed"
+    }
+  ],
+  "independent_real_baseline_recount": {
+    "owner_session": "ses_7f82ff5a94ccbd570c736f5e256494a1",
+    "phases": {
+      "01-clarify:session": {
+        "streams": 9,
+        "input_tokens": 45579,
+        "output_tokens": 1189
+      },
+      "02-create:session": {
+        "streams": 15,
+        "input_tokens": 79171,
+        "output_tokens": 2575
+      },
+      "03-edit-preview:session": {
+        "streams": 11,
+        "input_tokens": 74279,
+        "output_tokens": 2513
+      }
+    },
+    "streams": 35,
+    "input_tokens": 199029,
+    "output_tokens": 6277,
+    "total_tokens": 205306,
+    "tool_proposals": {
+      "api__finance__getFinanceCapabilities": 8,
+      "call_skill": 5,
+      "api__finance__listLegalEntities": 4,
+      "api__catalog__listExpenseCategories": 3,
+      "api__catalog__listCostCenters": 3,
+      "api__finance__listSupportingMaterialImports": 4,
+      "api__finance__getSupportingMaterialImport": 3,
+      "api__finance__createExpenseClaim": 1,
+      "api__finance__getExpenseClaim": 1,
+      "api__finance__updateExpenseClaim": 1,
+      "api__finance__previewFinanceAction": 1
+    },
+    "source_rows": [
+      {
+        "file": "final6/model-099.json",
+        "sha256": "d3582c9334120ea85557c1a90ef37f674cf42be2a6da58939a3d2360db2b23d1"
+      },
+      {
+        "file": "final6/model-100.json",
+        "sha256": "19b43b50f672e3b9ae3cc2ed5d2aad525106e885b92512e8a8bf51f21fdf3184"
+      },
+      {
+        "file": "final6/model-101.json",
+        "sha256": "81c9076504d5f3142bcf0bde21c081b008c11bc5e3c02a901dd800b7aceebbc5"
+      },
+      {
+        "file": "final6/model-102.json",
+        "sha256": "82c9ee9c1090b7f41eab32b68bb48c7292d8a1dced2b7fcf190d3740e0b6065d"
+      },
+      {
+        "file": "final6/model-103.json",
+        "sha256": "acb600ce781a2574fbd2acfab2b1955bcd1f111216e2ad65c7d37f96cb645e93"
+      },
+      {
+        "file": "final6/model-104.json",
+        "sha256": "cd86a7a672eb4bc68d8edaed1b4cc8d0aec62fbe9d1a10839a21339378542472"
+      },
+      {
+        "file": "final6/model-105.json",
+        "sha256": "1e13b83c65353bb3d182892f0186ec0928b5e922efdb9a81ac0d8d76f7607a02"
+      },
+      {
+        "file": "final6/model-106.json",
+        "sha256": "fac9119c1061eb64af84b51a9e34125e40610d1715b6e01594eedf647a462408"
+      },
+      {
+        "file": "final6/model-107.json",
+        "sha256": "e02225136173124a2699c0d45dfaa78ff39f5ba091f180095bd2064c0cd79caf"
+      },
+      {
+        "file": "final6/model-108.json",
+        "sha256": "c35b8a989e16921736bf49d275c4ace65ded23c3e4c43a1c9312ebf86a34ba71"
+      },
+      {
+        "file": "final6/model-109.json",
+        "sha256": "e99513b3516992bf96f5048880b24ccf603899de21977d17fbbdbd5e81e1d200"
+      },
+      {
+        "file": "final6/model-110.json",
+        "sha256": "ce15601234a56870148eb8dfaf9a44d83b765285b862e7761aa8ffe98593cd7a"
+      },
+      {
+        "file": "final6/model-111.json",
+        "sha256": "4316883f775e3fdb7975d5ff15a413cda9d4481f58f8b4ea18d585fe23029851"
+      },
+      {
+        "file": "final6/model-112.json",
+        "sha256": "265d84ce87bbdb89a087190d15313b71405e5d7e38d0b75d25f7187459c33880"
+      },
+      {
+        "file": "final6/model-113.json",
+        "sha256": "570a55345c9d793b85cbccd64fe3c5d1bf6932c1b48a0e4877b6cfd1574bf402"
+      },
+      {
+        "file": "final6/model-114.json",
+        "sha256": "9dbf8a6742ec2d943bd84540344047fb8733a4cccf34a033ae0ad8dc3149f1a8"
+      },
+      {
+        "file": "final6/model-115.json",
+        "sha256": "4616f855adbcc7a6f1196c2767a4aa8c5a4837e2361575e9b11a3d262df008f9"
+      },
+      {
+        "file": "final6/model-116.json",
+        "sha256": "051f7652ebc0f528daafbc49ec99f22a83d9f212ad3fcd189a63311fa6e026fb"
+      },
+      {
+        "file": "final6/model-117.json",
+        "sha256": "9479cf033502b570034c2d16edc451b95e2971409153fe539d9f6fe46336fc06"
+      },
+      {
+        "file": "final6/model-118.json",
+        "sha256": "4115a8a8aa7a4ecf6a8eeea63988fe932c0314518e96828aa479e289c537a561"
+      },
+      {
+        "file": "final6/model-119.json",
+        "sha256": "d0e138ded65df4b99e5723ef9e6f1fb3d04cd72e3bc2df8d4e17b2a756ff941c"
+      },
+      {
+        "file": "final6/model-120.json",
+        "sha256": "79a53f6de1ad8724b65d0a27bf464eb7a9470e61d5a449fb0229848fb2672fb4"
+      },
+      {
+        "file": "final6/model-121.json",
+        "sha256": "f1d1481ce84537318df9fd7e8f5d56896c1f906e3c3a96f963b2537cb7e1ff4f"
+      },
+      {
+        "file": "final6/model-122.json",
+        "sha256": "a3c9ca35fcb9a36521863da1711fa2656c54146dcf2a666f1e64eb3912a1264c"
+      },
+      {
+        "file": "final6/model-123.json",
+        "sha256": "63a3919150ac99a7b79f12baeb8489522fd03c57cafc94ea43e72b95c3e0dac7"
+      },
+      {
+        "file": "final6/model-124.json",
+        "sha256": "1e5e44929c188f6fb120989fa11e5e3a8504840332933a0ddd3698ce9bbd865d"
+      },
+      {
+        "file": "final6/model-125.json",
+        "sha256": "efd3e7ae3e7961dfac630902af6dd3bc41a5671574e7f5006d7715e9c14c1f4b"
+      },
+      {
+        "file": "final6/model-126.json",
+        "sha256": "ae800c47b1d0782667ee772055f0a2568d1af02f64062969c37b30cfc8eb4d1f"
+      },
+      {
+        "file": "final6/model-127.json",
+        "sha256": "9f6d2661d4212f194c9c84910b88bd338474302db77175e43642f7285e41ee1f"
+      },
+      {
+        "file": "final6/model-128.json",
+        "sha256": "159650709b734adcbe0ed6b9133bb40547aa76045b50ac1f78d2281196b56faf"
+      },
+      {
+        "file": "final6/model-129.json",
+        "sha256": "6a5c3fd3dfb62d307565862ba9884054ba1d742060f5fdbc9d988bc4d2308c1e"
+      },
+      {
+        "file": "final6/model-130.json",
+        "sha256": "be49d6d19444f66d81f288fda1194aba678c01f079e44c3328f8b29fd6945cd6"
+      },
+      {
+        "file": "final6/model-131.json",
+        "sha256": "ee581cc168f8c5cf71949361ef02dff57393811136100ef45ac6749a8bd3034c"
+      },
+      {
+        "file": "final6/model-132.json",
+        "sha256": "6dbc7f75fc5a0cfcebba294bd209a7a92522d0e0e14e12ca857ad8ece10245e6"
+      },
+      {
+        "file": "final6/model-133.json",
+        "sha256": "ca5e129486c4ccb77b92806bc447ad9d54f14d6b2584017b03284d44e1e96314"
+      }
+    ],
+    "scope": "Only same owner session first three business phases, not route/other roles/full journey; proposal counts are not execution counts"
+  },
+  "source_sha256": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "3eeeccc25dd2dc09e9358f354188f45e6132cf4b389f970c73f30be62752c412",
+    "examples/finance/skills/expense-reimbursement/SKILL.md": "745fa7ee05718c29cd0ea84c5093ed9e78f566b56c200a82e1ffc08fb9f233d1",
+    "examples/finance/skills/invoice-intake/SKILL.md": "8934cc660d6b2d5fff055af995073b2b732591a38692699ea35200f64b2456c5",
+    "examples/finance/skills/finance-review/SKILL.md": "83713dbc79e3c148e4c5c092c150dcb472124401ff1cc82f478b810ffdb9f715",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "3eeeccc25dd2dc09e9358f354188f45e6132cf4b389f970c73f30be62752c412",
+    "docs/superpowers/specs/finance-v1/pack/skills/expense-reimbursement/SKILL.md": "745fa7ee05718c29cd0ea84c5093ed9e78f566b56c200a82e1ffc08fb9f233d1",
+    "docs/superpowers/specs/finance-v1/pack/skills/invoice-intake/SKILL.md": "8934cc660d6b2d5fff055af995073b2b732591a38692699ea35200f64b2456c5",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-review/SKILL.md": "83713dbc79e3c148e4c5c092c150dcb472124401ff1cc82f478b810ffdb9f715",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "93b580c7556836322d605ffebcea5ce3c8dba8708f7a8f089c0d9f37c8adb5e8"
+  },
+  "frontmatter_snapshot": {
+    "finance-assistant": {
+      "name": "finance-assistant",
+      "description": "处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。",
+      "version": "0.16.0-f15",
+      "entry": true,
+      "type": "composite",
+      "tool_names": [
+        "api__finance__getFinanceCapabilities"
+      ],
+      "child_skills": [
+        "invoice-intake",
+        "expense-reimbursement",
+        "finance-review",
+        "accounts-payable",
+        "posting-reconciliation",
+        "archive-audit"
+      ]
+    },
+    "expense-reimbursement": {
+      "name": "expense-reimbursement",
+      "description": "根据费用事实准备本人报销记录与真实分票，查询进度、修订草稿及准备提交或撤回计划。",
+      "version": "0.16.0-f15",
+      "entry": false,
+      "type": "composite",
+      "tool_names": [
+        "api__finance__getFinanceCapabilities",
+        "api__finance__listSupportingMaterialImports",
+        "api__finance__getSupportingMaterialImport",
+        "api__finance__listFinanceNotifications",
+        "api__finance__listLegalEntities",
+        "api__finance__createExpenseClaim",
+        "api__finance__listExpenseClaims",
+        "api__finance__listExpenseClaimSummaries",
+        "api__finance__getExpenseClaim",
+        "api__finance__listExpenseClaimHistory",
+        "api__finance__updateExpenseClaim",
+        "api__finance__createInvoiceAllocation",
+        "api__finance__releaseInvoiceAllocation",
+        "api__finance__previewFinanceAction",
+        "api__finance__getActionPlan",
+        "api__finance__getOperation",
+        "api__catalog__listExpenseCategories",
+        "api__catalog__listCostCenters",
+        "api__catalog__getInvoiceAllocation",
+        "api__finance__getFundingCase",
+        "api__finance__listFundingCases",
+        "api__finance__getFundingOptions"
+      ]
+    },
+    "invoice-intake": {
+      "name": "invoice-intake",
+      "description": "归集受权固定版本发票原件，查询持久进度并为报销或应付处理补件。",
+      "version": "0.16.0-f15",
+      "entry": false,
+      "type": "composite",
+      "tool_names": [
+        "api__finance__getFinanceCapabilities",
+        "api__finance__listSupportingMaterialImports",
+        "api__finance__getSupportingMaterialImport",
+        "api__finance__listFinanceNotifications",
+        "api__finance__verifyInvoice",
+        "api__finance__getInvoiceCompliance",
+        "api__finance__listInvoiceVerifications",
+        "api__finance__getRedLetterCase",
+        "api__finance__listLegalEntities",
+        "api__finance__listIntegrations",
+        "api__finance__importInvoices",
+        "api__finance__getOperation",
+        "api__finance__cancelOperation",
+        "api__finance__listInvoices",
+        "api__finance__getInvoice",
+        "api__finance__getInvoiceLines",
+        "api__finance__getInvoiceFields",
+        "api__finance__getInvoiceEvidence",
+        "api__finance__listExceptions",
+        "api__finance__importSupportingMaterials",
+        "api__finance__getFundingOptions"
+      ]
+    },
+    "finance-review": {
+      "name": "finance-review",
+      "description": "读取本人实际分派的报销、应付和原行动计划审批，核对证据、准备本人决定，或由公司复核人只读检查接入准备。",
+      "version": "0.16.0-f15",
+      "entry": false,
+      "type": "composite",
+      "tool_names": [
+        "api__finance__getFinanceCapabilities",
+        "api__finance__getInternalRecordsReadiness",
+        "api__finance__getFinanceReadiness",
+        "api__finance__getFinanceOverview",
+        "api__finance__listFinanceNotifications",
+        "api__finance__getInvoiceCompliance",
+        "api__finance__listInvoiceVerifications",
+        "api__finance__getRedLetterCase",
+        "api__finance__listLegalEntities",
+        "api__finance__listReviewQueue",
+        "api__finance__getExpenseClaim",
+        "api__finance__listExpenseClaimHistory",
+        "api__finance__getPayable",
+        "api__finance__getInvoice",
+        "api__finance__getInvoiceEvidence",
+        "api__finance__getInvoiceLines",
+        "api__finance__previewFinanceAction",
+        "api__finance__getActionPlan",
+        "api__finance__listExceptions",
+        "api__finance__getOperation",
+        "api__finance__getFundingCase",
+        "api__finance__listFundingCases",
+        "api__finance__getFundingOptions"
+      ]
+    }
+  },
+  "frozen_candidate4_sha256": "d68de7c74782ae617cf0519325ce85939e712dc385f7182bceadd57b36e63a17",
+  "implementation_report_sha256": "3288f539989114b57a63ba03699d47440043913c926663a598c7220c8b400876",
+  "design_review_sha256": "b44f8f28e2742b5e41a0b1cb8d5e6eba460c6c512ac759548bd86d26822c1f1f",
+  "remaining_gates": [
+    "Sequential quality review of this first-stage scope; any subsequent entry-tool design requires its own approved implementation and review.",
+    "New freeze/artifacts and two fresh complete real-model flows under unchanged authorized limits, same natural prompts and original business/security gates.",
+    "Measure actual first-three-phase usage against35calls/205306tokens and full owner session within200000 without splitting; targets are not yet demonstrated.",
+    "Full source/static/docs/artifact/global review/cleanup/local commit remain pending parent responsibilities."
+  ],
+  "limitations": [
+    "No PG/model API/private config/private ledger accessed; only archived synthetic raw model evidence read for recount.",
+    "No product/Skill/harness/test source edited or committed by reviewer.",
+    "No claim of meeting22calls/150000tokens or45-call journey target, no claim of full business acceptance or production readiness."
+  ],
+  "history": [
+    {
+      "status": "Needs revision",
+      "scope": "first-stage nine-file Skill-only efficiency specification review, excludes unimplemented entry tool centralization",
+      "findings": [
+        {
+          "id": "EFF-S01",
+          "priority": "P2",
+          "finding": "Three Skill directory sections still require all dependent-company queries sequentially, conflicting with approved permission for independent necessary reads in one round.",
+          "required": "Keep actual company before company-dependent calls, then allow independent necessary reads together; never parallelize dependent writes."
+        },
+        {
+          "id": "EFF-S02",
+          "priority": "P2",
+          "finding": "Expense unchanged-field reuse forbids repeated material reads without explicit user refresh/current-material-check exception from approved design.",
+          "required": "Add current user refresh/material-verification exception for only the corresponding real minimal data; do not rescan all directories or trust user/args as evidence."
+        }
+      ],
+      "checks": [
+        {
+          "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/efficiency-narrow-spec-tests.xml",
+          "returncode": 0,
+          "passed": 115,
+          "log": "efficiency-narrow-spec-tests.log",
+          "xml": "efficiency-narrow-spec-tests.xml",
+          "scope": "Initial first-stage version before EFF-S01/S02 correction"
+        }
+      ],
+      "independent_real_baseline_recount": {
+        "owner_session": "ses_7f82ff5a94ccbd570c736f5e256494a1",
+        "phases": {
+          "01-clarify:session": {
+            "streams": 9,
+            "input_tokens": 45579,
+            "output_tokens": 1189
+          },
+          "02-create:session": {
+            "streams": 15,
+            "input_tokens": 79171,
+            "output_tokens": 2575
+          },
+          "03-edit-preview:session": {
+            "streams": 11,
+            "input_tokens": 74279,
+            "output_tokens": 2513
+          }
+        },
+        "streams": 35,
+        "input_tokens": 199029,
+        "output_tokens": 6277,
+        "total_tokens": 205306,
+        "tool_proposals": {
+          "api__finance__getFinanceCapabilities": 8,
+          "call_skill": 5,
+          "api__finance__listLegalEntities": 4,
+          "api__catalog__listExpenseCategories": 3,
+          "api__catalog__listCostCenters": 3,
+          "api__finance__listSupportingMaterialImports": 4,
+          "api__finance__getSupportingMaterialImport": 3,
+          "api__finance__createExpenseClaim": 1,
+          "api__finance__getExpenseClaim": 1,
+          "api__finance__updateExpenseClaim": 1,
+          "api__finance__previewFinanceAction": 1
+        },
+        "source_rows": [
+          {
+            "file": "final6/model-099.json",
+            "sha256": "d3582c9334120ea85557c1a90ef37f674cf42be2a6da58939a3d2360db2b23d1"
+          },
+          {
+            "file": "final6/model-100.json",
+            "sha256": "19b43b50f672e3b9ae3cc2ed5d2aad525106e885b92512e8a8bf51f21fdf3184"
+          },
+          {
+            "file": "final6/model-101.json",
+            "sha256": "81c9076504d5f3142bcf0bde21c081b008c11bc5e3c02a901dd800b7aceebbc5"
+          },
+          {
+            "file": "final6/model-102.json",
+            "sha256": "82c9ee9c1090b7f41eab32b68bb48c7292d8a1dced2b7fcf190d3740e0b6065d"
+          },
+          {
+            "file": "final6/model-103.json",
+            "sha256": "acb600ce781a2574fbd2acfab2b1955bcd1f111216e2ad65c7d37f96cb645e93"
+          },
+          {
+            "file": "final6/model-104.json",
+            "sha256": "cd86a7a672eb4bc68d8edaed1b4cc8d0aec62fbe9d1a10839a21339378542472"
+          },
+          {
+            "file": "final6/model-105.json",
+            "sha256": "1e13b83c65353bb3d182892f0186ec0928b5e922efdb9a81ac0d8d76f7607a02"
+          },
+          {
+            "file": "final6/model-106.json",
+            "sha256": "fac9119c1061eb64af84b51a9e34125e40610d1715b6e01594eedf647a462408"
+          },
+          {
+            "file": "final6/model-107.json",
+            "sha256": "e02225136173124a2699c0d45dfaa78ff39f5ba091f180095bd2064c0cd79caf"
+          },
+          {
+            "file": "final6/model-108.json",
+            "sha256": "c35b8a989e16921736bf49d275c4ace65ded23c3e4c43a1c9312ebf86a34ba71"
+          },
+          {
+            "file": "final6/model-109.json",
+            "sha256": "e99513b3516992bf96f5048880b24ccf603899de21977d17fbbdbd5e81e1d200"
+          },
+          {
+            "file": "final6/model-110.json",
+            "sha256": "ce15601234a56870148eb8dfaf9a44d83b765285b862e7761aa8ffe98593cd7a"
+          },
+          {
+            "file": "final6/model-111.json",
+            "sha256": "4316883f775e3fdb7975d5ff15a413cda9d4481f58f8b4ea18d585fe23029851"
+          },
+          {
+            "file": "final6/model-112.json",
+            "sha256": "265d84ce87bbdb89a087190d15313b71405e5d7e38d0b75d25f7187459c33880"
+          },
+          {
+            "file": "final6/model-113.json",
+            "sha256": "570a55345c9d793b85cbccd64fe3c5d1bf6932c1b48a0e4877b6cfd1574bf402"
+          },
+          {
+            "file": "final6/model-114.json",
+            "sha256": "9dbf8a6742ec2d943bd84540344047fb8733a4cccf34a033ae0ad8dc3149f1a8"
+          },
+          {
+            "file": "final6/model-115.json",
+            "sha256": "4616f855adbcc7a6f1196c2767a4aa8c5a4837e2361575e9b11a3d262df008f9"
+          },
+          {
+            "file": "final6/model-116.json",
+            "sha256": "051f7652ebc0f528daafbc49ec99f22a83d9f212ad3fcd189a63311fa6e026fb"
+          },
+          {
+            "file": "final6/model-117.json",
+            "sha256": "9479cf033502b570034c2d16edc451b95e2971409153fe539d9f6fe46336fc06"
+          },
+          {
+            "file": "final6/model-118.json",
+            "sha256": "4115a8a8aa7a4ecf6a8eeea63988fe932c0314518e96828aa479e289c537a561"
+          },
+          {
+            "file": "final6/model-119.json",
+            "sha256": "d0e138ded65df4b99e5723ef9e6f1fb3d04cd72e3bc2df8d4e17b2a756ff941c"
+          },
+          {
+            "file": "final6/model-120.json",
+            "sha256": "79a53f6de1ad8724b65d0a27bf464eb7a9470e61d5a449fb0229848fb2672fb4"
+          },
+          {
+            "file": "final6/model-121.json",
+            "sha256": "f1d1481ce84537318df9fd7e8f5d56896c1f906e3c3a96f963b2537cb7e1ff4f"
+          },
+          {
+            "file": "final6/model-122.json",
+            "sha256": "a3c9ca35fcb9a36521863da1711fa2656c54146dcf2a666f1e64eb3912a1264c"
+          },
+          {
+            "file": "final6/model-123.json",
+            "sha256": "63a3919150ac99a7b79f12baeb8489522fd03c57cafc94ea43e72b95c3e0dac7"
+          },
+          {
+            "file": "final6/model-124.json",
+            "sha256": "1e5e44929c188f6fb120989fa11e5e3a8504840332933a0ddd3698ce9bbd865d"
+          },
+          {
+            "file": "final6/model-125.json",
+            "sha256": "efd3e7ae3e7961dfac630902af6dd3bc41a5671574e7f5006d7715e9c14c1f4b"
+          },
+          {
+            "file": "final6/model-126.json",
+            "sha256": "ae800c47b1d0782667ee772055f0a2568d1af02f64062969c37b30cfc8eb4d1f"
+          },
+          {
+            "file": "final6/model-127.json",
+            "sha256": "9f6d2661d4212f194c9c84910b88bd338474302db77175e43642f7285e41ee1f"
+          },
+          {
+            "file": "final6/model-128.json",
+            "sha256": "159650709b734adcbe0ed6b9133bb40547aa76045b50ac1f78d2281196b56faf"
+          },
+          {
+            "file": "final6/model-129.json",
+            "sha256": "6a5c3fd3dfb62d307565862ba9884054ba1d742060f5fdbc9d988bc4d2308c1e"
+          },
+          {
+            "file": "final6/model-130.json",
+            "sha256": "be49d6d19444f66d81f288fda1194aba678c01f079e44c3328f8b29fd6945cd6"
+          },
+          {
+            "file": "final6/model-131.json",
+            "sha256": "ee581cc168f8c5cf71949361ef02dff57393811136100ef45ac6749a8bd3034c"
+          },
+          {
+            "file": "final6/model-132.json",
+            "sha256": "6dbc7f75fc5a0cfcebba294bd209a7a92522d0e0e14e12ca857ad8ece10245e6"
+          },
+          {
+            "file": "final6/model-133.json",
+            "sha256": "ca5e129486c4ccb77b92806bc447ad9d54f14d6b2584017b03284d44e1e96314"
+          }
+        ],
+        "scope": "Only same owner session first three business phases, not route/other roles/full journey; proposal counts are not execution counts"
+      },
+      "source_sha256": {
+        "examples/finance/skills/finance-assistant/SKILL.md": "3eeeccc25dd2dc09e9358f354188f45e6132cf4b389f970c73f30be62752c412",
+        "examples/finance/skills/expense-reimbursement/SKILL.md": "745fa7ee05718c29cd0ea84c5093ed9e78f566b56c200a82e1ffc08fb9f233d1",
+        "examples/finance/skills/invoice-intake/SKILL.md": "8934cc660d6b2d5fff055af995073b2b732591a38692699ea35200f64b2456c5",
+        "examples/finance/skills/finance-review/SKILL.md": "83713dbc79e3c148e4c5c092c150dcb472124401ff1cc82f478b810ffdb9f715",
+        "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "3eeeccc25dd2dc09e9358f354188f45e6132cf4b389f970c73f30be62752c412",
+        "docs/superpowers/specs/finance-v1/pack/skills/expense-reimbursement/SKILL.md": "745fa7ee05718c29cd0ea84c5093ed9e78f566b56c200a82e1ffc08fb9f233d1",
+        "docs/superpowers/specs/finance-v1/pack/skills/invoice-intake/SKILL.md": "8934cc660d6b2d5fff055af995073b2b732591a38692699ea35200f64b2456c5",
+        "docs/superpowers/specs/finance-v1/pack/skills/finance-review/SKILL.md": "83713dbc79e3c148e4c5c092c150dcb472124401ff1cc82f478b810ffdb9f715",
+        "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "93b580c7556836322d605ffebcea5ce3c8dba8708f7a8f089c0d9f37c8adb5e8"
+      },
+      "limitations": [
+        "No PG/private model configuration/private ledger/model API accessed.",
+        "Only archived synthetic real-model traces read for recount; no new real-model efficiency result claimed.",
+        "Current 115-case GREEN does not establish an LLM will obey instruction changes."
+      ],
+      "history": []
+    }
+  ]
+}
