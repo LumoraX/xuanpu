@@ -97,6 +97,7 @@ jobs:
         run: >-
           uv run --frozen --python ${{ matrix.python-version }} --all-packages --all-extras pytest -q
           packages/xuanpu-server/tests/test_docker_identity_config.py
+          packages/xuanpu-server/tests/test_ci_runtime_roots.py
           packages/xuanpu-server/tests/identity/test_sdk_identity.py
           packages/xuanpu-server/tests/work_tasks/test_tools.py
           packages/xuanpu-server/tests/work_tasks/test_table_summary.py

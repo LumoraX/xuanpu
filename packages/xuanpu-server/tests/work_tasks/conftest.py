@@ -121,7 +121,7 @@ async def office_worker(office_image, tmp_path):
     workspace = tmp_path / 'work'
     workspace.mkdir()
     (workspace / 'inputs').mkdir()
-    config = DockerSandboxConfig(image=office_image, workspace_host_dir=workspace, memory_mb=512,
+    config = DockerSandboxConfig(image=office_image, user=docker_test_user(), workspace_host_dir=workspace, memory_mb=512,
         cpus=1, network=False, docker_env={'PATH': '/usr/local/bin:/usr/bin:/bin',
                                          'HOME':str(Path.home())},
         mounts=(Mount(package, '/package'), Mount(inputs, '/workspace/inputs')),
