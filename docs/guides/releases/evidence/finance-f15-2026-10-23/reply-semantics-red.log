@@ -1,0 +1,174 @@
+............................FFFFFFFFFF                                   [100%]
+=================================== FAILURES ===================================
+_ test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing[\u4ed8\u6b3e128.50\uff0c\u5165\u8d260.00] _
+
+reply = '付款128.50，入账0.00'
+
+    @pytest.mark.parametrize('reply', [
+        '付款128.50，入账0.00', '付款0.00，记账128.50',
+        '未付款，已付款128.50；未入账', '付款0.00，但已经支付；入账0.00',
+        '付款0.00', '入账0.00', '报销金额128.50，0.00',
+    ])
+    def test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing(reply: str):
+        """每个维度分别判定，另一维零不能遮盖非零、矛盾或缺失。"""
+>       assert not checks().financial_reply_is_zero(reply)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'scripts.acceptance.finance_model_checks' has no attribute 'financial_reply_is_zero'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:256: AttributeError
+_ test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing[\u4ed8\u6b3e0.00\uff0c\u8bb0\u8d26128.50] _
+
+reply = '付款0.00，记账128.50'
+
+    @pytest.mark.parametrize('reply', [
+        '付款128.50，入账0.00', '付款0.00，记账128.50',
+        '未付款，已付款128.50；未入账', '付款0.00，但已经支付；入账0.00',
+        '付款0.00', '入账0.00', '报销金额128.50，0.00',
+    ])
+    def test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing(reply: str):
+        """每个维度分别判定，另一维零不能遮盖非零、矛盾或缺失。"""
+>       assert not checks().financial_reply_is_zero(reply)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'scripts.acceptance.finance_model_checks' has no attribute 'financial_reply_is_zero'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:256: AttributeError
+_ test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing[\u672a\u4ed8\u6b3e\uff0c\u5df2\u4ed8\u6b3e128.50\uff1b\u672a\u5165\u8d26] _
+
+reply = '未付款，已付款128.50；未入账'
+
+    @pytest.mark.parametrize('reply', [
+        '付款128.50，入账0.00', '付款0.00，记账128.50',
+        '未付款，已付款128.50；未入账', '付款0.00，但已经支付；入账0.00',
+        '付款0.00', '入账0.00', '报销金额128.50，0.00',
+    ])
+    def test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing(reply: str):
+        """每个维度分别判定，另一维零不能遮盖非零、矛盾或缺失。"""
+>       assert not checks().financial_reply_is_zero(reply)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'scripts.acceptance.finance_model_checks' has no attribute 'financial_reply_is_zero'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:256: AttributeError
+_ test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing[\u4ed8\u6b3e0.00\uff0c\u4f46\u5df2\u7ecf\u652f\u4ed8\uff1b\u5165\u8d260.00] _
+
+reply = '付款0.00，但已经支付；入账0.00'
+
+    @pytest.mark.parametrize('reply', [
+        '付款128.50，入账0.00', '付款0.00，记账128.50',
+        '未付款，已付款128.50；未入账', '付款0.00，但已经支付；入账0.00',
+        '付款0.00', '入账0.00', '报销金额128.50，0.00',
+    ])
+    def test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing(reply: str):
+        """每个维度分别判定，另一维零不能遮盖非零、矛盾或缺失。"""
+>       assert not checks().financial_reply_is_zero(reply)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'scripts.acceptance.finance_model_checks' has no attribute 'financial_reply_is_zero'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:256: AttributeError
+_ test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing[\u4ed8\u6b3e0.00] _
+
+reply = '付款0.00'
+
+    @pytest.mark.parametrize('reply', [
+        '付款128.50，入账0.00', '付款0.00，记账128.50',
+        '未付款，已付款128.50；未入账', '付款0.00，但已经支付；入账0.00',
+        '付款0.00', '入账0.00', '报销金额128.50，0.00',
+    ])
+    def test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing(reply: str):
+        """每个维度分别判定，另一维零不能遮盖非零、矛盾或缺失。"""
+>       assert not checks().financial_reply_is_zero(reply)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'scripts.acceptance.finance_model_checks' has no attribute 'financial_reply_is_zero'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:256: AttributeError
+_ test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing[\u5165\u8d260.00] _
+
+reply = '入账0.00'
+
+    @pytest.mark.parametrize('reply', [
+        '付款128.50，入账0.00', '付款0.00，记账128.50',
+        '未付款，已付款128.50；未入账', '付款0.00，但已经支付；入账0.00',
+        '付款0.00', '入账0.00', '报销金额128.50，0.00',
+    ])
+    def test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing(reply: str):
+        """每个维度分别判定，另一维零不能遮盖非零、矛盾或缺失。"""
+>       assert not checks().financial_reply_is_zero(reply)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'scripts.acceptance.finance_model_checks' has no attribute 'financial_reply_is_zero'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:256: AttributeError
+_ test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing[\u62a5\u9500\u91d1\u989d128.50\uff0c0.00] _
+
+reply = '报销金额128.50，0.00'
+
+    @pytest.mark.parametrize('reply', [
+        '付款128.50，入账0.00', '付款0.00，记账128.50',
+        '未付款，已付款128.50；未入账', '付款0.00，但已经支付；入账0.00',
+        '付款0.00', '入账0.00', '报销金额128.50，0.00',
+    ])
+    def test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing(reply: str):
+        """每个维度分别判定，另一维零不能遮盖非零、矛盾或缺失。"""
+>       assert not checks().financial_reply_is_zero(reply)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'scripts.acceptance.finance_model_checks' has no attribute 'financial_reply_is_zero'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:256: AttributeError
+_ test_payment_and_posting_reply_accepts_independent_explicit_zero[\u5df2\u6279\u51c6128.50\u5143\u3002\u4ed8\u6b3e\u91d1\u989d\uff1a0.00\uff1b\u5165\u8d26\u91d1\u989d\uff1a0.00\u3002] _
+
+reply = '已批准128.50元。付款金额：0.00；入账金额：0.00。'
+
+    @pytest.mark.parametrize('reply', [
+        '已批准128.50元。付款金额：0.00；入账金额：0.00。',
+        '报销128.50元，尚未付款，也未入账。',
+        '**付款**：未执行\n**记账**：未执行',
+    ])
+    def test_payment_and_posting_reply_accepts_independent_explicit_zero(reply: str):
+        """普通根回复对两维都明确零或尚未执行才通过。"""
+>       assert checks().financial_reply_is_zero(reply)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'scripts.acceptance.finance_model_checks' has no attribute 'financial_reply_is_zero'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:266: AttributeError
+_ test_payment_and_posting_reply_accepts_independent_explicit_zero[\u62a5\u9500128.50\u5143\uff0c\u5c1a\u672a\u4ed8\u6b3e\uff0c\u4e5f\u672a\u5165\u8d26\u3002] _
+
+reply = '报销128.50元，尚未付款，也未入账。'
+
+    @pytest.mark.parametrize('reply', [
+        '已批准128.50元。付款金额：0.00；入账金额：0.00。',
+        '报销128.50元，尚未付款，也未入账。',
+        '**付款**：未执行\n**记账**：未执行',
+    ])
+    def test_payment_and_posting_reply_accepts_independent_explicit_zero(reply: str):
+        """普通根回复对两维都明确零或尚未执行才通过。"""
+>       assert checks().financial_reply_is_zero(reply)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'scripts.acceptance.finance_model_checks' has no attribute 'financial_reply_is_zero'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:266: AttributeError
+_ test_payment_and_posting_reply_accepts_independent_explicit_zero[**\u4ed8\u6b3e**\uff1a\u672a\u6267\u884c\n**\u8bb0\u8d26**\uff1a\u672a\u6267\u884c] _
+
+reply = '**付款**：未执行\n**记账**：未执行'
+
+    @pytest.mark.parametrize('reply', [
+        '已批准128.50元。付款金额：0.00；入账金额：0.00。',
+        '报销128.50元，尚未付款，也未入账。',
+        '**付款**：未执行\n**记账**：未执行',
+    ])
+    def test_payment_and_posting_reply_accepts_independent_explicit_zero(reply: str):
+        """普通根回复对两维都明确零或尚未执行才通过。"""
+>       assert checks().financial_reply_is_zero(reply)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'scripts.acceptance.finance_model_checks' has no attribute 'financial_reply_is_zero'
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:266: AttributeError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing[\u4ed8\u6b3e128.50\uff0c\u5165\u8d260.00]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing[\u4ed8\u6b3e0.00\uff0c\u8bb0\u8d26128.50]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing[\u672a\u4ed8\u6b3e\uff0c\u5df2\u4ed8\u6b3e128.50\uff1b\u672a\u5165\u8d26]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing[\u4ed8\u6b3e0.00\uff0c\u4f46\u5df2\u7ecf\u652f\u4ed8\uff1b\u5165\u8d260.00]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing[\u4ed8\u6b3e0.00]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing[\u5165\u8d260.00]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_payment_and_posting_reply_rejects_nonzero_contradictory_or_missing[\u62a5\u9500\u91d1\u989d128.50\uff0c0.00]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_payment_and_posting_reply_accepts_independent_explicit_zero[\u5df2\u6279\u51c6128.50\u5143\u3002\u4ed8\u6b3e\u91d1\u989d\uff1a0.00\uff1b\u5165\u8d26\u91d1\u989d\uff1a0.00\u3002]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_payment_and_posting_reply_accepts_independent_explicit_zero[\u62a5\u9500128.50\u5143\uff0c\u5c1a\u672a\u4ed8\u6b3e\uff0c\u4e5f\u672a\u5165\u8d26\u3002]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_payment_and_posting_reply_accepts_independent_explicit_zero[**\u4ed8\u6b3e**\uff1a\u672a\u6267\u884c\n**\u8bb0\u8d26**\uff1a\u672a\u6267\u884c]
+10 failed, 28 passed in 8.09s

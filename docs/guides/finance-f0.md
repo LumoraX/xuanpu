@@ -1,6 +1,6 @@
 # 财务 F0 开发与接入
 
-当前F14按用户要求仅作内部流转记录，不支付；契约finance `0.15.0-f14`、77项API、7个Skill，见[F14指南](finance-f14.md)及[F14验收](releases/2026-10-23-finance-f14-acceptance.md)。下文保留各阶段事实。
+当前F15按用户要求仅作内部流转记录，不支付；契约finance `0.16.0-f15`、77项API、7个Skill，见[F15指南](finance-f15.md)及[F15验收](releases/2026-10-23-finance-f15-acceptance.md)。下文保留各阶段事实。
 
 F8阶段按用户要求聚焦发票报销内部流转记录，不做支付。当轮契约finance `0.9.0-f8`、74项API、7个Skill；见[F8指南](finance-f8.md)及[F8本轮验收](releases/2026-10-22-finance-f8-acceptance.md)。下文阶段记录保留原有验证范围。
 

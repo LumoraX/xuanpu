@@ -1,0 +1,31 @@
+{
+  "status": "passed",
+  "parsed_json_xml": 175,
+  "public_private_ledger_equal": true,
+  "attempts": 218,
+  "completed": 216,
+  "unknown": [
+    {
+      "attempt": 56,
+      "usage": null,
+      "trace": "final2/model-056.json",
+      "trace_sha256": "8d02388140f87a6d2f0ec51592cf08dfa84c66e9450a3e54cbf97f32d17e5f9a",
+      "reason": "TransientNetworkError:codex transport error (stream): RemoteProtocolError",
+      "authorization_id": "resume-unknown-56"
+    },
+    {
+      "attempt": 59,
+      "usage": null,
+      "trace": "final3/model-059.json",
+      "trace_sha256": "cbcf1fcd93d706bcc37bcb7c3839a8fcab2857dfc27d8a3146f194c22c0d5086",
+      "reason": "TransientNetworkError:codex transport error (stream): RemoteProtocolError",
+      "partial_event_kinds": [
+        "created",
+        "server_model"
+      ],
+      "authorization_id": "bounded-network-resume-user-20261024"
+    }
+  ],
+  "original_failed_report_sha256": "dcd95457f26079b14ae5b13a8107bb6f12ba9191e7bf134e8d30a0a2bc0f3e58",
+  "source_files": 742
+}

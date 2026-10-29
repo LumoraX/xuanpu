@@ -1,7 +1,7 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: 玄圃财务 F0—F14 API
-  version: 0.15.0-f14
+  version: 0.16.0-f15
   description: 独立存储与Skill/API/HITL；当前优先发票申报、内部报销、真人审批和完整流转记录，外部支付与正式验真归档未启用。
 servers:
 - url: http://127.0.0.1:8443
@@ -74,8 +74,11 @@ paths:
       - name: invoice_number
         in: query
         schema:
-          type: string
-          maxLength: 64
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       responses:
         '200':
           description: 发票分页
@@ -184,14 +187,17 @@ paths:
       - name: status
         in: query
         schema:
-          type: string
-          enum:
-          - draft
-          - submitted
-          - under_review
-          - approved
-          - rejected
-          - withdrawn
+          anyOf:
+          - type: string
+            enum:
+            - draft
+            - submitted
+            - under_review
+            - approved
+            - rejected
+            - withdrawn
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       responses:
         '200':
           description: 有权单据及独立总数
@@ -236,21 +242,30 @@ paths:
       - name: offset
         in: query
         schema:
-          type: integer
-          minimum: 0
-          default: 0
+          anyOf:
+          - type: integer
+            minimum: 0
+            default: 0
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       - name: limit
         in: query
         schema:
-          type: integer
-          minimum: 1
-          maximum: 262144
-          default: 131072
+          anyOf:
+          - type: integer
+            minimum: 1
+            maximum: 262144
+            default: 131072
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       - name: document_version
         in: query
         schema:
-          type: integer
-          minimum: 1
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       responses:
         '200':
           description: 当前或显式历史版本关联原件的已核对字节，不表示内容验真
@@ -523,14 +538,17 @@ paths:
         in: query
         required: false
         schema:
-          type: string
-          enum:
-          - draft
-          - submitted
-          - under_review
-          - approved
-          - rejected
-          - withdrawn
+          anyOf:
+          - type: string
+            enum:
+            - draft
+            - submitted
+            - under_review
+            - approved
+            - rejected
+            - withdrawn
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       responses:
         '200':
           description: 受权业务查询结果
@@ -590,9 +608,12 @@ paths:
         in: query
         required: false
         schema:
-          type: string
-          minLength: 1
-          maxLength: 128
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 128
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       responses:
         '200':
           description: 受权业务查询结果
@@ -631,9 +652,12 @@ paths:
         in: query
         required: false
         schema:
-          type: string
-          minLength: 1
-          maxLength: 128
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 128
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       responses:
         '200':
           description: 受权业务查询结果
@@ -672,9 +696,12 @@ paths:
         in: query
         required: false
         schema:
-          type: string
-          minLength: 1
-          maxLength: 128
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 128
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       responses:
         '200':
           description: 受权业务查询结果
@@ -1126,8 +1153,11 @@ paths:
       - in: query
         name: unread_only
         schema:
-          type: boolean
-          default: false
+          anyOf:
+          - type: boolean
+            default: false
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       responses:
         '200':
           description: 读取当前有权财务站内提醒及独立未读计数
@@ -1220,25 +1250,31 @@ paths:
         in: query
         required: false
         schema:
-          enum:
-          - prepayment
-          - employee_advance
-          - entrusted_collection
-          - prepayment_clearance
-          - prepayment_return
-          type: string
+          anyOf:
+          - enum:
+            - prepayment
+            - employee_advance
+            - entrusted_collection
+            - prepayment_clearance
+            - prepayment_return
+            type: string
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       - name: status
         in: query
         required: false
         schema:
-          type: string
-          enum:
-          - draft
-          - submitted
-          - under_review
-          - approved
-          - rejected
-          - withdrawn
+          anyOf:
+          - type: string
+            enum:
+            - draft
+            - submitted
+            - under_review
+            - approved
+            - rejected
+            - withdrawn
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
   /v1/finance/funding-cases/{id}:
     parameters:
     - $ref: '#/components/parameters/Id'
@@ -1372,17 +1408,23 @@ paths:
         in: query
         required: false
         schema:
-          type: integer
-          minimum: 0
-          default: 0
+          anyOf:
+          - type: integer
+            minimum: 0
+            default: 0
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       - name: limit
         in: query
         required: false
         schema:
-          type: integer
-          minimum: 1
-          maximum: 262144
-          default: 131072
+          anyOf:
+          - type: integer
+            minimum: 1
+            maximum: 262144
+            default: 131072
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       responses:
         '200':
           description: 当前固定原件分块
@@ -1417,7 +1459,7 @@ paths:
       - name: id
         in: path
         required: true
-        schema: &id012
+        schema:
           type: string
       responses:
         '200':
@@ -1452,36 +1494,50 @@ paths:
       - name: view
         in: query
         schema:
-          type: string
-          enum:
-          - mine
-          - visible
-          default: mine
+          anyOf:
+          - type: string
+            enum:
+            - mine
+            - visible
+            default: mine
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       - name: status
         in: query
         schema:
-          type: string
-          enum: &id014
-          - draft
-          - submitted
-          - under_review
-          - approved
-          - rejected
-          - withdrawn
+          anyOf:
+          - type: string
+            enum:
+            - draft
+            - submitted
+            - under_review
+            - approved
+            - rejected
+            - withdrawn
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       - name: q
         in: query
-        description: trim后按字面量忽略大小写匹配单号/事由，不查询原文
+        description: >-
+          仅在用户明确提供当前单号或当前事由的逐字值时填写q，可为字面片段、忽略大小写，trim后匹配，不查询原文。
+          用户用费用类别或旧事由、刚才那笔等线索定位时应省略或传null，不把交通、差旅等类别词当作当前事由筛选。
+          用户明确要求当前事由包含交通时仍可传该片段；total=0仅表示此字面筛选无匹配，不代表没有本人报销，不擅自放宽明确字面筛选。
         schema:
-          type: string
-          maxLength: 128
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
       - $ref: '#/components/parameters/Cursor'
       - name: limit
         in: query
         schema:
-          type: integer
-          minimum: 1
-          maximum: 50
-          default: 20
+          anyOf:
+          - type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+          - type: 'null'
+        description: 未填写可省略或传null，由HTTP出口省略。
       responses:
         '200':
           description: 检索本人或有权记录的摘要及独立总数，不返回申报原文
@@ -1539,16 +1595,22 @@ components:
       name: cursor
       in: query
       schema:
-        type: string
-        maxLength: 2048
+        anyOf:
+        - type: string
+          maxLength: 2048
+        - type: 'null'
+      description: 未填写可省略或传null，由HTTP出口省略。首次cursor使用null，后续仅真实next_cursor。
     Limit:
       name: limit
       in: query
       schema:
-        type: integer
-        minimum: 1
-        maximum: 100
-        default: 50
+        anyOf:
+        - type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+        - type: 'null'
+      description: 未填写可省略或传null，由HTTP出口省略。
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -1865,27 +1927,35 @@ components:
           - archived
           - exception
           - supplement_required
-        effective_gross: &id001
+        effective_gross:
           $ref: '#/components/schemas/Money'
-        effective_tax: *id001
-        issued_red_amount: *id001
-        issued_red_tax: *id001
-        available_tax: *id001
-        allocation_shortfall: &id002
+        effective_tax:
+          $ref: '#/components/schemas/Money'
+        issued_red_amount:
+          $ref: '#/components/schemas/Money'
+        issued_red_tax:
+          $ref: '#/components/schemas/Money'
+        available_tax:
+          $ref: '#/components/schemas/Money'
+        allocation_shortfall:
           type: boolean
-        allocation_frozen: *id002
-        compliance_status: &id007
+        allocation_frozen:
+          type: boolean
+        compliance_status:
           type: string
-        compliance_version: &id006
+        compliance_version:
           $ref: '#/components/schemas/Version'
         authority_revision:
           type: integer
           minimum: 0
         verification_evidence:
-          type: object
-          nullable: true
-        source_simulation: *id002
-        simulation: *id002
+          anyOf:
+          - type: object
+          - type: 'null'
+        source_simulation:
+          type: boolean
+        simulation:
+          type: boolean
     ExpenseLine:
       type: object
       additionalProperties: false
@@ -1931,11 +2001,12 @@ components:
           items:
             $ref: '#/components/schemas/ExpenseLine'
         invoice_information:
-          type: string
-          nullable: true
-          minLength: 1
-          maxLength: 20000
-          description: 仅internal_record允许的原样申报文本，未查验且不作为正式发票或执行资格
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 20000
+            description: 仅internal_record允许的原样申报文本，未查验且不作为正式发票或执行资格
+          - type: 'null'
         evidence_ids:
           type: array
           maxItems: 100
@@ -2487,7 +2558,7 @@ components:
             required:
             - accounting_period
             properties:
-              accounting_period: &id003
+              accounting_period:
                 type: string
                 pattern: ^[0-9]{4}-(0[1-9]|1[0-2])$
       - properties:
@@ -2503,7 +2574,9 @@ components:
             required:
             - accounting_period
             properties:
-              accounting_period: *id003
+              accounting_period:
+                type: string
+                pattern: ^[0-9]{4}-(0[1-9]|1[0-2])$
       - properties:
           action:
             enum:
@@ -2517,7 +2590,7 @@ components:
             required:
             - confirmation_id
             properties:
-              confirmation_id: &id004
+              confirmation_id:
                 $ref: '#/components/schemas/Id'
       - properties:
           action:
@@ -2538,7 +2611,8 @@ components:
                 $ref: '#/components/schemas/Digest'
               source_event_ids:
                 type: array
-                items: *id004
+                items:
+                  $ref: '#/components/schemas/Id'
                 maxItems: 1000
             dependencies:
               parent_manifest_hash:
@@ -2578,7 +2652,9 @@ components:
           $ref: '#/components/schemas/Money'
         payee_ref:
           $ref: '#/components/schemas/BusinessRef'
-        accounting_period: *id003
+        accounting_period:
+          type: string
+          pattern: ^[0-9]{4}-(0[1-9]|1[0-2])$
         workflow_step_id:
           $ref: '#/components/schemas/Id'
         reason:
@@ -2591,13 +2667,14 @@ components:
           uniqueItems: true
           items:
             $ref: '#/components/schemas/Id'
-        confirmation_id: &id005
+        confirmation_id:
           $ref: '#/components/schemas/Id'
         parent_manifest_hash:
           $ref: '#/components/schemas/Digest'
         source_event_ids:
           type: array
-          items: *id005
+          items:
+            $ref: '#/components/schemas/Id'
           maxItems: 1000
     ActionPlan:
       type: object
@@ -2700,8 +2777,10 @@ components:
           $ref: '#/components/schemas/Id'
         simulation:
           type: boolean
-        amount: *id001
-        tax: *id001
+        amount:
+          $ref: '#/components/schemas/Money'
+        tax:
+          $ref: '#/components/schemas/Money'
         funding:
           $ref: '#/components/schemas/FundingPlanContext'
     ActionExecution:
@@ -3067,8 +3146,9 @@ components:
           - posting
           - reversal
         original_posting_id:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
         voucher_id:
           $ref: '#/components/schemas/Id'
         evidence:
@@ -3217,8 +3297,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     InvoiceFieldPage:
       type: object
       additionalProperties: false
@@ -3236,8 +3317,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     LegalEntityPage:
       type: object
       additionalProperties: false
@@ -3255,8 +3337,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     InvoicePage:
       type: object
       additionalProperties: false
@@ -3274,8 +3357,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     ExceptionPage:
       type: object
       additionalProperties: false
@@ -3293,8 +3377,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     ReviewPage:
       type: object
       additionalProperties: false
@@ -3312,8 +3397,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     ExpenseWorkflow:
       type: object
       additionalProperties: false
@@ -3348,8 +3434,9 @@ components:
           enum:
           - internal
         current_step_id:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
         due_at:
           type: string
           format: date-time
@@ -3402,8 +3489,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     ProviderEvidence:
       type: object
       additionalProperties: false
@@ -3450,8 +3538,9 @@ components:
             type: string
             pattern: ^[0-9]{4}-(0[1-9]|1[0-2])$
         ledger_id:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
         payment_allowed:
           type: boolean
         posting_allowed:
@@ -3475,8 +3564,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     PaymentPage:
       type: object
       additionalProperties: false
@@ -3494,8 +3584,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     PostingPage:
       type: object
       additionalProperties: false
@@ -3513,8 +3604,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     ActionPlanPage:
       type: object
       additionalProperties: false
@@ -3532,8 +3624,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     F3TaxAdjustment:
       additionalProperties: false
       description: 税务权威的调整义务，不把材料收到解释为申报完成。
@@ -3560,9 +3653,10 @@ components:
           pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}$
           type: string
         accounting_period:
-          pattern: ^[0-9]{4}-(0[1-9]|1[0-2])$
-          type: string
-          nullable: true
+          anyOf:
+          - pattern: ^[0-9]{4}-(0[1-9]|1[0-2])$
+            type: string
+          - type: 'null'
       required:
       - external_adjustment_id
       - status
@@ -3620,10 +3714,11 @@ components:
           pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}$
           type: string
         red_invoice_number:
-          maxLength: 128
-          minLength: 1
-          type: string
-          nullable: true
+          anyOf:
+          - maxLength: 128
+            minLength: 1
+            type: string
+          - type: 'null'
         line_adjustments:
           additionalProperties:
             pattern: ^(0|[1-9][0-9]{0,15})\.[0-9]{2}$
@@ -3699,29 +3794,34 @@ components:
           - revoked
           type: string
         usage_kind:
-          type: string
-          enum:
-          - vat_deduction
-          nullable: true
+          anyOf:
+          - type: string
+            enum:
+            - vat_deduction
+          - type: 'null'
         accounting_period:
-          pattern: ^[0-9]{4}-(0[1-9]|1[0-2])$
-          type: string
-          nullable: true
+          anyOf:
+          - pattern: ^[0-9]{4}-(0[1-9]|1[0-2])$
+            type: string
+          - type: 'null'
         verification_id:
-          maxLength: 128
-          minLength: 1
-          type: string
-          nullable: true
+          anyOf:
+          - maxLength: 128
+            minLength: 1
+            type: string
+          - type: 'null'
         usage_confirmation_id:
-          maxLength: 128
-          minLength: 1
-          type: string
-          nullable: true
+          anyOf:
+          - maxLength: 128
+            minLength: 1
+            type: string
+          - type: 'null'
         tax_entry_confirmation_id:
-          maxLength: 128
-          minLength: 1
-          type: string
-          nullable: true
+          anyOf:
+          - maxLength: 128
+            minLength: 1
+            type: string
+          - type: 'null'
         red_letter_cases:
           items:
             $ref: '#/components/schemas/F3TaxRedLetterCase'
@@ -3917,8 +4017,9 @@ components:
           minItems: 4
           type: array
         parent_manifest_hash:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
         source_snapshot_hash:
           pattern: ^[0-9a-f]{64}$
           type: string
@@ -4050,8 +4151,9 @@ components:
         retention:
           $ref: '#/components/schemas/F3ArchiveRetention'
         parent_manifest_hash:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
         snapshots:
           additionalProperties: true
           type: object
@@ -4140,8 +4242,9 @@ components:
         retention:
           $ref: '#/components/schemas/F3ArchiveRetention'
         parent_manifest_hash:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
         snapshots:
           additionalProperties: true
           type: object
@@ -4195,11 +4298,16 @@ components:
       - configuration_version
       - provider_generation
       properties:
-        id: *id005
-        invoice_id: *id005
-        legal_entity_id: *id005
-        content_version: *id006
-        version: *id006
+        id:
+          $ref: '#/components/schemas/Id'
+        invoice_id:
+          $ref: '#/components/schemas/Id'
+        legal_entity_id:
+          $ref: '#/components/schemas/Id'
+        content_version:
+          $ref: '#/components/schemas/Version'
+        version:
+          $ref: '#/components/schemas/Version'
         authority_revision:
           type: integer
           minimum: 0
@@ -4212,30 +4320,43 @@ components:
           - failed
           - unavailable
           - stale
-        invoice_status: *id007
-        valid_until:
+        invoice_status:
           type: string
-          format: date-time
-          nullable: true
+        valid_until:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
         snapshot:
-          $ref: '#/components/schemas/F3TaxSnapshot'
-          nullable: true
-        effective_gross: *id001
-        effective_tax: *id001
-        available_amount: *id001
-        available_tax: *id001
-        allocation_shortfall: *id002
-        allocation_frozen: *id002
-        simulation: *id002
+          anyOf:
+          - $ref: '#/components/schemas/F3TaxSnapshot'
+          - type: 'null'
+        effective_gross:
+          $ref: '#/components/schemas/Money'
+        effective_tax:
+          $ref: '#/components/schemas/Money'
+        available_amount:
+          $ref: '#/components/schemas/Money'
+        available_tax:
+          $ref: '#/components/schemas/Money'
+        allocation_shortfall:
+          type: boolean
+        allocation_frozen:
+          type: boolean
+        simulation:
+          type: boolean
         provider:
-          $ref: '#/components/schemas/Id'
-          nullable: true
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
         configuration_version:
-          $ref: '#/components/schemas/Version'
-          nullable: true
+          anyOf:
+          - $ref: '#/components/schemas/Version'
+          - type: 'null'
         provider_generation:
-          $ref: '#/components/schemas/Version'
-          nullable: true
+          anyOf:
+          - $ref: '#/components/schemas/Version'
+          - type: 'null'
     ComplianceOptions:
       type: object
       additionalProperties: false
@@ -4254,30 +4375,42 @@ components:
       - archive_profile_version
       - formal_profile_state
       properties:
-        legal_entity_id: *id005
-        enabled: *id002
-        simulation: *id002
-        tax_enabled: *id002
-        archive_enabled: *id002
+        legal_entity_id:
+          $ref: '#/components/schemas/Id'
+        enabled:
+          type: boolean
+        simulation:
+          type: boolean
+        tax_enabled:
+          type: boolean
+        archive_enabled:
+          type: boolean
         policy_version:
-          $ref: '#/components/schemas/Version'
-          nullable: true
-        tax_executor: *id002
-        archive_executor: *id002
+          anyOf:
+          - $ref: '#/components/schemas/Version'
+          - type: 'null'
+        tax_executor:
+          type: boolean
+        archive_executor:
+          type: boolean
         open_periods:
           type: array
-          items: *id007
+          items:
+            type: string
           maxItems: 1000
         supported_invoice_profiles:
           type: array
-          items: *id007
+          items:
+            type: string
           maxItems: 1000
         archive_profile_id:
-          $ref: '#/components/schemas/Id'
-          nullable: true
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
         archive_profile_version:
-          $ref: '#/components/schemas/Version'
-          nullable: true
+          anyOf:
+          - $ref: '#/components/schemas/Version'
+          - type: 'null'
         formal_profile_state:
           type: string
           enum:
@@ -4298,26 +4431,35 @@ components:
       - configuration_version
       - provider_generation
       properties:
-        id: *id005
-        legal_entity_id: *id005
-        created_at: &id008
+        id:
+          $ref: '#/components/schemas/Id'
+        legal_entity_id:
+          $ref: '#/components/schemas/Id'
+        created_at:
           type: string
           format: date-time
-        invoice_id: *id005
-        receipt_id: *id005
-        authority_revision: *id006
+        invoice_id:
+          $ref: '#/components/schemas/Id'
+        receipt_id:
+          $ref: '#/components/schemas/Id'
+        authority_revision:
+          $ref: '#/components/schemas/Version'
         data:
           $ref: '#/components/schemas/F3TaxSnapshot'
-        applied: *id002
+        applied:
+          type: boolean
         provider:
-          $ref: '#/components/schemas/Id'
-          nullable: true
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
         configuration_version:
-          $ref: '#/components/schemas/Version'
-          nullable: true
+          anyOf:
+          - $ref: '#/components/schemas/Version'
+          - type: 'null'
         provider_generation:
-          $ref: '#/components/schemas/Version'
-          nullable: true
+          anyOf:
+          - $ref: '#/components/schemas/Version'
+          - type: 'null'
     TaxConfirmation:
       type: object
       additionalProperties: false
@@ -4329,11 +4471,17 @@ components:
       - operation_id
       - data
       properties:
-        id: *id005
-        legal_entity_id: *id005
-        created_at: *id008
-        invoice_id: *id005
-        operation_id: *id005
+        id:
+          $ref: '#/components/schemas/Id'
+        legal_entity_id:
+          $ref: '#/components/schemas/Id'
+        created_at:
+          type: string
+          format: date-time
+        invoice_id:
+          $ref: '#/components/schemas/Id'
+        operation_id:
+          $ref: '#/components/schemas/Id'
         data:
           type: object
           additionalProperties: false
@@ -4342,8 +4490,10 @@ components:
           - applied
           - snapshot
           properties:
-            action: *id007
-            applied: *id002
+            action:
+              type: string
+            applied:
+              type: boolean
             snapshot:
               $ref: '#/components/schemas/F3TaxSnapshot'
     RedLetterCase:
@@ -4366,30 +4516,46 @@ components:
       - display_status
       - effective_deadline
       properties:
-        id: *id005
-        legal_entity_id: *id005
-        created_at: *id008
-        invoice_id: *id005
-        external_case_id: *id005
-        version: *id006
-        authority_revision: *id006
-        status: *id007
+        id:
+          $ref: '#/components/schemas/Id'
+        legal_entity_id:
+          $ref: '#/components/schemas/Id'
+        created_at:
+          type: string
+          format: date-time
+        invoice_id:
+          $ref: '#/components/schemas/Id'
+        external_case_id:
+          $ref: '#/components/schemas/Id'
+        version:
+          $ref: '#/components/schemas/Version'
+        authority_revision:
+          $ref: '#/components/schemas/Version'
+        status:
+          type: string
         data:
           $ref: '#/components/schemas/F3TaxRedLetterCase'
         red_invoice_id:
-          $ref: '#/components/schemas/Id'
-          nullable: true
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
         provider:
-          $ref: '#/components/schemas/Id'
-          nullable: true
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
         configuration_version:
-          $ref: '#/components/schemas/Version'
-          nullable: true
+          anyOf:
+          - $ref: '#/components/schemas/Version'
+          - type: 'null'
         provider_generation:
-          $ref: '#/components/schemas/Version'
-          nullable: true
-        display_status: *id007
-        effective_deadline: *id008
+          anyOf:
+          - $ref: '#/components/schemas/Version'
+          - type: 'null'
+        display_status:
+          type: string
+        effective_deadline:
+          type: string
+          format: date-time
     TaxAdjustment:
       type: object
       additionalProperties: false
@@ -4403,13 +4569,21 @@ components:
       - status
       - data
       properties:
-        id: *id005
-        legal_entity_id: *id005
-        created_at: *id008
-        invoice_id: *id005
-        external_adjustment_id: *id005
-        version: *id006
-        status: *id007
+        id:
+          $ref: '#/components/schemas/Id'
+        legal_entity_id:
+          $ref: '#/components/schemas/Id'
+        created_at:
+          type: string
+          format: date-time
+        invoice_id:
+          $ref: '#/components/schemas/Id'
+        external_adjustment_id:
+          $ref: '#/components/schemas/Id'
+        version:
+          $ref: '#/components/schemas/Version'
+        status:
+          type: string
         data:
           $ref: '#/components/schemas/F3TaxAdjustment'
     Archive:
@@ -4431,31 +4605,43 @@ components:
       - supplement_required
       - last_audit_status
       properties:
-        id: *id005
-        legal_entity_id: *id005
-        created_at: *id008
-        target_type: *id007
-        target_id: *id005
-        operation_id: *id005
-        version: *id006
+        id:
+          $ref: '#/components/schemas/Id'
+        legal_entity_id:
+          $ref: '#/components/schemas/Id'
+        created_at:
+          type: string
+          format: date-time
+        target_type:
+          type: string
+        target_id:
+          $ref: '#/components/schemas/Id'
+        operation_id:
+          $ref: '#/components/schemas/Id'
+        version:
+          $ref: '#/components/schemas/Version'
         manifest_hash:
           $ref: '#/components/schemas/Digest'
         source_snapshot_hash:
           $ref: '#/components/schemas/Digest'
         parent_manifest_hash:
-          $ref: '#/components/schemas/Digest'
-          nullable: true
+          anyOf:
+          - $ref: '#/components/schemas/Digest'
+          - type: 'null'
         snapshot:
           $ref: '#/components/schemas/F3PublicSnapshot'
         data:
           $ref: '#/components/schemas/F3ArchiveOutcome'
-        supplement_required: *id002
+        supplement_required:
+          type: boolean
         last_audit_status:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
         supplement_event_ids:
           type: array
-          items: *id005
+          items:
+            $ref: '#/components/schemas/Id'
           maxItems: 1000
         supplement_events:
           type: array
@@ -4467,11 +4653,16 @@ components:
             - summary
             - created_at
             properties:
-              id: *id005
-              summary: *id007
-              created_at: *id008
+              id:
+                $ref: '#/components/schemas/Id'
+              summary:
+                type: string
+              created_at:
+                type: string
+                format: date-time
           maxItems: 1000
-        current_target_version: *id006
+        current_target_version:
+          $ref: '#/components/schemas/Version'
     ArchiveManifest:
       type: object
       additionalProperties: false
@@ -4482,10 +4673,12 @@ components:
       - members
       - snapshot
       properties:
-        archive_id: *id005
+        archive_id:
+          $ref: '#/components/schemas/Id'
         manifest_hash:
           $ref: '#/components/schemas/Digest'
-        manifest_member_id: *id005
+        manifest_member_id:
+          $ref: '#/components/schemas/Id'
         members:
           type: array
           items:
@@ -4501,7 +4694,8 @@ components:
       - source_snapshot_hash
       - items
       properties:
-        archive_id: *id005
+        archive_id:
+          $ref: '#/components/schemas/Id'
         source_snapshot_hash:
           $ref: '#/components/schemas/Digest'
         items:
@@ -4518,14 +4712,17 @@ components:
       - members
       - readback_verified
       properties:
-        archive_id: *id005
-        seal_member_id: *id005
+        archive_id:
+          $ref: '#/components/schemas/Id'
+        seal_member_id:
+          $ref: '#/components/schemas/Id'
         members:
           type: array
           items:
             $ref: '#/components/schemas/F3ArchiveMember'
           maxItems: 1000
-        readback_verified: *id002
+        readback_verified:
+          type: boolean
     ArchiveSupplement:
       type: object
       additionalProperties: false
@@ -4537,12 +4734,19 @@ components:
       - child_archive_id
       - source_event_id
       properties:
-        id: *id005
-        legal_entity_id: *id005
-        created_at: *id008
-        archive_id: *id005
-        child_archive_id: *id005
-        source_event_id: *id005
+        id:
+          $ref: '#/components/schemas/Id'
+        legal_entity_id:
+          $ref: '#/components/schemas/Id'
+        created_at:
+          type: string
+          format: date-time
+        archive_id:
+          $ref: '#/components/schemas/Id'
+        child_archive_id:
+          $ref: '#/components/schemas/Id'
+        source_event_id:
+          $ref: '#/components/schemas/Id'
     ArchiveAudit:
       type: object
       additionalProperties: false
@@ -4554,11 +4758,17 @@ components:
       - operation_id
       - data
       properties:
-        id: *id005
-        legal_entity_id: *id005
-        created_at: *id008
-        archive_id: *id005
-        operation_id: *id005
+        id:
+          $ref: '#/components/schemas/Id'
+        legal_entity_id:
+          $ref: '#/components/schemas/Id'
+        created_at:
+          type: string
+          format: date-time
+        archive_id:
+          $ref: '#/components/schemas/Id'
+        operation_id:
+          $ref: '#/components/schemas/Id'
         data:
           type: object
     F3Operation:
@@ -4578,20 +4788,32 @@ components:
       - external_request_id
       - last_error
       properties:
-        id: *id005
-        version: *id006
-        legal_entity_id: *id005
-        action: *id007
-        target_type: *id007
-        target_id: *id005
-        plan_id: *id005
-        status: *id007
-        business_result: *id007
-        simulation: *id002
-        external_request_id: *id005
-        last_error:
+        id:
+          $ref: '#/components/schemas/Id'
+        version:
+          $ref: '#/components/schemas/Version'
+        legal_entity_id:
+          $ref: '#/components/schemas/Id'
+        action:
           type: string
-          nullable: true
+        target_type:
+          type: string
+        target_id:
+          $ref: '#/components/schemas/Id'
+        plan_id:
+          $ref: '#/components/schemas/Id'
+        status:
+          type: string
+        business_result:
+          type: string
+        simulation:
+          type: boolean
+        external_request_id:
+          $ref: '#/components/schemas/Id'
+        last_error:
+          anyOf:
+          - type: string
+          - type: 'null'
     F2Operation:
       type: object
       additionalProperties: false
@@ -4694,8 +4916,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     TaxConfirmationPage:
       type: object
       additionalProperties: false
@@ -4713,8 +4936,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     RedLetterCasePage:
       type: object
       additionalProperties: false
@@ -4732,8 +4956,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     TaxAdjustmentPage:
       type: object
       additionalProperties: false
@@ -4751,8 +4976,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     ArchivePage:
       type: object
       additionalProperties: false
@@ -4770,8 +4996,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     ArchiveSupplementPage:
       type: object
       additionalProperties: false
@@ -4789,8 +5016,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     ArchiveAuditPage:
       type: object
       additionalProperties: false
@@ -4808,8 +5036,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     RedLetterLinkResult:
       type: object
       additionalProperties: false
@@ -4821,12 +5050,18 @@ components:
       - status
       - authority_status
       properties:
-        id: *id005
-        version: *id006
-        blue_invoice_id: *id005
-        red_invoice_id: *id005
-        status: *id007
-        authority_status: *id007
+        id:
+          $ref: '#/components/schemas/Id'
+        version:
+          $ref: '#/components/schemas/Version'
+        blue_invoice_id:
+          $ref: '#/components/schemas/Id'
+        red_invoice_id:
+          $ref: '#/components/schemas/Id'
+        status:
+          type: string
+        authority_status:
+          type: string
     TaxAdjustmentEvidenceResult:
       type: object
       additionalProperties: false
@@ -4838,15 +5073,21 @@ components:
       - evidence_ids
       - declaration_status
       properties:
-        id: *id005
-        version: *id006
-        status: *id007
-        material_status: *id007
+        id:
+          $ref: '#/components/schemas/Id'
+        version:
+          $ref: '#/components/schemas/Version'
+        status:
+          type: string
+        material_status:
+          type: string
         evidence_ids:
           type: array
-          items: *id005
+          items:
+            $ref: '#/components/schemas/Id'
           maxItems: 1000
-        declaration_status: *id007
+        declaration_status:
+          type: string
     FinanceNotification:
       type: object
       additionalProperties: false
@@ -4890,13 +5131,14 @@ components:
         source_status:
           type: string
           maxLength: 64
-        created_at: &id011
+        created_at:
           type: string
           format: date-time
-        read_at: &id010
-          type: string
-          format: date-time
-          nullable: true
+        read_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
     FinanceNotificationPage:
       type: object
       additionalProperties: false
@@ -4911,13 +5153,16 @@ components:
           maxItems: 100
           items:
             $ref: '#/components/schemas/FinanceNotification'
-        total: &id009
+        total:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
-        unread_total: *id009
+          anyOf:
+          - type: string
+          - type: 'null'
+        unread_total:
+          type: integer
+          minimum: 0
     FinanceQueueMetrics:
       type: object
       additionalProperties: false
@@ -4929,10 +5174,22 @@ components:
       properties:
         status_counts:
           type: object
-          additionalProperties: *id009
-        total: *id009
-        oldest_created_at: *id010
-        oldest_unknown_created_at: *id010
+          additionalProperties:
+            type: integer
+            minimum: 0
+        total:
+          type: integer
+          minimum: 0
+        oldest_created_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+        oldest_unknown_created_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
     FinanceOverview:
       type: object
       additionalProperties: false
@@ -4946,7 +5203,9 @@ components:
       properties:
         legal_entity_id:
           $ref: '#/components/schemas/Id'
-        generated_at: *id011
+        generated_at:
+          type: string
+          format: date-time
         queues:
           type: object
           additionalProperties: false
@@ -4968,8 +5227,12 @@ components:
           - pending
           - overdue
           properties:
-            pending: *id009
-            overdue: *id009
+            pending:
+              type: integer
+              minimum: 0
+            overdue:
+              type: integer
+              minimum: 0
         notifications:
           type: object
           additionalProperties: false
@@ -4981,10 +5244,18 @@ components:
           - external_channel
           - native_channel
           properties:
-            total: *id009
-            unread: *id009
-            outbox_pending: *id009
-            outbox_diagnostic: *id009
+            total:
+              type: integer
+              minimum: 0
+            unread:
+              type: integer
+              minimum: 0
+            outbox_pending:
+              type: integer
+              minimum: 0
+            outbox_diagnostic:
+              type: integer
+              minimum: 0
             external_channel:
               type: string
               enum:
@@ -5059,21 +5330,25 @@ components:
             enum:
             - '0.00'
         valid_from:
-          default: null
-          type: string
-          nullable: true
+          anyOf:
+          - default: null
+            type: string
+          - type: 'null'
         valid_until:
-          default: null
-          type: string
-          nullable: true
+          anyOf:
+          - default: null
+            type: string
+          - type: 'null'
         occurred_on:
-          default: null
-          type: string
-          nullable: true
+          anyOf:
+          - default: null
+            type: string
+          - type: 'null'
         account_ref:
-          default: null
-          $ref: '#/components/schemas/BusinessRef'
-          nullable: true
+          anyOf:
+          - default: null
+            $ref: '#/components/schemas/BusinessRef'
+          - type: 'null'
         evidence_ids:
           items:
             maxLength: 128
@@ -5230,15 +5505,17 @@ components:
           type: array
           uniqueItems: true
         source_case_id:
-          default: null
-          maxLength: 128
-          minLength: 1
-          type: string
-          nullable: true
+          anyOf:
+          - default: null
+            maxLength: 128
+            minLength: 1
+            type: string
+          - type: 'null'
         authority:
-          default: null
-          $ref: '#/components/schemas/FundingAuthoritySpec'
-          nullable: true
+          anyOf:
+          - default: null
+            $ref: '#/components/schemas/FundingAuthoritySpec'
+          - type: 'null'
       required:
       - legal_entity_id
       - scenario
@@ -5452,21 +5729,25 @@ components:
             enum:
             - '0.00'
         valid_from:
-          default: null
-          type: string
-          nullable: true
+          anyOf:
+          - default: null
+            type: string
+          - type: 'null'
         valid_until:
-          default: null
-          type: string
-          nullable: true
+          anyOf:
+          - default: null
+            type: string
+          - type: 'null'
         occurred_on:
-          default: null
-          type: string
-          nullable: true
+          anyOf:
+          - default: null
+            type: string
+          - type: 'null'
         account_ref:
-          default: null
-          $ref: '#/components/schemas/BusinessRef'
-          nullable: true
+          anyOf:
+          - default: null
+            $ref: '#/components/schemas/BusinessRef'
+          - type: 'null'
         evidence_ids:
           items:
             maxLength: 128
@@ -5617,13 +5898,15 @@ components:
           - prepayment_clearance
           - prepayment_return
         source_case_id:
-          allOf:
-          - $ref: '#/components/schemas/Id'
-          nullable: true
+          anyOf:
+          - allOf:
+            - $ref: '#/components/schemas/Id'
+          - type: 'null'
         authority:
-          allOf:
-          - $ref: '#/components/schemas/FundingAuthority'
-          nullable: true
+          anyOf:
+          - allOf:
+            - $ref: '#/components/schemas/FundingAuthority'
+          - type: 'null'
         financial_version:
           $ref: '#/components/schemas/Version'
         paid_amount:
@@ -5641,9 +5924,10 @@ components:
         outstanding_amount:
           $ref: '#/components/schemas/Money'
         internal_attestation:
-          allOf:
-          - $ref: '#/components/schemas/FundingAttestation'
-          nullable: true
+          anyOf:
+          - allOf:
+            - $ref: '#/components/schemas/FundingAttestation'
+          - type: 'null'
     FundingPlanContext:
       type: object
       additionalProperties: false
@@ -5664,9 +5948,10 @@ components:
           - prepayment_clearance
           - prepayment_return
         source_case_id:
-          allOf:
-          - $ref: '#/components/schemas/Id'
-          nullable: true
+          anyOf:
+          - allOf:
+            - $ref: '#/components/schemas/Id'
+          - type: 'null'
         supplier_ref:
           $ref: '#/components/schemas/BusinessRef'
         owner_id:
@@ -5676,9 +5961,10 @@ components:
           items:
             $ref: '#/components/schemas/EvidenceRef'
         authority_id:
-          allOf:
-          - $ref: '#/components/schemas/Id'
-          nullable: true
+          anyOf:
+          - allOf:
+            - $ref: '#/components/schemas/Id'
+          - type: 'null'
         accounting_basis:
           enum:
           - prepayment_basis
@@ -5721,9 +6007,10 @@ components:
         enabled:
           type: boolean
         policy_version:
-          allOf:
-          - $ref: '#/components/schemas/Version'
-          nullable: true
+          anyOf:
+          - allOf:
+            - $ref: '#/components/schemas/Version'
+          - type: 'null'
         simulation:
           type: boolean
         scenarios:
@@ -5767,8 +6054,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     FundingMaterial:
       type: object
       additionalProperties: false
@@ -5804,9 +6092,10 @@ components:
           type: string
           maxLength: 349528
         next_offset:
-          type: integer
-          minimum: 1
-          nullable: true
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
     ReadinessCheck:
       type: object
       additionalProperties: false
@@ -6012,9 +6301,10 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
-          maxLength: 2048
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
     ExpenseClaimHistoryItem:
       type: object
       additionalProperties: false
@@ -6051,10 +6341,12 @@ components:
       - summary
       additionalProperties: false
       properties:
-        id: *id012
+        id:
+          type: string
         version:
           type: integer
-        status: *id012
+        status:
+          type: string
         created_at:
           type: string
           format: date-time
@@ -6078,9 +6370,10 @@ components:
         total:
           type: integer
           minimum: 0
-        next_cursor: &id013
-          type: string
-          nullable: true
+        next_cursor:
+          anyOf:
+          - type: string
+          - type: 'null'
     SupportingMaterialMetadata:
       type: object
       required:
@@ -6097,14 +6390,28 @@ components:
       properties:
         position:
           type: integer
-        state: *id012
-        receipt_id: *id013
-        filename: *id013
+        state:
+          type: string
+        receipt_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+        filename:
+          anyOf:
+          - type: string
+          - type: 'null'
         size_bytes:
-          type: integer
-          nullable: true
-        media_type: *id013
-        sha256: *id013
+          anyOf:
+          - type: integer
+          - type: 'null'
+        media_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+        sha256:
+          anyOf:
+          - type: string
+          - type: 'null'
         verification_state:
           type: string
           enum:
@@ -6148,7 +6455,13 @@ components:
           $ref: '#/components/schemas/Version'
         status:
           type: string
-          enum: *id014
+          enum:
+          - draft
+          - submitted
+          - under_review
+          - approved
+          - rejected
+          - withdrawn
         total:
           $ref: '#/components/schemas/Money'
         reason:
@@ -6180,8 +6493,9 @@ components:
           type: integer
           minimum: 0
         next_cursor:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
     FinanceCapabilities:
       type: object
       additionalProperties: false
@@ -6244,7 +6558,7 @@ components:
           type: string
           enum:
           - not_verified
-        configuration_digest: &id015
+        configuration_digest:
           type: string
           pattern: ^[a-f0-9]{64}$
         checks:
@@ -6308,7 +6622,9 @@ components:
                 minimum: 1
               enabled:
                 type: boolean
-              digest: *id015
+              digest:
+                type: string
+                pattern: ^[a-f0-9]{64}$
         external_verifications:
           type: array
           minItems: 6

@@ -1,0 +1,29 @@
+{
+  "status": "query_reply_semantics_passed_posthoc",
+  "original_run_status": "failed",
+  "original_result_sha256": "dcd95457f26079b14ae5b13a8107bb6f12ba9191e7bf134e8d30a0a2bc0f3e58",
+  "original_report_not_modified": true,
+  "query_actual_tools_succeeded": true,
+  "amount_status_all_actual_reasons_and_zero_dimensions": true,
+  "checker_zero_label_false_negative_fixed_offline": true,
+  "negative_challenges_09_10": "not_run",
+  "counts_as_complete_journey": false,
+  "complete_journeys": 0,
+  "required_complete_journeys": 2,
+  "new_model_calls": 10,
+  "attempts_before": 208,
+  "attempts_after": 218,
+  "completed_usage_after": 216,
+  "usage_unknown_attempts": [
+    56,
+    59
+  ],
+  "global_cap": 240,
+  "per_session_token_cap": 200000,
+  "no_third_run": true,
+  "merged": false,
+  "deployed": false,
+  "local_commit_created": false,
+  "checker_sha256": "90c8199cf148476adf6978ff2038dfecd15f76c76cdd36ab4ed0cd72f609432c",
+  "reply_sha256": "d163aa2c7a9224aa930cc6ef93fc5e69b5058931663906f076971e00ef19a6bf"
+}

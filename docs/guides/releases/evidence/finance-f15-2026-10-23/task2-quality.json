@@ -1,0 +1,152 @@
+{
+  "status": "Approved",
+  "phase": "task2-implementation-before-final-freeze",
+  "review_date": "2026-10-23",
+  "review_type": "独立代码质量审查与确定性公开HTTP/SDK回归",
+  "baseline": "eb15fa49f83af07dc18da05a2e0fcdf0e3875546",
+  "spec_prerequisite": "task2-spec.json当前Approved；NS01/NS02已关闭。本审查另行实读源码与测试，不以该结论代替质量判断。",
+  "scope": [
+    "server runtime/events.py、session_history.py、sessions.py及api/sse.py全部本轮改动和相邻执行路径",
+    "SDK client.py、models.py及SDK测试",
+    "nested_resume确定性测试全部13项、旧pending/replay测试全部7项",
+    "finance_model_checks.py完整原始历史输入匹配、journey调用及harness新增回归",
+    "server/SDK版本、lock、README、HTTP架构、接入指南及F15批准设计"
+  ],
+  "required_changes": [],
+  "findings": [],
+  "quality_assessment": [
+    {
+      "file": "packages/xuanpu-server/src/xuanpu_server/runtime/sessions.py",
+      "lines": [
+        555,
+        604
+      ],
+      "assessment": "恢复前保留既有所有权和任务执行者校验，回执认领与重复回放在新线程选择之前。线程与原链祖先在当前会话锁内从同租户同会话可信审计推导；只将目标交给稳定taifeng.Resume，不接受客户端thread_id，也未修改内核。重复决定回放同一submission而非重复提交工具。"
+    },
+    {
+      "file": "packages/xuanpu-server/src/xuanpu_server/runtime/session_history.py",
+      "lines": [
+        95,
+        163,
+        177,
+        221
+      ],
+      "assessment": "latest挂起扫描和tracker使用同一纯child_skill wrapper过滤条件，人工混合记录保留。只有旧审计缺thread时回退根；已知坏线程明确失败。未知或混合未知请求不能挑选其他线程，继续由当前可信目标内核整批拒绝，保持旧SSE语义。祖先集合只从当前目标向原链回溯，有环和深度检查，不扩大到新派生后代或多leaf聚合。"
+    },
+    {
+      "file": "packages/xuanpu-server/src/xuanpu_server/runtime/events.py",
+      "lines": [
+        107,
+        120,
+        244,
+        250,
+        278,
+        391,
+        434,
+        446
+      ],
+      "assessment": "TurnStream、Hub和公开SSE共享操作级终态规则。初始leaf挂起仍转发但不提前结束；恢复允许原leaf/祖先再次挂起，新后代须等原链wrapper。终态审计与用量处理在客户端看到该终态之前完成，flush锁避免并行flusher把尚在写入的批次当作已落盘；审计失败不发布成功终态。finished集合防止同一submission多次结束、重复移出在途或重复记轮数；每线程终态usage补足恢复链的实际采样，下游计量入口与既有失败处理保持一致。"
+    },
+    {
+      "file": "packages/xuanpu-server/src/xuanpu_server/api/sse.py",
+      "lines": [
+        32,
+        42,
+        67,
+        70
+      ],
+      "assessment": "平台计算的operation_terminal最后覆盖同名事件字段，显式False不被省略，不修改原内核事件对象。审计记录也以平台值最后覆盖，确定性测试逐项核对live/public replay一致性。"
+    },
+    {
+      "file": "packages/xuanpu-sdk-py/src/xuanpu_sdk/models.py",
+      "lines": [
+        44,
+        59
+      ],
+      "assessment": "Event.terminal只对已知可终结种类采用可信布尔，False优先；缺字段兼容旧规则，未知kind不能借同名True成为终态。client序号解析接受实际int或None，明确拒绝缺字段、bool、浮点、字符串和对象，不把审计合成事件伪造成整数序号。"
+    },
+    {
+      "file": "scripts/acceptance/finance_model_checks.py",
+      "lines": [
+        120,
+        166
+      ],
+      "assessment": "历史读取证据同时限定phase、读取者、目标claim、工具名、模型call_id与同call_id成功SSE。事实取自完整原始ApiRequest工具输入，分别核真实决定actor和reason；截断SSE只证明成功执行，不对其显示正文强行JSON解析。缺raw或错误provenance不补造证据。"
+    },
+    {
+      "file": "packages/xuanpu-server/tests/identity/test_nested_resume.py",
+      "lines": [
+        116,
+        581
+      ],
+      "assessment": "测试实际发布嵌套业务包，以确定性模型驱动公开cookie/Bearer HTTP并访问真实loopback副作用工具。包含正常/冷恢复、批准/拒绝、未知混批/所有权/客户端线程注入、重复回放、原leaf再次挂起、partial核销、三层后续新descendant、父MessageStore及审计门闩、门闩后立即cold reopen、SDK实时与回放、计量与在途。副作用来自真实HTTP抵达，未只手拼审计模拟恢复成功；等待竞态使用明确Event门闩，没有靠sleep重试掩盖父链时序。"
+    },
+    {
+      "file": "uv.lock",
+      "assessment": "server与SDK metadata/lock均升2026.10.23.1，对应README与HTTP/接入说明同步嵌套终态和nullable seq兼容语义。finance/console产品源版本仍分别2026.10.23.5与2026.10.23.1，未为无关组件制造版本变化。"
+    }
+  ],
+  "verification": [
+    {
+      "kind": "independent_deterministic_http_sdk_and_observer_tests",
+      "command": "uv run pytest packages/xuanpu-server/tests/identity/test_nested_resume.py packages/xuanpu-server/tests/test_pending_and_replay.py packages/xuanpu-sdk-py/tests/test_sdk.py packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q",
+      "result": "93 passed in 5.72s",
+      "exit_code": 0,
+      "boundary": "本次实际包含真实loopback HTTP副作用工具与null-query HTTP测试；平台接口由公开ASGI HTTP路径执行，模型为确定性夹具。未连接PG或真实模型，未读私有配置。"
+    },
+    {
+      "kind": "selected_quality_lint",
+      "command": "uv run ruff check --select F,S108,I,TC packages/xuanpu-server/src/xuanpu_server/runtime/events.py packages/xuanpu-server/src/xuanpu_server/runtime/session_history.py packages/xuanpu-server/src/xuanpu_server/runtime/sessions.py packages/xuanpu-server/src/xuanpu_server/api/sse.py packages/xuanpu-sdk-py/src/xuanpu_sdk/client.py packages/xuanpu-sdk-py/src/xuanpu_sdk/models.py packages/xuanpu-server/tests/identity/test_nested_resume.py packages/xuanpu-server/tests/test_pending_and_replay.py packages/xuanpu-sdk-py/tests/test_sdk.py scripts/acceptance/finance_model_checks.py scripts/acceptance/finance_model_journey.py packages/xuanpu-finance/tests/test_f15_model_harness.py",
+      "result": "All checks passed!",
+      "exit_code": 0
+    },
+    {
+      "kind": "diff_whitespace",
+      "command": "git diff --check",
+      "result": "无输出，exit 0",
+      "exit_code": 0
+    },
+    {
+      "kind": "independent_source_hash_check",
+      "result": "task2-spec.json列出的24个源码、测试、版本、lock及文档文件重新计算SHA256，全部一致，sha_mismatches=[]。"
+    }
+  ],
+  "limitations": [
+    "这是冻结前Task2代码质量批准，不是两次真实模型完整旅程通过，也不是合并或生产部署批准。",
+    "本审查没有运行或访问PG、真实模型、生产数据、私有DSN或模型配置；未影响主agent独占PG门禁。",
+    "未重复全量pytest/strict mypy/全部工程约束或构建安装制品，其他agent的检查结果不计为本审查实际运行。",
+    "确定性SDK/HTTP回归不等于另行执行真实SDK模型旅程、实际浏览器点击、真实员工SSO或财务正式制度验收。",
+    "本次按批准的单挂起链边界审查；没有据此宣称并发多leaf聚合能力或任意自然语言金融语义已证明。"
+  ],
+  "pending": [
+    "冻结同源输入后，两次独立fresh-state真实模型完整用户流程及独立原始语义/持久事实判定。",
+    "主agent负责全量/quick门禁、源与制品一致性、秘密扫描、精确资源清理及最终独立审查；满足条件后仅本地提交。"
+  ],
+  "approval_scope": "当前Task2修复与观察层实现未发现必须阻断重新冻结及最终真实重放的质量问题。",
+  "source_sha256": {
+    "packages/xuanpu-server/src/xuanpu_server/runtime/events.py": "89652a0fcae6b23d3b564bc8b4e9c66210b7c02ec41666fd7f17ed85387a9626",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/session_history.py": "928d510eb92bc10dab988579cd020b198d2f5899deeb78be89c8289e2cee4176",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/sessions.py": "cb5f2ab60915f6738cc95c5c575c300f2a2295ed38fe6e2d67c06ad00f7ebbac",
+    "packages/xuanpu-server/src/xuanpu_server/api/sse.py": "d16ed638e5905258c6fe4e800b1173f1c5ad6d6d526d14987419b761c7547dee",
+    "packages/xuanpu-sdk-py/src/xuanpu_sdk/client.py": "08f6c92ef77281a87eea41c6a06d431c0713acfe52870ef094329a5a8f626504",
+    "packages/xuanpu-sdk-py/src/xuanpu_sdk/models.py": "eea638eb8ba5b220bc5a57e2e30a6ff4374126177fee784c3e63f8e59ec6ccb2",
+    "packages/xuanpu-server/tests/identity/test_nested_resume.py": "9de4f94b30a6c632687d88d161e350123401a8b7f82b74d1d9994c907d66c2c6",
+    "packages/xuanpu-sdk-py/tests/test_sdk.py": "df1f34302fa3a369dc2158c2d661ded731e48c9cbfd32d77dd9f618b9129256b",
+    "scripts/acceptance/finance_model_checks.py": "d80cede18208544d03bfe8ef241559448d1b22a8734e746137d6e2a195a5ebf7",
+    "packages/xuanpu-finance/tests/test_f15_model_harness.py": "2fef1cc144d123f0a1f62d214ee58e6d2e3acf4acfce37ee435bcb29420f54c7",
+    "packages/xuanpu-server/tests/test_pending_and_replay.py": "ca64f6b643eab0fc1b493874fa721d62face6ee3f3294b0737b13c276cf94eb2",
+    "scripts/acceptance/finance_model.py": "3a61fc4e54fe6898f4a3707133192880d085e632bb3625e6dd35b637adfc7da3",
+    "scripts/acceptance/finance_model_runtime.py": "f0a6e8172bae8fe6e5432a581dc3d9cf5f95db2a2e9f08078975b5203ce52a92",
+    "scripts/acceptance/finance_model_journey.py": "8e44e0e886533854175f969b070ae2c470e8ae2ddcec1003753f8dc06e341f92",
+    "scripts/acceptance/finance_runner.py": "91d6507086b558a4ee9f55bca8c8624221d368cb74ce2cf465ec107db0f794b0",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "d84c5ec0975a661b24510bcfe621a26c38f78077cde370ddf28fca1b377ee756",
+    "packages/xuanpu-server/pyproject.toml": "c803051fa4d841db556abf9ee1a9dd2e2bb4db98281c34a07ecc40ebc73026b9",
+    "packages/xuanpu-sdk-py/pyproject.toml": "dd578893743e4c1052f9c82c05d28169fdafa69d5a083e6e3e0ca44af7e96b03",
+    "packages/xuanpu-server/README.md": "ad384e72ecadb62365b0665162a4d6ed2377fd77bc979e096b41f89c4c39acf5",
+    "packages/xuanpu-sdk-py/README.md": "e24c109828f368aba59b517972478827e42cc02ac5710a212b57a05e9b911421",
+    "uv.lock": "ce5bee6a7889af7334963af536403480c7ecaab59b10de5e46b30d7e4b2032da",
+    "docs/architecture/http-api.md": "d9c6dd0fdc86e9cf6bc864af21245a1b14af9ae0c98bfa39f9fa40ab389fbe93",
+    "docs/guides/integrating.md": "6ffd48ec56a88088563e90a9865f3f3d36816ff187f5c3a5f8e1f3800e0f2ba3",
+    "docs/superpowers/specs/2026-10-23-finance-f15-design.md": "8efc73826c5c945f29dfac6cbc2fe3e8873aa3fec12313ea89b07bb8ee669d11"
+  }
+}

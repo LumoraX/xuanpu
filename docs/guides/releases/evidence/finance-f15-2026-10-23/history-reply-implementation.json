@@ -1,0 +1,128 @@
+{
+  "status": "ImplementedOfflineOnlyPendingIndependentReview",
+  "observed_at": "2026-10-24T09:09:44.921186+00:00",
+  "approved_design_review": "docs/guides/releases/evidence/finance-f15-2026-10-23/history-reply-design-review.json",
+  "design_review_status": "Approved",
+  "design_review_sha256": "6316298d3b82324354d7617bf8bf6c9ae2381bde7bd49d820fa261d0fb0435e8",
+  "scope": "Only root Skill published/design copies and F15 Skill contract tests; generic history reply and current literal summary query rules.",
+  "baseline_source_sha256": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "a5242549807c99b49fc14da5c00fa04f61a86af09f88b919691c6bcca4407c37"
+  },
+  "source_sha256": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "5927be1ccc071598edd695fe7aaf40b7e058e9df129bc63501fec1a34dc8ed6f"
+  },
+  "only_phase1_snapshot_changes": [
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
+    "examples/finance/skills/finance-assistant/SKILL.md",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+  ],
+  "root_changes": [
+    "Final reply to original/historical approval opinion requests includes each requested actual human decision and reason across rejection/resubmission/later approvals; current workflow steps cannot replace history. Cancelled is not an actual human decision; approved does not erase already-read rejection reasons. Latest-only questions retain their scope; complete already-read history is consolidated without redundant reads.",
+    "Summary q matches current number/document reason literal text. Expense category/old-reason references default to view=mine with no q or q=null. Explicit literal conditions remain exact; zero results are explained without silent widening, ambiguous candidates require clarification. RLS, real company, cursor and current detail/history prerequisites preserved."
+  ],
+  "tests": {
+    "red": {
+      "log": "history-reply-red.log",
+      "log_sha256": "0329b35befabf563c3903a81a97021fa5a7bf7390997a55a4a3418faa09452d6",
+      "junit": "history-reply-red.xml",
+      "junit_sha256": "2a0a4cc0605c03ddaf6461cf9108f3cde8c84c349f5d4503db3bb5c3e796cd41",
+      "tests": 2,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    "scope_red": {
+      "log": "history-reply-scope-red.log",
+      "log_sha256": "770d21cafef60032564d9c107d7b4673779c06609e2dd6a6b97ae847de9de863",
+      "junit": "history-reply-scope-red.xml",
+      "junit_sha256": "4fd424940c7c5d17a74edba08dadb1d9cfde246285b82ec9bf6656cbeb4aae1e",
+      "tests": 2,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    "combined_green": {
+      "log": "history-reply-green.log",
+      "log_sha256": "1ea03f144a7e8132ea498ab33274e4ff1a7082f3c9d4247eeb6f836674d3a548",
+      "junit": "history-reply-green.xml",
+      "junit_sha256": "a88f54d00c3928534723bd30c79b4a55a7472865c0cc1f64f3891b288776c621",
+      "tests": 145,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "offline_fixture_boundary": {
+    "not_model_behavior_proof": true,
+    "no_network_or_database": true,
+    "actual_components": [
+      "public_history_matches",
+      "history_decision_read",
+      "parse_openapi",
+      "build_request"
+    ],
+    "fixture_values_are_synthetic_not_real_acceptance": true,
+    "coverage": [
+      "one and multiple prior rejection workflows plus current approvals; complete actual decision data shape",
+      "current approvals alone fail complete historical decisions contract",
+      "cancelled workflow step cannot be introduced as a human decision",
+      "two complete synthetic raw tool pages use first returned cursor for second request",
+      "missing second raw page or wrong reader/target/call-id cannot prove second opinion read",
+      "omitted q and q=null both omit q while retaining real-company slot/view=mine/limit",
+      "explicit current literal q transmitted unchanged; pagination reset/current authorization guards retained"
+    ]
+  },
+  "lint": {
+    "command": "uv run ruff check --select F,S108,I,TC,C901 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+    "returncode": 0,
+    "log": "history-reply-ruff.log",
+    "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+  },
+  "diff_check": {
+    "returncode": 0,
+    "log": "history-reply-diff-check.log"
+  },
+  "contract_validation": {
+    "path": "docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-contract-validation.json",
+    "sha256": "48e3fbb34d22862d256797664f50d90709ad24a9c1c0f5c5f06eaeb6a8277b0a",
+    "packages_valid": 2,
+    "root_api_tools": 13,
+    "model_api_union": 68,
+    "declared_api_operations": 77,
+    "internal_operations": 24,
+    "skills": 7,
+    "root_children": 6,
+    "ordinary_success_delegations": 0,
+    "published_files_equal": 20,
+    "design_extra_refs_baseline_equal": 4,
+    "professional_skill_bytes_unchanged": true,
+    "original_policy_and_connectors_unchanged": true,
+    "max_session_tokens": 200000,
+    "memory_zip_member_bytes_equal": true,
+    "memory_zip_sha256": "8435cb8d649c10c9bfbbc697af901acbc873c86569c456b32077fcc34e833193",
+    "other_frozen_source_files_unchanged": true
+  },
+  "live_model_green": false,
+  "final8_semantic_failure_preserved": true,
+  "F15_two_complete_real_journeys": "not_completed",
+  "real_model_correction_or_usage_after_this_patch": "not_measured; no further consumption authorized",
+  "partial_live_evidence_boundary": "The design review records passed human decisions/history/original/zero payment-posting facts, but final8 failed phase08 reply semantics; later phase09/10 were not run. This implementation did not independently query PG or rerun live acceptance.",
+  "remaining": [
+    "independent spec then quality",
+    "root authorized offline full/quick/static/docs/artifact gates",
+    "report F15 real-model incompletion without relabeling failed journeys or authorizing a completion commit"
+  ],
+  "prohibited_activity": {
+    "postgres_access": false,
+    "external_model_or_API_calls": false,
+    "private_config_or_private_ledger_access": false,
+    "natural_prompt_or_checker_change": false,
+    "budget_or_business_authority_change": false,
+    "full_or_quick_suite_run": false,
+    "commit_push_merge_deploy": false
+  }
+}

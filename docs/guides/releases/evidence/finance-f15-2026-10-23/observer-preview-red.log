@@ -1,0 +1,71 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0
+configfile: pyproject.toml
+plugins: asyncio-1.4.0, anyio-4.15.1
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 91 items / 84 deselected / 7 selected
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py FFF....          [100%]
+
+=================================== FAILURES ===================================
+_____ test_old_or_unrelated_plan_cannot_serve_as_model_preview[2-preview] ______
+
+version = 2, call_id = 'preview'
+
+    @pytest.mark.parametrize(('version', 'call_id'), [(2, 'preview'), (3, 'unrelated')])
+    def test_old_or_unrelated_plan_cannot_serve_as_model_preview(version: int, call_id: str):
+        """同ID子串不够，必须当前版本和同一模型preview调用返回。"""
+        module = checks()
+        plan = {'id': 'plan', 'digest': 'digest', 'action': 'reject'}
+        assert module.matching_model_plan([plan_trace(version, call_id)], plan,
+                                          {'id': 'claim', 'version': 3}) == []
+>       assert module.matching_model_plan([plan_trace()], plan,
+                                          {'id': 'claim', 'version': 3}) == ['preview']
+E       AssertionError: assert [] == ['preview']
+E         
+E         Right contains one more item: 'preview'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:186: AssertionError
+____ test_old_or_unrelated_plan_cannot_serve_as_model_preview[3-unrelated] _____
+
+version = 3, call_id = 'unrelated'
+
+    @pytest.mark.parametrize(('version', 'call_id'), [(2, 'preview'), (3, 'unrelated')])
+    def test_old_or_unrelated_plan_cannot_serve_as_model_preview(version: int, call_id: str):
+        """同ID子串不够，必须当前版本和同一模型preview调用返回。"""
+        module = checks()
+        plan = {'id': 'plan', 'digest': 'digest', 'action': 'reject'}
+        assert module.matching_model_plan([plan_trace(version, call_id)], plan,
+                                          {'id': 'claim', 'version': 3}) == []
+>       assert module.matching_model_plan([plan_trace()], plan,
+                                          {'id': 'claim', 'version': 3}) == ['preview']
+E       AssertionError: assert [] == ['preview']
+E         
+E         Right contains one more item: 'preview'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:186: AssertionError
+____________ test_model_preview_requires_formal_created_status[200] ____________
+
+status = 200
+
+    @pytest.mark.parametrize('status', [200, 202, 204])
+    def test_model_preview_requires_formal_created_status(status: int):
+        """预检正式契约是201，未声明200、仅受理或无正文不能证明收到行动计划。"""
+        plan = {'id': 'plan', 'digest': 'digest', 'action': 'reject'}
+>       assert checks().matching_model_plan([plan_trace(status=status)], plan,
+                                           {'id': 'claim', 'version': 3}) == []
+E       AssertionError: assert ['preview'] == []
+E         
+E         Left contains one more item: 'preview'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:194: AssertionError
+- generated xml file: /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/releases/evidence/finance-f15-2026-10-23/observer-preview-red.xml -
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_old_or_unrelated_plan_cannot_serve_as_model_preview[2-preview]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_old_or_unrelated_plan_cannot_serve_as_model_preview[3-unrelated]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_model_preview_requires_formal_created_status[200]
+================== 3 failed, 4 passed, 84 deselected in 0.06s ==================

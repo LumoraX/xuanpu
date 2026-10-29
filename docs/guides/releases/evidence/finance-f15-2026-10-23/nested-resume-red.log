@@ -1,0 +1,214 @@
+ACTUAL_SUSPENSIONS [('thr_98df8e853b7ab0ff', ['permission'])]
+ACTUAL_ROOT_RECORD []
+FACTUAL_SUSPENSIONS [('thr_e1bbe89b7f0efde4', ['permission'])]
+FACTUAL_SUSPENSIONS [('thr_be26ed0a33ef6051', ['permission'])]
+ACTUAL_ROOT_RECORD []
+FACTUAL_SUSPENSIONS [('thr_08ff1a63363e60cb', ['permission'])]
+F
+=================================== FAILURES ===================================
+______ test_nested_cookie_resume_normal_cold_deny_and_replay[False-False] ______
+
+identity_world = <function identity_world.<locals>.opener at 0x10c8c5620>
+step = <class 'packages.xuanpu-server.tests.conftest.Step'>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2334/test_nested_cookie_resume_norm0')
+cold = False, granted = False
+
+    @pytest.mark.parametrize('cold', [False, True])
+    @pytest.mark.parametrize('granted', [False, True])
+    async def test_nested_cookie_resume_normal_cold_deny_and_replay(
+        identity_world: Any, step: Any, tmp_path: Path, cold: bool, granted: bool,
+    ) -> None:
+        """真实父子挂起在正常或冷恢复后批准/拒绝，重复恢复不重复执行。"""
+        async with identity_world() as ident, records_server() as (url, writes):
+            await publish_nested(ident, tmp_path / 'nested', url)
+            sid, headers, pending, emitted = await suspended(ident, step)
+            leaf = next(item['data'] for item in emitted if item.get('kind') == 'turn_suspended')
+            assert leaf['thread_id'] == pending['detail']['thread_id']
+            assert writes == []
+            platform, http = ident.world.platform, ident.http
+            sibling = None
+            if cold:
+                await platform.close()
+                sibling = ident.world.sibling('nested-cold', data_dir=ident.world.data_dir)
+                await sibling.start()
+                platform = sibling
+                http = httpx.AsyncClient(transport=httpx.ASGITransport(create_app(sibling)),
+                                         base_url=str(ident.http.base_url))
+            audit = await ident.audit('turn_suspended')
+            print('ACTUAL_SUSPENSIONS', [(item.data.get('thread_id'),
+                  [p['reason'] for p in item.data.get('pending', [])]) for item in audit])
+            record = await platform.store.get_session('acme', sid)
+            assert record is not None
+            if not cold:
+                live = platform.sessions._live[('acme', sid)]
+                print('ACTUAL_ROOT_RECORD', [(item.kind, item.thread_id,
+                      item.payload.get('record_id')) for item in live.engine.history_snapshot()
+                      if item.kind == 'suspension'])
+            payload = {'resolutions': {pending['request_id']: {'granted': granted}}}
+            try:
+                resumed = events(await http.post(f'/v1/sessions/{sid}/resume', headers=headers, json=payload))
+                rejected = [item for item in resumed if item.get('kind') == 'suspension_resolve_rejected']
+>               assert rejected == [], rejected
+E               AssertionError: [{'submission_id': 'sub_24725c9ccc0e', 'seq': 12, 'at': 1792751712.98161, 'kind': 'suspension_resolve_rejected', ...}]
+E               assert [{'submission...jected', ...}] == []
+E                 
+E                 Left contains one more item: {'submission_id': 'sub_24725c9ccc0e', 'seq': 12, 'at': 1792751712.98161, 'kind': 'suspension_resolve_rejected', ...}
+E                 Use -v to get more diff
+
+packages/xuanpu-server/tests/identity/test_nested_resume.py:142: AssertionError
+______ test_nested_cookie_resume_normal_cold_deny_and_replay[False-True] _______
+
+identity_world = <function identity_world.<locals>.opener at 0x10c95f100>
+step = <class 'packages.xuanpu-server.tests.conftest.Step'>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2334/test_nested_cookie_resume_norm1')
+cold = True, granted = False
+
+    @pytest.mark.parametrize('cold', [False, True])
+    @pytest.mark.parametrize('granted', [False, True])
+    async def test_nested_cookie_resume_normal_cold_deny_and_replay(
+        identity_world: Any, step: Any, tmp_path: Path, cold: bool, granted: bool,
+    ) -> None:
+        """真实父子挂起在正常或冷恢复后批准/拒绝，重复恢复不重复执行。"""
+        async with identity_world() as ident, records_server() as (url, writes):
+            await publish_nested(ident, tmp_path / 'nested', url)
+            sid, headers, pending, emitted = await suspended(ident, step)
+            leaf = next(item['data'] for item in emitted if item.get('kind') == 'turn_suspended')
+            assert leaf['thread_id'] == pending['detail']['thread_id']
+            assert writes == []
+            platform, http = ident.world.platform, ident.http
+            sibling = None
+            if cold:
+                await platform.close()
+                sibling = ident.world.sibling('nested-cold', data_dir=ident.world.data_dir)
+                await sibling.start()
+                platform = sibling
+                http = httpx.AsyncClient(transport=httpx.ASGITransport(create_app(sibling)),
+                                         base_url=str(ident.http.base_url))
+            audit = await ident.audit('turn_suspended')
+            print('ACTUAL_SUSPENSIONS', [(item.data.get('thread_id'),
+                  [p['reason'] for p in item.data.get('pending', [])]) for item in audit])
+            record = await platform.store.get_session('acme', sid)
+            assert record is not None
+            if not cold:
+                live = platform.sessions._live[('acme', sid)]
+                print('ACTUAL_ROOT_RECORD', [(item.kind, item.thread_id,
+                      item.payload.get('record_id')) for item in live.engine.history_snapshot()
+                      if item.kind == 'suspension'])
+            payload = {'resolutions': {pending['request_id']: {'granted': granted}}}
+            try:
+                resumed = events(await http.post(f'/v1/sessions/{sid}/resume', headers=headers, json=payload))
+                rejected = [item for item in resumed if item.get('kind') == 'suspension_resolve_rejected']
+>               assert rejected == [], rejected
+E               AssertionError: [{'submission_id': 'sub_cac7d2c81c9a', 'seq': 2, 'at': 1792751713.58809, 'kind': 'suspension_resolve_rejected', ...}]
+E               assert [{'submission...jected', ...}] == []
+E                 
+E                 Left contains one more item: {'submission_id': 'sub_cac7d2c81c9a', 'seq': 2, 'at': 1792751713.58809, 'kind': 'suspension_resolve_rejected', ...}
+E                 Use -v to get more diff
+
+packages/xuanpu-server/tests/identity/test_nested_resume.py:142: AssertionError
+______ test_nested_cookie_resume_normal_cold_deny_and_replay[True-False] _______
+
+identity_world = <function identity_world.<locals>.opener at 0x10ce35800>
+step = <class 'packages.xuanpu-server.tests.conftest.Step'>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2334/test_nested_cookie_resume_norm2')
+cold = False, granted = True
+
+    @pytest.mark.parametrize('cold', [False, True])
+    @pytest.mark.parametrize('granted', [False, True])
+    async def test_nested_cookie_resume_normal_cold_deny_and_replay(
+        identity_world: Any, step: Any, tmp_path: Path, cold: bool, granted: bool,
+    ) -> None:
+        """真实父子挂起在正常或冷恢复后批准/拒绝，重复恢复不重复执行。"""
+        async with identity_world() as ident, records_server() as (url, writes):
+            await publish_nested(ident, tmp_path / 'nested', url)
+            sid, headers, pending, emitted = await suspended(ident, step)
+            leaf = next(item['data'] for item in emitted if item.get('kind') == 'turn_suspended')
+            assert leaf['thread_id'] == pending['detail']['thread_id']
+            assert writes == []
+            platform, http = ident.world.platform, ident.http
+            sibling = None
+            if cold:
+                await platform.close()
+                sibling = ident.world.sibling('nested-cold', data_dir=ident.world.data_dir)
+                await sibling.start()
+                platform = sibling
+                http = httpx.AsyncClient(transport=httpx.ASGITransport(create_app(sibling)),
+                                         base_url=str(ident.http.base_url))
+            audit = await ident.audit('turn_suspended')
+            print('ACTUAL_SUSPENSIONS', [(item.data.get('thread_id'),
+                  [p['reason'] for p in item.data.get('pending', [])]) for item in audit])
+            record = await platform.store.get_session('acme', sid)
+            assert record is not None
+            if not cold:
+                live = platform.sessions._live[('acme', sid)]
+                print('ACTUAL_ROOT_RECORD', [(item.kind, item.thread_id,
+                      item.payload.get('record_id')) for item in live.engine.history_snapshot()
+                      if item.kind == 'suspension'])
+            payload = {'resolutions': {pending['request_id']: {'granted': granted}}}
+            try:
+                resumed = events(await http.post(f'/v1/sessions/{sid}/resume', headers=headers, json=payload))
+                rejected = [item for item in resumed if item.get('kind') == 'suspension_resolve_rejected']
+>               assert rejected == [], rejected
+E               AssertionError: [{'submission_id': 'sub_8216c627a87e', 'seq': 12, 'at': 1792751713.975417, 'kind': 'suspension_resolve_rejected', ...}]
+E               assert [{'submission...jected', ...}] == []
+E                 
+E                 Left contains one more item: {'submission_id': 'sub_8216c627a87e', 'seq': 12, 'at': 1792751713.975417, 'kind': 'suspension_resolve_rejected', ...}
+E                 Use -v to get more diff
+
+packages/xuanpu-server/tests/identity/test_nested_resume.py:142: AssertionError
+_______ test_nested_cookie_resume_normal_cold_deny_and_replay[True-True] _______
+
+identity_world = <function identity_world.<locals>.opener at 0x10d29e700>
+step = <class 'packages.xuanpu-server.tests.conftest.Step'>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2334/test_nested_cookie_resume_norm3')
+cold = True, granted = True
+
+    @pytest.mark.parametrize('cold', [False, True])
+    @pytest.mark.parametrize('granted', [False, True])
+    async def test_nested_cookie_resume_normal_cold_deny_and_replay(
+        identity_world: Any, step: Any, tmp_path: Path, cold: bool, granted: bool,
+    ) -> None:
+        """真实父子挂起在正常或冷恢复后批准/拒绝，重复恢复不重复执行。"""
+        async with identity_world() as ident, records_server() as (url, writes):
+            await publish_nested(ident, tmp_path / 'nested', url)
+            sid, headers, pending, emitted = await suspended(ident, step)
+            leaf = next(item['data'] for item in emitted if item.get('kind') == 'turn_suspended')
+            assert leaf['thread_id'] == pending['detail']['thread_id']
+            assert writes == []
+            platform, http = ident.world.platform, ident.http
+            sibling = None
+            if cold:
+                await platform.close()
+                sibling = ident.world.sibling('nested-cold', data_dir=ident.world.data_dir)
+                await sibling.start()
+                platform = sibling
+                http = httpx.AsyncClient(transport=httpx.ASGITransport(create_app(sibling)),
+                                         base_url=str(ident.http.base_url))
+            audit = await ident.audit('turn_suspended')
+            print('ACTUAL_SUSPENSIONS', [(item.data.get('thread_id'),
+                  [p['reason'] for p in item.data.get('pending', [])]) for item in audit])
+            record = await platform.store.get_session('acme', sid)
+            assert record is not None
+            if not cold:
+                live = platform.sessions._live[('acme', sid)]
+                print('ACTUAL_ROOT_RECORD', [(item.kind, item.thread_id,
+                      item.payload.get('record_id')) for item in live.engine.history_snapshot()
+                      if item.kind == 'suspension'])
+            payload = {'resolutions': {pending['request_id']: {'granted': granted}}}
+            try:
+                resumed = events(await http.post(f'/v1/sessions/{sid}/resume', headers=headers, json=payload))
+                rejected = [item for item in resumed if item.get('kind') == 'suspension_resolve_rejected']
+>               assert rejected == [], rejected
+E               AssertionError: [{'submission_id': 'sub_16f0753768e5', 'seq': 2, 'at': 1792751714.702973, 'kind': 'suspension_resolve_rejected', ...}]
+E               assert [{'submission...jected', ...}] == []
+E                 
+E                 Left contains one more item: {'submission_id': 'sub_16f0753768e5', 'seq': 2, 'at': 1792751714.702973, 'kind': 'suspension_resolve_rejected', ...}
+E                 Use -v to get more diff
+
+packages/xuanpu-server/tests/identity/test_nested_resume.py:142: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-server/tests/identity/test_nested_resume.py::test_nested_cookie_resume_normal_cold_deny_and_replay[False-False]
+FAILED packages/xuanpu-server/tests/identity/test_nested_resume.py::test_nested_cookie_resume_normal_cold_deny_and_replay[False-True]
+FAILED packages/xuanpu-server/tests/identity/test_nested_resume.py::test_nested_cookie_resume_normal_cold_deny_and_replay[True-False]
+FAILED packages/xuanpu-server/tests/identity/test_nested_resume.py::test_nested_cookie_resume_normal_cold_deny_and_replay[True-True]
+4 failed in 2.14s

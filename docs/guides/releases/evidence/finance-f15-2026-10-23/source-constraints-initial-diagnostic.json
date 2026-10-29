@@ -1,0 +1,15 @@
+{
+  "status": "failed",
+  "check": "changed Python source constraints before final freeze",
+  "command": [
+    "uv",
+    "run",
+    "python",
+    "/tmp/xuanpu-finance-f15-constraints.py"
+  ],
+  "failure": "C901 matching_model_plan complexity 11 exceeds 10",
+  "other_ast_checks": "passed",
+  "scope": "new model harness, not finance service source",
+  "resolution": "minimal preview_call_ids helper extracted; same matching conditions retained; constraints and 47 targeted tests rerun passed before final freeze",
+  "resolved": true
+}

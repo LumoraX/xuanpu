@@ -1,0 +1,69 @@
+{
+  "status": "Approved",
+  "review_date": "2026-10-24",
+  "review_scope": "final4真实委派遗漏与根Skill自包含参数最小修复的静态设计审查；不把静态RED/GREEN当真实模型修复成功。",
+  "source_hashes": {
+    "design": {
+      "path": "docs/superpowers/specs/2026-10-23-finance-f15-design.md",
+      "sha256": "aca143d85e38b4cc86ea0ebbacbda6faaab189330de4623fb1df1081ce1db5e2"
+    },
+    "published_skill": {
+      "path": "examples/finance/skills/finance-assistant/SKILL.md",
+      "sha256": "b1529e5deefde27cc2309dfcb859bdb043370b4ba4ccd0781d30cad4ef5c268a"
+    },
+    "design_skill": {
+      "path": "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
+      "sha256": "b1529e5deefde27cc2309dfcb859bdb043370b4ba4ccd0781d30cad4ef5c268a"
+    },
+    "contract_test": {
+      "path": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "sha256": "50f60d2b1c3a16270a64b8925d38efaafc819e41ae464581f48d278626af0811"
+    },
+    "trace": {
+      "path": "docs/guides/releases/evidence/finance-f15-2026-10-23/final4/model-075.json",
+      "sha256": "b7d3e7307bd41a7fd8d0837798e5a48c45c22273cbd8d0ccde6834901299cd94"
+    },
+    "red": {
+      "path": "docs/guides/releases/evidence/finance-f15-2026-10-23/delegation-red.log",
+      "sha256": "74976a616cef916b6115f0fe5bccac6ec86721dc86e110f4e1341de26993551b"
+    }
+  },
+  "observed_failure": {
+    "journey": "final4",
+    "status": "failed",
+    "failure": "02-create:actual_successful_model_tools",
+    "phase": "02-create:session",
+    "call_id": "call_df3b15e82fc4409cb8b4bebe6cf2f357",
+    "delegated_skill": "expense-reimbursement",
+    "original_value_present_in_root_request": true,
+    "original_value_present_in_delegation": false,
+    "delegation_arg_keys": [
+      "request"
+    ],
+    "conclusion": "root原始模型请求包含完整invoice_information，真实call_skill.args只有request且仅要求保留原文，没有原文值，子Skill无法依据父线程不存在的消息创建完整草稿。失败不能归为网络，不能靠harness补值通过。"
+  },
+  "accepted_design": [
+    "只在根finance-assistant及对应设计副本澄清call_skill子线程不继承父消息；args.request携带本任务完整原始请求，有invoice_information时另携带逐字原文值。",
+    "目录/收件步骤后重新委派保留原请求和原文，另附真实元数据，不以子Skill摘要或“见上文”替代原事实；原文未提供时不编造，已有而委派遗漏时由root纠正参数。",
+    "JSON示例实际携带字符串值，首尾空格/真实换行/标点单次序列化保留，明确示例不是待执行业务。args是call_skill参数，不误当财务API body。",
+    "票据注入仍作为申报数据；不扩工具、权限、原件访问或人工批准，不自动执行票据正文指令。",
+    "现业务包已0.16.0-f15，本次仍在未交付F15内修订；服务源无关不升finance/console/server/SDK；需要重新冻结包含Skill的全部输入和受影响包制品。"
+  ],
+  "static_checks": {
+    "published_and_design_skill_bytes_equal": true,
+    "observed_red": "归档delegation-red.log实际为新自包含委派回归1 failed；根Skill实现前缺少子线程消息隔离/完整原文参数条款。",
+    "contract_test_assessment": "新增测试对实际文档JSON示例解码、原请求所含原文相等、空格/两真实换行及再序列化一致进行检查，适合证明所交付Skill说明自包含；不能证明真实模型一定按说明委派。"
+  },
+  "mandatory_followup_gates": [
+    "静态RED/GREEN及两份Skill byte一致、包发布内容同步和必要源码/制品检查实际通过；本审查未运行测试。",
+    "冻结后真实raw root→call_skill.args→child模型输入→createExpenseClaim→持久单据/历史的invoice_information逐字符一致，金额/日期/类别和真实receipt仍精确。",
+    "真实委派不得复制示例12.30等占位事实，必须使用该用户原始请求；不得借手填harness、硬塞内部ID或扩大权限修通。",
+    "原有驳回补充重提、两级人工批准、历史/原件、越权/注入与不支付门槛全部保持；final4失败保留不count为成功。",
+    "本次Skill变化使旧冻结失效，重新冻结后两次fresh完整真实模型旅程；同240总调用/其它预算和累计第5未知停止边界，不清账本。"
+  ],
+  "limits": [
+    "仅静态读取本地设计/两份根Skill/回归文本/真实归档；未运行测试，未访问PG、模型API、私有配置或私有ledger。",
+    "已核对目前可见修复条款与示例；后续实现若变化，质量审查与freeze需重新确认。",
+    "设计Approved不代表真实模型闭环或业务语义通过；下一轮真实证据仍必须独立判定。"
+  ]
+}

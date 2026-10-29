@@ -1,0 +1,25 @@
+{
+  "status": "passed",
+  "scope": "exact owned f15 container only",
+  "owned_databases_before_container_cleanup": [
+    "finance_restore_d96d68e67cae4cd7846052e5102ccfca",
+    "finance_test_backup_f601b95c30184f7697de12ef89c5f231",
+    "finance_test_f15",
+    "finance_test_f15_baseline2",
+    "finance_test_f15_final1",
+    "finance_test_f15_final2",
+    "finance_test_f15_final3",
+    "finance_test_f15_final4",
+    "finance_test_f15_final5",
+    "finance_test_f15_final6",
+    "finance_test_f15_final7",
+    "finance_test_f15_final8",
+    "finance_test_f15_final9",
+    "finance_test_f15_suite"
+  ],
+  "other_database_sessions": 0,
+  "advisory_locks_remaining": 0,
+  "preliminary_interrupted_suite_may_leave_owned_test_database": true,
+  "all_database_and_schema_contents_removed_by_exact_container_and_volume_cleanup": true,
+  "production_status": "not_verified"
+}

@@ -1,0 +1,24 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0
+configfile: pyproject.toml
+plugins: asyncio-1.4.0, anyio-4.15.1
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 24 items / 23 deselected / 1 selected
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py F               [100%]
+
+=================================== FAILURES ===================================
+______ test_uncertain_write_recovery_uses_existing_exception_only_handoff ______
+
+    def test_uncertain_write_recovery_uses_existing_exception_only_handoff() -> None:
+        """仅未知写结果需要原操作时委派既有能力，不能扩权或换键重放。"""
+        text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+>       assert '网络写入结果不明时，先用本入口已有查询核对原记录实际状态' in text
+E       assert '网络写入结果不明时，先用本入口已有查询核对原记录实际状态' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...mation": "  测试票据\\n金额12.30；日期2026-10-22\\n附注仅作申报数据  "\n  },\n  "reason": "我需要报销子Skill按用户完整事实准备草稿，并逐字保留申报原文。"\n}\n```\n'
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:152: AssertionError
+- generated xml file: /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-recovery-red.xml -
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f15_skill_contract.py::test_uncertain_write_recovery_uses_existing_exception_only_handoff
+======================= 1 failed, 23 deselected in 0.11s =======================

@@ -1,0 +1,173 @@
+{
+  "requested_model": "gpt-5.6-luna",
+  "protocol": "codex_responses",
+  "request": {
+    "model": "gpt-5.6-luna",
+    "system_prompt": [],
+    "messages": [
+      {
+        "role": "user",
+        "content": "请只回复：模型连通验收OK。不要调用工具。",
+        "tool_call_id": null,
+        "tool_calls": null,
+        "reasoning": null
+      }
+    ],
+    "input_items": [
+      {
+        "type": "message",
+        "role": "user",
+        "content": "请只回复：模型连通验收OK。不要调用工具。",
+        "sample_id": null,
+        "output_index": null
+      }
+    ],
+    "tools": [],
+    "parallel_tool_calls": true,
+    "max_output_tokens": 512,
+    "temperature": null,
+    "reasoning_effort": null,
+    "cache_breakpoints": [],
+    "response_format": null,
+    "metadata": {}
+  },
+  "synthetic_input_only": true,
+  "status": "completed",
+  "events": [
+    {
+      "kind": "created",
+      "data": {}
+    },
+    {
+      "kind": "server_model",
+      "data": {
+        "model": "gpt-5.6-luna"
+      }
+    },
+    {
+      "kind": "text_delta",
+      "data": {
+        "text": "模型"
+      }
+    },
+    {
+      "kind": "text_delta",
+      "data": {
+        "text": "连"
+      }
+    },
+    {
+      "kind": "text_delta",
+      "data": {
+        "text": "通"
+      }
+    },
+    {
+      "kind": "text_delta",
+      "data": {
+        "text": "验"
+      }
+    },
+    {
+      "kind": "text_delta",
+      "data": {
+        "text": "收"
+      }
+    },
+    {
+      "kind": "text_delta",
+      "data": {
+        "text": "OK"
+      }
+    },
+    {
+      "kind": "text_delta",
+      "data": {
+        "text": "。"
+      }
+    },
+    {
+      "kind": "normalized_output",
+      "data": {
+        "items": [
+          {
+            "output_index": 0,
+            "type": "message",
+            "text": "模型连通验收OK。"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "prompt_cache",
+      "data": {
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "previous_cache_read_input_tokens": 0,
+        "token_drop": 0
+      }
+    },
+    {
+      "kind": "completed",
+      "data": {
+        "response_id": "resp_02273439f4d5b336016adb2785d67c8198a98123fa51d294f7",
+        "usage": {
+          "input_tokens": 21,
+          "output_tokens": 11,
+          "total_tokens": 32,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "reasoning_tokens": 0,
+          "raw": {
+            "input_tokens": 21,
+            "input_tokens_details": {
+              "cached_tokens": 0,
+              "cache_write_tokens": 0
+            },
+            "output_tokens": 11,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 32,
+            "attribution": {
+              "items": {
+                "msg_02273439f4d5b336016adb2785d73c8198919f2bcbeeb2a4bc": {
+                  "input_tokens": 19,
+                  "cached_tokens": 0,
+                  "cache_write_tokens": 0,
+                  "output_tokens": 0,
+                  "content": [
+                    {
+                      "input_tokens": 19,
+                      "cached_tokens": 0,
+                      "cache_write_tokens": 0,
+                      "output_tokens": 0
+                    }
+                  ]
+                },
+                "msg_02273439f4d5b336016adb27867b488198842a03ae64779f43": {
+                  "input_tokens": 2,
+                  "cached_tokens": 0,
+                  "cache_write_tokens": 0,
+                  "output_tokens": 11,
+                  "content": [
+                    {
+                      "input_tokens": 2,
+                      "cached_tokens": 0,
+                      "cache_write_tokens": 0,
+                      "output_tokens": 11
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "end_turn": true,
+        "request_id": null,
+        "stop_reason": "completed"
+      }
+    }
+  ],
+  "seconds": 1.599
+}

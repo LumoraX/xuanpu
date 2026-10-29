@@ -1,7 +1,7 @@
 ---
 name: invoice-intake
 description: 归集受权固定版本发票原件，查询持久进度并为报销或应付处理补件。
-version: 0.15.0-f14
+version: 0.16.0-f15
 entry: false
 type: composite
 tool_names:
@@ -30,6 +30,10 @@ tool_names:
 # 发票归集与补件
 
 先调用getFinanceCapabilities；读取失败或字段非法时停止并说明。profile=internal_records时只处理内部收件元数据、普通报销草稿、记录查询和人工动作预检；不调用应付、资金、支付、记账、查验、红字、正式档案或通用接入检查接口。实例能力不是个人授权、审批或上线验收。
+
+F15目录与分页：首次查询省略cursor或传cursor=null（null由平台HTTP出口省略）；后续只传同一次筛选返回的真实next_cursor，next_cursor=null即结束，不得填写空字符串游标。先单独调用listLegalEntities取得有权公司的真实id；仅一个公司时使用该结果，多个时请用户按公司名称选择。先取得有权公司的真实id，再按依赖关系查询所需分类、归属、收件或待审；互不依赖的必要只读可在同一轮并行调用，不得在取得真实公司前发出依赖legal_entity_id的查询。禁止__unknown__、空串或其他占位ID，也不向普通用户索要系统ID。CURSOR_INVALID时改为省略cursor从该筛选第一页重新读取，不猜造下一页。
+
+普通报销仅因提到已收件附件时，不要求先运行本Skill再重新查一遍收件。已收件附件的普通报销起草由expense-reimbursement直接查询元数据并完成；本Skill处理独立的收件查询、归集或补件目标。实际调用本Skill仍先核对能力和权限，未成功取得元数据不以父参数或用户文字替代。
 
 ## internal_records 分支
 

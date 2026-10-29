@@ -1,0 +1,40 @@
+{
+  "status": "offline_gates_passed_real_acceptance_incomplete",
+  "suites": {
+    "full": {
+      "tests": 3073,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 3
+    },
+    "quick": {
+      "tests": 620,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "docs_tests": 222,
+  "source_frozen_files": 740,
+  "source_sha_drift": [],
+  "source_manifest_sha256": "c44a6731c71e618be7e17fbd1cf1192873da00bd88620c8d0a3588ed91b41ea9",
+  "quick_modules": 50,
+  "prior46_relative_order_preserved": true,
+  "model_attempts": 208,
+  "model_completed_usage": 206,
+  "usage_unknown_attempts": [
+    56,
+    59
+  ],
+  "global_stream_cap": 240,
+  "session_token_cap": 200000,
+  "budget_not_expanded_or_reset": true,
+  "complete_real_journeys": 0,
+  "required_complete_real_journeys": 2,
+  "latest_source_real_model_verified": false,
+  "local_commit_created": false,
+  "head": "eb15fa49f83af07dc18da05a2e0fcdf0e3875546",
+  "pushed": false,
+  "merged": false,
+  "deployed": false
+}

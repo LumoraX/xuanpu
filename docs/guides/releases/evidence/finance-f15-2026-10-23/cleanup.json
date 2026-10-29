@@ -1,0 +1,43 @@
+{
+  "status": "completed",
+  "container_removed": "xuanpu-finance-f15-pg",
+  "container_id": "8c246be961afab7a44a691c7bda0b07d9c297ed33550a8314ea5b3d86a6ddddd",
+  "owned_volumes_removed": [
+    "4be5d4548cfa6e0822126ccc9767d1037832fbce3c4b4ec004be390ec2164e37"
+  ],
+  "private_dsn_files_removed": [
+    "xuanpu-finance-f15-dsn",
+    "xuanpu-finance-f15-dsn-baseline2",
+    "xuanpu-finance-f15-final1-dsn",
+    "xuanpu-finance-f15-final2-dsn",
+    "xuanpu-finance-f15-final3-dsn",
+    "xuanpu-finance-f15-final4-dsn",
+    "xuanpu-finance-f15-final5-dsn",
+    "xuanpu-finance-f15-final6-dsn",
+    "xuanpu-finance-f15-final7-dsn",
+    "xuanpu-finance-f15-final8-dsn",
+    "xuanpu-finance-f15-final9-dsn",
+    "xuanpu-finance-f15-suite-dsn"
+  ],
+  "private_states_removed": [
+    "baseline-state",
+    "baseline2-state",
+    "final1-state",
+    "final2-state",
+    "final3-state",
+    "final4-state",
+    "final5-state",
+    "final6-state",
+    "final7-state",
+    "final8-state"
+  ],
+  "database_port_closed": true,
+  "test_databases_removed_with_owned_container": true,
+  "original_checkout_clean": true,
+  "branch_preserved": "feat/finance-f15",
+  "artifacts_preserved": "/tmp/xuanpu-finance-f15-build",
+  "deployed": false,
+  "pushed": false,
+  "merged": false,
+  "production_status": "not_verified"
+}

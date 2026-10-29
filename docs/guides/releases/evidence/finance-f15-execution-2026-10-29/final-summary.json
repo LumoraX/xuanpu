@@ -1,0 +1,38 @@
+{
+  "status": "PartialOptimizationValidated",
+  "f15_status": "IncompletePendingRealAcceptance",
+  "full_offline": {
+    "tests": 3185,
+    "passed": 3182,
+    "skipped": 3,
+    "failures": 0,
+    "errors": 0,
+    "wrapper_status": "partial"
+  },
+  "first_full_failure": "retained, not reproduced, root cause unresolved",
+  "docs_tests_passed": 225,
+  "frozen_source_files": 742,
+  "source_drift": [],
+  "head": "eb15fa49f83af07dc18da05a2e0fcdf0e3875546",
+  "model_calls_this_turn": 10,
+  "model_calls_total": 218,
+  "complete_usage": 216,
+  "usage_unknown_attempts": [
+    56,
+    59
+  ],
+  "global_model_cap": 240,
+  "remaining_model_attempts": 22,
+  "real_complete_journeys": 0,
+  "required_real_complete_journeys": 2,
+  "negative_challenges_09_10": "not_run",
+  "original_failed_result_unchanged": true,
+  "new_artifacts": 3,
+  "local_commit_created": false,
+  "merged": false,
+  "pushed": false,
+  "deployed": false,
+  "paid": false,
+  "human_approval_and_independent_storage_preserved": true,
+  "cleanup": "passed"
+}

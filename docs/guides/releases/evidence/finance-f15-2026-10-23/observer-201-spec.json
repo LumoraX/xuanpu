@@ -1,0 +1,146 @@
+{
+  "status": "Approved",
+  "review_date": "2026-10-24",
+  "scope": "observer201 narrowed pre-freeze specification review of three permitted files; not final full journey acceptance",
+  "findings": [],
+  "closed_findings": [
+    {
+      "id": "O201-S01",
+      "status": "closed",
+      "resolution": "actual_tool_messages now validates source-specific role/type and reads the corresponding call-id/body fields. successful_tools and matching_model_plan share this boundary. Eight container negative cases independently GREEN; original reviewer counterexamples preserved in history and observer-201-spec-source-boundary-red.json."
+    }
+  ],
+  "specification_assessment": {
+    "status_contract": "Nine table entries independently parsed against actual OAS: only createExpenseClaim and previewFinanceAction201, other seven only200. Unknown tools and undeclared statuses rejected.",
+    "scope": "require_tools derives current actor user_id and session from the existing label-session record; raw proposals and outputs match phase/reader/session, call_id and tool name.",
+    "raw_source": "messages requires role=tool and absent/message type; input_items requires function_call_output and absent/tool role. Each container supplies its own call-id and body field. Non-tool/cross-container text, wrong output name, is_error and missing raw fail.",
+    "sse_conflicts": "Same-call completed SSE with wrong name, non-False is_error or wrong status blocks raw success. Missing completed is retained and can be proved by actual same-scope raw output without fabricating an event.",
+    "preview": "Only actual tool201 output, exact target/version/type/action proposal and planID/digest/callid;200/202/204 and non-tool/cross-container messages fail.",
+    "business_boundaries": "PG exact, history/decisions, original text/amount/date/receipt, model preview, forbidden execute/original and leakage checks remain independent. Nine-tool table does not filter raw records or grant permissions. Prior-frozen comparison finds exactly three permitted changed files; Skill/model factory/budget/product source unchanged.",
+    "actual_final5": "Independent offline check recognizes exactly three required create-stage tools; same-call raw201 exists in messages and input_items, with no SSE completed. Raw draft matches existing PG export. Original journey remains failed."
+  },
+  "checks": [
+    {
+      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/observer-201-spec-tests-final.xml",
+      "returncode": 0,
+      "passed": 109,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "observer-201-spec-tests-final.log",
+      "log_sha256": "00060deb351bef9af02f21cba470d9b5289a2c6fa6cf0ab2b7568fbbb4bd66a0",
+      "xml": "observer-201-spec-tests-final.xml",
+      "xml_sha256": "6c0c84fc2aed0e9bffb5a3ee1b9b72bf705d6821e4f12d4f6d48927866dc38bc"
+    },
+    {
+      "check": "Independent nine-operation OAS mapping and actual final5 raw/PG-export reassessment",
+      "status": "passed_for_observation_only_journey_remains_failed",
+      "evidence": "observer-201-spec-reassessment.json",
+      "sha256": "7e50e5294be217972b9ada51dd96bb79ab527122ec9143de94de2085af7c0481"
+    },
+    {
+      "check": "Archived staged RED logs inspected",
+      "evidence": [
+        "observer-201-red.log:5failed/16passed",
+        "observer-raw-scope-red.log:37failed",
+        "observer-preview-red.log:3failed/4passed",
+        "observer-container-red.log:8failed"
+      ],
+      "limitation": "Archived RED was read, not rerun by reverting shared source; independent GREEN and reviewer original counterexamples were executed."
+    }
+  ],
+  "source_sha256": {
+    "scripts/acceptance/finance_model_checks.py": "1983f9b4750a7fa28275d88a6e2bf8e94c8f051c87c4063a4743cfbee4784da1",
+    "scripts/acceptance/finance_model_journey.py": "6521428ce6e3d589b608a97edea86085c743745cb18ead43a4e0ec98c0eed7c0",
+    "packages/xuanpu-finance/tests/test_f15_model_harness.py": "8947016ec2416ad942937096e483b09f3ea63b53e02a9e5ffbac7aae12f39fa4"
+  },
+  "changed_reference_frozen_files": [
+    "packages/xuanpu-finance/tests/test_f15_model_harness.py",
+    "scripts/acceptance/finance_model_checks.py",
+    "scripts/acceptance/finance_model_journey.py"
+  ],
+  "reference_freeze_sha256": "47b3e2ad34fceade57876d8120a79d60cd9923cb497df26c1f1f8b7ea27d12ec",
+  "design_review_sha256": "511dcd7baf691d0b303295531b8ea7d7a29ac74e1a1c61cd4b7ef596591dd7f2",
+  "implementation_report_sha256": "1ab6aab94a5c4560397a3d70e604540d6da5931cfe318865eab840f861a9194e",
+  "actual_evidence_sha256": {
+    "final5/model-095.json": "0715d4bf791dd7d94faf3d322092a8b16438c0ffb2d0642e4c21d820819c355f",
+    "final5/model-096.json": "365d540fd9397c7248093a2823a3fb85ba365fe2b6e12bbb804ec70d6bedeb6b",
+    "final5/02-create-session.json": "25710e246fb97e4b909e09869cf6a422589473a5c0d199ddd80da0e0659f3c78",
+    "final5/actual-pg-after-observer-failure.json": "43b2e2d6823a8733bb335e3144c3c3be50eb79750c37df397e20928808c3a46d",
+    "final5/result.json": "5732a2bf5e01138370b67be0518c19a80bca70d19a331d4eb48ec5dec41df13f"
+  },
+  "actual_pg_source_boundary": "Only read already exported final5/actual-pg-after-observer-failure.json; no live PG query or credentials. Raw HTTP201 fields and exported state cross-checked separately.",
+  "remaining_gates": [
+    "Sequential quality review, new freeze and affected artifact verification.",
+    "Two fresh complete real-model user journeys with original natural messages and business/negative gates; final5 stays failed.",
+    "Final full/quick/static/global review, secret scan/owned cleanup/local commit remain parent responsibilities."
+  ],
+  "limitations": [
+    "No private config/ledger, live PG, real model API or production accessed.",
+    "No product/harness/test source edited by reviewer.",
+    "Preview201 has offline schema/negative evidence here, not a completed real-model preview/approval workflow."
+  ],
+  "history": [
+    {
+      "status": "Needs revision",
+      "scope": "observer201 narrow specification review, no product source edits by reviewer",
+      "findings": [
+        {
+          "id": "O201-S01",
+          "priority": "P1",
+          "finding": "Raw origin is selected after concatenating request.messages and request.input_items; raw_tool_output accepts role=tool OR type=function_call_output without knowing its container. It therefore incorrectly accepts a user message labelled function_call_output in messages, or a message-type input_item merely labelled role=tool.",
+          "required": "Enumerate sources separately: messages role=tool only; input_items type=function_call_output only, rejecting contradictory role/type. Both successful_tools and matching_model_plan must use that source boundary; add the two counterexamples as offline RED/GREEN."
+        }
+      ],
+      "counterexamples": [
+        {
+          "container": "messages",
+          "message": {
+            "role": "user",
+            "type": "function_call_output",
+            "call_id": "c",
+            "output": "HTTP 201\n{}"
+          },
+          "actual_accepted": [
+            "api__finance__createExpenseClaim"
+          ],
+          "expected_accepted": []
+        },
+        {
+          "container": "input_items",
+          "message": {
+            "role": "tool",
+            "type": "message",
+            "tool_call_id": "c",
+            "content": "HTTP 201\n{}"
+          },
+          "actual_accepted": [
+            "api__finance__createExpenseClaim"
+          ],
+          "expected_accepted": []
+        }
+      ],
+      "current_checks": [
+        {
+          "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/observer-201-spec-tests.xml",
+          "returncode": 0,
+          "passed": 101,
+          "log": "observer-201-spec-tests.log",
+          "xml": "observer-201-spec-tests.xml",
+          "limitation": "Existing 101 cases pass but did not cover the source-container counterexamples above."
+        }
+      ],
+      "source_sha256": {
+        "scripts/acceptance/finance_model_checks.py": "83a2c7bdafb62ab3a1ecdc5f3936bf386248b8e6cb8bb6b4ee99683fb5abb24c",
+        "scripts/acceptance/finance_model_journey.py": "6521428ce6e3d589b608a97edea86085c743745cb18ead43a4e0ec98c0eed7c0",
+        "packages/xuanpu-finance/tests/test_f15_model_harness.py": "d4a9704cbf2ee3ccba55afa2847d3ecbfe7788ca4fb36cd9cacc905e0dae213e"
+      },
+      "limitations": [
+        "No PG, real model, private model config or private ledger accessed.",
+        "The final5 PG state is from an already exported JSON file, not an independently executed live query.",
+        "Final5 stays failed and is not promoted to a completed user journey."
+      ],
+      "history": []
+    }
+  ]
+}

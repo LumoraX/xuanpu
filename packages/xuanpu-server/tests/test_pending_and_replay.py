@@ -124,7 +124,9 @@ async def test_replay_returns_audited_events_with_full_text(
     assert kinds[0] == "turn_started"
     assert kinds[-2:] == ["turn_completed", "turn_text"]
     assert "assistant_text" not in kinds
-    assert replayed[-1]["data"] == {"text": "第一句。第二句。"}
+    assert replayed[0]["data"]["operation_terminal"] is False
+    assert replayed[-2]["data"]["operation_terminal"] is True
+    assert replayed[-1]["data"] == {"text": "第一句。第二句。", "operation_terminal": True}
     assert all("submission_id" not in event["data"] for event in replayed)
 
     last_seq = [event.seq for event in live if event.msg.kind == "turn_completed"][0]
@@ -165,7 +167,7 @@ async def test_pending_and_replay_over_http(world: Any, step: Any) -> None:
         assert pending[0]["request_id"] == events[-1].data["pending"][0]["request_id"]
         replayed = await client.sessions.replay(session.session_id, events[0].submission_id)
         assert replayed[-1] == {
-            "kind": "turn_text", "seq": None, "at": replayed[-1]["at"], "data": {"text": "要更新"},
+            "kind": "turn_text", "seq": None, "at": replayed[-1]["at"], "data": {"text": "要更新", "operation_terminal": True},
         }  # fmt: skip
 
 

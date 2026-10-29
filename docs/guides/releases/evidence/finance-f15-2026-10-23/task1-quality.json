@@ -1,0 +1,95 @@
+{
+  "status": "Approved",
+  "phase": "implementation-before-final-replay",
+  "review_type": "独立代码质量审查与有限纯离线回归",
+  "review_date": "2026-10-23",
+  "baseline": "eb15fa49f83af07dc18da05a2e0fcdf0e3875546",
+  "branch": "feat/finance-f15",
+  "reviewed_state": "未提交工作区，与task1-spec.json所列六个实现及测试文件SHA256一致",
+  "spec_review_prerequisite": {
+    "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/task1-spec.json",
+    "status": "Approved",
+    "required_changes": []
+  },
+  "scope": [
+    "四个finance_model运行器及两个F15专项测试模块",
+    "实际GatewayModelClientFactory、TieredModelClient、公开HTTP响应格式与财务认证路径的只读核对",
+    "finance_browser中真实装配复用路径、合成身份夹具与finance_runner测试DSN校验的只读核对",
+    "已修改入口/报销Skill与QUICK_MODULES变更的质量核对"
+  ],
+  "required_changes": [],
+  "findings": [],
+  "strengths": [
+    {
+      "file": "scripts/acceptance/finance_model.py",
+      "lines": [41, 151, 155, 178],
+      "assessment": "生产Platform在运行时创建前注入call_context与真实Gateway工厂包装。仅复用明确的身份、财务配置和网关发布辅助函数，没有调用ModelBlocker装配或替换runtimes.get。AsyncExitStack逆序关闭HTTP客户端、监听器、财务runtime及平台，运行异常保留失败，清理异常也不会保留passed状态。"
+    },
+    {
+      "file": "scripts/acceptance/finance_model_runtime.py",
+      "lines": [73, 156, 175, 211],
+      "assessment": "账本跨旅程恢复，模型请求派发前持久累计attempt及请求字节；全局锁串行覆盖真实stream，保留原请求和原事件，仅收紧max_output_tokens。逐事件限额、单请求超时和缺usage永久halt均在错误路径生效；原始异常同时保留在单stream trace中。"
+    },
+    {
+      "file": "scripts/acceptance/finance_model_journey.py",
+      "lines": [40, 53, 83, 123, 163, 182],
+      "assessment": "模型确认与人工业务执行分离；确认白名单只包含草稿创建、修改与内部报销预检。人工执行只选当前phase、actor、action、版本的模型真实preview计划，绑定同call_id成功HTTP返回中的计划ID与digest，再通过公开cookie/CSRF入口确认。未用人工预检补造模型应完成的计划。"
+    },
+    {
+      "file": "scripts/acceptance/finance_model_checks.py",
+      "lines": [14, 68, 95, 136, 177, 187],
+      "assessment": "事实判定与运行装配分离。实际工具成功需要模型调用与同call_id HTTP200返回同时存在；根答复与子Skill答复分开。金额/日期/类别/receipt/原文精确检查，公开历史逐项全内容对应PG版本与人工决定，避免仅凭回复、数量或ID子串通过。"
+    },
+    {
+      "file": "scripts/acceptance/finance_model_journey.py",
+      "lines": [296, 391],
+      "assessment": "最终状态、三次真实人工理由及actor/origin、全部版本、正式财务表零写入、独立原件保全和挑战前后保护状态均有独立检查点。越权泄漏检查包含模型输入中的工具结果、原始事件、SSE与HTTP历史；证据明确区分回收站删除和本轮精确对象删除。"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f15_model_harness.py",
+      "lines": [18, 289],
+      "assessment": "离线测试覆盖跨运行预算、缺usage、资源拒绝前不派发、原始事件保存、失败不能变成功、禁止执行/支付/原件确认、旧计划与无关call_id拒绝、工具失败不算实际读取、子Skill不能遮盖根答复、输入工具结果泄漏和历史内容篡改等实质边界。"
+    }
+  ],
+  "verification": [
+    {
+      "kind": "pure_offline_selected_tests",
+      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
+      "result": "46 passed, 1 deselected in 0.65s",
+      "exit_code": 0,
+      "boundary": "明确排除真实loopback HTTP测试；本审查未运行loopback，该1项不计通过。未连接PG、真实模型或私有配置。"
+    },
+    {
+      "kind": "selected_lint",
+      "command": "uv run ruff check --select F,S108,I,TC scripts/acceptance/finance_model.py scripts/acceptance/finance_model_runtime.py scripts/acceptance/finance_model_journey.py scripts/acceptance/finance_model_checks.py packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "result": "All checks passed!",
+      "exit_code": 0
+    },
+    {
+      "kind": "reviewed_file_hashes",
+      "result": "六个实现/测试文件均与Approved规格报告的SHA256相同。"
+    }
+  ],
+  "limitations": [
+    "本审查仅批准implementation-before-final-replay质量门槛，不是业务验收通过，不是生产上线或合并批准。",
+    "没有运行PG、真实网关模型、完整HTTP/EdDSA链路或完整用户旅程；没有读取私有DSN、模型配置、cookie值或私钥。",
+    "未运行该loopback HTTP测试，未重复全量pytest、全量Ruff、strict mypy、构建或安装制品验证；不得把主agent或其他审查者的结果算作本审查实际运行。",
+    "付款/入账字符串规则仅为限定场景的保守启发式门槛，不能证明任意自然语言语义；最终必须独立阅读冻结后原始根回复与真实持久数据。",
+    "server_model是客户端payload模型名回显；真实私有网关后端模型身份仍not_verified。",
+    "合成HTTP身份只验证相应接口流程，不证明真实员工、SSO、浏览器点击、公司正式制度、官方验票、生产负载或异机恢复。"
+  ],
+  "pending": [
+    "冻结模型输入与业务行为相关文件后，以相同自然语句执行两次独立fresh-state完整真实模型旅程，保留所有失败。",
+    "独立复核两次原始模型/HTTP/签名/PG证据与根答复语义，不能以本次Approved预先认定业务通过。",
+    "完成计划规定的全量源码门禁、制品验证和最终独立全量规格/质量审查后，再由主agent判断本地提交条件。"
+  ],
+  "approval_scope": "当前实现未发现须阻断冻结与最终真实重放的代码质量问题；允许进入冻结后的双次真实旅程。",
+  "reviewed_sha256": {
+    "scripts/acceptance/finance_model.py": "3a61fc4e54fe6898f4a3707133192880d085e632bb3625e6dd35b637adfc7da3",
+    "scripts/acceptance/finance_model_runtime.py": "f0a6e8172bae8fe6e5432a581dc3d9cf5f95db2a2e9f08078975b5203ce52a92",
+    "scripts/acceptance/finance_model_journey.py": "3e8201dc7985b2a4dcbf403aeedf1eb96e4f922565f21d7ce6dc276ba11139ff",
+    "scripts/acceptance/finance_model_checks.py": "8de3c6a30363a06ca6c9e8adf889b94b5f127036c8f7f7cf2d976853d93d43dd",
+    "packages/xuanpu-finance/tests/test_f15_model_harness.py": "0f9fa435d1b1601ad5f6228e97eda72e14cafbd2a9f00a9363f51b025518f669",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "d84c5ec0975a661b24510bcfe621a26c38f78077cde370ddf28fca1b377ee756"
+  }
+}

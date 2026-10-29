@@ -1,0 +1,157 @@
+{
+  "status": "Approved",
+  "review_date": "2026-10-24",
+  "scope": "最后窄化的历史意见答复与摘要q选择规则；只批准离线Skill/测试修复，不批准进一步真实模型消费、扩额或完成提交。",
+  "verified_failure": {
+    "journey": "final8",
+    "status": "failed",
+    "failure": "fresh_query_semantic_facts",
+    "raw_phase": "08-fresh-query:session",
+    "reader_actor_id": "usr_233e582c7b350a1d37d69d0f",
+    "session_id": "ses_23b81f8a8c31b4b426d898409ae96b08",
+    "history_pages": [
+      {
+        "call_id": "call_fa5c084f393a4ffa99e0fd0905f0b809",
+        "proposed_in": "final8/model-206.json",
+        "raw_seen_in": "final8/model-207.json",
+        "full_raw_sha256": "f65231d7ed62e0568d258454e75e3790e09af14e03a90df9659232921ea28d3e",
+        "limit": 5,
+        "has_actual_input_cursor": false,
+        "total": 10,
+        "returned_items": 5,
+        "has_next_cursor": true,
+        "actual_decisions": [
+          {
+            "id": "decision:2e2605faf9ae4fb58c2904d13dcb982e",
+            "kind": "decision",
+            "action": "reject",
+            "actor_id": "usr_78285a69546d865b8bad5012",
+            "workflow_id": "94f455f895764ea0802af85c179bd1de",
+            "reason": "请补充客户拜访事由"
+          }
+        ]
+      },
+      {
+        "call_id": "call_6ab9d0e7ca164fef9b890a6dc3250cc9",
+        "proposed_in": "final8/model-207.json",
+        "raw_seen_in": "final8/model-208.json",
+        "full_raw_sha256": "71349c03fe233ab364a76e7f596e4c0a546b6aafc9c67df80fd9b31e1dfb4c40",
+        "limit": 5,
+        "has_actual_input_cursor": true,
+        "total": 10,
+        "returned_items": 5,
+        "has_next_cursor": false,
+        "actual_decisions": [
+          {
+            "id": "decision:cd2dc133a09443eabacdd9da857ab4cd",
+            "kind": "decision",
+            "action": "approve",
+            "actor_id": "usr_78285a69546d865b8bad5012",
+            "workflow_id": "9920fda03ad54df897225a1706bfc518",
+            "reason": "客户拜访事由已补充"
+          },
+          {
+            "id": "decision:1d5fe14283ed45f58ed852c24256a959",
+            "kind": "decision",
+            "action": "approve",
+            "actor_id": "usr_6ff99f80ea1780c3a75d2583",
+            "workflow_id": "9920fda03ad54df897225a1706bfc518",
+            "reason": "内部记录已复核"
+          }
+        ]
+      }
+    ],
+    "summary_queries": [
+      {
+        "call_id": "call_2694809f1ed44de79bc50844da0d8517",
+        "trace": "final8/model-204.json",
+        "q": "交通",
+        "view": "mine",
+        "total": 0,
+        "returned_items": 0,
+        "full_raw_sha256": "57e5a7ac81b8ce48c6a995c656a06ba25ee4aba341a3efd92e495d57ed742bc2"
+      },
+      {
+        "call_id": "call_040eda1bd420404aaacdc837e63f2da3",
+        "trace": "final8/model-205.json",
+        "q": null,
+        "view": "mine",
+        "total": 1,
+        "returned_items": 1,
+        "full_raw_sha256": "53df6ddce47d9ee4dd6fd14f40f171dd48178ad6d2571470842b4f3fb9fe7432"
+      }
+    ],
+    "final_root_reply": "已找到你的交通报销单：\n\n- **报销单号**：`6232e1e4a9c74909a2fe3a1d9e3ba610`\n- **发生日期**：2026-10-22\n- **金额**：128.50 元\n- **当前状态**：**已批准**（版本 7）\n- **报销事由**：拜访上海客户讨论项目需求\n\n**原审批意见：**\n1. 负责人审批：**批准**  \n   意见：客户拜访事由已补充\n2. 财务复核：**批准**  \n   意见：内部记录已复核\n\n**付款情况：**\n- 付款状态：尚未申请付款（`not_requested`）\n- 已支付：0.00 元\n- 待支付：0.00 元\n\n**记账情况：**\n- 记账状态：尚未记账（`not_posted`）\n- 已记账：0.00 元\n- 待记账：0.00 元\n- 冲回金额：0.00 元\n\n因此，这笔报销目前只是内部审批完成，**尚未付款，也尚未记账**。",
+    "known_rejection_present_in_complete_raw": true,
+    "known_rejection_present_in_final_root_reply": false,
+    "actual_final_reply_decision_count": 2,
+    "conclusion": "真实两页total10已经完整到达模型，包含旧workflow reject与新workflow两个approve；根最终仅展示两个approve。属于已读后的语义遗漏，不是缺页、截断或checker故障。"
+  },
+  "raw_evidence_hashes": {
+    "final8/model-204.json": "8098d556d3946bf1dea5dbb8446476e101d746b8464f30a873a0a8e028cdab15",
+    "final8/model-205.json": "cc8ef149f63fc677b6132f34216fa565d1ebd2905cf7cf947a38d485aed9c12c",
+    "final8/model-206.json": "a550b752f5d7893a90284b456cbc1c3fc1ccf9ae3bc8171fc03d537e62c4c6df",
+    "final8/model-207.json": "d48707553a9894eb4c06f5a4d26bfeb2e69e53a0d6676b59889a3e37ef5bcb2f",
+    "final8/model-208.json": "295b9eae4d0d9947c71c60f63a8057b56f13be336581a01691598473d83dcc37",
+    "final8/result.json": "e14130abe461a51298ac68badb464970017a4ffa02f01b73ce80e7c92563bfb9",
+    "final8/budget-snapshot.json": "ebb3ee233176333ffac290a3ca83c3e045d08659a1c4cfa74b4db1eff91da5eb"
+  },
+  "accepted_history_reply_design": [
+    "用户问原/历史审批意见时，从实际listExpenseClaimHistory的decision记录汇总所问各轮真实人工决定，保留时间/顺序、实际动作与理由；跨驳回、补充、重新提交的旧workflow记录不会因当前approved而消失。",
+    "不能只照当前getExpenseClaim.workflow.steps列当前一轮批准；当前步骤被cancelled是系统工作流状态，不是一个已发生的人工决定，不凭它编造拒绝意见。",
+    "已经实际读到的旧驳回理由在问完整历史时必须出现在最终答复；当前approved与历史reject应分别说明，不能用旧意见改变当前授权或复制旧批准。",
+    "仍按真实cursor和实际完整raw页读取到当前问询所需全部意见；当前例已两页齐全，不为遗漏盲加重复读取，也不改checker认可不完整答复。",
+    "写generic规则，不在Skill硬编码必须三条、具体合成理由或固定版本数；用户只问最新意见时按其范围回答，不无条件复制所有票据原文。"
+  ],
+  "accepted_summary_query_design": [
+    "q是当前单号/单据content.reason字面不区分大小写匹配，不是费用类别、旧事由或语义搜索。最终该单当前事由为客户拜访内容，故q交通确实空、qnull找到，不是查询后端错误。",
+    "默认本人摘要用view=mine且无q；明确提供当前单号/当前事由字面筛选时才按用户实际条件设置q。不能为省查询改API匹配语义或使用虚构当前值。",
+    "用户明确给出字面条件返回0时如实解释，不把精确条件偷偷改成全量；若用户只是按费用类别/旧口述指代，则从本人授权摘要真实定位，遇多项歧义按原规则确认，不推断唯一记录。",
+    "改筛选重置cursor，当前RLS/用户公司/授权/版本仍照常；此改动只省无依据的空查再回退，不跳必要详情/历史或当前GET。"
+  ],
+  "mandatory_offline_tests": [
+    "actual final8/raw207-208为行为RED：旧workflow reject和新workflow approve均已读，而最终漏旧reason。先保存RED，再以历史两workflow结构检查规则和完整意见案例。",
+    "包含驳回→重提→批准、多轮/未知数量决定的泛化样例；当前approved不能省旧reject，cancelled step不转为人工决定；只有行/步骤状态无decision不能编理由。",
+    "分页样例需真实next_cursor与完整raw，缺页/错目标/错actor/错callid仍失败；已有完整raw时不以重复查询替代最终语义整合。",
+    "q类别词/旧事由默认不作为当前字面条件，mine无q定位；明确当前编号或事由按提供值查、精确0不伪称不存在全部记录；多候选维持歧义处理。",
+    "仅root发布与设计两份及相关test变更，不改自然提示、checker三真实理由门槛、13根工具/68模型API并集/77API/24internal/7Skills、依赖GET/版本/权限、human决定或原预算。"
+  ],
+  "preserved_partial_evidence": {
+    "passed_check_names": [
+      "approved_without_payment_posting",
+      "human_decisions_actual_pg",
+      "no_formal_business_rows",
+      "all_actual_versions_retained",
+      "public_history_contains_all_pg_versions_decisions",
+      "platform_source_removed",
+      "platform_source_bytes_removed",
+      "independent_original_same_sha"
+    ],
+    "boundary": "这是已归档通过的层级，不能据此晋升整个final8。08最终语义失败；后续09/10负向场景未执行，不冒称本轮全流程或无泄漏验收已全部完成。"
+  },
+  "budget_and_activity_boundary": {
+    "attempts": 208,
+    "completed": 206,
+    "unknown_attempts": [
+      56,
+      59
+    ],
+    "counter_equation": true,
+    "known_input_tokens": 1207876,
+    "known_output_tokens": 30074,
+    "remaining_to_original240": 32,
+    "halted": null,
+    "new_real_model_consumption_allowed": false,
+    "increase_limits_allowed": false,
+    "completion_commit_allowed": false,
+    "reason": "余32不足新完整旅程；按root和用户本轮限定仅离线修复，保持F15未完成，不以离线GREEN替代两次fresh真实旅程或重标原失败。",
+    "PG_scope": "本审查和实施agent不访问PG/私有ledger。root既有明确授权的独占owned PG全量/quick离线门禁可以继续，不被本报告误禁；这些门禁不能触发真实模型消费。"
+  },
+  "measurement_boundary": "partial-efficiency-comparison.json由root记录208=206+2；first3 final7=10/83000、final8=10/84738均为局部效率证据，不是整个旅程通过率。本审查未重跑模型或用该数字替代真实语义。",
+  "conclusion": "两项窄修准确对应真实遗漏和无效筛选，ApprovedForOfflineSkillFixOnly。原查询/历史/权限/业务验收门槛保持；新增Skill行为未经真实模型重验，必须明确未验证且F15未完成。",
+  "limitations": [
+    "只读本地raw、根Skill、查询存储源码和已归档结果，未查询PG/访问模型API/私有配置/当前私有ledger，未运行测试或修改源码/Skill。",
+    "人审/PG和原件结论来自本地归档已通过检查而非本次直接数据库查询；root独占PG离线门禁授权与本审查无PG访问边界分开。"
+  ],
+  "approval_scope": "offline_skill_and_test_fix_only"
+}

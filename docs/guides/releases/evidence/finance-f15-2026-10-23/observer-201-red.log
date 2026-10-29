@@ -1,0 +1,184 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0
+configfile: pyproject.toml
+plugins: asyncio-1.4.0, anyio-4.15.1
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 70 items / 49 deselected / 21 selected
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py FF.........FF... [ 76%]
+...F.                                                                    [100%]
+
+=================================== FAILURES ===================================
+_ test_successful_tool_requires_exact_status_and_proposal[createExpenseClaim-201-True-createExpenseClaim-False-True] _
+
+operation = 'createExpenseClaim', status = 201, same_call = True
+returned_operation = 'createExpenseClaim', error = False, accepted = True
+
+    @pytest.mark.parametrize(('operation', 'status', 'same_call', 'returned_operation', 'error', 'accepted'), [
+        ('createExpenseClaim', 201, True, 'createExpenseClaim', False, True),
+        ('createExpenseClaim', 200, True, 'createExpenseClaim', False, False),
+        ('createExpenseClaim', 202, True, 'createExpenseClaim', False, False),
+        ('createExpenseClaim', 204, True, 'createExpenseClaim', False, False),
+        ('createExpenseClaim', 201, False, 'createExpenseClaim', False, False),
+        ('createExpenseClaim', 201, True, 'getExpenseClaim', False, False),
+        ('createExpenseClaim', 201, True, 'createExpenseClaim', True, False),
+        ('createExpenseClaim', 201, True, 'createExpenseClaim', None, False),
+        ('getExpenseClaim', 200, True, 'getExpenseClaim', False, True),
+        ('getExpenseClaim', 201, True, 'getExpenseClaim', False, False),
+        ('getExpenseClaim', 202, True, 'getExpenseClaim', False, False),
+        ('executeFinanceAction', 200, True, 'executeFinanceAction', False, False),
+    ])
+    def test_successful_tool_requires_exact_status_and_proposal(operation: str, status: int,
+            same_call: bool, returned_operation: str, error: bool | None, accepted: bool):
+        """创建须201、读取须200，受理/空响应、错提议、错误和非旅程操作都不是成功证据。"""
+        name = 'api__finance__' + operation
+        calls = [{'call_id': 'actual-call', 'name': name}]
+        segments = [{'events': [{'kind': 'tool_call_completed', 'data': {
+            'call_id': 'actual-call' if same_call else 'unrelated-call',
+            'name': 'api__finance__' + returned_operation, 'is_error': error,
+            'output': f'HTTP {status}\n{{"id":"actual-document"}}'}}]}]
+>       assert checks().successful_tools(calls, segments) == ({name} if accepted else set())
+E       AssertionError: assert set() == {'api__financ...ExpenseClaim'}
+E         
+E         Extra items in the right set:
+E         'api__finance__createExpenseClaim'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:225: AssertionError
+_ test_successful_tool_requires_exact_status_and_proposal[createExpenseClaim-200-True-createExpenseClaim-False-False] _
+
+operation = 'createExpenseClaim', status = 200, same_call = True
+returned_operation = 'createExpenseClaim', error = False, accepted = False
+
+    @pytest.mark.parametrize(('operation', 'status', 'same_call', 'returned_operation', 'error', 'accepted'), [
+        ('createExpenseClaim', 201, True, 'createExpenseClaim', False, True),
+        ('createExpenseClaim', 200, True, 'createExpenseClaim', False, False),
+        ('createExpenseClaim', 202, True, 'createExpenseClaim', False, False),
+        ('createExpenseClaim', 204, True, 'createExpenseClaim', False, False),
+        ('createExpenseClaim', 201, False, 'createExpenseClaim', False, False),
+        ('createExpenseClaim', 201, True, 'getExpenseClaim', False, False),
+        ('createExpenseClaim', 201, True, 'createExpenseClaim', True, False),
+        ('createExpenseClaim', 201, True, 'createExpenseClaim', None, False),
+        ('getExpenseClaim', 200, True, 'getExpenseClaim', False, True),
+        ('getExpenseClaim', 201, True, 'getExpenseClaim', False, False),
+        ('getExpenseClaim', 202, True, 'getExpenseClaim', False, False),
+        ('executeFinanceAction', 200, True, 'executeFinanceAction', False, False),
+    ])
+    def test_successful_tool_requires_exact_status_and_proposal(operation: str, status: int,
+            same_call: bool, returned_operation: str, error: bool | None, accepted: bool):
+        """创建须201、读取须200，受理/空响应、错提议、错误和非旅程操作都不是成功证据。"""
+        name = 'api__finance__' + operation
+        calls = [{'call_id': 'actual-call', 'name': name}]
+        segments = [{'events': [{'kind': 'tool_call_completed', 'data': {
+            'call_id': 'actual-call' if same_call else 'unrelated-call',
+            'name': 'api__finance__' + returned_operation, 'is_error': error,
+            'output': f'HTTP {status}\n{{"id":"actual-document"}}'}}]}]
+>       assert checks().successful_tools(calls, segments) == ({name} if accepted else set())
+E       AssertionError: assert {'api__financ...ExpenseClaim'} == set()
+E         
+E         Extra items in the left set:
+E         'api__finance__createExpenseClaim'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:225: AssertionError
+_ test_successful_tool_requires_exact_status_and_proposal[executeFinanceAction-200-True-executeFinanceAction-False-False] _
+
+operation = 'executeFinanceAction', status = 200, same_call = True
+returned_operation = 'executeFinanceAction', error = False, accepted = False
+
+    @pytest.mark.parametrize(('operation', 'status', 'same_call', 'returned_operation', 'error', 'accepted'), [
+        ('createExpenseClaim', 201, True, 'createExpenseClaim', False, True),
+        ('createExpenseClaim', 200, True, 'createExpenseClaim', False, False),
+        ('createExpenseClaim', 202, True, 'createExpenseClaim', False, False),
+        ('createExpenseClaim', 204, True, 'createExpenseClaim', False, False),
+        ('createExpenseClaim', 201, False, 'createExpenseClaim', False, False),
+        ('createExpenseClaim', 201, True, 'getExpenseClaim', False, False),
+        ('createExpenseClaim', 201, True, 'createExpenseClaim', True, False),
+        ('createExpenseClaim', 201, True, 'createExpenseClaim', None, False),
+        ('getExpenseClaim', 200, True, 'getExpenseClaim', False, True),
+        ('getExpenseClaim', 201, True, 'getExpenseClaim', False, False),
+        ('getExpenseClaim', 202, True, 'getExpenseClaim', False, False),
+        ('executeFinanceAction', 200, True, 'executeFinanceAction', False, False),
+    ])
+    def test_successful_tool_requires_exact_status_and_proposal(operation: str, status: int,
+            same_call: bool, returned_operation: str, error: bool | None, accepted: bool):
+        """创建须201、读取须200，受理/空响应、错提议、错误和非旅程操作都不是成功证据。"""
+        name = 'api__finance__' + operation
+        calls = [{'call_id': 'actual-call', 'name': name}]
+        segments = [{'events': [{'kind': 'tool_call_completed', 'data': {
+            'call_id': 'actual-call' if same_call else 'unrelated-call',
+            'name': 'api__finance__' + returned_operation, 'is_error': error,
+            'output': f'HTTP {status}\n{{"id":"actual-document"}}'}}]}]
+>       assert checks().successful_tools(calls, segments) == ({name} if accepted else set())
+E       AssertionError: assert {'api__financ...inanceAction'} == set()
+E         
+E         Extra items in the left set:
+E         'api__finance__executeFinanceAction'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:225: AssertionError
+_ test_journey_success_status_is_declared_by_actual_openapi[createExpenseClaim-201] _
+
+operation = 'createExpenseClaim', status = '201'
+
+    @pytest.mark.parametrize(('operation', 'status'), [
+        ('createExpenseClaim', '201'), ('listSupportingMaterialImports', '200'),
+        ('getSupportingMaterialImport', '200'), ('listReviewQueue', '200'),
+        ('getExpenseClaim', '200'), ('listExpenseClaimHistory', '200'),
+        ('updateExpenseClaim', '200'), ('previewFinanceAction', '200'),
+        ('listExpenseClaimSummaries', '200'),
+    ])
+    def test_journey_success_status_is_declared_by_actual_openapi(operation: str, status: str):
+        """旅程九个目标逐条对照发布契约，不把任意2xx或202当成已完成。"""
+        from .test_package import contracts, operations
+    
+        contract = operations(contracts()['finance'])[operation][2]
+        assert set(contract['responses']) - {'default'} == {status}
+        name = 'api__finance__' + operation
+        calls = [{'call_id': 'declared', 'name': name}]
+        segments = [{'events': [{'kind': 'tool_call_completed', 'data': {
+            'call_id': 'declared', 'name': name, 'is_error': False,
+            'output': f'HTTP {status}\n{{}}'}}]}]
+>       assert checks().successful_tools(calls, segments) == {name}
+E       AssertionError: assert set() == {'api__financ...ExpenseClaim'}
+E         
+E         Extra items in the right set:
+E         'api__finance__createExpenseClaim'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:246: AssertionError
+_ test_journey_success_status_is_declared_by_actual_openapi[previewFinanceAction-200] _
+
+operation = 'previewFinanceAction', status = '200'
+
+    @pytest.mark.parametrize(('operation', 'status'), [
+        ('createExpenseClaim', '201'), ('listSupportingMaterialImports', '200'),
+        ('getSupportingMaterialImport', '200'), ('listReviewQueue', '200'),
+        ('getExpenseClaim', '200'), ('listExpenseClaimHistory', '200'),
+        ('updateExpenseClaim', '200'), ('previewFinanceAction', '200'),
+        ('listExpenseClaimSummaries', '200'),
+    ])
+    def test_journey_success_status_is_declared_by_actual_openapi(operation: str, status: str):
+        """旅程九个目标逐条对照发布契约，不把任意2xx或202当成已完成。"""
+        from .test_package import contracts, operations
+    
+        contract = operations(contracts()['finance'])[operation][2]
+>       assert set(contract['responses']) - {'default'} == {status}
+E       AssertionError: assert {'201'} == {'200'}
+E         
+E         Extra items in the left set:
+E         '201'
+E         Extra items in the right set:
+E         '200'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:240: AssertionError
+- generated xml file: /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/releases/evidence/finance-f15-2026-10-23/observer-201-red.xml -
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_successful_tool_requires_exact_status_and_proposal[createExpenseClaim-201-True-createExpenseClaim-False-True]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_successful_tool_requires_exact_status_and_proposal[createExpenseClaim-200-True-createExpenseClaim-False-False]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_successful_tool_requires_exact_status_and_proposal[executeFinanceAction-200-True-executeFinanceAction-False-False]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_journey_success_status_is_declared_by_actual_openapi[createExpenseClaim-201]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_journey_success_status_is_declared_by_actual_openapi[previewFinanceAction-200]
+================= 5 failed, 16 passed, 49 deselected in 1.67s ==================

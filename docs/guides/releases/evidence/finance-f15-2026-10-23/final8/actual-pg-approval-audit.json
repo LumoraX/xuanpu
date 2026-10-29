@@ -1,0 +1,64 @@
+{
+  "status": "confirmed_partial_flow_business_state",
+  "scope": "root independent read-only final8 PG after all model processes stopped",
+  "claims": [
+    {
+      "id": "6232e1e4a9c74909a2fe3a1d9e3ba610",
+      "version": 7,
+      "status": "approved",
+      "total": "128.50",
+      "owner_id": "usr_233e582c7b350a1d37d69d0f",
+      "reason": "拜访上海客户讨论项目需求"
+    }
+  ],
+  "human_decisions": [
+    {
+      "action": "reject",
+      "actor_id": "usr_78285a69546d865b8bad5012",
+      "data": {
+        "origin": "human",
+        "plan_id": "84b78256a9b94bdfb9daa303e3237d6d",
+        "parameters": {
+          "reason": "请补充客户拜访事由",
+          "workflow_step_id": "4486dd26c2ef483eb248299724b6fb16"
+        },
+        "target_version": 3
+      }
+    },
+    {
+      "action": "approve",
+      "actor_id": "usr_78285a69546d865b8bad5012",
+      "data": {
+        "origin": "human",
+        "plan_id": "6dc4ea12fa6a485b8c62fd86b046e1ac",
+        "parameters": {
+          "reason": "客户拜访事由已补充",
+          "workflow_step_id": "d95f4996a0414cd58a60974ea50e29cf"
+        },
+        "target_version": 6
+      }
+    },
+    {
+      "action": "approve",
+      "actor_id": "usr_6ff99f80ea1780c3a75d2583",
+      "data": {
+        "origin": "human",
+        "plan_id": "9454db660e7d426e85f42b2c4f6e0851",
+        "parameters": {
+          "reason": "内部记录已复核",
+          "workflow_step_id": "b66045e9821e4a93a76340788bce6c0f"
+        },
+        "target_version": 6
+      }
+    }
+  ],
+  "formal_business_counts": {
+    "finance_invoice": 0,
+    "finance_settlement_operation": 0,
+    "finance_compliance_operation": 0
+  },
+  "fresh_query_failed": true,
+  "negative_challenges_09_10_not_executed": true,
+  "complete_acceptance": false,
+  "mutations": false
+}

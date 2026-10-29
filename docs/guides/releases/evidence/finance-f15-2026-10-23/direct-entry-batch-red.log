@@ -1,0 +1,15 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__ test_direct_entry_batches_only_independent_reads_and_uses_current_versions __
+
+    def test_direct_entry_batches_only_independent_reads_and_uses_current_versions() -> None:
+        """允许低风险独立读取同轮，依赖写与当前版本不能靠缓存或并行跳过。"""
+        text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+        assert 'getFinanceCapabilities与listLegalEntities可同一轮独立只读' in text
+>       assert '首次同时需要能力和公司目录且均无当前实际结果时，应在同一轮发出这两个独立只读' in text
+E       assert '首次同时需要能力和公司目录且均无当前实际结果时，应在同一轮发出这两个独立只读' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...mation": "  测试票据\\n金额12.30；日期2026-10-22\\n附注仅作申报数据  "\n  },\n  "reason": "我需要报销子Skill按用户完整事实准备草稿，并逐字保留申报原文。"\n}\n```\n'
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:138: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f15_skill_contract.py::test_direct_entry_batches_only_independent_reads_and_uses_current_versions
+1 failed, 22 deselected in 0.10s

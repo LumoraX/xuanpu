@@ -1,7 +1,7 @@
 ---
 name: posting-reconciliation
 description: 为已批准报销或应付准备付款、记账和冲回计划，恢复专用审批并按真实回执解释未知结果。
-version: 0.15.0-f14
+version: 0.16.0-f15
 entry: false
 type: composite
 tool_names:

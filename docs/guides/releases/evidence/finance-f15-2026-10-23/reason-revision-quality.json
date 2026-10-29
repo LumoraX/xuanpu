@@ -1,0 +1,77 @@
+{
+  "status": "Approved",
+  "review_date": "2026-10-24",
+  "scope": "reason-revision三文件窄质量复审，不是完整业务验收",
+  "findings": [],
+  "required_changes": [],
+  "assessment": [
+    {
+      "file": "examples/finance/skills/finance-assistant/SKILL.md",
+      "line": 48,
+      "result": "单据/报销事由明确写draft.reason→content.reason；只改行reason不能替代。明确行级请求只改对应行且保留当前顶层，其余未请求字段保留当前GET。审批意见仍为preview parameters.reason，没有把三种reason混为一处。"
+    },
+    {
+      "file": "examples/finance/skills/finance-assistant/SKILL.md",
+      "line": 48,
+      "result": "仅本会话自己真实创建且唯一的实际ID省摘要重定位，仍必须当前GET/RLS/latest version；ID不作为授权/状态缓存。歧义、无真实ID、换身份公司、拒绝或刷新保持最小真实来源；fresh查询门槛没有删除。"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "lines": [
+        163,
+        253
+      ],
+      "result": "回归包含实际ExpenseUpdate/ActionPreview及build_request构造样例，验证顶层修改、行级负例、原文/附件/金额日期分类不变、expected_version与原幂等键、审批意见字段分离。它们是确定性协议证据，不是模型已正确修订的证明。"
+    },
+    {
+      "result": "实读model163，确为expected_version4、顶层旧reason、行级新reason；本地只读PG导出为v5 draft且同样顶层旧/行级新，final7保持failed。支持修Skill字段指引，不能改checker或自然语句放行。"
+    }
+  ],
+  "checks": [
+    {
+      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q",
+      "exit_code": 0,
+      "result": "133 passed in 3.18s",
+      "boundary": "实际含既有loopback HTTP测试；无外部API/PG/真实模型/私有配置访问。"
+    },
+    {
+      "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "exit_code": 0,
+      "result": "All checks passed!"
+    },
+    {
+      "check": "740项前冻结重新SHA比较",
+      "result": "仅两root副本及契约测试三文件变化",
+      "reference_sha256": "28196d6b483d898c98b889622ef5da84fc180501a28de6c6824c98f457b85091"
+    },
+    {
+      "check": "两目录validate_package、实际FilesystemSkillRegistry、pack_package内存ZIP比较",
+      "result": "均通过；root13/API并集68/7Skills保持，20公共ZIP成员完全相等。manifest/API/内部操作/权限/预算/普通零委派及所有其他运行器门槛为冻结原字节。",
+      "published_zip_sha256": "3701ec62efec13289a51eef4f485bd4bafd0c82fe86a4fb5721b720177f5beb9",
+      "design_zip_sha256": "497883f819784ff8ee7da9b3c0eb5bce1b77146536fc065b7a6929e5b33ad294",
+      "artifact_persisted": false
+    },
+    {
+      "check": "审查前后源SHA绑定",
+      "result": "三源最终稳定SHA与Approved spec一致；本审查未改源。"
+    }
+  ],
+  "source_sha256": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "a5242549807c99b49fc14da5c00fa04f61a86af09f88b919691c6bcca4407c37"
+  },
+  "prior_root_sha256": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
+  "prior_test_sha256": "c1bf092059c1261b5e2821451172b3f1966fea9fdd42cc634eb64c1fce1a19bb",
+  "design_review_sha256": "b35cdd70bd19e69d58123ec3aa6e3892d1379045633b98d05ac2a058d44ca4a3",
+  "limitations": [
+    "未PG/真实模型/私有配置/私有账本，无源修改或提交；PG仅本地既有导出。",
+    "未重复全量/quick/mypy或安装制品验证；133静态/协议GREEN不代表fresh模型正确修改或完整流程完成。",
+    "原240/200000等预算保持；余75是父任务报告，本审查未读私有账本，不承诺能完成两个fresh旅程。"
+  ],
+  "pending": [
+    "新freeze和受影响制品绑定；原自然语句与全部业务/安全门槛下fresh完整流程及独立语义/数据判定。",
+    "不足预算或业务仍失败时如实保留未完成，不拆owner会话、隐藏扩额或把final7晋升通过。"
+  ],
+  "approval_scope": "未发现阻断该三文件窄修进入新冻结和原预算内真实验证的质量问题。"
+}

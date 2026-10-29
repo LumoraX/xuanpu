@@ -1,0 +1,205 @@
+{
+  "status": "Approved",
+  "phase": "implementation-before-final-replay",
+  "review_type": "独立规格静态审查与选定纯离线回归",
+  "review_date": "2026-10-23",
+  "baseline": "eb15fa49",
+  "scope": [
+    "三个finance_model运行器、F15离线回归、QUICK_MODULES顺序",
+    "发布Skill的目录/分页/原文约束与finance/catalog可选query-null迁移",
+    "完整八步旅程的真实模型、人工决定、持久事实与安全门槛"
+  ],
+  "required_changes": [],
+  "accepted_findings": [
+    "生产GatewayModelClientFactory、Platform、route/session、TCP财务服务与公开人工入口的装配未见ModelBlocker或脚本模型替换。人工execute与模型草稿写/预检白名单分离。",
+    "预算累计探针与失败，stream请求前保留attempt、输出预留4096、缺usage永久halt；请求/事件/全局与每轮时间限制均存在。未观察自动升额或隐藏模型切换。",
+    "原件检查明确说明回收站仍保留字节；夹具精确删除本轮隔离平台对象并检查不存在，再通过公开财务人工入口读取独立原件比对SHA。没有将其冒称公开永久删除能力。",
+    "独立将eb15fa49的完整finance/catalog规范按既有nullable语义规范化，允许optional query新增null并排除query说明、OpenAPI版本和info.version后，全schema差异均0。未见body/action矩阵/required/response语义扩大。",
+    "QUICK_MODULES新增两个F15模块在首部，既有46项相对顺序保留；业务包变动触发0.16.0-f15，未见finance/console产品源变动。"
+  ],
+  "verification": [
+    {
+      "kind": "pure_offline_selected_tests",
+      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
+      "result": "24 passed, 1 deselected in 0.63s",
+      "boundary": "明确排除loopback HTTP测试；未运行的1项不是通过。未调用模型、PG或私有配置。"
+    },
+    {
+      "kind": "independent_schema_comparison",
+      "result": "finance normalized_schema_diff_count=0; catalog normalized_schema_diff_count=0",
+      "method": "读取git show eb15fa49下的两份YAML，递归nullable:true转anyOf+null，再仅允许optional query schema新增null；删除query说明和OpenAPI/info.version元信息后逐节点比较。"
+    },
+    {
+      "kind": "pure_offline_followup_tests",
+      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
+      "result": "33 passed, 1 deselected in 1.34s",
+      "boundary": "排除loopback HTTP；未PG/真实模型/私有配置。"
+    },
+    {
+      "kind": "selected_lint",
+      "command": "uv run ruff check --select F,S108,I,TC scripts/acceptance/finance_model.py scripts/acceptance/finance_model_runtime.py scripts/acceptance/finance_model_journey.py scripts/acceptance/finance_model_checks.py packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "result": "All checks passed!"
+    },
+    {
+      "kind": "pure_offline_followup_tests",
+      "result": "44 passed, 1 deselected in 0.72s",
+      "boundary": "明确排除loopback HTTP；未PG/模型/私有配置。"
+    },
+    {
+      "kind": "direct_pure_function_counterexample",
+      "result": "financial_reply_is_zero(未付款但已付款；未入账)=True；financial_reply_is_zero(未付款但已付款0.00；未入账)=True",
+      "boundary": "纯字符串函数，无模型调用。"
+    },
+    {
+      "kind": "pure_offline_final_spec_recheck",
+      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
+      "result": "46 passed, 1 deselected in 0.68s",
+      "boundary": "明确排除loopback HTTP，未运行项不是通过；未PG/模型/私有配置。"
+    },
+    {
+      "kind": "selected_lint_final_spec_recheck",
+      "command": "uv run ruff check --select F,S108,I,TC scripts/acceptance/finance_model.py scripts/acceptance/finance_model_runtime.py scripts/acceptance/finance_model_journey.py scripts/acceptance/finance_model_checks.py packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "result": "All checks passed!"
+    }
+  ],
+  "pending": [
+    "当前规格修项S01-S04全部关闭；接下来独立质量审查并冻结影响模型输入/行为的文件。",
+    "冻结same-prompts的两次独立fresh-state真实模型完整旅程尚未运行，本审查不预判其结果",
+    "真实PG数据断言、真实网关模型重放及完整HTTP/签名链路均未由本审查运行",
+    "完整pytest/Ruff/mypy、制品及最终独立全量规格/质量审查由后续交付阶段执行"
+  ],
+  "limitations": [
+    "此结论针对临时实现规格门槛，不宣称业务验收完成，也不因最终两轮pending将全部实现判定失败。",
+    "未读取私有模型配置、DSN、cookie或私钥；未启动/访问PG、真实模型、生产服务；未更改产品、运行器、Skill或其他文档。",
+    "server_model来自客户端payload回显，私有网关后端模型身份仍not_verified；本审查没有独立wire证据。",
+    "未验证真实员工/SSO、实际浏览器点击、公司正式制度、官方票据真实性、生产网络/负载或异机恢复。",
+    "自动根回复规则属于限定语义门槛；最终独立语义审查仍须直接核原始根回复及数据，不将有限字符串回归外推为所有自然语言语义已证明。"
+  ],
+  "review_history": [
+    {
+      "status": "ChangesRequested",
+      "phase": "implementation-before-final-replay",
+      "required_change_ids": [
+        "F15-S01",
+        "F15-S02",
+        "F15-S03"
+      ],
+      "verification": [
+        {
+          "kind": "pure_offline_selected_tests",
+          "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
+          "result": "24 passed, 1 deselected in 0.63s",
+          "boundary": "明确排除loopback HTTP测试；未运行的1项不是通过。未调用模型、PG或私有配置。"
+        },
+        {
+          "kind": "independent_schema_comparison",
+          "result": "finance normalized_schema_diff_count=0; catalog normalized_schema_diff_count=0",
+          "method": "读取git show eb15fa49下的两份YAML，递归nullable:true转anyOf+null，再仅允许optional query schema新增null；删除query说明和OpenAPI/info.version元信息后逐节点比较。"
+        },
+        {
+          "kind": "pure_offline_followup_tests",
+          "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
+          "result": "33 passed, 1 deselected in 1.34s",
+          "boundary": "排除loopback HTTP；未PG/真实模型/私有配置。"
+        },
+        {
+          "kind": "selected_lint",
+          "command": "uv run ruff check --select F,S108,I,TC scripts/acceptance/finance_model.py scripts/acceptance/finance_model_runtime.py scripts/acceptance/finance_model_journey.py scripts/acceptance/finance_model_checks.py packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+          "result": "All checks passed!"
+        }
+      ]
+    },
+    {
+      "status": "ChangesRequested",
+      "phase": "implementation-before-final-replay",
+      "required_change_ids": [
+        "F15-S04"
+      ],
+      "finding": "S02最终窄项关闭；S04已分维度，但同句否定范围仍错误。"
+    },
+    {
+      "status": "ChangesRequested",
+      "phase": "implementation-before-final-replay",
+      "required_change_ids": [
+        "F15-S04"
+      ],
+      "finding": "付款与入账已分维，但前一短语否定错误遮蔽后一已执行；两条纯函数矛盾反例。"
+    }
+  ],
+  "resolved_changes": [
+    {
+      "id": "F15-S01",
+      "priority": "P1",
+      "title": "按当前角色与场景证明真实待审、详情、历史和模型预检",
+      "file": "scripts/acceptance/finance_model_journey.py",
+      "lines": [
+        149,
+        170,
+        238,
+        263
+      ],
+      "finding": "reviews的驳回、重提及两级批准场景没有require_tools或同等原始调用断言。execute_model_plan仅检查库内存在匹配action/version的计划，以及该ID出现在任意历史模型请求的任意tool内容；未绑定本场景phase、actor或明确preview调用。当前门槛不能排除没有读取真实待审/详情/历史即准备计划的流程。",
+      "required": "为每个审批/补充场景核对本场景真实待审或本人查询、详情、历史及preview工具调用及真实返回；将计划与当步actor、目标版本、action和本场景模型调用绑定。观察SQL/getActionPlan继续只读，不由人工脚本补造计划。",
+      "status": "Resolved",
+      "resolution": "finance_model_checks.py:14-51,103-129及journey.py:161-180,246-290绑定本场景actor、当前target/version/action、真实preview与同call_id HTTP200计划返回；审批场景实际成功工具与申请人实际读取驳回理由均有独立门槛。"
+    },
+    {
+      "id": "F15-S02",
+      "priority": "P1",
+      "title": "修改、重提及最终状态核对完整事实、真实理由与历史版本",
+      "file": "scripts/acceptance/finance_model_journey.py",
+      "lines": [
+        230,
+        233,
+        250,
+        253,
+        266,
+        283,
+        315,
+        318
+      ],
+      "finding": "初次草稿检查金额/日期/类别/附件，但编辑与重提后只检查status/reason/invoice_information，final_facts也未重核金额/日期/类别/附件。决定表只核action/actor/origin，未核数据库中的驳回和批准理由，也没有实际查询并核对历史各版本。fresh-query回复包含提示中给出的理由不能替代持久事实。",
+      "required": "在编辑、补充重提和最终状态核对128.50、日期、类别、真实receipt与原文保持；从真实PG或公开历史读取决定理由和各文档版本，核对三次理由及其actor/origin、原始和补充事由、原文和附件的可追溯性，并保存独立业务事实证据。",
+      "status": "Resolved",
+      "resolution": "checks.py:54-61与journey.py:232-241,269-272,293-328覆盖创建/编辑/重提/最终及所有PG历史版本exact事实，实际PG三理由/actor/origin、公开history逐页数量和唯一ID。 最新journey.py:234-236,317-332与checks.py:169-179已精确核初始事由、历史初改补事由，并逐项比较公开history的id/kind/full data与PG实际revision/decision投影；同count/ID但篡改reason离线反例覆盖。"
+    },
+    {
+      "id": "F15-S03",
+      "priority": "P1",
+      "title": "安全挑战检查保护状态及真实工具返回中的泄漏",
+      "file": "scripts/acceptance/finance_model_journey.py",
+      "lines": [
+        309,
+        337
+      ],
+      "finding": "代批付款与outsider挑战之后仅重用final_facts，不能发现未覆盖的单据内容/版本/附件等变更。outsider泄漏只扫描模型events，工具结果通常出现在后续ApiRequest.messages/input_items中，可能被模型读取而未复述；目前扫描也未覆盖SSE/history等已留存输出。",
+      "required": "对挑战前后选取受保护业务状态、决定、授权及正式财务状态的不变量进行比较，确认outsider无越权写入，允许合法审计/拒绝读痕迹。检查outsider真实模型输入输出、工具返回及已留存HTTP输出的目标独特标记，不能只检查最终复述；保留真实拒绝而不改写为成功。",
+      "status": "Resolved",
+      "resolution": "checks.py:7-11,64-85及journey.py:365-382比较受保护业务与授权快照，扫描outsider全raw模型输入输出及SSE/history，允许审计/防重放/合法预检痕迹。"
+    },
+    {
+      "id": "F15-S04",
+      "priority": "P1",
+      "title": "付款与入账根回复必须分别核对，不能用任意0.00放行",
+      "file": "scripts/acceptance/finance_model_checks.py",
+      "lines": [
+        152,
+        155
+      ],
+      "finding": "付款与入账已分别判定，但checks.py:152-155将正向短语前4字符内任意未/不/无视为对该短语否定。纯离线反例financial_reply_is_zero(\"未付款但已付款；未入账\")及(\"未付款但已付款0.00；未入账\")均返回True，明确矛盾仍可误过。这是判定门槛反例，不代表真实模型已误报。",
+      "required": "窄化否定作用范围，只识别针对当前正向执行短语本身的否定，不能让前一短语的未否定后面的已付款；补无逗号同句矛盾反例及正常否定正例。",
+      "status": "Resolved",
+      "resolution": "checks.py:159-164仅识别紧邻当前正向执行短语的否定；不会以较早短语的未遮蔽后面的已付款。两条同句矛盾回归均通过，付款/入账独立非零、缺失、矛盾及正确零/未执行正例回归通过。"
+    }
+  ],
+  "recommendations": [],
+  "approval_scope": "批准当前implementation-before-final-replay可执行门槛进入独立质量审查及冻结后的双次真实旅程；不代表真实模型业务验收已通过。",
+  "reviewed_sha256": {
+    "scripts/acceptance/finance_model.py": "3a61fc4e54fe6898f4a3707133192880d085e632bb3625e6dd35b637adfc7da3",
+    "scripts/acceptance/finance_model_runtime.py": "f0a6e8172bae8fe6e5432a581dc3d9cf5f95db2a2e9f08078975b5203ce52a92",
+    "scripts/acceptance/finance_model_journey.py": "3e8201dc7985b2a4dcbf403aeedf1eb96e4f922565f21d7ce6dc276ba11139ff",
+    "scripts/acceptance/finance_model_checks.py": "8de3c6a30363a06ca6c9e8adf889b94b5f127036c8f7f7cf2d976853d93d43dd",
+    "packages/xuanpu-finance/tests/test_f15_model_harness.py": "0f9fa435d1b1601ad5f6228e97eda72e14cafbd2a9f00a9363f51b025518f669",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "d84c5ec0975a661b24510bcfe621a26c38f78077cde370ddf28fca1b377ee756"
+  }
+}

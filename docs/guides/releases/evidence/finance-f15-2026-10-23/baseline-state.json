@@ -1,0 +1,29 @@
+{
+  "status": "recorded",
+  "branch": "feat/finance-f15",
+  "baseline_head": "eb15fa49f83af07dc18da05a2e0fcdf0e3875546",
+  "original_checkout": {
+    "path": "/Volumes/Codes/lumorax/lumorax-platform/xuanpu",
+    "head": "181118a32e38aa724b8b43f85d57e7cabf3a166d",
+    "status": ""
+  },
+  "model_probe": {
+    "file": "model-probe.json",
+    "sha256": "6c8654892cb5667ea6232f64c5903df4e12eff985e68a601e430026d1afbc36a",
+    "requested_model": "gpt-5.6-luna",
+    "input_tokens": 21,
+    "output_tokens": 11,
+    "underlying_model_identity": "not_independently_verified",
+    "client_event_model": "gpt-5.6-luna",
+    "event_provenance": "client emits server_model from payload.model; gateway backend not independently verified"
+  },
+  "boundaries": {
+    "payments": "disabled",
+    "approval": "separate_synthetic_human_sessions_via_public_http",
+    "storage": "new_independent_test_postgresql_and_finance_objects",
+    "push": false,
+    "merge": false,
+    "deploy": false
+  },
+  "production_status": "not_verified"
+}

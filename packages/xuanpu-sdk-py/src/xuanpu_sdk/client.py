@@ -31,6 +31,16 @@ if TYPE_CHECKING:
 DEFAULT_TIMEOUT_SECONDS = 60.0
 
 
+def _event_seq(payload: dict[str, Any]) -> int | None:
+    """审计合成事件序号可以为空，缺失或错误类型仍明确拒绝。"""
+    if 'seq' not in payload:
+        raise XuanpuTransportError('事件缺少 seq 字段')
+    value = payload['seq']
+    if value is None or (isinstance(value, int) and not isinstance(value, bool)):
+        return value
+    raise XuanpuTransportError('事件 seq 必须是整数或 null')
+
+
 def _raise_for(response: httpx.Response) -> None:
     """错误响应 → 异常。"""
     if response.status_code < 400:
@@ -90,7 +100,7 @@ class _Http:
                     yield Event(
                         kind=str(payload["kind"]),
                         submission_id=str(payload["submission_id"]),
-                        seq=int(payload["seq"]),
+                        seq=_event_seq(payload),
                         at=float(payload["at"]),
                         data=dict(payload.get("data") or {}),
                     )

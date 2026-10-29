@@ -1,0 +1,51 @@
+{
+  "status": "passed",
+  "tag": "xuanpu-platform-f15:2026.10.23.1",
+  "id": "sha256:d1f726d19016ef7e9f91a4c52b11f51d0f383ca4cd05ddb98cf67df3d4594719",
+  "uid": 10001,
+  "packages": {
+    "xuanpu-spec": {
+      "version": "2026.10.21.1",
+      "source_files": 10,
+      "source_equal": true
+    },
+    "xuanpu-server": {
+      "version": "2026.10.23.1",
+      "source_files": 163,
+      "source_equal": true
+    },
+    "xuanpu-sdk-py": {
+      "version": "2026.10.23.1",
+      "source_files": 6,
+      "source_equal": true
+    },
+    "xuanpu-cli": {
+      "version": "2026.10.21.2",
+      "source_files": 3,
+      "source_equal": true
+    },
+    "xuanpu-console": {
+      "version": "2026.10.23.1",
+      "source_files": 23,
+      "source_equal": true
+    },
+    "taifeng-sandbox": {
+      "version": "2026.10.21.1",
+      "source_files": 23,
+      "source_equal": true
+    },
+    "taifeng-stores": {
+      "version": "2026.9.29.15",
+      "source_files": 17,
+      "source_equal": true
+    }
+  },
+  "helper_bytes_equal": true,
+  "external_inputs_unchanged": true,
+  "external_inputs_sha256": "3c34ef21e9bced7c561db961c4142de33fc87f251d508f7005d17d55b13cdbfe",
+  "mode": "local build/load only",
+  "started_as_service": false,
+  "pushed": false,
+  "deployed": false,
+  "production_status": "not_verified"
+}

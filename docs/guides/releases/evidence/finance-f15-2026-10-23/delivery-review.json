@@ -1,0 +1,223 @@
+{
+  "status": "IncompletePendingRealAcceptance",
+  "review_date": "2026-10-24T09:33:45.409308+00:00",
+  "review_scope": "Read-only delivery gap review; not completion approval. Only this review evidence is written. No tests rerun, PG/model/private configuration/private ledger accessed, source/docs edited or commit created.",
+  "findings": [],
+  "no_new_material_misrepresentation_found": true,
+  "reviewed_source": {
+    "branch": "feat/finance-f15",
+    "head": "eb15fa49f83af07dc18da05a2e0fcdf0e3875546",
+    "frozen_files": 740,
+    "frozen_manifest_sha256": "c44a6731c71e618be7e17fbd1cf1192873da00bd88620c8d0a3588ed91b41ea9",
+    "sha_drift": [],
+    "root_skill_sha256": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
+    "contract_test_sha256": "5927be1ccc071598edd695fe7aaf40b7e058e9df129bc63501fec1a34dc8ed6f",
+    "final8_root_skill_sha256": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
+    "final_source_differs_from_last_real_model_candidate": true
+  },
+  "verified_offline_delivery": {
+    "full": {
+      "junit": {
+        "tests": 3073,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 3
+      },
+      "passed": 3070,
+      "same_three_nonfinance_skips_as_F14": true
+    },
+    "quick": {
+      "junit": {
+        "tests": 620,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "modules": 50,
+      "prior46_relative_order_preserved": true
+    },
+    "final_document_tests": {
+      "tests": 222,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "static_required_gate": "All declared Ruff F/S108/I/TC, mypy, offline lock and constraint return codes and log hashes verified. Broader default lint findings remain disclosed, not relabeled green.",
+    "artifacts_actual_bytes_and_hashes": [
+      {
+        "name": "finance-0.16.0-f15.zip",
+        "sha256": "8435cb8d649c10c9bfbbc697af901acbc873c86569c456b32077fcc34e833193",
+        "bytes_match": true,
+        "hash_match": true
+      },
+      {
+        "name": "xuanpu_console-2026.10.23.1-py3-none-any.whl",
+        "sha256": "0c340e0112933f1550fa7e0686bcefd2e380e9f150a1956f5b89093c6767066b",
+        "bytes_match": true,
+        "hash_match": true
+      },
+      {
+        "name": "xuanpu_console-2026.10.23.1.tar.gz",
+        "sha256": "8f1c34d598852449482566bf7371b163ab29a83d20908eac0bd2fab07469fc9d",
+        "bytes_match": true,
+        "hash_match": true
+      },
+      {
+        "name": "xuanpu_finance-2026.10.23.5-py3-none-any.whl",
+        "sha256": "f29690e96c5218f767ee09b52ffafe5ccdfcb6ee7e820952ea8cb9b1e21024e8",
+        "bytes_match": true,
+        "hash_match": true
+      },
+      {
+        "name": "xuanpu_finance-2026.10.23.5.tar.gz",
+        "sha256": "9760e4bda630f9886fc2ae47f28bdda81b8fdd2c55345b33ec63cf1c10217489",
+        "bytes_match": true,
+        "hash_match": true
+      },
+      {
+        "name": "xuanpu_sdk_py-2026.10.23.1-py3-none-any.whl",
+        "sha256": "23556fd4987d33ae52c109af325315267e18a2c390be02cfa502867a685e4afd",
+        "bytes_match": true,
+        "hash_match": true
+      },
+      {
+        "name": "xuanpu_sdk_py-2026.10.23.1.tar.gz",
+        "sha256": "e3eaf15e055eb3ae429c3e46e79b08f5a495e86da507fe89450e895b5ea0421d",
+        "bytes_match": true,
+        "hash_match": true
+      },
+      {
+        "name": "xuanpu_server-2026.10.23.1-py3-none-any.whl",
+        "sha256": "37f1eb1334f003bced8bc607c35deed44186861e57046668fa79566d9913a588",
+        "bytes_match": true,
+        "hash_match": true
+      },
+      {
+        "name": "xuanpu_server-2026.10.23.1.tar.gz",
+        "sha256": "23940535619e7f9176e16c2fe5d1ef31551b6a7c80501ad409aa401c64867464",
+        "bytes_match": true,
+        "hash_match": true
+      }
+    ],
+    "images": {
+      "finance_and_platform": "Both source byte/UID10001 checks recorded passed; local build/load only; image/service state not inspected live by this reviewer. Reports do not claim deployment or complete Linux business acceptance."
+    },
+    "secret_scan": {
+      "report_status": "passed",
+      "hits": [],
+      "scope": "Recorded scan evidence read; scan not rerun or secret values accessed."
+    },
+    "resources": {
+      "audit_status": "passed",
+      "recorded_sessions": 0,
+      "recorded_advisory_locks": 0,
+      "cleanup_status": "completed",
+      "cleanup_scope": "Exact owned container/volume/test DSNs/state only; original checkout clean, branch/artifacts retained per recorded audit; no live container or PG query by reviewer."
+    },
+    "private_model_configuration": "Root reports unchanged. Reviewer intentionally did not open or independently hash private configuration; no change is inferred from this review."
+  },
+  "actual_model_acceptance": {
+    "completed_full_journeys": 0,
+    "required_full_journeys": 2,
+    "last_attempt": "final8",
+    "last_result": "failed",
+    "last_failure": "fresh_query_semantic_facts",
+    "phase08_cause": "Actual full history pages supplied prior rejection and subsequent approvals, final reply omitted the prior rejection. Independent earlier history-reply-spec-cause.json remains applicable; not pagination/checker failure.",
+    "phase09_and_10": "not_executed",
+    "partial_PG_human_and_original_checks": "Archived real result records three synthetic-human decisions, all actual versions/history, approved with zero payment/posting/formal rows and independent original same SHA. This review verifies result flags only, no live PG reread.",
+    "latest_root_history_reply_and_q_fix": "Offline 145 tests plus narrow specification and quality approved only; no subsequent real-model retest. No source or phase success is promoted to whole-flow completion.",
+    "efficiency": {
+      "final7_first3": {
+        "calls": 10,
+        "tokens": 83000
+      },
+      "final8_first3": {
+        "calls": 10,
+        "tokens": 84738
+      },
+      "final8_same_actual_owner_session_through_resubmit": {
+        "calls": 15,
+        "tokens": 154106,
+        "session_cap": 200000
+      },
+      "known_remaining_gap": "model183 still repeated summary despite a known same-session unique claim ID; do not claim all redundant queries eliminated.",
+      "boundary": "Partial archived old-candidate measurements only; both whole journeys failed; no guarantee of latest-source behavior."
+    }
+  },
+  "budget_and_authorization": {
+    "attempts": 208,
+    "completed_usage": 206,
+    "unknown_attempts": [
+      56,
+      59
+    ],
+    "unknown_not_zero": true,
+    "accounting_equation": "208 = 206 + 2 unknown",
+    "public_budget_equal_to_last_archived_snapshot": true,
+    "global_stream_cap_actual_source": 240,
+    "business_session_token_cap_actual_source": 200000,
+    "remaining_streams": 32,
+    "limits_not_changed_or_reset": true,
+    "stopped_by_operator": "Remaining32 insufficient for fresh full acceptance; ledger halted remains null, not falsely labeled STREAM_LIMIT.",
+    "post_efficiency_proposal_status": "AwaitingUserAuthorization",
+    "proposal_execution_authorized": false,
+    "proposed_global_stream_cap": 320,
+    "other_limits_unchanged_in_proposal": true,
+    "user_boundary": "Existing instruction to not expand is not approval. This review neither requests nor grants further consumption, limit changes or a completion commit."
+  },
+  "remaining_required_work": [
+    "Final frozen source still needs two fresh complete real-model journeys under valid explicit consumption authorization and unchanged business/semantic gates, including history reply and phases09/10 negative challenges; currently 0/2.",
+    "Actual-model behavior must confirm generic prior-history reasons/q handling and known-ID locator efficiency; offline rule and fixture success is not sufficient.",
+    "Formal company/entity/policy/expense categories/cost centers/amount-step-material-retention rules and actual applicants/approvers/finance/SSO mapping/substitution-revocation/separation-of-duties must be provided and closed with the company-readiness evidence list; current entries remain missing.",
+    "Independent credentials/IAM/AES/backup recovery and production SSO/TLS/origin/network need administrator evidence before production claims. Official invoice/tax/legal archive, external suppliers/S3/offsite recovery/Linux full business and browser/real employee evidence remain distinct unverified or out of scope.",
+    "A completion commit remains pending the unmet required acceptance; no merge/deploy. No new budget or model consumption is authorized by this report."
+  ],
+  "documentation_assessment": {
+    "paths": [
+      "docs/guides/finance-f15.md",
+      "docs/guides/releases/2026-10-23-finance-f15-acceptance.md",
+      "docs/guides/finance-company-readiness.md"
+    ],
+    "result": "Current delivery documentation explicitly states F15 incomplete, old final8 candidate failure, 09/10 not run, latest source offline-only, missing formal company/personnel data, pending submission and no push/merge/deploy. It separates artifacts/tests from real-model/production acceptance and labels the320 proposal unexecuted."
+  },
+  "risks": [
+    "Latest history instructions may still be ignored or produce incomplete opinions; latest source has no fresh model evidence.",
+    "Finite remaining32 cannot support claimed dual full-flow closure; proposed320 is not authorized and would still not guarantee success if later authorized.",
+    "Two network attempts have unknown usage; exact total tokens/cost cannot be inferred.",
+    "Synthetic identities/company and actual HTTP auth are not actual company policy, employee participation, production SSO or browser acceptance."
+  ],
+  "authorization": {
+    "real_model_consumption": false,
+    "budget_expansion": false,
+    "completion_commit": false,
+    "push_merge_deploy": false
+  },
+  "final_conclusion": "Offline delivery is reviewable and recorded consistently, but the requested real-model end-to-end acceptance and formal internal-trial readiness remain incomplete. No completion approval is given.",
+  "reviewed_evidence_sha256": {
+    "post-test-source-audit.json": "f7cf557e437a932d0e20c9eeb9c3a0d6203820bca492b5cd54d8da3e75ed8dbc",
+    "full-final/report.json": "efc1b2c7a5c4005a327e02511f53c4cceaf948cc24a96f3507661f23aa284fed",
+    "full-final/junit.xml": "3d4b72cbbf272fa3b1063601aeb2ee60c975388dc15c19d9c42a9773cacd7671",
+    "quick-final/report.json": "0be938e40dc222a6ce0fee807e267d2537ec5824db41f67d84401382c91f2a87",
+    "quick-final/junit.xml": "42b3b14a82e244c234bcc14eea32950e63737db3c7371b78769d2c8a1ff2cb9b",
+    "docs-final.xml": "a4da78fe3540feea6593e4d83116bed2af4ada844c18af33443a28a10aa82f70",
+    "artifacts.json": "8c7e5aadf4eb14034a4055f55671d0df52bd09e1dcc4fbea6d1c0c8edf669589",
+    "platform-artifacts.json": "ca1975bee51f748357aa1489d6d16600770b097183b5df95ccc31617ea79ed6a",
+    "static-results.json": "9a570ce54b6c819e6f8a9c5bd075df63c6cf150a6168f36337328ad8e1cfaf4a",
+    "secret-scan.json": "b7c6d12b67f18dae27fb4f62183acf327e7b67a65a6af9390cf41d6a499d2c3d",
+    "test-resource-audit.json": "ca6ccab3797eaa01b4cfe757bbf71e57ea67232b38842005585877ce75e0d827",
+    "cleanup.json": "3e3aa9002b8fb1c0c79b32e4bdcce3572ce765224f50ea8b40c4c8d6c0b6681e",
+    "partial-efficiency-comparison.json": "d1a64b86994155b8386d79d0c63da2bbbcb97a44f3fc5ee4b3f8b63001f2016f",
+    "post-efficiency-budget-proposal-review.json": "cb1aa79954d9c23c3b796b7095e0e91d27b1e98de34e15631191aaef6dc77d39",
+    "model-budget.json": "e1b2953bfb7a4845fa8e47640715ea068e99968ca81c61dd5c48ca2ca1a6051b",
+    "final8/budget-snapshot.json": "ebb3ee233176333ffac290a3ca83c3e045d08659a1c4cfa74b4db1eff91da5eb",
+    "final8/result.json": "e14130abe461a51298ac68badb464970017a4ffa02f01b73ce80e7c92563bfb9",
+    "history-reply-spec.json": "83b79da0faae722e7a0e9a0af3a0067f5d0e84564392e0a7742c4d4bbe0116ff",
+    "history-reply-quality.json": "5d7e442edc2b1c2d6622f33f7baf6a353fa75e9c32f56446d26f639d54d7ec42",
+    "history-reply-spec-cause.json": "2f72a0b921184a234b0447fb5ce3da2f9e8fbeafb493abd78039ba23e45914f6"
+  },
+  "delivery_document_sha256": {
+    "docs/guides/finance-f15.md": "04c9038bb5fd9fb9aa168cacf46099262a08ceea4a513669b521a598bc9da2eb",
+    "docs/guides/releases/2026-10-23-finance-f15-acceptance.md": "646c9e13959e5a1eb27dfbeb1f0d696544e60a1223163d5a6066a569865b068b",
+    "docs/guides/finance-company-readiness.md": "7f62d871b5a32721544d101621e70fc2d69221b4e952ab74ff89aaf6ebf351f7"
+  }
+}

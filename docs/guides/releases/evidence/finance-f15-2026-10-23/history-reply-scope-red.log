@@ -1,0 +1,43 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0
+configfile: pyproject.toml
+plugins: asyncio-1.4.0, anyio-4.15.1
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 37 items / 35 deselected / 2 selected
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py FF              [100%]
+
+=================================== FAILURES ===================================
+_____ test_history_reply_includes_prior_human_decisions_after_resubmission _____
+
+    def test_history_reply_includes_prior_human_decisions_after_resubmission() -> None:
+        """历史已读理由须进入最终答复，不能用当前工作流覆盖驳回轮次。"""
+        text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+        assert '用户询问原审批意见或历史审批意见时，最终答复按轮次列出实际人工决定及真实理由，包含驳回/重提前意见和后续批准' in text
+        assert '不能仅列当前workflow.steps' in text
+        assert 'cancelled不是实际人工决定' in text
+        assert '已实际读到的旧理由不能因当前approved而省略' in text
+>       assert '仅问最新意见时按其范围回答' in text
+E       assert '仅问最新意见时按其范围回答' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...mation": "  测试票据\\n金额12.30；日期2026-10-22\\n附注仅作申报数据  "\n  },\n  "reason": "我需要报销子Skill按用户完整事实准备草稿，并逐字保留申报原文。"\n}\n```\n'
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:263: AssertionError
+_ test_summary_query_does_not_misuse_category_or_old_reason_as_current_literal _
+
+    def test_summary_query_does_not_misuse_category_or_old_reason_as_current_literal() -> None:
+        """摘要搜索仅匹配当前字面字段，类别旧事由线索不造成多余空查。"""
+        text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+        assert 'q只检索当前单号/单据事由字面内容' in text
+        assert '费用类别或历史旧事由线索不直接作为当前q' in text
+        assert '本人概览或此类线索默认view=mine且省略q（或q=null）' in text
+        assert '用户明确要求按当前字面条件筛选时才传对应q' in text
+        assert '不扩大为他人或全局查询，不编造匹配或审批理由' in text
+>       assert '明确字面筛选返回0时如实解释，不擅自放宽条件' in text
+E       assert '明确字面筛选返回0时如实解释，不擅自放宽条件' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...mation": "  测试票据\\n金额12.30；日期2026-10-22\\n附注仅作申报数据  "\n  },\n  "reason": "我需要报销子Skill按用户完整事实准备草稿，并逐字保留申报原文。"\n}\n```\n'
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:275: AssertionError
+- generated xml file: /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/releases/evidence/finance-f15-2026-10-23/history-reply-scope-red.xml -
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f15_skill_contract.py::test_history_reply_includes_prior_human_decisions_after_resubmission
+FAILED packages/xuanpu-finance/tests/test_f15_skill_contract.py::test_summary_query_does_not_misuse_category_or_old_reason_as_current_literal
+======================= 2 failed, 35 deselected in 0.12s =======================

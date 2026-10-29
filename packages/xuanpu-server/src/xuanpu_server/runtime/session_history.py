@@ -35,6 +35,8 @@ class _PendingTracker:
     def observe(self, item: AuditRecord) -> None:
         """看一条引擎事件。"""
         if item.kind == "turn_suspended":
+            if internal_wrapper(item.data):
+                return
             self._suspended, self._settled = item, set()
             return
         if self._suspended is None or item.kind not in _SETTLING_KINDS:
@@ -70,6 +72,7 @@ class _PendingTracker:
             submission_id=submission_id if isinstance(submission_id, str) else None,
             requests=self.remaining(),
             settled=frozenset(self._settled),
+            thread_id=suspension_thread(self._suspended.data),
         )
 
 
@@ -86,6 +89,74 @@ class PendingSuspension:
     submission_id: str | None
     requests: tuple[dict[str, Any], ...]
     settled: frozenset[str] = frozenset()
+    thread_id: str | None = None
+
+
+def internal_wrapper(data: dict[str, Any]) -> bool:
+    """纯内部child_skill父挂起不是用户确认待办，混合人工挂起仍保留。"""
+    pending = data.get('pending')
+    return bool(isinstance(pending, list) and pending and all(
+        isinstance(item, dict) and item.get('reason') == 'child_skill' for item in pending))
+
+
+def suspension_thread(data: dict[str, Any]) -> str | None:
+    """只兼容旧审计缺少线程字段，已知非法线程不得静默回退根。"""
+    thread = data.get('thread_id')
+    if thread is None:
+        return None
+    if not isinstance(thread, str) or not thread.strip():
+        raise InvalidRequestError('挂起线程标识无效')
+    return thread
+
+
+async def resume_thread_id(store: ControlPlaneStore, tenant: str, session: str,
+                           resolutions: dict[str, Any], root_thread: str) -> str:
+    """在会话锁内从可信同批待办定位线程，不接受客户端指定线程或跨批确认。"""
+    suspension = await pending_suspension(store, tenant, session)
+    by_id = {item['request_id']: item for item in suspension.requests}
+    # 未知待办不参与选线程，仍由当前可信批次的内核按既有SSE契约整次拒绝。
+    target = suspension.thread_id if suspension.thread_id is not None else root_thread
+    threads = {item.get('detail', {}).get('thread_id', target)
+               for key, item in by_id.items() if key in resolutions}
+    if threads and threads != {target}:
+        raise InvalidRequestError('不能将不同挂起线程的待办合并送回')
+    return target
+
+
+async def resume_suspension_threads(store: ControlPlaneStore, tenant: str, session: str,
+                                    target: str, root: str) -> frozenset[str]:
+    """从已持久审计恢复当前单链祖先，允许祖先重挂起而不放开新后代。"""
+    latest: dict[str, list[str]] = {}
+    after = 0
+    while True:
+        query = AuditQuery(session_id=session, source='engine', kind='turn_suspended',
+                           limit=_PAGE, after_id=after)
+        page = await store.query_audit(tenant, query)
+        for item in page:
+            if internal_wrapper(item.data):
+                parent = suspension_thread(item.data)
+                if parent is not None:
+                    latest[parent] = [request['detail']['sub_thread_id']
+                                      for request in item.data['pending']]
+        if len(page) < _PAGE:
+            break
+        after = page[-1].audit_id
+    return ancestor_threads(latest, target, root)
+
+
+def ancestor_threads(latest: dict[str, list[str]], target: str, root: str) -> frozenset[str]:
+    """只沿当前目标向根回溯可信祖先；旧审计没有父链时不编造其他线程。"""
+    parents = {child: parent for parent, children in latest.items() for child in children}
+    allowed = {root, target}
+    current = target
+    for _ in range(32):
+        if current == root or current not in parents:
+            return frozenset(allowed)
+        current = parents[current]
+        if current in allowed and current != root:
+            raise InvalidRequestError('挂起祖先链存在循环')
+        allowed.add(current)
+    raise InvalidRequestError('挂起祖先链超过平台上限')
 
 
 def refuse_settled(suspension: PendingSuspension, request_ids: Iterable[str]) -> None:
@@ -118,8 +189,9 @@ async def _last_suspension(
             after_id=after,
         )
         page = await store.query_audit(tenant_id, query)
-        if page:
-            last = page[-1]
+        visible = [item for item in page if not internal_wrapper(item.data)]
+        if visible:
+            last = visible[-1]
         if len(page) < query.limit:
             return last
         after = page[-1].audit_id

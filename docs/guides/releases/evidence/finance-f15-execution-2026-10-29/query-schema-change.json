@@ -1,0 +1,10 @@
+[
+  {
+    "file": "examples/finance/apis/finance.yaml",
+    "only_q_description_changed": true
+  },
+  {
+    "file": "docs/superpowers/specs/finance-v1/pack/apis/finance.yaml",
+    "only_q_description_changed": true
+  }
+]
