@@ -15,6 +15,8 @@ from xuanpu_server.tenancy import Principal, Tenant
 from xuanpu_server.work_tasks.models import InputSnapshot, WorkTaskRecord
 from xuanpu_server.workspace.service import WorkspaceService
 
+from ..conftest import docker_test_user
+
 
 @pytest.fixture
 async def task_env(identity_stores, tmp_path):
@@ -153,7 +155,7 @@ async def office_world(identity_stores, world_opener, office_image):
     from xuanpu_spec import pack_package
 
     control, identity = identity_stores
-    provider = DockerSandboxProvider(image=office_image,
+    provider = DockerSandboxProvider(user=docker_test_user(), image=office_image,
         docker_env={'PATH':'/usr/local/bin:/usr/bin:/bin', 'HOME':str(Path.home())},
         memory_mb=512, labels={'xuanpu.test':'1'})
     world = await world_opener(store=control, identity_store=identity, sandboxes=provider)
@@ -177,7 +179,7 @@ async def recovery_world(identity_stores, world_opener, office_image, tmp_path, 
     from .recovery_harness import RecoveryWorld
 
     control, identity = identity_stores
-    provider = DockerSandboxProvider(image=office_image, memory_mb=512,
+    provider = DockerSandboxProvider(user=docker_test_user(), image=office_image, memory_mb=512,
         docker_env={'PATH':'/usr/local/bin:/usr/bin:/bin','HOME':str(Path.home())},
         labels={'xuanpu.test':'r2-recovery'})
     world = await world_opener(store=control, identity_store=identity, sandboxes=provider,

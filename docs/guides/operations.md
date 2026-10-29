@@ -127,6 +127,7 @@ Responses 当前只支持 `state.backend: local`；`control_plane.backend: postg
 | `docker_env` | 空 | 运行 docker 命令时的环境变量。平台不把自己的环境传给子进程，所以要在这里给出 `PATH`，以及 `HOME` 或 `DOCKER_HOST`，docker 客户端才找得到守护进程 |
 | `connector_readable_roots` | 空 | 只用于 `local` 后端（`docker` 后端配了会报错）：连接器沙盒里额外可读的目录，必须是绝对路径。本机连接器沙盒用受限读策略，系统运行时目录（见[安全须知](#安全须知)）之外默认都读不到，所以要把连接器自己的解释器与依赖所在的目录列进来。Python 虚拟环境要列两个：虚拟环境目录（`sys.prefix`）与它背后的解释器安装目录（`sys.base_prefix`），少一个解释器就起不来。启动时解析符号链接后检查：目录必须存在；不能是 `/`；不能与 `data_dir`、本机对象存储目录相同或互为上下级。**列进来的目录对所有租户的连接器都可读**，只放解释器与依赖 |
 | `connector_image` | 同 `image` | 只用于 `docker` 后端（`local` 后端配了会报错）：连接器容器用的镜像，里面必须有 `python3`（3.9+），还要装好业务包里 stdio 连接器需要的运行时（如 `node`），否则连接器起不来 |
+| `user` | 空 | 只用于 `docker` 后端，数字UID字符串或UID:GID，如 `"1001:1001"`；同时用于脚本和连接器。rootful绑定私有宿主目录时，选择与目录所有者匹配的身份；不自动改权限或所有权。留空沿用镜像身份，rootless部署保留其既有UID映射，不直接套用宿主UID |
 
 `memory_mb`、`cpus`、`docker_binary`、`docker_env` 只对 `docker` 后端有意义。
 

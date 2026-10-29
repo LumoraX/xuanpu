@@ -223,3 +223,8 @@ Platform在guard和task registry就绪后启动唯一TriggerWorker，关闭先�
 模型包装器在平台ExecutionBinding中保存预算阻塞原因，即使内核把异常转为turn_failed，也由任务runner交回唯一派发器持久保存block_budget；不将额度不足误结算为普通失败。管理员max_task_tokens默认150000且最高300000，独立grant与租户上限继续同时校验。
 
 终态且资源与成果索引均已清理时，原生确认和取消在同一事务结清非leased派发；leased派发仍由原epoch释放，旧owner不可越过栅栏。启动枚举同步补读旧版本遗留的终态派发，只修复索引，不新建attempt、模型调用或通知。
+
+
+## 容器执行身份与私有挂载
+
+Docker脚本及连接器共用部署配置sandbox.user，空值保持镜像身份和既有rootless映射。rootful引擎删除全部capabilities后，容器UID 0也不能越过宿主私有目录的访问控制；部署方须显式选择与绑定目录所有者匹配的数字UID/GID，配置会通过bootstrap和DockerSandboxProvider传到现有DockerSandboxConfig。平台不chmod/chown，不恢复DAC绕过能力，也不扩大输入只读挂载或工作目录范围。本机后端拒绝配置容器身份。配置用法见[运维指南](../guides/operations.md)。

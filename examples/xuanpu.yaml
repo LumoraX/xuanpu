@@ -70,6 +70,8 @@ sandbox:
   docker_env: {PATH: /usr/local/bin:/usr/bin:/bin, HOME: /var/lib/xuanpu}
   # 连接器容器的镜像，缺省同 image；要装好业务包里 stdio 连接器需要的运行时（如 node）
   # connector_image: registry.example.com/xuanpu-connectors:1
+  # rootful Docker绑定私有目录时匹配其宿主UID/GID；rootless默认留空，保持既有映射。
+  # user: "1001:1001"
   #
   # 改用 local 后端时（docker 的几项都去掉）：连接器的解释器与依赖装在系统目录之外，就把它们
   # 所在的目录列在这里（绝对路径；Python 虚拟环境要 sys.prefix 与 sys.base_prefix 两个）。

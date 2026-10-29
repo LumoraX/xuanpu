@@ -159,6 +159,8 @@ class SandboxConfig(_Section):
             装配平台时检查（``bootstrap``）。
         connector_image: ``docker`` 后端下连接器容器用的镜像；不给则与 ``image`` 相同。
             镜像里要装好连接器需要的运行时。只用于 ``docker`` 后端。
+        user: Docker容器数字UID或UID:GID；rootful绑定私有目录时应与目录所有者匹配。
+            None沿用镜像身份，保持rootless部署的已有用户映射；不改变宿主目录权限。
 
     后端对不上的连接器选项（``docker`` 后端配了 ``connector_readable_roots``、``local``
     后端配了 ``connector_image``）直接报错，不悄悄忽略。
@@ -172,6 +174,7 @@ class SandboxConfig(_Section):
     docker_env: dict[str, str] = Field(default_factory=dict)
     connector_readable_roots: tuple[Path, ...] = ()
     connector_image: str | None = None
+    user: str | None = Field(default=None, pattern=r"^[0-9]+(?::[0-9]+)?$")
 
     @field_validator("connector_image")
     @classmethod
@@ -199,6 +202,8 @@ class SandboxConfig(_Section):
                 "connector_image 只用于 docker 后端；local 后端用 connector_readable_roots "
                 "放开连接器的运行时"
             )
+        if self.backend == "local" and self.user is not None:
+            raise ValueError("user只用于docker后端")
         return self
 
 

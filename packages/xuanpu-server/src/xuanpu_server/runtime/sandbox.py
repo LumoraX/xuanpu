@@ -325,6 +325,7 @@ class DockerSandboxProvider:
         docker_binary: str = "docker",
         connector_image: str | None = None,
         labels: Mapping[str, str] | None = None,
+        user: str | None = None,
     ) -> None:
         """
         Args:
@@ -337,9 +338,11 @@ class DockerSandboxProvider:
                 None 时与 ``image`` 相同。
             labels: 加在每个容器上的额外标签（例如部署标识，便于按部署清理）。与平台自己
                 的 ``xuanpu.*`` 标签重名时以平台的为准。
+            user: 容器数字UID或UID:GID；None沿用镜像身份，不改变rootless映射。
         """
         self._image = image
         self._connector_image = image if connector_image is None else connector_image
+        self._user = user
         self._docker_env = dict(docker_env)
         self._memory_mb = memory_mb
         self._cpus = cpus
@@ -399,6 +402,7 @@ class DockerSandboxProvider:
             mounts.append(Mount(input_root, "/workspace/inputs", read_only=True))
         config = DockerSandboxConfig(
             image=image,
+            user=self._user,
             workspace_host_dir=workspace,
             mounts=tuple(mounts),
             network=network,

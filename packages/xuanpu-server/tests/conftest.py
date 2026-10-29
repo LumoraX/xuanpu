@@ -436,6 +436,11 @@ def docker_run_label() -> str:
     return "=".join(DOCKER_RUN_LABEL)
 
 
+def docker_test_user() -> str | None:
+    """rootful Linux测试匹配私有绑定目录的所有者；Mac共享保留镜像默认身份。"""
+    return f"{os.getuid()}:{os.getgid()}" if sys.platform == "linux" else None
+
+
 def _sandbox_provider(kind: str) -> Any:
     """按参数选沙盒供给方。Docker 变体在没有 Docker 时跳过。"""
     if kind == "local":
@@ -446,6 +451,7 @@ def _sandbox_provider(kind: str) -> Any:
     if "DOCKER_HOST" in os.environ:
         env["DOCKER_HOST"] = os.environ["DOCKER_HOST"]
     return DockerSandboxProvider(
+        user=docker_test_user(),
         image="python:3.12-slim",
         docker_env=env,
         memory_mb=256,

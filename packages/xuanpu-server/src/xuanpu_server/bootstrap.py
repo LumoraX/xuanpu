@@ -220,6 +220,7 @@ def _sandboxes(config: ServerConfig) -> SandboxProvider:
         cpus=section.cpus,
         docker_binary=section.docker_binary,
         connector_image=section.connector_image,
+        user=section.user,
     )
 
 
