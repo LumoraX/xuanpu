@@ -408,9 +408,24 @@ def step() -> type[Step]:
     return Step
 
 
-CONNECTOR_READABLE_ROOTS = tuple(
-    dict.fromkeys(Path(prefix).resolve() for prefix in (sys.prefix, sys.base_prefix))
-)
+def connector_runtime_roots() -> tuple[Path, ...]:
+    """uv管理的解释器还需专用安装根，以保留次版本别名；不授权其他宿主目录。"""
+    import tempfile
+
+    base = Path(sys.base_prefix).resolve()
+    roots = [Path(sys.prefix).resolve(), base]
+    configured = os.environ.get("UV_PYTHON_INSTALL_DIR")
+    if configured:
+        runtime = Path(configured).resolve()
+        if base.is_relative_to(runtime):
+            if (runtime.parent == Path(runtime.anchor) or runtime == Path(runtime.anchor)
+                or runtime == Path.home().resolve() or runtime == Path(tempfile.gettempdir()).resolve()):
+                raise ValueError("UV_PYTHON_INSTALL_DIR必须是专用运行时目录")
+            roots.append(runtime)
+    return tuple(dict.fromkeys(roots))
+
+
+CONNECTOR_READABLE_ROOTS = connector_runtime_roots()
 """本机连接器沙盒里额外可读的目录：假 MCP server 用测试进程的解释器跑，要能读到虚拟环境
 （``sys.prefix``）与它背后的解释器安装目录（``sys.base_prefix``）。"""
 

@@ -20,3 +20,10 @@ CI新增独立finance_postgres服务、finance_test_ci数据库及对应Docker�
 Sandbox依赖提交15aefcb21ecb6498ae66b59436d2a5142e3fc127使用Linux UAPI固定封口常量兼容缺失符号，继续实际内核封口、失败关闭fd并传播异常；Linux专项从6 failed/2 passed到8 passed，并验证不可写入、扩缩容和追加封口。宿主全量291 passed/25平台条件skip/1既有xfail，Ruff及mac/Linux目标mypy通过。
 
 平台增加显式sandbox.user数字身份配置，默认None维持镜像及rootless语义；Linux rootful测试使用宿主UID/GID。受控Linux私有卷验证：默认UID和其他UID均被拒绝，匹配1001:1001可实际读写，0700目录与0600输入权限不变；专属卷和容器已清理。新增配置传递与权限保持回归先3 failed，再85 passed相关回归。CI增加先行Linux沙盒预检，防止同类启动问题等待整套运行才发现；全量仍保留全部用例并输出耗时和超时栈诊断。
+
+
+## 次版本解释器别名与夹具遗漏
+
+[8c7c117预检](https://github.com/LumoraX/xuanpu/actions/runs/40840743581)为4 failed/21 passed，及时阻止全量：本机解释器ENOENT，以及独立office_worker直接构造DockerSandboxConfig时未传UID。后者与已修复的私有目录问题相同，补充该夹具的显式身份即可，不改权限。
+
+解释器缺失已在Linux实际复现：uv按3.13次版本创建的venv先链接cpython-3.13-linux-…别名，再指向cpython-3.13.18-…版本目录。原fixture仅授权sys.prefix及sys.base_prefix解析后的目录，别名在空根沙盒中缺失。只在测试确实使用uv管理解释器时，加入setup-uv显式指定的UV_PYTHON_INSTALL_DIR专用只读根；系统Python不挂载无关目录，全盘、顶层目录、用户家及临时根拒绝。保留原venv命令及依赖，不将其改成基底Python，不扩大生产沙盒策略。真实Linux验证中原命令成功且sys.prefix仍为venv，专用目录之外的秘密文件不可见。新增回归先3 failed，根目录/别名与相关预检一起复验；sandbox源码仍15aefcb，无新增依赖修改。
