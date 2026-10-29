@@ -1,0 +1,172 @@
+F.FFFFFFFF                                                               [100%]
+=================================== FAILURES ===================================
+________________ test_f1_config_keeps_external_execution_closed ________________
+
+    def test_f1_config_keeps_external_execution_closed() -> None:
+        """旧配置兼容且没有隐式付款、记账或模拟通道。"""
+        config = FinanceConfig.model_validate(settings())
+>       assert config.execution_simulation is False
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f2_config.py:14:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = FinanceConfig(database_dsn_file=PosixPath('secrets/finance-dsn'), service_token_file=PosixPath('secrets/service-token'...grants=[], expense_policies=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
+item = 'execution_simulation'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'FinanceConfig' object has no attribute 'execution_simulation'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1042: AttributeError
+____________ test_test_environment_can_explicitly_select_simulation ____________
+
+    def test_test_environment_can_explicitly_select_simulation() -> None:
+        """只是结构许可；实际数据库和单据环境还由运行时/领域核验。"""
+>       config = FinanceConfig.model_validate(settings(environment="test", execution_simulation=True))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 1 validation error for FinanceConfig
+E       execution_simulation
+E         Extra inputs are not permitted [type=extra_forbidden, input_value=True, input_type=bool]
+E           For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+
+packages/xuanpu-finance/tests/test_f2_config.py:28: ValidationError
+___________________ test_payable_route_accepts_strict_draft ____________________
+
+    async def test_payable_route_accepts_strict_draft() -> None:
+        """实际201路由传入当前身份与完整严格模型。"""
+        store=Store()
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(create_app(store=store,auth=Auth(),start_worker=False)),base_url="http://finance") as client:
+            response=await client.post('/v1/finance/payables',headers={'Idempotency-Key':'draft'},json=draft())
+>       assert response.status_code==201,response.text
+E       AssertionError: {"detail":"Not Found"}
+E       assert 404 == 201
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+packages/xuanpu-finance/tests/test_f2_api.py:51: AssertionError
+_________ test_payable_route_rejects_identity_state_and_float[extra0] __________
+
+extra = {'owner_id': 'other'}
+
+    @pytest.mark.parametrize('extra',[{'owner_id':'other'},{'status':'paid'},{'amount':10.0}])
+    async def test_payable_route_rejects_identity_state_and_float(extra: dict[str, Any]) -> None:
+        """模型不能自报审批结果和金额类型。"""
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(create_app(store=Store(),auth=Auth(),start_worker=False)),base_url='http://finance') as client:
+            response=await client.post('/v1/finance/payables',headers={'Idempotency-Key':'draft'},json={**draft(),**extra})
+>       assert response.status_code==422,response.text
+E       AssertionError: {"detail":"Not Found"}
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+packages/xuanpu-finance/tests/test_f2_api.py:60: AssertionError
+_________ test_payable_route_rejects_identity_state_and_float[extra1] __________
+
+extra = {'status': 'paid'}
+
+    @pytest.mark.parametrize('extra',[{'owner_id':'other'},{'status':'paid'},{'amount':10.0}])
+    async def test_payable_route_rejects_identity_state_and_float(extra: dict[str, Any]) -> None:
+        """模型不能自报审批结果和金额类型。"""
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(create_app(store=Store(),auth=Auth(),start_worker=False)),base_url='http://finance') as client:
+            response=await client.post('/v1/finance/payables',headers={'Idempotency-Key':'draft'},json={**draft(),**extra})
+>       assert response.status_code==422,response.text
+E       AssertionError: {"detail":"Not Found"}
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+packages/xuanpu-finance/tests/test_f2_api.py:60: AssertionError
+_________ test_payable_route_rejects_identity_state_and_float[extra2] __________
+
+extra = {'amount': 10.0}
+
+    @pytest.mark.parametrize('extra',[{'owner_id':'other'},{'status':'paid'},{'amount':10.0}])
+    async def test_payable_route_rejects_identity_state_and_float(extra: dict[str, Any]) -> None:
+        """模型不能自报审批结果和金额类型。"""
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(create_app(store=Store(),auth=Auth(),start_worker=False)),base_url='http://finance') as client:
+            response=await client.post('/v1/finance/payables',headers={'Idempotency-Key':'draft'},json={**draft(),**extra})
+>       assert response.status_code==422,response.text
+E       AssertionError: {"detail":"Not Found"}
+E       assert 404 == 422
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+packages/xuanpu-finance/tests/test_f2_api.py:60: AssertionError
+____________________ test_payment_list_keeps_filtered_total ____________________
+
+    async def test_payment_list_keeps_filtered_total() -> None:
+        """页面恢复结果依赖服务端查询，不依赖模型记忆。"""
+        store=Store()
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(create_app(store=store,auth=Auth(),start_worker=False)),base_url='http://finance') as client:
+            response=await client.get('/v1/finance/payments',params={'legal_entity_id':'co1','document_id':'c1'})
+>       assert response.status_code==200 and response.json()['total']==9
+E       assert (404 == 200)
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+packages/xuanpu-finance/tests/test_f2_api.py:68: AssertionError
+________ test_reconcile_requires_human_without_success_override[human] _________
+
+origin = 'human'
+
+    @pytest.mark.parametrize('origin',['human','agent'])
+    async def test_reconcile_requires_human_without_success_override(origin: str) -> None:
+        """核对由真人触发，只排只读查询，不接受状态修改。"""
+        store=Store()
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(create_app(store=store,auth=Auth(origin),start_worker=False)),base_url='http://finance') as client:
+            response=await client.post('/v1/finance/operations/f2op_one/reconcile',headers={'Idempotency-Key':'reconcile'},json={'expected_version':1})
+>       assert response.status_code==(202 if origin=='human' else 403),response.text
+E       AssertionError: {"detail":"Not Found"}
+E       assert 404 == 202
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+packages/xuanpu-finance/tests/test_f2_api.py:78: AssertionError
+________ test_reconcile_requires_human_without_success_override[agent] _________
+
+origin = 'agent'
+
+    @pytest.mark.parametrize('origin',['human','agent'])
+    async def test_reconcile_requires_human_without_success_override(origin: str) -> None:
+        """核对由真人触发，只排只读查询，不接受状态修改。"""
+        store=Store()
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(create_app(store=store,auth=Auth(origin),start_worker=False)),base_url='http://finance') as client:
+            response=await client.post('/v1/finance/operations/f2op_one/reconcile',headers={'Idempotency-Key':'reconcile'},json={'expected_version':1})
+>       assert response.status_code==(202 if origin=='human' else 403),response.text
+E       AssertionError: {"detail":"Not Found"}
+E       assert 404 == 403
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+packages/xuanpu-finance/tests/test_f2_api.py:78: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f2_config.py::test_f1_config_keeps_external_execution_closed
+FAILED packages/xuanpu-finance/tests/test_f2_config.py::test_test_environment_can_explicitly_select_simulation
+FAILED packages/xuanpu-finance/tests/test_f2_api.py::test_payable_route_accepts_strict_draft
+FAILED packages/xuanpu-finance/tests/test_f2_api.py::test_payable_route_rejects_identity_state_and_float[extra0]
+FAILED packages/xuanpu-finance/tests/test_f2_api.py::test_payable_route_rejects_identity_state_and_float[extra1]
+FAILED packages/xuanpu-finance/tests/test_f2_api.py::test_payable_route_rejects_identity_state_and_float[extra2]
+FAILED packages/xuanpu-finance/tests/test_f2_api.py::test_payment_list_keeps_filtered_total
+FAILED packages/xuanpu-finance/tests/test_f2_api.py::test_reconcile_requires_human_without_success_override[human]
+FAILED packages/xuanpu-finance/tests/test_f2_api.py::test_reconcile_requires_human_without_success_override[agent]
+9 failed, 1 passed in 0.22s

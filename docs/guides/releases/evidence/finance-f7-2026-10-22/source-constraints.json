@@ -1,0 +1,139 @@
+{
+  "checked": 19,
+  "files": [
+    {
+      "path": "packages/xuanpu-console/tests/test_finance_behavior.py",
+      "lines": 66,
+      "max_function_lines": 9,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-console/tests/test_static.py",
+      "lines": 76,
+      "max_function_lines": 17,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/__main__.py",
+      "lines": 58,
+      "max_function_lines": 27,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/api.py",
+      "lines": 218,
+      "max_function_lines": 55,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/expenses/materials.py",
+      "lines": 34,
+      "max_function_lines": 19,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/expenses/models.py",
+      "lines": 322,
+      "max_function_lines": 49,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/funding/materials.py",
+      "lines": 59,
+      "max_function_lines": 28,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/routes_f7.py",
+      "lines": 38,
+      "max_function_lines": 13,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/business_catalog.py",
+      "lines": 202,
+      "max_function_lines": 49,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f7_records.py",
+      "lines": 96,
+      "max_function_lines": 19,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/store.py",
+      "lines": 156,
+      "max_function_lines": 48,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-finance/tests/test_f4_maintenance.py",
+      "lines": 292,
+      "max_function_lines": 39,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-finance/tests/test_f7_api.py",
+      "lines": 71,
+      "max_function_lines": 35,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-finance/tests/test_f7_contract.py",
+      "lines": 52,
+      "max_function_lines": 22,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-finance/tests/test_f7_process.py",
+      "lines": 133,
+      "max_function_lines": 38,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-finance/tests/test_f7_records.py",
+      "lines": 258,
+      "max_function_lines": 35,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-finance/tests/test_package.py",
+      "lines": 312,
+      "max_function_lines": 35,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "packages/xuanpu-server/tests/identity/test_finance_f7_gateway_e2e.py",
+      "lines": 138,
+      "max_function_lines": 30,
+      "missing_docstrings": [],
+      "future_annotations": true
+    },
+    {
+      "path": "scripts/acceptance/finance_runner.py",
+      "lines": 195,
+      "max_function_lines": 48,
+      "missing_docstrings": [],
+      "future_annotations": true
+    }
+  ],
+  "issues": []
+}

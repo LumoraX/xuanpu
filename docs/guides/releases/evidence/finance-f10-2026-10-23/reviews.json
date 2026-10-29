@@ -1,0 +1,65 @@
+{
+  "design_spec": {
+    "reviewer": "f10_spec_review",
+    "initial": "issues_found",
+    "fixed": [
+      "ExpenseCategory has no independent enabled flag",
+      "direct current external pointer checks include orphan revision references",
+      "restore startup writes and same configuration boundary explicit"
+    ],
+    "final": "Approved"
+  },
+  "backend_spec": {
+    "reviewer": "f10_spec_review",
+    "initial": "issues_found",
+    "fixed": [
+      "non-object persisted JSONB policy returns blocked before Pydantic unpack; original invalid value affects digest; database query failure propagates"
+    ],
+    "final": "Approved"
+  },
+  "backend_quality": {
+    "reviewer": "f10_quality",
+    "status": "Approved",
+    "independent_pg_run": false
+  },
+  "recovery_and_contract_spec": {
+    "reviewer": "f10_spec_review",
+    "initial": "issues_found",
+    "fixed": [
+      "assert backup-time existing approval plan executable before proving readonly execution denial"
+    ],
+    "final": "Approved"
+  },
+  "console_spec": {
+    "reviewer": "f10_spec_review",
+    "status": "Approved",
+    "actual_cjs_groups": 8
+  },
+  "console_recovery_contract_quality": {
+    "reviewer": "f10_quality",
+    "status": "Approved",
+    "static_tests_passed": 36,
+    "database_cases_intentionally_not_run_by_reviewer": 2,
+    "note": "Full and quick database tests executed independently by root, not inferred from static reviewer skips"
+  },
+  "artifact_quality": {
+    "reviewer": "f10_quality",
+    "status": "Approved",
+    "evidence": "artifact-quality.json"
+  },
+  "production_status": "not_verified",
+  "final_acceptance_spec": {
+    "reviewer": "f10_spec_review",
+    "status": "Approved",
+    "actual_junit_counts_hashes_and_browser_checked": true
+  },
+  "post_test_documentation": {
+    "spec": "Approved",
+    "quality": "Approved",
+    "unchanged_tested_files": 701,
+    "readme_only_adjustment": 1,
+    "finance_artifacts_rebuilt": true,
+    "evidence": "post-test-documentation.json",
+    "final_image_id": "sha256:378b141c6bf51bc32b42007565d8a2c7b60722f364c9c34e3bdad6e60a0afba3"
+  }
+}

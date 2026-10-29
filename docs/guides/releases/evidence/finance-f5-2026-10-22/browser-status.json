@@ -1,0 +1,257 @@
+{
+  "funding_case": {
+    "id": "ab6ef6e328224d83b884b438add16704",
+    "kind": "funding_case",
+    "legal_entity_id": "company-a",
+    "version": 3,
+    "status": "approved",
+    "total": "100.00",
+    "owner_id": "usr_42f89a6bbb61e33dc47a41b0",
+    "record_mode": "prepayment_basis",
+    "content": {
+      "amount": "100.00",
+      "reason": "设备采购预付（隔离演练）",
+      "due_date": "2026-11-01",
+      "scenario": "prepayment",
+      "authority": {
+        "kind": "prepayment_terms",
+        "reference": "测试合同预付条款",
+        "amount_limit": "100.00",
+        "evidence_ids": [
+          "dd52ff8bf82d4b218ff31e1578cb6d9f"
+        ]
+      },
+      "evidence_ids": [
+        "dd52ff8bf82d4b218ff31e1578cb6d9f"
+      ],
+      "supplier_ref": {
+        "id": "supplier",
+        "kind": "supplier",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source": "controlled",
+        "version": "v2"
+      },
+      "business_refs": [
+        {
+          "id": "contract",
+          "kind": "contract",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source": "controlled",
+          "version": "v2"
+        }
+      ],
+      "legal_entity_id": "company-a"
+    },
+    "allocation_ids": [],
+    "evidence": [
+      {
+        "id": "dd52ff8bf82d4b218ff31e1578cb6d9f",
+        "kind": "source",
+        "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+        "source_version": "1",
+        "verification_state": "not_checked"
+      }
+    ],
+    "workflow_id": "9c91e230285f4c6a91f7467e7a2d50e1",
+    "workflow_version": 2,
+    "due_at": "2026-10-24T17:29:25.136600+00:00",
+    "workflow": {
+      "id": "9c91e230285f4c6a91f7467e7a2d50e1",
+      "version": 2,
+      "status": "approved",
+      "target_version": 2,
+      "policy_version": 1,
+      "due_at": "2026-10-24T17:29:25.136600+00:00",
+      "provider": "internal",
+      "current_step_id": null,
+      "steps": [
+        {
+          "id": "165dd10bbe74418fa38fdb6246d4f70a",
+          "version": 2,
+          "name": "专用审批",
+          "approver_user_id": "usr_d55dbd655d27805159aad3b2",
+          "status": "approved"
+        }
+      ]
+    },
+    "simulation": true,
+    "payment_status": "paid",
+    "paid_amount": "100.00",
+    "payment_pending_amount": "0.00",
+    "posting_status": "not_posted",
+    "posted_amount": "0.00",
+    "reversed_amount": "0.00",
+    "posting_pending_amount": "0.00",
+    "funding": {
+      "scenario": "prepayment",
+      "source_case_id": null,
+      "authority": {
+        "id": "20ecf6bec80a4caf956cad3058f1d6d3",
+        "version": 1,
+        "revoked": false,
+        "kind": "prepayment_terms",
+        "reference": "测试合同预付条款",
+        "valid_from": null,
+        "account_ref": null,
+        "occurred_on": null,
+        "valid_until": null,
+        "amount_limit": "100.00",
+        "evidence_ids": [
+          "dd52ff8bf82d4b218ff31e1578cb6d9f"
+        ]
+      },
+      "financial_version": 5,
+      "paid_amount": "100.00",
+      "payment_pending_amount": "0.00",
+      "cleared_amount": "0.00",
+      "clearance_pending_amount": "0.00",
+      "returned_amount": "0.00",
+      "return_pending_amount": "0.00",
+      "internal_attestation": {
+        "source": "finance_decision",
+        "decision_id": "6849cccf65994e7b8409d74a0ac75685",
+        "actor_id": "usr_d55dbd655d27805159aad3b2",
+        "action": "approve"
+      },
+      "outstanding_amount": "100.00"
+    }
+  },
+  "payments": {
+    "items": [
+      {
+        "id": "a56b427bf54e4716a9be607b324d2081",
+        "version": 2,
+        "legal_entity_id": "company-a",
+        "document_id": "ab6ef6e328224d83b884b438add16704",
+        "operation_id": "f2op_f5e17a2b3a8f4866ba37fa732c618441",
+        "status": "succeeded",
+        "simulation": true,
+        "document_kind": "funding_case",
+        "amount": "100.00",
+        "created_at": "2026-10-21T17:41:40.281310+00:00",
+        "evidence": [
+          {
+            "id": "proof",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "media_type": "application/pdf",
+            "object_ref": "provider:proof"
+          }
+        ],
+        "payee_ref": {
+          "id": "account",
+          "kind": "supplier_account",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source": "controlled",
+          "version": "v1"
+        },
+        "account_name": "模拟供应商",
+        "masked_account": "****0001",
+        "transaction_id": "tx-f2op_f5e17a2b3a8f4866ba37fa732c618441",
+        "external_order_id": "order-f2op_f5e17a2b3a8f4866ba37fa732c618441"
+      }
+    ],
+    "total": 1,
+    "next_cursor": null
+  },
+  "plans": {
+    "items": [
+      {
+        "id": "c678804304144ae59d6fc381765da910",
+        "action": "execute_payment",
+        "effects": [
+          "按固定金额和已核实账户发起付款，受理不代表到账"
+        ],
+        "version": 1,
+        "owner_id": "usr_42f89a6bbb61e33dc47a41b0",
+        "target_id": "ab6ef6e328224d83b884b438add16704",
+        "expires_at": "2026-10-22T17:36:41.941629+00:00",
+        "parameters": {
+          "amount": "100.00",
+          "payee_ref": {
+            "id": "account",
+            "kind": "supplier_account",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "source": "controlled",
+            "version": "v1"
+          }
+        },
+        "simulation": true,
+        "target_type": "funding_case",
+        "workflow_id": "6671997dd753441399da080a3ed14c8f",
+        "target_version": 3,
+        "legal_entity_id": "company-a",
+        "required_approvals": [
+          "usr_d55dbd655d27805159aad3b2"
+        ],
+        "digest": "d5193a958924f26d872fd94b5b0b8d1f8a9a9cd0abf99bf2a9378e640a3b36ec",
+        "executable": false,
+        "blockers": [
+          "SETTLEMENT_BALANCE_EXCEEDED:本次金额超过扣除成功及在途后的可用余额"
+        ],
+        "prepared_by": "usr_40b0f2009586176f34b575cc",
+        "payee": {
+          "ref": {
+            "id": "account",
+            "kind": "supplier_account",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "source": "controlled",
+            "version": "v1"
+          },
+          "account_name": "模拟供应商",
+          "masked_account": "****0001"
+        },
+        "funding": {
+          "evidence": [
+            {
+              "id": "dd52ff8bf82d4b218ff31e1578cb6d9f",
+              "kind": "source",
+              "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+              "source_version": "1",
+              "verification_state": "not_checked"
+            }
+          ],
+          "owner_id": "usr_42f89a6bbb61e33dc47a41b0",
+          "scenario": "prepayment",
+          "authority_id": "20ecf6bec80a4caf956cad3058f1d6d3",
+          "supplier_ref": {
+            "id": "supplier",
+            "kind": "supplier",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "source": "controlled",
+            "version": "v2"
+          },
+          "source_case_id": null,
+          "accounting_basis": "prepayment_basis"
+        },
+        "workflow": {
+          "id": "6671997dd753441399da080a3ed14c8f",
+          "version": 2,
+          "status": "approved",
+          "target_version": 1,
+          "policy_version": 2,
+          "due_at": "2026-10-22T17:36:41.941629+00:00",
+          "provider": "internal",
+          "current_step_id": null,
+          "steps": [
+            {
+              "id": "74d869672d5e449a9b7ac981f98da0bd",
+              "version": 2,
+              "name": "资金实际审批",
+              "approver_user_id": "usr_d55dbd655d27805159aad3b2",
+              "status": "approved"
+            }
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "next_cursor": null
+  },
+  "signed_requests": 46,
+  "origins": [
+    "human"
+  ],
+  "model": "disabled",
+  "channel_posts": 1,
+  "receipt": "dd52ff8bf82d4b218ff31e1578cb6d9f"
+}

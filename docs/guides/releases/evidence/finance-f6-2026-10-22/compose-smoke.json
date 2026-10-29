@@ -1,0 +1,401 @@
+{
+  "environment": "isolated_simulation",
+  "image": "xuanpu-finance:2026.10.22.3",
+  "production": false,
+  "before_restart_status": "outcome_unknown",
+  "tax_posts_before_restart": 1,
+  "runtime": {
+    "mode": "enabled",
+    "instance_lock_lost": false,
+    "worker": "running",
+    "settlement": "running",
+    "compliance": "running",
+    "notification": "running"
+  },
+  "native_notifications": 2,
+  "readiness": {
+    "status": "configured_simulation",
+    "production_status": "not_verified",
+    "checks": [
+      {
+        "code": "company",
+        "status": "passed",
+        "detail": "公司基础资料须完整配置"
+      },
+      {
+        "code": "policies",
+        "status": "passed",
+        "detail": "四类当前制度须显式启用"
+      },
+      {
+        "code": "approval_roles",
+        "status": "passed",
+        "detail": "各审批及异常岗位须有当前公司资格"
+      },
+      {
+        "code": "executor_roles",
+        "status": "passed",
+        "detail": "经办岗位须有效且付款记账分离"
+      },
+      {
+        "code": "settlement_channels",
+        "status": "passed",
+        "detail": "结算绑定版本须具备幂等及查单能力"
+      },
+      {
+        "code": "ledger_periods",
+        "status": "passed",
+        "detail": "须配置账簿和开放期间"
+      },
+      {
+        "code": "controlled_accounts",
+        "status": "passed",
+        "detail": "须存在当前启用且已核实的受控账户"
+      },
+      {
+        "code": "funding_chains",
+        "status": "passed",
+        "detail": "资金五场景须分别有实际审批链"
+      },
+      {
+        "code": "funding_capabilities",
+        "status": "passed",
+        "detail": "资金场景须被绑定结算通道显式支持"
+      },
+      {
+        "code": "invoice_basis",
+        "status": "passed",
+        "detail": "专用资金须基于有效发票制度，内部台账不能提升执行资格"
+      },
+      {
+        "code": "tax_capabilities",
+        "status": "passed",
+        "detail": "税务须具备期间票样及权威版本能力"
+      },
+      {
+        "code": "archive_capabilities",
+        "status": "passed",
+        "detail": "归档须具备标准配置及版本留存读回能力"
+      }
+    ],
+    "versions": [
+      {
+        "kind": "compliance",
+        "version": 2,
+        "generation": 2,
+        "enabled": true,
+        "digest": "3ed20433be2dfa3d4de5c70e96a7a47145b6e7c35432282edb4dfec0737d42a4"
+      },
+      {
+        "kind": "expense",
+        "version": 1,
+        "generation": 1,
+        "enabled": true,
+        "digest": "f2783caefc8fa5e6a249182896ffc107fbca40a0154c9149d3f626b153e02546"
+      },
+      {
+        "kind": "funding",
+        "version": 1,
+        "generation": 1,
+        "enabled": true,
+        "digest": "bc18b22a6e4befb8439183c78ed7bea82930767d8e9a68bfeb1f1b06c3490885"
+      },
+      {
+        "kind": "settlement",
+        "version": 2,
+        "generation": 2,
+        "enabled": true,
+        "digest": "6d3b86ebf7e902b5274335c676dc765905d290e06e9d49ad4e57f8e8a1d6aa86"
+      }
+    ],
+    "configuration_digest": "155a13acb2e3675a983097b7c806f5ed27c3824912838a0d37f4d929798a4ee3",
+    "external_verifications": [
+      "formal_policy_approval",
+      "provider_integration",
+      "official_invoice_and_signature",
+      "worm_retention",
+      "offsite_disaster_recovery",
+      "real_model",
+      "production_load"
+    ],
+    "legal_entity_id": "e",
+    "runtime": {
+      "mode": "enabled",
+      "instance_lock_lost": false,
+      "worker": "running",
+      "settlement": "running",
+      "compliance": "running",
+      "notification": "running"
+    }
+  },
+  "readiness_collector_denied": true,
+  "funding_scenario": "prepayment",
+  "funding_status": "approved",
+  "funding_paid_amount": "100.00",
+  "funding_internal_attestation": {
+    "source": "finance_decision",
+    "decision_id": "addfe9cdb8ff49ff89e54c4e39eb4166",
+    "actor_id": "a",
+    "action": "approve"
+  },
+  "funding_payment_posts": 1,
+  "funding_payment_queries": 1,
+  "funding_unknown_before_restart": true,
+  "funding_original_request_recovered": true,
+  "material_received": 1,
+  "funding_original_read_after_restart": true,
+  "result": "passed",
+  "restarts": 3,
+  "verification_status": "passed",
+  "usage_status": "confirmed",
+  "original_evidence": 1,
+  "archive_readback_verified": true,
+  "audit_after_restart": "succeeded",
+  "audit_external_post_count": 0,
+  "total_external_posts": 3,
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/v1/requests"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/requests/f3req_1e2868f08866451e8de0806d7e3b654c"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/requests"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/requests/f3req_1e2868f08866451e8de0806d7e3b654c/evidence/tax-file"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/requests/f3req_329b9ab0c795499d979f5fc2734a0e7c/evidence/tax-file"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/archives"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/target"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/target/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/invoice-lines-fields"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/invoice-lines-fields/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/compliance-history"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/compliance-history/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/tax-adjustments"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/tax-adjustments/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/original_039f4579b761436695cb6b7a0be72978"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/original_039f4579b761436695cb6b7a0be72978/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/receipt_f3receipt_dec850b50b9347a19f4f719039e076c0"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/receipt_f3receipt_dec850b50b9347a19f4f719039e076c0/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/receipt_f3receipt_f2e6b23fb889453c8a7a005c4efa5efa"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/receipt_f3receipt_f2e6b23fb889453c8a7a005c4efa5efa/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/evidence_f3receipt_f2e6b23fb889453c8a7a005c4efa5efa_0"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/evidence_f3receipt_f2e6b23fb889453c8a7a005c4efa5efa_0/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/receipt_f3receipt_bbebdae131cb49e6a346e18900080738"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/receipt_f3receipt_bbebdae131cb49e6a346e18900080738/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/evidence_f3receipt_bbebdae131cb49e6a346e18900080738_0"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/evidence_f3receipt_bbebdae131cb49e6a346e18900080738_0/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/events"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/events/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/manifest"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/manifest/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/seal"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/seal/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/target"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/target/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/invoice-lines-fields"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/invoice-lines-fields/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/compliance-history"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/compliance-history/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/tax-adjustments"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/tax-adjustments/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/original_039f4579b761436695cb6b7a0be72978"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/original_039f4579b761436695cb6b7a0be72978/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/receipt_f3receipt_dec850b50b9347a19f4f719039e076c0"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/receipt_f3receipt_dec850b50b9347a19f4f719039e076c0/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/receipt_f3receipt_f2e6b23fb889453c8a7a005c4efa5efa"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/receipt_f3receipt_f2e6b23fb889453c8a7a005c4efa5efa/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/evidence_f3receipt_f2e6b23fb889453c8a7a005c4efa5efa_0"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/evidence_f3receipt_f2e6b23fb889453c8a7a005c4efa5efa_0/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/receipt_f3receipt_bbebdae131cb49e6a346e18900080738"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/receipt_f3receipt_bbebdae131cb49e6a346e18900080738/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/evidence_f3receipt_bbebdae131cb49e6a346e18900080738_0"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/evidence_f3receipt_bbebdae131cb49e6a346e18900080738_0/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/events"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/events/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/manifest"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/manifest/retention"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/seal"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/archives/f3req_5d5296a550054127b55dca459aa4202e/objects/seal/retention"
+    }
+  ],
+  "receipts": 5,
+  "uid": "10001",
+  "image_id": "sha256:46927de8ab8a6296c2c9f1ed054e8bef7bb90168e7d9c57e289626b08967c3b2",
+  "storage": "dedicated_finance_pg_and_encrypted_originals_volumes",
+  "formal_tax": false,
+  "formal_archive": false,
+  "cleanup": "dedicated_project_and_volumes_removed"
+}

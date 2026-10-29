@@ -1,0 +1,38 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__ test_real_f1_rows_survive_repeated_f2_migration_without_execution_upgrade ___
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10a3733e0>
+
+    async def test_real_f1_rows_survive_repeated_f2_migration_without_execution_upgrade(
+        store: Any,
+    ) -> None:
+        """保留已批准内部记录/历史决定及原件，既有单据默认正式标记但没有执行资格。"""
+        schema = "f2_upgrade_" + uuid4().hex
+        async with store.pool.acquire() as conn, conn.transaction():
+            await conn.execute(f'CREATE SCHEMA "{schema}"')
+            await conn.execute(f'SET LOCAL search_path TO "{schema}"')
+            await conn.execute(SCHEMA)
+            await conn.execute(F1_SCHEMA)
+            await conn.execute("INSERT INTO finance_company VALUES('old','old','旧公司','OLD')")
+            await conn.execute(
+                "INSERT INTO finance_expense_claim(tenant_id,legal_entity_id,id,owner_id,version,status,total,content,record_mode) VALUES('old','old','legacy','owner',4,'approved',25.00,'{}','internal_record')"
+            )
+>           await conn.execute(
+                "INSERT INTO finance_claim_history(tenant_id,legal_entity_id,id,version,data) VALUES('old','old','legacy',4,'{\"reason\":\"旧记录\"}')"
+            )
+
+packages/xuanpu-finance/tests/test_f2_migration.py:27:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv/lib/python3.12/site-packages/asyncpg/connection.py:354: in execute
+    result = await self._protocol.query(query, timeout)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+>   ???
+E   asyncpg.exceptions.UndefinedTableError: relation "finance_claim_history" does not exist
+
+asyncpg/protocol/protocol.pyx:369: UndefinedTableError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f2_migration.py::test_real_f1_rows_survive_repeated_f2_migration_without_execution_upgrade
+1 failed in 0.28s

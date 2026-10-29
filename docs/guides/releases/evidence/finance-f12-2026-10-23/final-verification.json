@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "suites": {
+    "full-final": {
+      "tests": 2779,
+      "passed": 2776,
+      "skipped": 3,
+      "hashes_equal": true,
+      "missing_modules": [],
+      "exit": 0
+    },
+    "quick-final": {
+      "tests": 332,
+      "passed": 332,
+      "skipped": 0,
+      "hashes_equal": true,
+      "missing_modules": [],
+      "exit": 0
+    }
+  },
+  "frozen_files": 717,
+  "exact_frozen_file_set_and_bytes_equal": true,
+  "production_status": "not_verified"
+}

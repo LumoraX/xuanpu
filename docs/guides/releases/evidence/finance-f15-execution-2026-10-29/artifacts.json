@@ -1,0 +1,29 @@
+{
+  "status": "passed",
+  "scope": "3 locally rebuilt artifacts; no new images or deployment",
+  "artifacts": [
+    {
+      "name": "finance-0.16.0-f15.zip",
+      "bytes": 61594,
+      "sha256": "0fd9d6ce96c6e2cd761af031dd97ca61de4522b0b1ef63a307d56b37bf77fb7d",
+      "path": "/Volumes/Codes/lumorax/lumorax-platform/finance-execution-artifacts-20261029/finance-0.16.0-f15.zip"
+    },
+    {
+      "name": "xuanpu_finance-2026.10.23.5-py3-none-any.whl",
+      "bytes": 348166,
+      "sha256": "857295866d3c8920137f347932e448df434940745ade8d4ae3846d7922ca687d",
+      "path": "/Volumes/Codes/lumorax/lumorax-platform/finance-execution-artifacts-20261029/xuanpu_finance-2026.10.23.5-py3-none-any.whl"
+    },
+    {
+      "name": "xuanpu_finance-2026.10.23.5.tar.gz",
+      "bytes": 482786,
+      "sha256": "15ceca5282d0e1e21e4b725e0b2aab18010395531824998f96e325d92ff8c8b5",
+      "path": "/Volumes/Codes/lumorax/lumorax-platform/finance-execution-artifacts-20261029/xuanpu_finance-2026.10.23.5.tar.gz"
+    }
+  ],
+  "wheel_source_equal": true,
+  "sdist_complete_non_generated_source_equal": true,
+  "business_zip_equal": true,
+  "published_design_files_equal": true,
+  "source_files": 742
+}

@@ -1,0 +1,48 @@
+{
+  "status": "Approved",
+  "reviewed_at": "2026-10-29T04:01:35.704726+00:00",
+  "scope": "Approved design only; implementation requires TDD and direct offline/HTTP validation; no model/PG/private configuration/ledger access during review",
+  "design": "docs/superpowers/specs/2026-10-29-finance-f15-execution-efficiency-design.md",
+  "design_sha256": "a5d9a1f064160d56a825a6c4e6b9e03f5f47b4d31012c8af2a06f62400d83252",
+  "plan_sha256": "1067bebb7780bda5acbb16b1cb3a01198b2056311166ac9cb38ea57578650384",
+  "findings": [],
+  "implementation_conditions": [
+    {
+      "id": "EL-D02",
+      "text": "Focused result status must be partial_passed with counts_as_complete_journey=false and human fixture provenance before request/failure; CLI uses FINANCE_MODEL_PARTIAL_PASSED. Default full and execute_model_plan provenance stay unchanged."
+    },
+    {
+      "id": "EL-D03",
+      "text": "Validate and persist tightened local max1–120, cannot enlarge same-name reopened budget; local exhaustion is JOURNEY_STREAM_LIMIT, global240 remains STREAM_LIMIT. Never reset counts or automatically clear halt."
+    },
+    {
+      "id": "EL-D04",
+      "text": "Keep 08 fresh owner session, 07 finance and 10 outsider independently owned. Reusing manager04→06 and owner08→09 retains each actor, current queue/GET/history/version/plan/human checks; no cross-actor context sharing."
+    }
+  ],
+  "feasibility": {
+    "same_actor_session_reuse": "feasible using returned session and existing turn; full route count decreases by exactly2 if both later phases run",
+    "measured_vs_estimated": "final8 stopped at08, so only the manager06 route existed in its observed43 calls; do not subtract both future route savings from that partial observed run. Further capability/catalog savings remain unmeasured.",
+    "focused_scenario": "feasible with current public manual gateway; ExpenseClaim original/history/decision fixtures must be built through human HTTP, not direct PG. Existing final_facts and retained_original can verify real stored facts once count-origin label is corrected.",
+    "full_scenario": "Keep default full, all natural prompts and require_tools/execute_model_plan checks unchanged apart from intended same-actor lifecycle."
+  },
+  "activities": {
+    "source_modified": false,
+    "design_modified": false,
+    "tests_run": false,
+    "model_calls": 0,
+    "postgres_access": false,
+    "private_configuration_access": false,
+    "ledger_access": false,
+    "commit": false
+  },
+  "review_date": "2026-10-29",
+  "closed_findings": [
+    {
+      "id": "EL-D01",
+      "resolution": "Revised design explicitly separates one_fixture_created_claim from one_model_created_claim; default full model provenance gates remain."
+    }
+  ],
+  "prior_review": "design-review-before-provenance-fix.json",
+  "approval_scope": "Implementation design within original240/session200000 limits; not approval for completion, expansion, or automatic retries. Root may perform user-authorized single max12 focused test only after prerequisite offline checks and current fingerprints."
+}

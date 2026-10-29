@@ -1,0 +1,100 @@
+{
+  "status": "Approved",
+  "review_date": "2026-10-24",
+  "phase": "task3a-delegation-before-new-freeze",
+  "review_type": "独立窄修代码质量复审；不等于最终业务验收",
+  "scope": [
+    "examples/finance/skills/finance-assistant/SKILL.md",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+  ],
+  "spec_prerequisite": "delegation-spec.json当前Approved，另行实读两份Skill、测试、真实归档、设计审查与RED/GREEN证据",
+  "findings": [],
+  "required_changes": [],
+  "quality_assessment": [
+    {
+      "file": "examples/finance/skills/finance-assistant/SKILL.md",
+      "lines": [
+        23,
+        42
+      ],
+      "assessment": "明确子线程不继承父消息，args.request携带完整原始用户请求，args.invoice_information携带已提供的逐字值。目录/收件元数据另附，避免子Skill摘要覆盖原事实；用户真正缺事实仍追问，父线程已有而委派漏传则先修参数。该修改针对真实遗漏，不需要共享父历史或扩大原件权限。"
+    },
+    {
+      "file": "examples/finance/skills/finance-assistant/SKILL.md",
+      "lines": [
+        25,
+        40
+      ],
+      "assessment": "JSON示例符合实际model-075暴露的call_skill input_schema；args是子Skill任意参数对象而非财务API body。独立解码后原文与request内引用相等，首尾各2空格、2个真实换行，单次JSON往返保持字符。例子明确标注非待执行业务；申报附注仍不构成审批/支付授权。"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "lines": [
+        31,
+        46
+      ],
+      "assessment": "新增回归验证实际交付说明中的可解析JSON和精确字符语义，覆盖本次数据交接缺失及二次转义风险；测试不能也未宣称真实模型一定遵守提示。原分页/schema/真实loopback查询测试保持。"
+    },
+    {
+      "assessment": "两份Skill逐字节一致；frontmatter除既有F15版本外与eb15fa49基线相同，工具/子Skill白名单不扩。重新比较740个前轮冻结输入，恰好只有本轮允许的3文件变化；harness、用户自然语句、预算、验收门槛、server/SDK/finance源均保持原冻结字节。"
+    }
+  ],
+  "observed_failure": {
+    "journey": "final4",
+    "parent": "final4/model-075.json",
+    "child": "final4/model-079.json",
+    "parent_has_original_raw_marker": true,
+    "delegation_args_keys": [
+      "request"
+    ],
+    "delegation_contains_original_raw_marker": false,
+    "child_initial_seed_equals_actual_args": true,
+    "assessment": "独立核对真实父请求有原文、真实委派只传格式说明且子seed等于args；支持root委派遗漏假设。final4继续保留failed，不能将提议或离线构造包视作业务成功。"
+  },
+  "verification": [
+    {
+      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_skill_contract.py -q",
+      "exit_code": 0,
+      "result": "7 passed in 0.99s",
+      "boundary": "包括既有null-query真实loopback HTTP测试，实际运行。没有外部API、PG、真实模型或私有配置访问。"
+    },
+    {
+      "command": "uv run ruff check --select F,S108,I,TC packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "exit_code": 0,
+      "result": "All checks passed!"
+    },
+    {
+      "check": "独立项目运行时JSON/schema/原始trace校验",
+      "result": "示例jsonschema.validate实际call_skill input_schema通过；child seed==实际args；两份Skill相等、基线frontmatter能力不变、3项源码SHA与Approved spec一致。"
+    },
+    {
+      "check": "前轮frozen-source.json全部740项重新SHA256比较",
+      "result": "仅两份finance-assistant Skill与test_f15_skill_contract.py共3项不同。",
+      "reference_sha256": "7121ae02eca37bb15285426010f5aa14c2c86862db7b4105266bc1d88194f90b"
+    },
+    {
+      "check": "RED/GREEN归档实读",
+      "result": "RED为新增自包含委派回归1 failed、6 deselected；GREEN为7 passed。未回滚共享工作区重跑RED。"
+    },
+    {
+      "check": "审查环境修正",
+      "result": "首次系统python3的schema校验因缺jsonschema未执行；改用项目uv run python后独立验证通过，未改环境或源码。"
+    }
+  ],
+  "source_sha256": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "b1529e5deefde27cc2309dfcb859bdb043370b4ba4ccd0781d30cad4ef5c268a",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "b1529e5deefde27cc2309dfcb859bdb043370b4ba4ccd0781d30cad4ef5c268a",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "50f60d2b1c3a16270a64b8925d38efaafc819e41ae464581f48d278626af0811"
+  },
+  "limitations": [
+    "本次只批准3文件窄修质量与可执行静态契约；不能证明实际模型将遵守委派条款。",
+    "未PG、真实模型、私有模型配置或私有账本；没有产品/harness源修改或提交。",
+    "未重复全量pytest/quick/构建；主agent需重新冻结与重建受影响业务包制品，并完成后续全量门禁。"
+  ],
+  "pending": [
+    "重新冻结后以两次独立fresh-state真实旅程核对root原始请求→真实call_skill args→child输入→实际create→PG/各历史版本逐字一致，以及全部既有人工决定、原件、安全与零支付门槛。",
+    "累计预算及停止边界保持，前次失败保留；最终真实模型、数据语义和全量交付需另行独立审查。"
+  ],
+  "approval_scope": "未发现阻断本次Skill窄修进入新冻结及fresh真实模型重放的质量问题。"
+}

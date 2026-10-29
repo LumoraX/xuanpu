@@ -1,0 +1,56 @@
+# 默认关闭：替换真实公司与员工后显式启用；沿用独立凭据文件。
+environment: development
+synthetic: false
+mode: enabled
+host: 0.0.0.0
+port: 8443
+database_dsn_file: database-dsn
+service_token_file: service-token
+issuer: xuanpu
+audience: xuanpu-finance
+public_key_files:
+  platform-ed25519-1: platform-public.pem
+gateway:
+  base_url: http://host.docker.internal:8420
+  tenant_token_files:
+    acme: platform-api-key
+objects:
+  kind: local
+  root: /var/lib/finance/originals
+  key_file: originals-key.bin
+companies:
+- tenant_id: acme
+  legal_entity_id: company-a
+  name: 测试公司
+  tax_id: TEST_ONLY
+grants:
+- tenant_id: acme
+  user_id: test-employee
+  legal_entity_id: company-a
+  role: collector
+- tenant_id: acme
+  user_id: example-approver
+  legal_entity_id: company-a
+  role: approver
+- tenant_id: acme
+  user_id: example-reviewer
+  legal_entity_id: company-a
+  role: reviewer
+expense_policies:
+- tenant_id: acme
+  legal_entity_id: company-a
+  version: 1
+  enabled: false
+  record_mode: internal_record
+  require_verified_invoice: false
+  require_cost_center: false
+  approval_due_hours: 72
+  categories:
+  - id: other
+    name: 其他费用
+  cost_centers: []
+  steps:
+  - id: manager
+    name: 负责人审批
+    approver_user_id: example-approver
+  exception_owner_user_id: example-reviewer

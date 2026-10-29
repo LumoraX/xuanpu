@@ -282,6 +282,27 @@ from xuanpu_server.work_tasks.activity import ActivityConfig
 from xuanpu_server.work_tasks.config import DurableExecutionConfig
 
 
+class CallContextConfig(_Section):
+    """调用签名的部署级信任配置：只向指定源签发列出的受众。"""
+
+    issuer: str = Field(min_length=1)
+    key_id: str = Field(alias="keyId", min_length=1)
+    private_key_secret: str = Field(alias="privateKeySecret", min_length=1)
+    allowed_audiences: dict[str, list[str]] = Field(alias="allowedAudiences", min_length=1)
+
+    @field_validator("allowed_audiences")
+    @classmethod
+    def _origins(cls, value: dict[str, list[str]]) -> dict[str, list[str]]:
+        """逐项校验可信源和非空受众，不允许通配或路径扩大信任。"""
+        result: dict[str, list[str]] = {}
+        for origin, audiences in value.items():
+            normalized = normalize_origin(origin, name="allowedAudiences")
+            if not audiences or any(not item.strip() for item in audiences):
+                raise ValueError("allowedAudiences 每个源必须提供非空受众")
+            result[normalized] = audiences
+        return result
+
+
 class ServerConfig(_Section):
     """平台服务的完整配置。
 
@@ -319,6 +340,7 @@ class ServerConfig(_Section):
     metrics: MetricsConfig = MetricsConfig()
     public_url: str | None = None
     identity: IdentityConfig = IdentityConfig()
+    call_context: CallContextConfig | None = None
     lease_seconds: float = Field(default=60.0, ge=5)
     shutdown_drain_seconds: float = Field(default=30.0, ge=0)
     instance_id: str | None = None

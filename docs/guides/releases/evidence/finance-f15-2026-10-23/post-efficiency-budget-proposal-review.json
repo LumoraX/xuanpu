@@ -1,0 +1,157 @@
+{
+  "status": "AwaitingUserAuthorization",
+  "execution_authorized": false,
+  "review_date": "2026-10-24",
+  "scope": "仅准备可审核的后续单一stream上限提案；不执行、不问用户、不修改任何上限/代码/模型/账本或提交。当前“先别扩额”仍有效。",
+  "current_authorization_boundary": "用户只授权先优化并在原上限内验收，尚未授权240提高至320；root在全部已授权离线工作结束后自行决定是否提出明确问题。本文件不是执行批准，不能由沉默或先前continue推导新额度。",
+  "verified_facts": {
+    "global_attempts": 208,
+    "completed_with_known_usage": 206,
+    "usage_unknown_attempts": [
+      56,
+      59
+    ],
+    "known_input_tokens": 1207876,
+    "known_output_tokens": 30074,
+    "counter_equation": true,
+    "request_bytes": 7844062,
+    "event_bytes": 2906165,
+    "known_model_phase_seconds": 673.2396314867781,
+    "current_runtime_cap": 240,
+    "current_remaining": 32,
+    "actual_final8_through_phase08": {
+      "streams": 43,
+      "input_tokens": 369273,
+      "output_tokens": 6525,
+      "first_trace": "final8/model-166.json",
+      "last_trace": "final8/model-208.json",
+      "result": "failed_fresh_query_semantic_facts",
+      "negative_phase09_10": "not_run"
+    },
+    "same_actual_owner_session": {
+      "actor_id": "usr_233e582c7b350a1d37d69d0f",
+      "session_id": "ses_7231653f272f8fb9f49277e4662a6765",
+      "streams": 15,
+      "input_tokens": 151440,
+      "output_tokens": 2666,
+      "total_tokens": 154106,
+      "session_limit": 200000,
+      "same_scope_raw_recomputed": true,
+      "phases": [
+        "01-clarify:session",
+        "02-create:session",
+        "03-edit-preview:session",
+        "05-owner-resubmit:session"
+      ],
+      "boundary": "证明该次owner澄清→重提累计低于20万；不是最新source的真实复验，也不是两次完整流程。"
+    },
+    "unresolved_observed_efficiency": "model183仍在已知本owner唯一ID时再次summary，不能声称离线定位规则已在模型行为中消除；46次估计不额外扣除该未实现节省。",
+    "latest_source_identity": {
+      "freeze_files": 740,
+      "freeze_sha256": "c44a6731c71e618be7e17fbd1cf1192873da00bd88620c8d0a3588ed91b41ea9",
+      "current_root_skill_sha256": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
+      "matches_current_freeze": true,
+      "last_real_final8_root_sha256": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
+      "same_as_final8": false,
+      "model_verified": false
+    },
+    "offline_review_records": {
+      "history-reply-spec.json": "Approved",
+      "history-reply-quality.json": "Approved",
+      "boundary": "只读现有审查记录；当前owned PG全量/quick/文档/制品等由root继续已授权工作，本审查未重跑或声称其已全部结束。"
+    }
+  },
+  "proposed_single_change": {
+    "cumulative_stream_cap": {
+      "current": 240,
+      "proposed": 320,
+      "increment": 80,
+      "remaining_after_authorization_at208": 112
+    },
+    "explicitly_unchanged": {
+      "business_session_token_cap": 200000,
+      "journey_stream_cap": 120,
+      "global_known_input_cap": 3000000,
+      "global_known_output_cap": 150000,
+      "global_model_phase_seconds": 5400,
+      "journey_seconds": 1200,
+      "single_request_seconds": 90,
+      "single_output_tokens": 4096,
+      "single_request_bytes": 262144,
+      "cumulative_request_bytes": 33554432,
+      "cumulative_event_bytes": 134217728,
+      "max_iterations": 20,
+      "stop_at_unknown_count": 5,
+      "model": "原配置原模型，不切换",
+      "ledger": "原始历史/208attempts/206completed/2unknown及token/bytes/time不清零",
+      "business_scope": "原自然语句/权限/API/Skill功能/两次fresh完整流程门槛不放宽"
+    },
+    "old_400_or_600000_plan": "不采用；尤其没有提高session200000的请求。"
+  },
+  "arithmetic_and_risks": {
+    "observed_before_failure": 43,
+    "estimated_two_negative_phases_minimum": 4,
+    "conditional_q_empty_lookup_saving": 1,
+    "estimated_per_new_journey": 46,
+    "two_journeys_estimate": 92,
+    "cumulative_estimate": 300,
+    "proposed320_margin": 20,
+    "if_q_improvement_not_followed": {
+      "per_journey": 47,
+      "two_journeys": 94,
+      "cumulative": 302,
+      "margin_to320": 18
+    },
+    "recommendation": "320是合理的、只提高单一调用门槛的有界保守提案；它不是数值最小值，也不是完整验收通过保证。150k/3M/时间/字节/20万会话与第5未知停止均可能先触发。",
+    "why_actual_fact_supports_narrower_than_old_request": "已有一次相同owner会话154106<200000，无须再以原final6失败为理由扩到600000；43实测阶段加未跑负向给出46附近估计，故不需沿旧400方案。",
+    "not_a_worst_case_reservation": "320余112，远少于每journey120*2=240的两轮最坏容量；这是按现有46附近经验规划。失败重跑/长历史/工具冲突/网络问题或模型不遵守最新指令都可能用尽112仍无两个成功。",
+    "newest_fix_risk": "最新历史答复/q规则只有离线证据，真实模型可能仍漏旧驳回或仍空查。静态145/规格质量通过不能代替模型行为改善，不把最终2次说成必然成功。",
+    "cost_boundary": "当前用量仅已知1207876 input/30074 output+2次未知，未知不按0。任何扩stream提案都不提供私有网关实际完整token或精确货币成本保证；不充值/不增加其它成本门槛。"
+  },
+  "narrower_safe_alternatives": [
+    {
+      "cap": 310,
+      "increment": 70,
+      "remaining_from208": 102,
+      "margin_after_estimated92": 10,
+      "margin_if94": 8,
+      "assessment": "若用户更看重更小额度，可用310，保持同样安全和业务门槛，容错余量更少；不是更容易通过，仅消费边界更窄。"
+    },
+    {
+      "cap": 300,
+      "increment": 60,
+      "remaining_from208": 92,
+      "margin_after_estimated92": 0,
+      "margin_if94": -2,
+      "assessment": "算式上的最紧经验值，没有波动余量且q未实现即不足，不推荐承诺可完成。"
+    },
+    {
+      "cap": 240,
+      "increment": 0,
+      "remaining_from208": 32,
+      "assessment": "维持用户现指令的默认合法选择：完成已授权离线交付/说明最终模型未复验、两个完整旅程未达成，不再消费、不作完成提交。没有用户新答复时必须保持此项。"
+    }
+  ],
+  "required_before_root_may_request_authorization": [
+    "先完成当前已授权的全量/quick、文档、制品、最终独立审查等，整理具体结果与仍未验证项，避免用预算问题代替可完成的离线工作。",
+    "向用户准确区分已改善的same-session154106、final8部分成功、遗漏原驳回导致失败、最后source从未真实复验、实际0个完整通过旅程；保留所有失败，不挑最好阶段包装完成。",
+    "新问题若提出，仅问是否把累计stream240提高至320并明确其他限制不变、已208、不清零、私有用量2未知、第5未知停；不能把先前“先不扩额”或网络continue当同意。是否提问由root决定，本报告不代发。"
+  ],
+  "required_only_if_user_explicitly_authorizes": [
+    "保存真实回复原文/时间/来源和具体cap；原账本字节快照/hash及历史保持，attempts/completed/known token/unknown/bytes/time均不重置，不清现失败记录。",
+    "只改Budget累计stream门槛240→用户实际授权值及对应边界回归、必要设计说明；RuntimeDefaults与发布/设计manifest仍200000，max_iterations20等不动。",
+    "新source或预算执行配置纳入新freeze和必要门禁；使用相同自然语句、两次全新资源完整旅程，所有实际semantic/PG/history/三human/原件/负向门槛保持。",
+    "原网络有界授权与新总cap组成可审核有效边界，若再需手工恢复，现临时helper的硬编码240断言须先作一致性审查，不能自动忽略；未知第5次仍立即停止且不恢复。",
+    "任何新cap或原有其它门槛达到、未知5、数据/语义失败无法在剩余额度内重跑时明确未完成，不擅自再次扩额、不改变模型/测试答案。只有两次真实完整通过且所有规定门禁闭合，才可能考虑完成提交。"
+  ],
+  "evidence_hashes": {
+    "partial-efficiency-comparison.json": "d1a64b86994155b8386d79d0c63da2bbbcb97a44f3fc5ee4b3f8b63001f2016f",
+    "final8/budget-snapshot.json": "ebb3ee233176333ffac290a3ca83c3e045d08659a1c4cfa74b4db1eff91da5eb",
+    "final8/model-183.json": "cdd6ca88a9046ec88e3ac618c3dc86184e70d4ff886df5dd0de0fdc081ce8ac4"
+  },
+  "limitations": [
+    "只读本地合成raw/冻结文件/静态上限和审查报告，未访问PG/模型API/私有配置或当前私有ledger，未运行测试或修改任何源码/上限/模型。",
+    "本文件仅写待授权提案，status AwaitingUserAuthorization、execution_authorized=false；没有用户新授权且当前runtime240保持。",
+    "未发送预算问题、未执行模型消费或完成提交；root现有owned PG离线门禁授权不受影响。"
+  ]
+}

@@ -40,13 +40,18 @@ class Event:
 
     kind: str
     submission_id: str
-    seq: int
+    seq: int | None
     at: float
     data: dict[str, Any] = field(default_factory=dict)
 
     @property
     def terminal(self) -> bool:
         """是否结束了这一轮对话。"""
+        if self.kind not in TERMINAL_KINDS | RESUME_ENDING_KINDS | {'suspension_resolved'}:
+            return False
+        projected = self.data.get('operation_terminal')
+        if isinstance(projected, bool):
+            return projected
         if self.kind == "turn_suspended" or self.kind in RESUME_ENDING_KINDS:
             return True
         return self.kind in TERMINAL_KINDS and bool(self.data.get("is_root", False))

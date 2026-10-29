@@ -1,0 +1,30 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_____________ test_simulated_originals_use_distinct_object_prefix ______________
+
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-799/test_simulated_originals_use_d0')
+
+    async def test_simulated_originals_use_distinct_object_prefix(tmp_path: Path) -> None:
+        """即使操作员复用根目录，模拟原件仍位于独立子空间。"""
+        key=tmp_path/'key'
+        key.write_bytes(b'k'*32)
+        config=ObjectsConfig(kind='local',root=tmp_path/'objects',key_file=key)
+>       objects=await runtime.objects_from_config(config,simulation=True)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: objects_from_config() got an unexpected keyword argument 'simulation'
+
+packages/xuanpu-finance/tests/test_f2_runtime.py:22: TypeError
+________ test_simulation_rejects_wrong_actual_database_before_mutation _________
+
+    async def test_simulation_rejects_wrong_actual_database_before_mutation() -> None:
+        """库名门禁在configure/migrate之前，不能仅校验连接字符串。"""
+        function=getattr(runtime,'configure_store',None)
+>       assert function is not None,'缺少运行时真实数据库隔离门禁'
+E       AssertionError: 缺少运行时真实数据库隔离门禁
+E       assert None is not None
+
+packages/xuanpu-finance/tests/test_f2_runtime.py:39: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f2_runtime.py::test_simulated_originals_use_distinct_object_prefix
+FAILED packages/xuanpu-finance/tests/test_f2_runtime.py::test_simulation_rejects_wrong_actual_database_before_mutation
+2 failed in 0.16s

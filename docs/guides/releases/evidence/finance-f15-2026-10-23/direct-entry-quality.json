@@ -1,0 +1,110 @@
+{
+  "status": "Approved",
+  "review_date": "2026-10-24",
+  "phase": "task1b-root-direct-entry-quality-before-final-freeze",
+  "scope": [
+    "examples/finance/skills/finance-assistant/SKILL.md",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+  ],
+  "design": "docs/superpowers/specs/2026-10-24-finance-f15-direct-entry-design.md",
+  "design_sha256": "cc8276ed45f2d29d33414c2ad0e5f5e78b5cf2be96adebeffce30d8f5a1c72d9",
+  "spec_prerequisite": "在direct-entry-spec.json变为Approved且DE-S01关闭后才开始审查；另行实读最终root规则、测试、实现/注册报告与批准设计。",
+  "findings": [],
+  "required_changes": [],
+  "quality_assessment": [
+    {
+      "file": "examples/finance/skills/finance-assistant/SKILL.md",
+      "lines": [
+        7,
+        27
+      ],
+      "assessment": "入口API暴露明确由1调整为13，不冒称根名单没变。实际注册root13全部属于原expense/review子Skill工具并集；仅3个草稿/预检写工具，10个只读。没有execute、原件、支付/记账/资金或维护工具新增到root，原6专业child与服务端鉴权/版本/来源实现不动。"
+    },
+    {
+      "file": "examples/finance/skills/finance-assistant/SKILL.md",
+      "lines": [
+        31,
+        41
+      ],
+      "assessment": "仅新建缺必需事实直接追问，已有记录查询/修订/待审从实际授权摘要/队列/详情恢复。票据附注与用户外层操作意图明确分开，避免以原文注入误触发批准/付款或误拒绝正常草稿。capabilities/company仅独立只读可同轮，先验证真实cap后才继续依赖业务；旧目录仅定位，不能充当当前授权/版本。"
+    },
+    {
+      "file": "examples/finance/skills/finance-assistant/SKILL.md",
+      "lines": [
+        43,
+        55
+      ],
+      "assessment": "普通internal_records直接起草、修改、重提预检和当前审批人预检，依赖GET→update→preview按真实返回version顺序，不并行依赖写。真实receipt选择、当前RLS/队列版本/步骤、原理由、逐字空格换行及独立human决定边界保留。历史5/1只按当前正文启发式，实际raw不完整从可信cursor降页长，不能从SSE省略或当前状态补造所问意见。"
+    },
+    {
+      "file": "examples/finance/skills/finance-assistant/SKILL.md",
+      "lines": [
+        57,
+        67
+      ],
+      "assessment": "未知写结果先用root现有读取核原记录；确需原operation时，异常分支明确委派既有getOperation专业路径或交人工，保留原键/线索且不重放。该internal_records异常出口明文禁止general动作，也不加普通成功路径调用。general专业段对internal readiness有明确限制例外，结合上文异常出口不会要求为恢复扩root工具或越profile执行。"
+    },
+    {
+      "file": "examples/finance/skills/finance-assistant/SKILL.md",
+      "lines": [
+        63,
+        78
+      ],
+      "assessment": "仍明确聊天/工具许可不能把agent升级为human；付款、ERP、税务和正式档案各自独立。确需专业委派保留self-contained原请求/原文和单次JSON序列化例子，明确不是普通internal默认流程或真实业务。"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "assessment": "使用实际FilesystemSkillRegistry与validate_package核精确root13及子集，不仅检查文字。新增/更新静态契约覆盖已有记录意图、票据附注、独立只读批量、当前版本、human边界及异常恢复出口。改写阶段1委派断言与批准的新架构一致，没有放宽独立harness业务断言。"
+    }
+  ],
+  "verification": [
+    {
+      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q",
+      "exit_code": 0,
+      "result": "126 passed in 2.42s",
+      "boundary": "包含实际包注册及既有null-query loopback HTTP；无PG、外部API、真实模型或私有配置访问。"
+    },
+    {
+      "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "exit_code": 0,
+      "result": "All checks passed!"
+    },
+    {
+      "check": "独立两目录实际validate_package + FilesystemSkillRegistry + pack_package内存ZIP核对",
+      "result": "均通过；root13是既有expense/review子集、模型API并集68、声明77/internal24/7Skills；现root3写10读，shellfalse保持。公共20归档成员字节全部相同，实际root成员与源逐字一致。",
+      "published_ZIP_sha256": "5c06e3a95b6645c98507ba5454cb24eb267fb54a7d768c071c69ff22bb3665f4",
+      "design_ZIP_sha256": "7aa325321fc80649f83d792dbff250a6887defd396eb18968b163f8ed4f5b620",
+      "artifact_persisted": false
+    },
+    {
+      "check": "独立前冻结740输入叠加阶段1九文件快照，再比当前SHA",
+      "result": "只有两份root Skill和现test_f15_skill_contract.py三项变化；专业Skill/API/policy/runtime/harness/自然用户语句与其它业务门槛字节不变。"
+    },
+    {
+      "check": "独立三源码和批准设计SHA256",
+      "result": "全部匹配Approved spec及父agent指定最终稳定值。"
+    },
+    {
+      "check": "既有生产approval.py只读审查",
+      "result": "标准策略仍依连接器effect给read allow、write ask，原actor/signature/human验证源无变动；未把其他审查者173项协议测试算作本质量审查实际运行。"
+    }
+  ],
+  "source_sha256": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "c1bf092059c1261b5e2821451172b3f1966fea9fdd42cc634eb64c1fce1a19bb"
+  },
+  "limitations": [
+    "本报告批准Task1b三文件窄质量，阶段1另有独立批准；不是整个F15业务验收或交付完成。",
+    "静态/确定性126项与内存ZIP不能证明真实模型已减少采样或完整owner会话低于200000；实际效率、13工具使用与完整两轮均待新冻结实测。",
+    "未PG、模型API、私有配置或账本；未改源、产品或提交。",
+    "未重复全部身份/财务签名协议测试、全量pytest/quick、strict mypy或最终制品安装验证，其他agent结果不算本审查自运行。"
+  ],
+  "pending": [
+    "新完整冻结及受影响业务包制品绑定；保持原授权预算与同一完整owner会话，不扩额或拆会话绕限。",
+    "两次fresh完整真实模型流程，独立核实际调用/用量、PG精确事实、三次human决定、原文/历史/独立原件与全部负向门槛；旧失败保留。",
+    "全量/quick/静态/文档/最终制品与全局审查、秘密检查及精确清理后再判断仅本地提交条件。"
+  ],
+  "approval_scope": "未发现必须阻断Task1b直接入口进入新冻结与fresh真实模型验证的质量问题。"
+}

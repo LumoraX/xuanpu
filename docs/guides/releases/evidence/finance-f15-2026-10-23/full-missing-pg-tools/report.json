@@ -1,0 +1,42 @@
+{
+  "status": "failed",
+  "production_status": "not_verified",
+  "tests": 2980,
+  "failures": 13,
+  "errors": 0,
+  "skipped": 3,
+  "missing_modules": [],
+  "skipped_cases": [
+    {
+      "class": "packages.xuanpu-server.tests.reminders.test_postgres_order",
+      "name": "test_same_employee_notification_commit_order[memory]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.workspace.test_proactive_store",
+      "name": "test_database_source_constraints_are_enforced[memory]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.workspace.test_proactive_store",
+      "name": "test_memory_disable_reenable_fences_open_snapshot[postgres]"
+    }
+  ],
+  "suite": "full",
+  "source": {
+    "head": "eb15fa49f83af07dc18da05a2e0fcdf0e3875546",
+    "worktree_sha256": "484371785bdca555d4907733d25477d6f007215b160eae1340806b14a11c4348"
+  },
+  "modules": [
+    "packages"
+  ],
+  "started_at": "2026-10-23T11:10:00.838048+00:00",
+  "finished_at": "2026-10-23T11:19:29.659430+00:00",
+  "returncode": 1,
+  "diagnostic": null,
+  "environment": "isolated_loopback_finance_test",
+  "external_suppliers": "not_verified",
+  "cleanup_required": false,
+  "evidence_sha256": {
+    "pytest.log": "992c60263c3ca8b2dfbd9c70f29a1516d521181733467095aa5487466ff4daec",
+    "junit.xml": "cfe8cf00ecdd0cc0eb810707ec093c95ac8761eccae1c668d31ce392faf15f73"
+  }
+}

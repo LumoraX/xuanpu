@@ -1,0 +1,217 @@
+{
+  "status": "passed",
+  "untracked_files_checked": 949,
+  "raw_whitespace_only": [
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/build-image.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 2
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/build-platform-image.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 14
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 8
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-red.xml",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 8
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/docs-session-stop-red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 2
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/docs-session-stop-red.xml",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 2
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/full-missing-pg-tools/junit.xml",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 60
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/full-missing-pg-tools/pytest.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 60
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/harness-red-replay.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 54
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/nested-coverage-first.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 2
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/nested-identity-final-green.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 6
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/nested-identity-green.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 2
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/nested-resume-race-red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 10
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/nested-resume-red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 8
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/nested-sdk-replay-seq-red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 6
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/null-query-red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 6
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/observer-201-red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 14
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/observer-201-red.xml",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 14
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/observer-container-red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 16
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/observer-container-red.xml",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 16
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/observer-preview-red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 6
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/observer-preview-red.xml",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 6
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/observer-raw-scope-red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 18
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/observer-raw-scope-red.xml",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 18
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/replay-projection-fixture-red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 6
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/sdk-replay-seq-red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 24
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-2026-10-23/sdk-terminal-red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 2
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-execution-2026-10-29/budget-red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 2
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-execution-2026-10-29/full-first-f3-failure/junit.xml",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 10
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-execution-2026-10-29/full-first-f3-failure/pytest.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 10
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-execution-2026-10-29/query-fix-before-description.xml",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 8
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-execution-2026-10-29/red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 10
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-execution-2026-10-29/red.xml",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 10
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-execution-2026-10-29/review-fix-red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 10
+    },
+    {
+      "file": "docs/guides/releases/evidence/finance-f15-execution-2026-10-29/review-red.log",
+      "preserved_raw_evidence": true,
+      "check_returncode": 3,
+      "issue_lines": 10
+    }
+  ],
+  "raw_failed_trace_bytes_unchanged": true
+}

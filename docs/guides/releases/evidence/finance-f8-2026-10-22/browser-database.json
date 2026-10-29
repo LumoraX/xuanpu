@@ -1,0 +1,502 @@
+{
+  "environment": "isolated_test",
+  "claim": {
+    "id": "ac7d47fdc1a741aa804b7c2c7c6d971f",
+    "owner_id": "usr_f990ef20ae6a127b1055000e",
+    "version": 6,
+    "status": "approved",
+    "total": "100.00",
+    "content": {
+      "lines": [
+        {
+          "amount": "100.00",
+          "reason": "F8最终测试地铁费用",
+          "category_id": "travel",
+          "occurred_on": "2026-10-22"
+        }
+      ],
+      "reason": "F8最终验收：已补充交通行程",
+      "evidence_ids": [
+        "6297bb514e6e4b668286a97ebc555ccc"
+      ],
+      "legal_entity_id": "company-a",
+      "invoice_information": "  发票号 TEST-F8-FINAL\n申报金额 100.00；未经查验  "
+    },
+    "record_mode": "internal_record"
+  },
+  "history": [
+    {
+      "version": 1,
+      "data": {
+        "id": "ac7d47fdc1a741aa804b7c2c7c6d971f",
+        "kind": "expense_claim",
+        "total": "100.00",
+        "status": "draft",
+        "content": {
+          "lines": [
+            {
+              "amount": "100.00",
+              "reason": "F8最终测试地铁费用",
+              "category_id": "travel",
+              "occurred_on": "2026-10-22"
+            }
+          ],
+          "reason": "F8最终验收：客户拜访交通",
+          "evidence_ids": [
+            "e720d3223e2e425080a4895fe631ead3"
+          ],
+          "legal_entity_id": "company-a",
+          "invoice_information": "  发票号 TEST-F8-FINAL\n申报金额 100.00；未经查验  "
+        },
+        "version": 1,
+        "evidence": [
+          {
+            "id": "e720d3223e2e425080a4895fe631ead3",
+            "kind": "source",
+            "sha256": "363216039006f6271c38b432c29b46ccbc9315c89f48fb45fe89f6473ee0de3f",
+            "source_version": "1",
+            "verification_state": "not_checked"
+          }
+        ],
+        "owner_id": "usr_f990ef20ae6a127b1055000e",
+        "simulation": false,
+        "paid_amount": "0.00",
+        "record_mode": "internal_record",
+        "posted_amount": "0.00",
+        "allocation_ids": [],
+        "payment_status": "not_requested",
+        "posting_status": "not_posted",
+        "legal_entity_id": "company-a",
+        "reversed_amount": "0.00",
+        "payment_pending_amount": "0.00",
+        "posting_pending_amount": "0.00"
+      }
+    },
+    {
+      "version": 2,
+      "data": {
+        "id": "ac7d47fdc1a741aa804b7c2c7c6d971f",
+        "kind": "expense_claim",
+        "total": "100.00",
+        "due_at": "2026-10-25T10:36:02.704275+00:00",
+        "status": "under_review",
+        "content": {
+          "lines": [
+            {
+              "amount": "100.00",
+              "reason": "F8最终测试地铁费用",
+              "category_id": "travel",
+              "occurred_on": "2026-10-22"
+            }
+          ],
+          "reason": "F8最终验收：客户拜访交通",
+          "evidence_ids": [
+            "e720d3223e2e425080a4895fe631ead3"
+          ],
+          "legal_entity_id": "company-a",
+          "invoice_information": "  发票号 TEST-F8-FINAL\n申报金额 100.00；未经查验  "
+        },
+        "version": 2,
+        "evidence": [
+          {
+            "id": "e720d3223e2e425080a4895fe631ead3",
+            "kind": "source",
+            "sha256": "363216039006f6271c38b432c29b46ccbc9315c89f48fb45fe89f6473ee0de3f",
+            "source_version": "1",
+            "verification_state": "not_checked"
+          }
+        ],
+        "owner_id": "usr_f990ef20ae6a127b1055000e",
+        "workflow": {
+          "id": "21f2634c9693484c834da9d6b5514ca3",
+          "steps": [
+            {
+              "id": "d084209066e9412dadd6b7a3f46e51c7",
+              "name": "负责人审批",
+              "status": "pending",
+              "version": 1,
+              "approver_user_id": "usr_5fd1ff32f971e52dda27b60e"
+            },
+            {
+              "id": "f528b7b0198147bcade90294f727a9b3",
+              "name": "财务复核",
+              "status": "waiting",
+              "version": 1,
+              "approver_user_id": "usr_b287b5dbc6f9bf87b152cd0d"
+            }
+          ],
+          "due_at": "2026-10-25T10:36:02.704275+00:00",
+          "status": "under_review",
+          "version": 1,
+          "provider": "internal",
+          "policy_version": 1,
+          "target_version": 2,
+          "current_step_id": "d084209066e9412dadd6b7a3f46e51c7"
+        },
+        "simulation": false,
+        "paid_amount": "0.00",
+        "record_mode": "internal_record",
+        "workflow_id": "21f2634c9693484c834da9d6b5514ca3",
+        "posted_amount": "0.00",
+        "allocation_ids": [],
+        "payment_status": "not_requested",
+        "posting_status": "not_posted",
+        "legal_entity_id": "company-a",
+        "reversed_amount": "0.00",
+        "workflow_version": 1,
+        "payment_pending_amount": "0.00",
+        "posting_pending_amount": "0.00"
+      }
+    },
+    {
+      "version": 3,
+      "data": {
+        "id": "ac7d47fdc1a741aa804b7c2c7c6d971f",
+        "kind": "expense_claim",
+        "total": "100.00",
+        "due_at": "2026-10-25T10:36:02.704275+00:00",
+        "status": "rejected",
+        "content": {
+          "lines": [
+            {
+              "amount": "100.00",
+              "reason": "F8最终测试地铁费用",
+              "category_id": "travel",
+              "occurred_on": "2026-10-22"
+            }
+          ],
+          "reason": "F8最终验收：客户拜访交通",
+          "evidence_ids": [
+            "e720d3223e2e425080a4895fe631ead3"
+          ],
+          "legal_entity_id": "company-a",
+          "invoice_information": "  发票号 TEST-F8-FINAL\n申报金额 100.00；未经查验  "
+        },
+        "version": 3,
+        "evidence": [
+          {
+            "id": "e720d3223e2e425080a4895fe631ead3",
+            "kind": "source",
+            "sha256": "363216039006f6271c38b432c29b46ccbc9315c89f48fb45fe89f6473ee0de3f",
+            "source_version": "1",
+            "verification_state": "not_checked"
+          }
+        ],
+        "owner_id": "usr_f990ef20ae6a127b1055000e",
+        "workflow": {
+          "id": "21f2634c9693484c834da9d6b5514ca3",
+          "steps": [
+            {
+              "id": "d084209066e9412dadd6b7a3f46e51c7",
+              "name": "负责人审批",
+              "status": "rejected",
+              "version": 2,
+              "approver_user_id": "usr_5fd1ff32f971e52dda27b60e"
+            },
+            {
+              "id": "f528b7b0198147bcade90294f727a9b3",
+              "name": "财务复核",
+              "status": "cancelled",
+              "version": 2,
+              "approver_user_id": "usr_b287b5dbc6f9bf87b152cd0d"
+            }
+          ],
+          "due_at": "2026-10-25T10:36:02.704275+00:00",
+          "status": "rejected",
+          "version": 2,
+          "provider": "internal",
+          "policy_version": 1,
+          "target_version": 2,
+          "current_step_id": null
+        },
+        "simulation": false,
+        "paid_amount": "0.00",
+        "record_mode": "internal_record",
+        "workflow_id": "21f2634c9693484c834da9d6b5514ca3",
+        "posted_amount": "0.00",
+        "allocation_ids": [],
+        "payment_status": "not_requested",
+        "posting_status": "not_posted",
+        "legal_entity_id": "company-a",
+        "reversed_amount": "0.00",
+        "workflow_version": 2,
+        "payment_pending_amount": "0.00",
+        "posting_pending_amount": "0.00"
+      }
+    },
+    {
+      "version": 4,
+      "data": {
+        "id": "ac7d47fdc1a741aa804b7c2c7c6d971f",
+        "kind": "expense_claim",
+        "total": "100.00",
+        "due_at": "2026-10-25T10:36:02.704275+00:00",
+        "status": "draft",
+        "content": {
+          "lines": [
+            {
+              "amount": "100.00",
+              "reason": "F8最终测试地铁费用",
+              "category_id": "travel",
+              "occurred_on": "2026-10-22"
+            }
+          ],
+          "reason": "F8最终验收：已补充交通行程",
+          "evidence_ids": [
+            "6297bb514e6e4b668286a97ebc555ccc"
+          ],
+          "legal_entity_id": "company-a",
+          "invoice_information": "  发票号 TEST-F8-FINAL\n申报金额 100.00；未经查验  "
+        },
+        "version": 4,
+        "evidence": [
+          {
+            "id": "6297bb514e6e4b668286a97ebc555ccc",
+            "kind": "source",
+            "sha256": "438ff9be06db7b4d89745f3baf1adaeb261209fdc69710b98bc0a7ca0e025b34",
+            "source_version": "1",
+            "verification_state": "not_checked"
+          }
+        ],
+        "owner_id": "usr_f990ef20ae6a127b1055000e",
+        "workflow": {
+          "id": "21f2634c9693484c834da9d6b5514ca3",
+          "steps": [
+            {
+              "id": "d084209066e9412dadd6b7a3f46e51c7",
+              "name": "负责人审批",
+              "status": "rejected",
+              "version": 2,
+              "approver_user_id": "usr_5fd1ff32f971e52dda27b60e"
+            },
+            {
+              "id": "f528b7b0198147bcade90294f727a9b3",
+              "name": "财务复核",
+              "status": "cancelled",
+              "version": 2,
+              "approver_user_id": "usr_b287b5dbc6f9bf87b152cd0d"
+            }
+          ],
+          "due_at": "2026-10-25T10:36:02.704275+00:00",
+          "status": "rejected",
+          "version": 2,
+          "provider": "internal",
+          "policy_version": 1,
+          "target_version": 2,
+          "current_step_id": null
+        },
+        "simulation": false,
+        "paid_amount": "0.00",
+        "record_mode": "internal_record",
+        "workflow_id": "21f2634c9693484c834da9d6b5514ca3",
+        "posted_amount": "0.00",
+        "allocation_ids": [],
+        "payment_status": "not_requested",
+        "posting_status": "not_posted",
+        "legal_entity_id": "company-a",
+        "reversed_amount": "0.00",
+        "workflow_version": 2,
+        "payment_pending_amount": "0.00",
+        "posting_pending_amount": "0.00"
+      }
+    },
+    {
+      "version": 5,
+      "data": {
+        "id": "ac7d47fdc1a741aa804b7c2c7c6d971f",
+        "kind": "expense_claim",
+        "total": "100.00",
+        "due_at": "2026-10-25T10:38:45.857536+00:00",
+        "status": "under_review",
+        "content": {
+          "lines": [
+            {
+              "amount": "100.00",
+              "reason": "F8最终测试地铁费用",
+              "category_id": "travel",
+              "occurred_on": "2026-10-22"
+            }
+          ],
+          "reason": "F8最终验收：已补充交通行程",
+          "evidence_ids": [
+            "6297bb514e6e4b668286a97ebc555ccc"
+          ],
+          "legal_entity_id": "company-a",
+          "invoice_information": "  发票号 TEST-F8-FINAL\n申报金额 100.00；未经查验  "
+        },
+        "version": 5,
+        "evidence": [
+          {
+            "id": "6297bb514e6e4b668286a97ebc555ccc",
+            "kind": "source",
+            "sha256": "438ff9be06db7b4d89745f3baf1adaeb261209fdc69710b98bc0a7ca0e025b34",
+            "source_version": "1",
+            "verification_state": "not_checked"
+          }
+        ],
+        "owner_id": "usr_f990ef20ae6a127b1055000e",
+        "workflow": {
+          "id": "0561c1161a0945ce9900bf05f5cb4995",
+          "steps": [
+            {
+              "id": "90f2ed8eeb5846c1bd0968fb47d66c7f",
+              "name": "负责人审批",
+              "status": "pending",
+              "version": 1,
+              "approver_user_id": "usr_5fd1ff32f971e52dda27b60e"
+            },
+            {
+              "id": "79bf0421f8f94ea59ea6f5a5f1bd6c56",
+              "name": "财务复核",
+              "status": "waiting",
+              "version": 1,
+              "approver_user_id": "usr_b287b5dbc6f9bf87b152cd0d"
+            }
+          ],
+          "due_at": "2026-10-25T10:38:45.857536+00:00",
+          "status": "under_review",
+          "version": 1,
+          "provider": "internal",
+          "policy_version": 1,
+          "target_version": 5,
+          "current_step_id": "90f2ed8eeb5846c1bd0968fb47d66c7f"
+        },
+        "simulation": false,
+        "paid_amount": "0.00",
+        "record_mode": "internal_record",
+        "workflow_id": "0561c1161a0945ce9900bf05f5cb4995",
+        "posted_amount": "0.00",
+        "allocation_ids": [],
+        "payment_status": "not_requested",
+        "posting_status": "not_posted",
+        "legal_entity_id": "company-a",
+        "reversed_amount": "0.00",
+        "workflow_version": 1,
+        "payment_pending_amount": "0.00",
+        "posting_pending_amount": "0.00"
+      }
+    },
+    {
+      "version": 6,
+      "data": {
+        "id": "ac7d47fdc1a741aa804b7c2c7c6d971f",
+        "kind": "expense_claim",
+        "total": "100.00",
+        "due_at": "2026-10-25T10:38:45.857536+00:00",
+        "status": "approved",
+        "content": {
+          "lines": [
+            {
+              "amount": "100.00",
+              "reason": "F8最终测试地铁费用",
+              "category_id": "travel",
+              "occurred_on": "2026-10-22"
+            }
+          ],
+          "reason": "F8最终验收：已补充交通行程",
+          "evidence_ids": [
+            "6297bb514e6e4b668286a97ebc555ccc"
+          ],
+          "legal_entity_id": "company-a",
+          "invoice_information": "  发票号 TEST-F8-FINAL\n申报金额 100.00；未经查验  "
+        },
+        "version": 6,
+        "evidence": [
+          {
+            "id": "6297bb514e6e4b668286a97ebc555ccc",
+            "kind": "source",
+            "sha256": "438ff9be06db7b4d89745f3baf1adaeb261209fdc69710b98bc0a7ca0e025b34",
+            "source_version": "1",
+            "verification_state": "not_checked"
+          }
+        ],
+        "owner_id": "usr_f990ef20ae6a127b1055000e",
+        "workflow": {
+          "id": "0561c1161a0945ce9900bf05f5cb4995",
+          "steps": [
+            {
+              "id": "90f2ed8eeb5846c1bd0968fb47d66c7f",
+              "name": "负责人审批",
+              "status": "approved",
+              "version": 2,
+              "approver_user_id": "usr_5fd1ff32f971e52dda27b60e"
+            },
+            {
+              "id": "79bf0421f8f94ea59ea6f5a5f1bd6c56",
+              "name": "财务复核",
+              "status": "approved",
+              "version": 3,
+              "approver_user_id": "usr_b287b5dbc6f9bf87b152cd0d"
+            }
+          ],
+          "due_at": "2026-10-25T10:38:45.857536+00:00",
+          "status": "approved",
+          "version": 3,
+          "provider": "internal",
+          "policy_version": 1,
+          "target_version": 5,
+          "current_step_id": null
+        },
+        "simulation": false,
+        "paid_amount": "0.00",
+        "record_mode": "internal_record",
+        "workflow_id": "0561c1161a0945ce9900bf05f5cb4995",
+        "posted_amount": "0.00",
+        "allocation_ids": [],
+        "payment_status": "not_requested",
+        "posting_status": "not_posted",
+        "legal_entity_id": "company-a",
+        "reversed_amount": "0.00",
+        "workflow_version": 3,
+        "payment_pending_amount": "0.00",
+        "posting_pending_amount": "0.00"
+      }
+    }
+  ],
+  "decisions": [
+    {
+      "actor_id": "usr_5fd1ff32f971e52dda27b60e",
+      "action": "reject",
+      "data": {
+        "origin": "human",
+        "plan_id": "c6c76fe853ef4fc8863622a3acee0ad2",
+        "parameters": {
+          "reason": "请补充交通行程附件",
+          "workflow_step_id": "d084209066e9412dadd6b7a3f46e51c7"
+        },
+        "target_version": 2
+      }
+    },
+    {
+      "actor_id": "usr_5fd1ff32f971e52dda27b60e",
+      "action": "approve",
+      "data": {
+        "origin": "human",
+        "plan_id": "83511a1e54c84af6801f0449ce9d4a59",
+        "parameters": {
+          "workflow_step_id": "90f2ed8eeb5846c1bd0968fb47d66c7f"
+        },
+        "target_version": 5
+      }
+    },
+    {
+      "actor_id": "usr_b287b5dbc6f9bf87b152cd0d",
+      "action": "approve",
+      "data": {
+        "origin": "human",
+        "plan_id": "a4a0d9ea24ef443892cf9307406f4c2a",
+        "parameters": {
+          "workflow_step_id": "79bf0421f8f94ea59ea6f5a5f1bd6c56"
+        },
+        "target_version": 5
+      }
+    }
+  ],
+  "counts": {
+    "finance_operation": 2,
+    "finance_receipt": 2,
+    "finance_invoice": 0,
+    "finance_settlement_operation": 0,
+    "finance_compliance_operation": 0
+  }
+}

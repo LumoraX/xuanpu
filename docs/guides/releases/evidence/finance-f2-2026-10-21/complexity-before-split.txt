@@ -1,0 +1,12 @@
+C901 `_process` is too complex (12 > 10)
+   --> packages/xuanpu-finance/src/xuanpu_finance/settlement/worker.py:147:15
+    |
+145 |         return True
+146 |
+147 |     async def _process(self, job: dict[str, Any], *, allow_dispatch: bool) -> None:
+    |               ^^^^^^^^
+148 |         """发送与查单分支互斥，发送后任何模糊结果只进入核对。"""
+149 |         request = job["request"]
+    |
+
+Found 1 error.

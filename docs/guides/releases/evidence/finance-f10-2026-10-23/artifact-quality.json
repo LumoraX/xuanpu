@@ -1,0 +1,154 @@
+{
+  "reviewer": "f10_quality independent review",
+  "generated_at": "2026-10-23T01:14:16.113628+00:00",
+  "production_status": "not_verified",
+  "frozen_source": {
+    "files": 702,
+    "current_matches_final_manifest": true,
+    "mismatches": [],
+    "manifest_sha256": "c6d67fde6ce021085010600ce3a87be7ba56023049b0f6fc43985d2f66974497",
+    "manifest_covers_all_current_scoped_files": true,
+    "tested_manifest_sha256": "16065f8095259f89f235fc3024a5bfbeef14a8d048d138be7f4fe433272f20c6",
+    "unchanged_since_full_quick": 701,
+    "documentation_only_adjustments": [
+      {
+        "path": "packages/xuanpu-finance/README.md",
+        "before": "810b443695d80d7a301f69910114557beea0c544583acfe45b396f6217dc6c35",
+        "after": "4cc4aa8bcd6b2dc8c38515d4be3fa9f10a88b19f34586648aaab88419e8a096a",
+        "scope": "only current F10 title/version/API count/guide links; no Python JavaScript tests contracts or behavior changed"
+      }
+    ]
+  },
+  "packages": {
+    "finance": {
+      "source_files": 138,
+      "wheel_exact": true,
+      "sdist_exact": true
+    },
+    "console": {
+      "source_files": 23,
+      "wheel_exact": true,
+      "sdist_exact": true
+    }
+  },
+  "artifact_hashes": [
+    {
+      "name": "finance-0.11.0-f10.zip",
+      "bytes": 54202,
+      "sha256": "1b0da574dd692828e40dd42e15dff5ba79da8a471161589ba13a0bb7e17b5a67"
+    },
+    {
+      "name": "xuanpu_finance-2026.10.23.1-py3-none-any.whl",
+      "bytes": 339483,
+      "sha256": "d3a48d03ad50b5bde2504e1f5ac8883901049d118fcac4ad3f87d0874d102b4c"
+    },
+    {
+      "name": "xuanpu_console-2026.10.23.1-py3-none-any.whl",
+      "bytes": 110516,
+      "sha256": "0c340e0112933f1550fa7e0686bcefd2e380e9f150a1956f5b89093c6767066b"
+    },
+    {
+      "name": "xuanpu_console-2026.10.23.1.tar.gz",
+      "bytes": 134531,
+      "sha256": "8f1c34d598852449482566bf7371b163ab29a83d20908eac0bd2fab07469fc9d"
+    },
+    {
+      "name": "xuanpu_finance-2026.10.23.1.tar.gz",
+      "bytes": 411644,
+      "sha256": "2c15abff193b91651b2118f1e7b4e73a5ee05b7793e9c9850b8d42d446f38cd6"
+    }
+  ],
+  "business_pack": {
+    "zip_files": 20,
+    "zip_exact": true,
+    "design_files": 24,
+    "corresponding_exact": true,
+    "extra_references": [
+      "skills/archive-audit/references/execution-rules.md",
+      "skills/expense-reimbursement/references/execution-rules.md",
+      "skills/finance-assistant/references/execution-rules.md",
+      "skills/finance-review/references/execution-rules.md"
+    ],
+    "extra_references_unchanged_from_aa5dba4": true
+  },
+  "image": {
+    "tag": "xuanpu-finance:2026.10.23.1",
+    "id": "sha256:378b141c6bf51bc32b42007565d8a2c7b60722f364c9c34e3bdad6e60a0afba3",
+    "configured_user": "10001:10001",
+    "actual_uid": 10001,
+    "version": "2026.10.23.1",
+    "source_files": 138,
+    "source_exact": true,
+    "metadata_readme_exact": true,
+    "network": "none",
+    "root_filesystem": "read_only"
+  },
+  "source_constraints": {
+    "scope": "finance + console product Python source",
+    "python_files": 139,
+    "functions": 750,
+    "max_file_lines": 450,
+    "max_function_lines": 80,
+    "violations": [
+      [
+        "packages/xuanpu-finance/src/xuanpu_finance/settlement/__init__.py",
+        "missing future annotations"
+      ]
+    ],
+    "baseline_exceptions": [
+      {
+        "path": "packages/xuanpu-finance/src/xuanpu_finance/settlement/__init__.py",
+        "rule": "from __future__ import annotations",
+        "same_bytes_as_aa5dba4": true,
+        "sha256": "eb7bddecb0be37c87db8bd5a27c5bb3670be8791de1fbbb293ba4ef3617e65e4",
+        "content": "single Chinese module docstring; no annotations or executable code",
+        "assessment": "Confirmed pre-existing marker module exception; no F10 regression and no change requested to frozen source"
+      }
+    ],
+    "f10_changed_python_modules": [
+      "packages/xuanpu-finance/src/xuanpu_finance/api.py",
+      "packages/xuanpu-finance/src/xuanpu_finance/internal_profile.py",
+      "packages/xuanpu-finance/src/xuanpu_finance/readiness/internal_live.py",
+      "packages/xuanpu-finance/src/xuanpu_finance/routes_f10.py",
+      "packages/xuanpu-finance/src/xuanpu_finance/storage/f10_readiness.py",
+      "packages/xuanpu-finance/src/xuanpu_finance/storage/f6_readiness.py",
+      "packages/xuanpu-finance/src/xuanpu_finance/storage/store.py"
+    ],
+    "f10_changed_python_violations": [],
+    "violations_excluding_confirmed_baseline": []
+  },
+  "errors": [],
+  "status": "Approved",
+  "boundaries": {
+    "postgreSQL_access": "none during independent review",
+    "networked_production_access": "none",
+    "image_execution": "ephemeral container with no network and read-only filesystem; package version/source hashes/UID only",
+    "production_status": "not_verified",
+    "baseline_exception": "unchanged marker module missing future import; disclosed separately",
+    "full_quick_acceptance": "executed by root under exclusive PostgreSQL lock; independent artifact review does not claim to have rerun database acceptance"
+  },
+  "post_test_documentation_review": {
+    "status": "Approved",
+    "tested_manifest_sha256": "16065f8095259f89f235fc3024a5bfbeef14a8d048d138be7f4fe433272f20c6",
+    "final_manifest_sha256": "c6d67fde6ce021085010600ce3a87be7ba56023049b0f6fc43985d2f66974497",
+    "tested_files": 702,
+    "unchanged_tested_files": 701,
+    "changed_files": [
+      {
+        "path": "packages/xuanpu-finance/README.md",
+        "before": "810b443695d80d7a301f69910114557beea0c544583acfe45b396f6217dc6c35",
+        "after": "4cc4aa8bcd6b2dc8c38515d4be3fa9f10a88b19f34586648aaab88419e8a096a",
+        "scope": "only current F10 title/version/API count/guide links; no Python JavaScript tests contracts or behavior changed"
+      }
+    ],
+    "before_readme_reconstructed_from_original_title_and_first_paragraph_matches_tested_hash": true,
+    "all_other_readme_bytes_unchanged": true,
+    "final_finance_sdist_readme_exact": true,
+    "final_finance_wheel_metadata_readme_exact": true,
+    "final_image_metadata_readme_exact": true,
+    "console_wheel_sdist_and_business_zip_hashes_unchanged": true,
+    "documentation_test_log": "docs-final.log: 377 passed",
+    "test_boundary": "full/quick precede the one README correction; all 701 other frozen files including product code/tests/contracts are unchanged",
+    "superseded_image_id": "sha256:ee15f2fe1a83ec47d8e7c4ab358941397dfc43b71bc6fd017a7dc7a3016e2401"
+  }
+}

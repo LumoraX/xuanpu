@@ -1,0 +1,36 @@
+{
+  "status": "reconciled",
+  "runs": [
+    {
+      "scenario": "query-regression",
+      "streams": 4,
+      "input_tokens": 22875,
+      "output_tokens": 469,
+      "tokens": 23344,
+      "original_status": "failed"
+    },
+    {
+      "scenario": "query-regression-fixed",
+      "streams": 6,
+      "input_tokens": 48396,
+      "output_tokens": 908,
+      "tokens": 49304,
+      "original_status": "failed"
+    }
+  ],
+  "starting_attempts": 208,
+  "ending_attempts": 218,
+  "known_new_input_tokens": 71271,
+  "known_new_output_tokens": 1377,
+  "known_global_input_tokens": 1279147,
+  "known_global_output_tokens": 31451,
+  "unknown_attempts_unchanged": [
+    56,
+    59
+  ],
+  "global_cap": 240,
+  "remaining_attempts": 22,
+  "counts_as_complete_journey": false,
+  "complete_journeys": 0,
+  "not_a_monetary_cost_estimate": true
+}

@@ -1,0 +1,449 @@
+{
+  "task": "F14整轮独立代码质量审查（最终）",
+  "status": "Approved",
+  "baseline": "da624a9571e9c6e97f1f375428091ba4a5a41140",
+  "branch": "feat/finance-f14",
+  "reviewer": "f14_whole_quality",
+  "reviewed_at_utc": "2026-10-23T09:13:19.308Z",
+  "scope": "只读审查当前HEAD差异、产品与测试源码、设计/计划、当前文档及已有门禁/制品/专项证据；独立执行无缓存Ruff与AST/JSON/XML/哈希/字节/集合核算。未接PG、未跑pytest、未读取私有凭据、未改产品/测试/冻结输入、未提交；仅新增本报告。",
+  "findings": [],
+  "summary": "无开放必修质量问题。两处维护实现复用既有安全读取，异常保持有限失败，兼容和资源处理边界明确；四个新测试/helper真实覆盖拒绝、配套恢复和目标库真人续办。最终证据与冻结输入一致，支持本地F14交付质量结论，不支持生产、完整Linux业务、浏览器或真实员工/模型验收。",
+  "checks": [
+    {
+      "area": "维护凭据安全与可维护性",
+      "result": "pass",
+      "detail": "_capture_maintenance_credentials复用read_text_secret/read_fixed，普通私有叶子、O_NOFOLLOW/O_NONBLOCK、有界单读、UTF8/空白/32字节检查均沿用成熟既有实现；通过asyncio.to_thread在asyncpg.connect前完成快照。OSError/ValueError/UnicodeError归一，MaintenanceError原稳定代码不被误转。未新增自研读取/存储机制。祖先路径与跨文件轮换的信任边界在设计和使用指南明确。"
+    },
+    {
+      "area": "兼容及失败语义",
+      "result": "pass",
+      "detail": "维护DSN继续沿用pg_environment既有TLS选项白名单、编码密码和端口规则；verify注入快照不重复读也不新增维护DSN校验，原验证规则保持。CLI未知异常backup/restore为MAINTENANCE_FAILED、verify为VERIFICATION_FAILED，均exit1固定status/code；既有参数exit2、verify incomplete及RESTORE_FAILED_DATABASE_MAY_BE_COMMITTED保持。无schema/业务状态/API权限扩张。TLS参数解析替身未冒称实际TLS握手。"
+    },
+    {
+      "area": "资源处理",
+      "result": "pass",
+      "detail": "安全读取描述符在finally关闭；捕获后仅消费不可变dsn/key，路径替换屏障单测核对读取次数与工具环境/认证使用值。维护连接finally关闭、原锁/工具取消/暂存清理保持。特殊文件在可杀死子进程三秒内拒绝，不将阻塞读取留在pytest线程池；真实CLI超时有kill及回收，目标FinanceStore池finally关闭，服务日志使用TemporaryFile，真实-15及端口关闭由已有进程helper核验。"
+    },
+    {
+      "area": "四个新测试/helper质量与真实性",
+      "result": "pass",
+      "detail": "凭据67项覆盖session/backup/restore，坏输入的connect/tool/stage spy全部0，公开测试哨兵与0400/0600正控制、底层IO故障/描述符、一次捕获、TLS解析和CLI有限错误互补。协议替身与真实PG边界明确。联合1项通过真实CLI与成熟pg_dump/pg_restore，逐public表和逐密文精确比较；坏输入8项PG marker为0，staging_snapshot读取实际备份及源/目标root父目录。target_store创建不同目标DB的FinanceStore并切换配置，不以源池冒充目标恢复。"
+    },
+    {
+      "area": "最终联合事实与审批边界",
+      "result": "pass",
+      "detail": "独立从最终full JUnit提取13属性，与f14-evidence facts逐项相等。实际8坏CLI均exit1/MAINTENANCE_INPUT_INVALID、工具0、全表/密文及stage不变；实际配套备份恢复、HMAC及认证、原operation/receipt/key/SHA保持、下载1、平台源移除。确认请求[403,202,403,202]及agent/human来源由签名验证并关联实际DB两条human决定；approved而paid/posted0.00、正式三表0。停机verify complete、0业务写/worker且全表密文不变，两个进程实际-15及端口关闭。该human为真实测试签名身份，非正式员工SSO。"
+    },
+    {
+      "area": "全量/quick与历史失败证据",
+      "result": "pass",
+      "detail": "独立解析最终JUnit与report/hash，full2899中2896pass+3既有非财务skip，904财务零skip；quick444pass，432财务零skip，full先结束再启动quick。两套各68F14/13属性。最终full属性是正式汇总来源；quick跨次运行随机ID/时间不同，未要求它与full事实逐字相等。有效凭据红56fail/11pass、绿67pass，隔离联合基线1fail及修复后1pass、metadata初轮2PGskip及最终full实际执行、初docs213pass/1fail到最终214pass均保留并准确区分。未将只读重算称为独立跑全量。"
+    },
+    {
+      "area": "静态与源码约束",
+      "result": "pass",
+      "detail": "static-results记录的Ruff全门禁、strict mypy全source、lock及约束实际退出0，日志SHA独立重算一致；mypy日志明确311source，项目strict=true。独立无缓存重跑全门禁Ruff及核心6文件C901<=10均通过；独立AST核算16变更Python文件future/中文module-class-function docstring齐全，文件最高319行，函数最高56行。"
+    },
+    {
+      "area": "版本、契约与Skill",
+      "result": "pass",
+      "detail": "独立YAML/AST/基线比对：77唯一operationId、24内部操作、7Skills，tool_names与HEAD相同且shell=false；发布20文件与设计包逐字相同，4额外refs对HEAD未变；quick当前46，去掉新前置2模块后与原44完整顺序一致。finance/API/镜像2026.10.23.5、console2026.10.23.1、pack0.15.0-f14一致。Skill仅增加交受信管理员/原请求核对边界，模拟baseline原通用边界正确，forward不作为真实产品模型验收。"
+    },
+    {
+      "area": "冻结与制品",
+      "result": "pass",
+      "detail": "独立重建git ls-files -co --exclude-standard范围集合，726文件完整集合与冻结清单相等且全部SHA匹配。保留5制品当前bytes/SHA独立重算全部匹配。artifact-quality Approved及其哈希已复核；其完整wheel/sdist/ZIP/142源码镜像、UID10001和.5版本结论依托独立制品审查，未在本轮再次构建或运行镜像。Linux8项有loopback正控制和有界队列负观察，独立制品审查另有前后正控制8项，限于受测端点未观察排队TCP。"
+    },
+    {
+      "area": "文档、审查清册与资源",
+      "result": "pass_with_limit",
+      "detail": "当前architecture/gap/guide/acceptance准确保留不支付、独立存储、真人审批与生产未验边界；最终docs214pass。7项已有Approved审查的SHA及status_field对应字段独立核对一致；design-review用verdict显式映射有原始诊断，不伪造status。cleanup与resource-audit记录本轮ownedPG/卷/私有DSN释放、0临时库/会话/锁及原checkout clean；此轮未重新接PG或独立重做已删除私有值精确扫描。secret-scan156changed/98evidence0hits范围和后续无凭据收尾文档边界明确。"
+    },
+    {
+      "area": "原始空白与完成阶段",
+      "result": "pass",
+      "detail": "独立git diff --cached --check返回2，仅107条原始日志/失败XML空白诊断，与逐项清册完全相等；未净化原始失败记录。计划最后审查/本地提交步骤尚未勾选与当前未提交阶段一致，由主执行者在本报告交还后更新清册、重新非raw检查并本地提交；本报告不提前宣称提交、推送、合并或部署完成。"
+    }
+  ],
+  "independent_commands": [
+    {
+      "command": ".venv/bin/ruff check --no-cache --select F,S108,I,TC packages scripts",
+      "returncode": 0,
+      "output": "All checks passed!"
+    },
+    {
+      "command": ".venv/bin/ruff check --no-cache --select C901 --config lint.mccabe.max-complexity=10 packages/xuanpu-finance/src/xuanpu_finance/maintenance.py packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py packages/xuanpu-finance/tests/f14_credentials_helpers.py packages/xuanpu-finance/tests/f14_process_helpers.py packages/xuanpu-finance/tests/test_f14_credentials.py packages/xuanpu-finance/tests/test_f14_process.py",
+      "returncode": 0,
+      "output": "All checks passed!"
+    },
+    {
+      "command": ".venv/bin/python: hashlib/XML/JSON/AST/YAML + git ls-files/show/diff只读核算",
+      "returncode": 0,
+      "output": "独立核算结果详见independent_evidence与independent_structure；不运行pytest或数据库业务。"
+    }
+  ],
+  "independent_evidence": {
+    "freeze": {
+      "count": 726,
+      "actual_count": 726,
+      "set_equal": true,
+      "changed": []
+    },
+    "suites": {
+      "full-final": {
+        "tests": 2899,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 3,
+        "finance_tests": 904,
+        "finance_skipped": 0,
+        "f14_tests": 68,
+        "f14_properties": 13,
+        "passed": 2896,
+        "report_matches": true,
+        "hashes_match": true,
+        "f14_facts_equal_full": true
+      },
+      "quick-final": {
+        "tests": 444,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "finance_tests": 432,
+        "finance_skipped": 0,
+        "f14_tests": 68,
+        "f14_properties": 13,
+        "passed": 444,
+        "report_matches": true,
+        "hashes_match": true,
+        "f14_facts_equal_full": false
+      }
+    },
+    "sequential": true,
+    "xml_counts": {
+      "docs-initial.xml": {
+        "tests": 214,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0
+      },
+      "docs-final.xml": {
+        "tests": 214,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "credentials-baseline-replay.xml": {
+        "tests": 67,
+        "failures": 56,
+        "errors": 0,
+        "skipped": 0
+      },
+      "credentials-red.xml": {
+        "tests": 67,
+        "failures": 56,
+        "errors": 0,
+        "skipped": 0
+      },
+      "credentials-green-final.xml": {
+        "tests": 67,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "process-red-baseline-final.xml": {
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0
+      },
+      "process-review-final.xml": {
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "metadata-contract.xml": {
+        "tests": 37,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 2
+      },
+      "metadata-contract-final.xml": {
+        "tests": 35,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "static_hashes": [
+      {
+        "check": "ruff",
+        "exit": 0,
+        "hash_matches": true
+      },
+      {
+        "check": "mypy",
+        "exit": 0,
+        "hash_matches": true
+      },
+      {
+        "check": "lock",
+        "exit": 0,
+        "hash_matches": true
+      },
+      {
+        "check": "constraints",
+        "exit": 0,
+        "hash_matches": true
+      }
+    ],
+    "review_hashes": [
+      {
+        "name": "design-review",
+        "status": "Approved",
+        "hash_matches": true,
+        "field_matches": true
+      },
+      {
+        "name": "task1-spec",
+        "status": "Approved",
+        "hash_matches": true,
+        "field_matches": true
+      },
+      {
+        "name": "task1-quality",
+        "status": "Approved",
+        "hash_matches": true,
+        "field_matches": true
+      },
+      {
+        "name": "task2-spec",
+        "status": "Approved",
+        "hash_matches": true,
+        "field_matches": true
+      },
+      {
+        "name": "task2-quality",
+        "status": "Approved",
+        "hash_matches": true,
+        "field_matches": true
+      },
+      {
+        "name": "whole-spec",
+        "status": "Approved",
+        "hash_matches": true,
+        "field_matches": true
+      },
+      {
+        "name": "artifact-quality",
+        "status": "Approved",
+        "hash_matches": true,
+        "field_matches": true
+      }
+    ],
+    "artifacts": [
+      {
+        "name": "finance-0.15.0-f14.zip",
+        "bytes": 55274,
+        "sha256": "31cdddfbee7b39e81a5618d8e5e46a98ef4ddbd1f45af4c85f9e3a218c1902a6",
+        "hash_equal": true,
+        "size_equal": true
+      },
+      {
+        "name": "xuanpu_console-2026.10.23.1-py3-none-any.whl",
+        "bytes": 110516,
+        "sha256": "0c340e0112933f1550fa7e0686bcefd2e380e9f150a1956f5b89093c6767066b",
+        "hash_equal": true,
+        "size_equal": true
+      },
+      {
+        "name": "xuanpu_console-2026.10.23.1.tar.gz",
+        "bytes": 134531,
+        "sha256": "8f1c34d598852449482566bf7371b163ab29a83d20908eac0bd2fab07469fc9d",
+        "hash_equal": true,
+        "size_equal": true
+      },
+      {
+        "name": "xuanpu_finance-2026.10.23.5-py3-none-any.whl",
+        "bytes": 348164,
+        "sha256": "ac3f96199ca7ab38c046dd73fffb3fd7da9da6f87a1313c9112e31f9a5bfd703",
+        "hash_equal": true,
+        "size_equal": true
+      },
+      {
+        "name": "xuanpu_finance-2026.10.23.5.tar.gz",
+        "bytes": 463215,
+        "sha256": "ef11346ded998a4eda7d5d8418a5e5f1f2d72d8894cadb0c3df52a8baa4d4854",
+        "hash_equal": true,
+        "size_equal": true
+      }
+    ],
+    "snapshot_sha256": {
+      "docs/guides/releases/evidence/finance-f14-2026-10-23/frozen-source.json": "ed9bacffda941b8e49a4c312aeb46692ef69d8ba2e8d12a7d0ec9016e0095716",
+      "docs/guides/releases/evidence/finance-f14-2026-10-23/full-final/report.json": "8e43480c70f29d71b4beabbcbb2379818597b019c610da6593a7acbdd01c03c5",
+      "docs/guides/releases/evidence/finance-f14-2026-10-23/full-final/junit.xml": "d51a085ed4bca28fcd2efd8b71cc0e08c1c58584af5bf8c717548135d8ed83a0",
+      "docs/guides/releases/evidence/finance-f14-2026-10-23/quick-final/report.json": "b7f7402656f49117d372920fb78d9fcf69120684df7800ba9bdb07395a20391a",
+      "docs/guides/releases/evidence/finance-f14-2026-10-23/quick-final/junit.xml": "61c8ba66ed3b95e71546ab2e9aa113c23190b30cad626ba80b3060c68c2c597e",
+      "docs/guides/releases/evidence/finance-f14-2026-10-23/f14-evidence.json": "88aabf96943b4d31d5acc048a3753d1846f6bd9ea65c44db0c374b8cc443fc00",
+      "docs/guides/releases/evidence/finance-f14-2026-10-23/static-results.json": "4c23b499e5577cbaf7738b62c4ee00cd626f47e17d0ee331fdff70a07b0cf8f5",
+      "docs/guides/releases/evidence/finance-f14-2026-10-23/artifacts.json": "9c4a3d0488b4bf2f07a2726724d0d8bfabbe5a2a75ee9dd1e6b4503e99ad34d4",
+      "docs/guides/releases/evidence/finance-f14-2026-10-23/whole-spec.json": "d91ef38e5fef1b516c5fe3e0f9338cecd019d79762ee94f28e08d5c69f16c191",
+      "docs/guides/releases/evidence/finance-f14-2026-10-23/artifact-quality.json": "c25b989bf53c28805e0033c57d39ac3eff704cf78e964348cecde9348a5ce0f2",
+      "docs/guides/releases/evidence/finance-f14-2026-10-23/docs-final.xml": "43d8ac5c5bb1540e284e29d0beebebe059d62f1988bcc6a7066e5f5f6e9b33f1",
+      "docs/guides/releases/evidence/finance-f14-2026-10-23/cleanup.json": "e32dd35e19ec64eb257f3d40d0837209c0744003bf9b5cd85b87a2ac2449407e",
+      "docs/guides/releases/evidence/finance-f14-2026-10-23/test-resource-audit.json": "aba769289b5dffd068bf6deb51611c2a0ec988416865cc1a4b11c6278a2ad8b6",
+      "docs/guides/releases/evidence/finance-f14-2026-10-23/secret-scan.json": "0c01bbdc2727862dc3d584595b5de1e63755d05b4b40831a3df5a22875e32e7c",
+      "docs/guides/releases/2026-10-23-finance-f14-acceptance.md": "7629c8ba4ac916fc360f45b7d220f67f91c236c52a5c3e61c44697232a0943e5"
+    }
+  },
+  "independent_structure": {
+    "constraints": [
+      {
+        "file": "docker/finance/build_image.py",
+        "lines": 30,
+        "max_function_lines": 17,
+        "chinese_docs": true,
+        "future": true
+      },
+      {
+        "file": "packages/xuanpu-finance/src/xuanpu_finance/__main__.py",
+        "lines": 68,
+        "max_function_lines": 35,
+        "chinese_docs": true,
+        "future": true
+      },
+      {
+        "file": "packages/xuanpu-finance/src/xuanpu_finance/api.py",
+        "lines": 223,
+        "max_function_lines": 56,
+        "chinese_docs": true,
+        "future": true
+      },
+      {
+        "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+        "lines": 171,
+        "max_function_lines": 36,
+        "chinese_docs": true,
+        "future": true
+      },
+      {
+        "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py",
+        "lines": 53,
+        "max_function_lines": 37,
+        "chinese_docs": true,
+        "future": true
+      },
+      {
+        "file": "packages/xuanpu-finance/tests/f14_credentials_helpers.py",
+        "lines": 128,
+        "max_function_lines": 24,
+        "chinese_docs": true,
+        "future": true
+      },
+      {
+        "file": "packages/xuanpu-finance/tests/f14_process_helpers.py",
+        "lines": 220,
+        "max_function_lines": 39,
+        "chinese_docs": true,
+        "future": true
+      },
+      {
+        "file": "packages/xuanpu-finance/tests/test_f14_credentials.py",
+        "lines": 319,
+        "max_function_lines": 56,
+        "chinese_docs": true,
+        "future": true
+      },
+      {
+        "file": "packages/xuanpu-finance/tests/test_f14_process.py",
+        "lines": 73,
+        "max_function_lines": 48,
+        "chinese_docs": true,
+        "future": true
+      },
+      {
+        "file": "packages/xuanpu-finance/tests/test_f4_maintenance.py",
+        "lines": 292,
+        "max_function_lines": 39,
+        "chinese_docs": true,
+        "future": true
+      },
+      {
+        "file": "packages/xuanpu-finance/tests/test_f7_api.py",
+        "lines": 71,
+        "max_function_lines": 35,
+        "chinese_docs": true,
+        "future": true
+      },
+      {
+        "file": "packages/xuanpu-finance/tests/test_f7_contract.py",
+        "lines": 52,
+        "max_function_lines": 22,
+        "chinese_docs": true,
+        "future": true
+      },
+      {
+        "file": "packages/xuanpu-finance/tests/test_f8_api.py",
+        "lines": 57,
+        "max_function_lines": 37,
+        "chinese_docs": true,
+        "future": true
+      },
+      {
+        "file": "packages/xuanpu-finance/tests/test_f8_contract.py",
+        "lines": 40,
+        "max_function_lines": 15,
+        "chinese_docs": true,
+        "future": true
+      },
+      {
+        "file": "packages/xuanpu-finance/tests/test_package.py",
+        "lines": 315,
+        "max_function_lines": 35,
+        "chinese_docs": true,
+        "future": true
+      },
+      {
+        "file": "scripts/acceptance/finance_runner.py",
+        "lines": 224,
+        "max_function_lines": 48,
+        "chinese_docs": true,
+        "future": true
+      }
+    ],
+    "quick": {
+      "current": 46,
+      "baseline": 44,
+      "old_order_equal": true
+    },
+    "pack": {
+      "files": 20,
+      "all_equal": true,
+      "extra_refs": 4,
+      "extra_unchanged": true
+    },
+    "contract": {
+      "operations": 77,
+      "unique": 77,
+      "internal": 24,
+      "skills": 7,
+      "tool_names_unchanged": true,
+      "shell_false": true
+    },
+    "whitespace": {
+      "exit": 2,
+      "count": 107,
+      "manifest_equal": true
+    }
+  },
+  "limitations": [
+    "全量和quick实际执行来自主agent独占隔离PG运行；本审查独立读取/核算已有证据，不是独立重跑全量。Task1独立67项无PG与Task2独立真实PG1项仅为专项。",
+    "3既有非财务skip被明确保留，full report为partial；无fail/error且财务904零skip，不将3skip计入通过。",
+    "维护固定叶子安全读取不承诺恶意管理员、祖先替换或跨文件原子轮换防御；合法TLS选项解析不证明真实TLS/证书链。",
+    "Linux补充8例及独立8例只证明安装镜像坏输入拒绝和有限端点TCP队列观察；不是完整PG认证/SQL/系统调用审计、完整Linux业务或浏览器验收。",
+    "正式公司/制度/员工、SSO/生产独立凭据/IAM/网络、真实模型语义、生产负载、实际S3/异机恢复和正式部署仍not_verified。",
+    "本审查未重新访问已清理PG/卷/私有DSN，也未读取私有凭据以重做精确值扫描；清理及扫描结论限于已保留真实证据。",
+    "本报告Approved是整轮代码质量结论；仅本地commit交付仍由主执行者完成，不包含push/merge/deploy授权或完成声明。"
+  ]
+}

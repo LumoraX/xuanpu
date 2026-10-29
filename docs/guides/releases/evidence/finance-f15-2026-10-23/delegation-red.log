@@ -1,0 +1,24 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0
+configfile: pyproject.toml
+plugins: asyncio-1.4.0, anyio-4.15.1
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 7 items / 6 deselected / 1 selected
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py F               [100%]
+
+=================================== FAILURES ===================================
+________________ test_entry_delegation_packet_is_self_contained ________________
+
+    def test_entry_delegation_packet_is_self_contained() -> None:
+        """委派示例实际携带原请求和逐字票据值，不依赖子线程不存在的父消息。"""
+        text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+>       assert '子Skill不会自动继承父会话消息' in text
+E       AssertionError: assert '子Skill不会自动继承父会话消息' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...前内部记录用法优先交expense-reimbursement：用户粘贴发票信息、说明费用后准备草稿，实际提交与审批留给真人；不因提及报销自动发起付款/记账/税务/法定归档。历史由listExpenseClaimHistory读取。\n'
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:35: AssertionError
+- generated xml file: /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/releases/evidence/finance-f15-2026-10-23/delegation-red.xml -
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f15_skill_contract.py::test_entry_delegation_packet_is_self_contained
+======================= 1 failed, 6 deselected in 0.11s ========================

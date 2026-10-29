@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="7" time="0.056" timestamp="2026-10-24T12:54:00.623654+08:00" hostname="krasusdeMacBook-Pro"><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_old_or_unrelated_plan_cannot_serve_as_model_preview[2-preview]" time="0.001"><failure message="AssertionError: assert [] == ['preview']&#10;  &#10;  Right contains one more item: 'preview'&#10;  Use -v to get more diff">version = 2, call_id = 'preview'
+
+    @pytest.mark.parametrize(('version', 'call_id'), [(2, 'preview'), (3, 'unrelated')])
+    def test_old_or_unrelated_plan_cannot_serve_as_model_preview(version: int, call_id: str):
+        """同ID子串不够，必须当前版本和同一模型preview调用返回。"""
+        module = checks()
+        plan = {'id': 'plan', 'digest': 'digest', 'action': 'reject'}
+        assert module.matching_model_plan([plan_trace(version, call_id)], plan,
+                                          {'id': 'claim', 'version': 3}) == []
+&gt;       assert module.matching_model_plan([plan_trace()], plan,
+                                          {'id': 'claim', 'version': 3}) == ['preview']
+E       AssertionError: assert [] == ['preview']
+E         
+E         Right contains one more item: 'preview'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:186: AssertionError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_old_or_unrelated_plan_cannot_serve_as_model_preview[3-unrelated]" time="0.000"><failure message="AssertionError: assert [] == ['preview']&#10;  &#10;  Right contains one more item: 'preview'&#10;  Use -v to get more diff">version = 3, call_id = 'unrelated'
+
+    @pytest.mark.parametrize(('version', 'call_id'), [(2, 'preview'), (3, 'unrelated')])
+    def test_old_or_unrelated_plan_cannot_serve_as_model_preview(version: int, call_id: str):
+        """同ID子串不够，必须当前版本和同一模型preview调用返回。"""
+        module = checks()
+        plan = {'id': 'plan', 'digest': 'digest', 'action': 'reject'}
+        assert module.matching_model_plan([plan_trace(version, call_id)], plan,
+                                          {'id': 'claim', 'version': 3}) == []
+&gt;       assert module.matching_model_plan([plan_trace()], plan,
+                                          {'id': 'claim', 'version': 3}) == ['preview']
+E       AssertionError: assert [] == ['preview']
+E         
+E         Right contains one more item: 'preview'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:186: AssertionError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_model_preview_requires_formal_created_status[200]" time="0.000"><failure message="AssertionError: assert ['preview'] == []&#10;  &#10;  Left contains one more item: 'preview'&#10;  Use -v to get more diff">status = 200
+
+    @pytest.mark.parametrize('status', [200, 202, 204])
+    def test_model_preview_requires_formal_created_status(status: int):
+        """预检正式契约是201，未声明200、仅受理或无正文不能证明收到行动计划。"""
+        plan = {'id': 'plan', 'digest': 'digest', 'action': 'reject'}
+&gt;       assert checks().matching_model_plan([plan_trace(status=status)], plan,
+                                           {'id': 'claim', 'version': 3}) == []
+E       AssertionError: assert ['preview'] == []
+E         
+E         Left contains one more item: 'preview'
+E         Use -v to get more diff
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:194: AssertionError</failure></testcase><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_model_preview_requires_formal_created_status[202]" time="0.000" /><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_model_preview_requires_formal_created_status[204]" time="0.000" /><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_model_preview_cannot_use_non_tool_claimed_plan[user]" time="0.000" /><testcase classname="packages.xuanpu-finance.tests.test_f15_model_harness" name="test_model_preview_cannot_use_non_tool_claimed_plan[assistant]" time="0.000" /></testsuite></testsuites>

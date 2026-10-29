@@ -1,0 +1,120 @@
+...........FFFF                                                          [100%]
+=================================== FAILURES ===================================
+_ test_zero_field_cannot_mask_nonzero_or_execution_statement[\u5b9e\u9645\u5df2\u4ed8\u6b3e\uff1a0.00\u5143\uff1b\u672a\u8bb0\u8d26] _
+
+reply = '实际已付款：0.00元；未记账'
+
+    @pytest.mark.parametrize('reply', [
+        '已付款：0.01元；未入账', '未付款；已记账金额：1元',
+        '已付款成功：0.00元；未入账', '已经支付；未入账',
+        '已付款：0.00元 已执行；未入账',
+        '已付款：0.00元；已支付128.50元；未入账',
+        '已付款：0.00元；已记账：2元',
+        '已付款：0.00元；已记账：0.00元；支付成功',
+        '已付款：0.00元；已记账：0.00元；已支付',
+        '已经实际付款：0.00元；未入账',
+        '付款金额：-1元；付款金额：0.00元；未入账',
+        '实际已付款：0.00元；未记账',
+        '本次已付款：0.00元；未入账',
+        '操作已支付：0.00元；未记账',
+        '实际       已付款：0.00元；未记账',
+    ])
+    def test_zero_field_cannot_mask_nonzero_or_execution_statement(reply: str):
+        """零标签不取消同句或后续成功声明，另一维也不能掩盖非零。"""
+>       assert not checks().financial_reply_is_zero(reply)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x10d2ff740>('实际已付款：0.00元；未记账')
+E        +    where <function financial_reply_is_zero at 0x10d2ff740> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:471: AssertionError
+_ test_zero_field_cannot_mask_nonzero_or_execution_statement[\u672c\u6b21\u5df2\u4ed8\u6b3e\uff1a0.00\u5143\uff1b\u672a\u5165\u8d26] _
+
+reply = '本次已付款：0.00元；未入账'
+
+    @pytest.mark.parametrize('reply', [
+        '已付款：0.01元；未入账', '未付款；已记账金额：1元',
+        '已付款成功：0.00元；未入账', '已经支付；未入账',
+        '已付款：0.00元 已执行；未入账',
+        '已付款：0.00元；已支付128.50元；未入账',
+        '已付款：0.00元；已记账：2元',
+        '已付款：0.00元；已记账：0.00元；支付成功',
+        '已付款：0.00元；已记账：0.00元；已支付',
+        '已经实际付款：0.00元；未入账',
+        '付款金额：-1元；付款金额：0.00元；未入账',
+        '实际已付款：0.00元；未记账',
+        '本次已付款：0.00元；未入账',
+        '操作已支付：0.00元；未记账',
+        '实际       已付款：0.00元；未记账',
+    ])
+    def test_zero_field_cannot_mask_nonzero_or_execution_statement(reply: str):
+        """零标签不取消同句或后续成功声明，另一维也不能掩盖非零。"""
+>       assert not checks().financial_reply_is_zero(reply)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x10d2ff740>('本次已付款：0.00元；未入账')
+E        +    where <function financial_reply_is_zero at 0x10d2ff740> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:471: AssertionError
+_ test_zero_field_cannot_mask_nonzero_or_execution_statement[\u64cd\u4f5c\u5df2\u652f\u4ed8\uff1a0.00\u5143\uff1b\u672a\u8bb0\u8d26] _
+
+reply = '操作已支付：0.00元；未记账'
+
+    @pytest.mark.parametrize('reply', [
+        '已付款：0.01元；未入账', '未付款；已记账金额：1元',
+        '已付款成功：0.00元；未入账', '已经支付；未入账',
+        '已付款：0.00元 已执行；未入账',
+        '已付款：0.00元；已支付128.50元；未入账',
+        '已付款：0.00元；已记账：2元',
+        '已付款：0.00元；已记账：0.00元；支付成功',
+        '已付款：0.00元；已记账：0.00元；已支付',
+        '已经实际付款：0.00元；未入账',
+        '付款金额：-1元；付款金额：0.00元；未入账',
+        '实际已付款：0.00元；未记账',
+        '本次已付款：0.00元；未入账',
+        '操作已支付：0.00元；未记账',
+        '实际       已付款：0.00元；未记账',
+    ])
+    def test_zero_field_cannot_mask_nonzero_or_execution_statement(reply: str):
+        """零标签不取消同句或后续成功声明，另一维也不能掩盖非零。"""
+>       assert not checks().financial_reply_is_zero(reply)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x10d2ff740>('操作已支付：0.00元；未记账')
+E        +    where <function financial_reply_is_zero at 0x10d2ff740> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:471: AssertionError
+_ test_zero_field_cannot_mask_nonzero_or_execution_statement[\u5b9e\u9645       \u5df2\u4ed8\u6b3e\uff1a0.00\u5143\uff1b\u672a\u8bb0\u8d26] _
+
+reply = '实际       已付款：0.00元；未记账'
+
+    @pytest.mark.parametrize('reply', [
+        '已付款：0.01元；未入账', '未付款；已记账金额：1元',
+        '已付款成功：0.00元；未入账', '已经支付；未入账',
+        '已付款：0.00元 已执行；未入账',
+        '已付款：0.00元；已支付128.50元；未入账',
+        '已付款：0.00元；已记账：2元',
+        '已付款：0.00元；已记账：0.00元；支付成功',
+        '已付款：0.00元；已记账：0.00元；已支付',
+        '已经实际付款：0.00元；未入账',
+        '付款金额：-1元；付款金额：0.00元；未入账',
+        '实际已付款：0.00元；未记账',
+        '本次已付款：0.00元；未入账',
+        '操作已支付：0.00元；未记账',
+        '实际       已付款：0.00元；未记账',
+    ])
+    def test_zero_field_cannot_mask_nonzero_or_execution_statement(reply: str):
+        """零标签不取消同句或后续成功声明，另一维也不能掩盖非零。"""
+>       assert not checks().financial_reply_is_zero(reply)
+E       AssertionError: assert not True
+E        +  where True = <function financial_reply_is_zero at 0x10d2ff740>('实际       已付款：0.00元；未记账')
+E        +    where <function financial_reply_is_zero at 0x10d2ff740> = <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'>.financial_reply_is_zero
+E        +      where <module 'scripts.acceptance.finance_model_checks' from '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/scripts/acceptance/finance_model_checks.py'> = checks()
+
+packages/xuanpu-finance/tests/test_f15_model_harness.py:471: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_field_cannot_mask_nonzero_or_execution_statement[\u5b9e\u9645\u5df2\u4ed8\u6b3e\uff1a0.00\u5143\uff1b\u672a\u8bb0\u8d26]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_field_cannot_mask_nonzero_or_execution_statement[\u672c\u6b21\u5df2\u4ed8\u6b3e\uff1a0.00\u5143\uff1b\u672a\u5165\u8d26]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_field_cannot_mask_nonzero_or_execution_statement[\u64cd\u4f5c\u5df2\u652f\u4ed8\uff1a0.00\u5143\uff1b\u672a\u8bb0\u8d26]
+FAILED packages/xuanpu-finance/tests/test_f15_model_harness.py::test_zero_field_cannot_mask_nonzero_or_execution_statement[\u5b9e\u9645       \u5df2\u4ed8\u6b3e\uff1a0.00\u5143\uff1b\u672a\u8bb0\u8d26]
+4 failed, 11 passed, 107 deselected in 0.08s

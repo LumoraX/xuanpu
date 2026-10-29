@@ -1,0 +1,13 @@
+# 专用资金规则
+
+先确定真实有权公司与场景，不从叙述推断已核实状态。员工垫付指员工已支付供应商、公司偿还本人；委托收款指供应商授权第三方收款，不能改发票销方，不能处理客户代收资金。
+
+1. getFundingOptions读取显式制度与当前本人/授权范围脱敏账户，listBusinessDocuments读取supplier及contract原版本。缺资料补配置，不自造引用或账号。预付/核销/退回保持同公司、供应商和合同原版本。
+2. 合同、支付凭据、授权书、退款凭据先用真实平台FileRef固定版本调用importSupportingMaterials；getOperation仅purpose=supporting_material且material_received的source回执可作材料证据。not_checked不等于验真，不能制造发票。
+3. createFundingCase场景prepayment、employee_advance、entrusted_collection、prepayment_clearance、prepayment_return，authority分别prepayment_terms、employee_payment、collection_mandate、null、return_evidence。amount_limit是原凭据总责任，不能按申请重复设置。员工凭据需occurred_on+本人employee_account；委托需valid_from/valid_until+受控supplier_account；退回需occurred_on与原退款交易reference。日期按Asia/Shanghai自然日，授权截至当日结束。source_case_id仅两种收尾必需。
+4. 无票例外仅预付和内部退回核对。员工/委托/核销仍需实际发票分配及主体、原件、正式查验条件；不能为普通应付开后门。核销/退回合计不超过原预付确定已付款，unknown不当已付。核销消耗发票，两种收尾严禁再次付款。
+5. submit_funding_case、逐步业务审批、付款/记账专用审批和最终执行分开。模型只准备previewFinanceAction及读取原计划，不调用executeFinanceAction或revokeFundingAuthority。真实员工入口记录决定；聊天确认不升级human。internal_attestation来自finance_decision，仅内部原件核对，不能描述为银行成功。
+6. 已确认收尾不可普通修订、驳回或撤回抹账；错误追加异常交人工处理。共享凭据/授权不因换编号、扫描摘要或供应商资料版本而重置额度。撤销/过期/材料变化须重新预检，不复用旧批准。
+7. payment/posting分别看实际渠道回执。accepted/outcome_unknown保留原号查单，不换键重付；停用、撤权或重启不改变已发事实。归档包含真实材料、父子单、授权、决定及核销/退款责任，新事实需补包。独立恢复不会启动worker或自动发送。
+
+当前只验隔离simulation通用接口；真实支付/ERP/税务、正式WORM、官方票样及异地容灾未验收，不能宣称正式启用。

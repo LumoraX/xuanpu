@@ -1,0 +1,45 @@
+# 专属财务开发/预发布实例；不加载平台生产 compose 或平台数据卷。
+name: xuanpu-finance-f0
+services:
+  finance-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: finance
+      POSTGRES_USER: finance
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
+    volumes: [finance_pg:/var/lib/postgresql/data]
+    networks: [finance]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U finance -d finance']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  finance-api:
+    image: xuanpu-finance:2026.10.23.5
+    depends_on:
+      finance-db: {condition: service_healthy}
+    ports: ['127.0.0.1:8443:8443']
+    volumes:
+      - ./runtime:/run/finance:ro
+      - finance_originals:/var/lib/finance/originals
+    networks: [finance]
+    extra_hosts: ['host.docker.internal:host-gateway']
+    mem_limit: 512m
+    pids_limit: 64
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    healthcheck:
+      test: [CMD, python, -c, 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8443/health", timeout=2)']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+secrets:
+  db_password: {file: ./runtime/db-password}
+volumes:
+  finance_pg: {}
+  finance_originals: {}
+networks:
+  finance: {}

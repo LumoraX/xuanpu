@@ -146,6 +146,7 @@ HttpAuthType = Literal["bearer", "header", "query", "basic"]
 # 凭据写进这些头会改写请求的含义（目标主机、报文长度、会话），而不是多带一条凭据
 _RESERVED_HEADERS = frozenset(
     {
+        "x-xuanpu-context",
         "host",
         "content-type",
         "content-length",
@@ -239,6 +240,7 @@ class ConnectorSpec(_Strict):
         env: 传给 MCP server 进程的环境变量。
         openapi: ``http`` 传输下 OpenAPI 文档在包内的相对路径。
         base_url: ``http`` 传输下接口的基地址；不给则用文档 ``servers`` 里的第一个。
+        context_audience: ``http`` 连接器请求的身份签名受众；必须由平台部署配置授权目标源。
         url: ``remote`` 传输下 MCP server 的端点地址；正式使用应为 ``https://``，
             试用可以是 ``http://``。不能带用户名与口令。
         auth: ``http`` 与 ``remote`` 传输下的凭据注入方式；不给表示不需要凭据。
@@ -256,6 +258,7 @@ class ConnectorSpec(_Strict):
     env: dict[EnvName, EnvValue] = Field(default_factory=dict)
     openapi: RelativePath | None = None
     base_url: Annotated[str | None, Field(alias="baseUrl")] = None
+    context_audience: Annotated[str | None, Field(alias="contextAudience", min_length=1)] = None
     url: str | None = None
     auth: HttpAuth | None = None
     timeout_seconds: Annotated[float, Field(alias="timeoutSeconds", gt=0, le=600)] = 30.0
@@ -265,6 +268,8 @@ class ConnectorSpec(_Strict):
     @model_validator(mode="after")
     def _shape(self) -> ConnectorSpec:
         """各传输方式的必填字段齐全，且没有写进别的传输方式的字段。"""
+        if self.context_audience is not None and self.transport != "http":
+            raise ValueError("contextAudience 只用于 http 连接器")
         names = [tool.name for tool in self.tools]
         if len(set(names)) != len(names):
             raise ValueError("tools 里有重复的工具名")

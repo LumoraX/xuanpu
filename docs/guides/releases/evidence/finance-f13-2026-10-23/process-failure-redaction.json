@@ -1,0 +1,23 @@
+{
+  "credential_value_only": true,
+  "files": [
+    {
+      "file": "process-first.log",
+      "before_sha256": "8cb56bd7225a0e0d9459758ae501cefb6f626ea7ebcec2ee5e173901e342430f",
+      "after_sha256": "b87403cbb9ffc44681bdb82e03260c659913ba9443e180c3b928c6e2ee5b0bd2",
+      "replacement_count": 1,
+      "intermediate_sha256": "394f1ec806255a03ccfdea4a9b0e0cea757f52d92d373c05f861b0219f8bb22e",
+      "marker": "[redacted-test-password]",
+      "correction_reason": "XML-safe literal credential marker; original failure retained"
+    },
+    {
+      "file": "process-first.xml",
+      "before_sha256": "7942fbf69c9043c1adf6811346caa32c2507df903853acb40cefb756f3a984af",
+      "after_sha256": "59e2b8ffb83448a0f40d732c93c3a44b4345b40983004fa069dbd41c40a0bcc8",
+      "replacement_count": 1,
+      "intermediate_sha256": "106ec0cd454ccc574d1e209dc56481996572511bacbbc3df54e47ff16e90778a",
+      "marker": "[redacted-test-password]",
+      "correction_reason": "XML-safe literal credential marker; original failure retained"
+    }
+  ]
+}

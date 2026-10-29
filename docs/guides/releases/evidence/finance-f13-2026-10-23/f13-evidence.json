@@ -1,0 +1,583 @@
+{
+  "production_status": "not_verified",
+  "source": "full-final/junit.xml",
+  "facts": [
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_objects.test_symlink_rejects_valid_external_cipher[get-root]",
+      "name": "f13_objects",
+      "value": {
+        "case": "root_get",
+        "outside_before": {
+          "12/128d6c963bd76c11edf6d9a49c06b70a641a25df787d3049a8fdf431249fe012.enc": "c663b843453025faa7d173393bffacbb4ec639188c62ef4538ca51ef070181c5"
+        },
+        "outside_after": {
+          "12/128d6c963bd76c11edf6d9a49c06b70a641a25df787d3049a8fdf431249fe012.enc": "c663b843453025faa7d173393bffacbb4ec639188c62ef4538ca51ef070181c5"
+        },
+        "external_snapshot_equal": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_objects.test_symlink_rejects_valid_external_cipher[get-shard]",
+      "name": "f13_objects",
+      "value": {
+        "case": "shard_get",
+        "outside_before": {
+          "128d6c963bd76c11edf6d9a49c06b70a641a25df787d3049a8fdf431249fe012.enc": "44ed9141546fb9d93a2020ef1dc938cc965c0cfb79095a9709c3bd832f94022a"
+        },
+        "outside_after": {
+          "128d6c963bd76c11edf6d9a49c06b70a641a25df787d3049a8fdf431249fe012.enc": "44ed9141546fb9d93a2020ef1dc938cc965c0cfb79095a9709c3bd832f94022a"
+        },
+        "external_snapshot_equal": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_objects.test_symlink_rejects_valid_external_cipher[get-leaf]",
+      "name": "f13_objects",
+      "value": {
+        "case": "leaf_get",
+        "outside_before": {
+          "cipher.enc": "94c2130cf4d18a8ef69a2f5e5ab0e1a39fd0e8be09aedaf8e3220e561f0c5ce1"
+        },
+        "outside_after": {
+          "cipher.enc": "94c2130cf4d18a8ef69a2f5e5ab0e1a39fd0e8be09aedaf8e3220e561f0c5ce1"
+        },
+        "external_snapshot_equal": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_objects.test_symlink_rejects_valid_external_cipher[put-root]",
+      "name": "f13_objects",
+      "value": {
+        "case": "root_put",
+        "outside_before": {
+          "12/128d6c963bd76c11edf6d9a49c06b70a641a25df787d3049a8fdf431249fe012.enc": "d26bfc90b6f1a841ec511bb67a467c9f64e8bf1436401869adceb6d0e92b0fc7"
+        },
+        "outside_after": {
+          "12/128d6c963bd76c11edf6d9a49c06b70a641a25df787d3049a8fdf431249fe012.enc": "d26bfc90b6f1a841ec511bb67a467c9f64e8bf1436401869adceb6d0e92b0fc7"
+        },
+        "external_snapshot_equal": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_objects.test_symlink_rejects_valid_external_cipher[put-shard]",
+      "name": "f13_objects",
+      "value": {
+        "case": "shard_put",
+        "outside_before": {
+          "128d6c963bd76c11edf6d9a49c06b70a641a25df787d3049a8fdf431249fe012.enc": "40482a94d674378755e00240b581f86e0e9810c98d6d6f28bd5b9657a54cee56"
+        },
+        "outside_after": {
+          "128d6c963bd76c11edf6d9a49c06b70a641a25df787d3049a8fdf431249fe012.enc": "40482a94d674378755e00240b581f86e0e9810c98d6d6f28bd5b9657a54cee56"
+        },
+        "external_snapshot_equal": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_objects.test_symlink_rejects_valid_external_cipher[put-leaf]",
+      "name": "f13_objects",
+      "value": {
+        "case": "leaf_put",
+        "outside_before": {
+          "cipher.enc": "ffba6f6d87304476937b5b7c7ed6f2561a232f061cbe010cd981dcaa527f0e5d"
+        },
+        "outside_after": {
+          "cipher.enc": "ffba6f6d87304476937b5b7c7ed6f2561a232f061cbe010cd981dcaa527f0e5d"
+        },
+        "external_snapshot_equal": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_objects.test_symlink_cannot_create_external_leaf[root]",
+      "name": "f13_objects",
+      "value": {
+        "case": "new_root",
+        "external_snapshot_equal": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_objects.test_symlink_cannot_create_external_leaf[shard]",
+      "name": "f13_objects",
+      "value": {
+        "case": "new_shard",
+        "external_snapshot_equal": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_objects.test_directory_swap_before_open_never_follows_link[get-root]",
+      "name": "f13_objects",
+      "value": {
+        "case": "open_race_root_get",
+        "external_snapshot_equal": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_objects.test_directory_swap_before_open_never_follows_link[get-shard]",
+      "name": "f13_objects",
+      "value": {
+        "case": "open_race_shard_get",
+        "external_snapshot_equal": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_objects.test_directory_swap_before_open_never_follows_link[put-root]",
+      "name": "f13_objects",
+      "value": {
+        "case": "open_race_root_put",
+        "external_snapshot_equal": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_objects.test_directory_swap_before_open_never_follows_link[put-shard]",
+      "name": "f13_objects",
+      "value": {
+        "case": "open_race_shard_put",
+        "external_snapshot_equal": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_objects.test_directory_swap_at_link_uses_opened_directory[root]",
+      "name": "f13_objects",
+      "value": {
+        "case": "link_race_root",
+        "external_snapshot_equal": true,
+        "opened_directory_write_succeeded": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_objects.test_directory_swap_at_link_uses_opened_directory[shard]",
+      "name": "f13_objects",
+      "value": {
+        "case": "link_race_shard",
+        "external_snapshot_equal": true,
+        "opened_directory_write_succeeded": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_objects.test_material_worker_preserves_failed_responsibility_then_processes_next",
+      "name": "f13_objects",
+      "value": {
+        "outside_before": {
+          "sentinel": "1091d6f8378399e280d6b6b825ec9d3041b6c4df8612cdd0c1c3dd21043f46fc"
+        },
+        "outside_after": {
+          "sentinel": "1091d6f8378399e280d6b6b825ec9d3041b6c4df8612cdd0c1c3dd21043f46fc"
+        },
+        "external_snapshot_equal": true,
+        "failed_state": "failed",
+        "failed_error": "OBJECT_STORAGE_FAILED",
+        "prepared_count": 1,
+        "receipt_count_after_failed": 0,
+        "material_success_count_after_failed": 0
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_objects.test_material_worker_preserves_failed_responsibility_then_processes_next",
+      "name": "f13_objects",
+      "value": {
+        "next_state": "material_received",
+        "next_status": "succeeded",
+        "receipt_count_after_next": 1,
+        "material_success_count_after_next": 1,
+        "external_snapshot_equal": true,
+        "different_shard": true
+      }
+    },
+    {
+      "test": "packages.xuanpu-finance.tests.test_f13_process.test_unsafe_original_refused_then_humans_resume_after_explicit_restore",
+      "name": "f13_process",
+      "value": {
+        "receipt": {
+          "receipt_id": "d5a2208c85c3490e84e6a920e0497324",
+          "original_operation": {
+            "id": "b4a841fb28c04f92b13f084a64aee2b2",
+            "status": "succeeded"
+          },
+          "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3"
+        },
+        "original": {
+          "reader": "manager",
+          "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+          "bytes_equal": true
+        },
+        "rejection": {
+          "status": 500,
+          "code": "OBJECT_PATH_UNSAFE",
+          "content_base64_absent": true,
+          "path_and_body_absent": true,
+          "public_tables_equal": {
+            "finance_action_plan": true,
+            "finance_allocation": true,
+            "finance_archive": true,
+            "finance_archive_audit": true,
+            "finance_archive_health": true,
+            "finance_archive_supplement": true,
+            "finance_business_idempotency": true,
+            "finance_business_operation": true,
+            "finance_company": true,
+            "finance_compliance_decision": true,
+            "finance_compliance_exception": true,
+            "finance_compliance_grant": true,
+            "finance_compliance_inbox": true,
+            "finance_compliance_inbox_conflict": true,
+            "finance_compliance_lease": true,
+            "finance_compliance_mode": true,
+            "finance_compliance_operation": true,
+            "finance_compliance_plan": true,
+            "finance_compliance_policy": true,
+            "finance_compliance_policy_revision": true,
+            "finance_compliance_provider": true,
+            "finance_compliance_receipt": true,
+            "finance_compliance_workflow": true,
+            "finance_compliance_workflow_step": true,
+            "finance_decision": true,
+            "finance_event": true,
+            "finance_exception": true,
+            "finance_exception_decision": true,
+            "finance_exception_evidence": true,
+            "finance_execution_grant": true,
+            "finance_expense_claim": true,
+            "finance_expense_evidence": true,
+            "finance_expense_history": true,
+            "finance_expense_policy": true,
+            "finance_expense_policy_revision": true,
+            "finance_funding_authority": true,
+            "finance_funding_authority_decision": true,
+            "finance_funding_case": true,
+            "finance_funding_original": true,
+            "finance_funding_policy": true,
+            "finance_funding_policy_revision": true,
+            "finance_funding_reservation": true,
+            "finance_grant": true,
+            "finance_grant_epoch": true,
+            "finance_idempotency": true,
+            "finance_invoice": true,
+            "finance_invoice_authority_revision": true,
+            "finance_invoice_compliance": true,
+            "finance_invoice_field": true,
+            "finance_invoice_line": true,
+            "finance_invoice_receipt": true,
+            "finance_invoice_verification": true,
+            "finance_item": true,
+            "finance_notification": true,
+            "finance_notification_scan": true,
+            "finance_operation": true,
+            "finance_outbox": true,
+            "finance_payment": true,
+            "finance_posting": true,
+            "finance_receipt": true,
+            "finance_red_letter_case": true,
+            "finance_red_letter_link": true,
+            "finance_settlement_catalog": true,
+            "finance_settlement_catalog_revision": true,
+            "finance_settlement_exception": true,
+            "finance_settlement_inbox": true,
+            "finance_settlement_inbox_conflict": true,
+            "finance_settlement_lease": true,
+            "finance_settlement_mode": true,
+            "finance_settlement_operation": true,
+            "finance_settlement_policy": true,
+            "finance_settlement_policy_revision": true,
+            "finance_settlement_provider": true,
+            "finance_settlement_receipt": true,
+            "finance_tax_adjustment": true,
+            "finance_tax_adjustment_evidence": true,
+            "finance_tax_confirmation": true,
+            "finance_workflow": true,
+            "finance_workflow_step": true
+          },
+          "external_ciphertext_unchanged": true,
+          "replay": {
+            "actual_signed_request": {
+              "iss": "platform",
+              "sub": "manager",
+              "tenant_id": "tenant-a",
+              "origin": "human",
+              "jti": "6d0768b1073f4f6e85396223f62983d8",
+              "call_id": "909a624061ee454abacabafe6954ae29",
+              "request_sha256": "67bcd51e712e97c84a8c42826afb654e61d100e2accdd798030bc5707a5c9817",
+              "exp": 1792741632,
+              "idempotency_key": ""
+            },
+            "added_count": 1,
+            "added_matches_signature": true,
+            "removed_count": 0,
+            "removed_were_expired": true,
+            "existing_rows_unchanged": true
+          }
+        },
+        "restored": {
+          "reader": "manager",
+          "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+          "bytes_equal": true
+        },
+        "final": {
+          "approvals": [
+            {
+              "original": {
+                "reader": "manager",
+                "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+                "bytes_equal": true
+              },
+              "model_rejection": {
+                "status": 403,
+                "output": {
+                  "code": "HUMAN_REQUIRED",
+                  "message": "请本人在人工确认入口作出业务决定",
+                  "trace_id": "80bd46ea3dbb40848e9d8046b6abc036",
+                  "retryable": false
+                },
+                "signed_origin": "agent",
+                "document_unchanged": true
+              },
+              "human_execution": {
+                "id": "f1op_cf22f12874de4b979154f73cdb3c0014",
+                "version": 1,
+                "status": "succeeded",
+                "business_result": "succeeded",
+                "trace_id": "497afed999174a1b8f355c6db5bad81c",
+                "items": [],
+                "result_refs": [],
+                "resources": [
+                  {
+                    "kind": "expense_claim",
+                    "id": "a6f5e649d2d84d82ac11827946e5f89e"
+                  }
+                ]
+              },
+              "signed_origin": "human",
+              "reason": "manager已核对独立原件"
+            },
+            {
+              "original": {
+                "reader": "finance-reviewer",
+                "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+                "bytes_equal": true
+              },
+              "model_rejection": {
+                "status": 403,
+                "output": {
+                  "code": "HUMAN_REQUIRED",
+                  "message": "请本人在人工确认入口作出业务决定",
+                  "trace_id": "6b12175ae68c4fabbbda9a12fc2174d3",
+                  "retryable": false
+                },
+                "signed_origin": "agent",
+                "document_unchanged": true
+              },
+              "human_execution": {
+                "id": "f1op_52e9f2bc03464061a51178b295167232",
+                "version": 1,
+                "status": "succeeded",
+                "business_result": "succeeded",
+                "trace_id": "4bbdd3cb69c442e9b44b3ced8ef324e5",
+                "items": [],
+                "result_refs": [],
+                "resources": [
+                  {
+                    "kind": "expense_claim",
+                    "id": "a6f5e649d2d84d82ac11827946e5f89e"
+                  }
+                ]
+              },
+              "signed_origin": "human",
+              "reason": "finance-reviewer已核对独立原件"
+            }
+          ],
+          "decisions": [
+            {
+              "id": "2c035d12bab84661b53ea0eb44e6663f",
+              "actor_id": "manager",
+              "action": "approve",
+              "step_id": "25579bab51e84aad9fe352cee8af9232",
+              "data": {
+                "origin": "human",
+                "plan_id": "699fff84b91441bbbbc11bb678bc0313",
+                "parameters": {
+                  "reason": "manager已核对独立原件",
+                  "workflow_step_id": "25579bab51e84aad9fe352cee8af9232"
+                },
+                "target_version": 2
+              }
+            },
+            {
+              "id": "e72b2a6af34c4041bb164992fe879823",
+              "actor_id": "finance-reviewer",
+              "action": "approve",
+              "step_id": "200de54d7d2f488ca976c8beede0546e",
+              "data": {
+                "origin": "human",
+                "plan_id": "b3a0255b8cc441b78aca1a0a331a122c",
+                "parameters": {
+                  "reason": "finance-reviewer已核对独立原件",
+                  "workflow_step_id": "200de54d7d2f488ca976c8beede0546e"
+                },
+                "target_version": 2
+              }
+            }
+          ],
+          "operations": [
+            {
+              "decision": {
+                "id": "2c035d12bab84661b53ea0eb44e6663f",
+                "actor_id": "manager",
+                "action": "approve",
+                "step_id": "25579bab51e84aad9fe352cee8af9232",
+                "data": {
+                  "origin": "human",
+                  "plan_id": "699fff84b91441bbbbc11bb678bc0313",
+                  "parameters": {
+                    "reason": "manager已核对独立原件",
+                    "workflow_step_id": "25579bab51e84aad9fe352cee8af9232"
+                  },
+                  "target_version": 2
+                }
+              },
+              "operation_id": "f1op_cf22f12874de4b979154f73cdb3c0014",
+              "decision_count": 1,
+              "operation_count": 1,
+              "outbox_count": 1,
+              "outbox_id": "8a3ccd40ef694bfb93a63398b28fa4af"
+            },
+            {
+              "decision": {
+                "id": "e72b2a6af34c4041bb164992fe879823",
+                "actor_id": "finance-reviewer",
+                "action": "approve",
+                "step_id": "200de54d7d2f488ca976c8beede0546e",
+                "data": {
+                  "origin": "human",
+                  "plan_id": "b3a0255b8cc441b78aca1a0a331a122c",
+                  "parameters": {
+                    "reason": "finance-reviewer已核对独立原件",
+                    "workflow_step_id": "200de54d7d2f488ca976c8beede0546e"
+                  },
+                  "target_version": 2
+                }
+              },
+              "operation_id": "f1op_52e9f2bc03464061a51178b295167232",
+              "decision_count": 1,
+              "operation_count": 1,
+              "outbox_count": 1,
+              "outbox_id": "b0d738383a87414e9846d843a3d85234"
+            }
+          ],
+          "original": {
+            "reader": "finance-reviewer",
+            "sha256": "423899965a602a4639e28fd94a027c035840d06f7b2624ac14f6ac9e90c6dcd3",
+            "bytes_equal": true
+          },
+          "status": "approved",
+          "record": {
+            "source_text_preserved": true,
+            "reason_preserved": true,
+            "paid_amount": "0.00",
+            "posted_amount": "0.00"
+          },
+          "external_table_counts": {
+            "finance_invoice": 0,
+            "finance_settlement_operation": 0,
+            "finance_compliance_operation": 0
+          }
+        },
+        "confirmation_requests": [
+          {
+            "signed": {
+              "iss": "platform",
+              "sub": "manager",
+              "tenant_id": "tenant-a",
+              "origin": "agent",
+              "jti": "66a804db74a747f0b991cca56240ded9",
+              "call_id": "b8a61c022a50415c9202df34ffba9a8a",
+              "request_sha256": "83e9843d6a923a89dcc6550a57fe9bc1902ee0deace115e0ac7b8803173048ef",
+              "exp": 1792741632,
+              "idempotency_key": "model-execute-manager"
+            },
+            "status": 403,
+            "operation_id": null,
+            "code": "HUMAN_REQUIRED"
+          },
+          {
+            "signed": {
+              "iss": "platform",
+              "sub": "manager",
+              "tenant_id": "tenant-a",
+              "origin": "human",
+              "jti": "994cbf7d707a4d8380d33885795fcc81",
+              "call_id": "afd17d3d60684bf2b7078bde0772969a",
+              "request_sha256": "37b5170b8617fb632b64c927d2cc51c23c7e782c3d1a3bbfbbaab2f5e2c86e9c",
+              "exp": 1792741632,
+              "idempotency_key": "human-execute-manager"
+            },
+            "status": 202,
+            "operation_id": "f1op_cf22f12874de4b979154f73cdb3c0014",
+            "code": null
+          },
+          {
+            "signed": {
+              "iss": "platform",
+              "sub": "finance-reviewer",
+              "tenant_id": "tenant-a",
+              "origin": "agent",
+              "jti": "28414eabf7a144edaf4fed028e8d0a5c",
+              "call_id": "a3675528faf940cda9d5eac807b8c2d0",
+              "request_sha256": "c271c2f41e3f1ac69f4b531a40a12b4153cfb87c984709b07dd6b627f189eb5b",
+              "exp": 1792741632,
+              "idempotency_key": "model-execute-finance-reviewer"
+            },
+            "status": 403,
+            "operation_id": null,
+            "code": "HUMAN_REQUIRED"
+          },
+          {
+            "signed": {
+              "iss": "platform",
+              "sub": "finance-reviewer",
+              "tenant_id": "tenant-a",
+              "origin": "human",
+              "jti": "5ca2e19938af4f37aa65fd2024263f56",
+              "call_id": "3e87d946ea2e4edb9021d6d008c6c1d4",
+              "request_sha256": "ee2ab5b8495595dd7f44fb01453b96da38d00557faa9099f1a46cae6a78c2be1",
+              "exp": 1792741632,
+              "idempotency_key": "human-execute-finance-reviewer"
+            },
+            "status": 202,
+            "operation_id": "f1op_52e9f2bc03464061a51178b295167232",
+            "code": null
+          }
+        ],
+        "source_removed": true,
+        "download_count": 1,
+        "readonly_verify": {
+          "exit": 0,
+          "output": {
+            "status": "completed",
+            "verification_status": "complete",
+            "profile": "internal_records",
+            "production_status": "not_verified",
+            "authenticated_objects": 1,
+            "prepared_missing_count": 0,
+            "unmapped_objects_count": 0,
+            "complete_object_validation": true,
+            "workers_started": false,
+            "business_writes": 0
+          },
+          "snapshot_equal": true
+        },
+        "processes": [
+          {
+            "exit": -15,
+            "ended": true,
+            "forced_kill": false,
+            "graceful_shutdown": true,
+            "stdout_empty": true,
+            "stderr_bytes": 350,
+            "stderr_sha256": "34fd390ccbe44e58e5268b22522c62034851549ac420738393e4e2a1bf142138",
+            "port_closed": true
+          }
+        ],
+        "finance_port_closed": true,
+        "gateway_port_closed": true
+      }
+    }
+  ]
+}

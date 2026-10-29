@@ -1,0 +1,9 @@
+{
+  "status": "failed_preserved",
+  "cause": "Root test orchestration omitted FINANCE_TEST_PG_CONTAINER. Native pg_dump/pg_restore are absent; all 13 failures were the explicit test helper prerequisite failure. Existing exact owned postgres:16 container provides these tools. Set its explicit name for final rerun; no source, test expectation, model or scope changes.",
+  "failed_tests": 13,
+  "actual_total": 2980,
+  "skipped": 3,
+  "product_runtime_defect": false,
+  "no_model_calls": true
+}

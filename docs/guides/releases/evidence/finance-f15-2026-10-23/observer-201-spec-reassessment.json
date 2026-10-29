@@ -1,0 +1,108 @@
+{
+  "status": "limited_offline_stage_evidence_valid_journey_remains_failed",
+  "journey": "final5",
+  "phase": "02-create:session",
+  "reader_actor_id": "usr_132fdab2b614ba246c3bb271",
+  "session_id": "ses_85421e1f4a13090ac61dcba4fdc08dbe",
+  "proposal_call_id": "call_750851122d0d489898c7303e645b3fe8",
+  "successful_required_tools": [
+    "api__finance__createExpenseClaim",
+    "api__finance__getSupportingMaterialImport",
+    "api__finance__listSupportingMaterialImports"
+  ],
+  "actual_matching_raw_sources": [
+    "messages",
+    "input_items"
+  ],
+  "matching_raw_HTTP_status": "201",
+  "actual_same_call_SSE_completed_count": 0,
+  "raw_result_exact_expense": true,
+  "raw_result_equals_exported_pg_facts": true,
+  "exported_pg_status": "draft",
+  "exported_pg_total": "128.50",
+  "exported_pg_raw_real_newlines": 2,
+  "exported_pg_raw_literal_backslash_n": 0,
+  "exported_business_counts": {
+    "finance_decision": 0,
+    "finance_invoice": 0,
+    "finance_settlement_operation": 0,
+    "finance_compliance_operation": 0
+  },
+  "actual_oas_tool_statuses": {
+    "api__finance__createExpenseClaim": {
+      "method": "post",
+      "path": "/v1/finance/expense-claims",
+      "status": [
+        "201"
+      ]
+    },
+    "api__finance__listExpenseClaimHistory": {
+      "method": "get",
+      "path": "/v1/finance/expense-claims/{id}/history",
+      "status": [
+        "200"
+      ]
+    },
+    "api__finance__getExpenseClaim": {
+      "method": "get",
+      "path": "/v1/finance/expense-claims/{id}",
+      "status": [
+        "200"
+      ]
+    },
+    "api__finance__updateExpenseClaim": {
+      "method": "put",
+      "path": "/v1/finance/expense-claims/{id}",
+      "status": [
+        "200"
+      ]
+    },
+    "api__finance__listReviewQueue": {
+      "method": "get",
+      "path": "/v1/finance/review-queue",
+      "status": [
+        "200"
+      ]
+    },
+    "api__finance__previewFinanceAction": {
+      "method": "post",
+      "path": "/v1/finance/action-previews",
+      "status": [
+        "201"
+      ]
+    },
+    "api__finance__listSupportingMaterialImports": {
+      "method": "get",
+      "path": "/v1/finance/supporting-material-imports",
+      "status": [
+        "200"
+      ]
+    },
+    "api__finance__getSupportingMaterialImport": {
+      "method": "get",
+      "path": "/v1/finance/supporting-material-imports/{id}",
+      "status": [
+        "200"
+      ]
+    },
+    "api__finance__listExpenseClaimSummaries": {
+      "method": "get",
+      "path": "/v1/finance/expense-claim-summaries",
+      "status": [
+        "200"
+      ]
+    }
+  },
+  "journey_status": "failed",
+  "promoted_to_full_pass": false,
+  "PG_access": "only read existing actual-pg-after-observer-failure.json export; no live query or credentials",
+  "raw_evidence_sha256": {
+    "final5/model-095.json": "0715d4bf791dd7d94faf3d322092a8b16438c0ffb2d0642e4c21d820819c355f",
+    "final5/model-096.json": "365d540fd9397c7248093a2823a3fb85ba365fe2b6e12bbb804ec70d6bedeb6b",
+    "final5/02-create-session.json": "25710e246fb97e4b909e09869cf6a422589473a5c0d199ddd80da0e0659f3c78",
+    "final5/actual-pg-after-observer-failure.json": "43b2e2d6823a8733bb335e3144c3c3be50eb79750c37df397e20928808c3a46d",
+    "final5/result.json": "5732a2bf5e01138370b67be0518c19a80bca70d19a331d4eb48ec5dec41df13f"
+  },
+  "observer_source_sha256": "1983f9b4750a7fa28275d88a6e2bf8e94c8f051c87c4063a4743cfbee4784da1",
+  "model_or_budget_modified": false
+}

@@ -1,0 +1,2 @@
+{"file": "packages/xuanpu-cli/tests/test_serve.py", "sha256": "3d2cd3de3d5c309c8a9aa9c9067d0f1b78adc4952a19a9ae2a087cda20d9338c", "served_lines": 65, "file_lines": 223, "chinese_docstring_preserved": true, "http_timeout_seconds": 10, "termination_timeout_seconds": 20, "postgres_used": false, "source_frozen": true}
+All checks passed!

@@ -1,0 +1,73 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_______________________ test_finance_materials_behavior ________________________
+
+    def test_finance_materials_behavior() -> None:
+        """收件跨页恢复保留请求身份，附件点选不丢未保存单据。"""
+        node = shutil.which('node')
+        assert node is not None
+        result = subprocess.run(
+            [node, str(Path(__file__).with_name('finance_materials_behavior.cjs')), str(static_dir())],
+            capture_output=True, text=True, timeout=15,
+        )
+>       assert result.returncode == 0, result.stdout + result.stderr
+E       AssertionError: FAIL persistencePrecedesPosts AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+E         
+E         0 !== 1
+E         
+E             at persistencePrecedesPosts (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:12:570)
+E             at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:18:191 {
+E           generatedMessage: true,
+E           code: 'ERR_ASSERTION',
+E           actual: 0,
+E           expected: 1,
+E           operator: 'strictEqual',
+E           diff: 'simple'
+E         }
+E         FAIL unknownPlatformKeepsOriginalRequest evalmachine.<anonymous>:1
+E         financeMaterialsRead().request_id
+E         ^
+E         
+E         ReferenceError: financeMaterialsRead is not defined
+E             at evalmachine.<anonymous>:1:1
+E             at Script.runInContext (node:vm:149:12)
+E             at Object.runInContext (node:vm:301:6)
+E             at Object.run (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:4:1476)
+E             at unknownPlatformKeepsOriginalRequest (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:13:302)
+E             at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:18:191
+E         FAIL unknownFinanceKeepsOriginalKey TypeError: Cannot read properties of null (reading 'listeners')
+E             at unknownFinanceKeepsOriginalKey (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:14:484)
+E             at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:18:191
+E         FAIL invalidStorageBlocksPosts evalmachine.<anonymous>:1
+E         financeMaterialsStorageKey()
+E         ^
+E         
+E         ReferenceError: financeMaterialsStorageKey is not defined
+E             at evalmachine.<anonymous>:1:1
+E             at Script.runInContext (node:vm:149:12)
+E             at Object.runInContext (node:vm:301:6)
+E             at Object.run (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:4:1476)
+E             at invalidStorageBlocksPosts (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:15:213)
+E             at /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:18:197
+E         FAIL scopeAndCaps evalmachine.<anonymous>:1
+E         financeMaterialsWrite(pointer)
+E         ^
+E         
+E         ReferenceError: financeMaterialsWrite is not defined
+E             at evalmachine.<anonymous>:1:1
+E             at Script.runInContext (node:vm:149:12)
+E             at Object.runInContext (node:vm:301:6)
+E             at Object.run (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:4:1476)
+E             at scopeAndCaps (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:16:190)
+E             at /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:18:197
+E         FAIL pickerKeepsUnsavedForm TypeError: Cannot read properties of null (reading 'listeners')
+E             at pickerKeepsUnsavedForm (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:17:625)
+E             at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:18:191
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/opt/homebrew/bin/node', '/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/x...odes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_materials_behavior.cjs:18:191\n").returncode
+
+packages/xuanpu-console/tests/test_finance_behavior.py:77: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-console/tests/test_finance_behavior.py::test_finance_materials_behavior
+1 failed, 6 deselected in 0.09s

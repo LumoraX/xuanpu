@@ -1,0 +1,26 @@
+# 合并到基础配置；默认关闭。示例标识不是已核实资料或实际员工。
+execution_simulation: false
+settlement_providers: []
+business_documents: []
+payee_accounts: []
+settlement_policies:
+- tenant_id: acme
+  legal_entity_id: company-a
+  version: 1
+  enabled: false
+  payment_provider: replace-payment
+  payment_configuration_version: 1
+  posting_provider: replace-ledger
+  posting_configuration_version: 1
+  ledger_id: replace-ledger
+  open_periods: []
+  payment_executor_user_ids: [replace-payer]
+  posting_executor_user_ids: [replace-accountant]
+  payment_steps:
+  - {id: payment-review, name: 付款审批, approver_user_id: replace-approver}
+  posting_steps:
+  - {id: posting-review, name: 入账审批, approver_user_id: replace-approver}
+  reversal_steps:
+  - {id: reversal-review, name: 冲回审批, approver_user_id: replace-approver}
+  require_verified_invoice: true
+  plan_hours: 24

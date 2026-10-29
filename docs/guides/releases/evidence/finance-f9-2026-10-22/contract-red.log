@@ -1,0 +1,40 @@
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+______________ test_summary_contract_has_bounded_exact_projection ______________
+
+    def test_summary_contract_has_bounded_exact_projection() -> None:
+        """摘要不带申报原文，分页容量与最长事由均为明确契约。"""
+        document = contracts()['finance']
+        index = operations(document)
+>       path, method, operation = index['listExpenseClaimSummaries']
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'listExpenseClaimSummaries'
+
+packages/xuanpu-finance/tests/test_f9_contract.py:17: KeyError
+_____________ test_capabilities_contract_is_exact_runtime_metadata _____________
+
+    def test_capabilities_contract_is_exact_runtime_metadata() -> None:
+        """实例能力不是个人权限、审批回执或上线验收结果。"""
+        document = contracts()['finance']
+>       assert operations(document)['getFinanceCapabilities'][:2] == (
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            '/v1/finance/capabilities', 'get')
+E       KeyError: 'getFinanceCapabilities'
+
+packages/xuanpu-finance/tests/test_f9_contract.py:46: KeyError
+_______________ test_skills_discover_profile_without_human_tools _______________
+
+    def test_skills_discover_profile_without_human_tools() -> None:
+        """所有入口先读能力，报销使用摘要检索且不取得人工执行或原件工具。"""
+        for path in (PACKAGE / 'skills').glob('*/SKILL.md'):
+            frontmatter = yaml.safe_load(path.read_text().split('---', 2)[1])
+            tools = frontmatter.get('tool_names', [])
+>           assert 'api__finance__getFinanceCapabilities' in tools
+E           AssertionError: assert 'api__finance__getFinanceCapabilities' in ['api__finance__listSupportingMaterialImports', 'api__finance__getSupportingMaterialImport', 'api__finance__listFinanc...ations', 'api__finance__listLegalEntities', 'api__finance__createExpenseClaim', 'api__finance__listExpenseClaims', ...]
+
+packages/xuanpu-finance/tests/test_f9_contract.py:64: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f9_contract.py::test_summary_contract_has_bounded_exact_projection
+FAILED packages/xuanpu-finance/tests/test_f9_contract.py::test_capabilities_contract_is_exact_runtime_metadata
+FAILED packages/xuanpu-finance/tests/test_f9_contract.py::test_skills_discover_profile_without_human_tools
+3 failed in 0.71s

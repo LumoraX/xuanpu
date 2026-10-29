@@ -1,0 +1,20 @@
+{
+  "observed_at": "2026-10-24T07:40:59.590318+00:00",
+  "source": "direct_user_instruction",
+  "instruction": "先别扩额，先优化发票报销业务会话里的重复查询和 Skill 委派，降低调用次数和 token 消耗，再继续完整验收。保持不做支付、独立存储和真人审批，完成后本地提交，不合并、不部署。",
+  "authorization_scope": "optimize existing Skill orchestration and repeat fresh complete acceptance under unchanged original cumulative limits",
+  "streams_limit": 240,
+  "session_tokens_limit": 200000,
+  "stop_at_unknown_count": 5,
+  "budget_extension_authorized": false,
+  "starting_attempts": 143,
+  "starting_completed": 141,
+  "starting_usage_unknown": [
+    56,
+    59
+  ],
+  "new_ledger_or_counter_reset": false,
+  "payment": false,
+  "merge": false,
+  "deploy": false
+}

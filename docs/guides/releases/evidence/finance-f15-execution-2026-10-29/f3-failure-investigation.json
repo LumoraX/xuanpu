@@ -1,0 +1,32 @@
+{
+  "status": "not_reproduced",
+  "full_failure": {
+    "tests": 3185,
+    "passed": 3181,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 3,
+    "case": "test_worker_rechecks_source_environment_for_legacy_accepted_supplement",
+    "location": "test_f3_guards.py:310",
+    "observed": "tax-adjustment fixture list empty before tested worker guard"
+  },
+  "isolated_module": {
+    "passed": 22,
+    "failures": 0,
+    "seconds": 9.39,
+    "junit": "f3-isolated-before.xml"
+  },
+  "production_sources_changed_for_failure": false,
+  "cause": "unresolved after isolated and full repeat; not claimed fixed",
+  "next": "one full same-source repeat; preserve first failure regardless of outcome",
+  "model_calls_added": 0,
+  "full_same_source_repeat": {
+    "tests": 3185,
+    "passed": 3182,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 3,
+    "returncode": 0,
+    "report": "full/report.json"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "bounded-network-resume-user-20261024",
+  "source": "direct_user_reply_to_bounded_question",
+  "question": "网关再次断流，目前59次调用中有2次用量未知。是否允许在原240次总上限内继续，保留每次未知用量，累计第5次用量未知时立即停止、不再恢复？同一边界内将不再逐次询问。",
+  "answer": "continue",
+  "observed_at": "2026-10-24T04:42:20.546464+00:00",
+  "execution_authorized": true,
+  "max_streams": 240,
+  "stop_at_unknown_count": 5,
+  "recoverable_failure": "TransientNetworkError:codex transport error (stream): RemoteProtocolError",
+  "other_limits_unchanged": true
+}

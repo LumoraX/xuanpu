@@ -1,0 +1,23 @@
+{
+  "owned_pg_container": "xuanpu-finance-f4-test-pg",
+  "owned_pg_id": "5f8d09bb59308ba86a5a25047859397bc65569604902b61d29fe089474d99242",
+  "owned_pg_removed": true,
+  "anonymous_volumes_removed": [
+    "917539472a598a1b298fd554f791e506937361dda5ec3f30320cb8a15174df9a"
+  ],
+  "remaining_finance_schemas": 0,
+  "remaining_maintenance_databases": 0,
+  "compose_containers": [],
+  "compose_volumes": [],
+  "owned_ports_closed": {
+    "60035": true,
+    "60553": true
+  },
+  "original_checkout_clean": true,
+  "browser_tab_closed": true,
+  "wheel_sdist_image_and_worktree_retained": true,
+  "browser_synthetic_runtime_cleanup": {
+    "remaining_harness_temp_directories": [],
+    "note": "pytest retention removed harness runtime; isolated schema and services closed"
+  }
+}

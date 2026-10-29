@@ -1,0 +1,28 @@
+{
+  "status": "completed",
+  "authorization": {
+    "id": "bounded-network-resume-user-20261024",
+    "source": "direct_user_reply_to_bounded_question",
+    "question": "网关再次断流，目前59次调用中有2次用量未知。是否允许在原240次总上限内继续，保留每次未知用量，累计第5次用量未知时立即停止、不再恢复？同一边界内将不再逐次询问。",
+    "answer": "continue",
+    "observed_at": "2026-10-24T04:42:20.546464+00:00",
+    "execution_authorized": true,
+    "max_streams": 240,
+    "stop_at_unknown_count": 5,
+    "recoverable_failure": "TransientNetworkError:codex transport error (stream): RemoteProtocolError",
+    "other_limits_unchanged": true
+  },
+  "original_ledger_sha256": "19436babf1045e39374a23c1699ef8b35e3b9c7eb80ea3979885073f4c7c0779",
+  "new_ledger_sha256": "9904d75c1c7e26648ae939ba110bff4963c4f8d59e70768647f87868c67047bb",
+  "snapshot": "model-budget-before-network-resume-59.json",
+  "unknown_attempts": [
+    56,
+    59
+  ],
+  "known_counts_unchanged": true,
+  "completed_not_incremented": true,
+  "unknown_not_zero": true,
+  "source740_unchanged": true,
+  "new_model_calls_during_ledger_change": 0,
+  "future_usage_missing_still_halts": true
+}

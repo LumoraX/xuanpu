@@ -1,0 +1,22 @@
+{
+  "validator": "xuanpu_spec.validate_package + taifeng.FilesystemSkillRegistry",
+  "package_valid": true,
+  "version": "0.13.0-f12",
+  "skills": [
+    "accounts-payable",
+    "archive-audit",
+    "expense-reimbursement",
+    "finance-assistant",
+    "finance-review",
+    "invoice-intake",
+    "posting-reconciliation"
+  ],
+  "api_operations": 77,
+  "contracts": {
+    "finance": 72,
+    "catalog": 5
+  },
+  "internal_operations": 24,
+  "model_shell": false,
+  "production_status": "not_verified"
+}

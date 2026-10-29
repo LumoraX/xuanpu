@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "container_removed": "xuanpu-finance-merge-20261029",
+  "label_verified": true,
+  "anonymous_volumes_removed": 1,
+  "private_dsn_removed": true,
+  "pre_cleanup": {
+    "other_clients": 0,
+    "advisory_locks": 0
+  },
+  "other_containers_touched": false,
+  "evidence_preserved": true
+}

@@ -1,0 +1,114 @@
+{
+  "status": "partial",
+  "production_status": "not_verified",
+  "tests": 4000,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 21,
+  "missing_modules": [],
+  "skipped_cases": [
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_collaboration_faults",
+      "name": "test_sigkill_coordination_replay_is_single_and_atomic[memory-before_commit-accept-handoff.accept]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_collaboration_faults",
+      "name": "test_sigkill_coordination_replay_is_single_and_atomic[memory-before_commit-approve-organizational_approval.approve]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_collaboration_faults",
+      "name": "test_sigkill_coordination_replay_is_single_and_atomic[memory-before_commit-deliver-handoff.deliver]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_collaboration_faults",
+      "name": "test_sigkill_coordination_replay_is_single_and_atomic[memory-before_commit-sign_off-handoff.sign_off]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_collaboration_faults",
+      "name": "test_sigkill_coordination_replay_is_single_and_atomic[memory-after_commit-accept-handoff.accept]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_collaboration_faults",
+      "name": "test_sigkill_coordination_replay_is_single_and_atomic[memory-after_commit-approve-organizational_approval.approve]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_collaboration_faults",
+      "name": "test_sigkill_coordination_replay_is_single_and_atomic[memory-after_commit-deliver-handoff.deliver]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_collaboration_faults",
+      "name": "test_sigkill_coordination_replay_is_single_and_atomic[memory-after_commit-sign_off-handoff.sign_off]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_real_model",
+      "name": "test_real_model_reads_managed_profile_without_credentials[postgres]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_shared_fault_matrix",
+      "name": "test_sigkill_after_real_object_copy_recovers_once[memory]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r3_contract.test_shared_fault_matrix",
+      "name": "test_separate_cold_process_rejects_revoked_context[memory]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.r4_contract.test_tool_inventory",
+      "name": "test_secret_rotation_serializes_with_install_commit[memory]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.reminders.test_postgres_order",
+      "name": "test_same_employee_notification_commit_order[memory]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.task_triggers.test_real_model_acceptance",
+      "name": "test_real_gateway_trigger_delivers_verified_total_once[time-postgres]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.task_triggers.test_real_model_acceptance",
+      "name": "test_real_gateway_trigger_delivers_verified_total_once[event-postgres]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.work_tasks.test_r2_real_experience",
+      "name": "test_real_meeting_keeps_exact_quotes_and_unresolved_deadline[postgres]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.work_tasks.test_r2_real_experience",
+      "name": "test_real_no_attachment_http_task_has_real_read_receipt[postgres]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.work_tasks.test_real_model_acceptance",
+      "name": "test_real_model_frozen_upload_recovery[csv-postgres]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.work_tasks.test_real_model_acceptance",
+      "name": "test_real_model_frozen_upload_recovery[xlsx-postgres]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.workspace.test_proactive_store",
+      "name": "test_database_source_constraints_are_enforced[memory]"
+    },
+    {
+      "class": "packages.xuanpu-server.tests.workspace.test_proactive_store",
+      "name": "test_memory_disable_reenable_fences_open_snapshot[postgres]"
+    }
+  ],
+  "suite": "full",
+  "source": {
+    "head": "60b6797f4127739359edf2be1adb6e4d1d77599c",
+    "worktree_sha256": "78d39efef03c4838a2f1882d4e956767b4a37a56471faded7e728f69b9ce9a80"
+  },
+  "modules": [
+    "packages"
+  ],
+  "started_at": "2026-10-29T05:39:38.595622+00:00",
+  "finished_at": "2026-10-29T06:01:31.800636+00:00",
+  "returncode": 0,
+  "diagnostic": null,
+  "environment": "isolated_loopback_finance_test",
+  "external_suppliers": "not_verified",
+  "cleanup_required": false,
+  "evidence_sha256": {
+    "pytest.log": "03c18666d462c9c9820cb4d3089df290ed82e3bba3a4fe83a9d9304588083d0a",
+    "junit.xml": "60bbc391a76af7874283c0ef2ccf3269e04ba5e3cbb7d22be4e81a3035a486ac"
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "status": "Approved",
+  "review_date": "2026-10-24",
+  "phase": "efficiency-stage1-skill-only-quality",
+  "scope": [
+    "examples/finance/skills/finance-assistant/SKILL.md",
+    "examples/finance/skills/expense-reimbursement/SKILL.md",
+    "examples/finance/skills/invoice-intake/SKILL.md",
+    "examples/finance/skills/finance-review/SKILL.md",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
+    "docs/superpowers/specs/finance-v1/pack/skills/expense-reimbursement/SKILL.md",
+    "docs/superpowers/specs/finance-v1/pack/skills/invoice-intake/SKILL.md",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-review/SKILL.md",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+  ],
+  "scope_exclusion": "不涵盖尚未实施的root 1→13 direct工具重分配设计；本报告只批准阶段1九文件。",
+  "spec_prerequisite": "efficiency-narrow-spec.json当前Approved；EFF-S01/S02关闭，另行实读四Skill全文、现测试、implementation与2026-10-24效率设计。",
+  "findings": [],
+  "required_changes": [],
+  "quality_assessment": [
+    {
+      "file": "examples/finance/skills/finance-assistant/SKILL.md",
+      "lines": [
+        19,
+        35
+      ],
+      "assessment": "纯追问与真实业务执行分开：必需事实缺失只问、不先查目录或委派；完整普通报销一次交已有收件工具的expense，子Skill仍实际读取capabilities。本人修改与submit/withdraw预检不再重复交审批Skill，分派approve/reject仍由对应流程。自包含args、精确原文、仅一次JSON序列化和票据注入不构成授权的规则保持。"
+    },
+    {
+      "file": "examples/finance/skills/expense-reimbursement/SKILL.md",
+      "lines": [
+        33,
+        44
+      ],
+      "assessment": "减少重复读取基于本次当前授权GET和最新version，不基于父args伪造缓存。未变字段从该真实单据保留，实际更换或用户要求刷新只读对应必要范围；授权拒绝、版本冲突、身份/公司变化或原事实缺失时重新核定。依赖真实公司之后才允许互不依赖必要只读同轮，不对依赖写入并行。"
+    },
+    {
+      "file": "examples/finance/skills/expense-reimbursement/SKILL.md",
+      "lines": [
+        50,
+        59
+      ],
+      "assessment": "历史limit5只按当前正文长度作启发式，明确不能推断旧版本长度；真实原包截断/损坏降limit1并从最后可信cursor续读，不将SSE显示省略当原包缺失。必须读到所问真实原版本/理由，要求全部意见时读全对应决定，未移除历史或权限门槛。finance-review采用相同规则。"
+    },
+    {
+      "file": "examples/finance/skills/invoice-intake/SKILL.md",
+      "lines": [
+        34,
+        46
+      ],
+      "assessment": "收件单独目标仍保留；普通已收件报销不再强制invoice→expense重复元数据读取。本Skill实际调用仍能力/权限检查，未成功取得元数据不能以父参数替代，真实原件和收件执行仍由人工入口。"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "assessment": "新增静态契约回归对分流、当前GET/非可信args、最小刷新、只读依赖并行和真实历史分页边界有针对性；保留逐字JSON示例与分页/schema回归。此类测试只证明所交付规则，不把文本断言当模型效率或实际授权验证。"
+    },
+    {
+      "assessment": "四份完整frontmatter与原基线除既有F15版本外一致，四对发布/设计字节相同；740冻结输入只9指定文件变化。root仍仅1个getFinanceCapabilities API，77声明工具、7Skills、shell=false及现有API/内部操作/预算/运行器/用户语句/业务断言字节不变。"
+    }
+  ],
+  "verification": [
+    {
+      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q",
+      "exit_code": 0,
+      "result": "119 passed in 2.31s",
+      "boundary": "实际含既有null-query loopback HTTP测试；没有外部API、PG、真实模型或私有配置访问。"
+    },
+    {
+      "command": "uv run ruff check --select F,S108,I,TC packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "exit_code": 0,
+      "result": "All checks passed!"
+    },
+    {
+      "check": "四完整frontmatter与eb15fa49除F15版本外比较、四对文件字节和9源SHA重新计算",
+      "result": "全部一致；SHA匹配Approved spec。"
+    },
+    {
+      "check": "前轮740冻结输入重新SHA256比较",
+      "result": "exactly_nine_permitted_files_changed"
+    },
+    {
+      "check": "实际pack_package内存打包+validate_package两目录",
+      "result": "两包验证通过；20公共归档成员内容全部相同，发布20文件、设计24文件；额外4个原设计reference保持冻结字节。四个已改Skill均与其实际ZIP成员逐字一致，77工具/7Skills/shellfalse保持。",
+      "published_archive_sha256": "af6f72b9afea18032691dd0818584942a15a094b49235f50332ea74519724fcd",
+      "design_archive_sha256": "3381d86dcac6bee20bee1f8c751a56804329680a54e7a017d002ed62e3b29cd7",
+      "artifact_persisted": false
+    },
+    {
+      "check": "包比较初始断言修正",
+      "result": "首次错误假定两目录文件集合相等而触发AssertionError；实查确认设计目录有既有4额外reference，改为公共20字节比较及4额外reference冻结检查后通过。没有改包或源。"
+    }
+  ],
+  "source_sha256": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "3eeeccc25dd2dc09e9358f354188f45e6132cf4b389f970c73f30be62752c412",
+    "examples/finance/skills/expense-reimbursement/SKILL.md": "745fa7ee05718c29cd0ea84c5093ed9e78f566b56c200a82e1ffc08fb9f233d1",
+    "examples/finance/skills/invoice-intake/SKILL.md": "8934cc660d6b2d5fff055af995073b2b732591a38692699ea35200f64b2456c5",
+    "examples/finance/skills/finance-review/SKILL.md": "83713dbc79e3c148e4c5c092c150dcb472124401ff1cc82f478b810ffdb9f715",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "3eeeccc25dd2dc09e9358f354188f45e6132cf4b389f970c73f30be62752c412",
+    "docs/superpowers/specs/finance-v1/pack/skills/expense-reimbursement/SKILL.md": "745fa7ee05718c29cd0ea84c5093ed9e78f566b56c200a82e1ffc08fb9f233d1",
+    "docs/superpowers/specs/finance-v1/pack/skills/invoice-intake/SKILL.md": "8934cc660d6b2d5fff055af995073b2b732591a38692699ea35200f64b2456c5",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-review/SKILL.md": "83713dbc79e3c148e4c5c092c150dcb472124401ff1cc82f478b810ffdb9f715",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "93b580c7556836322d605ffebcea5ce3c8dba8708f7a8f089c0d9f37c8adb5e8"
+  },
+  "limitations": [
+    "只批准阶段1既有工具能力下的Skill指令优化，不能外推后续root direct方案。",
+    "没有PG、真实模型、私有配置或账本访问；没有修改源或提交。",
+    "静态119项不证明实际模型调用次数/tokens下降，也不证明完整业务旅程通过；35次/205306是既有真实RED基线，本次没有新真实模型GREEN。",
+    "实际内存打包用于独立内容验证，未发布或保存新交付制品；主agent仍须按最终输入重建并绑定交付制品。",
+    "未重复全量pytest/quick、strict mypy或最终全局审查。"
+  ],
+  "pending": [
+    "后续root 1→13direct若实施，须另按其批准设计独立实现/规格/质量审查，本阶段批准不覆盖该变更。",
+    "最终源冻结后保持原预算和用户语句完成两次fresh完整流程，实际比较调用次数/tokens，不能通过拆申请人会话或扩预算伪造效率通过。",
+    "独立核原文/当前版本/真实人工审批/历史与原件/越权/零支付门槛，以及全量门禁、制品、最终文档和总审。"
+  ],
+  "approval_scope": "阶段1九文件未发现阻断继续后续已批准工作的质量问题；实际效率与完整业务验收仍pending。"
+}

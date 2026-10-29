@@ -1,0 +1,249 @@
+FFFFFFFFF                                                                [100%]
+=================================== FAILURES ===================================
+_ test_old_provider_empty_funding_capability_keeps_persisted_restart_digest[False] _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ce23110>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1338/test_old_provider_empty_fundin0')
+explicit_empty = False
+
+    @pytest.mark.parametrize('explicit_empty',[False,True])
+    async def test_old_provider_empty_funding_capability_keeps_persisted_restart_digest(
+        store: Any,tmp_path: Any,explicit_empty: bool,
+    ) -> None:
+        """旧F2配置经当前模型重启不变；空能力不能成为同版本覆盖或新场景资格。"""
+        from xuanpu_finance.operations import request_digest
+        from xuanpu_finance.settlement.models import BusinessSnapshot, PayeeAccount, SettlementPolicy
+        from xuanpu_finance.settlement.provider_models import ProviderConfig
+        from xuanpu_finance.storage.common import decode
+        from .test_f2_domain import configured
+        await configured(store)
+        previous=await store.pool.fetchrow('SELECT * FROM finance_settlement_provider')
+        old=decode(previous['data'])
+        assert 'supported_funding_scenarios' not in old
+        config=ProviderConfig(**old,enabled=True,token_file=tmp_path/'token',
+            callback_secret_file=tmp_path/'callback',callback_key_id='key',
+            **({'supported_funding_scenarios':[]} if explicit_empty else {}))
+        descriptor=config.public_descriptor()
+>       assert request_digest({k:v for k,v in descriptor.items() if k!='enabled'})==previous['digest']
+E       AssertionError: assert '10b0dc8f9a5f...fcbc95c5e63f9' == 'f8d73bdfc6f4...62c4f80444b12'
+E
+E         - f8d73bdfc6f419dd3fb8904d5086f5c370523a776d0b92f884e62c4f80444b12
+E         + 10b0dc8f9a5f3d13f4abf0bb1ba0e1052515d177ae0fdbae23ffcbc95c5e63f9
+
+packages/xuanpu-finance/tests/test_f5_config.py:57: AssertionError
+_ test_old_provider_empty_funding_capability_keeps_persisted_restart_digest[True] _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10c53d220>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1338/test_old_provider_empty_fundin1')
+explicit_empty = True
+
+    @pytest.mark.parametrize('explicit_empty',[False,True])
+    async def test_old_provider_empty_funding_capability_keeps_persisted_restart_digest(
+        store: Any,tmp_path: Any,explicit_empty: bool,
+    ) -> None:
+        """旧F2配置经当前模型重启不变；空能力不能成为同版本覆盖或新场景资格。"""
+        from xuanpu_finance.operations import request_digest
+        from xuanpu_finance.settlement.models import BusinessSnapshot, PayeeAccount, SettlementPolicy
+        from xuanpu_finance.settlement.provider_models import ProviderConfig
+        from xuanpu_finance.storage.common import decode
+        from .test_f2_domain import configured
+        await configured(store)
+        previous=await store.pool.fetchrow('SELECT * FROM finance_settlement_provider')
+        old=decode(previous['data'])
+        assert 'supported_funding_scenarios' not in old
+        config=ProviderConfig(**old,enabled=True,token_file=tmp_path/'token',
+            callback_secret_file=tmp_path/'callback',callback_key_id='key',
+            **({'supported_funding_scenarios':[]} if explicit_empty else {}))
+        descriptor=config.public_descriptor()
+>       assert request_digest({k:v for k,v in descriptor.items() if k!='enabled'})==previous['digest']
+E       AssertionError: assert '10b0dc8f9a5f...fcbc95c5e63f9' == 'f8d73bdfc6f4...62c4f80444b12'
+E
+E         - f8d73bdfc6f419dd3fb8904d5086f5c370523a776d0b92f884e62c4f80444b12
+E         + 10b0dc8f9a5f3d13f4abf0bb1ba0e1052515d177ae0fdbae23ffcbc95c5e63f9
+
+packages/xuanpu-finance/tests/test_f5_config.py:57: AssertionError
+________ test_funding_old_assignment_does_not_revive_after_regrant[get] ________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ced83b0>
+reading = 'get'
+
+    @pytest.mark.parametrize('reading',['get','list'])
+    async def test_funding_old_assignment_does_not_revive_after_regrant(store: Any,reading: str) -> None:
+        """历史步骤不等于当前授权，原申请人与当前reviewer仍保留合法读取。"""
+        owner,reviewer,_,approver=await setup_funding(store)
+        doc=await submit(store,owner,await store.create_funding_case(owner,draft(),'c'))
+        assert (await store.get_funding_case(approver,doc['id']))['id']==doc['id']
+        await rotate_approver(store,approver)
+        assert (await store.list_review_queue(approver,'e'))['total']==0
+        if reading=='get':
+>           with pytest.raises(FinanceError,match='RESOURCE_NOT_FOUND'):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           Failed: DID NOT RAISE FinanceError
+
+packages/xuanpu-finance/tests/test_f5_access_epochs.py:31: Failed
+_______ test_funding_old_assignment_does_not_revive_after_regrant[list] ________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10cf257f0>
+reading = 'list'
+
+    @pytest.mark.parametrize('reading',['get','list'])
+    async def test_funding_old_assignment_does_not_revive_after_regrant(store: Any,reading: str) -> None:
+        """历史步骤不等于当前授权，原申请人与当前reviewer仍保留合法读取。"""
+        owner,reviewer,_,approver=await setup_funding(store)
+        doc=await submit(store,owner,await store.create_funding_case(owner,draft(),'c'))
+        assert (await store.get_funding_case(approver,doc['id']))['id']==doc['id']
+        await rotate_approver(store,approver)
+        assert (await store.list_review_queue(approver,'e'))['total']==0
+        if reading=='get':
+            with pytest.raises(FinanceError,match='RESOURCE_NOT_FOUND'):
+                await store.get_funding_case(approver,doc['id'])
+        else:
+            page=await store.list_funding_cases(approver,'e')
+>           assert page['total']==0 and page['items']==[]
+E           assert (1 == 0)
+
+packages/xuanpu-finance/tests/test_f5_access_epochs.py:35: AssertionError
+_ test_funding_external_facts_and_plan_hide_revoked_historical_assignment[get_payment] _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10cedae40>
+reading = 'get_payment'
+
+    @pytest.mark.parametrize('reading',['get_payment','get_posting','list_payments','list_postings','get_action_plan'])
+    async def test_funding_external_facts_and_plan_hide_revoked_historical_assignment(store: Any,reading: str) -> None:
+        """未传document_id的批量接口与具体资金/计划接口都不得绕过F5当前代数。"""
+        owner,payer,accountant,approver,doc=await paid_parent(store)
+        posting=await external_plan(store,accountant,approver,doc,'submit_posting',accounting_period='2026-10')
+        await execute(store,accountant,posting)
+        job=await store.claim_settlement()
+        request=await store.prepare_settlement_dispatch(job)
+        await store.record_settlement_result(job,provider_result(request),b'posting-proof')
+        payment=(await store.list_payments(owner,'e'))['items'][0]
+        voucher=(await store.list_postings(owner,'e'))['items'][0]
+        await rotate_approver(store,approver)
+        if reading.startswith('list_'):
+            page=await getattr(store,reading)(approver,'e')
+            assert page['total']==0 and page['items']==[]
+            assert (await getattr(store,reading)(owner,'e'))['total']==1
+            assert (await getattr(store,reading)(payer,'e'))['total']==1
+        else:
+            id={'get_payment':payment['id'],'get_posting':voucher['id'],'get_action_plan':posting['id']}[reading]
+>           with pytest.raises(FinanceError,match='RESOURCE_NOT_FOUND'):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           Failed: DID NOT RAISE FinanceError
+
+packages/xuanpu-finance/tests/test_f5_access_epochs.py:66: Failed
+_ test_funding_external_facts_and_plan_hide_revoked_historical_assignment[get_posting] _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ceae960>
+reading = 'get_posting'
+
+    @pytest.mark.parametrize('reading',['get_payment','get_posting','list_payments','list_postings','get_action_plan'])
+    async def test_funding_external_facts_and_plan_hide_revoked_historical_assignment(store: Any,reading: str) -> None:
+        """未传document_id的批量接口与具体资金/计划接口都不得绕过F5当前代数。"""
+        owner,payer,accountant,approver,doc=await paid_parent(store)
+        posting=await external_plan(store,accountant,approver,doc,'submit_posting',accounting_period='2026-10')
+        await execute(store,accountant,posting)
+        job=await store.claim_settlement()
+        request=await store.prepare_settlement_dispatch(job)
+        await store.record_settlement_result(job,provider_result(request),b'posting-proof')
+        payment=(await store.list_payments(owner,'e'))['items'][0]
+        voucher=(await store.list_postings(owner,'e'))['items'][0]
+        await rotate_approver(store,approver)
+        if reading.startswith('list_'):
+            page=await getattr(store,reading)(approver,'e')
+            assert page['total']==0 and page['items']==[]
+            assert (await getattr(store,reading)(owner,'e'))['total']==1
+            assert (await getattr(store,reading)(payer,'e'))['total']==1
+        else:
+            id={'get_payment':payment['id'],'get_posting':voucher['id'],'get_action_plan':posting['id']}[reading]
+>           with pytest.raises(FinanceError,match='RESOURCE_NOT_FOUND'):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           Failed: DID NOT RAISE FinanceError
+
+packages/xuanpu-finance/tests/test_f5_access_epochs.py:66: Failed
+_ test_funding_external_facts_and_plan_hide_revoked_historical_assignment[list_payments] _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ceda2a0>
+reading = 'list_payments'
+
+    @pytest.mark.parametrize('reading',['get_payment','get_posting','list_payments','list_postings','get_action_plan'])
+    async def test_funding_external_facts_and_plan_hide_revoked_historical_assignment(store: Any,reading: str) -> None:
+        """未传document_id的批量接口与具体资金/计划接口都不得绕过F5当前代数。"""
+        owner,payer,accountant,approver,doc=await paid_parent(store)
+        posting=await external_plan(store,accountant,approver,doc,'submit_posting',accounting_period='2026-10')
+        await execute(store,accountant,posting)
+        job=await store.claim_settlement()
+        request=await store.prepare_settlement_dispatch(job)
+        await store.record_settlement_result(job,provider_result(request),b'posting-proof')
+        payment=(await store.list_payments(owner,'e'))['items'][0]
+        voucher=(await store.list_postings(owner,'e'))['items'][0]
+        await rotate_approver(store,approver)
+        if reading.startswith('list_'):
+            page=await getattr(store,reading)(approver,'e')
+>           assert page['total']==0 and page['items']==[]
+E           assert (1 == 0)
+
+packages/xuanpu-finance/tests/test_f5_access_epochs.py:61: AssertionError
+_ test_funding_external_facts_and_plan_hide_revoked_historical_assignment[list_postings] _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ceda2d0>
+reading = 'list_postings'
+
+    @pytest.mark.parametrize('reading',['get_payment','get_posting','list_payments','list_postings','get_action_plan'])
+    async def test_funding_external_facts_and_plan_hide_revoked_historical_assignment(store: Any,reading: str) -> None:
+        """未传document_id的批量接口与具体资金/计划接口都不得绕过F5当前代数。"""
+        owner,payer,accountant,approver,doc=await paid_parent(store)
+        posting=await external_plan(store,accountant,approver,doc,'submit_posting',accounting_period='2026-10')
+        await execute(store,accountant,posting)
+        job=await store.claim_settlement()
+        request=await store.prepare_settlement_dispatch(job)
+        await store.record_settlement_result(job,provider_result(request),b'posting-proof')
+        payment=(await store.list_payments(owner,'e'))['items'][0]
+        voucher=(await store.list_postings(owner,'e'))['items'][0]
+        await rotate_approver(store,approver)
+        if reading.startswith('list_'):
+            page=await getattr(store,reading)(approver,'e')
+>           assert page['total']==0 and page['items']==[]
+E           assert (1 == 0)
+
+packages/xuanpu-finance/tests/test_f5_access_epochs.py:61: AssertionError
+_ test_funding_external_facts_and_plan_hide_revoked_historical_assignment[get_action_plan] _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10cf53140>
+reading = 'get_action_plan'
+
+    @pytest.mark.parametrize('reading',['get_payment','get_posting','list_payments','list_postings','get_action_plan'])
+    async def test_funding_external_facts_and_plan_hide_revoked_historical_assignment(store: Any,reading: str) -> None:
+        """未传document_id的批量接口与具体资金/计划接口都不得绕过F5当前代数。"""
+        owner,payer,accountant,approver,doc=await paid_parent(store)
+        posting=await external_plan(store,accountant,approver,doc,'submit_posting',accounting_period='2026-10')
+        await execute(store,accountant,posting)
+        job=await store.claim_settlement()
+        request=await store.prepare_settlement_dispatch(job)
+        await store.record_settlement_result(job,provider_result(request),b'posting-proof')
+        payment=(await store.list_payments(owner,'e'))['items'][0]
+        voucher=(await store.list_postings(owner,'e'))['items'][0]
+        await rotate_approver(store,approver)
+        if reading.startswith('list_'):
+            page=await getattr(store,reading)(approver,'e')
+            assert page['total']==0 and page['items']==[]
+            assert (await getattr(store,reading)(owner,'e'))['total']==1
+            assert (await getattr(store,reading)(payer,'e'))['total']==1
+        else:
+            id={'get_payment':payment['id'],'get_posting':voucher['id'],'get_action_plan':posting['id']}[reading]
+>           with pytest.raises(FinanceError,match='RESOURCE_NOT_FOUND'):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           Failed: DID NOT RAISE FinanceError
+
+packages/xuanpu-finance/tests/test_f5_access_epochs.py:66: Failed
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f5_config.py::test_old_provider_empty_funding_capability_keeps_persisted_restart_digest[False]
+FAILED packages/xuanpu-finance/tests/test_f5_config.py::test_old_provider_empty_funding_capability_keeps_persisted_restart_digest[True]
+FAILED packages/xuanpu-finance/tests/test_f5_access_epochs.py::test_funding_old_assignment_does_not_revive_after_regrant[get]
+FAILED packages/xuanpu-finance/tests/test_f5_access_epochs.py::test_funding_old_assignment_does_not_revive_after_regrant[list]
+FAILED packages/xuanpu-finance/tests/test_f5_access_epochs.py::test_funding_external_facts_and_plan_hide_revoked_historical_assignment[get_payment]
+FAILED packages/xuanpu-finance/tests/test_f5_access_epochs.py::test_funding_external_facts_and_plan_hide_revoked_historical_assignment[get_posting]
+FAILED packages/xuanpu-finance/tests/test_f5_access_epochs.py::test_funding_external_facts_and_plan_hide_revoked_historical_assignment[list_payments]
+FAILED packages/xuanpu-finance/tests/test_f5_access_epochs.py::test_funding_external_facts_and_plan_hide_revoked_historical_assignment[list_postings]
+FAILED packages/xuanpu-finance/tests/test_f5_access_epochs.py::test_funding_external_facts_and_plan_hide_revoked_historical_assignment[get_action_plan]
+9 failed in 10.54s

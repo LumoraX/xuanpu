@@ -1,0 +1,7 @@
+# 保留测试原始回溯、构建输出和含申报空白的页面取证字节，仅这些证据豁免行尾空白检查。
+backend-before-schema-review.log -whitespace
+backend-schema-red.log -whitespace
+browser-history-dom.txt -whitespace
+browser-material-failure-dom.txt -whitespace
+harness-red.log -whitespace
+image-build.log -whitespace

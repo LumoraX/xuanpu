@@ -1,0 +1,49 @@
+{
+  "attempts": 56,
+  "completed": 55,
+  "input_tokens": 218271,
+  "output_tokens": 6597,
+  "request_bytes": 1412774,
+  "event_bytes": 596463,
+  "seconds": 165.39762015356774,
+  "halted": "USAGE_MISSING",
+  "probe": {
+    "input_tokens": 21,
+    "output_tokens": 11
+  },
+  "journeys": {
+    "baseline": {
+      "attempts": 16,
+      "seconds": 44.994874715805054,
+      "stream_seconds": 43.4287483721273
+    },
+    "baseline2": {
+      "attempts": 18,
+      "seconds": 44.05642747879028,
+      "stream_seconds": 42.3442034580512
+    },
+    "final1": {
+      "attempts": 15,
+      "seconds": 40.02857587498147
+    },
+    "final2": {
+      "attempts": 6,
+      "seconds": 34.718742083990946
+    }
+  },
+  "historical_wallclock_reconciliation": [
+    {
+      "journey": "baseline",
+      "old_stream_seconds": 43.4287483721273,
+      "environment_to_result_wall_seconds": 44.994874715805054,
+      "added_seconds": 1.5661263436777517
+    },
+    {
+      "journey": "baseline2",
+      "old_stream_seconds": 42.3442034580512,
+      "environment_to_result_wall_seconds": 44.05642747879028,
+      "added_seconds": 1.712224020739086
+    }
+  ],
+  "stream_seconds": 72.49913295602892
+}

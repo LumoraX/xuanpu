@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from xuanpu_server.audit import SENSITIVE_KINDS
 from xuanpu_server.errors import PlatformError
+from xuanpu_server.runtime.events import is_terminal
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable
@@ -29,14 +30,15 @@ def frame(event: str, data: dict[str, Any], *, event_id: str | None = None) -> b
     return ("\n".join(lines) + "\n\n").encode("utf-8")
 
 
-def event_payload(event: taifeng.EventMsg) -> dict[str, Any]:
+def event_payload(event: taifeng.EventMsg, *, operation_terminal: bool | None = None) -> dict[str, Any]:
     """一条内核事件的对外表示。"""
     return {
         "submission_id": event.submission_id,
         "seq": event.seq,
         "at": event.timestamp.timestamp(),
         "kind": event.msg.kind,
-        "data": event.msg.data,
+        "data": {**event.msg.data, **({"operation_terminal": operation_terminal}
+                 if operation_terminal is not None else {})},
     }
 
 
@@ -79,7 +81,8 @@ async def stream_turn(turn: Turn, *, check_sources: Callable[[], Awaitable[objec
                 pending = None
             if event.msg.kind in SENSITIVE_KINDS:
                 continue
-            yield frame(event.msg.kind, event_payload(event), event_id=str(event.seq))
+            yield frame(event.msg.kind, event_payload(event, operation_terminal=
+                is_terminal(event, turn.stream.suspension_threads)), event_id=str(event.seq))
     except PlatformError as exc:
         yield frame('error', {'error': {'status': exc.status, 'code': exc.code, 'message': exc.message}})
     finally:

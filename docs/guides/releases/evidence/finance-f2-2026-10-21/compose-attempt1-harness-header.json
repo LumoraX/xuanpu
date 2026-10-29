@@ -1,0 +1,9 @@
+{
+  "environment": "isolated_simulation",
+  "image": "xuanpu-finance:2026.10.21.3",
+  "production": false,
+  "result": "failed",
+  "error": "{\"code\":\"identity_unavailable\",\"message\":\"在线身份核对暂不可用\",\"trace_id\":\"ed73b1216b1e4db696cc27ff49098345\",\"retryable\":true}",
+  "container_logs": "finance-api-1  | INFO:     Started server process [1]\nfinance-api-1  | INFO:     Waiting for application startup.\nfinance-api-1  | INFO:     Application startup complete.\nfinance-api-1  | INFO:     Uvicorn running on http://0.0.0.0:8443 (Press CTRL+C to quit)\n",
+  "cleanup": "dedicated_project_volumes_removed"
+}

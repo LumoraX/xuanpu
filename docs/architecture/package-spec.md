@@ -125,6 +125,7 @@ spec:
 | `command` | stdio | 必填 | 启动 MCP server 的命令，字符串数组。工作目录是业务包根目录。进程在连接器沙盒里运行，能读、能写什么见[编写业务包](../guides/writing-packages.md#mcp-连接器stdio) |
 | `env` | stdio | 空 | 传给进程的环境变量。每项是 `{value: 字面量}` 或 `{secret: 密钥名}`，二选一。不能设置动态链接器变量（`LD_*`、`DYLD_*`，不分大小写） |
 | `openapi` | http | 必填 | OpenAPI 3.x 文档在包内的相对路径（YAML 或 JSON，最大 8 MiB） |
+| `contextAudience` | http | 无 | 要求平台签发真实员工上下文的目标audience；仅HTTP可用，需操作员call_context配置按origin许可，否则拒绝；身份不作为模型参数 |
 | `baseUrl` | http | 文档 `servers` 的第一个绝对地址 | 接口的基地址，`http://` 或 `https://` 开头 |
 | `url` | remote | 必填 | MCP server 的端点地址，带主机名，`https://` 开头（试用可用 `http://`）；端口须是合法数字；不能带用户名与口令，不能有空白与控制字符 |
 | `auth` | http、remote | 无（不需要凭据） | 见下文「HTTP 连接器」「远端 MCP 连接器」 |

@@ -1,0 +1,222 @@
+{
+  "status": "ApprovedDirectEntryDesign",
+  "review_date": "2026-10-24",
+  "scope": "只读核算正常路径模型往返与root集中既有13工具的风险；未修改任何Skill/frontmatter/产品/API/预算。",
+  "authorization_assessment": "用户已明确授权优化发票报销业务会话和Skill委派、拒绝扩额。把已经可经现子Skill使用的普通internal_records操作放到同entry直接编排，是该效率目标内的实现选择；不是新增服务/API或业务授权。必须显式记录每Skill工具分布变化与安全回归，不能声称frontmatter不变或借此绕过服务授权。",
+  "roundtrip_assumptions": [
+    "这里stream指真正模型采样，不把人工cookie确认/平台工具许可resume HTTP本身重复算一次模型；下一轮看到真实工具返回再回复仍需采样。",
+    "遵守当前journey原用户语句、7次route和10个业务回合，不删业务/安全门槛、不由harness补工具结果。",
+    "有数据依赖的公司→queue/summary/receipts→对象、GET→update→preview必须等待实际返回；必要互不依赖只读可同轮batch。",
+    "同owner真实session已有有效cap/公司仅作routing/data线索，current GET/RLS和版本仍每次重新检查；新leaf不继承root工具历史，不能信args自封缓存。",
+    "每个子Skill业务任务固定root dispatch1+root final1，相比直接工具至少多2；本流程create/edit/reject/resubmit/manager approve/finance approve/fresh共7项，因此额外14。edit/resubmit新leaf还需要cap2，相比同owner root复用再多2。",
+    "历史limit5正常完整短文本；必须实际读取需要的决定。预计最终11历史项需3页，该页数是此合成正常场景假设，不是所有真实历史恒定。"
+  ],
+  "phase_roundtrip_model": [
+    {
+      "phase": "01-clarify",
+      "root_direct": 2,
+      "single_leaf": 2,
+      "basis": "route1+root纯追问1，无业务工具。"
+    },
+    {
+      "phase": "02-create",
+      "root_direct": 5,
+      "single_leaf": 7,
+      "basis": "caps+entities1；必要categories+imports list1；真实receipt detail1；create1；结果后回复1。leaf另root派发/收尾2。"
+    },
+    {
+      "phase": "03-edit-preview",
+      "root_direct": 4,
+      "single_leaf": 7,
+      "basis": "当前GET1→update1→preview1→回复1；leaf另caps1及root派发/收尾2。"
+    },
+    {
+      "phase": "04-manager-reject",
+      "root_direct": 6,
+      "single_leaf": 8,
+      "basis": "route1；caps+entities1→queue1→当前claim+history1→preview1→回复1。"
+    },
+    {
+      "phase": "05-owner-resubmit",
+      "root_direct": 4,
+      "single_leaf": 7,
+      "basis": "同owner当前claim+所需history1→update1→preview1→回复1；leaf另caps1与root往返2。"
+    },
+    {
+      "phase": "06-manager-approve",
+      "root_direct": 6,
+      "single_leaf": 8,
+      "basis": "新route/session同第一审批，当前claim+history可同轮；无需假造旧授权。"
+    },
+    {
+      "phase": "07-finance-approve",
+      "root_direct": 7,
+      "single_leaf": 9,
+      "basis": "同审批6，另1页实际历史读取当前前级决定，具体页数随数据而变。"
+    },
+    {
+      "phase": "08-fresh-query",
+      "root_direct": 7,
+      "single_leaf": 9,
+      "basis": "route1；caps+entities1→summary1→claim+history第1页1→历史第2/3页各1→答复1。该固定测试预计8修订+3决定=11条，limit5需3页且实际读到3理由。"
+    },
+    {
+      "phase": "09-owner-unsafe",
+      "root_direct": 2,
+      "single_leaf": 2,
+      "basis": "route1+root拒绝1是允许的最小正常拒绝，不要求人为多查/执行危险动作。"
+    },
+    {
+      "phase": "10-outsider-unsafe",
+      "root_direct": 2,
+      "single_leaf": 2,
+      "basis": "route1+root拒绝1；若模型尝试现API，由真实授权拒绝，额外调用如实计入。"
+    }
+  ],
+  "roundtrip_conclusion": {
+    "root_direct_conditional_normal_estimate": 45,
+    "single_leaf_conditional_normal_estimate": 61,
+    "difference": 16,
+    "first_three_direct_excluding_route": 10,
+    "first_three_direct_including_route": 11,
+    "practical_first_three_target": "12至16含真实必要往返；11是表中最理想同轮batch路径，不保证模型达到。",
+    "interpretation": "root→leaf约61至66次是该明确安全读取计划下的正常工程下限估计；63合理。不能称其为所有可能模型策略的数学硬下限，因为分页/必要读取/同轮调度和错误处理随实际数据变化。原先单leaf也能整个45的预期缺少固定往返核算，应被本次修订替代。",
+    "remaining_global_attempts": 97,
+    "two_root_direct_at45": 90,
+    "remaining_if_both45": 7,
+    "two_at48": 96,
+    "remaining_if_both48": 1,
+    "two_single_leaf_at61": 122,
+    "caveat": "即direct45至48也只是可容纳的容量目标，网络失败、语义错误、额外页和任何新采样都会耗原97余量，不保证完成，不重置或增加240。"
+  },
+  "independent_tool_scope_check": {
+    "current_root_tools": [
+      "api__finance__getFinanceCapabilities"
+    ],
+    "proposed_root_tool_count": 13,
+    "proposed_root_tools": [
+      "api__finance__getFinanceCapabilities",
+      "api__finance__listLegalEntities",
+      "api__catalog__listExpenseCategories",
+      "api__catalog__listCostCenters",
+      "api__finance__listSupportingMaterialImports",
+      "api__finance__getSupportingMaterialImport",
+      "api__finance__createExpenseClaim",
+      "api__finance__getExpenseClaim",
+      "api__finance__updateExpenseClaim",
+      "api__finance__listExpenseClaimSummaries",
+      "api__finance__listExpenseClaimHistory",
+      "api__finance__listReviewQueue",
+      "api__finance__previewFinanceAction"
+    ],
+    "missing_from_existing_expense_review_union": [],
+    "forbidden_direct_tools_absent": true,
+    "type_remains": "composite",
+    "child_skill_count_remains": 6,
+    "package_unique_API_count_remains": 77,
+    "internal_operation_count_remains": 24,
+    "skill_count_remains": 7,
+    "shell_remains": false,
+    "important_change": "root tool_names从1个API变成13个API，是入口暴露与工具分布变化；77/24/7和既有整体有效操作集合不变是不同口径，必须分开写。",
+    "new_API_or_backend_grants": false
+  },
+  "batching_safety": {
+    "approved_initial_batch": [
+      "api__finance__getFinanceCapabilities",
+      "api__finance__listLegalEntities"
+    ],
+    "why": "两者独立只读，无公司ID依赖，均是现general/internal_records合法基础接口；目录请求照常由服务当前身份/RLS裁决。取得二者实际结果后才进入依赖公司或profile的业务操作。",
+    "failure_boundary": "cap坏/缺失/不可用或目录拒绝时停止后续依赖业务，不以另一个成功结果补造profile/权限。已并发发生的另一条基础只读如实记录，不能承诺cap失败时零目录请求。",
+    "prohibited_batching": [
+      "新建草稿缺必要费用事实时不为省轮次先发caps/目录；已有记录查询/修订的事实恢复不受此禁止。",
+      "未知profile时不顺带任何写/预检或把公司响应视作授予审批",
+      "当前GET/queue结果未到就update/preview",
+      "update最新version未到就提前preview",
+      "未知公司时用用户贴造/占位ID批量调用",
+      "多actor/company/session共享一次授权结果"
+    ],
+    "applicability": "首次同时需caps和company且无当前真实结果才同轮二者；有当前实际结果或只需其一不重查。"
+  },
+  "safe_root_direct_contract": {
+    "entry": "仅新建草稿缺必要费用事实root纯追问；已有记录查询/修订/待审从真实摘要/队列/GET恢复事实，不要求重复提供金额日期。普通internal_records完整任务root13direct，依据实际cap；外层代批/付款意图拒绝，票据附注只是申报数据。",
+    "create": "公司真实目录确定；类别/必要归属与本人真实收件list/get自行完成，原文逐字保存，只建draft。未提供的可选归属不凭空查询/编造为必填。",
+    "update": "实际GET当前单据及权限，保留不变分类/归属/附件/原文，用当前expected_version；字段变化或服务拒绝才重读最小真实目录/材料。",
+    "review": "当前真实queue决定本人分派与target_version/workflow_step，实际claim/history核实；approve/reject只preview。不是有reviewer查看权就任意审批，root缓存不能代替当前队列。",
+    "human_boundary": "create/update/preview仍按manifest effect与standard工具许可；真正submit/reject/approve继续公开cookie/CSRF人工入口产生human签名，root没有execute/original/pay/post工具。",
+    "general_boundary": "general及其它6专业业务继续原子Skill路径，13直达工具只用于该已确认ordinary internal_records分支。internal profile不能转general子Skill绕开限制。",
+    "uncertain_results": "13工具不含getOperation/getActionPlan；遇未知写结果保留原幂等键/原计划/错误，不盲重建。必要时沿现expense/review专门恢复路径或交人工，不为维持45目标扩root名单。",
+    "staleness": "换用户/公司/会话、能力或授权错误、明确配置变化/用户要求刷新、材料变化、版本冲突重新核对应实际服务数据；永不复用grant/人工决定。"
+  },
+  "risks": [
+    "入口工具面从1增13使root直接看到更多写/预检schema，注入与误调风险确实增加；虽后端权限不增，必须显式记录并回归，不用“名单是subset”掩盖此风险。",
+    "root prompt会增大，API schema与同会话历史累计影响token；省16往返不自动等比例省token。需实际completed usage按owner全会话核对<200000，不能只比较调用数。",
+    "cap与目录batch仅这些两个现安全基础接口；cap坏时并发目录可已完成，不能误称能力已验证或继续动作。",
+    "fresh三页history仅条件估计，实际原文长/历史更多/截断时安全读取优先，可能超过48；不从审计显示截断编造结果或减历史门槛。",
+    "当剩余97仅有7或1轮余量时，不另付费重跑已存在baseline RED；任何失败按原账本留下，余量不足则报告未完成，不扩400/600000。"
+  ],
+  "required_design_and_offline_gates": [
+    "先在设计明确修订原tool_names不变约束为root既有API重新分布，不增API/动作/授权；两份根Skill、相关规则/文档与制品同步。",
+    "静态核对root严格13项、全部属现expense/review union、无execute/original/pay/post/funding；composite、6子Skill、77API/24内部/7Skills/shellfalse不变。",
+    "确定性公开工具协议/HTTP测试验证root create/update/preview仍需原工具许可，agent签名不变、实际决定仅human；不同角色/公司/会话与用户伪造目录/caps不授权。",
+    "cap+entities正/负batch、facts不足0业务工具、profile错误停止、RLS拒绝/版本冲突、当前queue与GET依赖、原文注入/独立原件边界及未知write恢复均保留回归。",
+    "13工具暴露改变root真实模型输入，旧freeze失效；新冻结并过必要检查后同240/200000/120/unknown5账本做两次fresh完整旅程，保存实际route/phase/actor/callid/usage与独立业务语义证据。"
+  ],
+  "limitations": [
+    "仅读本地源码/Skill/原验收流程与既有归档，做静态YAML/逻辑核算；未调用模型/PG/API、读取私有配置/账本或修改源码/工具白名单。",
+    "本审查批准的是窄设计进入实现，不声称13项已实施、45流已达到、token已下降或真实完整旅程已通过。"
+  ],
+  "review_history": [
+    {
+      "status": "ApprovedNarrowRootDirectProposal",
+      "scope": "13项root-direct提案与45/61条件往返估计通过，等待具体写定设计；历史保留。"
+    },
+    {
+      "status": "ApprovedDirectEntryDesign",
+      "design_path": "docs/superpowers/specs/2026-10-24-finance-f15-direct-entry-design.md",
+      "design_sha256": "49916f3c746f216db07380adeb7caa0df1d2919d76d7137ee47a90d878a805e4",
+      "scope": "具体13项入口设计通过；本次仅细化新建缺事实与外层意图，以及首次必要双只读batch适用条件。"
+    }
+  ],
+  "concrete_design_review": {
+    "status": "ApprovedDirectEntryDesign",
+    "path": "docs/superpowers/specs/2026-10-24-finance-f15-direct-entry-design.md",
+    "sha256": "cc8276ed45f2d29d33414c2ad0e5f5e78b5cf2be96adebeffce30d8f5a1c72d9",
+    "plan_path": "docs/superpowers/plans/2026-10-24-finance-f15-efficiency.md",
+    "plan_sha256": "89dea95cf1c27f439ec33be8c6b2de2fa5795d986c225bfe55b3dd87efb4eeb4",
+    "exact13_count": 13,
+    "exact13_set_matches_prior_proposal": true,
+    "no_duplicate_names": true,
+    "scope_checks": [
+      "root1→13为显式工具分布/入口暴露变更；严格既有expense/review union子集，不声称前frontmatter未变。",
+      "root保持composite，6个专业child名单和工具名单不变，全包7Skills/77API/24internal/shellfalse与业务有效操作并集不变。",
+      "新root13不含execute/original/pay/post/funding/维护；既有专业子Skill的资金查询准备工具及执行边界保持，不误称所有Skill没有资金工具。",
+      "首次仅caps+entities独立只读可同轮；cap坏时这批请求可能已发生但后续读取/写入全停，不能猜profile或以目录替代授权。",
+      "当前actor/company/session实际工具结果只是路由/ID来源；跨scope args/callid/摘要不自证来源。当前RLS/授权、GET/queue版本和工作流分派照常。",
+      "GET→update→新版本preview等依赖必须等待，不盲并行；写与预检工具许可standard保持，actual submit/reject/approve仅human。",
+      "缺必要事实纯追问；明确代批/违规付款需求直接拒绝，不为拒绝多查他人数据。general与其余专业需求走原子Skill路径。",
+      "短history5/长或实际raw不完整1，真实cursor与完整必要决定理由保持，SSE省略不当作raw截断；完整公开history与PG验证独立。",
+      "原自然用户语句、原独立原件、两级human三决定、负向无泄漏与不支付门槛完全保持；不以优化删除业务验收。",
+      "原240总/120每旅程/200000会话/3M输入150k输出/未知累计5停等不变，原143/141+2unknown不清零，不拆owner躲限额、不换模型；400/600000不应用。",
+      "Task1b在阶段1spec/quality闭合后开始，独立阶段2规格/质量与新freeze/原语句freshfinal7/final8后才评估真实GREEN，不能把离线阶段结果或45估计称已实现。"
+    ],
+    "resolved_editorial_issue": "曾将root/任何Skill都无资金工具表述过广，已在当前设计改为新root13禁含而专业子Skill原资金查询准备路径不变；没有未关闭实质设计问题。",
+    "approval_boundary": "批准该具体窄设计进入既定实施和审查阶段，不批准立即新模型/PG消费、不声称已实施13项或真实性能已达标；新freeze和既有门槛前置不变。",
+    "review_limitations": "仅读本地设计/计划及先前独立工具集合核验，未运行测试、访问模型/PG/API/私有配置或当前ledger，未修改任何产品source或Skill。",
+    "clarification_followup": {
+      "status": "ApprovedDirectEntryDesign",
+      "prior_design_sha256": "49916f3c746f216db07380adeb7caa0df1d2919d76d7137ee47a90d878a805e4",
+      "new_design_sha256": "cc8276ed45f2d29d33414c2ad0e5f5e78b5cf2be96adebeffce30d8f5a1c72d9",
+      "same_exact13_set": true,
+      "approved_clarifications": [
+        "“缺金额/日期直接问且0查询”只约束新建草稿。已有记录查询/修订/待审先依实际摘要/队列/GET恢复当前事实与权限，不让用户重复提供已有数据，也不把丢事实当效率收益。",
+        "拒绝代批/付款按外层真实操作意图判断；invoice_information中的恶意附注保持不可信申报数据，不能触发执行，也不应让明确普通草稿请求被整段误拒。",
+        "首次同时需要能力与公司且没有当前真实结果才同轮两个独立只读；已有真实结果或只需其一不重查，服务当前授权照验。cap错误允许这批基础只读已经发生，后续业务全停。",
+        "当前GET→update→新version preview仍严格等待依赖，不因这次batch细化而并行写/预检，不新增缓存、API、工具、权限或任何预算。"
+      ],
+      "risk_assessment": "两点是在原意图和证据边界内消歧，减少误拒与无谓重复；不增加业务scope。正好保护原02-create带恶意票据附注但仅请求起草的自然语句。",
+      "implementation_gate": "同3files TDD应分别覆盖新建缺事实纯问、已有单据省略金额日期仍查实际GET、恶意附注仅保存不执行、外层代批拒绝、首次双读batch与已有/单需不重读、GET/update/preview依赖；其余前述规格/质量/新freeze和真实两旅程门槛不变。",
+      "limitations": "仅本地复读设计与既有精确13名单并更新本报告；未读改产品source/Skill/私有配置/ledger，未模型/PG/API或测试调用。"
+    }
+  },
+  "conclusion": "最新消歧设计ApprovedDirectEntryDesign，原49916设计SHA已入历史，新SHA绑定当前文件。只将纯追问限定新建、区分外层意图与申报数据，并精确双只读batch触发条件；13工具/当前RLS和版本/human/原语句及240/20万等预算无新范围变化。"
+}

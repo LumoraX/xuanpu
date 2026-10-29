@@ -1,0 +1,122 @@
+{
+  "task": "F13独立制品与冻结源码质量审查",
+  "reviewer": "f13_final_quality",
+  "status": "Approved",
+  "open_findings": 0,
+  "findings": [],
+  "created_at": "2026-10-23T07:57:46.743410+00:00",
+  "executed_independently": [
+    "重新枚举git产品/测试/脚本/pack/docker/lock集合并重算全部722文件摘要",
+    "打开全部wheel/sdist/ZIP比较源码和非生成包文件/README/元数据/RECORD",
+    "逐字节核对pack20/24及4个baseline refs",
+    "实际无网络容器读取UID、版本与142源码摘要"
+  ],
+  "not_executed": [
+    "未运行pytest或访问PG；全量和quick由主执行者独占运行",
+    "未重建wheel/sdist/ZIP/镜像，本审查核对已有实际制品",
+    "未执行生产部署、真实模型、Linux全业务或浏览器验收"
+  ],
+  "frozen": {
+    "file_count": 722,
+    "baseline_count": 717,
+    "set_and_bytes_equal": true,
+    "manifest_sha256": "dee9a3f66cc82e82731abbc0903c425323406d193eb8e88407ae51b231a79710",
+    "added_files": [
+      "packages/xuanpu-finance/src/xuanpu_finance/local_objects.py",
+      "packages/xuanpu-finance/tests/f13_objects_helpers.py",
+      "packages/xuanpu-finance/tests/f13_process_helpers.py",
+      "packages/xuanpu-finance/tests/test_f13_objects.py",
+      "packages/xuanpu-finance/tests/test_f13_process.py"
+    ]
+  },
+  "packages": {
+    "finance": {
+      "version": "2026.10.23.4",
+      "source_files": 142,
+      "all_source_equal_in_wheel_sdist": true,
+      "sdist_all_non_generated_files_equal": true,
+      "readme_metadata_equal": true,
+      "wheel_record_hashes_valid": true,
+      "wheel_members": 146,
+      "sdist_members": 264
+    },
+    "console": {
+      "version": "2026.10.23.1",
+      "source_files": 23,
+      "all_source_equal_in_wheel_sdist": true,
+      "sdist_all_non_generated_files_equal": true,
+      "readme_metadata_equal": true,
+      "wheel_record_hashes_valid": true,
+      "wheel_members": 26,
+      "sdist_members": 46
+    }
+  },
+  "artifacts": [
+    {
+      "name": "finance-0.14.0-f13.zip",
+      "bytes": 54950,
+      "sha256": "57009f597688a28ac28c8d59745f0929af2717f05f4687759b4172e795c22a46"
+    },
+    {
+      "name": "xuanpu_console-2026.10.23.1-py3-none-any.whl",
+      "bytes": 110516,
+      "sha256": "0c340e0112933f1550fa7e0686bcefd2e380e9f150a1956f5b89093c6767066b"
+    },
+    {
+      "name": "xuanpu_console-2026.10.23.1.tar.gz",
+      "bytes": 134531,
+      "sha256": "8f1c34d598852449482566bf7371b163ab29a83d20908eac0bd2fab07469fc9d"
+    },
+    {
+      "name": "xuanpu_finance-2026.10.23.4-py3-none-any.whl",
+      "bytes": 347262,
+      "sha256": "0f6e7c0c3369f5f5fd1d3cd1470d15f95bad8caa97cc6fbab72af6e4d5173f77"
+    },
+    {
+      "name": "xuanpu_finance-2026.10.23.4.tar.gz",
+      "bytes": 453388,
+      "sha256": "06c6c4923f28371f20c5f0f2e5b312cca12153b3358b22e57871e8ce84db9d2d"
+    }
+  ],
+  "production_status": "not_verified",
+  "business_pack": {
+    "published_files": 20,
+    "design_files": 24,
+    "zip_and_corresponding_design_bytes_equal": true,
+    "unchanged_baseline_extra_references": [
+      "skills/archive-audit/references/execution-rules.md",
+      "skills/expense-reimbursement/references/execution-rules.md",
+      "skills/finance-assistant/references/execution-rules.md",
+      "skills/finance-review/references/execution-rules.md"
+    ]
+  },
+  "image": {
+    "tag": "xuanpu-finance:2026.10.23.4",
+    "id": "sha256:e4f8b67986e25fcf10db286f6f1e978bfcca1f6511ee877c83015cbd19192122",
+    "uid": 10001,
+    "version": "2026.10.23.4",
+    "source_files": 142,
+    "all_source_hashes_equal": true,
+    "network": "none",
+    "container_run_exit": 0,
+    "scope": "metadata/source only; Linux final-image object IO evidence reviewed separately; no whole Linux business claim"
+  },
+  "source_quality": {
+    "reviewed": [
+      "git diff HEAD",
+      "local_objects.py",
+      "objects.py",
+      "f13_objects_helpers.py",
+      "f13_process_helpers.py",
+      "test_f13_objects.py",
+      "test_f13_process.py",
+      "F13 design and plan"
+    ],
+    "assessment": "目录fd/O_NOFOLLOW与叶子stat+非阻塞open+fstat阻止链接与特殊文件；ExitStack/仅自有临时删除/原子link支持回收与并发不可覆盖；真实异步双适配器和屏障替换测试有覆盖；坏shard失败责任保留与后续收件、真人签名403/202/DB核对与零支付边界明确。未发现阻塞质量问题。",
+    "limitations": [
+      "受信祖先和服务账号独占修改权、硬链接/恶意管理员/挂载/掉电/Windows不承诺",
+      "目录移走后的旧fd写入不能证明配置路径可达",
+      "全量与quick最终结论待whole-spec与最终报告后另签whole-quality.json"
+    ]
+  }
+}

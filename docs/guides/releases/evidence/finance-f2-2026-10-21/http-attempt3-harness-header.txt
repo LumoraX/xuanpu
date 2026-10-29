@@ -1,0 +1,134 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+___________ test_signed_hitl_payment_posting_reversal_over_real_http ___________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x108610f80>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-818/test_signed_hitl_payment_posti0')
+
+    async def test_signed_hitl_payment_posting_reversal_over_real_http(store: FinanceStore, tmp_path: Path) -> None:
+        """受理不等于成功；停发时回调只唤起查单；付款与凭证及冲回分别落库。"""
+        _, payer, _, _, doc = await approved_payable(store)
+        async with provider_server() as (remote, origin), httpx.AsyncClient(trust_env=False) as network:
+            config = await bind_provider(store, origin, tmp_path)
+            gateway = Gateway({})
+            registry = ProviderRegistry([config], network, tokens={("test",2):"isolated-token"}, callback_secrets={("test",2):"s"*32})
+            worker = SettlementWorker(store, registry, gateway)
+            key = Ed25519PrivateKey.generate()
+            app = app_for(store, EncryptedLocalObjects(tmp_path, b"k"*32), gateway, key)
+            app.state.settlement_providers = registry
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="https://finance") as client:
+                signed = SignedClient(client, key)
+                payment = await approved_http_plan(signed, "payer", doc, "execute_payment", "600.00", payee_ref=ref("supplier_account","account"))
+                assert payment["status"] == "accepted"
+                await worker.run_once()
+                summary = await store.get_payable(payer,doc["id"])
+                assert summary["paid_amount"] == "0.00" and summary["payment_pending_amount"] == "600.00"
+>               request = remote.posts[0]
+                          ^^^^^^^^^^^^^^^
+E               IndexError: list index out of range
+
+packages/xuanpu-finance/tests/test_f2_http_e2e.py:140: IndexError
+------------------------------ Captured log call -------------------------------
+ERROR    asyncio:base_events.py:1833 Unhandled exception in client_connected_cb
+transport: <_SelectorSocketTransport closed fd=18>
+Traceback (most recent call last):
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance/tests/test_f2_http_e2e.py", line 48, in handle
+    assert headers["authorization"] == "Bearer isolated-token"
+AssertionError: assert 'bearer isolated-token' == 'Bearer isolated-token'
+
+  - Bearer isolated-token
+  ? ^
+  + bearer isolated-token
+  ? ^
+________ test_invalid_result_is_unknown_and_rebuilt_worker_only_queries ________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x1086d7380>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-818/test_invalid_result_is_unknown0')
+
+    async def test_invalid_result_is_unknown_and_rebuilt_worker_only_queries(store: FinanceStore, tmp_path: Path) -> None:
+        """实际渠道回错金额时不认付款，重建worker也绝不第二次POST。"""
+        _, payer, _, _, doc = await approved_payable(store)
+        async with provider_server() as (remote, origin), httpx.AsyncClient(trust_env=False) as network:
+            remote.bad_payment = True
+            config = await bind_provider(store, origin, tmp_path)
+            registry = ProviderRegistry([config], network, tokens={("test",2):"isolated-token"}, callback_secrets={("test",2):"s"*32})
+            gateway, key = Gateway({}), Ed25519PrivateKey.generate()
+            app = app_for(store, EncryptedLocalObjects(tmp_path,b"k"*32),gateway,key)
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app),base_url="https://finance") as client:
+                signed = SignedClient(client,key)
+                operation = await approved_http_plan(signed,"payer",doc,"execute_payment","600.00",payee_ref=ref("supplier_account","account"))
+                await SettlementWorker(store,registry,gateway).run_once()
+                current = await store.get_operation(payer,operation["id"])
+                assert current["status"] == "outcome_unknown"
+                assert (await store.get_payable(payer,doc["id"]))["payment_pending_amount"] == "600.00"
+                raw = await store.pool.fetchval("SELECT raw FROM finance_settlement_receipt")
+>               assert json.loads(raw)["amount"] == "999.00"
+                       ^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f2_http_e2e.py:184:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+s = None, cls = None, object_hook = None, parse_float = None, parse_int = None
+parse_constant = None, object_pairs_hook = None, kw = {}
+
+    def loads(s, *, cls=None, object_hook=None, parse_float=None,
+            parse_int=None, parse_constant=None, object_pairs_hook=None, **kw):
+        """Deserialize ``s`` (a ``str``, ``bytes`` or ``bytearray`` instance
+        containing a JSON document) to a Python object.
+
+        ``object_hook`` is an optional function that will be called with the
+        result of any object literal decode (a ``dict``). The return value of
+        ``object_hook`` will be used instead of the ``dict``. This feature
+        can be used to implement custom decoders (e.g. JSON-RPC class hinting).
+
+        ``object_pairs_hook`` is an optional function that will be called with the
+        result of any object literal decoded with an ordered list of pairs.  The
+        return value of ``object_pairs_hook`` will be used instead of the ``dict``.
+        This feature can be used to implement custom decoders.  If ``object_hook``
+        is also defined, the ``object_pairs_hook`` takes priority.
+
+        ``parse_float``, if specified, will be called with the string
+        of every JSON float to be decoded. By default this is equivalent to
+        float(num_str). This can be used to use another datatype or parser
+        for JSON floats (e.g. decimal.Decimal).
+
+        ``parse_int``, if specified, will be called with the string
+        of every JSON int to be decoded. By default this is equivalent to
+        int(num_str). This can be used to use another datatype or parser
+        for JSON integers (e.g. float).
+
+        ``parse_constant``, if specified, will be called with one of the
+        following strings: -Infinity, Infinity, NaN.
+        This can be used to raise an exception if invalid JSON numbers
+        are encountered.
+
+        To use a custom ``JSONDecoder`` subclass, specify it with the ``cls``
+        kwarg; otherwise ``JSONDecoder`` is used.
+        """
+        if isinstance(s, str):
+            if s.startswith('\ufeff'):
+                raise JSONDecodeError("Unexpected UTF-8 BOM (decode using utf-8-sig)",
+                                      s, 0)
+        else:
+            if not isinstance(s, (bytes, bytearray)):
+>               raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+                                f'not {s.__class__.__name__}')
+E               TypeError: the JSON object must be str, bytes or bytearray, not NoneType
+
+/Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/json/__init__.py:339: TypeError
+------------------------------ Captured log call -------------------------------
+ERROR    asyncio:base_events.py:1833 Unhandled exception in client_connected_cb
+transport: <_SelectorSocketTransport closed fd=18>
+Traceback (most recent call last):
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance/tests/test_f2_http_e2e.py", line 48, in handle
+    assert headers["authorization"] == "Bearer isolated-token"
+AssertionError: assert 'bearer isolated-token' == 'Bearer isolated-token'
+
+  - Bearer isolated-token
+  ? ^
+  + bearer isolated-token
+  ? ^
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f2_http_e2e.py::test_signed_hitl_payment_posting_reversal_over_real_http
+FAILED packages/xuanpu-finance/tests/test_f2_http_e2e.py::test_invalid_result_is_unknown_and_rebuilt_worker_only_queries
+2 failed in 1.50s

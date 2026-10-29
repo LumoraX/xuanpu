@@ -1,0 +1,6 @@
+{
+  "dedicated_container": "xuanpu-finance-f4-test-pg",
+  "nonstandard_schemas": [],
+  "transient_maintenance_databases": [],
+  "after": "final_2332_test_suite_and_archive_restore_drill"
+}

@@ -1,0 +1,25 @@
+...............                                                          [100%]
+15 passed in 0.87s
+finance behavior passed
+finance compliance behavior passed
+finance funding behavior passed
+finance operations behavior passed
+PASS addingExpenseLineInvalidatesEarlierSaveConfirmation
+PASS fundingBasisEditsKeepInFlightMaterialRecovery
+PASS lateImportCannotRestoreAbandonedForm
+PASS editingWhileImportIsInFlightKeepsReceiptRecovery
+PASS editingAttachmentIdsCanReplaceOrRemoveExisting
+PASS expenseListPaginatesMaximumChineseOriginals
+PASS uploadingInvalidatesEarlierDraftConfirmation
+PASS listNavigationAndExitReleaseDownloads
+PASS unknownMaterialRequestRetainsIdempotency
+PASS lateMaterialReceiptCannotChangeNewPage
+PASS editPreservesInvoiceAndOptionalEvidence
+PASS uploadedExpenseUsesRealReceiptAndLocksSave
+PASS internalRecordsAndHistory
+PASS expenseDownloadPinsVersionAndValidatesDigest
+PASS lateHistoryAndDownloadDoNotReachNewPage
+PASS moreFunctionsAreExplicit
+finance records behavior passed
+finance settlement behavior passed
+All checks passed!

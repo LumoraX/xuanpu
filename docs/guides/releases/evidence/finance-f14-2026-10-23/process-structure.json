@@ -1,0 +1,16 @@
+[
+  {
+    "path": "packages/xuanpu-finance/tests/test_f14_process.py",
+    "lines": 73,
+    "future_annotations": true,
+    "max_function_lines": 48,
+    "chinese_docstrings": true
+  },
+  {
+    "path": "packages/xuanpu-finance/tests/f14_process_helpers.py",
+    "lines": 206,
+    "future_annotations": true,
+    "max_function_lines": 34,
+    "chinese_docstrings": true
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "status": "raw_logs_preserved",
+  "production_status": "not_verified",
+  "reason": "原始pytest失败跟踪和Docker输出自带行尾空格；按原始证据保留，不改写日志。",
+  "all_diff_check_exit": 2,
+  "non_log_diff_check_exit": 0,
+  "affected_logs": [
+    "docs/guides/releases/evidence/finance-f11-2026-10-23/build-image.log",
+    "docs/guides/releases/evidence/finance-f11-2026-10-23/startup-red.log",
+    "docs/guides/releases/evidence/finance-f11-2026-10-23/verify-red.log"
+  ],
+  "format_diagnostics": 199,
+  "source_or_document_whitespace_issues": 0,
+  "sequencing_note": "首个本地提交在日志格式检查退出2后仍继续；随后独立确认所有告警只在原始日志，并补记本例外。"
+}

@@ -1,0 +1,164 @@
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+_ test_missing_core_structure_rejected_before_all_writes[ALTER TABLE finance_item DROP COLUMN content_type] _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10988bfb0>
+change = 'ALTER TABLE finance_item DROP COLUMN content_type'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a2b4290>
+
+    @pytest.mark.parametrize('change',[
+        'ALTER TABLE finance_item DROP COLUMN content_type',
+        'ALTER TABLE finance_receipt DROP COLUMN sha256',
+        'DROP TABLE finance_expense_history',
+        'ALTER TABLE finance_item ALTER COLUMN content_type TYPE varchar(32)',
+    ])
+    async def test_missing_core_structure_rejected_before_all_writes(store: FinanceStore,change: str,monkeypatch: pytest.MonkeyPatch) -> None:
+        """F8支持结构中任何必要表列缺失或类型改变，均在迁移和授权写入前拒绝。"""
+        await store.pool.execute(change)
+        async def forbidden(*args: object,**kwargs: object) -> None:
+            """结构未知时迁移与配置不可触发，防止先修补或部分写入。"""
+            raise AssertionError('unknown schema reached a write boundary')
+        monkeypatch.setattr(type(store),'migrate',forbidden)
+        monkeypatch.setattr(type(store),'configure',forbidden)
+        before=await store.pool.fetchval('SELECT count(*) FROM finance_grant')
+        with pytest.raises(FinanceError,match='INTERNAL_DATABASE_INCOMPATIBLE'):
+>           await runtime.configure_store(store.pool,FinanceConfig.model_validate(internal_settings()))
+
+packages/xuanpu-finance/tests/test_f9_compatibility.py:97: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:84: in configure_store
+    await store.migrate()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<xuanpu_finance.storage.store.FinanceStore object at 0x109df2720>,)
+kwargs = {}
+
+    async def forbidden(*args: object,**kwargs: object) -> None:
+        """结构未知时迁移与配置不可触发，防止先修补或部分写入。"""
+>       raise AssertionError('unknown schema reached a write boundary')
+E       AssertionError: unknown schema reached a write boundary
+
+packages/xuanpu-finance/tests/test_f9_compatibility.py:92: AssertionError
+_ test_missing_core_structure_rejected_before_all_writes[ALTER TABLE finance_receipt DROP COLUMN sha256] _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10a2b4470>
+change = 'ALTER TABLE finance_receipt DROP COLUMN sha256'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a2b4710>
+
+    @pytest.mark.parametrize('change',[
+        'ALTER TABLE finance_item DROP COLUMN content_type',
+        'ALTER TABLE finance_receipt DROP COLUMN sha256',
+        'DROP TABLE finance_expense_history',
+        'ALTER TABLE finance_item ALTER COLUMN content_type TYPE varchar(32)',
+    ])
+    async def test_missing_core_structure_rejected_before_all_writes(store: FinanceStore,change: str,monkeypatch: pytest.MonkeyPatch) -> None:
+        """F8支持结构中任何必要表列缺失或类型改变，均在迁移和授权写入前拒绝。"""
+        await store.pool.execute(change)
+        async def forbidden(*args: object,**kwargs: object) -> None:
+            """结构未知时迁移与配置不可触发，防止先修补或部分写入。"""
+            raise AssertionError('unknown schema reached a write boundary')
+        monkeypatch.setattr(type(store),'migrate',forbidden)
+        monkeypatch.setattr(type(store),'configure',forbidden)
+        before=await store.pool.fetchval('SELECT count(*) FROM finance_grant')
+        with pytest.raises(FinanceError,match='INTERNAL_DATABASE_INCOMPATIBLE'):
+>           await runtime.configure_store(store.pool,FinanceConfig.model_validate(internal_settings()))
+
+packages/xuanpu-finance/tests/test_f9_compatibility.py:97: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:84: in configure_store
+    await store.migrate()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<xuanpu_finance.storage.store.FinanceStore object at 0x10a2b4b30>,)
+kwargs = {}
+
+    async def forbidden(*args: object,**kwargs: object) -> None:
+        """结构未知时迁移与配置不可触发，防止先修补或部分写入。"""
+>       raise AssertionError('unknown schema reached a write boundary')
+E       AssertionError: unknown schema reached a write boundary
+
+packages/xuanpu-finance/tests/test_f9_compatibility.py:92: AssertionError
+_ test_missing_core_structure_rejected_before_all_writes[DROP TABLE finance_expense_history] _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10a2b5a60>
+change = 'DROP TABLE finance_expense_history'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a2b7470>
+
+    @pytest.mark.parametrize('change',[
+        'ALTER TABLE finance_item DROP COLUMN content_type',
+        'ALTER TABLE finance_receipt DROP COLUMN sha256',
+        'DROP TABLE finance_expense_history',
+        'ALTER TABLE finance_item ALTER COLUMN content_type TYPE varchar(32)',
+    ])
+    async def test_missing_core_structure_rejected_before_all_writes(store: FinanceStore,change: str,monkeypatch: pytest.MonkeyPatch) -> None:
+        """F8支持结构中任何必要表列缺失或类型改变，均在迁移和授权写入前拒绝。"""
+        await store.pool.execute(change)
+        async def forbidden(*args: object,**kwargs: object) -> None:
+            """结构未知时迁移与配置不可触发，防止先修补或部分写入。"""
+            raise AssertionError('unknown schema reached a write boundary')
+        monkeypatch.setattr(type(store),'migrate',forbidden)
+        monkeypatch.setattr(type(store),'configure',forbidden)
+        before=await store.pool.fetchval('SELECT count(*) FROM finance_grant')
+        with pytest.raises(FinanceError,match='INTERNAL_DATABASE_INCOMPATIBLE'):
+>           await runtime.configure_store(store.pool,FinanceConfig.model_validate(internal_settings()))
+
+packages/xuanpu-finance/tests/test_f9_compatibility.py:97: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:84: in configure_store
+    await store.migrate()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<xuanpu_finance.storage.store.FinanceStore object at 0x10a2b6150>,)
+kwargs = {}
+
+    async def forbidden(*args: object,**kwargs: object) -> None:
+        """结构未知时迁移与配置不可触发，防止先修补或部分写入。"""
+>       raise AssertionError('unknown schema reached a write boundary')
+E       AssertionError: unknown schema reached a write boundary
+
+packages/xuanpu-finance/tests/test_f9_compatibility.py:92: AssertionError
+_ test_missing_core_structure_rejected_before_all_writes[ALTER TABLE finance_item ALTER COLUMN content_type TYPE varchar(32)] _
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x10a2b5df0>
+change = 'ALTER TABLE finance_item ALTER COLUMN content_type TYPE varchar(32)'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a2b70e0>
+
+    @pytest.mark.parametrize('change',[
+        'ALTER TABLE finance_item DROP COLUMN content_type',
+        'ALTER TABLE finance_receipt DROP COLUMN sha256',
+        'DROP TABLE finance_expense_history',
+        'ALTER TABLE finance_item ALTER COLUMN content_type TYPE varchar(32)',
+    ])
+    async def test_missing_core_structure_rejected_before_all_writes(store: FinanceStore,change: str,monkeypatch: pytest.MonkeyPatch) -> None:
+        """F8支持结构中任何必要表列缺失或类型改变，均在迁移和授权写入前拒绝。"""
+        await store.pool.execute(change)
+        async def forbidden(*args: object,**kwargs: object) -> None:
+            """结构未知时迁移与配置不可触发，防止先修补或部分写入。"""
+            raise AssertionError('unknown schema reached a write boundary')
+        monkeypatch.setattr(type(store),'migrate',forbidden)
+        monkeypatch.setattr(type(store),'configure',forbidden)
+        before=await store.pool.fetchval('SELECT count(*) FROM finance_grant')
+        with pytest.raises(FinanceError,match='INTERNAL_DATABASE_INCOMPATIBLE'):
+>           await runtime.configure_store(store.pool,FinanceConfig.model_validate(internal_settings()))
+
+packages/xuanpu-finance/tests/test_f9_compatibility.py:97: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/xuanpu-finance/src/xuanpu_finance/runtime.py:84: in configure_store
+    await store.migrate()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<xuanpu_finance.storage.store.FinanceStore object at 0x10a2b5070>,)
+kwargs = {}
+
+    async def forbidden(*args: object,**kwargs: object) -> None:
+        """结构未知时迁移与配置不可触发，防止先修补或部分写入。"""
+>       raise AssertionError('unknown schema reached a write boundary')
+E       AssertionError: unknown schema reached a write boundary
+
+packages/xuanpu-finance/tests/test_f9_compatibility.py:92: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f9_compatibility.py::test_missing_core_structure_rejected_before_all_writes[ALTER TABLE finance_item DROP COLUMN content_type]
+FAILED packages/xuanpu-finance/tests/test_f9_compatibility.py::test_missing_core_structure_rejected_before_all_writes[ALTER TABLE finance_receipt DROP COLUMN sha256]
+FAILED packages/xuanpu-finance/tests/test_f9_compatibility.py::test_missing_core_structure_rejected_before_all_writes[DROP TABLE finance_expense_history]
+FAILED packages/xuanpu-finance/tests/test_f9_compatibility.py::test_missing_core_structure_rejected_before_all_writes[ALTER TABLE finance_item ALTER COLUMN content_type TYPE varchar(32)]
+4 failed in 1.60s

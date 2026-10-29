@@ -1,0 +1,39 @@
+{
+  "status": "real_business_failure_requires_skill_fix",
+  "observed_at": "2026-10-24T08:55:46.001247+00:00",
+  "journey": "final7",
+  "source_freeze": "frozen-candidate5.json",
+  "failure": "model_revision_draft",
+  "trace": "final7/model-163.json",
+  "trace_sha256": "50edb937e1726bbf7fb4089ec0e355d584e780c67ee7f92a8d65beb1c1421a80",
+  "actual_updated_document_version": 5,
+  "actual_document_reason": "出差交通待补充",
+  "actual_line_reason": "拜访上海客户讨论项目需求",
+  "actual_status": "draft",
+  "exact_amount_date_original_and_evidence_preserved": true,
+  "model_observer_not_faulty": true,
+  "natural_prompt_and_business_assertions_unchanged": true,
+  "partial_efficiency_first_three": {
+    "streams": 10,
+    "input_plus_output_tokens": 83000,
+    "baseline_streams": 35,
+    "baseline_input_plus_output_tokens": 205306,
+    "not_complete_acceptance": true
+  },
+  "ledger": {
+    "attempts": 165,
+    "completed": 163,
+    "input_tokens": 838603,
+    "output_tokens": 23549,
+    "halted": null
+  },
+  "usage_unknown_attempts": [
+    56,
+    59
+  ],
+  "original_limits_unchanged": true,
+  "payment": false,
+  "local_commit_created": false,
+  "merged": false,
+  "deployed": false
+}

@@ -1,0 +1,16 @@
+{
+  "status": "restored_without_reset",
+  "source": "docs/guides/releases/evidence/finance-f15-2026-10-23/model-budget.json",
+  "source_sha256": "e1b2953bfb7a4845fa8e47640715ea068e99968ca81c61dd5c48ca2ca1a6051b",
+  "attempts": 208,
+  "completed": 206,
+  "usage_unknown_attempts": [
+    56,
+    59
+  ],
+  "known_input_tokens": 1207876,
+  "known_output_tokens": 30074,
+  "model_config_fingerprint_unchanged": true,
+  "private_values_included": false,
+  "reason": "Previous temporary private ledger no longer exists; restore exact public snapshot previously verified equal, retain all counters/history/unknown usage."
+}

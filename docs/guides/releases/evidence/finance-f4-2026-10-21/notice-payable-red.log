@@ -1,0 +1,30 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____________ test_payable_approval_notice_keeps_real_target_kind ______________
+
+store = <xuanpu_finance.storage.store.FinanceStore object at 0x109e8f200>
+
+    async def test_payable_approval_notice_keeps_real_target_kind(store: FinanceStore) -> None:
+        """应付待审提醒不能伪装报销，否则人工入口会读取错误的单据API。"""
+        from xuanpu_finance.expenses.models import ActionPreview, AllocationRequest
+    
+        from .test_expense_domain import execute
+        from .test_f2_domain import configured as settlement_configured
+        from .test_f2_domain import payable
+        owner,_,_,approver=await settlement_configured(store)
+        await invoice(store)
+        doc=await payable(store,owner)
+        await store.create_invoice_allocation(owner,AllocationRequest(invoice_id='i',invoice_version=1,document_id=doc['id'],document_kind='payable',expected_document_version=doc['version'],amount='1000.00',tax='0.00'),'allocation')
+        doc=await store.get_payable(owner,doc['id'])
+        plan=await store.preview_finance_action(owner,ActionPreview(action='submit_payable',target_type='payable',target_id=doc['id'],expected_version=doc['version'],parameters={}),'submit')
+        await execute(store,owner,plan)
+        await store.refresh_finance_notifications()
+        pending=await store.list_finance_notifications(approver,'e')
+>       assert any(n['target_type']=='payable' and n['target_id']==doc['id'] for n in pending['items'])
+E       assert False
+E        +  where False = any(<generator object test_payable_approval_notice_keeps_real_target_kind.<locals>.<genexpr> at 0x10a97fd80>)
+
+packages/xuanpu-finance/tests/test_f4_notices.py:439: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f4_notices.py::test_payable_approval_notice_keeps_real_target_kind
+1 failed in 0.46s

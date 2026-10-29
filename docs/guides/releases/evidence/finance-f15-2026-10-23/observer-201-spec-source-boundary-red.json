@@ -1,0 +1,32 @@
+{
+  "status": "expected_red",
+  "source_sha256": "83a2c7bdafb62ab3a1ecdc5f3936bf386248b8e6cb8bb6b4ee99683fb5abb24c",
+  "counterexamples": [
+    {
+      "container": "messages",
+      "message": {
+        "role": "user",
+        "type": "function_call_output",
+        "call_id": "c",
+        "output": "HTTP 201\n{}"
+      },
+      "actual_accepted": [
+        "api__finance__createExpenseClaim"
+      ],
+      "expected_accepted": []
+    },
+    {
+      "container": "input_items",
+      "message": {
+        "role": "tool",
+        "type": "message",
+        "tool_call_id": "c",
+        "content": "HTTP 201\n{}"
+      },
+      "actual_accepted": [
+        "api__finance__createExpenseClaim"
+      ],
+      "expected_accepted": []
+    }
+  ]
+}

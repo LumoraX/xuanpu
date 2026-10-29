@@ -1,0 +1,48 @@
+{
+  "status": "NeedsRevision",
+  "reviewed_at": "2026-10-29T04:01:09.843784+00:00",
+  "scope": "read-only design and necessary source review; no model/PG/private configuration/ledger access",
+  "design": "docs/superpowers/specs/2026-10-29-finance-f15-execution-efficiency-design.md",
+  "design_sha256": "a5d9a1f064160d56a825a6c4e6b9e03f5f47b4d31012c8af2a06f62400d83252",
+  "plan_sha256": "1067bebb7780bda5acbb16b1cb3a01198b2056311166ac9cb38ea57578650384",
+  "findings": [
+    {
+      "id": "EL-D01",
+      "priority": "P2",
+      "blocking": true,
+      "source": "scripts/acceptance/finance_model_journey.py:claim / final_facts",
+      "finding": "claim currently always records one_model_created_claim. Reusing final_facts/challenges after a human-created fixture would emit a false model-creation evidence claim.",
+      "required": "Specify origin-aware count evidence for query fixture, e.g. one_fixture_created_claim, while preserving the original full model creation/tool provenance gate. Do not synthesize model traces or call execute_model_plan for fixture-created plans."
+    }
+  ],
+  "implementation_conditions": [
+    {
+      "id": "EL-D02",
+      "text": "Every focused result/environment declares query-regression, human fixture provenance, counts_as_complete_journey=false before any model request, including failures. Any completion counter must require explicit full scope and successful complete gates, not status=passed alone."
+    },
+    {
+      "id": "EL-D03",
+      "text": "Persist a tightened local stream ceiling; reject invalid values and enlargement of a reopened same-name journey before write/dispatch. Distinguish a 12-stream local stop from exhausting global240 in diagnostics; never reset or automatically clear halt."
+    },
+    {
+      "id": "EL-D04",
+      "text": "Keep 08 fresh owner session, 07 finance and 10 outsider independently owned. Reusing manager04→06 and owner08→09 retains each actor, current queue/GET/history/version/plan/human checks; no cross-actor context sharing."
+    }
+  ],
+  "feasibility": {
+    "same_actor_session_reuse": "feasible using returned session and existing turn; full route count decreases by exactly2 if both later phases run",
+    "measured_vs_estimated": "final8 stopped at08, so only the manager06 route existed in its observed43 calls; do not subtract both future route savings from that partial observed run. Further capability/catalog savings remain unmeasured.",
+    "focused_scenario": "feasible with current public manual gateway; ExpenseClaim original/history/decision fixtures must be built through human HTTP, not direct PG. Existing final_facts and retained_original can verify real stored facts once count-origin label is corrected.",
+    "full_scenario": "Keep default full, all natural prompts and require_tools/execute_model_plan checks unchanged apart from intended same-actor lifecycle."
+  },
+  "activities": {
+    "source_modified": false,
+    "design_modified": false,
+    "tests_run": false,
+    "model_calls": 0,
+    "postgres_access": false,
+    "private_configuration_access": false,
+    "ledger_access": false,
+    "commit": false
+  }
+}

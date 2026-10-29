@@ -1,0 +1,120 @@
+{
+  "status": "ImplementedPendingIndependentReviewAndRealAcceptance",
+  "observed_at": "2026-10-24T08:59:23.611637+00:00",
+  "approved_design_review": "docs/guides/releases/evidence/finance-f15-2026-10-23/reason-revision-design-review.json",
+  "design_review_status": "Approved",
+  "design_review_sha256": "b35cdd70bd19e69d58123ec3aa6e3892d1379045633b98d05ac2a058d44ca4a3",
+  "scope": "Only root Skill published/design copies and F15 Skill contract tests; two narrow reason and locator rules.",
+  "baseline_source_sha256": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "c1bf092059c1261b5e2821451172b3f1966fea9fdd42cc634eb64c1fce1a19bb"
+  },
+  "source_sha256": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "a5242549807c99b49fc14da5c00fa04f61a86af09f88b919691c6bcca4407c37"
+  },
+  "only_phase1_snapshot_changes": [
+    "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
+    "examples/finance/skills/finance-assistant/SKILL.md",
+    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+  ],
+  "root_changes": [
+    "Document/reimbursement reason revision updates draft.reason persisted as content.reason; line reason cannot substitute. Explicit line-only requests retain current top reason; unrequested current GET fields preserved.",
+    "A unique actual ID from this same business session own successful create directly locates current authorized GET. No repeated summary merely to rediscover that ID; ID is not authorization/version/status. Ambiguity, absent ID, actor/company change, denial, explicit refresh keep actual minimum-scope read rules."
+  ],
+  "reason_positions": {
+    "document": "updateExpenseClaim.body.draft.reason -> content.reason",
+    "explicit_line_only": "updateExpenseClaim.body.draft.lines[i].reason",
+    "approval_or_rejection": "previewFinanceAction.body.parameters.reason"
+  },
+  "tests": {
+    "red": {
+      "log": "reason-revision-red.log",
+      "log_sha256": "6ae274b575b1343bd0d9d2fe131389c93fb646440771d3d0fd50bc13fecdebe8",
+      "junit": "reason-revision-red.xml",
+      "junit_sha256": "d37114b0ce634cfdc89b12d3dbf88aa0b678ad6de40df382bad488536825c990",
+      "tests": 2,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    "combined_green": {
+      "log": "reason-revision-green.log",
+      "log_sha256": "0ee6504ec7754f4dab2ff75caefad0b418a43f8f035d0809f6e1cc61421a0c06",
+      "junit": "reason-revision-green.xml",
+      "junit_sha256": "7bb12757d99e660ff080cde38029d1923fad7f6e8890ad7b616723669f78dce2",
+      "tests": 133,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "offline_protocol_fixtures": {
+    "not_model_behavior_proof": true,
+    "no_network_or_database": true,
+    "actual_components": [
+      "ExpenseUpdate",
+      "ActionPreview",
+      "parse_openapi",
+      "build_request"
+    ],
+    "coverage": [
+      "top reason versus explicit line-only outgoing body",
+      "line-only addition leaves top reason stale and fails top-reason semantic predicate",
+      "amount/date/raw invoice leading/trailing spaces/newline/evidence IDs preserved",
+      "current expected_version and original operation idempotency headers retained",
+      "approve/reject opinions only in preview parameters, no draft modification",
+      "current GET/update/newversion-preview and same session/actor/company locator text constraints"
+    ]
+  },
+  "lint": {
+    "command": "uv run ruff check --select F,S108,I,TC,C901 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+    "returncode": 0,
+    "log": "reason-revision-ruff.log",
+    "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+  },
+  "diff_check": {
+    "returncode": 0,
+    "log": "reason-revision-diff-check.log"
+  },
+  "contract_validation": {
+    "path": "docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-contract-validation.json",
+    "sha256": "53b25856c5366db4a82d87c0c5a542b036f2ed9159e31bc15041ab331ac386c7",
+    "packages_valid": 2,
+    "root_api_tools": 13,
+    "model_api_union": 68,
+    "declared_api_operations": 77,
+    "internal_operations": 24,
+    "skills": 7,
+    "root_children": 6,
+    "ordinary_success_delegations": 0,
+    "published_files_equal": 20,
+    "design_extra_refs_baseline_equal": 4,
+    "professional_skill_bytes_unchanged": true,
+    "original_policy_and_connectors_unchanged": true,
+    "max_session_tokens": 200000,
+    "memory_zip_member_bytes_equal": true,
+    "memory_zip_sha256": "3701ec62efec13289a51eef4f485bd4bafd0c82fe86a4fb5721b720177f5beb9",
+    "other_frozen_source_files_unchanged": true
+  },
+  "live_model_green": false,
+  "final7_failure_preserved": true,
+  "real_usage_or_corrected_reason_behavior": "not_measured_in_this_implementation",
+  "budget_feasibility": "No budget change or capacity promise; original remaining budget may not fit two complete journeys.",
+  "remaining": [
+    "independent spec then quality",
+    "new freeze and actual full journey acceptance under existing hard limits",
+    "root full tests/artifacts/docs/final local commit"
+  ],
+  "prohibited_activity": {
+    "postgres_access": false,
+    "external_model_or_API_calls": false,
+    "private_config_or_private_ledger_access": false,
+    "natural_prompt_or_checker_change": false,
+    "budget_or_business_authority_change": false,
+    "full_or_quick_suite_run": false,
+    "commit_push_merge_deploy": false
+  }
+}

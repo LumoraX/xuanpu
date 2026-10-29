@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "artifacts": 3,
+  "sha256_and_size_rechecked": true,
+  "wheel_runtime_python_equal": true,
+  "sdist_test_python_equal": true,
+  "business_zip_sources_equal": true,
+  "errors": []
+}

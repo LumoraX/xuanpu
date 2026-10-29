@@ -1,0 +1,20 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________________ test_materials_contract_and_skill_read_tools _________________
+
+    def test_materials_contract_and_skill_read_tools() -> None:
+        """只发布两项本人元数据读取，不把原件读取或人工执行开放给模型。"""
+        document = contracts()['finance']
+        declared = operations(document)
+>       assert document['info']['version'] == '0.9.0-f8'
+E       AssertionError: assert '0.8.0-f7' == '0.9.0-f8'
+E         
+E         - 0.9.0-f8
+E         ?   ^    ^
+E         + 0.8.0-f7
+E         ?   ^    ^
+
+packages/xuanpu-finance/tests/test_f8_contract.py:13: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f8_contract.py::test_materials_contract_and_skill_read_tools
+1 failed in 0.51s

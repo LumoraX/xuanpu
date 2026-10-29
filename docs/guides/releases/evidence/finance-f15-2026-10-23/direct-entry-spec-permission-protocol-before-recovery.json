@@ -1,0 +1,82 @@
+{
+  "status": "passed",
+  "method": "Actual published root tools/effects + production build_policy + public taifeng.PermissionRequest/check/SuspendSignal; no service invocation",
+  "rows": [
+    {
+      "name": "api__finance__getFinanceCapabilities",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__finance__listLegalEntities",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__finance__listSupportingMaterialImports",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__finance__getSupportingMaterialImport",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__finance__listExpenseClaimSummaries",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__finance__getExpenseClaim",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__finance__listExpenseClaimHistory",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__finance__createExpenseClaim",
+      "effect": "write",
+      "result": "suspended_for_permission",
+      "pending_target": "api__finance__createExpenseClaim"
+    },
+    {
+      "name": "api__finance__updateExpenseClaim",
+      "effect": "write",
+      "result": "suspended_for_permission",
+      "pending_target": "api__finance__updateExpenseClaim"
+    },
+    {
+      "name": "api__finance__previewFinanceAction",
+      "effect": "write",
+      "result": "suspended_for_permission",
+      "pending_target": "api__finance__previewFinanceAction"
+    },
+    {
+      "name": "api__finance__listReviewQueue",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__catalog__listExpenseCategories",
+      "effect": "read",
+      "result": "allowed_read"
+    },
+    {
+      "name": "api__catalog__listCostCenters",
+      "effect": "read",
+      "result": "allowed_read"
+    }
+  ],
+  "model_tool_confirmation_is_business_approval": false,
+  "HTTP_service_or_PG_or_model_invoked": false,
+  "source_sha256": {
+    "examples/finance/skills/finance-assistant/SKILL.md": "685bab88a4a5dbedd3c050e07566ebc4b75043ca80fed52dc82f4811ddf75f18",
+    "examples/finance/xuanpu.yaml": "223e69f25953f8fff447b66a93a7ec9ceeede56fb5ac5947787a75c573bb3f71",
+    "packages/xuanpu-server/src/xuanpu_server/runtime/approval.py": "e3a6bd0298e8dc5a6ccade3fa893d64dfbfc267d13b4831b9fc9f5384fa4bf5d"
+  },
+  "limitation": "Permission protocol is not a complete finance HTTP user journey; signed origin/authentication are separate regression evidence."
+}

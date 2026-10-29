@@ -1,0 +1,164 @@
+{
+  "status": "Approved",
+  "review_date": "2026-10-24",
+  "scope": "仅核对successful_tools的正式201识别与审批恢复证据路径；不改源码/账本或业务门槛。",
+  "accepted_status_policy": "9个实际require_tools工具已独立逐条核对实际OpenAPI：createExpenseClaim与previewFinanceAction仅201，其余7项仅200；任何未知工具、create/preview200、其它接口201、202/204/error或错callid/name不算成功。",
+  "verified_evidence": {
+    "create_operation_contract": "examples/finance/apis/finance.yaml POST /v1/finance/expense-claims operationId=createExpenseClaim responses201",
+    "model_proposal_trace": "final5/model-095.json",
+    "call_id": "call_750851122d0d489898c7303e645b3fe8",
+    "raw_model_input_trace": "final5/model-096.json",
+    "matching_full_HTTP201_tool_outputs": 2,
+    "SSE_matching_tool_call_completed_count": 0,
+    "SSE_resume_segment_event_kinds": [
+      "None",
+      "assistant_text",
+      "rewind_checkpoint_recorded",
+      "suspension_resolved",
+      "turn_completed",
+      "turn_started"
+    ],
+    "pg_export": "final5/actual-pg-after-observer-failure.json",
+    "pg_export_boundary": "本审查只读已导出文件；文件显示draft128.50、完整原文、2真实换行/0字面反斜杠n、决定及formal表0，未连接PG。",
+    "journey_status": "final5保持failed，不晋升为完整通过。",
+    "source_hashes": {
+      "scripts/acceptance/finance_model_checks.py": "d80cede18208544d03bfe8ef241559448d1b22a8734e746137d6e2a195a5ebf7",
+      "docs/guides/releases/evidence/finance-f15-2026-10-23/final5/model-095.json": "0715d4bf791dd7d94faf3d322092a8b16438c0ffb2d0642e4c21d820819c355f",
+      "docs/guides/releases/evidence/finance-f15-2026-10-23/final5/model-096.json": "365d540fd9397c7248093a2823a3fb85ba365fe2b6e12bbb804ec70d6bedeb6b",
+      "docs/guides/releases/evidence/finance-f15-2026-10-23/final5/02-create-session.json": "25710e246fb97e4b909e09869cf6a422589473a5c0d199ddd80da0e0659f3c78",
+      "docs/guides/releases/evidence/finance-f15-2026-10-23/final5/actual-pg-after-observer-failure.json": "43b2e2d6823a8733bb335e3144c3c3be50eb79750c37df397e20928808c3a46d"
+    }
+  },
+  "required_changes": [],
+  "mandatory_regressions": [
+    "先用本次实际归档形状构造不依赖模型/PG的RED：有提议、挂起、无SSE completed、后续完整raw201时原观察器漏计；修复后仅按真实匹配证据通过。",
+    "create/preview201正例；create/preview200/202/204、只提议无返回、缺raw、错callid/工具名/phase/actor、error、未知工具200/201均失败；已声明其他工具200维持正例，读接口201拒绝。",
+    "9工具固定表逐条与真实OpenAPI operation响应核对，固定表不能影响独立raw execute/original禁止扫描。",
+    "原用户语句、Skill、精确原文/金额/日期/真实receipt和后续草稿/人工批准/历史/附件/越权门槛保持；只修观察器不能放行业务失败。",
+    "重新冻结检查器等全部输入，再用fresh final6/final7完整真实旅程；原final5及其真实201/PG证据保留为失败阶段，不作完整成功计数。",
+    "同scope raw成功与SSE error/错误HTTP或工具名冲突不得挑选成功覆盖；错session及非tool角色HTTP片段专门作为负例。"
+  ],
+  "limitations": [
+    "仅静态本地审查；未运行测试，未访问PG/模型API/私有配置或当前账本。",
+    "本文件不否定final5确有已创建draft的证据，但反对将“201 alone修复”误称能覆盖实际缺少SSE completed的恢复路径。"
+  ],
+  "review_history": [
+    {
+      "status": "ChangesRequested",
+      "required_change_ids": [
+        "F15-O201-01"
+      ],
+      "conclusion": "仅加201仍缺无SSE completed的审批恢复路径，初审ChangesRequested保留。"
+    },
+    {
+      "status": "Approved",
+      "design_sha256": "ea228209806ef9ea624b27bfe7cf88f19966909a166eef42e2a5366b8dcacc5b",
+      "scope": "raw/scope方案已Approved；此前“create201其余8项200”的状态假设被逐条OAS检查证明preview也应201，现纠正并保留该历史。"
+    }
+  ],
+  "review_basis": "root提交的完整scope/raw修订方案，且已复读同步后的design.md末段；不等待checker实现。",
+  "reviewed_design_file_sha256_at_followup": "4468f5291aada169eb8c29106f3d46dd1e22b365046fc09b99db8cde6dd41990",
+  "resolved_changes": [
+    {
+      "id": "F15-O201-01",
+      "priority": "P1",
+      "title": "审批恢复执行没有SSE completed，单改状态码仍漏计真实创建",
+      "finding": "当前successful_tools只遍历SSE tool_call_completed。归档final5的create调用在初始segment有tool_call_started/permission挂起，恢复segment没有tool_call_completed；HTTP201实际出现在后续model096原始ApiRequest工具返回。因此即使增加201条件，现存真实失败证据仍无法通过该观察器。",
+      "required": "补充有界的审批恢复执行取证路径：同phase/读取者actor内，原始模型真实函数提议callid/name与后续完整raw HTTP工具返回callid精确匹配，并按上述operation精确状态码判定；不补造SSE completed，不仅凭模型自然语言、提议或PG存在就断言工具完成。保留签名HTTP与实际PG精确草稿作为独立业务事实验证；SSE正常完成路径仍可保留，但不能强制所有合法恢复都生成不存在的事件。",
+      "status": "Resolved",
+      "resolution": "修订新增successful_tools raw参数与phase/reader/session绑定；require_tools从本turn实际保存的actor/session派生可信读取者，原始提议及完整raw工具返回按同scope/callid/name关联。审批恢复没有SSE completed时可据真正raw201，不伪造事件；严格状态表与错误冲突拒绝保持。"
+    }
+  ],
+  "approved_revision": {
+    "scope_binding": "require_tools读取当前label-session.json保存的实际actor角色与session，再以context.people[actor].user_id映射读取者，并绑定label:session；raw提议、raw返回必须同phase/reader/session，不能借别的阶段/角色/会话通过。",
+    "proposal_binding": "所有成功证据必须对应该scope真实tool_call_done的name/call_id，工具提议本身不等于执行成功。",
+    "raw_response_path": "仅request.messages中role=tool的content或request.input_items中type=function_call_output的output有资格作完整HTTP工具返回；callid匹配真实提议且状态精确声明才计成功。用户/assistant/其他类型中的HTTP片段或自然语言不能作证。",
+    "status_policy": "9个实际require_tools工具已独立逐条核对实际OpenAPI：createExpenseClaim与previewFinanceAction仅201，其余7项仅200；任何未知工具、create/preview200、其它接口201、202/204/error或错callid/name不算成功。",
+    "SSE_path": "正常SSE tool_call_completed正证据也必须匹配scope真实提议，is_error严格false；同调用错误/冲突不可被另一个raw成功覆盖。恢复路径无completed可以使用真实完整raw返回，但不能补造SSE或声称signed-http包含状态。",
+    "business_gates": "只改checker/journey观察函数及test_harness，不改用户自然语句/Skill/模型/业务门槛；PG exact、history理由、preview原计划、原文字符、负向execute/original扫描保持独立。",
+    "followup": "TDD覆盖无SSEcompleted+正确raw201及scope负例，matching_model_plan仅201、拒绝200/202，保持planID/digest和当前目标/版本/动作/callid精确验证。完成必要检查后新freeze，再两个fresh完整旅程；final5仍failed。"
+  },
+  "conclusion": "raw/scope方案及本次preview正式201修订设计Approved；此前错误状态假设已明确纠正，9项OAS已逐一独立读取。实现需通过有意义的RED/GREEN和必要检查，再重新冻结两次fresh完整真实旅程，不能以观察器修复将final5历史失败晋升为通过。",
+  "design_document_sync": "已复读同步后的设计末段：create+preview201，其余7项200；matching_model_plan正式201和错误plan_trace200夹具纠正已列明。",
+  "preview_201_followup_review": {
+    "status": "Approved",
+    "independent_oas_sha256": "62739c605b677fa0a7f5c3ba824e8767e9dd64d7ce849d9cabe67f0e4a13d827",
+    "independent_oas_mapping": {
+      "api__finance__createExpenseClaim": {
+        "method": "POST",
+        "path": "/v1/finance/expense-claims",
+        "success_statuses": [
+          201
+        ]
+      },
+      "api__finance__listExpenseClaimHistory": {
+        "method": "GET",
+        "path": "/v1/finance/expense-claims/{id}/history",
+        "success_statuses": [
+          200
+        ]
+      },
+      "api__finance__getExpenseClaim": {
+        "method": "GET",
+        "path": "/v1/finance/expense-claims/{id}",
+        "success_statuses": [
+          200
+        ]
+      },
+      "api__finance__updateExpenseClaim": {
+        "method": "PUT",
+        "path": "/v1/finance/expense-claims/{id}",
+        "success_statuses": [
+          200
+        ]
+      },
+      "api__finance__listReviewQueue": {
+        "method": "GET",
+        "path": "/v1/finance/review-queue",
+        "success_statuses": [
+          200
+        ]
+      },
+      "api__finance__previewFinanceAction": {
+        "method": "POST",
+        "path": "/v1/finance/action-previews",
+        "success_statuses": [
+          201
+        ]
+      },
+      "api__finance__listSupportingMaterialImports": {
+        "method": "GET",
+        "path": "/v1/finance/supporting-material-imports",
+        "success_statuses": [
+          200
+        ]
+      },
+      "api__finance__getSupportingMaterialImport": {
+        "method": "GET",
+        "path": "/v1/finance/supporting-material-imports/{id}",
+        "success_statuses": [
+          200
+        ]
+      },
+      "api__finance__listExpenseClaimSummaries": {
+        "method": "GET",
+        "path": "/v1/finance/expense-claim-summaries",
+        "success_statuses": [
+          200
+        ]
+      }
+    },
+    "operation_count": 9,
+    "verified_source_bug": "matching_model_plan现startswith HTTP200，previewFinanceAction正式响应201；原plan_trace200夹具编码了错误协议。",
+    "approved_fix": "仅将对应预检成功证据改为正式201并修正plan_trace，补HTTP200/202拒绝RED；不使用泛2xx、不改变模型/Skill/用户语句/业务状态/预算。",
+    "invariants": [
+      "原planID及digest精确相同",
+      "preview提议当前target_id/expected_version/target_type/action完全匹配",
+      "原真实模型callid/name及scope绑定保留",
+      "匹配真实role=tool或function_call_output返回，不从用户/assistant正文补证",
+      "PGexact/history/原文/preview与负向禁止扫描仍分别验证"
+    ],
+    "red_evidence": "只读observer-201-red.log确认5 failed/16 passed，其中previewFinanceAction-200与真实OAS不符；另raw-scope RED为37 failed，此审查没有执行这些测试。",
+    "limitations": "仅本地源码/文档/日志静态核对，运行了本地YAML/AST数据解析以枚举9项契约，未执行pytest或产品逻辑，未访问模型/PG/API/私有配置/账本。"
+  }
+}

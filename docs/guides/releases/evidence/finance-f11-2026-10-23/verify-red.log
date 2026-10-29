@@ -1,0 +1,42 @@
+F
+=================================== FAILURES ===================================
+_______________________ test_verify_real_pdf_is_readonly _______________________
+
+verify_database = (<xuanpu_finance.storage.store.FinanceStore object at 0x10afeaff0>, [MaintenanceOptions(database_dsn_file=PosixPath('/...2/finance_restore_de69c96899474bdb955036469d829c18'], FinancePrincipal(tenant_id='t', user_id='owner', origin='human'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10b18bdd0>
+
+    async def test_verify_real_pdf_is_readonly(verify_database: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+        """真实PDF实际认证且数据库和密文完全不变，不触及写入或工具。"""
+        store, options, _, _ = verify_database
+        await original(verify_database)
+        before = await snapshot(store, options[0].object_root)
+        def forbidden(*args: Any, **kwargs: Any) -> Any:
+            """所有写入边界及子进程在verify期间必须不可达。"""
+            raise AssertionError('verification reached write boundary')
+        with monkeypatch.context() as patch:
+            patch.setattr(Path, 'mkdir', forbidden)
+            patch.setattr(Path, 'write_bytes', forbidden)
+            patch.setattr(Path, 'write_text', forbidden)
+            patch.setattr(asyncio, 'create_subprocess_exec', forbidden)
+            patch.setattr(type(store), 'migrate', forbidden)
+            patch.setattr(type(store), 'configure', forbidden)
+>           report = await verify(options[0])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+packages/xuanpu-finance/tests/test_f11_verify.py:34: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+options = MaintenanceOptions(database_dsn_file=PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-kra...var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-1998/test_verify_real_pdf_is_readon0/key'))
+
+    async def verify(options: MaintenanceOptions) -> dict[str, Any]:
+        """通过公开维护验证入口调用，缺功能以清晰断言报红。"""
+        name = 'xuanpu_finance.maintenance_verify'
+>       assert importlib.util.find_spec(name) is not None, 'F11独立verify尚未实现'
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: F11独立verify尚未实现
+
+packages/xuanpu-finance/tests/f11_verify_helpers.py:31: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f11_verify.py::test_verify_real_pdf_is_readonly
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 0.47s

@@ -1,0 +1,198 @@
+{
+  "source_files": 48,
+  "issues": [],
+  "files": [
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/api.py",
+      "lines": 187
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/compliance/__init__.py",
+      "lines": 2
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/compliance/archive.py",
+      "lines": 159
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/compliance/archive_checks.py",
+      "lines": 89
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/compliance/archive_http.py",
+      "lines": 194
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/compliance/archive_models.py",
+      "lines": 145
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/compliance/evidence.py",
+      "lines": 51
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/compliance/models.py",
+      "lines": 278
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/compliance/protocol.py",
+      "lines": 71
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/compliance/provider.py",
+      "lines": 67
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/compliance/queue.py",
+      "lines": 51
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/compliance_config.py",
+      "lines": 49
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/config.py",
+      "lines": 217
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/dependencies.py",
+      "lines": 41
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/routes_callback.py",
+      "lines": 53
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/routes_f1.py",
+      "lines": 179
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/routes_f3.py",
+      "lines": 167
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/runtime.py",
+      "lines": 206
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/settlement/provider.py",
+      "lines": 230
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/settlement/provider_models.py",
+      "lines": 123
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/settlement/worker.py",
+      "lines": 205
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/business_allocations.py",
+      "lines": 291
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/common.py",
+      "lines": 269
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f2_checks.py",
+      "lines": 328
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_archive_guards.py",
+      "lines": 76
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_archive_health.py",
+      "lines": 41
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_archive_inputs.py",
+      "lines": 131
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_archive_sources.py",
+      "lines": 53
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_authority.py",
+      "lines": 34
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_catalog.py",
+      "lines": 116
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_evidence_closure.py",
+      "lines": 69
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_execution.py",
+      "lines": 150
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_human.py",
+      "lines": 117
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_inbox.py",
+      "lines": 52
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_plans.py",
+      "lines": 188
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_projection.py",
+      "lines": 124
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_queries.py",
+      "lines": 229
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_red_guards.py",
+      "lines": 46
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_reservations.py",
+      "lines": 30
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_results.py",
+      "lines": 267
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_retention.py",
+      "lines": 37
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_schema.py",
+      "lines": 174
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_targets.py",
+      "lines": 151
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_worker.py",
+      "lines": 107
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f3_workflow_queries.py",
+      "lines": 79
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/imports.py",
+      "lines": 185
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/store.py",
+      "lines": 151
+    },
+    {
+      "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/worker.py",
+      "lines": 330
+    }
+  ]
+}

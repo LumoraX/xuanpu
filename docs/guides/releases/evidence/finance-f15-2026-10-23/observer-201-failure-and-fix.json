@@ -1,0 +1,197 @@
+{
+  "status": "implementation_complete_fresh_real_model_retest_pending",
+  "scope": "Observer correction only; original final5 remains failed and is not a complete acceptance pass",
+  "real_failure": {
+    "result": "final5/result.json",
+    "parent_proposal": "final5/model-095.json",
+    "raw_model_input": "final5/model-096.json",
+    "call_id": "call_750851122d0d489898c7303e645b3fe8",
+    "tool_name": "api__finance__createExpenseClaim",
+    "formal_status": 201,
+    "raw_document_id": "5b226a24c87848d8bfeffe49f230a7ba",
+    "raw_status": "draft",
+    "raw_total": "128.50",
+    "raw_original_exact": true,
+    "raw_actual_newlines": 2,
+    "raw_literal_backslash_n": 0,
+    "sse_tool_started_count": 1,
+    "sse_tool_completed_count": 0,
+    "original_observer_required_only_HTTP200_and_completed_SSE": true
+  },
+  "causes": [
+    "createExpenseClaim formally returns HTTP201; previous observer accepted only HTTP200",
+    "Suspended child tool resumes by appending function_call_output without emitting ToolCallCompleted; raw096 proves model actually received the result",
+    "previewFinanceAction also formally returns201; old matching_model_plan and plan_trace200 fixture would reject the next actual preview"
+  ],
+  "kernel_read_only_observation": {
+    "files": {
+      "loop/tool_batch.py": {
+        "installed_sha256": "1c03eee95b0696a76808ce974f36551ea199011196d0d96e04c27231670e47d6",
+        "local_source_bytes_equal_installed": true,
+        "modified": false
+      },
+      "loop/child_resume_chain.py": {
+        "installed_sha256": "f25c60af02697e0a3b131350040a735039ab15354ad0214b6f98c745b698acc1",
+        "local_source_bytes_equal_installed": true,
+        "modified": false
+      }
+    },
+    "normal_suspend_path": "tool_batch.py SuspendSignal branch explicitly skips ToolCallCompleted",
+    "child_allow_resume_path": "child_resume_chain.py execute_resumed_tool_on_thread dispatches then appends actual function_call_output, no completed emit",
+    "conclusion": "Absence observed in current kernel child-resume path; no kernel patch or synthetic event introduced"
+  },
+  "minimum_fix": {
+    "required_tool_statuses": {
+      "api__finance__createExpenseClaim": "201",
+      "api__finance__previewFinanceAction": "201",
+      "api__finance__listSupportingMaterialImports": "200",
+      "api__finance__getSupportingMaterialImport": "200",
+      "api__finance__listReviewQueue": "200",
+      "api__finance__getExpenseClaim": "200",
+      "api__finance__listExpenseClaimHistory": "200",
+      "api__finance__updateExpenseClaim": "200",
+      "api__finance__listExpenseClaimSummaries": "200"
+    },
+    "scope": [
+      "phase",
+      "reader_id",
+      "session_id"
+    ],
+    "proof": "Same-scope raw proposal matches call_id/name and actual raw response has declared status; SSE missing completed is preserved, explicit SSE contradiction blocks",
+    "raw_containers": "messages requires role=tool and absent/message type; input_items requires function_call_output and absent/tool role; call_id and body read from corresponding container fields",
+    "require_tools_binding": "Existing actual turn session.actor resolves context.people user_id, actual session.session binds scope; no changes to six business phase calls",
+    "matching_preview": "Only actual preview tool output with formal201 and exact proposal target/version/action plus actual plan ID/digest",
+    "negative_checks": "Raw records are not filtered by the nine-operation observer set; all raw permission/execute/original and PostgreSQL business gates remain unchanged"
+  },
+  "actual_final5_offline_reassessment": {
+    "status": "passed_observer_validation_only",
+    "recognized_required_tools": [
+      "api__finance__createExpenseClaim",
+      "api__finance__getSupportingMaterialImport",
+      "api__finance__listSupportingMaterialImports"
+    ],
+    "same_actual_phase_actor_session": true,
+    "wrong_scopes_rejected": {
+      "phase": true,
+      "reader_id": true,
+      "session_id": true
+    },
+    "no_completed_event_fabricated": true,
+    "raw_formal_201_proved": true,
+    "actual_original_exact": true,
+    "original_result_unchanged": true,
+    "complete_journey_status": "failed_not_salvaged"
+  },
+  "verification": {
+    "observer-201-red": {
+      "tests": 21,
+      "failures": 5,
+      "errors": 0,
+      "skipped": 0,
+      "log": "observer-201-red.log",
+      "xml": "observer-201-red.xml"
+    },
+    "observer-raw-scope-red": {
+      "tests": 37,
+      "failures": 37,
+      "errors": 0,
+      "skipped": 0,
+      "log": "observer-raw-scope-red.log",
+      "xml": "observer-raw-scope-red.xml"
+    },
+    "observer-preview-red": {
+      "tests": 7,
+      "failures": 3,
+      "errors": 0,
+      "skipped": 0,
+      "log": "observer-preview-red.log",
+      "xml": "observer-preview-red.xml"
+    },
+    "observer-container-red": {
+      "tests": 8,
+      "failures": 8,
+      "errors": 0,
+      "skipped": 0,
+      "log": "observer-container-red.log",
+      "xml": "observer-container-red.xml"
+    },
+    "observer-201-green": {
+      "tests": 109,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "observer-201-green.log",
+      "xml": "observer-201-green.xml"
+    }
+  },
+  "first_red_note": "Preliminary contract audit expected preview200 and failed against actual declared201; corrected to formal201 before implementation. Historical raw log retained.",
+  "formal_contract_statuses": {
+    "createExpenseClaim": [
+      "201"
+    ],
+    "listExpenseClaimHistory": [
+      "200"
+    ],
+    "getExpenseClaim": [
+      "200"
+    ],
+    "updateExpenseClaim": [
+      "200"
+    ],
+    "listReviewQueue": [
+      "200"
+    ],
+    "previewFinanceAction": [
+      "201"
+    ],
+    "listSupportingMaterialImports": [
+      "200"
+    ],
+    "getSupportingMaterialImport": [
+      "200"
+    ],
+    "listExpenseClaimSummaries": [
+      "200"
+    ]
+  },
+  "other_hardcoded_financial_status_audit": {
+    "history_decision_read": "listExpenseClaimHistory200 declared; unchanged",
+    "manual_HTTP200": "Public integration-actions wrapper status, not original finance HTTP response code; not relabeled as raw201 proof",
+    "public_route_session_trash": "Platform HTTP contract, not finance operation statuses; unchanged",
+    "public_workspace_upload": "Existing platform upload200/201 handling unchanged"
+  },
+  "ruff": "F,S108,I,TC,C901 selected three changed Python files passed",
+  "source_sha256": {
+    "scripts/acceptance/finance_model_checks.py": "1983f9b4750a7fa28275d88a6e2bf8e94c8f051c87c4063a4743cfbee4784da1",
+    "scripts/acceptance/finance_model_journey.py": "6521428ce6e3d589b608a97edea86085c743745cb18ead43a4e0ec98c0eed7c0",
+    "packages/xuanpu-finance/tests/test_f15_model_harness.py": "8947016ec2416ad942937096e483b09f3ea63b53e02a9e5ffbac7aae12f39fa4"
+  },
+  "raw_evidence_sha256": {
+    "final5/model-095.json": "0715d4bf791dd7d94faf3d322092a8b16438c0ffb2d0642e4c21d820819c355f",
+    "final5/model-096.json": "365d540fd9397c7248093a2823a3fb85ba365fe2b6e12bbb804ec70d6bedeb6b",
+    "final5/02-create-session.json": "25710e246fb97e4b909e09869cf6a422589473a5c0d199ddd80da0e0659f3c78",
+    "final5/environment.json": "d818680afa18aac30525f1c54ef6ac94039d2b8d8362244602d1fb4635e7e92a",
+    "final5/result.json": "5732a2bf5e01138370b67be0518c19a80bca70d19a331d4eb48ec5dec41df13f",
+    "observer-201-red.log": "af8cbc66455a8ff165c35fb5f75e9b0c6c2c05e530656ee9be148adc30555b80",
+    "observer-201-red.xml": "3333da1024b3d266c6b59c868cffcef3e722d1d847487b1e2dacc1f1199d4528",
+    "observer-raw-scope-red.log": "542333652fdd6acdf8178cede0bef2c707210809708469a9c1d4e4b8aaa3b5ed",
+    "observer-raw-scope-red.xml": "f5332b3e7b6a6be38e285d8fbef60ca333684889a11fd3267a5112892ad68647",
+    "observer-preview-red.log": "335571719e2c6b9ce7e1e78003326ac7fcc8c435ed5f66a4a4d32b54bf594ab0",
+    "observer-preview-red.xml": "72887083ba459facb99981bbbd6b8182cf40a3cb95d68c6943c9cf9f9fbf6729",
+    "observer-container-red.log": "d58ba9a34fb6325af0e87227ea03045635bcd39d7ba608348a266dde725e1776",
+    "observer-container-red.xml": "b42927f6bb02bb86a095a8c0b084f94c20e7bca5a35f4ab8a8a824c49c81cc2a",
+    "observer-201-green.log": "38598ead33504bed22222efa15791f5a3797b62d9f5aaeba6f8ee24a1ed0c8c9",
+    "observer-201-green.xml": "02b8a9b169fbd5a437af40e684ad94d43274456f8c60a55bf7c45f7e92f8e8ab"
+  },
+  "boundaries": {
+    "payment": false,
+    "independent_storage": true,
+    "human_business_approval": true,
+    "tool_or_business_permission_expansion": false,
+    "postgres_accessed": false,
+    "real_model_called": false,
+    "private_configuration_accessed": false,
+    "kernel_modified": false,
+    "committed": false
+  }
+}

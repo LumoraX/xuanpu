@@ -1,0 +1,9 @@
+{
+  "source_sha256": "1983f9b4750a7fa28275d88a6e2bf8e94c8f051c87c4063a4743cfbee4784da1",
+  "result_sha256": "dcd95457f26079b14ae5b13a8107bb6f12ba9191e7bf134e8d30a0a2bc0f3e58",
+  "current_checker_result": false,
+  "raw_status_unchanged": "failed",
+  "complete_journey": false,
+  "actual_model_calls": 0,
+  "postgres_access": false
+}

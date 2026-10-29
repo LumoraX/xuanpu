@@ -1,0 +1,12 @@
+{
+  "status": "partial",
+  "scope": "repository policy/config schemas and supplied session materials",
+  "company_confirmed_policy_and_roster": "not_provided_or_verified",
+  "connected_source_search": {
+    "query": "报销制度",
+    "outcome": "unavailable",
+    "error": "Search provider not found"
+  },
+  "does_not_establish": "absence of any existing company policy",
+  "resolution": "company supplies or confirms controlled policy and actual employee-role mapping; separate checklist"
+}

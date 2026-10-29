@@ -1,0 +1,136 @@
+{
+  "status": "Approved",
+  "review_date": "2026-10-24",
+  "phase": "observer201-before-fresh-final6-final7",
+  "scope": [
+    "scripts/acceptance/finance_model_checks.py",
+    "scripts/acceptance/finance_model_journey.py",
+    "packages/xuanpu-finance/tests/test_f15_model_harness.py"
+  ],
+  "review_type": "独立观察器窄修质量复审与有限确定性回归",
+  "spec_prerequisite": "observer-201-spec.json当前Approved；历史O201-S01已关闭，本审查另行实读实现/测试与实际归档。",
+  "findings": [],
+  "required_changes": [],
+  "quality_assessment": [
+    {
+      "file": "scripts/acceptance/finance_model_checks.py",
+      "lines": [
+        14,
+        45
+      ],
+      "assessment": "九工具精确状态表对应实际发布OAS，只有createExpenseClaim/previewFinanceAction允许201，其余七项仅200，不放宽成任意2xx。原始来源分别识别messages的role=tool且type缺省/message、input_items的function_call_output且role缺省/tool，再使用对应call-id/正文域；跨容器role/type伪装、名称不一致或显式错误不能洗成工具证据。"
+    },
+    {
+      "file": "scripts/acceptance/finance_model_checks.py",
+      "lines": [
+        143,
+        166
+      ],
+      "assessment": "成功工具须同时有当前phase/actor/session真实tool_call_done提议和同call_id实际raw工具返回；提议、自然语言及PG存在均不单独算成功。已有同call SSE completed若name/is_error/status有冲突则拒绝，缺completed时使用真实raw，不伪造SSE。固定九工具表只服务该有限正证据门槛，不过滤或删除其他原始轨迹与负向证据。"
+    },
+    {
+      "file": "scripts/acceptance/finance_model_checks.py",
+      "lines": [
+        56,
+        91
+      ],
+      "assessment": "模型预检复用相同真实tool容器边界，正式状态修为201，同时保持目标ID/type、expected_version、action、call_id及实际planID/digest精确匹配；旧200/202/204及非工具、错误容器文本不能冒充计划回包。"
+    },
+    {
+      "file": "scripts/acceptance/finance_model_journey.py",
+      "lines": [
+        146,
+        157
+      ],
+      "assessment": "require_tools由本label-session.json实际actor角色映射user_id，并读取本turn session绑定phase/reader/session；六处业务场景调用及自然用户语句未变，不引入手工补创建、补预检或权限升级。"
+    },
+    {
+      "file": "packages/xuanpu-finance/tests/test_f15_model_harness.py",
+      "lines": [
+        169,
+        361
+      ],
+      "assessment": "回归覆盖201正式正例、其它状态/未知工具、缺raw、只提议、错callid/name/scope、非tool片段、跨容器伪装、显式错误及SSE冲突，并以实际OpenAPI核对九项状态；保留旧计划版本与独立业务事实/安全测试。测试模拟协议形状，只作观察层确定性证明。"
+    },
+    {
+      "assessment": "独立比较前冻结740个输入，仅指定checker/journey/test_harness三文件改变。Skill、模型工厂、预算、产品源与其它验收门槛字节未变；原失败阶段没有晋升为完整通过。"
+    }
+  ],
+  "verification": [
+    {
+      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q",
+      "result": "109 passed in 2.27s",
+      "exit_code": 0,
+      "boundary": "包含既有null-query loopback HTTP测试，实际执行；其余为离线确定性回归。未访问外部API、PG、真实模型或私有配置。"
+    },
+    {
+      "command": "uv run ruff check --select F,S108,I,TC scripts/acceptance/finance_model_checks.py scripts/acceptance/finance_model_journey.py packages/xuanpu-finance/tests/test_f15_model_harness.py",
+      "result": "All checks passed!",
+      "exit_code": 0
+    },
+    {
+      "check": "独立实读design-review/spec/failure-and-fix/spec-reassessment和新增源码/回归",
+      "result": "状态/来源/作用域/预检计划边界与Approved窄修设计一致；历史RED没有覆盖、没有回滚共享源重跑。"
+    },
+    {
+      "check": "前冻结740项重新SHA256比较",
+      "reference_sha256": "47b3e2ad34fceade57876d8120a79d60cd9923cb497df26c1f1f8b7ea27d12ec",
+      "changed": [
+        "packages/xuanpu-finance/tests/test_f15_model_harness.py",
+        "scripts/acceptance/finance_model_checks.py",
+        "scripts/acceptance/finance_model_journey.py"
+      ],
+      "result": "exactly_three_permitted_files"
+    },
+    {
+      "check": "独立重新计算本轮三文件SHA256",
+      "result": "全部匹配当前Approved spec及父agent指定值。"
+    },
+    {
+      "check": "本地归档重评脚本调试",
+      "result": "首次比较错把create参数当content包装而触发KeyError；按实际body.invoice_information结构修正后下列独立原文比较通过。未修改源或归档。"
+    }
+  ],
+  "independent_actual_final5_reassessment": {
+    "input": "final5归档，只读，无livePG查询",
+    "recognized_required_tools": [
+      "api__finance__createExpenseClaim",
+      "api__finance__getSupportingMaterialImport",
+      "api__finance__listSupportingMaterialImports"
+    ],
+    "create_actual_raw_sources_and_statuses": [
+      [
+        "messages",
+        "HTTP 201"
+      ],
+      [
+        "input_items",
+        "HTTP 201"
+      ]
+    ],
+    "same_call_raw_bodies_equal": true,
+    "raw_invoice_information_equals_actual_proposal": true,
+    "matching_SSE_tool_call_completed_count": 0,
+    "SSE_fabricated": false,
+    "original_journey_status": "failed",
+    "promoted_to_full_pass": false,
+    "assessment": "独立重跑现观察函数准确识别现有3项required；真实raw201与提议关联成立。该阶段证据不等于后续修改/审批/原件/安全全旅程已执行。"
+  },
+  "source_sha256": {
+    "scripts/acceptance/finance_model_checks.py": "1983f9b4750a7fa28275d88a6e2bf8e94c8f051c87c4063a4743cfbee4784da1",
+    "scripts/acceptance/finance_model_journey.py": "6521428ce6e3d589b608a97edea86085c743745cb18ead43a4e0ec98c0eed7c0",
+    "packages/xuanpu-finance/tests/test_f15_model_harness.py": "8947016ec2416ad942937096e483b09f3ea63b53e02a9e5ffbac7aae12f39fa4"
+  },
+  "limitations": [
+    "只批准这三文件观察层窄修，不是最终全局或业务验收批准。",
+    "未PG、真实模型、外部API、私有配置或私有账本；没有修改产品/运行器/测试源或提交。",
+    "未重复全量pytest/quick、strict mypy、全部工程约束或制品构建，其他agent结果不算本审查实际运行。",
+    "正式preview201在本轮有OAS及确定性反例证据，完整真实模型预检/人工批准流程仍需fresh旅程。"
+  ],
+  "pending": [
+    "重新冻结并核受影响制品；按原自然用户语句执行两次独立fresh完整真实模型旅程，保留所有失败且继续累计原预算。",
+    "完成原PG exact、真实人工审批来源/理由/历史、原件保全、越权/注入与零支付门槛，并独立核原始语义；final5继续保留failed。",
+    "全量/quick及最终文档和总审通过后，主agent再判断仅本地提交条件。"
+  ],
+  "approval_scope": "未发现阻断观察器窄修进入新冻结及fresh双轮完整真实流程的质量问题。"
+}

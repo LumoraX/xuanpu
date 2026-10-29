@@ -1,0 +1,971 @@
+{
+  "status": "SupersededByNarrowRootDirectProposal",
+  "review_date": "2026-10-24",
+  "scope": "只读真实final6因果基线与用户已授权Skill效率优化建议；拒绝的总400/会话600000提案绝不应用，无产品/API/内核/缓存扩展。",
+  "skill_workflow": "已阅读brainstorming与writing-skills；现有真实模型final6作为行为RED，先解释因果与2-3方案，再由root整合窄设计；本次不改Skill或实施。静态指令/协议回归仅结构验证，行为GREEN仍须真实冻结旅程。",
+  "authorization_and_fixed_limits": {
+    "user_direction": "先不扩额，优化发票报销重复查询/委派降低调用及token，再继续完整验收。",
+    "global_stream_cap": 240,
+    "max_session_tokens": 200000,
+    "journey_stream_cap": 120,
+    "max_iterations": 20,
+    "stop_at_usage_unknown_count": 5,
+    "known_input_cap": 3000000,
+    "known_output_cap": 150000,
+    "existing_attempts": 143,
+    "existing_completed": 141,
+    "existing_unknown_attempts": [
+      56,
+      59
+    ],
+    "remaining_global_attempts": 97,
+    "no_400_or_600000_applied": true,
+    "no_counter_reset": true,
+    "payment": false,
+    "approval_origin": "human",
+    "storage": "independent_finance",
+    "delivery": "local_commit_only_after_complete_no_merge_or_deploy"
+  },
+  "baseline": {
+    "journey": "final6",
+    "owner_session": "ses_7f82ff5a94ccbd570c736f5e256494a1",
+    "scope": "仅owner相同平台会话前三个业务phase；不包含route/manager/finance，不能冒称整个旅程模型总量。",
+    "streams": 35,
+    "input_tokens": 199029,
+    "output_tokens": 6277,
+    "total_tokens": 205306,
+    "phase_metrics": {
+      "01-clarify:session": {
+        "streams": 9,
+        "input_tokens": 45579,
+        "output_tokens": 1189,
+        "trace_range": [
+          "final6/model-099.json",
+          "final6/model-107.json"
+        ]
+      },
+      "02-create:session": {
+        "streams": 15,
+        "input_tokens": 79171,
+        "output_tokens": 2575,
+        "trace_range": [
+          "final6/model-108.json",
+          "final6/model-122.json"
+        ]
+      },
+      "03-edit-preview:session": {
+        "streams": 11,
+        "input_tokens": 74279,
+        "output_tokens": 2513,
+        "trace_range": [
+          "final6/model-123.json",
+          "final6/model-133.json"
+        ]
+      }
+    },
+    "tool_proposals": {
+      "api__finance__getFinanceCapabilities": 8,
+      "call_skill": 5,
+      "api__finance__listLegalEntities": 4,
+      "api__catalog__listExpenseCategories": 3,
+      "api__catalog__listCostCenters": 3,
+      "api__finance__listSupportingMaterialImports": 4,
+      "api__finance__getSupportingMaterialImport": 3,
+      "api__finance__createExpenseClaim": 1,
+      "api__finance__getExpenseClaim": 1,
+      "api__finance__updateExpenseClaim": 1,
+      "api__finance__previewFinanceAction": 1
+    },
+    "unknown_usage_in_owner_baseline": 0,
+    "raw_streams": [
+      {
+        "trace": "final6/model-099.json",
+        "trace_sha256": "d3582c9334120ea85557c1a90ef37f674cf42be2a6da58939a3d2360db2b23d1",
+        "phase": "01-clarify:session",
+        "input_tokens": 2342,
+        "output_tokens": 144,
+        "tool_calls": [
+          {
+            "trace": "final6/model-099.json",
+            "phase": "01-clarify:session",
+            "call_id": "call_956c3e08e4d74c45bd80c258f00b0289",
+            "tool": "api__finance__getFinanceCapabilities",
+            "args_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-100.json",
+        "trace_sha256": "19b43b50f672e3b9ae3cc2ed5d2aad525106e885b92512e8a8bf51f21fdf3184",
+        "phase": "01-clarify:session",
+        "input_tokens": 2415,
+        "output_tokens": 222,
+        "tool_calls": [
+          {
+            "trace": "final6/model-100.json",
+            "phase": "01-clarify:session",
+            "call_id": "call_fd3492837b2c46ceb86f82d49f9d85f3",
+            "tool": "call_skill",
+            "args_sha256": "bfa9efb05369ddcf5533d050bfc8234d9eafa48dc0a63297a17593322246ca43",
+            "delegated_skill": "expense-reimbursement"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-101.json",
+        "trace_sha256": "81c9076504d5f3142bcf0bde21c081b008c11bc5e3c02a901dd800b7aceebbc5",
+        "phase": "01-clarify:session",
+        "input_tokens": 6076,
+        "output_tokens": 44,
+        "tool_calls": [
+          {
+            "trace": "final6/model-101.json",
+            "phase": "01-clarify:session",
+            "call_id": "call_961f0676d40d42bc940c22fb29e3b49a",
+            "tool": "api__finance__getFinanceCapabilities",
+            "args_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-102.json",
+        "trace_sha256": "82c9ee9c1090b7f41eab32b68bb48c7292d8a1dced2b7fcf190d3740e0b6065d",
+        "phase": "01-clarify:session",
+        "input_tokens": 6149,
+        "output_tokens": 45,
+        "tool_calls": [
+          {
+            "trace": "final6/model-102.json",
+            "phase": "01-clarify:session",
+            "call_id": "call_dd0f9d6689d2481ca8c0e1b6175ab550",
+            "tool": "api__finance__listLegalEntities",
+            "args_sha256": "8fd1681d447893acbf2747f8bc64520e719a279807caed0e66c66f1011c0ca40"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-103.json",
+        "trace_sha256": "acb600ce781a2574fbd2acfab2b1955bcd1f111216e2ad65c7d37f96cb645e93",
+        "phase": "01-clarify:session",
+        "input_tokens": 6263,
+        "output_tokens": 181,
+        "tool_calls": [
+          {
+            "trace": "final6/model-103.json",
+            "phase": "01-clarify:session",
+            "call_id": "call_14c91a6903604251b51907a614e39bf2",
+            "tool": "api__catalog__listExpenseCategories",
+            "args_sha256": "a4ecb2fcbedec4d63d5c8698adb30341990634b8076eea0a26496442e82bdb9a"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-104.json",
+        "trace_sha256": "cd86a7a672eb4bc68d8edaed1b4cc8d0aec62fbe9d1a10839a21339378542472",
+        "phase": "01-clarify:session",
+        "input_tokens": 6499,
+        "output_tokens": 38,
+        "tool_calls": [
+          {
+            "trace": "final6/model-104.json",
+            "phase": "01-clarify:session",
+            "call_id": "call_99d3ddc8379c4000acab0c872048d9c6",
+            "tool": "api__catalog__listCostCenters",
+            "args_sha256": "ea0db8105eec8dc2abca20664663bf7e93d0d3e1a3aa8906d9909260b32964f4"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-105.json",
+        "trace_sha256": "1e13b83c65353bb3d182892f0186ec0928b5e922efdb9a81ac0d8d76f7607a02",
+        "phase": "01-clarify:session",
+        "input_tokens": 6419,
+        "output_tokens": 35,
+        "tool_calls": [
+          {
+            "trace": "final6/model-105.json",
+            "phase": "01-clarify:session",
+            "call_id": "call_c45957d89aa94c1d9c2920a2159839d9",
+            "tool": "api__finance__listSupportingMaterialImports",
+            "args_sha256": "a4ecb2fcbedec4d63d5c8698adb30341990634b8076eea0a26496442e82bdb9a"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-106.json",
+        "trace_sha256": "fac9119c1061eb64af84b51a9e34125e40610d1715b6e01594eedf647a462408",
+        "phase": "01-clarify:session",
+        "input_tokens": 6473,
+        "output_tokens": 357,
+        "tool_calls": []
+      },
+      {
+        "trace": "final6/model-107.json",
+        "trace_sha256": "e02225136173124a2699c0d45dfaa78ff39f5ba091f180095bd2064c0cd79caf",
+        "phase": "01-clarify:session",
+        "input_tokens": 2943,
+        "output_tokens": 123,
+        "tool_calls": []
+      },
+      {
+        "trace": "final6/model-108.json",
+        "trace_sha256": "c35b8a989e16921736bf49d275c4ace65ded23c3e4c43a1c9312ebf86a34ba71",
+        "phase": "02-create:session",
+        "input_tokens": 3280,
+        "output_tokens": 65,
+        "tool_calls": [
+          {
+            "trace": "final6/model-108.json",
+            "phase": "02-create:session",
+            "call_id": "call_3bcda78ab03641f2a37a895b78c106c6",
+            "tool": "api__finance__getFinanceCapabilities",
+            "args_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-109.json",
+        "trace_sha256": "e99513b3516992bf96f5048880b24ccf603899de21977d17fbbdbd5e81e1d200",
+        "phase": "02-create:session",
+        "input_tokens": 3285,
+        "output_tokens": 444,
+        "tool_calls": [
+          {
+            "trace": "final6/model-109.json",
+            "phase": "02-create:session",
+            "call_id": "call_3204a88745314b418b2fbdad6617cb5d",
+            "tool": "call_skill",
+            "args_sha256": "33a054bf4d5dab97c79ee78b842224a0ecaf1d47c2a64ea658a669a2d0fdf27f",
+            "delegated_skill": "invoice-intake"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-110.json",
+        "trace_sha256": "ce15601234a56870148eb8dfaf9a44d83b765285b862e7761aa8ffe98593cd7a",
+        "phase": "02-create:session",
+        "input_tokens": 4103,
+        "output_tokens": 90,
+        "tool_calls": [
+          {
+            "trace": "final6/model-110.json",
+            "phase": "02-create:session",
+            "call_id": "call_d6e48db0166a4cf68b6aee10c5b4a4df",
+            "tool": "api__finance__getFinanceCapabilities",
+            "args_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-111.json",
+        "trace_sha256": "4316883f775e3fdb7975d5ff15a413cda9d4481f58f8b4ea18d585fe23029851",
+        "phase": "02-create:session",
+        "input_tokens": 4247,
+        "output_tokens": 38,
+        "tool_calls": [
+          {
+            "trace": "final6/model-111.json",
+            "phase": "02-create:session",
+            "call_id": "call_beefcf270af547b39f2ec43bde0c301b",
+            "tool": "api__finance__listLegalEntities",
+            "args_sha256": "8fd1681d447893acbf2747f8bc64520e719a279807caed0e66c66f1011c0ca40"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-112.json",
+        "trace_sha256": "265d84ce87bbdb89a087190d15313b71405e5d7e38d0b75d25f7187459c33880",
+        "phase": "02-create:session",
+        "input_tokens": 4347,
+        "output_tokens": 47,
+        "tool_calls": [
+          {
+            "trace": "final6/model-112.json",
+            "phase": "02-create:session",
+            "call_id": "call_9f342847f1cf447892fdd651f45e7d39",
+            "tool": "api__finance__listSupportingMaterialImports",
+            "args_sha256": "57c328e100bc0b165381aadfd2b8a223d796b02a1871ad6d9bce886fb70b3b17"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-113.json",
+        "trace_sha256": "570a55345c9d793b85cbccd64fe3c5d1bf6932c1b48a0e4877b6cfd1574bf402",
+        "phase": "02-create:session",
+        "input_tokens": 4468,
+        "output_tokens": 41,
+        "tool_calls": [
+          {
+            "trace": "final6/model-113.json",
+            "phase": "02-create:session",
+            "call_id": "call_362c106fd6874f74afa26ee953155e8b",
+            "tool": "api__finance__getSupportingMaterialImport",
+            "args_sha256": "fb50312d90422559fd254ae61be13538eb5b398b9d5d87bbb33080a15912422d"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-114.json",
+        "trace_sha256": "9dbf8a6742ec2d943bd84540344047fb8733a4cccf34a033ae0ad8dc3149f1a8",
+        "phase": "02-create:session",
+        "input_tokens": 4931,
+        "output_tokens": 366,
+        "tool_calls": []
+      },
+      {
+        "trace": "final6/model-115.json",
+        "trace_sha256": "4616f855adbcc7a6f1196c2767a4aa8c5a4837e2361575e9b11a3d262df008f9",
+        "phase": "02-create:session",
+        "input_tokens": 3922,
+        "output_tokens": 548,
+        "tool_calls": [
+          {
+            "trace": "final6/model-115.json",
+            "phase": "02-create:session",
+            "call_id": "call_509f362484cd462e8592b30ee0905235",
+            "tool": "call_skill",
+            "args_sha256": "a4bad45f81c402128fe82370e581e9994b7f0d7c9f6f86d621dd995a7d6bbabb",
+            "delegated_skill": "expense-reimbursement"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-116.json",
+        "trace_sha256": "051f7652ebc0f528daafbc49ec99f22a83d9f212ad3fcd189a63311fa6e026fb",
+        "phase": "02-create:session",
+        "input_tokens": 6412,
+        "output_tokens": 48,
+        "tool_calls": [
+          {
+            "trace": "final6/model-116.json",
+            "phase": "02-create:session",
+            "call_id": "call_f6f364317d9a49e2a128950a9ba0e5bc",
+            "tool": "api__finance__getFinanceCapabilities",
+            "args_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-117.json",
+        "trace_sha256": "9479cf033502b570034c2d16edc451b95e2971409153fe539d9f6fe46336fc06",
+        "phase": "02-create:session",
+        "input_tokens": 6485,
+        "output_tokens": 64,
+        "tool_calls": [
+          {
+            "trace": "final6/model-117.json",
+            "phase": "02-create:session",
+            "call_id": "call_d280a85dd4c44daab03620e373e25c27",
+            "tool": "api__finance__listLegalEntities",
+            "args_sha256": "8fd1681d447893acbf2747f8bc64520e719a279807caed0e66c66f1011c0ca40"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-118.json",
+        "trace_sha256": "4115a8a8aa7a4ecf6a8eeea63988fe932c0314518e96828aa479e289c537a561",
+        "phase": "02-create:session",
+        "input_tokens": 6574,
+        "output_tokens": 142,
+        "tool_calls": [
+          {
+            "trace": "final6/model-118.json",
+            "phase": "02-create:session",
+            "call_id": "call_9aa21e1c82f5497fa77655500bf962ce",
+            "tool": "api__catalog__listExpenseCategories",
+            "args_sha256": "20102cd5946057b8af5ba3c47b450b2b779e1af13f15a56ea9f4338abfb333b1"
+          },
+          {
+            "trace": "final6/model-118.json",
+            "phase": "02-create:session",
+            "call_id": "call_b08406f621b64f679f12280532342ca4",
+            "tool": "api__catalog__listCostCenters",
+            "args_sha256": "3a510366e49a4ef39fb9f8752b103cc898ac6ab5f32b210ef14f34bed10ebc6f"
+          },
+          {
+            "trace": "final6/model-118.json",
+            "phase": "02-create:session",
+            "call_id": "call_b622bfbcf2ab43ee98acc66202177aa5",
+            "tool": "api__finance__listSupportingMaterialImports",
+            "args_sha256": "20102cd5946057b8af5ba3c47b450b2b779e1af13f15a56ea9f4338abfb333b1"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-119.json",
+        "trace_sha256": "d0e138ded65df4b99e5723ef9e6f1fb3d04cd72e3bc2df8d4e17b2a756ff941c",
+        "phase": "02-create:session",
+        "input_tokens": 6973,
+        "output_tokens": 52,
+        "tool_calls": [
+          {
+            "trace": "final6/model-119.json",
+            "phase": "02-create:session",
+            "call_id": "call_bdcb2b2abff64c3a8ab9674e49a8a4c0",
+            "tool": "api__finance__getSupportingMaterialImport",
+            "args_sha256": "fb50312d90422559fd254ae61be13538eb5b398b9d5d87bbb33080a15912422d"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-120.json",
+        "trace_sha256": "79a53f6de1ad8724b65d0a27bf464eb7a9470e61d5a449fb0229848fb2672fb4",
+        "phase": "02-create:session",
+        "input_tokens": 7444,
+        "output_tokens": 216,
+        "tool_calls": [
+          {
+            "trace": "final6/model-120.json",
+            "phase": "02-create:session",
+            "call_id": "call_3b90eedc556a4b038e2c288ec0936b8d",
+            "tool": "api__finance__createExpenseClaim",
+            "args_sha256": "bc8228877f4fd4c7b2945e41150a3f873cd064d3d851c6208b9a3f2d2ad0dede"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-121.json",
+        "trace_sha256": "f1d1481ce84537318df9fd7e8f5d56896c1f906e3c3a96f963b2537cb7e1ff4f",
+        "phase": "02-create:session",
+        "input_tokens": 8027,
+        "output_tokens": 206,
+        "tool_calls": []
+      },
+      {
+        "trace": "final6/model-122.json",
+        "trace_sha256": "a3c9ca35fcb9a36521863da1711fa2656c54146dcf2a666f1e64eb3912a1264c",
+        "phase": "02-create:session",
+        "input_tokens": 4673,
+        "output_tokens": 208,
+        "tool_calls": []
+      },
+      {
+        "trace": "final6/model-123.json",
+        "trace_sha256": "63a3919150ac99a7b79f12baeb8489522fd03c57cafc94ea43e72b95c3e0dac7",
+        "phase": "03-edit-preview:session",
+        "input_tokens": 5144,
+        "output_tokens": 120,
+        "tool_calls": [
+          {
+            "trace": "final6/model-123.json",
+            "phase": "03-edit-preview:session",
+            "call_id": "call_104266c4f6ab4fc8946bae9fa52e8087",
+            "tool": "api__finance__getFinanceCapabilities",
+            "args_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-124.json",
+        "trace_sha256": "1e5e44929c188f6fb120989fa11e5e3a8504840332933a0ddd3698ce9bbd865d",
+        "phase": "03-edit-preview:session",
+        "input_tokens": 5132,
+        "output_tokens": 596,
+        "tool_calls": [
+          {
+            "trace": "final6/model-124.json",
+            "phase": "03-edit-preview:session",
+            "call_id": "call_fd54abc8b6af4845bc6827fa3b3bcbcc",
+            "tool": "call_skill",
+            "args_sha256": "fa11cef4d7d6d3fe3e21bba539407f5feb78bbc7557c3c2848c9796ac9183c90",
+            "delegated_skill": "expense-reimbursement"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-125.json",
+        "trace_sha256": "efd3e7ae3e7961dfac630902af6dd3bc41a5671574e7f5006d7715e9c14c1f4b",
+        "phase": "03-edit-preview:session",
+        "input_tokens": 6428,
+        "output_tokens": 74,
+        "tool_calls": [
+          {
+            "trace": "final6/model-125.json",
+            "phase": "03-edit-preview:session",
+            "call_id": "call_f3c318ac52834373a8601151710642a4",
+            "tool": "api__finance__getFinanceCapabilities",
+            "args_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-126.json",
+        "trace_sha256": "ae800c47b1d0782667ee772055f0a2568d1af02f64062969c37b30cfc8eb4d1f",
+        "phase": "03-edit-preview:session",
+        "input_tokens": 6501,
+        "output_tokens": 86,
+        "tool_calls": [
+          {
+            "trace": "final6/model-126.json",
+            "phase": "03-edit-preview:session",
+            "call_id": "call_3ddb7232ee78419c963c9cf5a8c4553b",
+            "tool": "api__finance__listLegalEntities",
+            "args_sha256": "8fd1681d447893acbf2747f8bc64520e719a279807caed0e66c66f1011c0ca40"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-127.json",
+        "trace_sha256": "9f6d2661d4212f194c9c84910b88bd338474302db77175e43642f7285e41ee1f",
+        "phase": "03-edit-preview:session",
+        "input_tokens": 6590,
+        "output_tokens": 208,
+        "tool_calls": [
+          {
+            "trace": "final6/model-127.json",
+            "phase": "03-edit-preview:session",
+            "call_id": "call_7f05cdc4917a4c8ca2f552f8a1bf37a9",
+            "tool": "api__catalog__listExpenseCategories",
+            "args_sha256": "20102cd5946057b8af5ba3c47b450b2b779e1af13f15a56ea9f4338abfb333b1"
+          },
+          {
+            "trace": "final6/model-127.json",
+            "phase": "03-edit-preview:session",
+            "call_id": "call_0c6a7cc289734bdca2d206dfa62ddecb",
+            "tool": "api__catalog__listCostCenters",
+            "args_sha256": "3a510366e49a4ef39fb9f8752b103cc898ac6ab5f32b210ef14f34bed10ebc6f"
+          },
+          {
+            "trace": "final6/model-127.json",
+            "phase": "03-edit-preview:session",
+            "call_id": "call_b0f039900ff444f0b35e2d603577ddb4",
+            "tool": "api__finance__getExpenseClaim",
+            "args_sha256": "8e79631bd802d4d6244cd74e4dc6d9a2e4e65399dd48afe92622ae8d8057b103"
+          },
+          {
+            "trace": "final6/model-127.json",
+            "phase": "03-edit-preview:session",
+            "call_id": "call_5337d143f9994a3da2b407c2ef1c533a",
+            "tool": "api__finance__listSupportingMaterialImports",
+            "args_sha256": "20102cd5946057b8af5ba3c47b450b2b779e1af13f15a56ea9f4338abfb333b1"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-128.json",
+        "trace_sha256": "159650709b734adcbe0ed6b9133bb40547aa76045b50ac1f78d2281196b56faf",
+        "phase": "03-edit-preview:session",
+        "input_tokens": 7469,
+        "output_tokens": 59,
+        "tool_calls": [
+          {
+            "trace": "final6/model-128.json",
+            "phase": "03-edit-preview:session",
+            "call_id": "call_bd2038c3e570479ca2e88854fceb5776",
+            "tool": "api__finance__getSupportingMaterialImport",
+            "args_sha256": "fb50312d90422559fd254ae61be13538eb5b398b9d5d87bbb33080a15912422d"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-129.json",
+        "trace_sha256": "6a5c3fd3dfb62d307565862ba9884054ba1d742060f5fdbc9d988bc4d2308c1e",
+        "phase": "03-edit-preview:session",
+        "input_tokens": 7931,
+        "output_tokens": 230,
+        "tool_calls": [
+          {
+            "trace": "final6/model-129.json",
+            "phase": "03-edit-preview:session",
+            "call_id": "call_aef5489aa6114979bbb5273aeb66c54c",
+            "tool": "api__finance__updateExpenseClaim",
+            "args_sha256": "a51fe4c5f2a7ad37348ec9017db7516cf4fb2ab6cb1993b1b8695b4f8accac37"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-130.json",
+        "trace_sha256": "be49d6d19444f66d81f288fda1194aba678c01f079e44c3328f8b29fd6945cd6",
+        "phase": "03-edit-preview:session",
+        "input_tokens": 8582,
+        "output_tokens": 130,
+        "tool_calls": [
+          {
+            "trace": "final6/model-130.json",
+            "phase": "03-edit-preview:session",
+            "call_id": "call_1f86b5c50e63453085f0862177beee0a",
+            "tool": "api__finance__previewFinanceAction",
+            "args_sha256": "024a61a0baaa51467fc056d5bed78ff3553b2a894a6fd7050ae30cccf54e6718",
+            "action": "submit_claim"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-131.json",
+        "trace_sha256": "ee581cc168f8c5cf71949361ef02dff57393811136100ef45ac6749a8bd3034c",
+        "phase": "03-edit-preview:session",
+        "input_tokens": 8941,
+        "output_tokens": 298,
+        "tool_calls": []
+      },
+      {
+        "trace": "final6/model-132.json",
+        "trace_sha256": "6dbc7f75fc5a0cfcebba294bd209a7a92522d0e0e14e12ca857ad8ece10245e6",
+        "phase": "03-edit-preview:session",
+        "input_tokens": 6033,
+        "output_tokens": 649,
+        "tool_calls": [
+          {
+            "trace": "final6/model-132.json",
+            "phase": "03-edit-preview:session",
+            "call_id": "call_fecee83f791c4ba0a6ffa6aa22110ecd",
+            "tool": "call_skill",
+            "args_sha256": "ae2c387dfba9073a8fbffb7df74fe55e8b57808a41ec97650d97b93153c5781c",
+            "delegated_skill": "finance-review"
+          }
+        ]
+      },
+      {
+        "trace": "final6/model-133.json",
+        "trace_sha256": "ca5e129486c4ccb77b92806bc447ad9d54f14d6b2584017b03284d44e1e96314",
+        "phase": "03-edit-preview:session",
+        "input_tokens": 5528,
+        "output_tokens": 63,
+        "tool_calls": [
+          {
+            "trace": "final6/model-133.json",
+            "phase": "03-edit-preview:session",
+            "call_id": "call_9f8ccdef512e4cabaead946b9d8a2b54",
+            "tool": "api__finance__getFinanceCapabilities",
+            "args_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          }
+        ]
+      }
+    ],
+    "duplicate_returns": {
+      "getFinanceCapabilities": {
+        "proposals": 8,
+        "observed_distinct_complete_return_hashes": 1,
+        "return_groups": [
+          {
+            "response_sha256": "142d82d7312b91e6ea6c66d27539fa817038c9431652c53997734edfc1fb1519",
+            "calls": [
+              {
+                "trace": "final6/model-099.json",
+                "call_id": "call_956c3e08e4d74c45bd80c258f00b0289",
+                "phase": "01-clarify:session"
+              },
+              {
+                "trace": "final6/model-101.json",
+                "call_id": "call_961f0676d40d42bc940c22fb29e3b49a",
+                "phase": "01-clarify:session"
+              },
+              {
+                "trace": "final6/model-108.json",
+                "call_id": "call_3bcda78ab03641f2a37a895b78c106c6",
+                "phase": "02-create:session"
+              },
+              {
+                "trace": "final6/model-110.json",
+                "call_id": "call_d6e48db0166a4cf68b6aee10c5b4a4df",
+                "phase": "02-create:session"
+              },
+              {
+                "trace": "final6/model-116.json",
+                "call_id": "call_f6f364317d9a49e2a128950a9ba0e5bc",
+                "phase": "02-create:session"
+              },
+              {
+                "trace": "final6/model-123.json",
+                "call_id": "call_104266c4f6ab4fc8946bae9fa52e8087",
+                "phase": "03-edit-preview:session"
+              },
+              {
+                "trace": "final6/model-125.json",
+                "call_id": "call_f3c318ac52834373a8601151710642a4",
+                "phase": "03-edit-preview:session"
+              }
+            ]
+          }
+        ],
+        "note": "相同返回只是本次合成轨迹证据，不证明目录/权限永不改变；末尾133能力调用没有后续模型request携带返回，未把它当可证实相同返回。"
+      },
+      "listLegalEntities": {
+        "proposals": 4,
+        "observed_distinct_complete_return_hashes": 1,
+        "return_groups": [
+          {
+            "response_sha256": "3e99afb9c1a827fcd83e277e94008813597273443d3c43d0399961faaf40d938",
+            "calls": [
+              {
+                "trace": "final6/model-102.json",
+                "call_id": "call_dd0f9d6689d2481ca8c0e1b6175ab550",
+                "phase": "01-clarify:session"
+              },
+              {
+                "trace": "final6/model-111.json",
+                "call_id": "call_beefcf270af547b39f2ec43bde0c301b",
+                "phase": "02-create:session"
+              },
+              {
+                "trace": "final6/model-117.json",
+                "call_id": "call_d280a85dd4c44daab03620e373e25c27",
+                "phase": "02-create:session"
+              },
+              {
+                "trace": "final6/model-126.json",
+                "call_id": "call_3ddb7232ee78419c963c9cf5a8c4553b",
+                "phase": "03-edit-preview:session"
+              }
+            ]
+          }
+        ],
+        "note": "相同返回只是本次合成轨迹证据，不证明目录/权限永不改变；末尾133能力调用没有后续模型request携带返回，未把它当可证实相同返回。"
+      },
+      "listExpenseCategories": {
+        "proposals": 3,
+        "observed_distinct_complete_return_hashes": 1,
+        "return_groups": [
+          {
+            "response_sha256": "0279e81df06dcff7192a795284f5f75024b070403ea6214a1037e85dbc785377",
+            "calls": [
+              {
+                "trace": "final6/model-103.json",
+                "call_id": "call_14c91a6903604251b51907a614e39bf2",
+                "phase": "01-clarify:session"
+              },
+              {
+                "trace": "final6/model-118.json",
+                "call_id": "call_9aa21e1c82f5497fa77655500bf962ce",
+                "phase": "02-create:session"
+              },
+              {
+                "trace": "final6/model-127.json",
+                "call_id": "call_7f05cdc4917a4c8ca2f552f8a1bf37a9",
+                "phase": "03-edit-preview:session"
+              }
+            ]
+          }
+        ],
+        "note": "相同返回只是本次合成轨迹证据，不证明目录/权限永不改变；末尾133能力调用没有后续模型request携带返回，未把它当可证实相同返回。"
+      },
+      "listCostCenters": {
+        "proposals": 3,
+        "observed_distinct_complete_return_hashes": 1,
+        "return_groups": [
+          {
+            "response_sha256": "57e5a7ac81b8ce48c6a995c656a06ba25ee4aba341a3efd92e495d57ed742bc2",
+            "calls": [
+              {
+                "trace": "final6/model-104.json",
+                "call_id": "call_99d3ddc8379c4000acab0c872048d9c6",
+                "phase": "01-clarify:session"
+              },
+              {
+                "trace": "final6/model-118.json",
+                "call_id": "call_b08406f621b64f679f12280532342ca4",
+                "phase": "02-create:session"
+              },
+              {
+                "trace": "final6/model-127.json",
+                "call_id": "call_0c6a7cc289734bdca2d206dfa62ddecb",
+                "phase": "03-edit-preview:session"
+              }
+            ]
+          }
+        ],
+        "note": "相同返回只是本次合成轨迹证据，不证明目录/权限永不改变；末尾133能力调用没有后续模型request携带返回，未把它当可证实相同返回。"
+      },
+      "listSupportingMaterialImports": {
+        "proposals": 4,
+        "observed_distinct_complete_return_hashes": 2,
+        "return_groups": [
+          {
+            "response_sha256": "57e5a7ac81b8ce48c6a995c656a06ba25ee4aba341a3efd92e495d57ed742bc2",
+            "calls": [
+              {
+                "trace": "final6/model-105.json",
+                "call_id": "call_c45957d89aa94c1d9c2920a2159839d9",
+                "phase": "01-clarify:session"
+              }
+            ]
+          },
+          {
+            "response_sha256": "49a2e0716d1c7ab892d62c5c95aa7ecf75bc6a22978c0449232bb02643f03ab0",
+            "calls": [
+              {
+                "trace": "final6/model-112.json",
+                "call_id": "call_9f342847f1cf447892fdd651f45e7d39",
+                "phase": "02-create:session"
+              },
+              {
+                "trace": "final6/model-118.json",
+                "call_id": "call_b622bfbcf2ab43ee98acc66202177aa5",
+                "phase": "02-create:session"
+              },
+              {
+                "trace": "final6/model-127.json",
+                "call_id": "call_5337d143f9994a3da2b407c2ef1c533a",
+                "phase": "03-edit-preview:session"
+              }
+            ]
+          }
+        ],
+        "note": "相同返回只是本次合成轨迹证据，不证明目录/权限永不改变；末尾133能力调用没有后续模型request携带返回，未把它当可证实相同返回。"
+      },
+      "getSupportingMaterialImport": {
+        "proposals": 3,
+        "observed_distinct_complete_return_hashes": 1,
+        "return_groups": [
+          {
+            "response_sha256": "1399a8ce92b92ad73c6806f2b25288d8a6581c4b0438d538f6c0b8801ab9c546",
+            "calls": [
+              {
+                "trace": "final6/model-113.json",
+                "call_id": "call_362c106fd6874f74afa26ee953155e8b",
+                "phase": "02-create:session"
+              },
+              {
+                "trace": "final6/model-119.json",
+                "call_id": "call_bdcb2b2abff64c3a8ab9674e49a8a4c0",
+                "phase": "02-create:session"
+              },
+              {
+                "trace": "final6/model-128.json",
+                "call_id": "call_bd2038c3e570479ca2e88854fceb5776",
+                "phase": "03-edit-preview:session"
+              }
+            ]
+          }
+        ],
+        "note": "相同返回只是本次合成轨迹证据，不证明目录/权限永不改变；末尾133能力调用没有后续模型request携带返回，未把它当可证实相同返回。"
+      }
+    },
+    "resource_failure": "owner重新提交前resource_limit_exceeded used205306/limit200000，iterations0，无新模型；143/141+2未知保留。"
+  },
+  "freeze_source_check": {
+    "freeze_sha256": "d68de7c74782ae617cf0519325ce85939e712dc385f7182bceadd57b36e63a17",
+    "recorded_files": 740,
+    "relevant_files_checked": 12,
+    "relevant_hash_mismatches": [],
+    "scope": "只核对现冻结中相关根/报销/收件/复核Skill发布与设计副本、验收装配/Budget和manifest；不据此声称本次重新执行全740冻结门禁。"
+  },
+  "causal_findings": [
+    {
+      "id": "E1",
+      "classification": "avoidable_before_missing_facts",
+      "evidence": [
+        "final6/model-100.json call_fd3492837b2c46ceb86f82d49f9d85f3",
+        "final6/model-102.json call_dd0f9d6689d2481ca8c0e1b6175ab550",
+        "final6/model-103.json call_14c91a6903604251b51907a614e39bf2",
+        "final6/model-105.json call_c45957d89aa94c1d9c2920a2159839d9"
+      ],
+      "finding": "原用户未提供金额/日期，root仍委派expense依次查公司/分类/归属/收件，最终只追问，耗9streams/46768总token；其中收件为空是在实际上传之前，与上传后结果不同，不能把空结果跨上传继续复用。",
+      "design": "纯事实澄清root直接问缺失金额/日期等，不需判profile，不调用能力/目录/收件或委派；不强索可选票据文本或系统ID。"
+    },
+    {
+      "id": "E2",
+      "classification": "avoidable_duplicate_task_delegation",
+      "evidence": [
+        "final6/model-109.json call_3204a88745314b418b2fbdad6617cb5d",
+        "final6/model-115.json call_509f362484cd462e8592b30ee0905235",
+        "final6/model-113.json call_362c106fd6874f74afa26ee953155e8b",
+        "final6/model-119.json call_bdcb2b2abff64c3a8ab9674e49a8a4c0"
+      ],
+      "finding": "已收件普通报销先invoice-intake再expense；两者各读caps/公司/同收件详情，create耗15streams。expense工具白名单本来已有真实收件list/get，拆两次委派没有新增业务能力。",
+      "design": "root对事实完整的普通报销只委派一次expense，自己不重复caps；leaf先权威getFinanceCapabilities判profile，再用真实公司/分类/必要归属/收件list+get完成草稿，完整原请求与invoice_information保留。"
+    },
+    {
+      "id": "E3",
+      "classification": "avoidable_directory_rescan_and_wrong_followup_delegation",
+      "evidence": [
+        "final6/model-127.json call_b0f039900ff444f0b35e2d603577ddb4",
+        "final6/model-127.json call_7f05cdc4917a4c8ca2f552f8a1bf37a9",
+        "final6/model-128.json call_bd2038c3e570479ca2e88854fceb5776",
+        "final6/model-130.json call_1f86b5c50e63453085f0862177beee0a",
+        "final6/model-132.json call_fecee83f791c4ba0a6ffa6aa22110ecd"
+      ],
+      "finding": "edit请求仅改事由且已有真实草稿ID，expense仍重扫分类/归属/收件，再实际preview submit_claim；root随后又委派finance-review重复准备本人提交预检。",
+      "design": "新expense先GET当前claim取得权限过滤后的实时公司/版本/内容；原分类/归属/附件未变时保留当前服务端字段，不扫目录或收件。若用户明确要求当前材料核验或材料变化，只查相应真实材料；本人submit/withdraw由expense同一任务完成并返回真实plan，root不再finance-review。"
+    },
+    {
+      "id": "E4",
+      "classification": "preserve_safety_freshness",
+      "finding": "新child没有父消息历史；模型生成args或用户粘贴callid/profile/目录不是可验证缓存。不能为省caps/目录而把它们当授权。manager/finance新角色、审批前当前queue/claim/history/expected_version和驳回后的状态变化必须真实读取。",
+      "design": "复用仅限相同actor/company/session同线程真实服务返回和未变化字段；跨线程args仅线索，leaf首次实际caps、修改现单据实际GET；API按每次身份权限独立裁决。"
+    },
+    {
+      "id": "E5",
+      "classification": "conditional_history_pagination_savings_not_baseline_owner_cause",
+      "finding": "当前35stream owner基线尚未读取history，故limit1不是本次205306的直接原因；但后续审批/重提/新会话history逐页可能继续放大token。",
+      "design": "短文本<=2000字符可先limit5，长/未知高负载用limit1；2000是启发式而非所有旧版本都短的证明。实际模型工具返回截断/不完整时回退1，从最后可信同筛选cursor读；不能因SSE/audit sanitize显示省略误判完整raw。读到满足当前问题所需证据可停，最终仍须真实读到三项真实决定理由；完整历史与PG逐项一致门槛不删。"
+    }
+  ],
+  "approaches": [
+    {
+      "option": "A",
+      "recommended": true,
+      "description": "按任务一次委派+先事实后工具+编辑先GET精确更新+有条件历史页长。只改相关Skill正文与对应副本和必要观察计量/回归，服务/API/工具/权限不变。",
+      "tradeoff": "优先去掉确实观察到的结构重复，仍保留真实服务来源和版本校验；收益须真实模型计量。"
+    },
+    {
+      "option": "B",
+      "recommended": false,
+      "description": "只改history limit和说明长度。",
+      "tradeoff": "范围更小，但基线owner35streams没有history，不能解决主要因果；可作为A的小型后续优化。"
+    },
+    {
+      "option": "C",
+      "recommended": false,
+      "description": "新增运行时缓存/上下文压缩、减少工具暴露、换模型或扩大预算。",
+      "tradeoff": "涉及产品/内核/工具或授权边界，当前不需要且用户已拒绝扩额，不实施。"
+    }
+  ],
+  "recommended_contract": {
+    "entry": "缺必要事实直接追问，无业务读写无需rootcaps；事实完整普通expense由root一次委派，leaf先真实caps。root不从用户或自造args判断profile；其它需要root实际业务操作的分支仍先核能力。",
+    "current_claim_update": "根传完整用户变更和已知真实ID仅作定位线索；leaf实际GET当前claim，保留未变化字段与原invoice_information，用最新expected_version更新，只对变化目录/归属/附件取真实数据；更新/预检仍由服务验证当前规则。",
+    "invalidation": "公司/用户/会话切换、上传新材料、用户明确刷新或材料核验、授权或版本错误、目录/制度不可用或变化、状态改变及必要历史缺失时重读对应最小范围；不继续用过期授权/旧批准/失败请求结果。",
+    "parallel_reads": "公司已真实确定后，无依赖的必要只读请求可同轮并行；不要把“公司确定后再查”写成所有目录都必须串行。不并行创建/更新/预检等有版本依赖的写动作。",
+    "scope_constraints": "同actor/company/session工具历史可减少无意义重复；跨thread args不成为新可信存储或权限来源，不新增全局缓存、不跨角色复用。服务每次RLS/当前grant/动作矩阵照常。",
+    "documentation": "替换根首句无条件“先caps”和已有expense/review绝对history limit1条款中的冲突，保留general与internal差异；新规则使用适用条件，不能追加互相矛盾的指令。invoice与review职责保持真正收件/真正待审场景。"
+  },
+  "measurement_plan": {
+    "same_input": "复用原自然用户语句、同合成PDF/精确原文/同业务制度与验收步骤；每次fresh资源，禁止改提示答案、手填内部ID、跳approval/history/original/challenge门槛。",
+    "metric_source": "原始ApiRequest/ResponseEvent completed.usage按phase/actor/session归集，tool_call_done按callid去重提议统计；实际工具成功由已审查scope/status/raw/SSE证据、签名来源和PG分别验证，不能把proposal数当执行数。",
+    "pre_submit_same_three_phases": {
+      "baseline_streams": 35,
+      "baseline_total_tokens": 205306,
+      "target_max_streams": 22,
+      "target_max_total_tokens": 150000,
+      "required_direction": "同时优于同口径基线；属于设计目标，未实测。150k阶段目标不保证后续仍低于会话20万。",
+      "clarification_target": "1次session模型答复、0财务工具提议/执行、0子Skill委派；route单独计数不隐藏。"
+    },
+    "complete_owner_session": {
+      "hard_requirement": "整个原owner业务会话，包括驳回补充重提必须实际低于200000，不通过新会话重置躲限额。",
+      "engineering_target_total_tokens": 180000,
+      "preferred_pre_submit_total_tokens": 120000,
+      "reason": "给实际重提/history留余量；优先保业务事实而非为了达标省安全读取。"
+    },
+    "complete_journey": {
+      "target_max_streams": 45,
+      "two_journey_target_total": 90,
+      "remaining_global_attempts_before_any_new_sampling": 97,
+      "headroom_if_both_targets_met": 7,
+      "caveat": "目标不能保证语义或网络通过；任何baseline重跑/探针/失败都耗同97余量，不另开账本。若余量不足两次fresh旅程，报告真实未完成并停止，不偷扩240。"
+    },
+    "regression_first": "现final6原始行为是RED，不重新付费复现相同RED。先无模型的指令/协议负例核对缺事实不派工具、单expense覆盖、args不作授权、当前GET/expected_version和历史真实cursor；静态GREEN不是行为GREEN。",
+    "real_green": "重新冻结Skill/对应包和受影响计量文件及制品、门禁后，在同账本做两次完整fresh真实旅程；每轮保存旧新分phase对比、失败与独立语义/数据评估，不挑最好一次，不外推稳定率。"
+  },
+  "risks_and_stops": [
+    "已有root需先caps/expense原件交invoice/history绝对limit1等说明可能诱导旧路径，需窄化替换冲突，不删安全边界。",
+    "root一次委派不能丢原始用户事实和invoice_information；完整args原文保持，示例占位值不得进入真实草稿。",
+    "忽略用户明确要求“当前核对材料”去复用旧receipt不合适；允许最小当前get而不是全目录收件list扫描。",
+    "目录返回相同仅本次证据，不能声称缓存永久有效；授权/状态变化必须实际重查，且不得复用他人公司/会话数据。",
+    "历史limit5可能包含长旧版本或尚未读到完整决定，完整raw/真实cursor和必要多页不能省；SSE显示截断不是模型原始输入截断。",
+    "缩减调用只是优化指标，所有真实业务、安全、原件独立性、两级human决定、formal0门槛继续；若任一未过，完整验收仍未完成。"
+  ],
+  "limitations": [
+    "仅只读本地源码/冻源哈希/合成raw归档并写本JSON，没有运行模型/PG/API、读取私有配置/当前私有ledger、修改Skill/产品/预算。",
+    "原始trace的客户端server_model仍不是独立后端身份证据；未改变此前not_verified边界。",
+    "本报告是因果基线与窄设计建议，不声称已经节省token或完成两次真实旅程。"
+  ],
+  "design_revision_history": [
+    {
+      "previous_status": "ApprovedNarrowDesign",
+      "previous_recommendation": "single-leaf ordinary flow，wholejourney45仅初步目标",
+      "revision_reason": "完整固定root/leaf往返和跨thread新caps未纳入原粗测；实际正常计划约61，已超过两次97余量。",
+      "superseded_by": "efficiency-call-floor-review.json"
+    }
+  ],
+  "followup_call_floor_review": "efficiency-call-floor-review.json；保留原35/205306基线及raw引用，不改变历史数据。"
+}

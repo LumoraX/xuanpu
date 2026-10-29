@@ -1,0 +1,111 @@
+...F.FFFFF.....F.....                                                    [100%]
+=================================== FAILURES ===================================
+___________ test_entry_preserves_raw_information_across_child_skill ____________
+
+    def test_entry_preserves_raw_information_across_child_skill() -> None:
+        """子Skill传参仍保留真实换行和申报文字，不转成双重转义文本。"""
+        text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+        assert '真实换行' in text
+>       assert 'listLegalEntities取得有权公司的真实id' in text
+E       AssertionError: assert 'listLegalEntities取得有权公司的真实id' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...前内部记录用法优先交expense-reimbursement：用户粘贴发票信息、说明费用后准备草稿，实际提交与审批留给真人；不因提及报销自动发起付款/记账/税务/法定归档。历史由listExpenseClaimHistory读取。\n'
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:35: AssertionError
+______ test_missing_expense_facts_are_clarified_without_business_queries _______
+
+    def test_missing_expense_facts_are_clarified_without_business_queries() -> None:
+        """缺金额日期的纯追问不先消耗目录、收件与子Skill调用。"""
+        text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+        assert '缺少金额、发生日期等必需费用事实时，直接向用户追问' in text
+        assert '不查询能力、公司、分类、归属或收件，不调用子Skill' in text
+>       assert '纯提问不假定profile，不读取或写入业务记录' in text
+E       AssertionError: assert '纯提问不假定profile，不读取或写入业务记录' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...前内部记录用法优先交expense-reimbursement：用户粘贴发票信息、说明费用后准备草稿，实际提交与审批留给真人；不因提及报销自动发起付款/记账/税务/法定归档。历史由listExpenseClaimHistory读取。\n'
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:59: AssertionError
+___________ test_direct_entry_owns_receipts_draft_and_owner_preview ____________
+
+    def test_direct_entry_owns_receipts_draft_and_owner_preview() -> None:
+        """普通内部报销直接编排，已收件起草和本人预检不产生根子往返。"""
+        text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+>       assert '普通内部报销由本入口直接使用下列工具完成，不默认调用call_skill' in text
+E       AssertionError: assert '普通内部报销由本入口直接使用下列工具完成，不默认调用call_skill' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...前内部记录用法优先交expense-reimbursement：用户粘贴发票信息、说明费用后准备草稿，实际提交与审批留给真人；不因提及报销自动发起付款/记账/税务/法定归档。历史由listExpenseClaimHistory读取。\n'
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:65: AssertionError
+_________ test_direct_entry_registry_has_exact_existing_internal_tools _________
+
+    async def test_direct_entry_registry_has_exact_existing_internal_tools() -> None:
+        """实际注册入口只得到既有内部操作，执行、原件和专业工具不被新增。"""
+        import taifeng
+        from xuanpu_finance.internal_profile import INTERNAL_OPERATIONS
+        from xuanpu_spec import validate_package
+    
+        report = validate_package(PACKAGE)
+        assert report.ok, report.errors
+        registry = await taifeng.FilesystemSkillRegistry.load(PACKAGE / 'skills')
+        skills = {skill.id: skill for skill in registry.snapshot().skills}
+        entry = skills['finance-assistant']
+>       assert entry.tool_names == DIRECT_ENTRY_TOOLS
+E       AssertionError: assert frozenset({'a...apabilities'}) == frozenset({'a...Import', ...})
+E         
+E         Extra items in the right set:
+E         'api__finance__listSupportingMaterialImports'
+E         'api__catalog__listExpenseCategories'
+E         'api__finance__listExpenseClaimHistory'
+E         'api__finance__updateExpenseClaim'
+E         'api__finance__createExpenseClaim'...
+E         
+E         ...Full output truncated (8 lines hidden), use '-vv' to show
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:85: AssertionError
+_______ test_direct_entry_preserves_declared_effects_and_human_boundary ________
+
+    def test_direct_entry_preserves_declared_effects_and_human_boundary() -> None:
+        """同名接口保持原读写许可，业务决定不能由入口模型执行。"""
+        import yaml
+    
+        manifest = yaml.safe_load((PACKAGE / 'xuanpu.yaml').read_text())
+        effects = {'api__' + connector['name'] + '__' + tool['name']: tool['effect']
+                   for connector in manifest['spec']['connectors'] for tool in connector['tools']}
+        writes = {'api__finance__' + name for name in (
+            'createExpenseClaim', 'updateExpenseClaim', 'previewFinanceAction')}
+        assert {name for name in DIRECT_ENTRY_TOOLS if effects[name] != 'read'} == writes
+        assert all(effects[name] == 'write' for name in writes)
+        assert len(effects) == 77
+        assert manifest['spec']['policy'] == {
+            'approval': 'standard', 'budget': {'maxSessionTokens': 200000, 'maxIterations': 40},
+            'sandbox': {'network': False, 'shell': False}}
+        text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+        assert '工具许可不是业务批准' in text
+>       assert '实际提交、驳回、批准均交当前员工在独立human入口确认' in text
+E       AssertionError: assert '实际提交、驳回、批准均交当前员工在独立human入口确认' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...前内部记录用法优先交expense-reimbursement：用户粘贴发票信息、说明费用后准备草稿，实际提交与审批留给真人；不因提及报销自动发起付款/记账/税务/法定归档。历史由listExpenseClaimHistory读取。\n'
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:114: AssertionError
+__ test_direct_entry_batches_only_independent_reads_and_uses_current_versions __
+
+    def test_direct_entry_batches_only_independent_reads_and_uses_current_versions() -> None:
+        """允许低风险独立读取同轮，依赖写与当前版本不能靠缓存或并行跳过。"""
+        text = (PACKAGE / 'skills/finance-assistant/SKILL.md').read_text()
+>       assert 'getFinanceCapabilities与listLegalEntities可同一轮独立只读' in text
+E       AssertionError: assert 'getFinanceCapabilities与listLegalEntities可同一轮独立只读' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...前内部记录用法优先交expense-reimbursement：用户粘贴发票信息、说明费用后准备草稿，实际提交与审批留给真人；不因提及报销自动发起付款/记账/税务/法定归档。历史由listExpenseClaimHistory读取。\n'
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:121: AssertionError
+__ test_history_page_size_uses_real_response_completeness[finance-assistant] ___
+
+skill = 'finance-assistant'
+
+    @pytest.mark.parametrize('skill', ['finance-assistant', 'expense-reimbursement', 'finance-review'])
+    def test_history_page_size_uses_real_response_completeness(skill: str) -> None:
+        """短正文分批读取，实际原包异常降页长，审计省略不被混作原包截断。"""
+        text = (PACKAGE / 'skills' / skill / 'SKILL.md').read_text()
+>       assert '当前详情原文不超过2000字符时先用limit=5' in text
+E       AssertionError: assert '当前详情原文不超过2000字符时先用limit=5' in '---\nname: finance-assistant\ndescription: 处理发票、报销、采购应付、本人待审、付款记账结果查询及接入准备检查；实际决定交真实员工人工入口。\nversion: 0.16.0-f15\nent...前内部记录用法优先交expense-reimbursement：用户粘贴发票信息、说明费用后准备草稿，实际提交与审批留给真人；不因提及报销自动发起付款/记账/税务/法定归档。历史由listExpenseClaimHistory读取。\n'
+
+packages/xuanpu-finance/tests/test_f15_skill_contract.py:165: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-finance/tests/test_f15_skill_contract.py::test_entry_preserves_raw_information_across_child_skill
+FAILED packages/xuanpu-finance/tests/test_f15_skill_contract.py::test_missing_expense_facts_are_clarified_without_business_queries
+FAILED packages/xuanpu-finance/tests/test_f15_skill_contract.py::test_direct_entry_owns_receipts_draft_and_owner_preview
+FAILED packages/xuanpu-finance/tests/test_f15_skill_contract.py::test_direct_entry_registry_has_exact_existing_internal_tools
+FAILED packages/xuanpu-finance/tests/test_f15_skill_contract.py::test_direct_entry_preserves_declared_effects_and_human_boundary
+FAILED packages/xuanpu-finance/tests/test_f15_skill_contract.py::test_direct_entry_batches_only_independent_reads_and_uses_current_versions
+FAILED packages/xuanpu-finance/tests/test_f15_skill_contract.py::test_history_page_size_uses_real_response_completeness[finance-assistant]
+7 failed, 14 passed in 1.17s

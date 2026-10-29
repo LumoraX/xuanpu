@@ -1,0 +1,14 @@
+{
+  "finance": {
+    "equal_except_authorized_optional_query_null": true,
+    "old_nullable_count": 81,
+    "new_nullable_keyword_count": 0,
+    "operation_count": 72
+  },
+  "catalog": {
+    "equal_except_authorized_optional_query_null": true,
+    "old_nullable_count": 4,
+    "new_nullable_keyword_count": 0,
+    "operation_count": 5
+  }
+}

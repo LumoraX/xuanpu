@@ -1,0 +1,86 @@
+{
+  "status": "Approved",
+  "approval_scope": "Current implementation and offline prerequisites only; not F15 completion, budget expansion, automatic retries or payment authorization. Root may proceed with user-authorized single focused run <=12 within original240 after its own live preflight.",
+  "reviewed_at": "2026-10-29T04:11:08.574916+00:00",
+  "source_sha256": {
+    "scripts/acceptance/finance_model.py": "e8672fcc06599cb523f2a6d25e01843c548ed8e9f3dc7e7de8a4baa854d2ee5a",
+    "scripts/acceptance/finance_model_runtime.py": "932772adcbfae83608e3d751de7b62f41e290d5c398d9a20ecf788510968127b",
+    "scripts/acceptance/finance_model_journey.py": "1af8c3d0648a3de00bf0632cb9d816167c92e7adb01cf9e17775111580ae28a4",
+    "scripts/acceptance/finance_model_focus.py": "1e70ac2daa8d37513a4d9128c591a0867037827e8d2f00874218c162c5dacdc6",
+    "packages/xuanpu-finance/tests/test_f15_execution.py": "3112c00d92a61572a9f5850ff92b84acbfb1f771be5700d0b8fdb5e5cc4decae"
+  },
+  "source_sha_unchanged_before_after_independent_tests": true,
+  "findings": [],
+  "closed_findings": [
+    {
+      "id": "EL-I01",
+      "finding": "Environment scope/provenance was missing from assemble output.",
+      "resolution": "scenario_metadata now validates scene, result/environment share exact explicit metadata, assembled claim_source tracks model versus human_fixture; real integration assertion reads environment scene and false full-count flag."
+    },
+    {
+      "id": "EL-I02",
+      "finding": "Probe JSON read was outside run try after writing running result.",
+      "resolution": "Probe and Budget construction now inside try, failure is saved as failed without budget snapshot when budget not initialized; added RED3 cases and current independent test pass.",
+      "red_evidence": "review-fix-red.log"
+    }
+  ],
+  "verification": {
+    "independent_command": "uv run pytest packages/xuanpu-finance/tests/test_f15_execution.py -q -k 'not public_human_fixture' --junitxml=docs/guides/releases/evidence/finance-f15-execution-2026-10-29/review-offline.xml",
+    "independent_log": "review-offline.log",
+    "junit": [
+      {
+        "file": "review-offline.xml",
+        "sha256": "62ba1081b203268c3920126fede24a947cd27723db7a80f054f840c404a5d4cb",
+        "tests": 16,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "performed_by_this_reviewer": true
+      },
+      {
+        "file": "integration-final.xml",
+        "sha256": "0afbc5b7510c92a9ec8cf624a0996310ac5aae532eb8ba38bbda812f04fdb535",
+        "tests": 162,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "performed_by_this_reviewer": false
+      }
+    ],
+    "selected_ruff": {
+      "command": "uv run ruff check --select F,S108,I,TC,C901 scripts/acceptance/finance_model.py scripts/acceptance/finance_model_runtime.py scripts/acceptance/finance_model_journey.py scripts/acceptance/finance_model_focus.py packages/xuanpu-finance/tests/test_f15_execution.py",
+      "returncode": 0
+    },
+    "actual_natural_prompts_equal_to_archived_final8": [
+      "01-clarify",
+      "02-create",
+      "03-edit-preview",
+      "04-manager-reject",
+      "05-owner-resubmit",
+      "06-manager-approve",
+      "07-finance-approve",
+      "08-fresh-query"
+    ]
+  },
+  "assessments": {
+    "routing": "Manager04→06 and owner08→09 explicitly reuse same actor session; 08 remains fresh, 07 finance and10 outsider fresh. Actual message HTTP protocol test proves reused session skips router and wrong-actor reuse is refused before request. Public server remains authoritative.",
+    "business_gates": "Current queue/detail/history/version, require_tools and execute_model_plan stay in full mode; fixture uses only public human HTTP, actual current queue and plan/digest, no direct PG mutation. Full mode cannot invoke prepare_query_fixture.",
+    "partial_provenance": "Only query-regression can build human fixture; one_fixture_created_claim replaces misleading model-created label. Success is partial_passed with counts_as_complete_journey=false and distinct CLI output, so old status=passed collectors cannot count it as full.",
+    "budget": "New max_streams rejects invalid/out-of-1..120 bounds, persists same-journey cap, rejects reopen enlargement; global240/other hard limits remain, local stop is JOURNEY_STREAM_LIMIT. No reset or retry paths added.",
+    "metrics": "Full complete path deterministically removes2 router invocations. Archived final8 ended before09, so only1 of those routes is in its43 measured calls. Further model/read/token savings require actual trace measurement; session reuse can increase context token cost."
+  },
+  "limitations": [
+    "Reviewer did not run PG integration itself; independently parsed archived integration-final 162 tests,0fail/error/skip and inspected integration assertions.",
+    "Reviewer did not access private config or any ledger; restoration/fingerprint/global actual remaining32 are root preflight responsibilities.",
+    "No actual model requests, no live finance API, no completion/production/real employees claim. Current focused run outcome remains unverified until root executes it."
+  ],
+  "activities": {
+    "source_modified": false,
+    "tests_run_no_pg": true,
+    "postgres_access": false,
+    "model_calls": 0,
+    "private_config_access": false,
+    "ledger_access": false,
+    "commit": false
+  }
+}

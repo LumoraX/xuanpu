@@ -1,0 +1,11 @@
+{
+  "status": "resolved_verification_expectation",
+  "initial_log": "artifacts-initial-check.log",
+  "actual_missing_files": [],
+  "actual_different_bytes": [],
+  "extra_file_in_each_sdist": ".gitignore",
+  "source": "repository root .gitignore inherited by Hatchling",
+  "correction": "Include this one known source file in complete expected sdist set and compare exact bytes/hash; do not ignore arbitrary extras",
+  "product_build_or_frozen_sources_changed": false,
+  "root_gitignore_sha256": "7c0d5df2b67b257fcfe0455df001d6768ce1513d9a972c17d1a43ee58951ecfd"
+}

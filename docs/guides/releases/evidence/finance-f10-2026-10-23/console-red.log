@@ -1,0 +1,44 @@
+AssertionError [ERR_ASSERTION]: 缺少按钮 内部试用检查
+    at click (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_internal_readiness_behavior.cjs:26:125)
+    at validReportIsReadOnlyAndUnverified (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_internal_readiness_behavior.cjs:28:27)
+    at /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_internal_readiness_behavior.cjs:77:291
+    at Object.<anonymous> (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_internal_readiness_behavior.cjs:77:392)
+    at Module._compile (node:internal/modules/cjs/loader:1829:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1969:10)
+    at Module.load (node:internal/modules/cjs/loader:1552:32)
+    at Module._load (node:internal/modules/cjs/loader:1354:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: null,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+validReportIsReadOnlyAndUnverified passed
+generalHasNoEntryAndNoRequest passed
+blockedReportsRemainBlocked passed
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /响应.*无效|格式.*错误/. Input:
+
+'内部试用检查已读取；正式环境尚未验证。'
+
+    at malformedReportsShowErrors (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_internal_readiness_behavior.cjs:51:138)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_internal_readiness_behavior.cjs:77:285 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: '内部试用检查已读取；正式环境尚未验证。',
+  expected: /响应.*无效|格式.*错误/,
+  operator: 'match',
+  diff: 'simple'
+}
+AssertionError [ERR_ASSERTION]: 制度代际：4
+    at validReportIsReadOnlyAndUnverified (/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_internal_readiness_behavior.cjs:31:179)
+    at async /Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-console/tests/finance_internal_readiness_behavior.cjs:77:285 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

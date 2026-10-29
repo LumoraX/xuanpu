@@ -24,6 +24,7 @@ def test_static_files_present() -> None:
         "shared-matters.js", "shared-materials.js", "shared-conversation.js", "shared-notifications.js",
         "connections.js", "organization.js", "organization-forms.js", "workspace-files.js", "workspace-chat.js", "proactive.js", "work-tasks.js", "task-definitions.js",
         "capabilities.js",
+        "finance.js", "finance_settlement.js", "finance_compliance.js", "finance_operations.js", "finance_funding.js", "finance_records.js", "finance_materials.js",
     }
 
 
@@ -48,6 +49,7 @@ def test_console_only_talks_to_documented_endpoints() -> None:
         "/v1/handoffs", "/v1/approval-policies", "/v1/admin/approval-policies", "/v1/approval-requests", "/v1/collaboration-notifications",
         "/v1/admin/organization", "/v1/organization", "/v1/admin/connections", "/healthz", "/v1/sessions", "/v1/packages", "/v1/audit", "/v1/usage",
         "/v1/shared-matters", "/v1/shared-contexts", "/v1/shared-notifications", "/v1/workspace", "/v1/me", "/v1/auth", "/v1/users", "/v1/assistant", "/v1/reminders", "/v1/notifications", "/v1/proactive", "/v1/work-tasks", "/v1/task-definitions",
+        "/v1/integration-actions",
     )  # fmt: skip
     assert paths
     assert all(path.startswith(allowed_prefixes) for path in paths), paths

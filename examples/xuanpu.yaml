@@ -200,3 +200,11 @@ approvals:
 #   max_previews: 1000      # 1–10000
 #   preview_seconds: 900    # 60–900；确认时重查依赖与版本
 #   probe_seconds: 30       # 1–60；只握手/列工具，不调用业务工具或模型
+
+# 可选进程外HTTP员工上下文签名；仅在配置可信接收方及租户保险库私钥后启用。
+# call_context:
+#   issuer: xuanpu
+#   keyId: platform-ed25519-1
+#   privateKeySecret: platform-signing-key
+#   allowedAudiences:
+#     https://finance.example: [xuanpu-finance]

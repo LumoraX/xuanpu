@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends, Header, Request
 
-from xuanpu_server.errors import AuthenticationError, InvalidRequestError
+from xuanpu_server.errors import AuthenticationError, InvalidRequestError, PermissionDeniedError
 from xuanpu_server.identity.cookies import (
     check_cookie_request,
     login_cookie_name,
@@ -92,3 +92,18 @@ Caller = Annotated[Principal, Depends(caller)]
 
 
 __all__ = ["ACT_AS_HEADER", "Caller", "bearer", "caller"]
+
+
+async def human_caller(request: Request) -> Principal:
+    """人工网关只认有效员工 cookie；任何机器或代员工凭据头都直接拒绝。"""
+    if "authorization" in request.headers or ACT_AS_HEADER in request.headers:
+        raise PermissionDeniedError("人工操作只接受员工登录 cookie")
+    who = await caller(request, authorization=None, act_as=None)
+    if (not who.user_id or not who.tenant_id or who.key_id is not None
+            or who.system is not None or who.role == "platform_admin"):
+        raise PermissionDeniedError("人工操作需要员工登录")
+    return who
+
+
+HumanCaller = Annotated[Principal, Depends(human_caller)]
+"""仅限经 cookie 与防跨站检查的人工员工主体。"""

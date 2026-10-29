@@ -1,0 +1,40 @@
+{
+  "status": "DONE_WITH_CONCERNS",
+  "concerns": [
+    "真实模型完整业务旅程尚未通过；此前final1是已保留的nested resume失败，待root冻结后两次新库验收。"
+  ],
+  "model_streams_unchanged": 50,
+  "changes": [
+    "可信同会话叶线程及原链祖先恢复；纯内部父挂起不作为人工待办；终态审计先落盘再发布。",
+    "SSE与审计一致投影operation_terminal；SDK bool优先兼容旧server，回放seq null原样保留。",
+    "历史语义核对当前phase/读取actor/工具/callid/claim与完整原始模型输入，SSE审计显示截断不作JSON事实。"
+  ],
+  "validation": {
+    "nested_http_and_sdk": 11,
+    "identity_including_nested": 43,
+    "core_gate_resolution_metrics": 37,
+    "sdk_all": 25,
+    "harness_and_skill": 55,
+    "combined_harness_sdk": 80,
+    "mypy_source_files": 157,
+    "source_constraints_files": 18,
+    "ruff": "passed"
+  },
+  "versions": {
+    "server": "2026.10.23.1",
+    "sdk": "2026.10.23.1",
+    "finance": "2026.10.23.5",
+    "console": "2026.10.23.1",
+    "pack": "0.16.0-f15"
+  },
+  "failed_evidence_retained": [
+    "nested-resume-race-red.log",
+    "nested-usage-red.log",
+    "sdk-terminal-red.log",
+    "sdk-replay-seq-red.log",
+    "nested-sdk-replay-seq-red.log",
+    "history-audit-json-red.log",
+    "history-raw-red.log"
+  ],
+  "limits": "无真实SSO/浏览器、合并、部署、推送、付款证据；无新模型或PG调用。"
+}

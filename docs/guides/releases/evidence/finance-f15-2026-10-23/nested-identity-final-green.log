@@ -1,0 +1,67 @@
+.........F.................................                              [100%]
+=================================== FAILURES ===================================
+___________ test_nested_sdk_terminal_boundary_live_and_audit_replay ____________
+
+identity_world = <function identity_world.<locals>.opener at 0x10f5f5bc0>
+step = <class 'packages.xuanpu-server.tests.conftest.Step'>
+tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/pytest-of-krasuschen/pytest-2379/test_nested_sdk_terminal_bound0')
+
+    async def test_nested_sdk_terminal_boundary_live_and_audit_replay(
+        identity_world: Any, step: Any, tmp_path: Path,
+    ) -> None:
+        """SDK真实消费初始leaf到根及恢复完成，live与审计投影一致且可提前停在操作终态。"""
+        from xuanpu_sdk import Event, XuanpuClient
+    
+        async with identity_world() as ident, records_server() as (url, writes):
+            await publish_nested(ident, tmp_path / 'sdk-nested', url)
+            transport = httpx.ASGITransport(create_app(ident.world.platform))
+            async with XuanpuClient('http://xuanpu', ident.world.member_key,
+                                    transport=transport) as client:
+                session = await client.sessions.create('nested-approval')
+                sid = session.session_id
+                ident.world.models.script(
+                    step(calls=[('delegate', 'call_skill', {'skill_id': 'child', 'reason': '保存'})]),
+                    step(calls=[('write', 'api__records__append', {})]),
+                    step(text='子任务完成'), step(text='根任务完成'))
+                emitted = []
+                async for item in client.sessions.send(sid, '保存一条合成记录'):
+                    emitted.append(item)
+                    if item.terminal:
+                        break
+                hung = [item for item in emitted if item.kind == 'turn_suspended']
+                assert [item.data['operation_terminal'] for item in hung] == [False, True]
+                assert [item.terminal for item in hung] == [False, True]
+                pending = await client.sessions.pending(sid)
+                assert len(pending) == 1 and pending[0]['reason'] == 'permission'
+                replay = await client.sessions.replay(sid, hung[-1].submission_id)
+                saved = [item for item in replay if item['kind'] == 'turn_suspended']
+                assert [item['data']['operation_terminal'] for item in saved] == [False, True]
+                assert all(item.data == row['data'] for item, row in zip(hung, saved, strict=True))
+                resumed = [item async for item in client.sessions.resume(
+                    sid, {pending[0]['request_id']: {'granted': True}})]
+                assert resumed[-1].terminal and resumed[-1].kind == 'turn_completed'
+                assert writes == ['append']
+                duplicate = [item async for item in client.sessions.resume(
+                    sid, {pending[0]['request_id']: {'granted': True}})]
+                assert any(item.terminal and item.kind == 'turn_completed' for item in duplicate)
+                assert duplicate[-1].kind == 'turn_text' and not duplicate[-1].terminal
+                assert writes == ['append']
+>               assert all(Event(kind=row['kind'], submission_id=row['submission_id'],
+                           seq=row['seq'], at=row['at'], data=row['data']).terminal == item.terminal
+                           for row, item in zip([row for row in saved], hung, strict=True))
+
+packages/xuanpu-server/tests/identity/test_nested_resume.py:425: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <zip object at 0x10f6fd440>
+
+>   assert all(Event(kind=row['kind'], submission_id=row['submission_id'],
+                                                     ^^^^^^^^^^^^^^^^^^^^
+               seq=row['seq'], at=row['at'], data=row['data']).terminal == item.terminal
+               for row, item in zip([row for row in saved], hung, strict=True))
+E   KeyError: 'submission_id'
+
+packages/xuanpu-server/tests/identity/test_nested_resume.py:425: KeyError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-server/tests/identity/test_nested_resume.py::test_nested_sdk_terminal_boundary_live_and_audit_replay
+1 failed, 42 passed in 9.01s

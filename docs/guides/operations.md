@@ -745,3 +745,25 @@ R2配置中的`task_activity.enabled`控制工作动态通知，默认false；`t
 `capability_delivery`构造配置：enabled默认false；tenants默认[]，空始终关闭；max_revisions默认1000（1–10000）；max_previews默认1000（1–10000）；preview_seconds默认900（60–900）；probe_seconds默认30（1–60）。关闭不自动删除历史或纳管旧包。容量上限达到后明确拒绝新记录，当前不提供历史清除功能。
 
 预检专属data_dir/capability-probes保留未完成的清理责任。Docker按目录确定容器名回收；本机重启后未知探测目录不能证明进程已退出，会阻止启动/新预检。先核实对应进程及作用范围，确认退出后才处理专属目录，不删除普通办公工作区。详见[能力安装边界](../architecture/capability-delivery.md)。本段尚无生产镜像、服务器迁移或真实员工验收结论。
+
+## 可选 HTTP 调用身份签名
+
+`call_context` 默认为空。只有需要真实员工上下文的进程外 HTTP 连接器才启用；旧连接器继续原有行为。字段如下：
+
+| 配置项 | 含义 |
+| --- | --- |
+| `issuer` | JWT签发者，必须与接收服务固定值一致 |
+| `keyId` | JWT头/载荷的密钥标识，对应接收方公钥目录 |
+| `privateKeySecret` | 租户保险库中的Ed25519 PEM私钥名称；不得写入业务包 |
+| `allowedAudiences` | 目标HTTP origin到允许audience列表的映射；scheme/host/port必须匹配 |
+
+```yaml
+call_context:
+  issuer: xuanpu
+  keyId: platform-ed25519-1
+  privateKeySecret: platform-signing-key
+  allowedAudiences:
+    https://finance.example: [xuanpu-finance]
+```
+
+租户私钥每次签发从保险库读取，轮换时接收方先配置新kid公钥再切换签发配置，保留旧公钥至在途短令牌过期。服务签名最长60秒，接收方允许5秒时钟差；运维须保证时钟同步。请求签名绑定实际HTTP报文，工具审批通过后才签发，不可作为财务业务批准。无真实员工会话或不在origin/audience许可表内的调用拒绝，不回退为任意身份。独立财务实例配置见[财务F0指南](finance-f0.md)，轻量报销与人工网关见[财务F1指南](finance-f1.md)。

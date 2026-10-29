@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "frozen_source_files": 742,
+  "source_drift": [],
+  "changed_python_files": 21,
+  "constraint_issues": [],
+  "static_outputs": {
+    "ruff": "All checks passed!",
+    "mypy": "Success: no issues found in 311 source files"
+  },
+  "extra_static_checks": {
+    "c901_changed_model_harness": "passed",
+    "lock_offline": "109 packages resolved, lock current"
+  }
+}

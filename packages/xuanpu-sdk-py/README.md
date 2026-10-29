@@ -1,5 +1,7 @@
 # xuanpu-sdk-py
 
+当前版本 `2026.10.23.1` 优先使用服务端SSE/回放提供的 `operation_terminal` 布尔判断本操作是否结束，子Skill挂起不会提前终结消费；旧服务端缺少该字段时兼容既有规则。`Event.seq` 为 `int | None`：审计合成的 `turn_text` 无流序号，回放保留 `None`；`after_seq` 只筛有序号的事件，无序号全文仍会返回。
+
 xuanpu 平台的 Python 客户端。异步，只依赖 `httpx`，不依赖平台的其他包。
 
 用法与注意事项（审批、断线补齐、错误处理）见[应用接入](../../docs/guides/integrating.md)；本文是方法清单。

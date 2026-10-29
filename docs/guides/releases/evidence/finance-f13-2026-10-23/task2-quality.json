@@ -1,0 +1,161 @@
+{
+  "task": "F13任务二独立质量审查",
+  "status": "Approved",
+  "summary": "无开放质量问题。真实CLI测试独占PG重跑通过；真实签名拒绝、全表无业务变更、恢复后两级HITL及原件独立性均由本轮实际请求、DB与进程证据验证。",
+  "open_findings": 0,
+  "findings": [],
+  "worktree": "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0",
+  "reviewed_sources": [
+    "packages/xuanpu-finance/tests/test_f13_process.py",
+    "packages/xuanpu-finance/tests/f13_process_helpers.py",
+    "packages/xuanpu-finance/tests/f11_process_helpers.py",
+    "packages/xuanpu-finance/tests/f11_verify_helpers.py",
+    "packages/xuanpu-finance/tests/f12_process_helpers.py",
+    "packages/xuanpu-finance/tests/test_f4_maintenance.py",
+    "packages/xuanpu-finance/tests/test_f7_process.py",
+    "packages/xuanpu-finance/tests/test_f0_e2e.py",
+    "packages/xuanpu-finance/tests/test_process.py",
+    "docs/superpowers/specs/2026-10-23-finance-f13-design.md",
+    "docs/superpowers/plans/2026-10-23-finance-f13.md"
+  ],
+  "verified_quality": [
+    {
+      "check": "真实CLI与独立PG，无产品替身",
+      "evidence": "F4创建两个随机独立public库；process_case使用test/internal_records配置、真实loopback身份/文件网关及HTTP客户端；observed_file_process启动当前解释器 -m xuanpu_finance，收件、回执、提交及审批均真实HTTP/worker/DB。"
+    },
+    {
+      "check": "TemporaryFile与有界进程回收",
+      "evidence": "stdout/stderr分别TemporaryFile承接，finally对自建进程SIGTERM，15秒wait超时kill并再15秒wait。实际exit=-15、forced_kill=false、graceful_shutdown=true、stdout_empty=true、finance及gateway端口均关闭。原始stderr仅临时持有，属性只保留长度、hash及布尔事实。"
+    },
+    {
+      "check": "通知锁及全表精确比较",
+      "evidence": "独立连接事务持产品同一617472004通知锁，finally关闭连接。snapshot枚举public全部表，to_jsonb逐行排序精确比较；表集合一致，79张非replay表全部相同，外部目录相对文件名及密文字节相同。"
+    },
+    {
+      "check": "防重放精确差异",
+      "evidence": "从实际response.request验证EdDSA、issuer/audience及request_fingerprint；replay新增集合恰为真实iss/jti，新增整行主体、指纹、幂等键、exp全部相等，已有交集行全字段相同，删除行须已到期。本轮新增1、移除0。"
+    },
+    {
+      "check": "原件路径拒绝与显式恢复",
+      "evidence": "从实际成功receipt/object_key定位原密文，移至root外并建立leaf symlink；真人签名GET实际500/OBJECT_PATH_UNSAFE，无content_base64、原PDF或目录路径。finally仅删除本测试链接并移回原密文，恢复读取真实原字节与摘要。"
+    },
+    {
+      "check": "两级HITL与真实DB事实",
+      "evidence": "F13逐级直接调用F11 approve(reject_model=True)，未用retained_approval推定模型拒绝。实际四个执行请求为agent403、human202、agent403、human202；每次agent执行后单据不变。真实finance_decision为manager和finance-reviewer、origin均human，理由匹配；每计划恰一决定、一business_operation、一outbox。"
+    },
+    {
+      "check": "原件独立性和零支付",
+      "evidence": "源payload已清空、下载恰1；批准后财务复核人仍读回原件。真实单据approved、发票原文及理由保持，paid_amount/posted_amount均0.00，finance_invoice/finance_settlement_operation/finance_compliance_operation均0。"
+    },
+    {
+      "check": "停机只读核验",
+      "evidence": "真实maintenance_cli verify输出complete、workers_started=false、business_writes=0；所有public表和密文快照前后完全一致。"
+    },
+    {
+      "check": "证据完整性及脱敏",
+      "evidence": "全部6份process XML均可解析；baseline-red和first保持原失败，green/final及8例regression保持通过。本轮quality通过；历史first两文件当前SHA匹配redaction清单。process日志/XML扫描未见实际DSN/密码、JWT、Bearer测试凭据或PDF/base64前缀；f13_process属性仅存安全签名字段、摘要和事实。"
+    }
+  ],
+  "fresh_validation": {
+    "pytest": {
+      "command": "uv run pytest packages/xuanpu-finance/tests/test_f13_process.py -q --junitxml=docs/guides/releases/evidence/finance-f13-2026-10-23/process-quality.xml",
+      "environment": "Python读取/tmp/xuanpu-finance-f13-dsn设置FINANCE_TEST_DSN且未打印；FINANCE_TEST_PG_CONTAINER=xuanpu-finance-f13-pg；NO_PROXY/no_proxy=127.0.0.1,localhost,::1",
+      "exit": 0,
+      "tests": 1,
+      "passed": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "elapsed_seconds": 3.03,
+      "log": "process-quality.log",
+      "xml": "process-quality.xml"
+    },
+    "ruff": {
+      "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 packages/xuanpu-finance/tests/test_f13_process.py packages/xuanpu-finance/tests/f13_process_helpers.py",
+      "exit": 0,
+      "output": "All checks passed!",
+      "log": "process-quality-static.log"
+    },
+    "source_constraints": {
+      "test_f13_process.py": {
+        "sha256": "c737c34f0d44a65eb3b52e9da98b7f52c6eb08b88742d2a6e086469763d191b4",
+        "lines": 71,
+        "max_function_lines": 45,
+        "all_chinese_docstrings": true,
+        "future_annotations": true
+      },
+      "f13_process_helpers.py": {
+        "sha256": "704ada7dc100aab2ffdbeabc10ec6f6f63f5ea3edfa538964abfbdc956ef50e5",
+        "lines": 213,
+        "max_function_lines": 36,
+        "all_chinese_docstrings": true,
+        "future_annotations": true
+      }
+    },
+    "junit_parse": {
+      "process-baseline-red.xml": {
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0
+      },
+      "process-final.xml": {
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "process-first.xml": {
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0
+      },
+      "process-green.xml": {
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "process-quality.xml": {
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "process-regression.xml": {
+        "tests": 8,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "resources": {
+      "temporary_databases_remaining": 0,
+      "other_database_sessions": 0,
+      "advisory_locks_remaining": 0,
+      "released": true
+    },
+    "audit": "process-quality-audit.json"
+  },
+  "scope": {
+    "product_files_changed": false,
+    "tests_changed": false,
+    "committed": false,
+    "pushed": false,
+    "merged": false,
+    "deployed": false,
+    "pg_released": true
+  },
+  "limitations": [
+    "仅独立任务二质量审查；未替代任务三最终全量、quick及制品门禁。",
+    "本轮实际走优雅退出分支；强制kill回收分支作代码审阅，未人为制造不响应SIGTERM的进程。",
+    "隔离身份/文件网关不代表正式人员、真实模型、生产部署、负载或灾备验收。"
+  ],
+  "evidence_sha256": {
+    "process-quality.log": "7f0ace10eedfb07ace18a0ef6dc2ac8d19d6c6e0784eab34dbdb4dabdf58b44c",
+    "process-quality.xml": "318bdf751344dc866997d0c1d65c056d7f2e9524635f2417a38b50191ba45d75",
+    "process-quality-static.log": "74f854fbce50e55f781ee60cc6624102236acb73e9720887b983acc0270f1d88",
+    "process-quality-audit.json": "41a33596de9111a6346e1d378daee9acf418ad30391b7a48db2cf1e5625a7196"
+  }
+}

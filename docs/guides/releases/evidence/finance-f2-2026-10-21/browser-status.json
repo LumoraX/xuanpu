@@ -1,0 +1,116 @@
+{
+  "document": {
+    "id": "3457bb1470544c3cbb3ab2fe1c536a72",
+    "kind": "payable",
+    "legal_entity_id": "company-a",
+    "version": 4,
+    "status": "approved",
+    "total": "1000.00",
+    "owner_id": "usr_645d31c63914b56830d0a65f",
+    "record_mode": "invoice_backed",
+    "content": {
+      "amount": "1000.00",
+      "reason": "隔离采购",
+      "due_date": "2026-11-01",
+      "evidence_ids": [],
+      "supplier_ref": {
+        "id": "supplier",
+        "kind": "supplier",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source": "controlled",
+        "version": "v1"
+      },
+      "business_refs": [
+        {
+          "id": "contract",
+          "kind": "contract",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source": "controlled",
+          "version": "v1"
+        }
+      ],
+      "legal_entity_id": "company-a"
+    },
+    "allocation_ids": [
+      "91aef049f4614526b950043aeb659fc7"
+    ],
+    "evidence": [],
+    "workflow_id": "d0e5153b5b5345f39bed1afc02cd18b0",
+    "workflow_version": 2,
+    "due_at": "2026-10-24T10:13:23.861894+00:00",
+    "workflow": {
+      "id": "d0e5153b5b5345f39bed1afc02cd18b0",
+      "version": 2,
+      "status": "approved",
+      "target_version": 3,
+      "policy_version": 1,
+      "due_at": "2026-10-24T10:13:23.861894+00:00",
+      "provider": "internal",
+      "current_step_id": null,
+      "steps": [
+        {
+          "id": "a044bb276d6a427f9d3103d05e477502",
+          "version": 2,
+          "name": "专用审批",
+          "approver_user_id": "usr_978fce71bc66c34154bf1bd5",
+          "status": "approved"
+        }
+      ]
+    },
+    "simulation": true,
+    "payment_status": "partially_paid",
+    "paid_amount": "600.00",
+    "payment_pending_amount": "0.00",
+    "posting_status": "not_posted",
+    "posted_amount": "0.00",
+    "reversed_amount": "0.00",
+    "posting_pending_amount": "0.00"
+  },
+  "payments": {
+    "items": [
+      {
+        "id": "781bfa49c810417c9140922fe27a9c24",
+        "version": 3,
+        "legal_entity_id": "company-a",
+        "document_id": "3457bb1470544c3cbb3ab2fe1c536a72",
+        "operation_id": "f2op_c402e4b992c04ab9af19cc1af98e6f1d",
+        "status": "succeeded",
+        "simulation": true,
+        "document_kind": "payable",
+        "amount": "600.00",
+        "created_at": "2026-10-21T10:16:34.979318+00:00",
+        "evidence": [
+          {
+            "id": "proof",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "media_type": "application/pdf",
+            "object_ref": "provider:proof"
+          }
+        ],
+        "payee_ref": {
+          "id": "account",
+          "kind": "supplier_account",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source": "controlled",
+          "version": "v1"
+        },
+        "account_name": "模拟供应商",
+        "masked_account": "****0001",
+        "transaction_id": "transaction",
+        "external_order_id": "order"
+      }
+    ],
+    "total": 1,
+    "next_cursor": null
+  },
+  "postings": {
+    "items": [],
+    "total": 0,
+    "next_cursor": null
+  },
+  "signed_requests": 36,
+  "origins": [
+    "human"
+  ],
+  "posts": 1
+}

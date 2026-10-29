@@ -1,0 +1,189 @@
+............F...........................FFFFFFFFFF...................... [ 19%]
+........................................................................ [ 39%]
+..........F............................................................. [ 58%]
+........................................................................ [ 78%]
+........................................................................ [ 98%]
+.......                                                                  [100%]
+=================================== FAILURES ===================================
+__________ test_document_links_resolve[docs/architecture/finance.md] ___________
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/architecture/finance.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['../guides/r...ce.md（文件不存在）'] == []
+E         
+E         Left contains one more item: '../guides/releases/2026-10-22-finance-f8-acceptance.md（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+____________ test_document_links_resolve[docs/guides/finance-f0.md] ____________
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/finance-f0.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['releases/20...ce.md（文件不存在）'] == []
+E         
+E         Left contains one more item: 'releases/2026-10-22-finance-f8-acceptance.md（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+____________ test_document_links_resolve[docs/guides/finance-f1.md] ____________
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/finance-f1.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['releases/20...ce.md（文件不存在）'] == []
+E         
+E         Left contains one more item: 'releases/2026-10-22-finance-f8-acceptance.md（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+____________ test_document_links_resolve[docs/guides/finance-f2.md] ____________
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/finance-f2.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['releases/20...ce.md（文件不存在）'] == []
+E         
+E         Left contains one more item: 'releases/2026-10-22-finance-f8-acceptance.md（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+____________ test_document_links_resolve[docs/guides/finance-f3.md] ____________
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/finance-f3.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['releases/20...ce.md（文件不存在）'] == []
+E         
+E         Left contains one more item: 'releases/2026-10-22-finance-f8-acceptance.md（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+____________ test_document_links_resolve[docs/guides/finance-f4.md] ____________
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/finance-f4.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['releases/20...ce.md（文件不存在）'] == []
+E         
+E         Left contains one more item: 'releases/2026-10-22-finance-f8-acceptance.md（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+____________ test_document_links_resolve[docs/guides/finance-f5.md] ____________
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/finance-f5.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['releases/20...ce.md（文件不存在）'] == []
+E         
+E         Left contains one more item: 'releases/2026-10-22-finance-f8-acceptance.md（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+____________ test_document_links_resolve[docs/guides/finance-f6.md] ____________
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/finance-f6.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['releases/20...ce.md（文件不存在）'] == []
+E         
+E         Left contains one more item: 'releases/2026-10-22-finance-f8-acceptance.md（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+____________ test_document_links_resolve[docs/guides/finance-f7.md] ____________
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/finance-f7.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['releases/20...ce.md（文件不存在）'] == []
+E         
+E         Left contains one more item: 'releases/2026-10-22-finance-f8-acceptance.md（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+____________ test_document_links_resolve[docs/guides/finance-f8.md] ____________
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/finance-f8.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['releases/20...ce.md（文件不存在）'] == []
+E         
+E         Left contains one more item: 'releases/2026-10-22-finance-f8-acceptance.md（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+_______ test_document_links_resolve[docs/guides/finance-gap-register.md] _______
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/finance-gap-register.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['releases/20...ce.md（文件不存在）'] == []
+E         
+E         Left contains one more item: 'releases/2026-10-22-finance-f8-acceptance.md（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+________ test_document_links_resolve[packages/xuanpu-finance/README.md] ________
+
+path = PosixPath('/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance/README.md')
+
+    @pytest.mark.parametrize("path", _documents(), ids=lambda path: str(path.relative_to(REPO)))
+    def test_document_links_resolve(path: Path) -> None:
+        """文档里的相对链接都指向存在的文件与标题。"""
+>       assert _broken_links(path) == []
+E       AssertionError: assert ['../../docs/...ce.md（文件不存在）'] == []
+E         
+E         Left contains one more item: '../../docs/guides/releases/2026-10-22-finance-f8-acceptance.md（文件不存在）'
+E         Use -v to get more diff
+
+packages/xuanpu-cli/tests/test_examples_and_docs.py:133: AssertionError
+=========================== short test summary info ============================
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[docs/architecture/finance.md]
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[docs/guides/finance-f0.md]
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[docs/guides/finance-f1.md]
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[docs/guides/finance-f2.md]
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[docs/guides/finance-f3.md]
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[docs/guides/finance-f4.md]
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[docs/guides/finance-f5.md]
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[docs/guides/finance-f6.md]
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[docs/guides/finance-f7.md]
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[docs/guides/finance-f8.md]
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[docs/guides/finance-gap-register.md]
+FAILED packages/xuanpu-cli/tests/test_examples_and_docs.py::test_document_links_resolve[packages/xuanpu-finance/README.md]
+12 failed, 355 passed in 0.93s

@@ -13,7 +13,9 @@
 
 当前办公任务使用与验收见[办公交办](guides/work-tasks.md)、[任务架构](architecture/work-tasks.md)和[R2验收](guides/releases/2026-10-21-r2-acceptance.md)；[R1验收](guides/releases/2026-10-21-r1-acceptance.md)保留历史结果。
 
-财务业务闭环的待审阅设计与 Skill／API 契约见[财务能力设计](superpowers/specs/2026-10-21-finance-capability-design.md)，首个独立子项目为[F0 发票基座](superpowers/specs/2026-10-21-finance-f0-design.md)；这些材料不表示财务服务已实现或上线。
+财务 F0 当前实现见[架构](architecture/finance.md)、[接入指南](guides/finance-f0.md)和[分层验收记录](guides/releases/2026-10-21-finance-f0-acceptance.md)。后续闭环以[批准设计](superpowers/specs/2026-10-21-finance-capability-design.md)为准；F0 不代表报销、付款或官方查验已经上线。
+
+当前发票与报销内部记录范围见[F15指南](guides/finance-f15.md)、[公司制度和人员资料缺项](guides/finance-company-readiness.md)及[F15分层验收](guides/releases/2026-10-23-finance-f15-acceptance.md)。不支付、独立存储、真人审批；正式环境状态按验收记录分别核对。
 
 R2已交付持久执行、时间与事件触发、工作动态及员工入口，生产版本2026.10.22.2；实际共享宿主整机重启也已完成验收。设计和实施过程见[持久执行设计](superpowers/specs/2026-10-21-r2-durable-work-design.md)及[详细实施总计划](superpowers/plans/2026-10-21-r2-delivery.md)，能力与未验边界以[R2验收记录](guides/releases/2026-10-21-r2-acceptance.md)为准。
 

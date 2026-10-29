@@ -1,0 +1,65 @@
+{
+  "status": "Approved",
+  "review_date": "2026-10-24",
+  "scope": "新的真实用户有界授权、59号手工恢复执行证据及本地恢复helper静态审查；此前单次scope审查保留。",
+  "execution_authorization_confirmed": true,
+  "authorization": {
+    "id": "bounded-network-resume-user-20261024",
+    "source": "direct_user_reply_to_bounded_question",
+    "question": "网关再次断流，目前59次调用中有2次用量未知。是否允许在原240次总上限内继续，保留每次未知用量，累计第5次用量未知时立即停止、不再恢复？同一边界内将不再逐次询问。",
+    "answer": "continue",
+    "observed_at": "2026-10-24T04:42:20.546464+00:00",
+    "execution_authorized": true,
+    "max_streams": 240,
+    "stop_at_unknown_count": 5,
+    "recoverable_failure": "TransientNetworkError:codex transport error (stream): RemoteProtocolError",
+    "other_limits_unchanged": true
+  },
+  "authorization_assessment": "新的问题已明确2次未知、原240上限、逐次保留未知、第5次未知立即停止且不再恢复，以及同一边界内不逐次询问。用户直接回复continue足以批准该有界策略，解决此前范围不足；此前单次review及scope review在其当时上下文仍成立，不应重写。",
+  "execution_evidence": {
+    "network_resume_59_status": "completed",
+    "before_snapshot_sha256": "19436babf1045e39374a23c1699ef8b35e3b9c7eb80ea3979885073f4c7c0779",
+    "matches_report_original_ledger_sha256": true,
+    "original_ledger_sha256": "19436babf1045e39374a23c1699ef8b35e3b9c7eb80ea3979885073f4c7c0779",
+    "reported_new_ledger_sha256": "9904d75c1c7e26648ae939ba110bff4963c4f8d59e70768647f87868c67047bb",
+    "known_counts_unchanged": true,
+    "completed_not_incremented": true,
+    "unknown_not_zero": true,
+    "unknown_attempts": [
+      56,
+      59
+    ],
+    "helper_sha256": "8a9303ad6882a5927a6b5bae1a6ecf4a35cacb8f0d1785052289ee365a48b90a",
+    "later_archived_budget": {
+      "attempts": 80,
+      "completed": 78,
+      "input_tokens": 314645,
+      "output_tokens": 9717,
+      "halted": null
+    },
+    "later_unknown_attempts": [
+      56,
+      59
+    ],
+    "equation_verified": true
+  },
+  "helper_review": [
+    "只处理USAGE_MISSING且attempt<240；精确要求新授权source/answer/max_streams/stop_at_unknown_count；没有网络、模型或PG调用。",
+    "扫描原始trace，只有相同RemoteProtocolError且无completed usage的尝试才列unknown，usage保持null；核对completed+unknown=attempts及当前最后一次为缺usage尝试。",
+    "保留既有unknown内容及原授权来源；要求unknown_count<5，因而第五次不能clear；其他错误不被当同类网络恢复。",
+    "核对冻结source hash；原字节快照使用xb禁止覆盖，记录SHA，0600保存；原累计count/token/bytes/seconds/journeys逐项不变。",
+    "仅登记新unknown/授权/halt历史并原子替换当前halt；Budget代码不变，未来缺usage继续halt。"
+  ],
+  "operational_limits": [
+    "helper没有跨进程排他锁，必须仅在本轮运行器已停止、无并发账本写者时由负责人顺序执行；未来恢复前需核当前hash与预期halt一致，不能并发调用。",
+    "helper只清本次USAGE_MISSING；原Budget在下一次请求前仍检查token/时间/字节等门槛，不能因helper未检查每项就绕过原限制。",
+    "总unknown达到5立即停止，不调用helper继续clear；现有2未知以外还可在第3/4次未知后有界恢复，第5次不可恢复。",
+    "最终报告已知token+实际unknown次数，不声称全部usage或货币成本精确；业务失败不归类网络，不使用网络授权跳过语义门槛。"
+  ],
+  "conclusion": "本次59号恢复及继续原任务有明确新用户授权，归档计数与helper逻辑符合该范围。final4业务失败必须保留并修复，不可按网络恢复解释为通过。",
+  "limitations": [
+    "未读取修改当前私有ledger、私有config，未执行helper，未访问模型/PG/API或运行测试。",
+    "reported_new_ledger_sha256只核对报告与后续归档语义，未读取当前私有文件重新计算；原snapshot SHA已独立实算匹配。",
+    "授权真实性依据root提供的可信实际回复与本地原文归档，不通过本审查生成新的用户授权。"
+  ]
+}

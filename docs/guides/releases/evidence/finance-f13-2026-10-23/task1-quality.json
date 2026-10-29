@@ -1,0 +1,120 @@
+{
+  "task": "F13任务一独立代码质量审查",
+  "status": "Approved",
+  "open_findings": 0,
+  "reviewer": "f13_quality1",
+  "worktree": "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0",
+  "product_files_changed": false,
+  "scope": [
+    "packages/xuanpu-finance/src/xuanpu_finance/local_objects.py",
+    "packages/xuanpu-finance/src/xuanpu_finance/objects.py",
+    "packages/xuanpu-finance/tests/test_f13_objects.py",
+    "packages/xuanpu-finance/tests/f13_objects_helpers.py",
+    "docs/guides/releases/evidence/finance-f13-2026-10-23/objects-*"
+  ],
+  "summary": "限定代码审查及一次完整独立验证通过，未发现阻塞任务一的质量问题。",
+  "findings": [],
+  "reviewed_quality": [
+    {
+      "area": "IO资源回收",
+      "assessment": "Approved",
+      "evidence": "local_objects.py:58-70目录fd用ExitStack关闭；:77-83及:96-100以closefd=False流和fd关闭双层上下文保证顺序；:94-108仅成功创建临时文件后注册finally删除。故障测试验证原EIO对象、关闭fd、临时文件清理；临时名碰撞不删除已有文件。"
+    },
+    {
+      "area": "拒绝链接与特殊文件",
+      "assessment": "Approved",
+      "evidence": "根/分片相对dirfd配合O_DIRECTORY/O_NOFOLLOW；叶子lstat式stat、O_NOFOLLOW|O_NONBLOCK和fstat复查。实际根/分片/叶子链接、FIFO/socket、open/link/叶子替换测试全部通过。静态外部合法密文也不能通过链接读取，外部快照均不变。"
+    },
+    {
+      "area": "并发不变性与既有契约",
+      "assessment": "Approved",
+      "evidence": "O_EXCL 0600临时创建、写流关闭后原子hardlink；目标已存在时读取原密文，由objects.py按相同AAD认证并比较原字节，保留幂等/409。两适配器真实并发同内容全成功、异内容仅单胜者；原XF01/AES-GCM/AAD、摘要路径和S3实现保持。"
+    },
+    {
+      "area": "真实PG责任与证据真实性",
+      "assessment": "Approved",
+      "evidence": "独立完整模块实际运行包含真实store/FinanceWorker；仅固定imports.identifier，受理记录、prepared事件、worker和后续成功仍走实际接口。JUnit现场属性确认坏项failed/OBJECT_STORAGE_FAILED、prepared=1、receipt=0、material.received=0；同worker后续succeeded，receipt=1、material.received=1，不同shard且外部快照不变。"
+    },
+    {
+      "area": "测试可靠性",
+      "assessment": "Approved",
+      "evidence": "固定受理operation/trace序列去掉随机下一shard；FIFO/socket由独占子进程3秒超时kill+communicate回收，避免线程池永久阻塞；monkeypatch由pytest回收。43项本次0 skipped/0 failures/0 errors。"
+    }
+  ],
+  "independent_validation": {
+    "pytest_command": "uv run pytest -q packages/xuanpu-finance/tests/test_f13_objects.py --junitxml=docs/guides/releases/evidence/finance-f13-2026-10-23/objects-quality.xml",
+    "environment": "Python读取/tmp/xuanpu-finance-f13-dsn后仅传入子进程FINANCE_TEST_DSN；FINANCE_TEST_PG_CONTAINER=xuanpu-finance-f13-pg；NO_PROXY=127.0.0.1,localhost,::1；未打印凭据",
+    "pytest_exit_code": 0,
+    "result": "43 passed, 15 warnings in 1.50s",
+    "junit": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "43",
+      "time": "0.740",
+      "timestamp": "2026-10-23T15:27:41.210756+08:00",
+      "hostname": "krasusdeMacBook-Pro"
+    },
+    "worker_properties": [
+      {
+        "outside_before": {
+          "sentinel": "1091d6f8378399e280d6b6b825ec9d3041b6c4df8612cdd0c1c3dd21043f46fc"
+        },
+        "outside_after": {
+          "sentinel": "1091d6f8378399e280d6b6b825ec9d3041b6c4df8612cdd0c1c3dd21043f46fc"
+        },
+        "external_snapshot_equal": true,
+        "failed_state": "failed",
+        "failed_error": "OBJECT_STORAGE_FAILED",
+        "prepared_count": 1,
+        "receipt_count_after_failed": 0,
+        "material_success_count_after_failed": 0
+      },
+      {
+        "next_state": "material_received",
+        "next_status": "succeeded",
+        "receipt_count_after_next": 1,
+        "material_success_count_after_next": 1,
+        "external_snapshot_equal": true,
+        "different_shard": true
+      }
+    ],
+    "static": [
+      {
+        "command": "uv run ruff check --select F,S108,I,TC packages/xuanpu-finance/src/xuanpu_finance/local_objects.py packages/xuanpu-finance/src/xuanpu_finance/objects.py packages/xuanpu-finance/tests/test_f13_objects.py packages/xuanpu-finance/tests/f13_objects_helpers.py",
+        "exit_code": 0,
+        "output": "All checks passed!"
+      },
+      {
+        "command": "uv run mypy packages/xuanpu-finance/src/xuanpu_finance/local_objects.py packages/xuanpu-finance/src/xuanpu_finance/objects.py",
+        "exit_code": 0,
+        "output": "Success: no issues found in 2 source files"
+      }
+    ],
+    "logs": [
+      "objects-quality.log",
+      "objects-quality.xml",
+      "objects-quality-static.log"
+    ],
+    "pg_released": true,
+    "pg_tests_running": false
+  },
+  "existing_evidence_review": {
+    "objects-green.xml": "43 tests, 0 failures/errors/skipped",
+    "objects-regression.xml": "121 tests, 0 failures/errors/skipped；仅审阅，未重跑扩展回归",
+    "objects-static.log": "既有ruff/mypy与docstring/长度检查通过；本次另独立限定ruff/mypy通过",
+    "objects-review-red.xml": "先前规格问题的红证据保留；无须本次恢复产品再重跑"
+  },
+  "source_sha256": {
+    "packages/xuanpu-finance/src/xuanpu_finance/local_objects.py": "0122a6678d4f6dd2629cd097db8a704e6fe22c8cb10cc461af4fffa6b35877ad",
+    "packages/xuanpu-finance/src/xuanpu_finance/objects.py": "cc98c38e6c475d46c50398b2024ac88d86f4aaad36f886b48abc297bc7287094",
+    "packages/xuanpu-finance/tests/test_f13_objects.py": "c91addfa53e5c819824d6f7b8101d16008564d5f2cf8ad277cfeca0ed0f756aa",
+    "packages/xuanpu-finance/tests/f13_objects_helpers.py": "c27955996e87ba95d3ac1fcd05d87d7b6208b7a08e9bf45d588a7e14fc5b6e1e"
+  },
+  "limitations": [
+    "仅本机macOS/POSIX文件系统质量验证，未扩展Linux环境、任务二/三或部署验证。",
+    "本次pytest默认xunit2对record_property产生15条兼容性warning；实际JUnit中f13_objects属性存在且已解析验证，不影响本次责任链证据。",
+    "根目录的可信上级与服务账号独占写权限为任务既定边界。"
+  ]
+}
