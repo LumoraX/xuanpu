@@ -94,3 +94,11 @@ def test_proactive_chat_routes_and_cleanup_are_connected() -> None:
     assert "resetProactive()" in workspace
     assert "renderProactiveSettings(form,settings)" in settings
     assert "...readProactive()" in settings
+
+
+def test_classic_page_hands_over_to_minimal_entry() -> None:
+    """启用极简入口的员工默认进新页；?classic=1 与管理员入口留在旧页；旧页功能脚本保留。"""
+    identity = (static_dir() / "identity.js").read_text(encoding="utf-8")
+    assert 'me.entry === "minimal" && !adminMode' in identity
+    assert 'get("classic") !== "1"' in identity
+    assert 'location.replace("entry.html")' in identity

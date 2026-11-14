@@ -759,6 +759,12 @@ R2配置中的`task_activity.enabled`控制工作动态通知，默认false；`t
 
 `telemetry.otel` 构造配置（可选 OTel 导出）：enabled 默认 false，关闭时不建任何连接；开启时必须给 endpoint（平台不读 `OTEL_*` 环境变量），protocol 为 `grpc`（默认）或 `http/protobuf`，service_name 默认 xuanpu，resource_attributes 不能覆盖 `xuanpu.tenant`、`service.name`、`service.version`。只导出 `execution_trace` 名单内租户的事件；每个租户一个内核 `OtelTelemetrySink`，资源属性带 `xuanpu.tenant`。正文过滤沿用内核（参数、输出、增量、完整提示词不导出）。导出失败由内核记告警，不影响执行。OTel span 暂不带 `xuanpu.trace_id`（内核 sink 不支持按事件附加属性，缺口清单第 32 项），用 `taifeng.execution_id` 与平台 span `ex.<execution_id>` 关联。
 
+## R5-E 极简入口与员工概览
+
+`minimal_entry` 构造配置：enabled 默认 false；tenants 默认 []，空始终关闭；名单内租户必须同时在 `butler` 名单内，否则配置加载失败（「minimal_entry 租户须同时在 butler 中开启」）。启用后，该租户员工打开 `/console/` 会跳到 `/console/entry.html`（概览、对话、提示、输入）；页脚「更多」进入 `/console/index.html?classic=1` 的功能页，管理员入口 `?admin=1` 不变。未启用的租户打开新页会回到旧页。
+
+`GET /v1/dashboard` 不调模型，模型停用时概览、通知与「更多」照常可用；某一块读取失败会在该块显示「暂时读不出」，意外异常记标准错误日志「概览块 … 读取失败」。没有新的迁移。
+
 ## R5-C 管家派工存储与配置
 
 当前源码新增 `0022_butler_dispatch`（尚未正式部署）：一次派工一行，按租户与员工归属（复合外键到员工表），只存管家交给匠人的任务说明与材料引用；匠人的正文与结果仍在其任务或会话里。

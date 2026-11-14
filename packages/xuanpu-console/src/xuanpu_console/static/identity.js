@@ -111,6 +111,11 @@ async function connectIdentity({ automatic = false } = {}) {
   const epoch = conn.epoch;
   try {
     const me = await api("GET", "/v1/me");
+    // 租户启用极简入口的员工默认进新页；?classic=1（新页的「更多」）与管理员入口留在本页
+    if (me.entry === "minimal" && !adminMode && new URLSearchParams(location.search).get("classic") !== "1") {
+      location.replace("entry.html");
+      return false;
+    }
     conn.me = me;
     applyPermissions();
     $("conn-status").textContent = identityStatus(me);

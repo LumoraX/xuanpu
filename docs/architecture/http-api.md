@@ -183,7 +183,7 @@ GET /healthz
 GET /v1/me
 
 → {"actor": "user:usr_5f0c1b2e7d9a4c3b8e6f1a20", "role": "tenant_member", "tenant_id": "acme",
-   "key_id": null, "user_id": "usr_5f0c1b2e7d9a4c3b8e6f1a20", "display_name": "张三"}
+   "key_id": null, "user_id": "usr_5f0c1b2e7d9a4c3b8e6f1a20", "display_name": "张三", "entry": "classic"}
 ```
 
 任何调用者都能调，四种调用者同一个形状，用不上的字段为 `null`：
@@ -195,7 +195,7 @@ GET /v1/me
 | 系统代员工 | 生效角色（key 与员工中较低的） | key 的租户 | key 的标识 | 被代的员工 |
 | 根凭据 | `platform_admin` | `null` | `root` | `null` |
 
-`actor` 与审计记录里的写法相同（见[认证](#认证)）。
+`actor` 与审计记录里的写法相同（见[认证](#认证)）。`entry` 告诉控制台用哪个员工入口：代表员工且所在租户在 `minimal_entry` 名单内时为 `minimal`（极简入口，R5-E），其余一律 `classic`。
 
 ## 飞书登录
 
@@ -1028,6 +1028,8 @@ limit 越界或 cursor 损坏返回 400/422，不当作从头开始。
 | waiting | 未处理的助手草稿 + 管家待本人处理项（open、forwarding；管家开启时）+ waiting_user 的交办工作 + 轮到本人审批的组织审批（审批开启时） | kind（proposal/question/approval/ruling/work_task/approval_request）、ref、title、at |
 | in_progress | 本人活动 trace 总数 | kind=trace、ref=trace_id、title、at、waiting_me、incomplete |
 | unread | 通知中心里本人未读的站内通知（不含共享与协作通知流） | kind=notification、ref=notification_id、title、at |
+
+响应另带 `tips`：确定性生成的至多 3 条提示（`kind` 为 `status` 或 `try`、`text`、点一下填进输入框的 `prompt`；状态提示没有 `prompt`），规则见[极简入口](minimal-entry.md#提示dashboardtipspy)。
 
 ## 通用集成身份与固定文件桥
 

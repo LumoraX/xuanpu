@@ -51,11 +51,20 @@
 
 **Files**：Create `S/dashboard/tips.py`、`T/dashboard/test_tips.py`、`docs/guides/minimal-entry.md`；Modify `C/index.html`（成为 `?classic=1`）、`docs/guides/{quickstart,local-trial}.md`、`docs/architecture/personal-workspace.md`、`AGENTS.md` 中入口描述（只改措辞以匹配「更多」，不改约束）。
 
-- [ ] 提示确定性生成，最多 3 条；系统状态提示同位置。
-- [ ] `minimal_entry` 开关按租户启用；未启用租户仍是旧页。
-- [ ] 真实浏览器验收：首屏四样；各模块在对话内完成一次查看与一次确认；模型屏蔽时概览、通知、「更多」可用；375px；两员工隔离。记录默认页脚本数与体积。
-- [ ] 旧页保留一个版本后，另起提交删除不再引用的脚本；功能页脚本保留。
+- [x] 提示确定性生成，最多 3 条；系统状态提示同位置。
+- [x] `minimal_entry` 开关按租户启用；未启用租户仍是旧页。
+- [ ] 真实浏览器验收：首屏四样；各模块在对话内完成一次查看与一次确认；模型屏蔽时概览、通知、「更多」可用；375px；两员工隔离。记录默认页脚本数与体积。（部分：除「各模块在对话内查看与确认」外均已在真实 Chrome 通过，见 [验收记录](../../guides/releases/2026-11-14-r5e-browser-acceptance.md)；该项需要真实模型，待补跑）
+- [ ] 旧页保留一个版本后，另起提交删除不再引用的脚本；功能页脚本保留。（按设计延后：本分支保留旧页全部脚本，下一个版本另起提交）
 - [ ] 同步文档；提交 `feat: 启用极简入口并保留更多兜底`。
+
+### E2 进度（2026-11-14，macOS arm64，Python 3.12，Node v24.22.3，Chrome 157.0.8103.79）
+
+- 已写：`S/dashboard/{tips,config}.py`（确定性提示、`MinimalEntryConfig`）；概览响应带 `tips`；`ServerConfig.minimal_entry`（名单内租户须同时开启 butler，配置校验）；`Platform.minimal_entry`；`GET /v1/me` 增加 `entry`（minimal / classic）；旧页 `identity.js` 读到 minimal 且非 `?classic=1`、非管理员入口时跳到 `entry.html`，新页读到 classic 时回旧页。
+- 文档：`docs/guides/minimal-entry.md`（新）、`docs/architecture/minimal-entry.md`、`http-api.md`（`/v1/me` 的 `entry`、概览 `tips`）、`personal-workspace.md`、`operations.md`、`quickstart.md`、`local-trial.md`、使用手册索引、`examples/xuanpu.yaml`、`AGENTS.md`（只在「功能」入口后注明新页里叫「更多」，约束不变）。
+- 测试：`.venv/bin/pytest packages/xuanpu-server/tests/dashboard packages/xuanpu-server/tests/test_config.py packages/xuanpu-server/tests/identity packages/xuanpu-console/tests packages/xuanpu-sdk-py/tests -q` → 575 passed, 7 skipped；ruff：All checks passed!；mypy：Success: no issues found in 559 source files。
+- 真实浏览器（`scripts/acceptance/r5_minimal_entry_browser.py`，375px 经 `r5_minimal_entry_cdp.cjs` 走 DevTools 协议模拟设备，因为无头窗口不能窄于约 500px）：首屏四样、概览四块、提示、「更多」、两员工隔离、375px 无横向溢出全部通过；模型调用尝试 0；默认页 6 个脚本 29489 字节、样式 3791 字节。记录见 `docs/guides/releases/2026-11-14-r5e-browser-acceptance.md`。
+- 全量（沙盒外，`.venv/bin/pytest -q packages`）：3761 passed / 60 failed / 49 errors / 443 skipped；失败与错误用例集合与 main 已知的环境项（办公容器找不到 `docker`）逐条一致，无新增。
+- 未完成：真实浏览器里「各模块在对话内查看与确认」需要真实模型（管家给草稿），本环境没有模型凭据；系统状态提示缺「连接授权过期」「预算将尽」两类；首次打开 `/console/` 会先加载旧页再跳转；旧脚本删除按设计放到下一个版本。
 
 ## 对照清单
 

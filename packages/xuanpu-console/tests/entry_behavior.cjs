@@ -59,7 +59,7 @@ function harness(routes) {
   const context = vm.createContext({
     console: { error() {}, log: console.log }, crypto, AbortController, DOMException, TextDecoder, URLSearchParams, Intl,
     document: { getElementById: node, createElement: element }, fetch, Math, JSON, Date, Promise, Map, Set,
-    location: { search: "", pathname: "/console/entry.html", assign() {} },
+    location: { search: "", pathname: "/console/entry.html", assign() {}, replaced: null, replace(to) { this.replaced = to; } },
   });
   return { context, nodes: node, calls };
 }
@@ -73,7 +73,7 @@ function load(h, dir) {
 const settle = () => new Promise(resolve => setImmediate(resolve));
 async function flush() { for (let i = 0; i < 20; i++) await settle(); }
 
-const ME = { json: { user_id: "usr_alice", tenant_id: "acme", display_name: "Alice" } };
+const ME = { json: { user_id: "usr_alice", tenant_id: "acme", display_name: "Alice", entry: "minimal" } };
 const OVERVIEW = { json: { blocks: [
   { key: "today", status: "ok", count: 2, items: [{ kind: "todo", ref: "ws_1", title: "周报", at: 1 }] },
   { key: "waiting", status: "error", error: "runtime_unavailable", count: null, items: [] },
@@ -210,8 +210,17 @@ async function unavailableKeepsInput(dir) {
   assert.ok(h.nodes("tips").textContent.includes("更多"));
 }
 
+async function classicTenantGoesBack(dir) {
+  const h = harness(base({ "GET /v1/me": () => ({ json: { ...ME.json, entry: "classic" } }) }));
+  load(h, dir); await flush();
+  assert.equal(h.context.location.replaced, "index.html");
+  assert.ok(h.nodes("entry-main").classList.contains("hidden"));
+  assert.ok(!h.calls.some(c => c.url.startsWith("/v1/dashboard")), "未启用的租户不读概览");
+}
+
 (async () => {
   const dir = process.argv[2];
+  await classicTenantGoesBack(dir);
   await overviewAndTips(dir);
   await sendAndConfirm(dir);
   await listCardUsesVersion(dir);

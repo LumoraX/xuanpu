@@ -7,6 +7,7 @@
 - 未读通知：通知中心里本人未读的站内通知。
 
 身份不合法（机器身份、停用员工、暂停租户）整个请求被拒，不返回任何块。
+响应另带确定性提示 ``tips``（最多 3 条，见 ``dashboard/tips.py``）。
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from xuanpu_server.dashboard.models import (
     failed_view,
     short,
 )
+from xuanpu_server.dashboard.tips import build_tips
 from xuanpu_server.errors import InvalidRequestError, PlatformError
 from xuanpu_server.tracing.models import TraceOwner
 
@@ -81,7 +83,21 @@ class DashboardService:
         keys = [key for key in BLOCK_ORDER if key in readers]
         results = await asyncio.gather(*(readers[key]() for key in keys), return_exceptions=True)
         blocks = [self._view(key, result) for key, result in zip(keys, results, strict=True)]
-        return {"timezone": zone, "day_start": bounds[0], "day_end": bounds[1], "blocks": blocks}
+        tips = build_tips(blocks, artisans=await self._artisan_names(who, tenant),
+                          first_use=not await self._p.workspace.messages(who, 0, 1, latest=True))
+        return {"timezone": zone, "day_start": bounds[0], "day_end": bounds[1], "blocks": blocks,
+                "tips": [tip.view() for tip in tips]}
+
+    async def _artisan_names(self, who: Principal, tenant: str) -> list[str]:
+        """管家开启时本人可用的匠人名（去重、按出现顺序）；读不出只记日志，提示照常给通用项。"""
+        if not self._p.butler_config.allows(tenant):
+            return []
+        try:
+            found = await self._p.artisans.available(who)
+        except PlatformError as exc:
+            logger.warning("概览提示读取可用匠人失败：%s", exc.code)
+            return []
+        return list(dict.fromkeys(artisan.ref.package for artisan in found))
 
     @staticmethod
     def _view(key: BlockKey, result: Block | BaseException) -> dict[str, Any]:

@@ -26,6 +26,7 @@ from xuanpu_server.butler.config import ButlerConfig
 from xuanpu_server.capabilities.config import CapabilityDeliveryConfig
 from xuanpu_server.collaboration.models import CollaborationConfig
 from xuanpu_server.connections.models import ConnectionConfig
+from xuanpu_server.dashboard.config import MinimalEntryConfig
 from xuanpu_server.identity.config import IdentityConfig, normalize_origin
 from xuanpu_server.organization.config import OrganizationConfig
 from xuanpu_server.shared_matters.models import SharedMatterConfig
@@ -350,6 +351,7 @@ class ServerConfig(_Section):
     execution_trace: ExecutionTraceConfig = ExecutionTraceConfig()
     telemetry: TelemetryConfig = TelemetryConfig()
     butler: ButlerConfig = ButlerConfig()
+    minimal_entry: MinimalEntryConfig = MinimalEntryConfig()
     shared_matters: SharedMatterConfig = SharedMatterConfig()
     handoffs: CollaborationConfig = CollaborationConfig()
     approvals: CollaborationConfig = CollaborationConfig()
@@ -385,6 +387,11 @@ class ServerConfig(_Section):
             missing = [t for t in self.butler.tenants if not self.execution_trace.allows(t)]
             if missing:
                 raise ValueError(f"butler 租户须同时在 execution_trace 中开启：{missing}")
+        if self.minimal_entry.enabled:
+            # 新页的对话只经管家：名单内租户必须同时开启管家
+            absent = [t for t in self.minimal_entry.tenants if not self.butler.allows(t)]
+            if absent:
+                raise ValueError(f"minimal_entry 租户须同时在 butler 中开启：{absent}")
         return self
 
     def decoded_master_keys(self) -> dict[str, bytes]:

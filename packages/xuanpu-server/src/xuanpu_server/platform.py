@@ -28,6 +28,7 @@ from xuanpu_server.connections.managed_http import ManagedHttpTools
 from xuanpu_server.connections.providers.wecom import WeComClient
 from xuanpu_server.connections.service import ConnectionService
 from xuanpu_server.connections.tokens import TokenBroker
+from xuanpu_server.dashboard.config import MinimalEntryConfig
 from xuanpu_server.dashboard.service import DashboardService
 from xuanpu_server.errors import (
     AuthenticationError,
@@ -167,6 +168,7 @@ class Platform:
         handoffs: CollaborationConfig | None = None,
         approvals: CollaborationConfig | None = None,
         butler: ButlerConfig | None = None,
+        minimal_entry: MinimalEntryConfig | None = None,
         manual_http_transport: httpx.AsyncBaseTransport | None = None,
         proactive_interval: float = 1800.0,
         proactive_scan_seconds: float = 60.0,
@@ -198,6 +200,7 @@ class Platform:
             feishu_transport: 调飞书接口用的 httpx 传输；None 用默认的（直连飞书）。飞书的两个
                 基地址来自 ``identity_settings``。
             butler: 管家（R5-C）开关与预算；None 时关闭。
+            minimal_entry: 极简入口（R5-E）按租户启用；None 时全部租户仍是旧页。
             now: 取当前时间的函数，测试时可替换。
         """
         # 内核 MCP 客户端会把连接器 stdout 上的非 JSON 行原样写进日志；平台装配时给这些
@@ -292,6 +295,7 @@ class Platform:
         self.work_tasks = WorkTaskService(self.workspace, self.packages,
             process_owner=self.instance_id, now=now, durable=durable)
         self.butler_config = butler or ButlerConfig()
+        self.minimal_entry = minimal_entry or MinimalEntryConfig()
         self.artisans: ArtisanResolver = CatalogArtisanResolver(self.packages, self.workspace, durable)
         defaults = replace(defaults or RuntimeDefaults(),
                            trace_binder=DispatchTraceBinder(store, self.work_tasks.store))

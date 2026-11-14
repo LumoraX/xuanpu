@@ -86,6 +86,18 @@ def test_butler_requires_execution_trace() -> None:
     assert config.butler.allows("acme") and config.butler.max_artisans_per_trace == 2
 
 
+def test_minimal_entry_requires_butler() -> None:
+    """极简入口按租户启用，默认关闭；名单内租户必须同时开启管家。"""
+    assert not parse_config(edited(), variables=VARIABLES).minimal_entry.allows("acme")
+    with pytest.raises(ConfigError, match="butler"):
+        parse_config(edited(minimal_entry={"enabled": True, "tenants": ["acme"]}), variables=VARIABLES)
+    config = parse_config(edited(
+        minimal_entry={"enabled": True, "tenants": ["acme"]},
+        butler={"enabled": True, "tenants": ["acme"]},
+        execution_trace={"enabled": True, "tenants": ["acme"]}), variables=VARIABLES)
+    assert config.minimal_entry.allows("acme") and not config.minimal_entry.allows("globex")
+
+
 def test_postgres_sections() -> None:
     """Postgres 后端的连接配置。"""
     config = parse_config(

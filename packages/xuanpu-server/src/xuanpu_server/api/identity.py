@@ -152,7 +152,9 @@ def identity_router(platform: Platform) -> APIRouter:
             # 处理（500，细节只进日志），不报「不存在」误导调用方
             logger.error("员工 %s 刚通过认证，身份存储里却查不到他的记录", who.user_id)
             raise PlatformError("服务内部错误")
-        return me_view(who, user)
+        # 页面据此选入口：员工所在租户启用了极简入口时为 minimal，其余为 classic
+        entry = "minimal" if who.user_id and platform.minimal_entry.allows(who.tenant_id) else "classic"
+        return {**me_view(who, user), "entry": entry}
 
     @router.get("/v1/auth/feishu/login")
     async def feishu_login(

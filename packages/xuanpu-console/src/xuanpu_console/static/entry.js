@@ -100,6 +100,8 @@ async function connectEntry() {
     const me = await entryApi("GET", "/v1/me");
     if (isStale(epoch)) return false;
     if (!me.user_id) throw new Error("新入口只给员工使用，管理员请走管理员入口。");
+    // 未启用极简入口的租户仍用旧页
+    if (me.entry !== "minimal") { location.replace("index.html"); return false; }
     entry.me = me;
     $("entry-user").textContent = me.display_name || "";
     $("entry-login").classList.add("hidden");
