@@ -981,6 +981,16 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 
 预检有效期默认900秒，内部证据固定归档、策略、完整MCP清单及凭据密文版本，安装前重检。diff仅含公开权限/上一安装权限及配置槽名，不回显配置值、密文指纹或实际秘密引用。新登记/预检/安装要求capability_delivery明确开启并命中租户白名单；查询与停止不受该新受理开关阻断。精确契约见[能力架构](capability-delivery.md)。
 
+## 管家入口（R5-C）
+
+`POST /v1/assistant/messages`：员工对管家说一句话。认证同 `/v1/assistant/route`。请求体：`request_id`（必填，1–80 字符 `[a-zA-Z0-9_.:-]`）、`text`（1–8000 字符）、`timezone`（IANA，默认 Asia/Shanghai）、`input_files`（本人文件版本 `{item_id, revision}`，最多 8 个，派工材料只能从中选）；多余字段 422。
+
+- 租户开启管家（且开启执行追踪）且调用方是员工：回执 `mode=butler`，含 `request_id`、`trace_id`、`message`、与 `/v1/assistant/route` 同名的草稿与打开字段（有草稿时 `proposal_id=request_id`，经 `/v1/assistant/proposals` 确认）、`dispatches`（`dispatch_id`、`package`、`entry`、`state`、`host`）。派工不等匠人结果。
+- 否则：原样走分流，回执为 `/v1/assistant/route` 的响应加 `mode=route`。
+- 同一 `request_id` 同体回原回执、不再采样；不同体或仍在处理中 409。管家失败 503 `runtime_unavailable`，原话已在主对话，可用同一标识重试。派工预算超限不报错给员工，由管家在答复里说明（工具错误 `butler_budget_exceeded`）。
+
+设计见[管家](butler.md)。
+
 ## 执行追踪（R5-B）
 
 只读，只给本人：需要当前启用的员工身份（登录或代员工），机器身份 403，他人的与不存在的 trace 一律 404。只返回元数据，不含正文。租户未开启 `execution_trace` 时没有记录。设计见[执行追踪](execution-trace.md)。

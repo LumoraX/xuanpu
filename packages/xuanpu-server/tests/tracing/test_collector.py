@@ -9,13 +9,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 import taifeng
 from taifeng import RoutingSimClient, SimTurn
 from xuanpu_server.tracing.collector import TraceCollector, tracer_for
-from xuanpu_server.tracing.config import ExecutionTraceConfig
+from xuanpu_server.tracing.config import ExecutionTraceConfig, TraceWiring
 from xuanpu_server.tracing.memory import MemorySpanStore
 from xuanpu_server.tracing.waterfall import waterfall
 
@@ -67,14 +67,15 @@ def _client(turns: int = 1) -> RoutingSimClient:
                                     "TREE_WORKER_MARK": worker, "TREE_OTHER_MARK": other})
 
 
-async def _run_turns(tmp_path: Path, store: SpanStore, turns: int = 1) -> TraceCollector:
-    """起一个引擎，接上采集器，跑若干轮。"""
+async def _run_turns(tmp_path: Path, store: SpanStore, turns: int = 1,
+                     **options: Any) -> TraceCollector:
+    """起一个引擎，接上采集器，跑若干轮；``options`` 透传给采集器。"""
     pool = await taifeng.EnginePool.create(
         skills_dir=_skills(tmp_path / "skills"), threads_dir=tmp_path / "threads",
         model_client=_client(turns), compressors=[], max_parallel_tool_calls=4,
     )
     engine = await pool.get_or_create(session_id="ses_demo", entry_skill_id="coordinator")
-    collector = TraceCollector(store, ALICE, CONFIG, ref="ses_demo")
+    collector = TraceCollector(store, ALICE, CONFIG, ref="ses_demo", **options)
     collector.start()
     events = engine.subscribe_all()
     try:
@@ -89,6 +90,18 @@ async def _run_turns(tmp_path: Path, store: SpanStore, turns: int = 1) -> TraceC
         await pool.close()
         await collector.close()
     return collector
+
+
+async def test_preset_trace_id_and_root_kind(tmp_path: Path) -> None:
+    """预分配的标识只给第一条根 trace；根 span 用给定类型，子执行仍是 artisan。"""
+    store = MemorySpanStore()
+    await _run_turns(tmp_path, store, turns=2, trace_id="trc_preset", root_kind="butler")
+    page = await store.list(ALICE)
+    assert page.total == 2 and "trc_preset" in {t.trace_id for t in page.items}
+    view = await store.get(ALICE, "trc_preset")
+    roots = [s for s in view.spans if s.parent_span_id is None]
+    assert [s.kind for s in roots] == ["butler"]
+    assert {s.kind for s in view.spans if s.parent_span_id == roots[0].span_id} <= {"artisan", "tool"}
 
 
 async def test_parallel_children_form_one_tree(tmp_path: Path) -> None:
@@ -160,7 +173,8 @@ def test_tracer_only_for_enabled_tenant_with_owner(config, user, expected) -> No
     class _Control:
         trace_store = MemorySpanStore()
 
-    tracer = tracer_for(_Control(), config, "acme", "ses_1", user)  # type: ignore[arg-type]
+    wiring = None if config is None else TraceWiring(config)
+    tracer = tracer_for(_Control(), wiring, "acme", "ses_1", user)  # type: ignore[arg-type]
     assert (tracer is not None) is expected
 
 

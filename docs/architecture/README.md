@@ -12,6 +12,8 @@ R4-A当前源码提供[能力目录与安装契约](capability-delivery.md)：�
 
 R5-B 当前源码提供[执行追踪](execution-trace.md)：按租户开启后，员工会话的每次请求记成一条 trace，每个执行与工具调用是一个 span，只存元数据；本人可读执行树与瀑布。尚未生产部署。
 
+R5-C 当前源码提供[管家](butler.md)（到 C1）：开启的租户里员工经 `POST /v1/assistant/messages` 对管家说话，管家自办或派给一位匠人并立即答复；唤醒、验收与代答尚未实现。尚未生产部署。
+
 ## 现状
 
 第一版加上 P0 底座升级（[ADR 0011](../decisions/0011-system-design-decisions.md) 决策 1）与 P1 用户身份：业务包规范、平台服务（控制面 + 运行时 + HTTP 接口 + 评测运行器）、命令行、Python 客户端、控制台五个包可用。

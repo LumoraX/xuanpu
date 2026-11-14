@@ -1,4 +1,4 @@
-"""本人执行追踪（R5-B）的只读客户端：trace 列表、执行树与瀑布，复用原认证和传输。"""
+"""本人执行追踪（R5-B）的只读客户端与管家入口（R5-C）：复用原认证和传输。"""
 
 from __future__ import annotations
 
@@ -20,6 +20,21 @@ class TraceClient:
     """主客户端继承同一传输；只读，不提供任何写入口。"""
 
     _http: _Http
+
+    async def send_to_butler(
+        self, text: str, *, request_id: str, timezone: str = "Asia/Shanghai",
+        input_files: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """对管家说一句话（``POST /v1/assistant/messages``），返回回执。
+
+        ``request_id`` 必填：同键同体回原回执，同键不同体服务端返回 409。回执 ``mode`` 为
+        ``butler``（含 ``trace_id`` 与 ``dispatches``）或 ``route``（租户未开启管家）。
+        管家派工不等匠人结果。
+        """
+        body: dict[str, Any] = {"request_id": request_id, "text": text, "timezone": timezone}
+        if input_files:
+            body["input_files"] = input_files
+        return await self._http.request("POST", "/v1/assistant/messages", json=body)
 
     async def list_traces(
         self, *, active: bool | None = None, cursor: str | None = None, limit: int = 50,

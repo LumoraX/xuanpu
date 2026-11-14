@@ -46,3 +46,24 @@ async def test_follow_trace_parses_frames_and_resumes():
     assert seen[0].url.raw_path == b"/v1/traces/a%2Fb/events"
     assert seen[0].headers["Last-Event-ID"] == "1"
     assert seen[0].headers["X-Xuanpu-Act-As"] == "member"
+
+
+async def test_send_to_butler_posts_request_id_and_body():
+    """管家入口：幂等标识与原话原样提交，带代员工头。"""
+    seen = []
+
+    def receive(request):
+        seen.append(request)
+        return httpx.Response(200, json={"mode": "butler", "trace_id": "t", "dispatches": []})
+
+    async with XuanpuClient("https://example.test", "PRIVATE_KEY", act_as_user="member",
+                            transport=httpx.MockTransport(receive)) as client:
+        receipt = await client.send_to_butler("帮我查工单", request_id="r1",
+                                              input_files=[{"item_id": "f", "revision": 2}])
+    assert receipt["mode"] == "butler"
+    import json
+    assert seen[0].method == "POST" and seen[0].url.path == "/v1/assistant/messages"
+    assert json.loads(seen[0].content) == {
+        "request_id": "r1", "text": "帮我查工单", "timezone": "Asia/Shanghai",
+        "input_files": [{"item_id": "f", "revision": 2}]}
+    assert seen[0].headers["X-Xuanpu-Act-As"] == "member"

@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     import taifeng
 
     from xuanpu_server.controlplane.store import ControlPlaneStore
-    from xuanpu_server.tracing.config import ExecutionTraceConfig
+    from xuanpu_server.tracing.config import ExecutionTraceConfig, TraceWiring
     from xuanpu_server.tracing.events import Draft
     from xuanpu_server.tracing.models import SpanKind, TraceOrigin
     from xuanpu_server.tracing.store import SpanStore
@@ -53,6 +53,7 @@ class TraceCollector:
     def __init__(
         self, store: SpanStore, owner: TraceOwner, config: ExecutionTraceConfig, *,
         ref: str | None, origin: TraceOrigin = "user", root_kind: SpanKind = "artisan",
+        trace_id: str | None = None,
     ) -> None:
         """
         Args:
@@ -62,6 +63,7 @@ class TraceCollector:
             ref: 根执行 span 指向的引用（会话标识）。
             origin: trace 的来源。
             root_kind: 根执行 span 的类型（业务会话是 artisan，管家会话是 butler）。
+            trace_id: 预先分配给第一条根 trace 的标识；None 时一律新生成。
         """
         self._store, self._owner, self._config = store, owner, config
         self._ref, self._origin, self._root_kind = ref, origin, root_kind
@@ -72,6 +74,7 @@ class TraceCollector:
         self._ended: dict[str, str] = {}
         self._pending_total = 0
         self._lock = asyncio.Lock()
+        self._preset: str | None = trace_id
         self._task: asyncio.Task[None] | None = None
 
     def start(self) -> None:
@@ -148,7 +151,12 @@ class TraceCollector:
             self._by_execution[identity.execution_id] = trace_id
             return self._traces.get(trace_id)
         # 没见过开头或父执行的执行（晚订阅、冷恢复后续跑）：仍然记下，但标不完整
-        trace = _Trace(trace_id=new_id("trc"), title=identity.skill_id, opened_at=event_time(event),
+        # 预分配的标识只给第一条从头开始的根 trace；孤儿执行不占用它
+        fresh_root = parent is None and event.msg.kind == "turn_started"
+        trace_id = self._preset if fresh_root and self._preset is not None else new_id("trc")
+        if fresh_root:
+            self._preset = None
+        trace = _Trace(trace_id=trace_id, title=identity.skill_id, opened_at=event_time(event),
                        orphan=parent is not None or event.msg.kind != "turn_started")
         self._traces[trace.trace_id] = trace
         self._by_execution[identity.execution_id] = trace.trace_id
@@ -201,11 +209,12 @@ class TraceCollector:
 
 
 def tracer_for(
-    store: ControlPlaneStore, config: ExecutionTraceConfig | None,
+    store: ControlPlaneStore, wiring: TraceWiring | None,
     tenant_id: str, session_id: str, user_id: str | None,
 ) -> TraceCollector | None:
     """租户开启追踪且会话有主人时，给这个引擎配一个采集器；否则不采集。"""
-    if config is None or user_id is None or not config.allows(tenant_id):
+    if wiring is None or user_id is None or not wiring.config.allows(tenant_id):
         return None
     owner = TraceOwner(tenant_id=tenant_id, user_id=user_id)
-    return TraceCollector(store.trace_store, owner, config, ref=session_id)
+    return TraceCollector(store.trace_store, owner, wiring.config, ref=session_id,
+                          root_kind=wiring.root_kind, trace_id=wiring.trace_id)

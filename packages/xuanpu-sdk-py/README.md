@@ -208,3 +208,7 @@ JSON写入保留调用者的操作号、版本及确认，不自动补 `confirme
 ## 执行追踪（R5-B）
 
 客户端新增只读的`list_traces(active=None, cursor=None, limit=50)`、`get_trace(trace_id)`、`trace_waterfall(trace_id)` 与增量流 `follow_trace(trace_id, after_seq=0)`（异步迭代 `(事件名, 数据)`：`snapshot`、`spans`、`end`），对应`GET /v1/traces`、`/v1/traces/{id}`、`/v1/traces/{id}/waterfall`、`/v1/traces/{id}/events`。只返回执行元数据（身份、父子、状态、时间、用量），不含正文；需要员工身份（登录或代员工），他人的 trace 一律 404。租户须在平台配置`execution_trace`中开启，未开启时列表为空。
+
+## 管家入口（R5-C）
+
+`send_to_butler(text, request_id=..., timezone="Asia/Shanghai", input_files=None)` 对应 `POST /v1/assistant/messages`，返回回执字典：`mode` 为 `butler`（含 `trace_id`、`message`、草稿字段与 `dispatches`）或 `route`（租户未开启管家时走既有分流）。`request_id` 必填：同键同体回原回执，同键不同体抛 409 的 `XuanpuError`。管家派工不等匠人结果，进展用 `follow_trace(trace_id)` 跟随。

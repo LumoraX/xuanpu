@@ -75,6 +75,17 @@ def test_execution_trace_section() -> None:
         parse_config(edited(execution_trace={"enabeld": True}), variables=VARIABLES)
 
 
+def test_butler_requires_execution_trace() -> None:
+    """管家名单内的租户必须同时开启执行追踪；默认关闭。"""
+    assert not parse_config(edited(), variables=VARIABLES).butler.allows("acme")
+    with pytest.raises(ConfigError, match="execution_trace"):
+        parse_config(edited(butler={"enabled": True, "tenants": ["acme"]}), variables=VARIABLES)
+    config = parse_config(edited(
+        butler={"enabled": True, "tenants": ["acme"], "max_artisans_per_trace": 2},
+        execution_trace={"enabled": True, "tenants": ["acme"]}), variables=VARIABLES)
+    assert config.butler.allows("acme") and config.butler.max_artisans_per_trace == 2
+
+
 def test_postgres_sections() -> None:
     """Postgres 后端的连接配置。"""
     config = parse_config(

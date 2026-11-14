@@ -18,6 +18,7 @@ from xuanpu_server.assistant import AssistantRouter
 from xuanpu_server.audit import AuditLog
 from xuanpu_server.butler.config import ButlerConfig
 from xuanpu_server.butler.resolver import CatalogArtisanResolver
+from xuanpu_server.butler.service import ButlerService
 from xuanpu_server.capabilities.bootstrap import build_capabilities
 from xuanpu_server.collaboration.lifecycle import CollaborationLifecycle
 from xuanpu_server.collaboration.notifications import CollaborationNotifications
@@ -328,6 +329,7 @@ class Platform:
         self.task_definitions=TaskDefinitionService(self.work_tasks,now=now,config=task_triggers or TriggerConfig())
         self.trigger_worker=TriggerWorker(self.task_definitions)
         self.assistant = AssistantRouter(self, models, now=now)
+        self.butler = ButlerService(self, models, data_dir=data_dir, now=now)
         self.proactive = ProactiveService(workspace=self.workspace, control=store,
             identity=identity_store, sample=self.assistant.sample_proactive, now=now,
             semantic_interval=proactive_interval, reminders=self.reminders)
@@ -418,7 +420,7 @@ class Platform:
             actions = (self.shared_notifications.close, self.shared_publication_recovery.close, self.shared_materials.publications.close,
                        self.capabilities.installations.preflight.inventory.close,
                        self.organization_lifecycle.close, self.trigger_worker.close, self.task_registry.close, self.proactive_worker.close, self.reminders.close,
-                       self.notification_sender.close, self.assistant.close, self.trace_retention.close,
+                       self.notification_sender.close, self.assistant.close, self.butler.close, self.trace_retention.close,
                        self.identity.maintenance.close, self.identity.disabling.close,
                        self._shutdown_sessions, self.runtimes.close, self.identity.close, self.wecom_provider.close)
             for action in actions:

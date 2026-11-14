@@ -211,7 +211,8 @@ approvals:
 #   max_attempts_per_span: 64    # 1–1000；超出不再记录新尝试的用量并标记不完整
 #   retention_days: 90           # 1–3650
 
-# 管家（R5-C）：员工对管家说话，管家自办或派给匠人。按租户白名单开启。
+# 管家（R5-C）：员工对管家说话，管家自办或派给匠人。按租户白名单开启；
+# 名单内租户必须同时在 execution_trace 中开启。
 # butler:
 #   enabled: false
 #   tenants: []                        # 必须同时显式开启并列出租户，空名单始终关闭

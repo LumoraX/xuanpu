@@ -763,7 +763,9 @@ R2配置中的`task_activity.enabled`控制工作动态通知，默认false；`t
 
 当前源码新增 `0022_butler_dispatch`（尚未正式部署）：一次派工一行，按租户与员工归属（复合外键到员工表），只存管家交给匠人的任务说明与材料引用；匠人的正文与结果仍在其任务或会话里。
 
-`butler` 构造配置：enabled 默认 false；tenants 默认 []，空始终关闭；max_artisans_per_trace 默认 4（1–16）；max_butler_turns_per_trace 默认 8（1–64）；max_tokens_per_trace 默认 400000（1000–20000000，管家与匠人合计，用量未知时不放行派工）；max_active_traces_per_tenant 默认 50（1–10000）。超限返回 429 `butler_budget_exceeded`，不建派工记录。管家入口本身（R5-C1）尚未实现，开启此项目前只影响派工存储与匠人解析。
+`butler` 构造配置：enabled 默认 false；tenants 默认 []，空始终关闭；max_artisans_per_trace 默认 4（1–16）；max_butler_turns_per_trace 默认 8（1–64）；max_tokens_per_trace 默认 400000（1000–20000000，管家与匠人合计，用量未知时不放行派工）；max_active_traces_per_tenant 默认 50（1–10000）。超限时不建派工记录，管家在答复里说明。名单内租户必须同时在 `execution_trace` 中开启，否则配置加载失败（「butler 租户须同时在 execution_trace 中开启」）。
+
+开启后，名单内租户的员工经 `POST /v1/assistant/messages` 对管家说话（见[管家](../architecture/butler.md)）；未开启的租户同一入口走既有分流。管家引擎每租户一个，线程文件在 `<data_dir>/butler/<租户目录>/threads`，每轮新建、结束即释放；管家处理失败记标准错误日志「管家处理失败」并返回 503，员工原话已保留。
 
 ## 可选 HTTP 调用身份签名
 

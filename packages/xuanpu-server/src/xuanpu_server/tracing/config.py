@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
 if TYPE_CHECKING:
+    from xuanpu_server.tracing.models import SpanKind
     from xuanpu_server.tracing.otel import OtelExport
 
 
@@ -28,10 +29,18 @@ class ExecutionTraceConfig(BaseModel):
 
 @dataclass(frozen=True)
 class TraceWiring:
-    """交给事件枢纽的追踪装配：span 采集配置，加可选的 OTel 导出（平台持有、共享）。"""
+    """交给事件枢纽的追踪装配：span 采集配置，加可选的 OTel 导出（平台持有、共享）。
+
+    Attributes:
+        root_kind: 根执行 span 的类型；业务会话是 artisan，管家是 butler。
+        trace_id: 预先分配的 trace 标识；给了时，该枢纽第一条根 trace 用它（管家据此把
+            派工记录挂到同一条 trace 上），之后的根执行照常另开。
+    """
 
     config: ExecutionTraceConfig
     otel: OtelExport | None = None
+    root_kind: SpanKind = "artisan"
+    trace_id: str | None = None
 
     def otel_for(self, tenant: str) -> OtelExport | None:
         """只对开启追踪的租户导出；导出与持久 span 用同一份租户名单。"""

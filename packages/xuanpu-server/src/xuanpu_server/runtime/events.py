@@ -227,8 +227,7 @@ class EngineEventHub:
         # 运行时内导入：tracing 依赖 runtime 包，顶层导入会成环
         from xuanpu_server.tracing.collector import tracer_for
 
-        self._tracer = tracer_for(store, None if tracing is None else tracing.config,
-                                  tenant_id, session_id, user_id)
+        self._tracer = tracer_for(store, tracing, tenant_id, session_id, user_id)
         export = None if tracing is None else tracing.otel_for(tenant_id)
         self._otel = None if export is None else export.sink_for(tenant_id)
         # 引擎每次被创建是一条新的事件流，序号从头计

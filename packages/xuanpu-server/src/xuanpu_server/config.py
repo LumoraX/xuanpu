@@ -380,6 +380,11 @@ class ServerConfig(_Section):
         self.decoded_master_keys()
         if self.state.backend == "postgres" and self.models.protocol != "chat":
             raise ValueError("state.backend=postgres 的外部会话主存仅支持 models.protocol=chat")
+        if self.butler.enabled:
+            # 管家的派工预算与执行树依赖执行追踪：名单内租户必须同时开启追踪
+            missing = [t for t in self.butler.tenants if not self.execution_trace.allows(t)]
+            if missing:
+                raise ValueError(f"butler 租户须同时在 execution_trace 中开启：{missing}")
         return self
 
     def decoded_master_keys(self) -> dict[str, bytes]:

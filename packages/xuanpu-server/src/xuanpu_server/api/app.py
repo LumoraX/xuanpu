@@ -21,6 +21,7 @@ from xuanpu_server.api.assistant import assistant_router
 from xuanpu_server.api.assistant_actions import assistant_actions_router
 from xuanpu_server.api.audit_usage import audit_usage_router
 from xuanpu_server.api.auth import Caller, bearer
+from xuanpu_server.api.butler import butler_router
 from xuanpu_server.api.capabilities import capabilities_router
 from xuanpu_server.api.collaboration_notifications import collaboration_notifications_router
 from xuanpu_server.api.connections import connections_router
@@ -181,6 +182,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.include_router(audit_usage_router(platform))
     app.include_router(history_router(platform))
     app.include_router(assistant_router(platform))
+    app.include_router(butler_router(platform))
     app.include_router(assistant_actions_router(platform))
     app.include_router(reminders_router(platform))
     app.include_router(workspace_router(platform))
