@@ -57,7 +57,7 @@ function harness(routes) {
     return { ok: status < 400, status, text: async () => JSON.stringify(result.json || {}), body: result.stream };
   };
   const context = vm.createContext({
-    console: { error() {}, log: console.log }, crypto, AbortController, DOMException, TextDecoder, URLSearchParams, Intl,
+    console: { error() {}, log: console.log }, crypto, AbortController, DOMException, TextDecoder, TextEncoder, URLSearchParams, Intl,
     document: { getElementById: node, createElement: element }, fetch, Math, JSON, Date, Promise, Map, Set,
     location: { search: "", pathname: "/console/entry.html", assign() {}, replaced: null, replace(to) { this.replaced = to; } },
   });
@@ -65,7 +65,7 @@ function harness(routes) {
 }
 
 function load(h, dir) {
-  for (const name of ["entry.js", "cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]) {
+  for (const name of ["entry.js", "cards.js", "module-cards.js", "collab-cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]) {
     vm.runInContext(fs.readFileSync(path.join(dir, name), "utf8"), h.context, { filename: name });
   }
 }
@@ -218,8 +218,130 @@ async function classicTenantGoesBack(dir) {
   assert.ok(!h.calls.some(c => c.url.startsWith("/v1/dashboard")), "未启用的租户不读概览");
 }
 
+// 发一句话，让管家回执渲染成卡片。
+async function routeTo(routes, reply) {
+  const h = harness(base({ "POST /v1/assistant/messages": () => ({ json: { mode: "butler", message: "好的", ...reply } }), ...routes }));
+  h.context.crypto = { randomUUID: () => "fixed", subtle: crypto.webcrypto.subtle };
+  load(h, dir_); await flush();
+  h.nodes("message").value = "处理一下";
+  h.nodes("composer").listeners.submit({ preventDefault() {} });
+  await flush();
+  return h;
+}
+let dir_ = null;
+// 网页加密摘要在线程池里完成，等按钮出现再点。
+async function click(h, text, index = 0) {
+  for (let i = 0; i < 50 && byText(h.nodes("transcript"), "button", text).length <= index; i++) {
+    await new Promise(resolve => setTimeout(resolve, 5));
+  }
+  byText(h.nodes("transcript"), "button", text)[index].listeners.click();
+  await flush();
+  await new Promise(resolve => setTimeout(resolve, 5));
+  await flush();
+}
+const posted = (h, url) => h.calls.filter(c => c.method === "POST" && c.url === url);
+
+async function proactiveDraftRetriesSameRequest() {
+  let failures = 1;
+  const h = await routeTo({
+    "GET /v1/proactive/pa_1": () => ({ json: { id: "pa_1", version: 2, item_version: 5, title: "回访客户" } }),
+    "POST /v1/proactive/pa_1/actions": () => failures-- > 0 ? { status: 503, json: {} } : { json: {} },
+  }, { proactive_draft: { id: "pa_1", version: 2, action: "complete" }, proposal_id: "p0" });
+  await click(h, "确认完成");
+  await click(h, "重试同一操作");
+  const calls = posted(h, "/v1/proactive/pa_1/actions");
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0].body, calls[1].body, "重试复用同一请求");
+  assert.equal(calls[0].body.version, 2);
+  assert.equal(calls[0].body.item_version, 5);
+  assert.equal(calls[0].body.action, "complete");
+  assert.ok(h.nodes("transcript").textContent.includes("已处理"));
+}
+
+async function definitionDraftAndList() {
+  const request = { request_id: "td-1", title: "周报", template: { text: "汇总" }, trigger: { kind: "time", repeat: "once", at: "2030-01-01T09:00:00+08:00" },
+    timezone: "Asia/Shanghai", max_executions: 1, max_tokens: 1000, valid_until: "2030-02-01T00:00:00+08:00" };
+  let h = await routeTo({ "POST /v1/task-definitions": () => ({ json: { title: "周报" } }) },
+    { task_definition_draft: { request, display: {} }, proposal_id: "td-1" });
+  await click(h, "确认启用安排");
+  assert.deepEqual(posted(h, "/v1/task-definitions")[0].body, { ...request, confirmed: true });
+  h = await routeTo({
+    "GET /v1/task-definitions": () => ({ json: { items: [{ definition_id: "d1", title: "周报", enabled: true, cancelled: false, state_version: 4 }] } }),
+    "POST /v1/task-definitions/d1/pause": () => ({ json: {} }),
+  }, { open_task_definitions: true });
+  await click(h, "暂停");
+  assert.deepEqual(posted(h, "/v1/task-definitions/d1/pause")[0].body, { request_id: "web-fixed", expected_version: 4, stop_running: false });
+}
+
+async function connectionConsentAndRevoke() {
+  const h = await routeTo({
+    "GET /v1/me/connections": () => ({ json: { enabled: true, connections: [{ id: "wecom", name: "企业微信", status: "active",
+      operations: ["self_profile.read"], consents: [{ consent_id: "c1", status: "active", version: 2, purpose: "核对" }] }] } }),
+    "POST /v1/me/connections/wecom/consents/c1/revoke": () => ({ json: {} }),
+    "POST /v1/me/connections/wecom/consents": () => ({ json: {} }),
+  }, { open_connections: true });
+  await click(h, "撤销这项授权");
+  assert.deepEqual(posted(h, "/v1/me/connections/wecom/consents/c1/revoke")[0].body, { request_id: "web-fixed", expected_version: 2 });
+  await click(h, "同意读取本人资料");
+  const consent = posted(h, "/v1/me/connections/wecom/consents")[0].body;
+  assert.deepEqual(consent.operations, ["self_profile.read"]);
+  assert.equal(consent.purpose, "本人基础资料核对");
+}
+
+async function sharedDraftUsesProposalKey() {
+  const h = await routeTo({ "POST /v1/shared-matters": () => ({ json: { title: "季度计划" } }) },
+    { shared_draft: { title: "季度计划", content: "正文" }, proposal_id: "p1" });
+  await click(h, "确认新建");
+  const body = posted(h, "/v1/shared-matters")[0].body;
+  const digest = crypto.createHash("sha256").update(JSON.stringify({ title: "季度计划", content: "正文" })).digest("hex").slice(0, 32);
+  assert.deepEqual(body, { request_id: "p1:shared:" + digest, confirmed: true, title: "季度计划", content: "正文" });
+}
+
+async function handoffAndApprovalActions() {
+  const h = await routeTo({
+    "GET /v1/handoffs": () => ({ json: { items: [{ id: "h1", title: "合同交接" }] } }),
+    "GET /v1/approval-requests": () => ({ json: { items: [{ id: "a1", current_step: 0, steps: [{}] }] } }),
+    "GET /v1/handoffs/h1": () => ({ json: { id: "h1", version: 3, summary: "请接收", allowed_actions: ["accept", "return", "deliver"] } }),
+    "GET /v1/approval-requests/a1": () => ({ json: { id: "a1", version: 7, allowed_actions: ["approve"], decisions: [] } }),
+    "POST /v1/handoffs/h1/accept": () => ({ json: {} }),
+    "POST /v1/handoffs/h1/return": () => ({ json: {} }),
+    "POST /v1/approval-requests/a1/approve": () => ({ json: {} }),
+  }, { open_collaboration: true });
+  await click(h, "查看与处理", 0);
+  await click(h, "退回工作");
+  assert.equal(posted(h, "/v1/handoffs/h1/return").length, 0, "必须说明原因");
+  assert.ok(h.nodes("transcript").textContent.includes("在「更多」里完成"), "需要选文件的动作指向更多");
+  await click(h, "接收这项工作");
+  assert.deepEqual(posted(h, "/v1/handoffs/h1/accept")[0].body, { request_id: "web-fixed", confirmed: true, expected_version: 3 });
+  await click(h, "查看与处理", 1);
+  await click(h, "批准本次固定成果");
+  assert.deepEqual(posted(h, "/v1/approval-requests/a1/approve")[0].body,
+    { request_id: "web-fixed", confirmed: true, expected_version: 7, reason: "" });
+}
+
+async function handoffDraftUsesProposalKey() {
+  const h = await routeTo({
+    "GET /v1/organization/people": () => ({ json: { items: [{ user_id: "usr_alice", display_name: "Alice" }, { user_id: "usr_bob", display_name: "Bob" }] } }),
+    "GET /v1/shared-matters": () => ({ json: { items: [{ id: "sm1", title: "合同", owner_id: "usr_alice", status: "active" }] } }),
+    "GET /v1/approval-policies": () => ({ json: { items: [] } }),
+    "GET /v1/shared-matters/sm1/materials": () => ({ json: { items: [{ name: "合同.pdf", revisions: [{ id: "rev1", revision: 2 }] }] } }),
+    "GET /v1/shared-matters/sm1": () => ({ json: { id: "sm1", version: 9 } }),
+    "POST /v1/handoffs": () => ({ json: { title: "合同交接" } }),
+  }, { handoff_draft: { title: "合同交接", summary: "请跟进" }, proposal_id: "p2" });
+  const box = all(h.nodes("transcript"), n => n.tag === "input" && n.type === "checkbox" && n.dataset.revision === "rev1")[0];
+  box.checked = true;
+  await click(h, "核对交接");
+  await click(h, "确认提交交接");
+  const body = posted(h, "/v1/handoffs")[0].body;
+  const { request_id, ...rest } = body;
+  assert.deepEqual(rest, { confirmed: true, expected_version: 9, shared_id: "sm1", target_kind: "user", target_id: "usr_bob",
+    title: "合同交接", summary: "请跟进", include_content: false, material_revision_ids: ["rev1"] });
+  assert.equal(request_id, "handoff:p2:" + crypto.createHash("sha256").update(JSON.stringify(rest)).digest("hex"));
+}
+
 (async () => {
   const dir = process.argv[2];
+  dir_ = dir;
   await classicTenantGoesBack(dir);
   await overviewAndTips(dir);
   await sendAndConfirm(dir);
@@ -227,5 +349,11 @@ async function classicTenantGoesBack(dir) {
   await progressFromHistoryAndRestore(dir);
   await staleResultsAreDropped(dir);
   await unavailableKeepsInput(dir);
+  await proactiveDraftRetriesSameRequest();
+  await definitionDraftAndList();
+  await connectionConsentAndRevoke();
+  await sharedDraftUsesProposalKey();
+  await handoffAndApprovalActions();
+  await handoffDraftUsesProposalKey();
   console.log("entry behavior passed");
 })().catch(error => { console.error(error); process.exit(1); });

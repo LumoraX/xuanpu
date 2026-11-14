@@ -4,11 +4,6 @@
 
 const LIST_KINDS = { reminder: "提醒", todo: "待办", event: "日程", matter: "事项", file: "文件" };
 const MORE = {
-  proactive: ["业务跟进", "index.html?classic=1#functions"],
-  definition: ["执行安排", "index.html?classic=1#functions"],
-  connections: ["企业连接", "index.html?classic=1&connections=1"],
-  shared: ["共享协作", "index.html?classic=1#functions"],
-  collaboration: ["工作交接与审批", "index.html?classic=1#functions"],
   workspace: ["个人工作台", "index.html?classic=1#functions"],
 };
 
@@ -26,11 +21,12 @@ function renderRouteCards(route, options = {}) {
   if (route.open_reminders) appendCard(listCard("reminder"));
   if (route.open_workspace) appendCard(LIST_KINDS[route.open_workspace] ? listCard(route.open_workspace) : moreCard("workspace"));
   if (route.work_task_id) appendCard(workTaskCard(route.work_task_id));
-  if (route.proactive_draft || route.open_proactive) appendCard(moreCard("proactive"));
-  if (route.task_definition_draft || route.open_task_definitions) appendCard(moreCard("definition"));
-  if (route.open_connections) appendCard(moreCard("connections"));
-  if (route.shared_draft || route.open_shared) appendCard(moreCard("shared"));
-  if (route.handoff_draft || route.open_collaboration) appendCard(moreCard("collaboration"));
+  // 其余五个模块的卡片见 module-cards.js 与 collab-cards.js
+  if (route.proactive_draft || route.open_proactive) appendCard(proactiveCard(route.proactive_draft));
+  if (route.task_definition_draft || route.open_task_definitions) appendCard(definitionCard(route.task_definition_draft));
+  if (route.open_connections) appendCard(connectionsCard());
+  if (route.shared_draft || route.open_shared) appendCard(sharedCard(route.shared_draft, proposalId));
+  if (route.handoff_draft || route.open_collaboration) appendCard(collaborationCard(route.handoff_draft, proposalId));
 }
 
 // 需要本人原生选择或确认的动作：给一个明确按钮，由本人点击后在「更多」里完成。

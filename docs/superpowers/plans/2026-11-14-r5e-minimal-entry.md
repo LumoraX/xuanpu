@@ -32,7 +32,7 @@
 **Files**：Create `C/{entry.html,entry.js,entry.css,cards.js,progress-card.js,dashboard.js,tips.js}`、`Q/{entry_behavior.cjs,test_entry_behavior.py,cards_behavior.cjs}`；Modify `S/butler/tools_read.py` 与相关路由（返回列表数据代替 `open_workspace`）、`packages/xuanpu-console/src/xuanpu_console/__init__.py`（入口选择）。
 
 - [x] 先列对照清单：现有 8 个模块、15 张功能卡、5 个浮层，各自在新页的去处（卡片 / 更多 / 管理员）。清单写进本文件，逐项勾。
-- [ ] 列表卡与确认卡：提醒、待办、日程、事项、文件、执行安排、交接、共享、连接、业务跟进。操作调用原接口，带原幂等键与版本号。（部分：提醒、待办、日程、事项、文件与草稿确认在卡片内完成；执行安排、交接、共享、连接、业务跟进五类是卡片按钮，进入「更多」的原表单完成，未在卡片内重做这些表单，见 E1 进度）
+- [x] 列表卡与确认卡：提醒、待办、日程、事项、文件、执行安排、交接、共享、连接、业务跟进。操作调用原接口，带原幂等键与版本号。（五类补齐见「E1 补齐」；需要选文件、上传或下载核验固定成果的少数动作仍在「更多」，理由见对照清单）
 - [x] 必须本人原生选择的动作做成卡片按钮，由本人点击。
 - [x] 进展卡：订阅 trace SSE，展开执行树与瀑布，不完整时标注；刷新后恢复。
 - [x] 身份切换与注销清空全部状态；旧异步结果不回填。
@@ -46,6 +46,13 @@
 - 身份：退出或身份切换时代际加一、中止全部请求与流、清空概览、对话、提示与输入；旧代际的结果一律丢弃（行为测试覆盖迟到的管家回执）。
 - 与计划的偏离：未改 `S/butler/tools_read.py`——列表卡在客户端调原模块列表接口，分流与旧页的 `open_workspace` 语义不变；卡片行为测试合并在 `entry_behavior.cjs`，未单列 `cards_behavior.cjs`。
 - 测试：`.venv/bin/pytest packages/xuanpu-console/tests -q` → 29 passed；`node tests/entry_behavior.cjs src/xuanpu_console/static` → entry behavior passed。
+
+### E1 补齐（2026-11-14，Node v24.22.3）
+
+- 已写：`C/module-cards.js`（业务跟进、执行安排、企业连接）、`C/collab-cards.js`（共享事项、工作交接、组织审批、管家起草的交接）；`cards.js` 不再给这五类只放按钮卡；新页脚本 6 → 8 个（未压缩 51492 字节）。
+- 请求体与功能页逐字段一致：业务跟进 `POST /v1/proactive/{id}/actions`（`version`、`item_version`、动作，延后/提醒由本人选时间）；执行安排确认原样提交服务端预览过的请求（含其 `request_id`）加 `confirmed:true`，暂停/恢复/取消带 `expected_version=state_version`；连接同意 `POST …/consents`、撤销带 `expected_version`；共享草稿幂等键 `草稿标识:shared:摘要前32位`；交接动作 `{request_id, confirmed, expected_version}`，签收带 `delivery_version`，退回/补充/请求取消/争议须本人写原因；审批决定 `POST /v1/approval-requests/{id}/{approve|reject|return|withdraw}`；管家起草的交接由本人选来源事项、接收人、审批规则、资料版本，幂等键 `handoff:草稿标识:请求体摘要`。同一张卡重试复用冻结请求；4xx 不重试，结果未知（5xx/网络）可用同一请求重试。
+- 留在「更多」的动作（原生页面必需）：企业微信绑定跳转到 `open.weixin.qq.com` 官方授权页；交接的转交、补充资料、发布与交付成果（要选或上传文件）；下载并按 SHA-256 核验固定成果（审批前核对）；通讯录预览（管理员）。
+- 测试：`node tests/entry_behavior.cjs src/xuanpu_console/static` → entry behavior passed（新增 6 例：业务跟进草稿重试复用同一请求、执行安排确认与暂停带版本、连接同意与撤销、共享草稿幂等键、交接与审批动作（原因必填、需选文件的动作指向更多）、管家起草的交接幂等键）；`.venv/bin/pytest packages/xuanpu-console/tests -q` → 30 passed。
 
 ## E2：提示、切换与清理
 
@@ -73,7 +80,7 @@ E1 第一步填写（2026-11-14，以 `static/index.html` 实际内容为准）�
 侧栏模块（8）：
 
 - [x] 交办工作 → 卡片（受理回执与状态）+ 更多（成果下载与行动项确认）
-- [x] 执行安排 → 卡片按钮（草稿须本人在原表单确认）+ 更多
+- [x] 执行安排 → 卡片（草稿确认、列表、暂停/恢复/取消，带版本）+ 更多（新建表单、修改、执行明细）
 - [x] 文件 → 卡片（列表、下载）+ 更多（上传、文件夹、版本、回收站）
 - [x] 事项 → 卡片（列表）+ 更多（编辑、关联资料）
 - [x] 待办 → 卡片（列表、标记完成，带版本号）+ 更多
@@ -85,9 +92,9 @@ E1 第一步填写（2026-11-14，以 `static/index.html` 实际内容为准）�
 
 - [x] 执行安排 → 同上
 - [x] 交办工作 → 同上
-- [x] 企业连接 → 卡片按钮（绑定与授权须本人原生确认）→ 更多（`?classic=1&connections=1`）
-- [x] 工作交接与审批 → 卡片按钮（接受、审批由本人点击）→ 更多；轮到本人审批的数量进概览「等我处理」
-- [x] 共享协作 → 卡片按钮（资料选择须本人原生选择）→ 更多
+- [x] 企业连接 → 卡片（状态、本人资料授权同意、撤销，带版本）+ 绑定按钮（跳转企业微信官方授权页，原生页面必需）+ 更多（通讯录预览等管理员动作）
+- [x] 工作交接与审批 → 卡片（收到的交接、接收/开始/取消/签收/退回等、审批决定、管家起草的交接）+ 更多（转交、补充资料、提交成果、下载核验固定成果——需要选择或核验文件）；轮到本人审批的数量进概览「等我处理」
+- [x] 共享协作 → 卡片（列表、管家起草的新建确认）+ 更多（邀请成员、发布资料、上传）
 - [x] 组织与职责 → 更多（含获授权同事的配置）
 - [x] 我的能力 → 更多
 - [x] 发票报销记录与审批 → 更多
@@ -96,17 +103,17 @@ E1 第一步填写（2026-11-14，以 `static/index.html` 实际内容为准）�
 - [x] 日程 → 同「日程」
 - [x] 个人能力与设置 → 更多
 - [x] 提醒 → 卡片（草稿确认卡；列表、取消，带版本号）+ 更多（编辑、历史状态）
-- [x] 业务跟进 → 卡片按钮（决定须本人在原表单确认）→ 更多
+- [x] 业务跟进 → 卡片（列表、完成/新进展/不再跟进/延后/提醒、管家草稿确认，带版本）+ 更多（跟进设置）
 - [x] 通知 → 概览「未读通知」+ 卡片（最近通知、标为已读）+ 更多（通知中心）
 
 浮层与面板（6 + 2）：
 
 - [x] 通知面板 `notifications-panel` → 卡片（通知卡）
 - [x] 工作窗口 `workspace-window` → 卡片（列表卡）+ 更多
-- [x] 协作面板 `collaboration-panel` → 卡片按钮 → 更多
-- [x] 共享面板 `shared-panel` → 卡片按钮 → 更多
+- [x] 协作面板 `collaboration-panel` → 卡片 + 更多（文件类动作）
+- [x] 共享面板 `shared-panel` → 卡片 + 更多（成员与资料）
 - [x] 组织面板 `organization-panel` → 更多
-- [x] 连接面板 `connections-panel` → 卡片按钮 → 更多
+- [x] 连接面板 `connections-panel` → 卡片 + 更多（管理员动作）
 - [x] 内嵌：提醒面板 `reminders-panel` → 卡片（列表卡）
 - [x] 内嵌：能力面板 `capability-panel` → 更多
 

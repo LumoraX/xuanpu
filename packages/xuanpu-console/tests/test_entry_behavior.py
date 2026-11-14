@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from xuanpu_console import static_dir
 
-ENTRY_SCRIPTS = ["entry.js", "cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]
+ENTRY_SCRIPTS = ["entry.js", "cards.js", "module-cards.js", "collab-cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]
 
 
 def test_entry_behavior() -> None:
@@ -58,4 +58,6 @@ def test_entry_only_uses_original_endpoints() -> None:
         "/v1/me", "/v1/auth/logout", "/v1/auth/feishu", "/v1/workspace/messages", "/v1/workspace/items",
         "/v1/workspace/files", "/v1/assistant/messages", "/v1/assistant/proposals", "/v1/assistant/pending",
         "/v1/reminders", "/v1/notifications", "/v1/work-tasks", "/v1/traces", "/v1/dashboard",
+        "/v1/proactive", "/v1/task-definitions", "/v1/me/connections", "/v1/shared-matters",
+        "/v1/handoffs", "/v1/approval-requests", "/v1/organization/people", "/v1/approval-policies",
     }, paths
