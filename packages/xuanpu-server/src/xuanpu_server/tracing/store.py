@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Protocol
 
 from xuanpu_server.errors import InvalidRequestError
+from xuanpu_server.tracing.models import DEFAULT_SOURCE
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -48,9 +49,11 @@ class SpanStore(Protocol):
 
     async def apply(
         self, owner: TraceOwner, trace_id: str, facts: Sequence[SpanFact], *,
+        source: str = DEFAULT_SOURCE,
         max_spans: int | None = None, max_attempts: int | None = None,
     ) -> TraceRecord:
-        """按序号应用事实：已应用的序号跳过，跳号与被拒事实把 trace 标为不完整。
+        """按写入方 ``source`` 的序号应用事实：该写入方已应用的序号跳过，跳号与被拒事实把
+        trace 标为不完整；不同写入方的序号互不影响。
 
         ``max_spans`` / ``max_attempts`` 覆盖构造时的上限（采集器按配置传入）。
         """

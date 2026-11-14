@@ -75,7 +75,7 @@ class Dispatcher:
     ) -> DispatchRecord:
         """核对预算后建记录；存储在同一临界区里再核一次容量。"""
         config = self._platform.butler_config
-        store = self._platform.store.dispatch_store
+        store = self._platform.dispatches
         owner = turn.owner()
         existing = await store.list_for_trace(owner, turn.trace_id)
         usage = TraceUsage(artisans=len(existing), tokens=await self._finished_tokens(owner, turn))
@@ -124,20 +124,27 @@ class Dispatcher:
         self, turn: ButlerTurn, record: DispatchRecord, artisan: Artisan,
         materials: tuple[InputFile, ...],
     ) -> DispatchRecord:
-        """启动承载执行并把派工推进到 running；启动失败记 failed 后原样上抛。"""
-        store = self._platform.store.dispatch_store
+        """启动承载执行并把派工推进到 running；启动失败记 failed 后原样上抛。
+
+        会话承载先建会话、把会话标识写进派工记录（running），再发任务说明：匠人引擎在发出
+        时才创建，它的采集器据此查到绑定、挂到派工 span 下。
+        """
+        store = self._platform.dispatches
         try:
-            host_ref = (await self._start_task(turn, record, materials) if artisan.host == "task"
-                        else await self._start_session(turn, record))
+            if artisan.host == "task":
+                host_ref = await self._start_task(turn, record, materials)
+                running = await store.update(turn.owner(), record.dispatch_id,
+                                             expected_version=record.version, to="running",
+                                             at=self._at(), host_ref=host_ref)
+            else:
+                running = await self._start_session(turn, record)
         except PlatformError:
+            current = await store.get(turn.owner(), record.dispatch_id)
             failed = await store.update(turn.owner(), record.dispatch_id,
-                                        expected_version=record.version, to="failed",
+                                        expected_version=current.version, to="failed",
                                         at=self._at(), end_reason="start_failed")
             turn.dispatches[-1] = failed
             raise
-        running = await store.update(turn.owner(), record.dispatch_id,
-                                     expected_version=record.version, to="running",
-                                     at=self._at(), host_ref=host_ref)
         turn.dispatches[-1] = running
         return running
 
@@ -152,15 +159,18 @@ class Dispatcher:
                                            entry=record.artisan.entry)))
         return task.task_id
 
-    async def _start_session(self, turn: ButlerTurn, record: DispatchRecord) -> str:
-        """会话承载：钉住派工时的版本建会话，发出任务说明；这一轮在后台读完。"""
+    async def _start_session(self, turn: ButlerTurn, record: DispatchRecord) -> DispatchRecord:
+        """会话承载：钉住派工时的版本建会话，记下绑定，再发出任务说明；这一轮在后台读完。"""
         sessions = self._platform.sessions
         session = await sessions.create(
             turn.who, package=record.artisan.package, version=record.artisan.version,
             entry=record.artisan.entry, request_id="butler:" + record.dispatch_id)
+        running = await self._platform.dispatches.update(
+            turn.owner(), record.dispatch_id, expected_version=record.version, to="running",
+            at=self._at(), host_ref=session.session_id)
         started = await sessions.send_message(turn.who, session.session_id, record.instruction)
         self._drain(started)
-        return session.session_id
+        return running
 
     def _drain(self, started: Turn) -> None:
         """读完这一轮的事件流，免得缓冲占满；内容已由事件枢纽进审计与追踪。"""

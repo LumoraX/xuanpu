@@ -128,7 +128,7 @@ class WakeEffects:
     async def _move(self, owner: TraceOwner, dispatch_id: str, to: DispatchState, *,
                     end_reason: str | None = None) -> None:
         """派工推进到目标状态；已在该状态或已越过时不动。"""
-        store = self._platform.store.dispatch_store
+        store = self._platform.dispatches
         current = await store.get(owner, dispatch_id)
         if current.state == to or current.state == "delivered":
             return

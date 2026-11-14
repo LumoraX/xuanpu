@@ -79,6 +79,14 @@ class MemoryDispatchStore:
         found = [r for r in self._records.values() if r.tenant_id == tenant_id and r.active]
         return tuple(sorted(found, key=lambda r: (r.created_at, r.dispatch_id))[:limit])
 
+    async def find_by_host(self, owner: TraceOwner, host_ref: str) -> DispatchRecord | None:
+        """本人承载在 ``host_ref`` 上的派工。"""
+        for record in self._records.values():
+            if (record.tenant_id, record.user_id, record.host_ref) == (
+                    owner.tenant_id, owner.user_id, host_ref):
+                return record
+        return None
+
     async def active_traces(self, tenant_id: str) -> int:
         """有进行中派工的不同 trace 数。"""
         return len({r.trace_id for r in self._records.values()

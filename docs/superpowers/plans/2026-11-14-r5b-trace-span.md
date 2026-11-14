@@ -17,7 +17,7 @@
 - [x] 先写反例：跨租户、跨员工读取；重复事件不重复记用量；迟到与跳号标 `incomplete`；超过 span 上限停止新增；取消请求不直接变 cancelled。
 - [x] 实现 span 模型与两套存储；状态转换写成纯函数并单测；不存正文字段，测试断言参数与输出进不了存储。
 - [x] 保留期清理按租户分批，不动审计（`S/tracing/retention.py`，平台启动时开启，每小时一轮）。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/tracing -q`；提交 `feat: 增加按租户持久的执行 span 存储`。
+- [x] Run：`uv run pytest packages/xuanpu-server/tests/tracing -q`；提交 `feat: 增加按租户持久的执行 span 存储`。（随 `fab795b` 一并提交）
 
 ### B0 进度（2026-11-14，分支 `feat/r5-butler-artisan`，未提交）
 
@@ -32,10 +32,11 @@
 **Files**：Create `S/tracing/{collector,binding}.py`、`T/tracing/{test_collector,test_cross_engine_parent,test_restart_gap}.py`；Modify `S/runtime/{events,sessions}.py` 的既有订阅接缝、`S/work_tasks/{service,execution_context}.py`（保存 trace 绑定）。
 
 - [x] 用内核 Sim 客户端造并行同名技能、后台子执行、挂起恢复三类事件流，断言树形、工具归属、同一 span 的新尝试。
-- [ ] 任务与会话创建时写入 `trace_id` 与父 span；匠人引擎根尝试据此挂接。未绑定的旧工作显示为独立 trace，不猜父级。
+- [x] 任务与会话创建时写入 `trace_id` 与父 span；匠人引擎根尝试据此挂接。未绑定的旧工作显示为独立 trace，不猜父级。
+  - 2026-11-14 完成：序号改为按写入方分段（`TraceRecord.sources`，`apply_batch(source=...)`），见下方「B1 补完」。
   - 2026-11-14（R5-C2 核对）：仍未做。派工记录已保存 `trace_id`、`parent_span_id` 与 `host_ref`，可在读取时关联；但让匠人会话的采集器写进管家的同一条 trace，需要两个采集器并发写一条 trace，而现行存储按采集器自编的事实序号去重、跳号即标不完整，会互相误判。须先把序号改为存储侧分配（或按采集器分段），属于 R5-B 层改动，另行实施。
 - [x] 采集失败只记错误并标不完整，不影响对话；用独立进程真实终止后重启，断言树可读且缺口有标记。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/tracing -q`；提交 `feat: 采集执行事实并关联跨引擎父子`。
+- [x] Run：`uv run pytest packages/xuanpu-server/tests/tracing -q`；提交 `feat: 采集执行事实并关联跨引擎父子`。
 
 ### B1 进度（2026-11-14，分支 `feat/r5-butler-artisan`）
 
@@ -43,6 +44,15 @@
 - 测试：`T/tracing/test_collector.py` 用真实内核引擎与脚本化模型跑并行同名 worker、工具、两轮、写入失败；`test_platform_tracing.py` 经平台、会话与事件枢纽端到端；`test_retention.py`。
 - 未做：「任务与会话创建时写入 `trace_id` 与父 span」依赖 R5-C 的派工记录，随 C0/C1 实现。冷恢复后旧 trace 不会自动标不完整（见架构文档已知限制）。
 - 依赖：内核 taifeng 2026.11.14.1（执行身份进入稳定层）。旧内核下没有执行身份事件，采集器不产生记录。
+
+### B1 补完（2026-11-14，macOS arm64，Python 3.12，本机 taifeng 2026.11.14.1）
+
+- 序号设计：一条 trace 多个写入方，各自序号连续。`TraceRecord.sources` 记每个写入方已应用的最大序号，`last_seq` 改为整条 trace 已应用事实总数（增量流游标）；去重与跳号按写入方判断；写入方上限 256。trace 头是 JSONB，旧记录 `sources` 缺省为空，无需迁移。memory 与 PG 共用 `apply_batch`，契约测试 `T/tracing/test_sources.py` 两个实现各跑一遍。
+- 采集器：每条本地 trace 以本地标识为写入方；从头开始的根 trace 第一次写出前经 `TraceWiring.binder` 查持久绑定（`S/tracing/binding.py`），查到则写进绑定的 trace、根 span 挂到绑定父 span 下。
+- 派工侧（`S/butler/trace_link.py`）：`TracedDispatchStore` 每次建与改后写派工 span（序号 = 派工版本）；`DispatchTraceBinder` 会话承载按 `host_ref`、任务承载按 `butler:<dispatch_id>` 请求标识查绑定；派工器改为先写 `host_ref` 再发任务说明。
+- 测试：`T/tracing/test_cross_engine_parent.py`（管家根 → 派工 → 匠人根同一条 trace、记录完整；直接开的会话单独成 trace）、`T/butler/test_trace_link.py`（版本序列、写入失败留缺口、任务承载绑定）；重启缺口测试 `T/butler/test_wakeup_restart.py` 仍通过。
+- `.venv/bin/pytest packages/xuanpu-server/tests/tracing packages/xuanpu-server/tests/butler -q`：164 passed, 2 skipped；ruff All checks passed!；mypy no issues in 533 source files。
+- 延后：任务承载挂接的端到端（本机无法运行办公容器，只有单元测试）。
 
 ## B2：接口、瀑布、OTel
 

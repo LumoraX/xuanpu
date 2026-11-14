@@ -18,11 +18,18 @@
 | `turn_suspended` | waiting_input（续跑是新尝试，回到 running） |
 | `turn_completed` / `turn_failed` | completed、failed 或 cancelled（结束原因是代码） |
 
-trace 边界：根执行开始一轮时打开；同一根执行挂起后续跑仍在同一条；根执行完成、失败或取消时结束，同一尝试的迟到事件丢弃，下一轮另开。没见过开头或父执行的执行（晚订阅、冷恢复）单独成 trace 并标不完整。引擎在执行中途被关闭时，未结束的 trace 标不完整。跨引擎的父子（管家派工给匠人）由 R5-C 的派工记录传递，尚未实现。
+trace 边界：根执行开始一轮时打开；同一根执行挂起后续跑仍在同一条；根执行完成、失败或取消时结束，同一尝试的迟到事件丢弃，下一轮另开。没见过开头或父执行的执行（晚订阅、冷恢复）单独成 trace 并标不完整。引擎在执行中途被关闭时，未结束的 trace 标不完整。跨引擎的父子见下节。
+
+## 跨引擎关联（`tracing/binding.py`、`butler/trace_link.py`）
+
+- 一条 trace 可以有多个写入方：每个引擎采集器里的每条本地 trace 是一个写入方（名为本地标识），派工记录是一个写入方（`dp.<dispatch_id>`）。`TraceRecord.sources` 记各写入方已应用的最大序号。
+- 派工 span `dp.<dispatch_id>`（kind `dispatch`）挂在管家根 span 下，由 `TracedDispatchStore` 在派工每次建与改之后写入，序号就是派工记录的版本；平台上所有派工读写都经这一层（`Platform.dispatches`），版本连续，某次写入失败则下一次跳号、trace 如实标不完整。
+- 匠人引擎的采集器在第一次写出从头开始的根 trace 前查一次持久绑定（`RuntimeDefaults.trace_binder`，实现为 `DispatchTraceBinder`）：会话承载按派工记录的 `host_ref`（派工器先建会话、写入 `host_ref`，再发出任务说明，引擎这时才创建）；任务承载按任务的 `request_id`（`butler:<dispatch_id>`）。查到则写进管家的 trace，根执行 span 的父级是派工 span。
+- 查不到绑定的会话（员工直接开的业务会话、旧工作）照旧单独成 trace，根 span 无父级，不按时间或内容猜。绑定查询出错时这条 trace 标不完整。
 
 ## 规则（`tracing/rules.py`、`tracing/apply.py`）
 
-- 事实按 trace 内序号应用：已应用的序号跳过；跳号、被拒事实、结构冲突（类型、父级、引用与已知不同）都只把 trace 或 span 标为不完整，不覆盖已知值。
+- 事实按写入方各自的序号应用：同一写入方已应用的序号跳过（重复投递不重复记），某写入方跳号标不完整，不同写入方互不影响；写入方数量上限 256，超出的批次丢弃并标不完整。被拒事实、结构冲突（类型、父级、引用与已知不同）都只把 trace 或 span 标为不完整，不覆盖已知值。
 - 同一尝试到达终态后，它的迟到状态事实不复活 span；新尝试可以重新运行。取消请求本身不是状态，见到真实终态才是 cancelled。
 - 用量按尝试保存绝对值：同尝试的新快照覆盖，不同尝试相加；尚无用量或任一尝试未知时为未知（null），不用 0 冒充。
 - 单条 trace 的 span 数与单个 span 的尝试数有上限，超出停止新增并标截断或不完整。
@@ -35,7 +42,7 @@ trace 边界：根执行开始一轮时打开；同一根执行挂起后续跑�
 
 `GET /v1/traces`、`/v1/traces/{id}`、`/v1/traces/{id}/waterfall`、`/v1/traces/{id}/events`（见 [HTTP 接口](http-api.md#执行追踪r5-b)），只给本人：需要当前启用的员工身份，他人的与不存在的一律 404，机器身份 403。瀑布由持久 span 计算：偏移、时长、深度；运行中的行没有时长；缺父或成环的 span 记为深度 0 的孤儿，不递归挂死。
 
-增量流（`api/trace_events.py`）每秒重读持久记录：首帧 `snapshot`，之后 `spans` 只带有变化的 span，trace 不再活跃时发 `end` 并关闭。事件 `id` 是已应用的最大事实序号；`Last-Event-ID` 与当前序号相同时不重发快照，落后时重发一次完整快照（存储不按 span 记序号，快照是唯一可靠的补齐方式）。每轮按原请求凭据重新认证并重查员工状态，登出、停用或换人即结束流。
+增量流（`api/trace_events.py`）每秒重读持久记录：首帧 `snapshot`，之后 `spans` 只带有变化的 span，trace 不再活跃时发 `end` 并关闭。事件 `id` 是整条 trace 已应用事实的总数（`last_seq`，单调递增）；`Last-Event-ID` 与当前序号相同时不重发快照，落后时重发一次完整快照（存储不按 span 记序号，快照是唯一可靠的补齐方式）。每轮按原请求凭据重新认证并重查员工状态，登出、停用或换人即结束流。
 
 ## OTel 导出（`tracing/otel.py`）
 

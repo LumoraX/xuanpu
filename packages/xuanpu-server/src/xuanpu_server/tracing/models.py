@@ -23,6 +23,13 @@ _ID = re.compile(r"^[A-Za-z0-9_.:-]{1,160}$")
 _CODE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 NAME_MAX = 120
+DEFAULT_SOURCE = "main"
+MAX_SOURCES = 256
+
+
+def source_id(value: str) -> str:
+    """写入方标识走标识校验。"""
+    return _identifier(value)
 
 
 def _identifier(value: str) -> str:
@@ -141,7 +148,12 @@ class SpanRecord(BaseModel):
 
 
 class TraceRecord(BaseModel):
-    """一条 trace 的头信息。``last_seq`` 是已应用的最大事实序号。"""
+    """一条 trace 的头信息。
+
+    多个写入方（各引擎的采集器、派工记录）可以写同一条 trace，各自一条序号流：
+    ``sources`` 记每个写入方已应用的最大序号，去重与跳号按写入方判断；``last_seq`` 是
+    整条 trace 已应用事实的总数，单调递增，作增量流的游标。
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
     trace_id: str
@@ -151,6 +163,7 @@ class TraceRecord(BaseModel):
     created_at: datetime
     updated_at: datetime
     last_seq: int = 0
+    sources: dict[str, int] = Field(default_factory=dict)
     incomplete: bool = False
     truncated: bool = False
 

@@ -10,7 +10,7 @@ import asyncio
 import dataclasses
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 from xuanpu_server.approvals.service import ApprovalService
@@ -19,6 +19,7 @@ from xuanpu_server.audit import AuditLog
 from xuanpu_server.butler.config import ButlerConfig
 from xuanpu_server.butler.resolver import CatalogArtisanResolver
 from xuanpu_server.butler.service import ButlerService
+from xuanpu_server.butler.trace_link import DispatchTraceBinder, TracedDispatchStore
 from xuanpu_server.capabilities.bootstrap import build_capabilities
 from xuanpu_server.collaboration.lifecycle import CollaborationLifecycle
 from xuanpu_server.collaboration.notifications import CollaborationNotifications
@@ -291,6 +292,11 @@ class Platform:
             process_owner=self.instance_id, now=now, durable=durable)
         self.butler_config = butler or ButlerConfig()
         self.artisans: ArtisanResolver = CatalogArtisanResolver(self.packages, self.workspace, durable)
+        defaults = replace(defaults or RuntimeDefaults(),
+                           trace_binder=DispatchTraceBinder(store, self.work_tasks.store))
+        # 派工的建与改都经这一层，派工 span 随之写进管家的 trace
+        self.dispatches = TracedDispatchStore(store.dispatch_store, store.trace_store,
+                                              lambda: self.runtimes.defaults.execution_trace)
         submissions = SubmissionIndex()
         self.managed_connections=ManagedHttpTools(self.connection_broker,store,submissions)
         self.runtimes = RuntimeAssembler(

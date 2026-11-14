@@ -122,6 +122,15 @@ class PostgresDispatchStore:
             "ORDER BY created_at,dispatch_id LIMIT $2", tenant_id, limit)
         return tuple(DispatchRecord.model_validate_json(row["record"]) for row in rows)
 
+    async def find_by_host(self, owner: TraceOwner, host_ref: str) -> DispatchRecord | None:
+        """本人承载在 ``host_ref`` 上的派工（按员工过滤后在其派工里查，数量有界）。"""
+        row = await self._pool.fetchrow(
+            f"SELECT record FROM {self._table} WHERE tenant_id=$1 AND user_id=$2 "
+            "AND record->>'host_ref'=$3 ORDER BY created_at LIMIT 1",
+            owner.tenant_id, owner.user_id, host_ref,
+        )
+        return None if row is None else DispatchRecord.model_validate_json(row["record"])
+
     async def active_traces(self, tenant_id: str) -> int:
         """有进行中派工的不同 trace 数。"""
         count = await self._pool.fetchval(

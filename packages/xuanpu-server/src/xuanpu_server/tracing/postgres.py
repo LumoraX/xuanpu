@@ -11,7 +11,13 @@ from typing import TYPE_CHECKING, Any
 from xuanpu_server.controlplane.schema import DEFAULT_NAMESPACE
 from xuanpu_server.errors import ConflictError, NotFoundError
 from xuanpu_server.tracing.apply import apply_batch
-from xuanpu_server.tracing.models import TERMINAL_STATES, SpanRecord, TraceRecord, TraceView
+from xuanpu_server.tracing.models import (
+    DEFAULT_SOURCE,
+    TERMINAL_STATES,
+    SpanRecord,
+    TraceRecord,
+    TraceView,
+)
 from xuanpu_server.tracing.store import (
     PAGE_DEFAULT,
     TracePage,
@@ -70,6 +76,7 @@ class PostgresSpanStore:
 
     async def apply(
         self, owner: TraceOwner, trace_id: str, facts: Sequence[SpanFact], *,
+        source: str = DEFAULT_SOURCE,
         max_spans: int | None = None, max_attempts: int | None = None,
     ) -> TraceRecord:
         """锁 trace 行后应用本批事实，变化的 span 逐个 upsert。"""
@@ -87,7 +94,7 @@ class PostgresSpanStore:
             )
             result = apply_batch(
                 record, known, int(count), facts,
-                max_spans=max_spans or self._max_spans,
+                source=source, max_spans=max_spans or self._max_spans,
                 max_attempts=max_attempts or self._max_attempts,
             )
             for span in result.changed.values():

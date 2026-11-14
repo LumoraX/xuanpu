@@ -61,7 +61,8 @@ async def run(config: dict[str, Any]) -> None:
     workspace.append_message = paused_append  # type: ignore[method-assign]
     tenants = (config["tenant"],)
     platform: Any = SimpleNamespace(
-        store=control, workspace=workspace, identity=SimpleNamespace(store=identity),
+        store=control, dispatches=control.dispatch_store, workspace=workspace,
+        identity=SimpleNamespace(store=identity),
         butler_config=ButlerConfig(enabled=True, tenants=tenants),
         butler=SimpleNamespace(enabled=lambda tenant: tenant in tenants))
     pending = PendingService(platform, now=time.time)

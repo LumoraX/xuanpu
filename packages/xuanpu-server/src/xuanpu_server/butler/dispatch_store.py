@@ -55,6 +55,10 @@ class DispatchStore(Protocol):
         """租户内进行中的派工（供对账器），按创建先后。"""
         ...
 
+    async def find_by_host(self, owner: TraceOwner, host_ref: str) -> DispatchRecord | None:
+        """本人承载在 ``host_ref``（会话或任务）上的派工；没有返回 None。"""
+        ...
+
 
 def check_owner(owner: TraceOwner, record: DispatchRecord) -> None:
     """建记录时归属必须与调用方一致。"""

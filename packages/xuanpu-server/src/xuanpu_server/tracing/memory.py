@@ -9,7 +9,7 @@ import anyio
 
 from xuanpu_server.errors import ConflictError, NotFoundError
 from xuanpu_server.tracing.apply import apply_batch
-from xuanpu_server.tracing.models import TERMINAL_STATES, TraceRecord, TraceView
+from xuanpu_server.tracing.models import DEFAULT_SOURCE, TERMINAL_STATES, TraceRecord, TraceView
 from xuanpu_server.tracing.store import (
     PAGE_DEFAULT,
     TracePage,
@@ -62,6 +62,7 @@ class MemorySpanStore:
 
     async def apply(
         self, owner: TraceOwner, trace_id: str, facts: Sequence[SpanFact], *,
+        source: str = DEFAULT_SOURCE,
         max_spans: int | None = None, max_attempts: int | None = None,
     ) -> TraceRecord:
         """按序号应用；不在锁外做任何解析。"""
@@ -69,7 +70,7 @@ class MemorySpanStore:
             entry = self._owned(owner, trace_id)
             result = apply_batch(
                 entry.record, entry.spans, len(entry.spans), facts,
-                max_spans=max_spans or self._max_spans,
+                source=source, max_spans=max_spans or self._max_spans,
                 max_attempts=max_attempts or self._max_attempts,
             )
             entry.spans.update(result.changed)

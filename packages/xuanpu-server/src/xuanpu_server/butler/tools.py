@@ -175,7 +175,7 @@ class ButlerTools:
     async def _check_dispatch(self, turn: ButlerTurn, args: dict[str, Any], _call: str,
                               ) -> taifeng.ToolResult:
         """本人派工的状态；他人的与不存在的一样不可见。"""
-        record = await self._platform.store.dispatch_store.get(turn.owner(),
+        record = await self._platform.dispatches.get(turn.owner(),
                                                                str(args["dispatch_id"]))
         return taifeng.ToolResult.ok(_json({"dispatch_id": record.dispatch_id,
                                             "state": record.state,

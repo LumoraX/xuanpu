@@ -112,7 +112,7 @@ class PendingService:
 
     async def _resume_dispatch(self, owner: TraceOwner, dispatch_id: str) -> None:
         """派工从 asking 回到 running；已在运行中不动。"""
-        dispatches = self._platform.store.dispatch_store
+        dispatches = self._platform.dispatches
         record = await dispatches.get(owner, dispatch_id)
         if record.state == "asking":
             await dispatches.update(owner, dispatch_id, expected_version=record.version,

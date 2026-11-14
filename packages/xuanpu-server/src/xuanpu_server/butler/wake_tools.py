@@ -38,7 +38,7 @@ class WakeTools:
 
     async def cancel(self, turn: ButlerTurn, args: dict[str, Any], _call: str) -> taifeng.ToolResult:
         """沿用 R2 口径：登记停止意图并通知宿主，终态以宿主实际结果为准。"""
-        record = await self._platform.store.dispatch_store.get(turn.owner(), str(args["dispatch_id"]))
+        record = await self._platform.dispatches.get(turn.owner(), str(args["dispatch_id"]))
         if not record.active or record.host_ref is None:
             return taifeng.ToolResult.error("这次派工已经结束，无需取消")
         if record.host == "task":

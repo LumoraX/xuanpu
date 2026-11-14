@@ -101,7 +101,7 @@ class Wakeup:
 
     async def reconcile(self, tenant: str) -> None:
         """扫进行中的派工，把宿主上的新事实写成事件。"""
-        for record in await self._platform.store.dispatch_store.active(tenant):
+        for record in await self._platform.dispatches.active(tenant):
             if record.state not in ("running", "asking") or record.host_ref is None:
                 continue
             who = principal(record.tenant_id, record.user_id)
@@ -147,7 +147,7 @@ class Wakeup:
         store = self._platform.store.wake_store
         who = principal(event.tenant_id, event.user_id)
         owner = self._effects.owner(who)
-        dispatch = await self._platform.store.dispatch_store.get(owner, event.dispatch_id)
+        dispatch = await self._platform.dispatches.get(owner, event.dispatch_id)
         if dispatch.state != "delivered":
             decision = event.decision
             if decision is None:
