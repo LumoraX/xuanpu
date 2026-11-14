@@ -34,10 +34,17 @@
 
 **Files**：Create `S/butler/groups/{consult,divergence,verdict}.py`、`T/butler/groups/{test_consult,test_divergence_paths,test_minority_kept}.py`；Modify `S/butler/{inspector,pending}.py`。
 
-- [ ] 会诊第一步：成员各给结论，互不可见内部过程；全部完成后比对。
-- [ ] 分歧三档各走对路径；涉及金额、对外、审批的一律按高分歧交员工裁决；交付里保留每个成员原结论。
-- [ ] 分歧比对的模型输出只决定路径，测试用固定替身覆盖边界值。
-- [ ] Run 同上目录；提交 `feat: 增加会诊与分歧裁决`。
+- [x] 会诊第一步：成员各给结论，互不可见内部过程；全部完成后比对。
+- [x] 分歧三档各走对路径；涉及金额、对外、审批的一律按高分歧交员工裁决；交付里保留每个成员原结论。
+- [x] 分歧比对的模型输出只决定路径，测试用固定替身覆盖边界值。
+- [x] Run 同上目录；提交 `feat: 增加会诊与分歧裁决`。
+
+### D1 进度（2026-11-14，macOS arm64，Python 3.12，本机 taifeng 2026.11.14.1 + taifeng-sandbox `af3e545`）
+
+- 已写：`S/butler/groups/{consult,divergence,verdict,rater}.py`；`StepMode` 加 `consult`；`GroupRecord.verdicts`；`GroupRunner` 在会诊一步完成后先比对并保存裁决（`_judge`）、高分歧建裁决项并等员工（`rule`）、取消时关闭裁决项；管家工具 `rate_divergence`（只在 `purpose=consult_compare` 的比对轮可用，`_refusal` 统一按轮次限制工具）；待处理项新增 `kind=ruling`，`PendingService.answer` 对裁决项只记进编组、不转给匠人；`trace_usage` 从 `Reviewer` 抽出供比对轮核预算；汇总每步先写综合或裁决，再列各位匠人的原结论。
+- 与计划的差异：`S/butler/inspector.py` 未改（验收逻辑不变）；裁决项复用 `butler_pending` 表（挂在该步第一位成员的派工上，`source_key=ruling:<编组>:<步>`），没有新迁移；模型评级不另建引擎，跑在管家引擎上（比对轮只允许 `rate_divergence`）。
+- 测试：`T/butler/groups/test_divergence_paths.py`（敏感话题边界、三档选路、固定替身覆盖评低/中/高/评不出/模型失败/依据越界/未装配、敏感话题压过低评级、文本保留原结论）；`test_consult.py`（低分歧综合与成员互不可见、高分歧裁决与幂等/冲突、金额强制交员工、等裁决时取消、比对后建裁决项前终止重启只一份）；`test_minority_kept.py`（中分歧保留少数意见）；D0 的会诊拒绝用例改为未知模式。
+- 门禁：`.venv/bin/pytest packages/xuanpu-server/tests/butler packages/xuanpu-server/tests/tracing packages/xuanpu-server/tests/test_config.py -q` → 279 passed, 2 skipped；`ruff check --select F,S108,I,TC packages` → All checks passed!；`mypy packages/*/src` → Success: no issues found in 547 source files。全量随 D2 提交前跑。
 
 ## D2：会诊消息区
 

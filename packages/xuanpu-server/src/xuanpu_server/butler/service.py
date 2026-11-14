@@ -23,6 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from xuanpu_server.assistant import RouteBody
 from xuanpu_server.butler.dispatcher import Dispatcher
 from xuanpu_server.butler.engine import ButlerEngines
+from xuanpu_server.butler.groups.rater import ButlerDivergenceRater
 from xuanpu_server.butler.groups.runner import GroupRunner
 from xuanpu_server.butler.groups.trace import TracedGroupStore
 from xuanpu_server.butler.pending import PendingService
@@ -85,6 +86,8 @@ class ButlerService:
         self.tools = ButlerTools(platform, self.dispatcher, self.turns, pending=self.pending,
                                  groups=self.groups, now=now)
         self.engines = ButlerEngines(platform, models, self.tools, self.turns, data_dir=data_dir)
+        self.groups.use_rater(ButlerDivergenceRater(platform, self.engines))
+        self.pending.bind_ruling(self.groups.rule)
         self.wakeup = Wakeup(platform, WakeEffects(platform, self.pending, now=now,
                                                    groups=self.groups),
                              Reviewer(platform, self.engines), now=now, groups=self.groups)

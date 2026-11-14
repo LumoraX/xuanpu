@@ -30,10 +30,22 @@ if TYPE_CHECKING:
 
 TOOL_NAMES = ("propose", "read_personal", "list_artisans", "dispatch_artisan", "check_dispatch",
               "cancel_dispatch", "answer_pending", "answer_artisan", "ask_user",
-              "dispatch_group", "cancel_group", "check_group")
+              "dispatch_group", "cancel_group", "check_group", "rate_divergence")
 _WAKE_ONLY = frozenset({"answer_artisan", "ask_user"})
 _ANY_TURN = frozenset({"read_personal", "list_artisans", "check_dispatch", "check_group"})
 _LIST_MAX = 20
+
+
+def _refusal(name: str, turn: ButlerTurn) -> str | None:
+    """这一轮不允许调用该工具时给出原因；允许返回 None。"""
+    if turn.compare is not None:
+        return None if name == "rate_divergence" else "会诊比对时只能登记分歧度"
+    if name == "rate_divergence":
+        return "这个工具只在会诊比对时使用"
+    if (name in _WAKE_ONLY) != (turn.wake is not None) and name not in _ANY_TURN:
+        return ("这个工具只在匠人结束后被唤醒时使用" if name in _WAKE_ONLY
+                else "被唤醒复核时不能新建草稿或派工")
+    return None
 
 
 def _json(data: object) -> str:
@@ -80,6 +92,15 @@ class ButlerTools:
                        self._check_dispatch, parallel=True),
             *self._c2_specs(),
             *self._group_specs(),
+            self._spec("rate_divergence", "（仅会诊比对时）登记各位匠人结论的分歧度与综合。",
+                       {"level": {"type": "string", "enum": ["low", "medium", "high"],
+                                  "description": "low 措辞差异；medium 评估不同；high 结论矛盾"},
+                        "synthesis": {"type": "string", "description": "综合后的结论（low/medium 必填）"},
+                        "differences": {"type": "array", "items": {"type": "string"},
+                                        "description": "不一致之处（medium 必列）"},
+                        "basis": {"type": "array", "items": {"type": "integer"},
+                                  "description": "综合所依据的成员序号"}},
+                       ["level"], self._rate_divergence),
         ]
 
     def _group_specs(self) -> list[taifeng.ToolSpec]:
@@ -126,10 +147,9 @@ class ButlerTools:
             turn = self._turns.get(ctx.thread_id)
             if turn is None:
                 return taifeng.ToolResult.error("管家上下文已失效，本次调用未执行")
-            if (name in _WAKE_ONLY) != (turn.wake is not None) and name not in _ANY_TURN:
-                return taifeng.ToolResult.error(
-                    "这个工具只在匠人结束后被唤醒时使用" if name in _WAKE_ONLY
-                    else "被唤醒复核时不能新建草稿或派工")
+            refusal = _refusal(name, turn)
+            if refusal is not None:
+                return taifeng.ToolResult.error(refusal)
             try:
                 return await handler(turn, args, ctx.call_id)
             except PlatformError as exc:
@@ -192,6 +212,21 @@ class ButlerTools:
             instruction=str(args["instruction"]), materials=materials)
         return taifeng.ToolResult.ok(_json({"dispatch_id": record.dispatch_id,
                                             "state": record.state}))
+
+    async def _rate_divergence(self, turn: ButlerTurn, args: dict[str, Any], _call: str,
+                               ) -> taifeng.ToolResult:
+        """登记比对评级；只登记一次，评级只决定走哪条路。"""
+        from xuanpu_server.butler.groups.divergence import Rating, valid_rating
+
+        compare = turn.compare
+        assert compare is not None
+        if compare.rating is not None:
+            return taifeng.ToolResult.error("本轮已经登记过分歧度")
+        rating = valid_rating(Rating.model_validate(args), compare.members)
+        if rating is None:
+            return taifeng.ToolResult.error("综合须非空且只能引用参与比对的成员序号")
+        compare.rating = rating
+        return taifeng.ToolResult.ok(_json({"recorded": rating.level}))
 
     async def _check_dispatch(self, turn: ButlerTurn, args: dict[str, Any], _call: str,
                               ) -> taifeng.ToolResult:

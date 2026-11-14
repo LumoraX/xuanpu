@@ -14,7 +14,9 @@ if TYPE_CHECKING:
     from xuanpu_server.butler.groups.plan import GroupRecord, MemberRun
     from xuanpu_server.butler.models import DispatchRecord
 
-_MODE = {"parallel": "并行", "relay": "接力"}
+from xuanpu_server.butler.groups.verdict import verdict_lines
+
+_MODE = {"parallel": "并行", "relay": "接力", "consult": "会诊"}
 _OUTCOME = {"completed": "完成", "failed": "未完成", "cancelled": "已停止"}
 _REASONS = {
     "member_unavailable": "这位匠人对你已不可用",
@@ -69,6 +71,10 @@ def summary_text(record: GroupRecord, names: dict[str, str]) -> str:
         lines.append(f"第 {step_index + 1} 步（{_MODE[step.mode]}）{label}")
         if outcome == "skipped":
             continue
+        verdict = record.verdict(step_index)
+        if verdict is not None:
+            lines.extend(verdict_lines(verdict))
+            lines.append("  各位匠人的原结论：")
         for index in range(len(step.members)):
             lines.append(_member_line(record, record.run(step_index, index), step_index, index,
                                       names))

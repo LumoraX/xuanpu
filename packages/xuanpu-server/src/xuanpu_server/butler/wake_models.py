@@ -4,7 +4,8 @@
   消费者处理完逐条确认（ack）。
 - 唤醒决定：处理一条事件时先持久化“怎么办”（交付、代答、转问、等审批），再按决定执行
   幂等的副作用；进程在两者之间被终止时，重启后照决定补做，不再跑一遍管家。
-- 待本人处理项：转问员工的问题、需要本人审批的操作，以及管家代答的记录（带出处）。
+- 待本人处理项：转问员工的问题、需要本人审批的操作、会诊高分歧时请员工裁决（R5-D1），
+  以及管家代答的记录（带出处）。
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 EventKind = Literal["finished", "asked"]
-PendingKind = Literal["question", "approval", "proxied"]
+PendingKind = Literal["question", "approval", "proxied", "ruling"]
 PendingState = Literal["open", "forwarding", "answered", "resolved", "cancelled"]
 SourceKind = Literal["setting", "conversation", "employee"]
 WakeAction = Literal["deliver", "forward", "ask_user", "await_approval"]

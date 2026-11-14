@@ -1,7 +1,8 @@
 """编组计划与编组记录的数据模型，以及推进时用到的纯函数。
 
 计划是声明式数据，不是脚本：几步，每步并行或接力，每步的成员（匠人、任务说明、材料），
-以及可选的 ``when``（只认前一步的终态）。未知字段一律拒绝。会诊（consult）在 R5-D1。
+以及可选的 ``when``（只认前一步的终态）。未知字段一律拒绝。
+会诊（consult）：成员各自就同一问题给结论、互不可见；全部完成后比对分歧再裁决（R5-D1）。
 """
 
 from __future__ import annotations
@@ -13,12 +14,15 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from xuanpu_server.butler.groups.verdict import (
+    StepVerdict,  # noqa: TC001 —— pydantic 在运行时解析字段类型
+)
 from xuanpu_server.butler.models import INSTRUCTION_MAX
 from xuanpu_server.work_tasks.models import (
     InputFile,  # noqa: TC001 —— pydantic 在运行时解析字段类型
 )
 
-StepMode = Literal["parallel", "relay"]
+StepMode = Literal["parallel", "relay", "consult"]
 StepWhen = Literal["completed", "failed"]
 MemberOutcome = Literal["completed", "failed", "cancelled"]
 StepOutcome = Literal["completed", "failed", "skipped", "cancelled"]
@@ -116,6 +120,7 @@ class GroupRecord(BaseModel):
     runs: tuple[MemberRun, ...] = ()
     cancel_requested: bool = False
     summarized: bool = False
+    verdicts: tuple[StepVerdict, ...] = ()
     version: int = Field(default=1, ge=1)
     created_at: datetime
     updated_at: datetime
@@ -137,6 +142,10 @@ class GroupRecord(BaseModel):
         """某步某成员的执行；还没启动返回 None。"""
         return next((r for r in self.runs if (r.step, r.index) == (step, index)), None)
 
+    def verdict(self, step: int) -> StepVerdict | None:
+        """某步会诊的裁决；还没比对返回 None。"""
+        return next((v for v in self.verdicts if v.step == step), None)
+
     def by_dispatch(self, dispatch_id: str) -> MemberRun | None:
         """按派工找成员。"""
         return next((r for r in self.runs if r.dispatch_id == dispatch_id), None)
@@ -155,10 +164,17 @@ def with_run(record: GroupRecord, run: MemberRun) -> GroupRecord:
     return record.model_copy(update={"runs": runs})
 
 
+def with_verdict(record: GroupRecord, verdict: StepVerdict) -> GroupRecord:
+    """替换或追加一步的裁决。"""
+    others = tuple(v for v in record.verdicts if v.step != verdict.step)
+    return record.model_copy(update={"verdicts": tuple(sorted((*others, verdict),
+                                                              key=lambda v: v.step))})
+
+
 def step_outcome(record: GroupRecord, step: int) -> StepOutcome | None:
     """一步是否结束、结果如何；还有成员未出结果时返回 None。
 
-    并行：全部成员出结果才结束，全部完成算完成，否则算失败（部分失败如实保留在成员里）。
+    并行与会诊：全部成员出结果才结束，全部完成算完成，否则算失败（部分失败如实保留在成员里）。
     接力：任一成员失败即结束且算失败；全部依次完成算完成。
     """
     members = record.plan.steps[step].members

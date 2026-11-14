@@ -14,6 +14,7 @@ from xuanpu_server.errors import PermissionDeniedError
 
 if TYPE_CHECKING:
     from xuanpu_server.assistant_reminders import RouteOutcome
+    from xuanpu_server.butler.groups.divergence import Rating
     from xuanpu_server.butler.models import DispatchRecord
     from xuanpu_server.butler.wake_models import AnswerSource
     from xuanpu_server.tenancy import Principal
@@ -45,6 +46,14 @@ class WakeContext:
 
 
 @dataclass
+class CompareContext:
+    """会诊比对的一轮（R5-D1）：参与比对的成员数，以及经 ``rate_divergence`` 登记的评级。"""
+
+    members: int
+    rating: Rating | None = None
+
+
+@dataclass
 class ButlerTurn:
     """一轮管家处理。
 
@@ -61,6 +70,7 @@ class ButlerTurn:
         wake: 被唤醒的一轮的上下文；员工输入触发的一轮为 None。
         answered: 本轮答复了的待处理项。
         groups: 本轮建立或回放的编组标识（R5-D）。
+        compare: 会诊比对的一轮的上下文；其余轮次为 None。
     """
 
     who: Principal
@@ -76,12 +86,14 @@ class ButlerTurn:
     wake: WakeContext | None = None
     answered: list[str] = field(default_factory=list)
     groups: list[str] = field(default_factory=list)
+    compare: CompareContext | None = None
 
     def has_output(self) -> bool:
         """本轮是否产出了回复之外的结果（草稿、派工、答复、代答或转问）。"""
         wake = self.wake
         return (self.proposal is not None or bool(self.dispatches) or bool(self.answered)
                 or bool(self.groups)
+                or (self.compare is not None and self.compare.rating is not None)
                 or (wake is not None and (wake.answer is not None or wake.question is not None)))
 
     def note_root(self, span_id: str) -> None:

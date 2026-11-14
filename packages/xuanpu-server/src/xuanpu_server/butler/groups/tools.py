@@ -31,7 +31,7 @@ GROUP_PLAN_SCHEMA: dict[str, Any] = {
         "steps": {"type": "array", "items": {
             "type": "object", "additionalProperties": False,
             "properties": {
-                "mode": {"type": "string", "enum": ["parallel", "relay"]},
+                "mode": {"type": "string", "enum": ["parallel", "relay", "consult"]},
                 "members": {"type": "array", "items": _MEMBER},
                 "when": {"type": "string", "enum": ["completed", "failed"],
                          "description": "可选：只在前一步是该结果时进行"},

@@ -21,12 +21,14 @@ from xuanpu_server.errors import ConflictError, InvalidRequestError
 from xuanpu_server.tracing.models import TraceOwner
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable
 
     from xuanpu_server.butler.wake_models import PendingItem
     from xuanpu_server.platform import Platform
     from xuanpu_server.runtime.sessions import Turn
     from xuanpu_server.tenancy import Principal
+
+    Ruler = Callable[[TraceOwner, PendingItem, str, str], Awaitable[None]]
 
 ANSWER_MAX = 2000
 
@@ -53,6 +55,7 @@ class PendingService:
         self._platform = platform
         self._now = now
         self._drains: set[asyncio.Task[None]] = set()
+        self._ruler: Ruler | None = None
 
     def _at(self) -> datetime:
         """当前时间（UTC）。"""
@@ -73,6 +76,8 @@ class PendingService:
             raise InvalidRequestError(f"答复须为 1–{ANSWER_MAX} 个字符")
         store = self._platform.store.wake_store
         item = await store.get_pending(owner_of(who), pending_id)
+        if item.kind == "ruling":
+            return await self._rule(who, item, answer, request_id)
         if item.answer_request_id is not None:
             if item.answer_request_id != request_id or item.answer != answer:
                 raise ConflictError("这个问题已经答复过")
@@ -84,6 +89,26 @@ class PendingService:
             raise ConflictError("这个问题已不再等待答复")
         source = AnswerSource(kind="employee", quote=answer)
         return await self.forward(who, item, answer, source, request_id=request_id)
+
+    def bind_ruling(self, ruler: Ruler) -> None:
+        """装配时接上编组裁决（编组执行器晚于本对象构造）。"""
+        self._ruler = ruler
+
+    async def _rule(self, who: Principal, item: PendingItem, answer: str, request_id: str,
+                    ) -> PendingItem:
+        """会诊裁决：先记进编组（幂等），再把裁决项标为已答复；不转给任何匠人。"""
+        if self._ruler is None:
+            raise RuntimeError("会诊裁决需要编组执行器")
+        if item.state not in ("open", "answered"):
+            raise ConflictError("这项裁决已不再需要")
+        owner = owner_of(who)
+        await self._ruler(owner, item, answer, request_id)
+        if item.state == "answered":
+            return item
+        return await self._platform.store.wake_store.update_pending(
+            owner, item.pending_id, expected_version=item.version, at=self._at(),
+            state="answered", answer=answer, answer_source=AnswerSource(kind="employee", quote=answer),
+            answer_request_id=request_id)
 
     async def forward(self, who: Principal, item: PendingItem, answer: str, source: AnswerSource,
                       *, request_id: str) -> PendingItem:

@@ -24,7 +24,7 @@ CONFIG = ButlerConfig(enabled=True, tenants=("acme",), max_group_members=2, max_
 
 @pytest.mark.parametrize("raw", [
     plan({"mode": "parallel", "members": [member("A")], "extra": 1}),
-    plan({"mode": "consult", "members": [member("A")]}),
+    plan({"mode": "debate", "members": [member("A")]}),
     plan({"mode": "parallel", "members": [member("A")], "when": "completed"}),
     plan({"mode": "parallel", "members": [member("A")]},
          {"mode": "relay", "members": [member("B")], "when": "maybe"}),
@@ -35,7 +35,7 @@ CONFIG = ButlerConfig(enabled=True, tenants=("acme",), max_group_members=2, max_
     {"steps": [{"mode": "parallel", "members": [member("A")]}]},
 ])
 def test_strict_parsing_rejects(raw: dict[str, Any]) -> None:
-    """未知字段、会诊（D1 才开放）、第一步带 when、未知终态、空成员、越界引用都拒绝。"""
+    """未知字段、未知模式、第一步带 when、未知终态、空成员、越界引用都拒绝。"""
     with pytest.raises(InvalidRequestError):
         parse_plan(raw, CONFIG)
 

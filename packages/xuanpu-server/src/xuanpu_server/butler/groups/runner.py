@@ -5,6 +5,8 @@
   再推进只会回放原派工，不会重复派出或重复启动。
 - 成员结果来自派工记录的真实终态；成员的结果摘要由唤醒处理写入（``record_result``），
   成员不单独向员工交付。
+- 会诊（R5-D1）：一步全部完成后先比对并保存裁决，高分歧时建裁决项并等员工裁决，裁决后
+  才进入下一步或收口；裁决项与消息都按键去重。
 - 汇总消息按 ``butler:group:<编组>:summary`` 写进主对话，同一标识只写一次；写完才标记
   已汇总，进程在两者之间被终止，重启后补标记，不重复汇总。
 """
@@ -17,6 +19,7 @@ from typing import TYPE_CHECKING, Any
 
 from xuanpu_server.butler.budget import ButlerBudgetError, TraceUsage
 from xuanpu_server.butler.dispatcher import LaunchContext
+from xuanpu_server.butler.groups.consult import ConsultCoordinator, parse_ruling_key
 from xuanpu_server.butler.groups.plan import (
     GROUP_TERMINAL,
     SUMMARY_MAX,
@@ -27,6 +30,7 @@ from xuanpu_server.butler.groups.plan import (
     next_step,
     step_outcome,
     with_run,
+    with_verdict,
 )
 from xuanpu_server.butler.groups.summary import relay_brief, summary_text
 from xuanpu_server.butler.groups.trace import group_span
@@ -47,9 +51,11 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from xuanpu_server.butler.dispatcher import Dispatcher
+    from xuanpu_server.butler.groups.divergence import DivergenceRater
     from xuanpu_server.butler.groups.trace import TracedGroupStore
     from xuanpu_server.butler.models import DispatchRecord
     from xuanpu_server.butler.turn import ButlerTurn
+    from xuanpu_server.butler.wake_models import PendingItem
     from xuanpu_server.platform import Platform
 
 logger = logging.getLogger(__name__)
@@ -66,12 +72,17 @@ class GroupRunner:
     """编组的提交、推进、取消与结果登记。"""
 
     def __init__(self, platform: Platform, dispatcher: Dispatcher, groups: TracedGroupStore, *,
-                 now: Callable[[], float]) -> None:
-        """依赖由平台注入。"""
+                 now: Callable[[], float], rater: DivergenceRater | None = None) -> None:
+        """依赖由平台注入；``rater`` 是会诊比对的模型评级（None 时会诊一律交员工裁决）。"""
         self._platform = platform
         self._dispatcher = dispatcher
         self._groups = groups
         self._now = now
+        self._consult = ConsultCoordinator(platform, rater, now=now)
+
+    def use_rater(self, rater: DivergenceRater) -> None:
+        """装配时补上模型评级（评级要用管家引擎，引擎晚于本对象构造）。"""
+        self._consult = ConsultCoordinator(self._platform, rater, now=self._now)
 
     def _at(self) -> datetime:
         """当前时间（UTC）。"""
@@ -176,12 +187,59 @@ class GroupRunner:
         outcome = step_outcome(record, record.step)
         if outcome is None:
             return None
+        if self._needs_verdict(record, outcome):
+            return await self._judge(owner, record)
         nxt, outcomes = next_step(record, outcome)
         if nxt is None:
             return await self._save(owner, record.model_copy(
                 update={"state": final_state(outcomes), "step_outcomes": outcomes}))
         return await self._save(owner, record.model_copy(
             update={"step": nxt, "step_outcomes": outcomes}))
+
+    @staticmethod
+    def _needs_verdict(record: GroupRecord, outcome: str) -> bool:
+        """会诊一步全部完成后，还没比对或还在等员工裁决。"""
+        if record.plan.steps[record.step].mode != "consult" or outcome != "completed":
+            return False
+        verdict = record.verdict(record.step)
+        return verdict is None or verdict.waiting
+
+    async def _judge(self, owner: TraceOwner, record: GroupRecord) -> GroupRecord | None:
+        """比对并保存；高分歧时建裁决项并保存其标识；已在等裁决时无事可做。"""
+        verdict = record.verdict(record.step)
+        if verdict is None:
+            verdict = await self._consult.judge(owner, record)
+            return await self._save(owner, with_verdict(record, verdict))
+        if verdict.pending_id is None:
+            verdict = await self._consult.open_ruling(owner, record, verdict)
+            return await self._save(owner, with_verdict(record, verdict))
+        return None
+
+    async def rule(self, owner: TraceOwner, item: PendingItem, text: str,
+                   request_id: str) -> None:
+        """记下员工对一步会诊的裁决并推进编组；同一请求重试幂等，已有不同裁决报冲突。"""
+        group_id, step = parse_ruling_key(item.source_key)
+        for _ in range(_SAVE_RETRIES):
+            record = await self._groups.get(owner, group_id)
+            verdict = record.verdict(step)
+            if verdict is None or verdict.pending_id != item.pending_id:
+                raise ConflictError("这项裁决已不再需要")
+            if verdict.ruling is not None:
+                if (verdict.ruling, verdict.ruling_request_id) != (text, request_id):
+                    raise ConflictError("这次会诊已经裁决过")
+                break
+            if record.state in GROUP_TERMINAL:
+                raise ConflictError("编组已结束，不再需要裁决")
+            ruled = verdict.model_copy(update={"ruling": text, "ruling_request_id": request_id,
+                                               "ruled_at": self._at()})
+            try:
+                await self._save(owner, with_verdict(record, ruled))
+                break
+            except ConflictError:
+                continue
+        else:
+            raise ConflictError("编组正被频繁更新，请稍后再裁决")
+        await self.advance(owner, group_id)
 
     async def _refresh(self, owner: TraceOwner, record: GroupRecord) -> GroupRecord:
         """把已到终态的成员派工结果写进编组；没有变化时原样返回同一对象。"""
@@ -267,10 +325,22 @@ class GroupRunner:
             await self._stop(owner, run.dispatch_id)
         if pending:
             return None if updated is record else await self._save(owner, updated)
+        await self._close_rulings(owner, record)
         done = len(record.step_outcomes)
         outcomes = (*record.step_outcomes, *("cancelled",) * (len(record.plan.steps) - done))
         return await self._save(owner, updated.model_copy(
             update={"state": "cancelled", "step_outcomes": outcomes}))
+
+    async def _close_rulings(self, owner: TraceOwner, record: GroupRecord) -> None:
+        """编组取消时，仍在等员工的裁决项一并关闭（可重做）。"""
+        store = self._platform.store.wake_store
+        for verdict in record.verdicts:
+            if verdict.pending_id is None or not verdict.waiting:
+                continue
+            item = await store.get_pending(owner, verdict.pending_id)
+            if item.state == "open":
+                await store.update_pending(owner, item.pending_id, expected_version=item.version,
+                                           at=self._at(), state="cancelled")
 
     async def _stop(self, owner: TraceOwner, dispatch_id: str) -> None:
         """请求宿主停止（沿用 R2 口径，可重复请求）；终态以宿主实际结果为准。"""

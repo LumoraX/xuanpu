@@ -101,20 +101,7 @@ class Reviewer:
 
     async def _usage(self, owner: TraceOwner, dispatch: DispatchRecord) -> TraceUsage:
         """这条 trace 已跑的管家轮数与已结束执行的 token。"""
-        try:
-            view = await self._platform.store.trace_store.get(owner, dispatch.trace_id)
-        except NotFoundError:
-            return TraceUsage()
-        turns = sum(1 for s in view.spans if s.kind == "butler" and s.parent_span_id is None)
-        tokens: int | None = 0
-        for span in view.spans:
-            if span.state not in TERMINAL_STATES or not span.attempts:
-                continue
-            if span.input_tokens is None or span.output_tokens is None:
-                tokens = None
-                break
-            tokens = (tokens or 0) + span.input_tokens + span.output_tokens
-        return TraceUsage(butler_turns=turns, tokens=tokens)
+        return await trace_usage(self._platform, owner, dispatch.trace_id)
 
     @staticmethod
     def _payload(dispatch: DispatchRecord, base: WakeDecision, wake: WakeContext,
@@ -126,6 +113,24 @@ class Reviewer:
             "checks": base.checks, "passed": base.passed, "can_answer": wake.can_answer,
             "employee_said": corpus.get("conversation", "")[:4000],
         }, ensure_ascii=False)
+
+
+async def trace_usage(platform: Platform, owner: TraceOwner, trace_id: str) -> TraceUsage:
+    """这条 trace 已跑的管家轮数与已结束执行的 token；trace 不存在时为零。"""
+    try:
+        view = await platform.store.trace_store.get(owner, trace_id)
+    except NotFoundError:
+        return TraceUsage()
+    turns = sum(1 for s in view.spans if s.kind == "butler" and s.parent_span_id is None)
+    tokens: int | None = 0
+    for span in view.spans:
+        if span.state not in TERMINAL_STATES or not span.attempts:
+            continue
+        if span.input_tokens is None or span.output_tokens is None:
+            tokens = None
+            break
+        tokens = (tokens or 0) + span.input_tokens + span.output_tokens
+    return TraceUsage(butler_turns=turns, tokens=tokens)
 
 
 class TraceOwnerOf:
