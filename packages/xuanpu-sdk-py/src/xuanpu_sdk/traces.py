@@ -48,6 +48,16 @@ class TraceClient:
             "POST", "/v1/assistant/pending/" + quote(pending_id, safe="") + "/answer",
             json={"request_id": request_id, "text": text})
 
+    async def get_butler_group(self, group_id: str) -> dict[str, Any]:
+        """本人一个编组的进展（``GET /v1/assistant/groups/{id}``）：成员、追问与各步裁决。"""
+        return await self._http.request("GET", "/v1/assistant/groups/" + quote(group_id, safe=""))
+
+    async def list_group_messages(self, group_id: str) -> list[dict[str, Any]]:
+        """会诊消息区（只读，按序号）：成员发布的结论与追问回复、管家的收口说明。"""
+        body = await self._http.request(
+            "GET", "/v1/assistant/groups/" + quote(group_id, safe="") + "/messages")
+        return list(body["items"])
+
     async def list_traces(
         self, *, active: bool | None = None, cursor: str | None = None, limit: int = 50,
     ) -> dict[str, Any]:

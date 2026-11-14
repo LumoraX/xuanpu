@@ -771,6 +771,8 @@ R5-C2 新增 `0023_butler_wakeup`（尚未正式部署）：`butler_event`（唤
 
 R5-D0 新增 `0024_artisan_groups`（尚未正式部署）：`butler_group` 一个编组一行，计划与成员执行在 `record` 里按版本整体保存，按租户与员工归属（复合外键到员工表），另有未收口编组的部分索引；成员各是一条派工记录（`butler_dispatch` 的 JSON 里带 `group_id`）。`butler.max_group_members` 默认 4（1–8），`butler.max_group_steps` 默认 3（1–5）；编组全部成员加上本次请求已有的派工仍受 `max_artisans_per_trace` 约束。编组由唤醒循环推进，单个编组推进失败记「推进编组 … 失败，下一轮重试」。
 
+R5-D1 会诊不新增表：比对结论存在编组记录的 `verdicts` 里，高分歧的裁决项复用 `butler_pending`（`kind=ruling`）。R5-D2 新增 `0025_group_messages`（尚未正式部署）：`butler_group_message` 只追加，按 `(租户, 编组, 序号)` 主键、`(租户, 编组, msg_key)` 去重，复合外键到编组与员工；同一编组的追加由事务咨询锁串行。`butler.max_consult_rounds` 默认 2（0–5）：会诊里 @ 追问最多几轮，超过由管家在消息区收口；每次追问是一次派工，同样受 `max_artisans_per_trace` 约束（超限的追问记为失败，不阻塞比对）。
+
 ## 可选 HTTP 调用身份签名
 
 `call_context` 默认为空。只有需要真实员工上下文的进程外 HTTP 连接器才启用；旧连接器继续原有行为。字段如下：

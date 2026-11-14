@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any
 
 from xuanpu_server.butler.budget import ButlerBudgetError, TraceUsage
 from xuanpu_server.butler.dispatcher import LaunchContext
+from xuanpu_server.butler.groups.board import ConsultBoard
 from xuanpu_server.butler.groups.consult import ConsultCoordinator, parse_ruling_key
 from xuanpu_server.butler.groups.plan import (
     GROUP_TERMINAL,
@@ -29,6 +30,7 @@ from xuanpu_server.butler.groups.plan import (
     group_fingerprint,
     next_step,
     step_outcome,
+    with_followup,
     with_run,
     with_verdict,
 )
@@ -52,6 +54,7 @@ if TYPE_CHECKING:
 
     from xuanpu_server.butler.dispatcher import Dispatcher
     from xuanpu_server.butler.groups.divergence import DivergenceRater
+    from xuanpu_server.butler.groups.plan import MemberOutcome
     from xuanpu_server.butler.groups.trace import TracedGroupStore
     from xuanpu_server.butler.models import DispatchRecord
     from xuanpu_server.butler.turn import ButlerTurn
@@ -79,6 +82,9 @@ class GroupRunner:
         self._groups = groups
         self._now = now
         self._consult = ConsultCoordinator(platform, rater, now=now)
+        self._board = ConsultBoard(
+            platform.store.group_message_store, self._start_member,
+            max_rounds=lambda: platform.butler_config.max_consult_rounds, now=now)
 
     def use_rater(self, rater: DivergenceRater) -> None:
         """装配时补上模型评级（评级要用管家引擎，引擎晚于本对象构造）。"""
@@ -155,13 +161,12 @@ class GroupRunner:
         assert dispatch.group_id is not None
         for _ in range(_SAVE_RETRIES):
             record = await self._groups.get(owner, dispatch.group_id)
-            run = record.by_dispatch(dispatch.dispatch_id)
-            if run is None or (run.summary, run.passed) == (summary, passed):
+            updated = _with_result(record, dispatch.dispatch_id, passed,
+                                   None if summary is None else summary[:SUMMARY_MAX])
+            if updated is None:
                 return
-            text = None if summary is None else summary[:SUMMARY_MAX]
             try:
-                await self._save(owner, with_run(record, run.model_copy(
-                    update={"summary": text, "passed": passed})))
+                await self._save(owner, updated)
                 return
             except ConflictError:
                 continue
@@ -188,6 +193,12 @@ class GroupRunner:
         if outcome is None:
             return None
         if self._needs_verdict(record, outcome):
+            if record.verdict(record.step) is None:
+                tended = await self._board.tend(owner, record)
+                if tended == "wait":
+                    return None
+                if not isinstance(tended, str):
+                    return await self._save(owner, tended)
             return await self._judge(owner, record)
         nxt, outcomes = next_step(record, outcome)
         if nxt is None:
@@ -251,6 +262,13 @@ class GroupRunner:
             if dispatch.state in FINISHED_STATES:
                 updated = with_run(updated, run.model_copy(update={
                     "outcome": dispatch.state, "end_reason": dispatch.end_reason}))
+        for follow in record.followups:
+            if follow.outcome is not None or follow.dispatch_id is None:
+                continue
+            dispatch = await self._platform.dispatches.get(owner, follow.dispatch_id)
+            if dispatch.state in FINISHED_STATES:
+                updated = with_followup(updated, follow.model_copy(update={
+                    "outcome": dispatch.state, "end_reason": dispatch.end_reason}))
         return updated
 
     async def _launch_next(self, owner: TraceOwner, record: GroupRecord) -> GroupRecord | None:
@@ -267,32 +285,40 @@ class GroupRunner:
         return None
 
     async def _launch(self, owner: TraceOwner, record: GroupRecord, index: int) -> MemberRun:
-        """派出一个成员；匠人对本人不可用（撤权）只拒这个成员。"""
+        """派出当前步的一个成员。"""
         member = record.plan.steps[record.step].members[index]
         brief = member.brief
         if record.plan.steps[record.step].mode == "relay" and index > 0:
             brief = await self._relay_brief(owner, record, index)
+        dispatch_id, outcome, reason = await self._start_member(
+            record, index, brief, f"grp:{record.group_id}:{record.step}:{index}")
+        return MemberRun(step=record.step, index=index, dispatch_id=dispatch_id, outcome=outcome,
+                         end_reason=reason)
+
+    async def _start_member(self, record: GroupRecord, index: int, brief: str, request_id: str,
+                            ) -> tuple[str | None, MemberOutcome | None, str | None]:
+        """以本人身份派工；匠人对本人不可用（撤权）只拒这一次，返回 (派工, 立即结果, 原因)。"""
+        owner = TraceOwner(tenant_id=record.tenant_id, user_id=record.user_id)
+        member = record.plan.steps[record.step].members[index]
         ctx = LaunchContext(who=employee(owner), owner=owner, trace_id=record.trace_id,
-                            parent_span_id=group_span(record.group_id),
-                            request_id=f"grp:{record.group_id}:{record.step}:{index}",
+                            parent_span_id=group_span(record.group_id), request_id=request_id,
                             timezone=record.timezone)
-        base = MemberRun(step=record.step, index=index)
         try:
             dispatch = await self._dispatcher.launch(
                 ctx, package=member.package, entry=member.entry, instruction=brief,
                 materials=member.materials, group_id=record.group_id)
         except (NotFoundError, PermissionDeniedError):
-            return base.model_copy(update={"outcome": "failed", "end_reason": "member_unavailable"})
+            return None, "failed", "member_unavailable"
         except ButlerBudgetError:
-            return base.model_copy(update={"outcome": "failed", "end_reason": "budget_exceeded"})
+            return None, "failed", "budget_exceeded"
         except InvalidRequestError:
-            return base.model_copy(update={"outcome": "failed", "end_reason": "invalid_member"})
+            return None, "failed", "invalid_member"
         except PlatformError:
-            started = await self._by_request(owner, record.trace_id, ctx.request_id)
+            started = await self._by_request(owner, record.trace_id, request_id)
             if started is None:
-                return base.model_copy(update={"outcome": "failed", "end_reason": "start_failed"})
-            return base.model_copy(update={"dispatch_id": started.dispatch_id})
-        return base.model_copy(update={"dispatch_id": dispatch.dispatch_id})
+                return None, "failed", "start_failed"
+            return started.dispatch_id, None, None
+        return dispatch.dispatch_id, None, None
 
     async def _relay_brief(self, owner: TraceOwner, record: GroupRecord, index: int) -> str:
         """接力：下一成员拿到前一成员的成果引用与摘要；引用须属于本人（服务端复核）。"""
@@ -319,10 +345,12 @@ class GroupRunner:
                     updated = with_run(updated, MemberRun(step=step_index, index=index,
                                                           outcome="cancelled",
                                                           end_reason="group_cancelled"))
-        pending = [r for r in updated.runs if r.outcome is None and r.dispatch_id is not None]
-        for run in pending:
-            assert run.dispatch_id is not None
-            await self._stop(owner, run.dispatch_id)
+        pending = [r.dispatch_id for r in updated.runs
+                   if r.outcome is None and r.dispatch_id is not None]
+        pending += [f.dispatch_id for f in updated.followups
+                    if f.outcome is None and f.dispatch_id is not None]
+        for dispatch_id in pending:
+            await self._stop(owner, dispatch_id)
         if pending:
             return None if updated is record else await self._save(owner, updated)
         await self._close_rulings(owner, record)
@@ -371,3 +399,17 @@ class GroupRunner:
                 dispatch = await self._platform.dispatches.get(owner, run.dispatch_id)
                 names[run.dispatch_id] = dispatch.artisan.package
         return names
+
+
+def _with_result(record: GroupRecord, dispatch_id: str, passed: bool | None,
+                 summary: str | None) -> GroupRecord | None:
+    """把一次派工的验收结论与摘要写进对应成员或追问；没有变化返回 None。"""
+    run = record.by_dispatch(dispatch_id)
+    if run is not None:
+        if (run.summary, run.passed) == (summary, passed):
+            return None
+        return with_run(record, run.model_copy(update={"summary": summary, "passed": passed}))
+    follow = record.followup_by_dispatch(dispatch_id)
+    if follow is None or (follow.summary, follow.passed) == (summary, passed):
+        return None
+    return with_followup(record, follow.model_copy(update={"summary": summary, "passed": passed}))

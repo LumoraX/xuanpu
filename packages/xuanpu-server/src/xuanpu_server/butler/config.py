@@ -18,6 +18,7 @@ class ButlerConfig(BaseModel):
         wake_interval_seconds: 唤醒对账的间隔（看匠人是否结束或提问）。
         max_group_members: 编组每一步最多几个成员（R5-D）。
         max_group_steps: 编组计划最多几步（R5-D）。
+        max_consult_rounds: 会诊里 @ 追问最多几轮，超过由管家收口（R5-D2）。
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -30,6 +31,7 @@ class ButlerConfig(BaseModel):
     wake_interval_seconds: float = Field(default=2.0, ge=0.2, le=300.0)
     max_group_members: int = Field(default=4, ge=1, le=8)
     max_group_steps: int = Field(default=3, ge=1, le=5)
+    max_consult_rounds: int = Field(default=2, ge=0, le=5)
 
     def allows(self, tenant: str) -> bool:
         """不能借空名单推导全企业开启。"""

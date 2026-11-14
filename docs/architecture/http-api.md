@@ -996,6 +996,8 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | --- | --- | --- |
 | GET /v1/assistant/pending | 无 | items（pending_id、dispatch_id、kind=question/approval/ruling、question、host=task/session、host_ref、state=open/forwarding、answer、version、created_at、updated_at）；只含本人仍待处理的项，不含代答记录 |
 | POST /v1/assistant/pending/{id}/answer | request_id（1–80 字符）、text（1–2000 字符）；多余字段 422 | 更新后的项（state=answered）。原话转给匠人会话、派工回到 running。同一 request_id 同内容重试回原结果；已答复后换内容 409；kind=approval 409（请在既有待确认里处理）；kind=ruling（会诊裁决）只记进编组、不转给匠人，编组已结束或已有不同裁决 409；他人的与不存在的 404 |
+| GET /v1/assistant/groups/{group_id} | 无 | 本人编组的进展：group_id、trace_id、title、state、step、summarized、cancel_requested、version、steps（mode、members 匠人名）、members（step、member 从 1 起、dispatch_id、outcome、end_reason）、followups（step、member、asked_by、round、dispatch_id、outcome）、verdicts（step、level、reasons、rated_level、pending_id、ruled）；不含匠人正文。他人的与不存在的 404，机器身份 403 |
+| GET /v1/assistant/groups/{group_id}/messages | 无 | items：会诊消息区，按序号（seq、step、author=member/butler、member 从 1 起、round、mentions 从 1 起、text、created_at）；只追加。权限同上 |
 
 匠人结束或提问后，管家的交付、转问、代答说明写进员工主对话（助手消息，`request_id` 为 `butler:<事件>:<deliver|ask|proxy|approval>`，元数据 `butler` 含 `trace_id`、`dispatch_id`、`event`，交付另含 `passed`、`checks`、`review_label`）。
 

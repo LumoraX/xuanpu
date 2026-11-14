@@ -115,6 +115,9 @@ class PostgresControlPlane:
         from xuanpu_server.butler.groups.postgres import PostgresGroupStore
 
         self.group_store = PostgresGroupStore(pool, namespace=namespace)
+        from xuanpu_server.butler.groups.message_postgres import PostgresMessageStore
+
+        self.group_message_store = PostgresMessageStore(pool, namespace=namespace)
         self.operation_receipts = PostgresReceiptStore(pool, namespace)
         self._pool = pool
         self._namespace = namespace

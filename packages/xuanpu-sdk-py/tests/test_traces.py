@@ -89,3 +89,22 @@ async def test_butler_pending_list_and_answer():
     assert seen[0].url.path == "/v1/assistant/pending"
     assert seen[1].url.raw_path == b"/v1/assistant/pending/p%2F1/answer"
     assert json.loads(seen[1].content) == {"request_id": "a1", "text": "138"}
+
+
+async def test_butler_group_reads_encode_ids():
+    """编组与消息区只读；标识只占一个路径段；每个请求带代员工头。"""
+    calls = []
+
+    def receive(request):
+        calls.append(request)
+        if request.url.path.endswith("/messages"):
+            return httpx.Response(200, json={"items": [{"seq": 1, "text": "结论"}]})
+        return httpx.Response(200, json={"group_id": "g/1", "state": "running"})
+
+    async with XuanpuClient("https://example.test", "PRIVATE_KEY", act_as_user="member",
+                            transport=httpx.MockTransport(receive)) as client:
+        assert (await client.get_butler_group("g/1"))["state"] == "running"
+        assert await client.list_group_messages("g/1") == [{"seq": 1, "text": "结论"}]
+    assert calls[0].url.raw_path == b"/v1/assistant/groups/g%2F1"
+    assert calls[1].url.raw_path == b"/v1/assistant/groups/g%2F1/messages"
+    assert all(r.method == "GET" and r.headers["X-Xuanpu-Act-As"] == "member" for r in calls)

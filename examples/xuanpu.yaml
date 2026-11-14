@@ -223,6 +223,7 @@ approvals:
 #   wake_interval_seconds: 2.0         # 0.2–300；多久对账一次匠人是否结束或提问（R5-C2 唤醒）
 #   max_group_members: 4               # 1–8；编组每一步最多几位匠人（R5-D）
 #   max_group_steps: 3                 # 1–5；编组计划最多几步（R5-D）
+#   max_consult_rounds: 2              # 0–5；会诊里 @ 追问最多几轮，超过由管家收口（R5-D2）
 
 # 可选 OTel 导出（R5-B2）：只导出 execution_trace 名单内租户的执行事件，不含正文、参数与输出。
 # 端点只由平台管理员配置；开启时必须给 endpoint，平台不读 OTEL_* 环境变量。

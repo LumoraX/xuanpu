@@ -212,3 +212,5 @@ JSON写入保留调用者的操作号、版本及确认，不自动补 `confirme
 ## 管家入口（R5-C）
 
 `send_to_butler(text, request_id=..., timezone="Asia/Shanghai", input_files=None)` 对应 `POST /v1/assistant/messages`，返回回执字典：`mode` 为 `butler`（含 `trace_id`、`message`、草稿字段与 `dispatches`）或 `route`（租户未开启管家时走既有分流）。`request_id` 必填：同键同体回原回执，同键不同体抛 409 的 `XuanpuError`。管家派工不等匠人结果，进展用 `follow_trace(trace_id)` 跟随。
+
+`list_butler_pending()`、`answer_butler_pending(pending_id, text, request_id=...)` 对应待本人处理项（含会诊裁决 `kind=ruling`）；`get_butler_group(group_id)` 与 `list_group_messages(group_id)` 只读本人编组的进展与会诊消息区（R5-D2）。

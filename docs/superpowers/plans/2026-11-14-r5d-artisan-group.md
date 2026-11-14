@@ -50,7 +50,16 @@
 
 **Files**：Create `S/butler/groups/{messages,mentions}.py`、`S/api/groups.py`、`T/butler/groups/{test_messages_acl,test_mention_rounds,test_message_injection}.py`；Modify `S/api/app.py`、`docs/architecture/butler.md`、`docs/guides/butler.md`、`docs/architecture/http-api.md`。
 
-- [ ] 只追加消息区；成员只见发布内容；@ 追问唤醒被问成员，轮数上限后由管家收口。
-- [ ] 消息内容当数据处理；反例：消息里要求成员越权或改计划。
-- [ ] 真实模型跑一次三成员会诊，瀑布显示交叠，结果入验收记录。
-- [ ] 同步文档；提交 `feat: 增加会诊消息区与定向追问`。
+- [x] 只追加消息区；成员只见发布内容；@ 追问唤醒被问成员，轮数上限后由管家收口。
+- [x] 消息内容当数据处理；反例：消息里要求成员越权或改计划。
+- [ ] 真实模型跑一次三成员会诊，瀑布显示交叠，结果入验收记录。（**延后**：本环境没有真实模型凭据，未执行；脚本 `scripts/acceptance/r5_consult_acceptance.py` 已就绪，判定口径有单测）
+- [x] 同步文档；提交 `feat: 增加会诊消息区与定向追问`。
+
+### D2 进度（2026-11-14，macOS arm64，Python 3.12，本机 taifeng 2026.11.14.1 + taifeng-sandbox `af3e545`）
+
+- 已写：`S/butler/groups/{messages,message_postgres,mentions,board}.py`、`S/api/groups.py`；迁移 `0025_group_messages`；`GroupRecord.followups`（`FollowUp`）；`ButlerConfig.max_consult_rounds`（默认 2，0–5）；`GroupRunner` 在会诊一步完成后、比对前推进消息区（发布结论 → 等追问 → 派出下一次追问 → 超限收口），追问的结果与摘要经唤醒登记（`_with_result`），取消时一并停止进行中的追问；`ControlPlaneStore.group_message_store`；SDK `get_butler_group`、`list_group_messages`；验收脚本 `scripts/acceptance/r5_consult_acceptance.py`。
+- 与计划的差异：追问不复用被问成员的原会话，而是对同一匠人的一次新派工（被问成员只拿到已发布内容与追问原文；不依赖两个引擎常驻，任务承载与会话承载同一路径）；每次追问计入 `max_artisans_per_trace`。只有全部成员完成的会诊步才开消息区；有成员失败的会诊步照实汇报，不比对。
+- 测试：`T/butler/groups/test_messages_acl.py`（只追加、按键去重、并发序号连续、按员工隔离，memory 与 PG；接口本人可读、他人 404、机器身份 403）；`test_mention_rounds.py`（只唤醒被问成员、被问成员只见已发布内容、一轮上限收口、两轮放行、追问派出后保存前终止重启不重复）；`test_message_injection.py`（不存在的成员与非成员名字被忽略、对真实成员的越权要求只成为一次数据形式的追问、计划与匠人不变、涉及审批付款仍交员工）；`test_consult_acceptance_script.py`（验收脚本判定口径）。
+- 门禁：`.venv/bin/pytest packages/xuanpu-server/tests/butler packages/xuanpu-server/tests/tracing packages/xuanpu-server/tests/test_config.py packages/xuanpu-server/tests/test_controlplane_migrations.py packages/xuanpu-server/tests/test_optional_identity_store.py packages/xuanpu-sdk-py/tests -q` → 338 passed, 2 skipped；`ruff check --select F,S108,I,TC packages` → All checks passed!；`mypy packages/*/src` → Success: no issues found in 552 source files。
+- 全量（沙盒外）：`.venv/bin/pytest -q -rfE packages` → 3735 passed / 60 failed / 49 errors / 443 skipped（18:15），失败集合与 main 同环境已知集合逐条一致（办公容器找不到 docker）。
+- 延后：真实模型三成员会诊（无凭据）；编组的真实独立进程终止测试（同 D0）；任务承载成员与追问的端到端（本机无法运行办公容器）。

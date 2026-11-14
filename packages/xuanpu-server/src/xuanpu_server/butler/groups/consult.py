@@ -61,8 +61,11 @@ def conclusions_of(record: GroupRecord, step: int) -> tuple[MemberConclusion, ..
     for index, member in enumerate(record.plan.steps[step].members):
         run = record.run(step, index)
         if run is not None and run.outcome == "completed":
-            found.append(MemberConclusion(number=index + 1, artisan=member.package,
-                                          text=run.summary or "（这位匠人没有留下文字结论）"))
+            text = run.summary or "（这位匠人没有留下文字结论）"
+            for follow in record.followups:
+                if (follow.step, follow.target, follow.outcome) == (step, index, "completed"):
+                    text += f"\n（第 {follow.round} 轮追问后补充）{follow.summary or ''}"
+            found.append(MemberConclusion(number=index + 1, artisan=member.package, text=text))
     return tuple(found)
 
 

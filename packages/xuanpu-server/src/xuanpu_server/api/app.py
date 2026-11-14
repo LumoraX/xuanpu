@@ -27,6 +27,7 @@ from xuanpu_server.api.collaboration_notifications import collaboration_notifica
 from xuanpu_server.api.connections import connections_router
 from xuanpu_server.api.console import ConsoleStaticFiles
 from xuanpu_server.api.file_bridge import file_bridge_router
+from xuanpu_server.api.groups import groups_router
 from xuanpu_server.api.handoffs import handoffs_router
 from xuanpu_server.api.history import history_router
 from xuanpu_server.api.identity import identity_router
@@ -183,6 +184,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.include_router(history_router(platform))
     app.include_router(assistant_router(platform))
     app.include_router(butler_router(platform))
+    app.include_router(groups_router(platform))
     app.include_router(assistant_actions_router(platform))
     app.include_router(reminders_router(platform))
     app.include_router(workspace_router(platform))

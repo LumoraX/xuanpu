@@ -101,6 +101,21 @@ class MemberRun(BaseModel):
     passed: bool | None = None
 
 
+class FollowUp(BaseModel):
+    """会诊里的一次定向追问（R5-D2）：哪条消息问了哪位成员、为此派出的派工与结果。"""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    step: int = Field(ge=0)
+    target: int = Field(ge=0)
+    asked_by: int = Field(ge=1, description="提问消息的序号")
+    round: int = Field(ge=1)
+    dispatch_id: str | None = None
+    outcome: MemberOutcome | None = None
+    end_reason: str | None = None
+    summary: str | None = Field(default=None, max_length=SUMMARY_MAX + 1)
+    passed: bool | None = None
+
+
 class GroupRecord(BaseModel):
     """一个编组。``version`` 每次保存加一，保存须带期望版本。"""
 
@@ -121,6 +136,7 @@ class GroupRecord(BaseModel):
     cancel_requested: bool = False
     summarized: bool = False
     verdicts: tuple[StepVerdict, ...] = ()
+    followups: tuple[FollowUp, ...] = ()
     version: int = Field(default=1, ge=1)
     created_at: datetime
     updated_at: datetime
@@ -150,6 +166,15 @@ class GroupRecord(BaseModel):
         """按派工找成员。"""
         return next((r for r in self.runs if r.dispatch_id == dispatch_id), None)
 
+    def followup(self, asked_by: int, target: int) -> FollowUp | None:
+        """某条消息对某位成员的追问；还没派出返回 None。"""
+        return next((f for f in self.followups if (f.asked_by, f.target) == (asked_by, target)),
+                    None)
+
+    def followup_by_dispatch(self, dispatch_id: str) -> FollowUp | None:
+        """按派工找追问。"""
+        return next((f for f in self.followups if f.dispatch_id == dispatch_id), None)
+
 
 def group_fingerprint(trace_id: str, plan: GroupPlan) -> str:
     """同一 ``request_id`` 的编组内容指纹。"""
@@ -162,6 +187,14 @@ def with_run(record: GroupRecord, run: MemberRun) -> GroupRecord:
     others = tuple(r for r in record.runs if (r.step, r.index) != (run.step, run.index))
     runs = tuple(sorted((*others, run), key=lambda r: (r.step, r.index)))
     return record.model_copy(update={"runs": runs})
+
+
+def with_followup(record: GroupRecord, followup: FollowUp) -> GroupRecord:
+    """替换或追加一次追问。"""
+    key = (followup.asked_by, followup.target)
+    others = tuple(f for f in record.followups if (f.asked_by, f.target) != key)
+    ordered = tuple(sorted((*others, followup), key=lambda f: (f.asked_by, f.target)))
+    return record.model_copy(update={"followups": ordered})
 
 
 def with_verdict(record: GroupRecord, verdict: StepVerdict) -> GroupRecord:

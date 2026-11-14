@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from xuanpu_server.butler.dispatch_store import DispatchStore
+    from xuanpu_server.butler.groups.messages import MessageStore
     from xuanpu_server.butler.groups.store import GroupStore
     from xuanpu_server.butler.wake_store import WakeStore
     from xuanpu_server.connections.store import ConnectionStore
@@ -82,6 +83,11 @@ class ControlPlaneStore(Protocol):
     @property
     def group_store(self) -> GroupStore:
         """与控制面同后端的匠人编组（R5-D）。"""
+        ...
+
+    @property
+    def group_message_store(self) -> MessageStore:
+        """与控制面同后端的会诊消息区（R5-D2）。"""
         ...
 
     # --- 租户与凭据 ---

@@ -57,6 +57,9 @@ class InMemoryControlPlane:
         from xuanpu_server.butler.groups.memory import MemoryGroupStore
 
         self.group_store = MemoryGroupStore()
+        from xuanpu_server.butler.groups.messages import MemoryMessageStore
+
+        self.group_message_store = MemoryMessageStore()
         self.reminder_store = InMemoryReminderStore(
             lambda tenant_id: (
                 tenant_id in self._tenants and self._tenants[tenant_id].status == "active"
