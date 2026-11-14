@@ -769,6 +769,8 @@ R2配置中的`task_activity.enabled`控制工作动态通知，默认false；`t
 
 R5-C2 新增 `0023_butler_wakeup`（尚未正式部署）：`butler_event`（唤醒事件，按派工与宿主事实去重、带处理决定与确认标记）与 `butler_pending`（待本人处理项与代答记录，含答复原文及出处），均按租户与员工归属，外键到派工与员工表；另给派工表加进行中派工的部分索引。`butler.wake_interval_seconds` 默认 2（0.2–300）：平台每隔这么久对开启管家的租户对账一次匠人是否结束或提问并处理唤醒事件；单轮失败记「管家唤醒处理失败，下一轮重试」。唤醒后的复核会再跑一轮管家，计入 `max_butler_turns_per_trace` 与 token 上限，超限时只做确定性验收后交付。员工侧用法见[管家使用说明](butler.md)。
 
+R5-D0 新增 `0024_artisan_groups`（尚未正式部署）：`butler_group` 一个编组一行，计划与成员执行在 `record` 里按版本整体保存，按租户与员工归属（复合外键到员工表），另有未收口编组的部分索引；成员各是一条派工记录（`butler_dispatch` 的 JSON 里带 `group_id`）。`butler.max_group_members` 默认 4（1–8），`butler.max_group_steps` 默认 3（1–5）；编组全部成员加上本次请求已有的派工仍受 `max_artisans_per_trace` 约束。编组由唤醒循环推进，单个编组推进失败记「推进编组 … 失败，下一轮重试」。
+
 ## 可选 HTTP 调用身份签名
 
 `call_context` 默认为空。只有需要真实员工上下文的进程外 HTTP 连接器才启用；旧连接器继续原有行为。字段如下：

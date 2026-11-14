@@ -95,12 +95,13 @@ class DispatchRecord(BaseModel):
     materials: tuple[str, ...] = Field(default=(), max_length=8)
     state: DispatchState = "accepted"
     end_reason: str | None = None
+    group_id: str | None = None
     version: int = Field(default=1, ge=1)
     created_at: datetime
     updated_at: datetime
 
     @field_validator("dispatch_id", "tenant_id", "user_id", "trace_id", "parent_span_id",
-                     "host_ref")
+                     "host_ref", "group_id")
     @classmethod
     def _ids(cls, value: str | None) -> str | None:
         """可空标识非空时校验。"""

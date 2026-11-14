@@ -23,6 +23,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from xuanpu_server.assistant import RouteBody
 from xuanpu_server.butler.dispatcher import Dispatcher
 from xuanpu_server.butler.engine import ButlerEngines
+from xuanpu_server.butler.groups.runner import GroupRunner
+from xuanpu_server.butler.groups.trace import TracedGroupStore
 from xuanpu_server.butler.pending import PendingService
 from xuanpu_server.butler.review import Reviewer
 from xuanpu_server.butler.tools import ButlerTools
@@ -77,10 +79,15 @@ class ButlerService:
         self.turns = TurnRegistry()
         self.dispatcher = Dispatcher(platform, now=now)
         self.pending = PendingService(platform, now=now)
-        self.tools = ButlerTools(platform, self.dispatcher, self.turns, pending=self.pending, now=now)
+        self.group_store = TracedGroupStore(platform.store.group_store, platform.store.trace_store,
+                                            lambda: platform.runtimes.defaults.execution_trace)
+        self.groups = GroupRunner(platform, self.dispatcher, self.group_store, now=now)
+        self.tools = ButlerTools(platform, self.dispatcher, self.turns, pending=self.pending,
+                                 groups=self.groups, now=now)
         self.engines = ButlerEngines(platform, models, self.tools, self.turns, data_dir=data_dir)
-        self.wakeup = Wakeup(platform, WakeEffects(platform, self.pending, now=now),
-                             Reviewer(platform, self.engines), now=now)
+        self.wakeup = Wakeup(platform, WakeEffects(platform, self.pending, now=now,
+                                                   groups=self.groups),
+                             Reviewer(platform, self.engines), now=now, groups=self.groups)
         self._locks: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
 
     def enabled(self, tenant: str) -> bool:
@@ -146,6 +153,7 @@ class ButlerService:
             metadata={"route": saved, "butler": {"trace_id": turn.trace_id}})
         return {"mode": "butler", "request_id": body.request_id, "trace_id": turn.trace_id,
                 **saved, "dispatches": [_dispatch_view(r) for r in turn.dispatches],
+                "groups": list(turn.groups),
                 "answered_pending": list(turn.answered)}
 
     def _outcome(self, turn: ButlerTurn, reply: str) -> RouteOutcome:

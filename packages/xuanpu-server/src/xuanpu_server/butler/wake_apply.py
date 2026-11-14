@@ -18,6 +18,7 @@ from xuanpu_server.ids import new_id
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from xuanpu_server.butler.groups.runner import GroupRunner
     from xuanpu_server.butler.models import DispatchRecord, DispatchState
     from xuanpu_server.butler.pending import PendingService
     from xuanpu_server.butler.wake_models import ButlerEvent, WakeDecision
@@ -38,11 +39,12 @@ class WakeEffects:
     """唤醒决定的执行者。"""
 
     def __init__(self, platform: Platform, pending: PendingService, *,
-                 now: Callable[[], float]) -> None:
-        """依赖由平台注入。"""
+                 now: Callable[[], float], groups: GroupRunner | None = None) -> None:
+        """依赖由平台注入；``groups`` 为 None 时不处理编组成员（只用于不含编组的装配）。"""
         self._platform = platform
         self._pending = pending
         self._now = now
+        self._groups = groups
 
     def _at(self) -> datetime:
         """当前时间（UTC）。"""
@@ -75,6 +77,14 @@ class WakeEffects:
         owner = owner_of(who)
         await self._pending.resolve_for_dispatch(owner, dispatch.dispatch_id, kinds=("question",))
         final: DispatchState = decision.final_state or "failed"
+        if dispatch.group_id is not None:
+            # 编组成员不单独交付：登记验收结论与摘要，再推进到终态，由编组收口时统一汇总
+            if self._groups is None:
+                raise RuntimeError("编组成员的唤醒需要编组执行器")
+            await self._groups.record_result(owner, dispatch, passed=decision.passed,
+                                             summary=decision.artisan_text)
+            await self._move(owner, dispatch.dispatch_id, final, end_reason=decision.end_reason)
+            return
         await self._move(owner, dispatch.dispatch_id, final, end_reason=decision.end_reason)
         await self._message(who, event, "deliver", _delivery_text(dispatch, decision), dispatch,
                             {"passed": decision.passed, "checks": decision.checks,

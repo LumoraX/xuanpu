@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from xuanpu_server.butler.dispatch_store import DispatchStore
+    from xuanpu_server.butler.groups.store import GroupStore
     from xuanpu_server.butler.wake_store import WakeStore
     from xuanpu_server.connections.store import ConnectionStore
     from xuanpu_server.controlplane.models import (
@@ -76,6 +77,11 @@ class ControlPlaneStore(Protocol):
     @property
     def wake_store(self) -> WakeStore:
         """与控制面同后端的管家唤醒事件与待本人处理项（R5-C2）。"""
+        ...
+
+    @property
+    def group_store(self) -> GroupStore:
+        """与控制面同后端的匠人编组（R5-D）。"""
         ...
 
     # --- 租户与凭据 ---

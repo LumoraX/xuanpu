@@ -14,12 +14,21 @@
 
 **Files**：Create `S/butler/groups/{__init__,plan,validate,store,memory,postgres,runner}.py`、`S/controlplane/migrations/<编号>_artisan_groups.sql`、`T/butler/groups/{test_plan_validate,test_parallel,test_relay,test_cancel,test_restart}.py`；Modify `S/butler/{tools_dispatch,wakeup,budget}.py`、`S/tracing/collector.py`（`group` span）。
 
-- [ ] 计划模型严格解析：未知字段拒绝；成员数、步数、`when` 只认前一步终态；成员匠人须在本人当前清单内。
-- [ ] 并行：全部成员终态后唤醒管家一次；部分失败如实汇报。
-- [ ] 接力：传成果引用与摘要并复核下一成员的读取资格；任一步失败即停。
-- [ ] 取消编组请求取消全部未终态成员，按真实终态收敛；成员撤权只拒该成员。
-- [ ] 在成员完成后、汇总前终止进程：重启后不重复派工、不重复汇总。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/butler/groups -q`；提交 `feat: 增加并行与接力编组`。
+- [x] 计划模型严格解析：未知字段拒绝；成员数、步数、`when` 只认前一步终态；成员匠人须在本人当前清单内。
+- [x] 并行：全部成员终态后唤醒管家一次；部分失败如实汇报。
+- [x] 接力：传成果引用与摘要并复核下一成员的读取资格；任一步失败即停。
+- [x] 取消编组请求取消全部未终态成员，按真实终态收敛；成员撤权只拒该成员。
+- [x] 在成员完成后、汇总前终止进程：重启后不重复派工、不重复汇总。
+- [x] Run：`uv run pytest packages/xuanpu-server/tests/butler/groups -q`；提交 `feat: 增加并行与接力编组`。
+
+### D0 进度（2026-11-14，macOS arm64，Python 3.12，本机 taifeng 2026.11.14.1 + taifeng-sandbox `af3e545`）
+
+- 已写：`S/butler/groups/{plan,validate,store,memory,postgres,trace,runner,summary,tools}.py`；迁移 `0024_artisan_groups`；`ButlerConfig.max_group_members` / `max_group_steps`；工具 `dispatch_group`、`cancel_group`、`check_group`；`Dispatcher.launch`（不依赖管家一轮的派工入口，编组成员用）；派工记录加 `group_id`；唤醒对编组成员只登记结果不单独交付，并在每轮处理后推进编组；编组 span `gp.<id>`（kind `group`）挂在管家根下，成员派工 span 挂在编组下。
+- 与计划的差异：数据未拆成 `group_member` 表，成员执行嵌在编组记录里按版本整体保存（单行事务即可保证推进原子性）；`group` span 由编组存储包装层写入，没有改 `S/tracing/collector.py`；文件 `tools_dispatch` 未新建，编组工具在 `S/butler/groups/tools.py`。
+- 重启：用全新执行器实例在「派出成员后、保存前」「写汇总后、标记前」两处模拟终止（`T/butler/groups/test_restart.py`），重启后不重复派工、不重复汇总。不是真实独立进程；执行器不持有进程内状态，真实进程终止测试沿用 C2 的唤醒 worker 未扩展到编组（延后）。
+- 门禁：`.venv/bin/pytest packages/xuanpu-server/tests/butler packages/xuanpu-server/tests/tracing …迁移与配置测试` 261 passed, 2 skipped；ruff All checks passed!；mypy Success: no issues found in 543 source files。
+- 全量（沙盒外）：3693 passed / 60 failed / 49 errors / 443 skipped，失败集合与 main 同环境已知集合逐条一致（办公容器找不到 docker）。
+- 延后：任务承载成员的端到端（本机无法运行办公容器）；真实独立进程终止的编组重启测试；文件类成果随接力传递（会话承载不收材料）。
 
 ## D1：会诊与分歧裁决
 

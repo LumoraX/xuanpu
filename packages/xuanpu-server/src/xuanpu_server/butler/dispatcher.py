@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -26,9 +27,22 @@ if TYPE_CHECKING:
     from xuanpu_server.butler.turn import ButlerTurn
     from xuanpu_server.platform import Platform
     from xuanpu_server.runtime.sessions import Turn
+    from xuanpu_server.tenancy import Principal
     from xuanpu_server.work_tasks.models import InputFile
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class LaunchContext:
+    """一次派工的归属与挂接：谁、哪条 trace、父 span、幂等标识、时区。"""
+
+    who: Principal
+    owner: TraceOwner
+    trace_id: str
+    parent_span_id: str | None
+    request_id: str
+    timezone: str
 
 
 class Dispatcher:
@@ -55,44 +69,73 @@ class Dispatcher:
             NotFoundError: 匠人对本人不可用。
             ButlerBudgetError: 预算超限（不建记录）。
         """
-        text = instruction.strip()
-        if not text or len(text) > INSTRUCTION_MAX:
-            raise InvalidRequestError(f"任务说明须为 1–{INSTRUCTION_MAX} 个字符")
         allowed = {(m.item_id, m.revision) for m in turn.materials}
         if any((m.item_id, m.revision) not in allowed for m in materials):
             raise InvalidRequestError("派工材料只能是员工本次明确提供的文件")
-        artisan = await self._platform.artisans.resolve(turn.who, package, entry)
+        if not turn.root_seen.is_set():
+            await asyncio.wait_for(turn.root_seen.wait(), timeout=10)
+        ctx = LaunchContext(who=turn.who, owner=turn.owner(), trace_id=turn.trace_id,
+                            parent_span_id=turn.root_span, request_id=turn.dispatch_request_id(),
+                            timezone=turn.timezone)
+        try:
+            record = await self.launch(ctx, package=package, entry=entry,
+                                       instruction=instruction, materials=materials,
+                                       on_created=turn.dispatches.append)
+        except PlatformError:
+            # 记录已建而启动失败时，本轮看到的是存储里的 failed 记录
+            if turn.dispatches and turn.dispatches[-1].request_id == ctx.request_id:
+                turn.dispatches[-1] = await self._platform.dispatches.get(
+                    ctx.owner, turn.dispatches[-1].dispatch_id)
+            raise
+        turn.dispatches[-1] = record
+        return record
+
+    async def launch(
+        self, ctx: LaunchContext, *, package: str, entry: str, instruction: str,
+        materials: tuple[InputFile, ...], group_id: str | None = None,
+        on_created: Callable[[DispatchRecord], None] | None = None,
+    ) -> DispatchRecord:
+        """不依赖管家一轮的派工入口（编组成员也走这里）：解析、建记录、启动。
+
+        同一 ``ctx.request_id`` 重复调用回放原派工；记录已建但未启动（进程在两者之间被终止）
+        时补做启动。材料归属由调用方核对。
+        """
+        text = instruction.strip()
+        if not text or len(text) > INSTRUCTION_MAX:
+            raise InvalidRequestError(f"任务说明须为 1–{INSTRUCTION_MAX} 个字符")
+        artisan = await self._platform.artisans.resolve(ctx.who, package, entry)
         if artisan.host == "session" and materials:
             raise InvalidRequestError("这位匠人暂不支持附带文件材料")
-        record = await self._create(turn, artisan, text, materials)
-        turn.dispatches.append(record)
+        record = await self._create(ctx, artisan, text, materials, group_id)
+        if on_created is not None:
+            on_created(record)
         if record.state != "accepted":
             return record
-        return await self._start(turn, record, artisan, materials)
+        return await self._start(ctx, record, artisan, materials)
 
     async def _create(
-        self, turn: ButlerTurn, artisan: Artisan, text: str, materials: tuple[InputFile, ...],
+        self, ctx: LaunchContext, artisan: Artisan, text: str, materials: tuple[InputFile, ...],
+        group_id: str | None,
     ) -> DispatchRecord:
         """核对预算后建记录；存储在同一临界区里再核一次容量。"""
         config = self._platform.butler_config
         store = self._platform.dispatches
-        owner = turn.owner()
-        existing = await store.list_for_trace(owner, turn.trace_id)
-        usage = TraceUsage(artisans=len(existing), tokens=await self._finished_tokens(owner, turn))
+        owner = ctx.owner
+        existing = await store.list_for_trace(owner, ctx.trace_id)
         refs = tuple(f"{m.item_id}@{m.revision}" for m in materials)
-        request_id = turn.dispatch_request_id()
-        replayed = next((r for r in existing if r.request_id == request_id), None)
+        replayed = next((r for r in existing if r.request_id == ctx.request_id), None)
         if replayed is None:
+            usage = TraceUsage(artisans=len(existing),
+                               tokens=await self.finished_tokens(owner, ctx.trace_id))
             check_dispatch(config, usage, trace_active=any(r.active for r in existing),
                            active_traces=await store.active_traces(owner.tenant_id))
-        if not turn.root_seen.is_set():
-            await asyncio.wait_for(turn.root_seen.wait(), timeout=10)
         now = self._at()
         record = DispatchRecord(
             dispatch_id=new_id("dsp"), tenant_id=owner.tenant_id, user_id=owner.user_id,
-            request_id=request_id, trace_id=turn.trace_id, parent_span_id=turn.root_span,
+            request_id=ctx.request_id, trace_id=ctx.trace_id, parent_span_id=ctx.parent_span_id,
             artisan=artisan.ref, host=artisan.host, instruction=text, materials=refs,
-            input_fingerprint=dispatch_fingerprint(trace_id=turn.trace_id, artisan=artisan.ref,
+            group_id=group_id,
+            input_fingerprint=dispatch_fingerprint(trace_id=ctx.trace_id, artisan=artisan.ref,
                                                    instruction=text, materials=refs),
             created_at=now, updated_at=now,
         )
@@ -101,14 +144,14 @@ class Dispatcher:
                                         max_active_traces=config.max_active_traces_per_tenant)
         return created
 
-    async def _finished_tokens(self, owner: TraceOwner, turn: ButlerTurn) -> int | None:
+    async def finished_tokens(self, owner: TraceOwner, trace_id: str) -> int | None:
         """这条 trace 已结束的执行的 token 合计；进行中的尝试结束后才计入。
 
         trace 还没写出（采集按批写入）时没有已结束的执行，记 0；已结束的执行用量未知时
         返回 None，预算据此不放行。
         """
         try:
-            view = await self._platform.store.trace_store.get(owner, turn.trace_id)
+            view = await self._platform.store.trace_store.get(owner, trace_id)
         except NotFoundError:
             return 0
         total = 0
@@ -121,7 +164,7 @@ class Dispatcher:
         return total
 
     async def _start(
-        self, turn: ButlerTurn, record: DispatchRecord, artisan: Artisan,
+        self, ctx: LaunchContext, record: DispatchRecord, artisan: Artisan,
         materials: tuple[InputFile, ...],
     ) -> DispatchRecord:
         """启动承载执行并把派工推进到 running；启动失败记 failed 后原样上抛。
@@ -132,43 +175,40 @@ class Dispatcher:
         store = self._platform.dispatches
         try:
             if artisan.host == "task":
-                host_ref = await self._start_task(turn, record, materials)
-                running = await store.update(turn.owner(), record.dispatch_id,
-                                             expected_version=record.version, to="running",
-                                             at=self._at(), host_ref=host_ref)
-            else:
-                running = await self._start_session(turn, record)
+                host_ref = await self._start_task(ctx, record, materials)
+                return await store.update(ctx.owner, record.dispatch_id,
+                                          expected_version=record.version, to="running",
+                                          at=self._at(), host_ref=host_ref)
+            return await self._start_session(ctx, record)
         except PlatformError:
-            current = await store.get(turn.owner(), record.dispatch_id)
-            failed = await store.update(turn.owner(), record.dispatch_id,
-                                        expected_version=current.version, to="failed",
-                                        at=self._at(), end_reason="start_failed")
-            turn.dispatches[-1] = failed
+            current = await store.get(ctx.owner, record.dispatch_id)
+            if current.active:
+                await store.update(ctx.owner, record.dispatch_id,
+                                   expected_version=current.version, to="failed",
+                                   at=self._at(), end_reason="start_failed")
             raise
-        turn.dispatches[-1] = running
-        return running
 
     async def _start_task(
-        self, turn: ButlerTurn, record: DispatchRecord, materials: tuple[InputFile, ...],
+        self, ctx: LaunchContext, record: DispatchRecord, materials: tuple[InputFile, ...],
     ) -> str:
         """持久任务承载：与 from-capability 同一受理口径。"""
-        task = await self._platform.work_tasks.accept_capability(turn.who, CapabilityTaskInput(
+        task = await self._platform.work_tasks.accept_capability(ctx.who, CapabilityTaskInput(
             request_id="butler:" + record.dispatch_id, text=record.instruction,
-            timezone=turn.timezone, input_files=materials,
+            timezone=ctx.timezone, input_files=materials,
             capability=CapabilityReference(package=record.artisan.package,
                                            entry=record.artisan.entry)))
         return task.task_id
 
-    async def _start_session(self, turn: ButlerTurn, record: DispatchRecord) -> DispatchRecord:
+    async def _start_session(self, ctx: LaunchContext, record: DispatchRecord) -> DispatchRecord:
         """会话承载：钉住派工时的版本建会话，记下绑定，再发出任务说明；这一轮在后台读完。"""
         sessions = self._platform.sessions
         session = await sessions.create(
-            turn.who, package=record.artisan.package, version=record.artisan.version,
+            ctx.who, package=record.artisan.package, version=record.artisan.version,
             entry=record.artisan.entry, request_id="butler:" + record.dispatch_id)
         running = await self._platform.dispatches.update(
-            turn.owner(), record.dispatch_id, expected_version=record.version, to="running",
+            ctx.owner, record.dispatch_id, expected_version=record.version, to="running",
             at=self._at(), host_ref=session.session_id)
-        started = await sessions.send_message(turn.who, session.session_id, record.instruction)
+        started = await sessions.send_message(ctx.who, session.session_id, record.instruction)
         self._drain(started)
         return running
 

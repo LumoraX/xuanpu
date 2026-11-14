@@ -28,6 +28,7 @@ from xuanpu_server.work_tasks.models import TERMINAL as TASK_TERMINAL
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from xuanpu_server.butler.groups.runner import GroupRunner
     from xuanpu_server.butler.inspector import HostSnapshot
     from xuanpu_server.butler.models import DispatchRecord
     from xuanpu_server.butler.review import Reviewer
@@ -47,8 +48,9 @@ class Wakeup:
     """对账、处理与后台循环。"""
 
     def __init__(self, platform: Platform, effects: WakeEffects, reviewer: Reviewer | None, *,
-                 now: Callable[[], float]) -> None:
-        """依赖由平台注入；``reviewer`` 为 None 时只做确定性验收。"""
+                 now: Callable[[], float], groups: GroupRunner | None = None) -> None:
+        """依赖由平台注入；``reviewer`` 为 None 时只做确定性验收；``groups`` 为 None 时不推进编组。"""
+        self._groups = groups
         self._platform = platform
         self._effects = effects
         self._reviewer = reviewer
@@ -97,6 +99,9 @@ class Wakeup:
                         logger.exception("处理唤醒事件 %s 失败，下一轮重试", event.event_id)
                         continue
                     handled += 1
+                if self._groups is not None:
+                    # 成员结果已随事件登记；接着推进编组（启动下一成员、收口汇总）
+                    await self._groups.advance_tenant(tenant)
         return handled
 
     async def reconcile(self, tenant: str) -> None:

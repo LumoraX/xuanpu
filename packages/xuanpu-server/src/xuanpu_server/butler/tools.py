@@ -13,6 +13,7 @@ import taifeng
 from pydantic import ValidationError
 
 from xuanpu_server.assistant_proposals import NATIVE_PACKAGES, resolve_native_choice
+from xuanpu_server.butler.groups.tools import GROUP_PLAN_SCHEMA
 from xuanpu_server.errors import PlatformError
 from xuanpu_server.work_tasks.models import InputFile
 
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
     from xuanpu_server.butler.dispatcher import Dispatcher
+    from xuanpu_server.butler.groups.runner import GroupRunner
     from xuanpu_server.butler.pending import PendingService
     from xuanpu_server.butler.turn import ButlerTurn, TurnRegistry
     from xuanpu_server.platform import Platform
@@ -27,9 +29,10 @@ if TYPE_CHECKING:
     Handler = Callable[[ButlerTurn, dict[str, Any], str], Awaitable[taifeng.ToolResult]]
 
 TOOL_NAMES = ("propose", "read_personal", "list_artisans", "dispatch_artisan", "check_dispatch",
-              "cancel_dispatch", "answer_pending", "answer_artisan", "ask_user")
+              "cancel_dispatch", "answer_pending", "answer_artisan", "ask_user",
+              "dispatch_group", "cancel_group", "check_group")
 _WAKE_ONLY = frozenset({"answer_artisan", "ask_user"})
-_ANY_TURN = frozenset({"read_personal", "list_artisans", "check_dispatch"})
+_ANY_TURN = frozenset({"read_personal", "list_artisans", "check_dispatch", "check_group"})
 _LIST_MAX = 20
 
 
@@ -42,8 +45,9 @@ class ButlerTools:
     """构造管家工具；处理函数共用平台、派工与本轮登记表。"""
 
     def __init__(self, platform: Platform, dispatcher: Dispatcher, turns: TurnRegistry, *,
-                 pending: PendingService, now: Callable[[], float]) -> None:
+                 pending: PendingService, groups: GroupRunner, now: Callable[[], float]) -> None:
         """依赖由平台注入。"""
+        self._groups = groups
         self._platform = platform
         self._pending = pending
         self._dispatcher = dispatcher
@@ -75,6 +79,23 @@ class ButlerTools:
                        {"dispatch_id": {"type": "string"}}, ["dispatch_id"],
                        self._check_dispatch, parallel=True),
             *self._c2_specs(),
+            *self._group_specs(),
+        ]
+
+    def _group_specs(self) -> list[taifeng.ToolSpec]:
+        """编组（R5-D）：提交计划、取消、查进展。"""
+        from xuanpu_server.butler.groups.tools import GroupTools
+
+        handlers = GroupTools(self._groups)
+        return [
+            self._spec("dispatch_group", "需要多位匠人时提交一份编组计划：每步并行（parallel，各做一部分）"
+                       "或接力（relay，前一位的成果摘要交给后一位）；立即返回，不等结果。",
+                       {"plan": GROUP_PLAN_SCHEMA}, ["plan"], handlers.dispatch_group),
+            self._spec("cancel_group", "请求停止一个编组的全部未结束成员；以匠人实际停下为准。",
+                       {"group_id": {"type": "string"}}, ["group_id"], handlers.cancel_group),
+            self._spec("check_group", "查一个编组的进展。",
+                       {"group_id": {"type": "string"}}, ["group_id"], handlers.check_group,
+                       parallel=True),
         ]
 
     def _c2_specs(self) -> list[taifeng.ToolSpec]:

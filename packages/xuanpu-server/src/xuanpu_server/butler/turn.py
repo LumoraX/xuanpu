@@ -60,6 +60,7 @@ class ButlerTurn:
         user_text: 员工这句话的原文（答复待处理项时原样转给匠人，不用模型改写的文本）。
         wake: 被唤醒的一轮的上下文；员工输入触发的一轮为 None。
         answered: 本轮答复了的待处理项。
+        groups: 本轮建立或回放的编组标识（R5-D）。
     """
 
     who: Principal
@@ -74,11 +75,13 @@ class ButlerTurn:
     user_text: str = ""
     wake: WakeContext | None = None
     answered: list[str] = field(default_factory=list)
+    groups: list[str] = field(default_factory=list)
 
     def has_output(self) -> bool:
         """本轮是否产出了回复之外的结果（草稿、派工、答复、代答或转问）。"""
         wake = self.wake
         return (self.proposal is not None or bool(self.dispatches) or bool(self.answered)
+                or bool(self.groups)
                 or (wake is not None and (wake.answer is not None or wake.question is not None)))
 
     def note_root(self, span_id: str) -> None:
