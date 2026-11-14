@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>玄圃</title>
+<link rel="stylesheet" href="entry.css?v=10f5fb93359e69bd">
+</head>
+<body>
+<header class="entry-top">
+  <strong class="entry-brand">玄圃</strong>
+  <span id="entry-user" class="entry-user"></span>
+  <button id="entry-login" type="button" class="hidden">用飞书登录</button>
+</header>
+<p id="entry-login-error" class="entry-error hidden" role="alert"></p>
+<main id="entry-main" class="entry-main hidden">
+  <section id="overview" class="overview" aria-label="概览" aria-live="polite"></section>
+  <section id="transcript" class="transcript" aria-label="对话" aria-live="polite"></section>
+  <section id="tips" class="tips" aria-label="提示"></section>
+  <form id="composer" class="composer">
+    <label class="sr-only" for="message">告诉我你想办什么</label>
+    <textarea id="message" rows="2" placeholder="告诉我你想办什么，Enter 发送"></textarea>
+    <button id="send" type="submit">发送</button>
+  </form>
+</main>
+<footer class="entry-footer">
+  <a id="entry-more" href="index.html?classic=1">更多</a> ·
+  <button id="entry-notifications" type="button" class="link">通知</button> ·
+  <button id="entry-logout" type="button" class="link">退出</button>
+</footer>
+<div id="entry-status" class="sr-only" role="status" aria-live="polite"></div>
+<script src="entry.js?v=171f69a7b8ca2aaa"></script>
+<script src="cards.js?v=907e4c9679a20cc9"></script>
+<script src="progress-card.js?v=212e5f588a9a9a87"></script>
+<script src="dashboard.js?v=500650422b290d84"></script>
+<script src="tips.js?v=7dc2ec3cf51ba655"></script>
+<script src="entry-boot.js?v=bdf20a692d9d68a1"></script>
+</body>
+</html>
