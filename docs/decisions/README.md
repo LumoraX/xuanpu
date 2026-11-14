@@ -19,4 +19,4 @@
 | [0013](0013-connector-sandbox-and-remote-mcp.md) | 连接器进沙盒、远端 MCP 直连 —— stdio 连接器在单独的连接器沙盒里运行，`transport: remote` 不等网关 | Accepted |
 | [0014](0014-enterprise-core-and-durable-reminders.md) | 玄圃企业核心、持久提醒与渠道分离 | Accepted（修订0009决策1/3与0012决策5，旧文保留历史） |
 | [0015](0015-proactive-business-assistant.md) | 主动业务理解与持久规则分离 | Accepted（补充0014，纯提醒继续独立于模型） |
-| [0017](0017-butler-artisan-orchestration.md) | 管家—匠人编排、执行追踪与极简入口 | Proposed（修订 0012 决策 1 的「助理只做分流」；实现见 R5） |
+| [0017](0017-butler-artisan-orchestration.md) | 管家—匠人编排、执行追踪与极简入口 | R5 候选实现，生产验收尚未完成（修订 0012 决策 1 的「助理只做分流」） |
