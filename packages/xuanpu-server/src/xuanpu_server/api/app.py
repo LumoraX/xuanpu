@@ -40,6 +40,7 @@ from xuanpu_server.api.shared_matters import shared_matters_router
 from xuanpu_server.api.shared_notifications import shared_notifications_router
 from xuanpu_server.api.sse import frame, stream_turn
 from xuanpu_server.api.task_definitions import task_definitions_router
+from xuanpu_server.api.traces import traces_router
 from xuanpu_server.api.wecom import wecom_router
 from xuanpu_server.api.work_tasks import work_tasks_router
 from xuanpu_server.api.workspace import workspace_router
@@ -183,6 +184,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.include_router(assistant_actions_router(platform))
     app.include_router(reminders_router(platform))
     app.include_router(workspace_router(platform))
+    app.include_router(traces_router(platform))
     app.include_router(file_bridge_router(platform))
     app.include_router(work_tasks_router(platform))
     app.include_router(task_definitions_router(platform))

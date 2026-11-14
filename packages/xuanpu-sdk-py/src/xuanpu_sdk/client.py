@@ -30,6 +30,7 @@ from xuanpu_sdk.organization import OrganizationClient
 from xuanpu_sdk.shared_matters import SharedMattersClient
 from xuanpu_sdk.sse import parse_sse
 from xuanpu_sdk.task_definitions import TaskDefinitionClient
+from xuanpu_sdk.traces import TraceClient
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Sequence
@@ -91,6 +92,22 @@ class _Http:
         if not isinstance(body, dict):
             raise XuanpuTransportError("响应不是 JSON 对象")
         return body
+
+    async def stream_get(
+        self, path: str, *, headers: dict[str, str] | None = None,
+    ) -> AsyncIterator[tuple[str, dict[str, Any]]]:
+        """GET 一个 SSE 流，逐条产出 ``(事件名, 数据)``，直到服务端关闭。"""
+        try:
+            async with self._client.stream(
+                "GET", path, headers=headers, timeout=httpx.Timeout(None, connect=30.0)
+            ) as response:
+                if response.status_code >= 400:
+                    await response.aread()
+                    _raise_for(response)
+                async for item in parse_sse(response.aiter_lines()):
+                    yield item
+        except httpx.HTTPError as exc:
+            raise XuanpuTransportError(f"事件流中断：{type(exc).__name__}") from exc
 
     async def stream(self, path: str, body: dict[str, Any]) -> AsyncIterator[Event]:
         """发一个事件流请求，逐条产出内核事件，直到本轮对话结束。"""
@@ -424,7 +441,7 @@ class Admin:
         return [UserUsage.from_json(item) for item in body["usage"]]
 
 
-class XuanpuClient(TaskDefinitionClient, ConnectionClient, OrganizationClient, SharedMattersClient, CollaborationClient, CapabilityClient):
+class XuanpuClient(TaskDefinitionClient, ConnectionClient, OrganizationClient, SharedMattersClient, CollaborationClient, CapabilityClient, TraceClient):
     """平台客户端。
 
     用法::

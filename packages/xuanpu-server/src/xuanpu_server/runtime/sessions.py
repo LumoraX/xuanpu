@@ -394,12 +394,12 @@ class SessionManager:
         try:
             hub = EngineEventHub(
                 engine,
-                tenant_id=record.tenant_id,
-                session_id=record.session_id,
+                tenant_id=record.tenant_id, session_id=record.session_id,
                 audit=self._audit,
                 store=self._store,
                 metrics=self._metrics,
                 capture_requests=self._runtimes.defaults.capture_requests,
+                tracing=self._runtimes.defaults.trace_wiring,
                 on_turn_end=turn_ended,
                 user_id=record.user_id,
                 users=self._users,

@@ -45,6 +45,12 @@ class InMemoryControlPlane:
 
         self.coordination_store = InMemoryCoordinationStore(self, audit=self._append_workspace_audit)
         self.workspace_store = InMemoryWorkspaceStore(self._append_workspace_audit)
+        from xuanpu_server.tracing.memory import MemorySpanStore
+
+        self.trace_store = MemorySpanStore()
+        from xuanpu_server.butler.memory import MemoryDispatchStore
+
+        self.dispatch_store = MemoryDispatchStore()
         self.reminder_store = InMemoryReminderStore(
             lambda tenant_id: (
                 tenant_id in self._tenants and self._tenants[tenant_id].status == "active"

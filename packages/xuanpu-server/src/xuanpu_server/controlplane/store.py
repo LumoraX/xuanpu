@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from xuanpu_server.butler.dispatch_store import DispatchStore
     from xuanpu_server.connections.store import ConnectionStore
     from xuanpu_server.controlplane.models import (
         AuditQuery,
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     from xuanpu_server.reminders.store import ReminderStore
     from xuanpu_server.runtime.receipt_store import ReceiptStore
     from xuanpu_server.tenancy import ApiKeyRecord, Tenant
+    from xuanpu_server.tracing.store import SpanStore
     from xuanpu_server.workspace.store import WorkspaceStore
 
 
@@ -58,6 +60,16 @@ class ControlPlaneStore(Protocol):
     @property
     def operation_receipts(self) -> ReceiptStore:
         """与控制面共享事务域的审批操作回执。"""
+        ...
+
+    @property
+    def trace_store(self) -> SpanStore:
+        """与控制面同后端的执行追踪存储（R5-B）。"""
+        ...
+
+    @property
+    def dispatch_store(self) -> DispatchStore:
+        """与控制面同后端的管家派工记录（R5-C）。"""
         ...
 
     # --- 租户与凭据 ---

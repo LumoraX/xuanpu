@@ -25,6 +25,7 @@ from xuanpu_server.runtime import (
     StateBackends,
 )
 from xuanpu_server.secrets import EncryptedVault
+from xuanpu_server.tracing.otel import OtelExport
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -163,6 +164,15 @@ def instance_guard(config: ServerConfig) -> InstanceGuard:
                                      command_timeout=settings.command_timeout_seconds)
     return PostgresInstanceGuard(connect, f"{settings.schema_name}.xp_")
 
+def _otel_export(stack: AsyncExitStack, config: ServerConfig) -> OtelExport | None:
+    """开启时建 OTel 导出并登记关闭；关闭时返回 None，不建任何连接。"""
+    if not config.telemetry.otel.enabled:
+        return None
+    export = OtelExport(config.telemetry.otel)
+    stack.push_async_callback(export.close)
+    return export
+
+
 async def _states(stack: AsyncExitStack, config: ServerConfig) -> StateBackendFactory:
     """状态面后端。"""
     if config.state.backend == "local":
@@ -286,6 +296,8 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
                 capture_requests=config.audit.capture_requests,
                 session_idle_seconds=config.limits.session_idle_seconds,
                 runtime_idle_seconds=config.limits.runtime_idle_seconds,
+                execution_trace=config.execution_trace,
+                otel_export=_otel_export(stack, config),
             ),
             durable_execution=config.durable_execution,
             task_triggers=config.task_triggers,
@@ -294,7 +306,7 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
             organization=config.organization,
             capability_delivery=config.capability_delivery,
             shared_matters=config.shared_matters,
-            handoffs=config.handoffs, approvals=config.approvals,
+            handoffs=config.handoffs, approvals=config.approvals, butler=config.butler,
             instance_id=config.instance_id,
             lease_seconds=config.lease_seconds,
             shutdown_drain_seconds=config.shutdown_drain_seconds,

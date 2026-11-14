@@ -103,6 +103,12 @@ class PostgresControlPlane:
 
         self.coordination_store = PostgresCoordinationStore(pool, namespace)
         self.workspace_store = PostgresWorkspaceStore(pool, namespace=namespace)
+        from xuanpu_server.tracing.postgres import PostgresSpanStore
+
+        self.trace_store = PostgresSpanStore(pool, namespace=namespace)
+        from xuanpu_server.butler.postgres import PostgresDispatchStore
+
+        self.dispatch_store = PostgresDispatchStore(pool, namespace=namespace)
         self.operation_receipts = PostgresReceiptStore(pool, namespace)
         self._pool = pool
         self._namespace = namespace

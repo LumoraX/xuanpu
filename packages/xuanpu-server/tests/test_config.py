@@ -64,6 +64,17 @@ def test_minimal_config_and_defaults() -> None:
     assert config.decoded_master_keys() == {"k1": b"k" * 32}
 
 
+def test_execution_trace_section() -> None:
+    """execution_trace 段默认关闭，可按租户名单开启。"""
+    assert not parse_config(edited(), variables=VARIABLES).execution_trace.allows("acme")
+    config = parse_config(
+        edited(execution_trace={"enabled": True, "tenants": ["acme"]}), variables=VARIABLES,
+    )
+    assert config.execution_trace.allows("acme")
+    with pytest.raises(ConfigError):
+        parse_config(edited(execution_trace={"enabeld": True}), variables=VARIABLES)
+
+
 def test_postgres_sections() -> None:
     """Postgres 后端的连接配置。"""
     config = parse_config(

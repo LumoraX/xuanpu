@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING
 from xuanpu_server.approvals.service import ApprovalService
 from xuanpu_server.assistant import AssistantRouter
 from xuanpu_server.audit import AuditLog
+from xuanpu_server.butler.config import ButlerConfig
+from xuanpu_server.butler.resolver import CatalogArtisanResolver
 from xuanpu_server.capabilities.bootstrap import build_capabilities
 from xuanpu_server.collaboration.lifecycle import CollaborationLifecycle
 from xuanpu_server.collaboration.notifications import CollaborationNotifications
@@ -96,6 +98,7 @@ if TYPE_CHECKING:
 
     import httpx
 
+    from xuanpu_server.butler.resolver import ArtisanResolver
     from xuanpu_server.capabilities.config import CapabilityDeliveryConfig
     from xuanpu_server.collaboration.models import CollaborationConfig
     from xuanpu_server.config import CallContextConfig
@@ -160,6 +163,7 @@ class Platform:
         shared_matters: SharedMatterConfig | None = None,
         handoffs: CollaborationConfig | None = None,
         approvals: CollaborationConfig | None = None,
+        butler: ButlerConfig | None = None,
         manual_http_transport: httpx.AsyncBaseTransport | None = None,
         proactive_interval: float = 1800.0,
         proactive_scan_seconds: float = 60.0,
@@ -190,6 +194,7 @@ class Platform:
             shutdown_drain_seconds: 关闭时给在途对话多少时间跑完。
             feishu_transport: 调飞书接口用的 httpx 传输；None 用默认的（直连飞书）。飞书的两个
                 基地址来自 ``identity_settings``。
+            butler: 管家（R5-C）开关与预算；None 时关闭。
             now: 取当前时间的函数，测试时可替换。
         """
         # 内核 MCP 客户端会把连接器 stdout 上的非 JSON 行原样写进日志；平台装配时给这些
@@ -283,6 +288,8 @@ class Platform:
                 config=call_context, vault=vault, now=now), transport=manual_http_transport)
         self.work_tasks = WorkTaskService(self.workspace, self.packages,
             process_owner=self.instance_id, now=now, durable=durable)
+        self.butler_config = butler or ButlerConfig()
+        self.artisans: ArtisanResolver = CatalogArtisanResolver(self.packages, self.workspace, durable)
         submissions = SubmissionIndex()
         self.managed_connections=ManagedHttpTools(self.connection_broker,store,submissions)
         self.runtimes = RuntimeAssembler(
@@ -300,6 +307,10 @@ class Platform:
             now=now,
         )
         self.sessions = self._session_manager(submissions, lease_seconds)
+        from xuanpu_server.tracing.retention import TraceRetention
+
+        self.trace_retention = TraceRetention(
+            store.trace_store, self.runtimes.defaults.execution_trace, now=now)
         self.runtimes.bind_sources(self.shared_contexts)
         self.sessions.bind_sources(self.shared_contexts)
         self.task_actions = ActionProposalService(self.workspace, self.work_tasks.store,
@@ -390,6 +401,7 @@ class Platform:
             self.identity.start()
             self.reminders.start()
             self.proactive_worker.start()
+            self.trace_retention.start()
             self._started = True
         except BaseException:
             await self.close()
@@ -406,7 +418,7 @@ class Platform:
             actions = (self.shared_notifications.close, self.shared_publication_recovery.close, self.shared_materials.publications.close,
                        self.capabilities.installations.preflight.inventory.close,
                        self.organization_lifecycle.close, self.trigger_worker.close, self.task_registry.close, self.proactive_worker.close, self.reminders.close,
-                       self.notification_sender.close, self.assistant.close,
+                       self.notification_sender.close, self.assistant.close, self.trace_retention.close,
                        self.identity.maintenance.close, self.identity.disabling.close,
                        self._shutdown_sessions, self.runtimes.close, self.identity.close, self.wecom_provider.close)
             for action in actions:

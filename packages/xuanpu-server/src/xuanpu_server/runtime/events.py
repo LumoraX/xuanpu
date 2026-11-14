@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from xuanpu_server.identity.store import IdentityStore
     from xuanpu_server.metrics import PlatformMetrics
     from xuanpu_server.runtime.resolutions import ResolutionWatch
+    from xuanpu_server.tracing.config import TraceWiring
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +188,7 @@ class EngineEventHub:
         on_turn_end: Callable[[str], None] | None = None,
         user_id: str | None = None,
         users: IdentityStore | None = None,
+        tracing: TraceWiring | None = None,
     ) -> None:
         """
         Args:
@@ -201,6 +203,8 @@ class EngineEventHub:
             user_id: 会话主人（``SessionRecord.user_id``）：写进每条引擎事件审计的 ``user_id``，
                 一轮结束时同时记进按员工的用量。没有主人为 None。
             users: 身份存储，按员工的用量记在这里；会话有主人时必须给。
+            tracing: 执行追踪装配（R5-B）。租户开启且会话有主人时，事件同时折成 span；
+                配了 OTel 导出时也交给该租户的内核 OTel sink。
 
         Raises:
             ValueError: 有主人却没给身份存储（按员工的用量无处可记，不悄悄跳过）。
@@ -220,6 +224,13 @@ class EngineEventHub:
         self._audit = audit
         self._store = store
         self._capture_requests = capture_requests
+        # 运行时内导入：tracing 依赖 runtime 包，顶层导入会成环
+        from xuanpu_server.tracing.collector import tracer_for
+
+        self._tracer = tracer_for(store, None if tracing is None else tracing.config,
+                                  tenant_id, session_id, user_id)
+        export = None if tracing is None else tracing.otel_for(tenant_id)
+        self._otel = None if export is None else export.sink_for(tenant_id)
         # 引擎每次被创建是一条新的事件流，序号从头计
         self._stream_id = "st_" + secrets.token_hex(8)
         self._streams: dict[str, TurnStream] = {}
@@ -243,6 +254,8 @@ class EngineEventHub:
         await asyncio.sleep(0)
         self._task = asyncio.ensure_future(self._consume(source, first))
         self._flusher = asyncio.ensure_future(self._flush_periodically())
+        if self._tracer is not None:
+            self._tracer.start()
 
     def open_stream(self, submission_id: str, *, suspension_threads: frozenset[str] | None = None) -> TurnStream:
         """登记一轮对话的事件流。必须在提交返回之后、任何让出点之前调用。"""
@@ -294,6 +307,11 @@ class EngineEventHub:
         self._expected_delivery = envelope.delivery_seq + 1
 
         kind = event.msg.kind
+        if self._tracer is not None:
+            self._tracer.handle(event)
+        if self._otel is not None:
+            # 内核 sink 自己吞掉导出异常，不会打断审计与对话
+            await self._otel.handle(event)
         if kind in RESOLUTION_KINDS:
             # 先让等这次送回结论的一方做完（例如补过闸记录），调用方看到结论时审计已经齐了
             await self._resolutions.settle(event)
@@ -466,6 +484,8 @@ class EngineEventHub:
             with contextlib.suppress(asyncio.CancelledError):
                 await self._task
         await self._flush()
+        if self._tracer is not None:
+            await self._tracer.close()
 
 
 __all__ = [

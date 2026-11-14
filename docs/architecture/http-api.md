@@ -981,6 +981,19 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 
 预检有效期默认900秒，内部证据固定归档、策略、完整MCP清单及凭据密文版本，安装前重检。diff仅含公开权限/上一安装权限及配置槽名，不回显配置值、密文指纹或实际秘密引用。新登记/预检/安装要求capability_delivery明确开启并命中租户白名单；查询与停止不受该新受理开关阻断。精确契约见[能力架构](capability-delivery.md)。
 
+## 执行追踪（R5-B）
+
+只读，只给本人：需要当前启用的员工身份（登录或代员工），机器身份 403，他人的与不存在的 trace 一律 404。只返回元数据，不含正文。租户未开启 `execution_trace` 时没有记录。设计见[执行追踪](execution-trace.md)。
+
+| 方法与路径 | 查询 | 返回 |
+| --- | --- | --- |
+| GET /v1/traces | active=true/false 可选；cursor 可选；limit=1–100，默认 50 | items（trace_id、origin、title、created_at、updated_at、incomplete、truncated）、next_cursor、分页前 total；按创建时间倒序 |
+| GET /v1/traces/{trace_id} | 无 | trace 头、active、spans（span_id、parent_span_id、kind、name、ref、state、started_at、ended_at、attempts、input_tokens、output_tokens、usage_complete、end_reason、incomplete）；用量未知为 null |
+| GET /v1/traces/{trace_id}/waterfall | 无 | trace 头与 rows（span_id、parent_span_id、kind、name、state、depth、offset_ms、duration_ms、input_tokens、output_tokens、usage_complete、orphan）；运行中 duration_ms 为 null |
+| GET /v1/traces/{trace_id}/events | after_seq=0–2^31 可选；`Last-Event-ID` 优先 | SSE：`snapshot`（trace 头、active 与全部 spans）→ `spans`（只含变化的 span）→ `end`；事件 id 为已应用的最大事实序号；每轮（约 1 秒）发一行 `: heartbeat` 注释。不存在或无权在建流前 404，游标非数字 400 |
+
+limit 越界或 cursor 损坏返回 400/422，不当作从头开始。
+
 ## 通用集成身份与固定文件桥
 
 路由模块的相对路径为 `GET /identity` 与 `GET /files/{id}`，统一挂载到 `/v1/integration-gateway`。

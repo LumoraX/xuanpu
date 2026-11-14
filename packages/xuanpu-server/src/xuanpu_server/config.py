@@ -22,12 +22,15 @@ from pydantic import (
     model_validator,
 )
 
+from xuanpu_server.butler.config import ButlerConfig
 from xuanpu_server.capabilities.config import CapabilityDeliveryConfig
 from xuanpu_server.collaboration.models import CollaborationConfig
 from xuanpu_server.connections.models import ConnectionConfig
 from xuanpu_server.identity.config import IdentityConfig, normalize_origin
 from xuanpu_server.organization.config import OrganizationConfig
 from xuanpu_server.shared_matters.models import SharedMatterConfig
+from xuanpu_server.tracing.config import ExecutionTraceConfig
+from xuanpu_server.tracing.otel import OtelConfig
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -308,6 +311,12 @@ class CallContextConfig(_Section):
         return result
 
 
+class TelemetryConfig(_Section):
+    """对外遥测：目前只有可选的 OTel 导出（R5-B2），默认关闭。"""
+
+    otel: OtelConfig = OtelConfig()
+
+
 class ServerConfig(_Section):
     """平台服务的完整配置。
 
@@ -338,6 +347,9 @@ class ServerConfig(_Section):
     connections: ConnectionConfig = ConnectionConfig()
     organization: OrganizationConfig = OrganizationConfig()
     capability_delivery: CapabilityDeliveryConfig = CapabilityDeliveryConfig()
+    execution_trace: ExecutionTraceConfig = ExecutionTraceConfig()
+    telemetry: TelemetryConfig = TelemetryConfig()
+    butler: ButlerConfig = ButlerConfig()
     shared_matters: SharedMatterConfig = SharedMatterConfig()
     handoffs: CollaborationConfig = CollaborationConfig()
     approvals: CollaborationConfig = CollaborationConfig()

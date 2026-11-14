@@ -747,6 +747,24 @@ R2配置中的`task_activity.enabled`控制工作动态通知，默认false；`t
 
 预检专属data_dir/capability-probes保留未完成的清理责任。Docker按目录确定容器名回收；本机重启后未知探测目录不能证明进程已退出，会阻止启动/新预检。先核实对应进程及作用范围，确认退出后才处理专属目录，不删除普通办公工作区。详见[能力安装边界](../architecture/capability-delivery.md)。本段尚无生产镜像、服务器迁移或真实员工验收结论。
 
+## R5-B 执行追踪存储
+
+当前源码新增 `0021_execution_spans`（尚未正式部署），建立 `trace` 与 `trace_span` 两张表：按租户与员工归属，只存执行元数据（身份、父子、状态、时间、逐尝试用量），不存正文、工具参数与输出。0001–0020 保持原字节；R4 计划里的候选编号 0021–0024 开工时顺延。
+
+`execution_trace` 构造配置：enabled 默认 false；tenants 默认 []，空始终关闭；max_spans_per_trace 默认 2048（16–20000），超出停止新增并标记截断；max_attempts_per_span 默认 64（1–1000）；retention_days 默认 90（1–3650）。
+
+开启后，名单内租户的员工会话在事件枢纽上采集 span（API key 自己的会话不采集），员工经 `GET /v1/traces` 读本人的执行树与瀑布（见[执行追踪](../architecture/execution-trace.md)）。写入失败只记标准错误日志「执行追踪写入失败」并把 trace 标为不完整，不影响对话。平台每小时按租户清理超过保留天数的 trace，失败记「清理租户 … 的执行追踪失败」，下一轮重试。采集依赖内核 taifeng 2026.11.14.1 起稳定层的执行身份。
+
+员工也可以经 `GET /v1/traces/{id}/events`（SSE）跟随一条进行中的 trace：首帧完整快照，之后只推有变化的 span，全部到终态后发 `end` 收尾；断线重连带 `Last-Event-ID`，落后时重发一次快照。
+
+`telemetry.otel` 构造配置（可选 OTel 导出）：enabled 默认 false，关闭时不建任何连接；开启时必须给 endpoint（平台不读 `OTEL_*` 环境变量），protocol 为 `grpc`（默认）或 `http/protobuf`，service_name 默认 xuanpu，resource_attributes 不能覆盖 `xuanpu.tenant`、`service.name`、`service.version`。只导出 `execution_trace` 名单内租户的事件；每个租户一个内核 `OtelTelemetrySink`，资源属性带 `xuanpu.tenant`。正文过滤沿用内核（参数、输出、增量、完整提示词不导出）。导出失败由内核记告警，不影响执行。OTel span 暂不带 `xuanpu.trace_id`（内核 sink 不支持按事件附加属性，缺口清单第 32 项），用 `taifeng.execution_id` 与平台 span `ex.<execution_id>` 关联。
+
+## R5-C 管家派工存储与配置
+
+当前源码新增 `0022_butler_dispatch`（尚未正式部署）：一次派工一行，按租户与员工归属（复合外键到员工表），只存管家交给匠人的任务说明与材料引用；匠人的正文与结果仍在其任务或会话里。
+
+`butler` 构造配置：enabled 默认 false；tenants 默认 []，空始终关闭；max_artisans_per_trace 默认 4（1–16）；max_butler_turns_per_trace 默认 8（1–64）；max_tokens_per_trace 默认 400000（1000–20000000，管家与匠人合计，用量未知时不放行派工）；max_active_traces_per_tenant 默认 50（1–10000）。超限返回 429 `butler_budget_exceeded`，不建派工记录。管家入口本身（R5-C1）尚未实现，开启此项目前只影响派工存储与匠人解析。
+
 ## 可选 HTTP 调用身份签名
 
 `call_context` 默认为空。只有需要真实员工上下文的进程外 HTTP 连接器才启用；旧连接器继续原有行为。字段如下：
