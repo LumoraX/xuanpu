@@ -20,12 +20,16 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
     from xuanpu_server.butler.dispatcher import Dispatcher
+    from xuanpu_server.butler.pending import PendingService
     from xuanpu_server.butler.turn import ButlerTurn, TurnRegistry
     from xuanpu_server.platform import Platform
 
     Handler = Callable[[ButlerTurn, dict[str, Any], str], Awaitable[taifeng.ToolResult]]
 
-TOOL_NAMES = ("propose", "read_personal", "list_artisans", "dispatch_artisan", "check_dispatch")
+TOOL_NAMES = ("propose", "read_personal", "list_artisans", "dispatch_artisan", "check_dispatch",
+              "cancel_dispatch", "answer_pending", "answer_artisan", "ask_user")
+_WAKE_ONLY = frozenset({"answer_artisan", "ask_user"})
+_ANY_TURN = frozenset({"read_personal", "list_artisans", "check_dispatch"})
 _LIST_MAX = 20
 
 
@@ -38,9 +42,10 @@ class ButlerTools:
     """构造管家工具；处理函数共用平台、派工与本轮登记表。"""
 
     def __init__(self, platform: Platform, dispatcher: Dispatcher, turns: TurnRegistry, *,
-                 now: Callable[[], float]) -> None:
+                 pending: PendingService, now: Callable[[], float]) -> None:
         """依赖由平台注入。"""
         self._platform = platform
+        self._pending = pending
         self._dispatcher = dispatcher
         self._turns = turns
         self._now = now
@@ -69,6 +74,26 @@ class ButlerTools:
             self._spec("check_dispatch", "查一次派工的当前状态。",
                        {"dispatch_id": {"type": "string"}}, ["dispatch_id"],
                        self._check_dispatch, parallel=True),
+            *self._c2_specs(),
+        ]
+
+    def _c2_specs(self) -> list[taifeng.ToolSpec]:
+        """取消、答复待处理项、代答与转问。"""
+        from xuanpu_server.butler.wake_tools import WakeTools
+
+        handlers = WakeTools(self._platform, self._pending)
+        return [
+            self._spec("cancel_dispatch", "请求停止一次派工；以匠人实际停下为准。",
+                       {"dispatch_id": {"type": "string"}}, ["dispatch_id"], handlers.cancel),
+            self._spec("answer_pending", "员工这句话是在答复某个待处理的问题时，把原话转给对应匠人。",
+                       {"pending_id": {"type": "string"}}, ["pending_id"], handlers.answer_pending),
+            self._spec("answer_artisan", "（仅被唤醒时）代员工答复匠人的提问：答复必须逐字取自出处原文。",
+                       {"answer": {"type": "string"},
+                        "source_kind": {"type": "string", "enum": ["setting", "conversation"]},
+                        "quote": {"type": "string", "description": "出处里的原文片段"}},
+                       ["answer", "source_kind", "quote"], handlers.answer_artisan),
+            self._spec("ask_user", "（仅被唤醒时）把匠人的问题转问员工本人。",
+                       {"question": {"type": "string"}}, ["question"], handlers.ask_user),
         ]
 
     def _spec(self, name: str, description: str, properties: dict[str, Any],
@@ -80,6 +105,10 @@ class ButlerTools:
             turn = self._turns.get(ctx.thread_id)
             if turn is None:
                 return taifeng.ToolResult.error("管家上下文已失效，本次调用未执行")
+            if (name in _WAKE_ONLY) != (turn.wake is not None) and name not in _ANY_TURN:
+                return taifeng.ToolResult.error(
+                    "这个工具只在匠人结束后被唤醒时使用" if name in _WAKE_ONLY
+                    else "被唤醒复核时不能新建草稿或派工")
             try:
                 return await handler(turn, args, ctx.call_id)
             except PlatformError as exc:

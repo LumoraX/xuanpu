@@ -1,6 +1,6 @@
 # 管家（活文档）
 
-> R5-C。为什么这么定见 [ADR 0017](../decisions/0017-butler-artisan-orchestration.md)；设计与计划见 [R5-C 设计](../superpowers/specs/2026-11-14-r5c-butler-design.md)、[R5-C 计划](../superpowers/plans/2026-11-14-r5c-butler.md)。当前实现到 C1（自办与单匠人派工）；唤醒、验收、代答（C2）与编组（R5-D）尚未实现。尚未生产部署。
+> R5-C。为什么这么定见 [ADR 0017](../decisions/0017-butler-artisan-orchestration.md)；设计与计划见 [R5-C 设计](../superpowers/specs/2026-11-14-r5c-butler-design.md)、[R5-C 计划](../superpowers/plans/2026-11-14-r5c-butler.md)。当前实现到 C2（自办、单匠人派工、唤醒、验收、代答与待本人处理项）；编组（R5-D）尚未实现。尚未生产部署。
 
 员工对管家说话（`POST /v1/assistant/messages`）。管家能自己办的自己办（回答、只读查询、内置能力的待确认草稿），办不了的派给**一位**匠人——本人此刻可用的已发布业务包入口——并立刻答复，不等匠人结果。
 
@@ -12,7 +12,7 @@
 ## 引擎装配（`butler/engine.py`）
 
 - 每个租户一个内核 `EnginePool`，只装平台内置技能 `butler/skills/butler/SKILL.md` 与管家工具。不加载业务包代码（红线 1），只用 `taifeng.__all__`（红线 3）。
-- 没有沙盒、脚本执行器（`script_executors={}`）、连接器、文件、命令或网络工具。技能声明 `strict_tool_names`，模型可见的工具只有 `propose`、`read_personal`、`list_artisans`、`dispatch_artisan`、`check_dispatch`；内核默认的 `read_skill`、`call_skill`、`run_script` 留在注册表里但对模型不可见。
+- 没有沙盒、脚本执行器（`script_executors={}`）、连接器、文件、命令或网络工具。技能声明 `strict_tool_names`，模型可见的工具只有下表九个；内核默认的 `read_skill`、`call_skill`、`run_script` 留在注册表里但对模型不可见。
 - 模型档位 `balanced`；每轮最多 12 次迭代、会话 token 上限 20 万、整轮 90 秒。
 - **每次输入一轮新引擎**：建引擎 → 接上与业务会话同一个事件枢纽（审计、按员工计量、执行追踪，根 span 类型 `butler`、trace 标识预先分配）→ 提交 → 读到本轮终态 → 释放引擎。员工的长期对话是主对话的持久记录（工作台消息），每轮把最近 6 条连同当前时间、时区、原话、材料清单作为 **JSON 数据** 交给管家，不依赖引擎线程跨进程续接。
 - 工具处理函数只拿得到内核线程标识；平台按线程标识找回本轮上下文（`butler/turn.py`），身份一律取自本轮，不取自模型参数。
@@ -26,6 +26,12 @@
 | `list_artisans` | 本人此刻可用的匠人 | 经 `ArtisanResolver`（现状：租户生效版本） |
 | `dispatch_artisan` | 派给一位匠人 | 见下节 |
 | `check_dispatch` | 查本人一次派工的状态 | 他人的与不存在的一样不可见 |
+| `cancel_dispatch` | 请求停止一次派工 | 沿用 R2 口径：任务登记停止意图、会话停在途一轮；派工以宿主真实终态收尾。匠人正等审批时不能经此取消（请在待确认里拒绝） |
+| `answer_pending` | 员工这句话是对某个待处理问题的答复 | 转给匠人的是员工本句原文（`ButlerTurn.user_text`），不是模型文本 |
+| `answer_artisan` | 被唤醒时代员工答复匠人 | 只在被唤醒的一轮可用；按代答规则初核，不合规返回错误并记为“须转问” |
+| `ask_user` | 被唤醒时把匠人的问题转问员工 | 只在被唤醒的一轮可用 |
+
+员工输入触发的一轮不能用 `answer_artisan`、`ask_user`；被唤醒的一轮不能用 `propose`、`dispatch_artisan`、`cancel_dispatch`、`answer_pending`。
 
 工具的平台错误与参数错误作为工具错误交给模型（`<错误码>: <文案>`），不中断本轮。
 
@@ -45,9 +51,38 @@
 - 失败（模型不可用、本轮失败或挂起、超时、回复为空）统一 503 `runtime_unavailable`「输入已保留，请稍后重试」，释放认领；不自动选任何业务。同一标识重试会重新跑一轮，已建的派工按派工请求标识回放。
 - 成功后写助手消息（`<request_id>:assistant`，元数据 `route` 与分流同形、另带 `butler.trace_id`），草稿因此可经既有 `/v1/assistant/proposals` 确认或取消。
 
+## 唤醒（`butler/wakeup.py`、`butler/wake_apply.py`，迁移 0023）
+
+1. **对账**：每隔 `butler.wake_interval_seconds`，对开启管家的租户扫进行中（running / asking）的派工。持久任务到终态写 `finished`（键 `task:<状态>:<版本>`），`waiting_user` 写 `asked`；会话每结束一轮（审计里一条 `turn_text`）写一条 `finished`（键 `round:<审计标识>`）。事件按 `(租户, 派工, 键)` 去重。
+2. **决定**：逐条未确认事件，读宿主得出决定并**先持久化**（先写者为准）：
+   - `asked`、或这一轮以挂起结束（等审批）→ `await_approval`：建审批类待处理项（不代答），派工 → asking，提示员工去待确认处理。
+   - 其余先做确定性验收（`butler/inspector.py`），再跑一轮被唤醒的管家复核（`butler/review.py`，同一 trace、根 span 仍是 butler）。复核里登记的代答经出处规则再核一次，通过 → `forward`；不通过或管家要转问 → `ask_user`；否则 → `deliver`。复核文本只作「辅助判断」，不改写验收结论；复核超出轮数或 token 预算、模型不可用时只按确定性结论交付。
+3. **执行**（每步可重做）：交付先把派工推到 completed / failed / cancelled，再写交付消息（`butler:<事件>:deliver`），再推到 delivered；转问建问题项（键 `ask:<事件>`）、派工 → asking、写提问消息；代答建代答记录（键 `proxy:<事件>`）、转给匠人、写说明消息。宿主继续或结束时，此前的审批类项标为 resolved；交付时问题项一并 resolved。
+4. **确认**：执行完逐条 ack。进程在决定与副作用之间被终止，重启后从持久决定续做，不再跑一遍管家；PostgreSQL 下由真实子进程 SIGKILL 用例验证（决定后、交付消息后两个故障点）。
+
+## 验收（`butler/inspector.py`）
+
+纯函数逐项检查：`terminal`（真实终态）、`succeeded`（completed / succeeded）、`outputs`（任务的成果在本人空间可读出，或有非空结果文本）、`no_pending`（无未决确认）、`no_unknown`（无结果未知）。全过 → completed（`ok`）；宿主被停止 → cancelled；其余 → failed，结束原因为首个失败项 `check_<项>`。会话一轮的分类只认结束一轮的内核事件（`turn_completed`/`turn_failed`/`turn_suspended` 等带终态标记的记录），按 `operation_outcome` 统一口径。
+
+## 代答（`butler/proxy.py`）
+
+- 授权、金额、对外发送、审批决定类问题（正则命中问题或答复）一律转问。
+- 出处只允许本人设置（助手偏好的称呼、名称、风格、时区与员工显示名）与本次请求原话（派工那次输入及本人此前对这次派工的答复）。平台目前没有「个人能力文本」，不能作为出处。
+- 答复必须逐字出现在引文里，引文必须逐字出现在出处里；推测、改写、归纳一律不代答。
+- 代答记录（`kind=proxied`）保存答复与出处；转给匠人的消息以 `〔<编号>〕管家据员工本次原话代答：…` 开头，员工主对话里写明「代为答复：…（出处：…）」。trace 里对应 `answer_artisan` 工具 span（出处细节在代答记录里，span 不存正文）。
+
+## 待本人处理项（`butler/pending.py`）
+
+- `GET /v1/assistant/pending`：本人 open / forwarding 的问题项与审批项（不含代答记录）。
+- 答复问题：接口或下一句话（管家输入里带 `pending_questions`，认出是答复时调 `answer_pending`）。先把项标为 forwarding（记下答复、出处与请求标识），再发给匠人会话，最后标 answered、派工回到 running。重试时按消息编号查会话审计，已发过就不重发。审批项不能经此答复（409）。
+- 员工输入总是先写进主对话，匹配不上待处理项时按新请求处理，不丢输入。
+
 ## 已知限制
 
-- 管家不能取消派工、不能代答匠人提问、不会在匠人结束后被唤醒（C2）。
+- 跨引擎父子未挂接：匠人会话自己的执行另成 trace（派工记录里有 `trace_id` 与 `host_ref` 可关联）。把匠人根执行挂到派工 span 下要求两个采集器写同一条 trace，而 span 存储按采集器自编序号去重，并发写会互相判为跳号；需要先改为存储侧分配序号（R5-B 层改动），见 R5-B 计划 B1。
+- 答复转给匠人后、会话审计写入前进程被终止时，重启后可能再发一次同一答复（带同一编号）。
+- 多实例同时处理同一事件时，复核可能各跑一轮管家，决定以先写者为准，副作用不重复。
+- 唤醒是轮询，延迟约为对账间隔加匠人一轮的审计落盘时间。
 - 管家每轮新建引擎，内核 `todo_write` 清单不跨轮；跨轮记忆只有主对话最近 6 条。
 - 持久任务承载的派工路径只有单元级覆盖（本机测试环境无法运行办公容器）；会话承载有端到端测试。
-- 真实模型下的误派、漏派率尚未测量（C2 回归集）。
+- 真实模型下的误派、漏派率尚未测量：回归集与脚本已就绪（`scripts/acceptance/r5_butler_regression.py`），本环境没有真实模型凭据，未执行。

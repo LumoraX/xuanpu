@@ -74,6 +74,11 @@ class MemoryDispatchStore:
             self._records[(owner.tenant_id, dispatch_id)] = updated
             return updated
 
+    async def active(self, tenant_id: str, *, limit: int = 200) -> tuple[DispatchRecord, ...]:
+        """进行中的派工，按创建先后。"""
+        found = [r for r in self._records.values() if r.tenant_id == tenant_id and r.active]
+        return tuple(sorted(found, key=lambda r: (r.created_at, r.dispatch_id))[:limit])
+
     async def active_traces(self, tenant_id: str) -> int:
         """有进行中派工的不同 trace 数。"""
         return len({r.trace_id for r in self._records.values()

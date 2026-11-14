@@ -23,8 +23,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from xuanpu_server.assistant import RouteBody
 from xuanpu_server.butler.dispatcher import Dispatcher
 from xuanpu_server.butler.engine import ButlerEngines
+from xuanpu_server.butler.pending import PendingService
+from xuanpu_server.butler.review import Reviewer
 from xuanpu_server.butler.tools import ButlerTools
 from xuanpu_server.butler.turn import ButlerTurn, TurnRegistry
+from xuanpu_server.butler.wake_apply import WakeEffects
+from xuanpu_server.butler.wakeup import Wakeup
 from xuanpu_server.errors import PlatformError, RuntimeUnavailableError
 from xuanpu_server.ids import new_id
 from xuanpu_server.work_tasks.models import InputFile  # noqa: TC001 —— Pydantic 运行时解析
@@ -72,8 +76,11 @@ class ButlerService:
         self._now = now
         self.turns = TurnRegistry()
         self.dispatcher = Dispatcher(platform, now=now)
-        self.tools = ButlerTools(platform, self.dispatcher, self.turns, now=now)
+        self.pending = PendingService(platform, now=now)
+        self.tools = ButlerTools(platform, self.dispatcher, self.turns, pending=self.pending, now=now)
         self.engines = ButlerEngines(platform, models, self.tools, self.turns, data_dir=data_dir)
+        self.wakeup = Wakeup(platform, WakeEffects(platform, self.pending, now=now),
+                             Reviewer(platform, self.engines), now=now)
         self._locks: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
 
     def enabled(self, tenant: str) -> bool:
@@ -120,7 +127,8 @@ class ButlerService:
         p, tenant = self._platform, who.require_tenant()
         await p.quota.check_new_turn(tenant)
         turn = ButlerTurn(who=who, request_id=body.request_id, trace_id=new_id("trc"),
-                          timezone=body.timezone, materials=tuple(body.input_files))
+                          timezone=body.timezone, materials=tuple(body.input_files),
+                          user_text=body.text)
         await p.sessions.admit_routing(tenant)
         try:
             reply = await self.engines.run(turn, await self._payload(who, body))
@@ -137,7 +145,8 @@ class ButlerService:
             who, "assistant", outcome.message or "请确认操作。", body.request_id + ":assistant",
             metadata={"route": saved, "butler": {"trace_id": turn.trace_id}})
         return {"mode": "butler", "request_id": body.request_id, "trace_id": turn.trace_id,
-                **saved, "dispatches": [_dispatch_view(r) for r in turn.dispatches]}
+                **saved, "dispatches": [_dispatch_view(r) for r in turn.dispatches],
+                "answered_pending": list(turn.answered)}
 
     def _outcome(self, turn: ButlerTurn, reply: str) -> RouteOutcome:
         """回复文本为准；有草稿时带上卡片并以本请求作为待确认标识。"""
@@ -154,15 +163,23 @@ class ButlerService:
                                                          latest=True, private_only=True)
         history = [{"role": m["role"], "text": m["text"][-2000:]} for m in recent
                    if m["request_id"] != body.request_id + ":user"][-HISTORY_MESSAGES:]
+        questions = [{"pending_id": i.pending_id, "question": i.question}
+                     for i in await self.pending.list(who) if i.kind == "question"]
         return json.dumps({
             "now": datetime.fromtimestamp(self._now(), ZoneInfo(body.timezone)).isoformat(),
-            "timezone": body.timezone, "history": history,
+            "timezone": body.timezone, "history": history, "pending_questions": questions,
             "materials": [f.model_dump() for f in body.input_files], "text": body.text,
         }, ensure_ascii=False)
 
+    def start(self) -> None:
+        """启动唤醒循环。"""
+        self.wakeup.start()
+
     async def close(self) -> None:
-        """先停后台读取，再关引擎池。"""
+        """先停唤醒与后台读取，再关引擎池。"""
+        await self.wakeup.close()
         await self.dispatcher.close()
+        await self.pending.close()
         await self.engines.close()
 
 

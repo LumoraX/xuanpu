@@ -132,7 +132,7 @@ async def _read_reply(events: AsyncIterator[taifeng.EventMsg], turn: ButlerTurn)
             text.append(str(event.msg.data.get("delta", "")))
         elif kind == "turn_completed":
             reply = "".join(text).strip()
-            if not reply and turn.proposal is None and not turn.dispatches:
+            if not reply and not turn.has_output():
                 raise RuntimeUnavailableError("管家没有给出答复，请稍后重试")
             return reply
         elif kind in ("turn_failed", "turn_suspended"):

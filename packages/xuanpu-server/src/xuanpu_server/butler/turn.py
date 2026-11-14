@@ -15,9 +15,33 @@ from xuanpu_server.errors import PermissionDeniedError
 if TYPE_CHECKING:
     from xuanpu_server.assistant_reminders import RouteOutcome
     from xuanpu_server.butler.models import DispatchRecord
+    from xuanpu_server.butler.wake_models import AnswerSource
     from xuanpu_server.tenancy import Principal
     from xuanpu_server.tracing.models import TraceOwner
     from xuanpu_server.work_tasks.models import InputFile
+
+
+@dataclass
+class WakeContext:
+    """被唤醒的一轮：哪次派工、匠人这一轮说了什么、能否代答、代答可用的出处原文。
+
+    Attributes:
+        dispatch: 被唤醒的派工。
+        artisan_text: 匠人这一轮的回复（数据）。
+        can_answer: 宿主能接收答复（会话承载且这一轮正常结束）。
+        corpus: 代答出处原文，按出处类别。
+        answer: 管家拟代答的内容与出处（经 ``answer_artisan`` 登记并已初核）。
+        question: 管家拟转问员工的问题（经 ``ask_user`` 登记）。
+        proxy_rejected: 管家试过代答但不合规（匠人在提问，又不能代答，只能转问）。
+    """
+
+    dispatch: DispatchRecord
+    artisan_text: str
+    can_answer: bool
+    corpus: dict[str, str] = field(default_factory=dict)
+    answer: tuple[str, AnswerSource] | None = None
+    question: str | None = None
+    proxy_rejected: bool = False
 
 
 @dataclass
@@ -33,6 +57,9 @@ class ButlerTurn:
         proposal: 本轮提出的待确认草稿（每轮最多一个）。
         dispatches: 本轮建立或回放的派工。
         root_span: 管家根执行的 span 标识（``ex.<execution_id>``），见到根执行开始后才有。
+        user_text: 员工这句话的原文（答复待处理项时原样转给匠人，不用模型改写的文本）。
+        wake: 被唤醒的一轮的上下文；员工输入触发的一轮为 None。
+        answered: 本轮答复了的待处理项。
     """
 
     who: Principal
@@ -44,6 +71,15 @@ class ButlerTurn:
     dispatches: list[DispatchRecord] = field(default_factory=list)
     root_span: str | None = None
     root_seen: asyncio.Event = field(default_factory=asyncio.Event)
+    user_text: str = ""
+    wake: WakeContext | None = None
+    answered: list[str] = field(default_factory=list)
+
+    def has_output(self) -> bool:
+        """本轮是否产出了回复之外的结果（草稿、派工、答复、代答或转问）。"""
+        wake = self.wake
+        return (self.proposal is not None or bool(self.dispatches) or bool(self.answered)
+                or (wake is not None and (wake.answer is not None or wake.question is not None)))
 
     def note_root(self, span_id: str) -> None:
         """记下根执行 span；只记第一次。"""

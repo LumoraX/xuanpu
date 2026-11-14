@@ -51,6 +51,10 @@ class DispatchStore(Protocol):
         """租户当前有进行中派工的 trace 数。"""
         ...
 
+    async def active(self, tenant_id: str, *, limit: int = 200) -> tuple[DispatchRecord, ...]:
+        """租户内进行中的派工（供对账器），按创建先后。"""
+        ...
+
 
 def check_owner(owner: TraceOwner, record: DispatchRecord) -> None:
     """建记录时归属必须与调用方一致。"""

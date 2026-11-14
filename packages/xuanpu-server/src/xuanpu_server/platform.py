@@ -404,6 +404,7 @@ class Platform:
             self.reminders.start()
             self.proactive_worker.start()
             self.trace_retention.start()
+            self.butler.start()
             self._started = True
         except BaseException:
             await self.close()

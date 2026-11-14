@@ -115,6 +115,13 @@ class PostgresDispatchStore:
             )
         return updated
 
+    async def active(self, tenant_id: str, *, limit: int = 200) -> tuple[DispatchRecord, ...]:
+        """进行中的派工，按创建先后。"""
+        rows = await self._pool.fetch(
+            f"SELECT record FROM {self._table} WHERE tenant_id=$1 AND active "
+            "ORDER BY created_at,dispatch_id LIMIT $2", tenant_id, limit)
+        return tuple(DispatchRecord.model_validate_json(row["record"]) for row in rows)
+
     async def active_traces(self, tenant_id: str) -> int:
         """有进行中派工的不同 trace 数。"""
         count = await self._pool.fetchval(

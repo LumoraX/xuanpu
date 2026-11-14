@@ -36,6 +36,18 @@ class TraceClient:
             body["input_files"] = input_files
         return await self._http.request("POST", "/v1/assistant/messages", json=body)
 
+    async def list_butler_pending(self) -> list[dict[str, Any]]:
+        """本人仍待处理的项（``GET /v1/assistant/pending``）：匠人的问题与需要审批的提示。"""
+        body = await self._http.request("GET", "/v1/assistant/pending")
+        return list(body["items"])
+
+    async def answer_butler_pending(self, pending_id: str, text: str, *, request_id: str,
+                                    ) -> dict[str, Any]:
+        """答复一个问题项，原话转给匠人；同一 ``request_id`` 重试回原结果，审批类项返回 409。"""
+        return await self._http.request(
+            "POST", "/v1/assistant/pending/" + quote(pending_id, safe="") + "/answer",
+            json={"request_id": request_id, "text": text})
+
     async def list_traces(
         self, *, active: bool | None = None, cursor: str | None = None, limit: int = 50,
     ) -> dict[str, Any]:

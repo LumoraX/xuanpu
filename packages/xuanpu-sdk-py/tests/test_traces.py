@@ -67,3 +67,25 @@ async def test_send_to_butler_posts_request_id_and_body():
         "request_id": "r1", "text": "帮我查工单", "timezone": "Asia/Shanghai",
         "input_files": [{"item_id": "f", "revision": 2}]}
     assert seen[0].headers["X-Xuanpu-Act-As"] == "member"
+
+
+async def test_butler_pending_list_and_answer():
+    """待处理项：列表与答复；标识只占一个路径段，原话与幂等标识原样提交。"""
+    import json
+
+    seen = []
+
+    def receive(request):
+        seen.append(request)
+        if request.method == "GET":
+            return httpx.Response(200, json={"items": [{"pending_id": "p/1"}]})
+        return httpx.Response(200, json={"pending_id": "p/1", "state": "answered"})
+
+    async with XuanpuClient("https://example.test", "PRIVATE_KEY", act_as_user="member",
+                            transport=httpx.MockTransport(receive)) as client:
+        assert await client.list_butler_pending() == [{"pending_id": "p/1"}]
+        result = await client.answer_butler_pending("p/1", "138", request_id="a1")
+    assert result["state"] == "answered"
+    assert seen[0].url.path == "/v1/assistant/pending"
+    assert seen[1].url.raw_path == b"/v1/assistant/pending/p%2F1/answer"
+    assert json.loads(seen[1].content) == {"request_id": "a1", "text": "138"}

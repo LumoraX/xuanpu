@@ -988,6 +988,16 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 - 租户开启管家（且开启执行追踪）且调用方是员工：回执 `mode=butler`，含 `request_id`、`trace_id`、`message`、与 `/v1/assistant/route` 同名的草稿与打开字段（有草稿时 `proposal_id=request_id`，经 `/v1/assistant/proposals` 确认）、`dispatches`（`dispatch_id`、`package`、`entry`、`state`、`host`）。派工不等匠人结果。
 - 否则：原样走分流，回执为 `/v1/assistant/route` 的响应加 `mode=route`。
 - 同一 `request_id` 同体回原回执、不再采样；不同体或仍在处理中 409。管家失败 503 `runtime_unavailable`，原话已在主对话，可用同一标识重试。派工预算超限不报错给员工，由管家在答复里说明（工具错误 `butler_budget_exceeded`）。
+- 回执另含 `answered_pending`：本句被管家认出是对某个待处理问题的答复时，列出转给匠人的待处理项标识（转的是原话）。
+
+### 待本人处理项（R5-C2）
+
+| 方法与路径 | 请求 | 返回 |
+| --- | --- | --- |
+| GET /v1/assistant/pending | 无 | items（pending_id、dispatch_id、kind=question/approval、question、host=task/session、host_ref、state=open/forwarding、answer、version、created_at、updated_at）；只含本人仍待处理的项，不含代答记录 |
+| POST /v1/assistant/pending/{id}/answer | request_id（1–80 字符）、text（1–2000 字符）；多余字段 422 | 更新后的项（state=answered）。原话转给匠人会话、派工回到 running。同一 request_id 同内容重试回原结果；已答复后换内容 409；kind=approval 409（请在既有待确认里处理）；他人的与不存在的 404 |
+
+匠人结束或提问后，管家的交付、转问、代答说明写进员工主对话（助手消息，`request_id` 为 `butler:<事件>:<deliver|ask|proxy|approval>`，元数据 `butler` 含 `trace_id`、`dispatch_id`、`event`，交付另含 `passed`、`checks`、`review_label`）。
 
 设计见[管家](butler.md)。
 

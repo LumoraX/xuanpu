@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from xuanpu_server.butler.dispatch_store import DispatchStore
+    from xuanpu_server.butler.wake_store import WakeStore
     from xuanpu_server.connections.store import ConnectionStore
     from xuanpu_server.controlplane.models import (
         AuditQuery,
@@ -70,6 +71,11 @@ class ControlPlaneStore(Protocol):
     @property
     def dispatch_store(self) -> DispatchStore:
         """与控制面同后端的管家派工记录（R5-C）。"""
+        ...
+
+    @property
+    def wake_store(self) -> WakeStore:
+        """与控制面同后端的管家唤醒事件与待本人处理项（R5-C2）。"""
         ...
 
     # --- 租户与凭据 ---

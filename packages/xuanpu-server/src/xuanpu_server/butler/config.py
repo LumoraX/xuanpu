@@ -15,6 +15,7 @@ class ButlerConfig(BaseModel):
         max_butler_turns_per_trace: 一条 trace 里管家最多跑几轮（含被唤醒的轮次）。
         max_tokens_per_trace: 一条 trace 的 token 上限（输入加输出，管家与匠人合计）。
         max_active_traces_per_tenant: 租户同时进行中的派工 trace 上限。
+        wake_interval_seconds: 唤醒对账的间隔（看匠人是否结束或提问）。
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -24,6 +25,7 @@ class ButlerConfig(BaseModel):
     max_butler_turns_per_trace: int = Field(default=8, ge=1, le=64)
     max_tokens_per_trace: int = Field(default=400_000, ge=1_000, le=20_000_000)
     max_active_traces_per_tenant: int = Field(default=50, ge=1, le=10_000)
+    wake_interval_seconds: float = Field(default=2.0, ge=0.2, le=300.0)
 
     def allows(self, tenant: str) -> bool:
         """不能借空名单推导全企业开启。"""
