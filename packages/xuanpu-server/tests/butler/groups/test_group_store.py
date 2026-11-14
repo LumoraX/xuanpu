@@ -88,3 +88,16 @@ async def test_idempotent_isolated_versioned(store: GroupStore) -> None:
     closed = saved.model_copy(update={"state": "completed", "summarized": True})
     await store.save(ALICE, closed, expected_version=2)
     assert await store.active("acme") == ()
+
+
+async def test_other_tenant_cannot_read_or_save(store: GroupStore) -> None:
+    """另一租户的同名员工：读、按请求查、保存都看不到；该租户的进行中列表为空。"""
+    created, _ = await store.create(ALICE, _record())
+    other = TraceOwner(tenant_id="globex", user_id="usr_alice")
+    with pytest.raises(NotFoundError):
+        await store.get(other, "grp_1")
+    assert await store.find_by_request(other, "r1") is None
+    with pytest.raises((NotFoundError, ConflictError)):
+        await store.save(other, created.model_copy(update={"cancel_requested": True}), expected_version=1)
+    assert await store.active("globex") == ()
+    assert (await store.get(ALICE, "grp_1")).cancel_requested is False
