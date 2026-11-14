@@ -1016,6 +1016,19 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 
 limit 越界或 cursor 损坏返回 400/422，不当作从头开始。
 
+## 员工概览（R5-E0）
+
+`GET /v1/dashboard`，只读，不调模型。需要当前启用的员工身份（登录或代员工）；机器身份、停用员工、暂停租户 403，不返回任何块。可选查询 `timezone`（IANA 名称，默认本人助手设置里的时区；无效 400）决定「今天」的起止。
+
+返回 `timezone`、`day_start`、`day_end`（UTC 秒）与 `blocks`，按 `today`、`waiting`、`in_progress`、`unread` 排列；功能未开启的块不出现（租户未开启 `execution_trace` 时没有 `in_progress`）。每块 `status` 为 `ok`（`count` 与至多 5 条 `items`）或 `error`（`error` 为错误码，`count` 为 null）；单块失败不影响其他块。`count` 在授权过滤后对全部记录计算，不从摘要推算。
+
+| 块 | count 的来源 | items 字段 |
+| --- | --- | --- |
+| today | 当天到期的活动提醒 + 与当天有交集的日程 + 当天及之前到期的未完成待办 | kind（reminder/event/todo）、ref、title、at；待办另有 overdue |
+| waiting | 未处理的助手草稿 + 管家待本人处理项（open、forwarding；管家开启时）+ waiting_user 的交办工作 + 轮到本人审批的组织审批（审批开启时） | kind（proposal/question/approval/ruling/work_task/approval_request）、ref、title、at |
+| in_progress | 本人活动 trace 总数 | kind=trace、ref=trace_id、title、at、waiting_me、incomplete |
+| unread | 通知中心里本人未读的站内通知（不含共享与协作通知流） | kind=notification、ref=notification_id、title、at |
+
 ## 通用集成身份与固定文件桥
 
 路由模块的相对路径为 `GET /identity` 与 `GET /files/{id}`，统一挂载到 `/v1/integration-gateway`。

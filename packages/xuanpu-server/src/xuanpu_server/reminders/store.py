@@ -73,6 +73,12 @@ class ReminderStore(Protocol):
         """按递增持久游标读取本人的通知。"""
         ...
 
+    async def unread_notifications(
+        self, tenant_id: str, user_id: str, limit: int
+    ) -> tuple[int, builtins.list[NotificationRecord]]:
+        """本人未读通知的总数与最新的至多 ``limit`` 条（新的在前）。"""
+        ...
+
     async def notification_current(self, record: NotificationRecord) -> bool:
         """核实本人通知来源是否仍允许浮层提示和外部发送，不删除历史。"""
         ...

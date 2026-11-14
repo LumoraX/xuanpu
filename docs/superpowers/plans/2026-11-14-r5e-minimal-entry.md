@@ -14,10 +14,18 @@
 
 **Files**：Create `S/dashboard/{__init__,service,models}.py`、`S/api/dashboard.py`、`T/dashboard/{test_dashboard,test_dashboard_isolation,test_dashboard_partial_failure}.py`；Modify `S/api/app.py`、`SDK/client.py`、`docs/architecture/http-api.md`。
 
-- [ ] 四块各自取数：今日（提醒、日程、到期待办）、等我处理、进行中（活动 trace）、未读通知；每块数量加至多 5 条摘要。
-- [ ] 数量在授权过滤后计算；单块失败只影响该块；全程不调模型。
-- [ ] 反例：跨员工、停用员工、功能开关关闭的块不出现而不是报错。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/dashboard -q`；提交 `feat: 增加员工概览接口`。
+- [x] 四块各自取数：今日（提醒、日程、到期待办）、等我处理、进行中（活动 trace）、未读通知；每块数量加至多 5 条摘要。
+- [x] 数量在授权过滤后计算；单块失败只影响该块；全程不调模型。
+- [x] 反例：跨员工、停用员工、功能开关关闭的块不出现而不是报错。
+- [x] Run：`uv run pytest packages/xuanpu-server/tests/dashboard -q`；提交 `feat: 增加员工概览接口`。
+
+### E0 进度（2026-11-14，macOS arm64，Python 3.12，本机 taifeng 2026.11.14.1 + taifeng-sandbox `af3e545`）
+
+- 已写：`S/dashboard/{__init__,models,service}.py`、`S/api/dashboard.py`（`GET /v1/dashboard`）、`Platform.dashboard`；`ReminderStore.unread_notifications`（memory 与 PG，总数由存储计算）；SDK `dashboard(timezone=None)`；文档 `docs/architecture/minimal-entry.md`、`http-api.md`「员工概览（R5-E0）」、架构总览。
+- 取数口径：今天 = 当天活动提醒 + 当天有交集的日程 + 当天及之前到期的未完成待办；等我处理 = 未处理草稿 + 管家待处理项（管家开启时）+ waiting_user 工作 + 轮到本人审批（审批开启时）；进行中 = 活动 trace（追踪开启时才出现）；未读 = 通知中心站内通知（共享与协作通知流不计）。
+- 停用员工与机器身份整个请求 403（不是部分块）；关闭的功能对应块或来源不出现。
+- 测试（`.venv/bin/pytest packages/xuanpu-server/tests/dashboard packages/xuanpu-server/tests/reminders packages/xuanpu-sdk-py/tests -q`）：120 passed, 1 skipped；`tests/reminders/test_unread_notifications.py` 对 memory 与 PG 各跑一遍。ruff：All checks passed!；mypy：Success: no issues found in 557 source files。
+- 计划写 `uv run pytest`；`uv.lock` 待 taifeng 2026.11.14.1 上 PyPI 后刷新，本机用 `.venv/bin/pytest` 等价执行。
 
 ## E1：对话内卡片
 

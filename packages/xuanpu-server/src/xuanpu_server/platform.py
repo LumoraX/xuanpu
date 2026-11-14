@@ -28,6 +28,7 @@ from xuanpu_server.connections.managed_http import ManagedHttpTools
 from xuanpu_server.connections.providers.wecom import WeComClient
 from xuanpu_server.connections.service import ConnectionService
 from xuanpu_server.connections.tokens import TokenBroker
+from xuanpu_server.dashboard.service import DashboardService
 from xuanpu_server.errors import (
     AuthenticationError,
     ConflictError,
@@ -336,6 +337,7 @@ class Platform:
         self.trigger_worker=TriggerWorker(self.task_definitions)
         self.assistant = AssistantRouter(self, models, now=now)
         self.butler = ButlerService(self, models, data_dir=data_dir, now=now)
+        self.dashboard = DashboardService(self, now=now)
         self.proactive = ProactiveService(workspace=self.workspace, control=store,
             identity=identity_store, sample=self.assistant.sample_proactive, now=now,
             semantic_interval=proactive_interval, reminders=self.reminders)

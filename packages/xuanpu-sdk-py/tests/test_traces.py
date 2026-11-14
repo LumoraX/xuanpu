@@ -108,3 +108,20 @@ async def test_butler_group_reads_encode_ids():
     assert calls[0].url.raw_path == b"/v1/assistant/groups/g%2F1"
     assert calls[1].url.raw_path == b"/v1/assistant/groups/g%2F1/messages"
     assert all(r.method == "GET" and r.headers["X-Xuanpu-Act-As"] == "member" for r in calls)
+
+
+async def test_dashboard_passes_timezone_and_identity():
+    """概览只读；时区原样作为查询参数；带代员工头。"""
+    calls = []
+
+    def receive(request):
+        calls.append(request)
+        return httpx.Response(200, json={"blocks": [], "timezone": "UTC"})
+
+    async with XuanpuClient("https://example.test", "PRIVATE_KEY", act_as_user="member",
+                            transport=httpx.MockTransport(receive)) as client:
+        assert (await client.dashboard(timezone="UTC"))["blocks"] == []
+        await client.dashboard()
+    assert calls[0].url.path == "/v1/dashboard" and dict(calls[0].url.params) == {"timezone": "UTC"}
+    assert dict(calls[1].url.params) == {}
+    assert all(r.method == "GET" and r.headers["X-Xuanpu-Act-As"] == "member" for r in calls)
