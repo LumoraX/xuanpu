@@ -1,12 +1,13 @@
 # Docker 镜像发布与服务器部署
 
-适用：一台 Linux 服务器上的单实例部署。下文的 `<服务器>` 是部署者本机 `~/.ssh/config` 里的主机别名，`<部署目录>` 是服务器上放 Compose 项目的目录。服务器地址、域名、镜像仓库、代理网络名都是部署环境信息，只写在本机配置与 `docker/.env` 里，不写进仓库。正式公网地址需要企业域名、DNS 指向服务器、HTTPS 证书以及飞书后台登记相同回调；平台与数据库可先在服务器内部部署验证。
+适用：一台 Linux 服务器上的单实例部署。下文的 `<服务器>` 是部署者本机 `~/.ssh/config` 里的主机别名，`<部署目录>` 是服务器上放 Compose 项目的目录。服务器地址、域名、镜像仓库、代理网络名都是部署环境信息，不写进仓库：镜像仓库与代理网络名写在 `docker/.env`（会上传到服务器）；SSH 主机别名、服务器 IP、正式入口与服务器目录写在只留本机的 `docker/deploy.env`（模板 `docker/deploy.env.example`）。两者都被 .gitignore 忽略。发布记录里的 `<服务器>`、`<服务器IP>`、`<服务器数据目录>`、`<镜像仓库>` 等占位符，实际值以这两个文件为准。正式公网地址需要企业域名、DNS 指向服务器、HTTPS 证书以及飞书后台登记相同回调；平台与数据库可先在服务器内部部署验证。
 
 ## 本机构建
 
 ```bash
 cd docker   # 在 xuanpu 仓库根目录下
 cp .env.example .env   # 首次：填 IMAGE（镜像仓库，不含 tag）与 PROXY_NETWORK（反向代理所在的外部网络）
+cp deploy.env.example deploy.env   # 首次：填服务器别名、IP、正式入口与服务器目录，只留本机
 ./deploy.sh
 ```
 
@@ -85,7 +86,7 @@ docker compose exec -T platform python - < sandbox_probe.py
 
 成功应输出 sandbox-isolated；该探针真实执行脚本，验证能写工作区、不能读平台配置与全部对象目录、隔离网络仅有 loopback。
 
-数据迁移核对、实际镜像 digest 与现场验收记录含服务器地址等部署细节，由部署者保存在本机私有目录（`~/.local/share/xuanpu/server-deploy/`），不进仓库；构建成功和健康检查不能替代真实登录、会话、文件及提醒测试。
+数据迁移核对、实际镜像 digest 与现场验收记录含服务器地址等部署细节，由部署者保存在本机私有目录（`~/.local/share/xuanpu/server-deploy/`），服务器定位信息保存在 `docker/deploy.env`，均不进仓库；构建成功和健康检查不能替代真实登录、会话、文件及提醒测试。
 
 
 ## R1办公执行的部署边界

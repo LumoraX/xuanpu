@@ -13,6 +13,8 @@ build/
 dist/
 .venv/
 .env
+# 部署者本机的服务器信息（模板见 docker/deploy.env.example）
+deploy.env
 
 # 测试 / 静态检查缓存
 .pytest_cache/
