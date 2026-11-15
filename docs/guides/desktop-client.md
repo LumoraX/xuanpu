@@ -2,7 +2,7 @@
 
 ## 员工安装
 
-本机测试版面向 Apple Silicon Mac，要求 macOS 12 或更高版本。打开 `玄圃_2026.10.6_aarch64.dmg`，将“玄圃”拖入 Applications，再从应用程序中打开。
+当前版本面向 Apple Silicon Mac，要求 macOS 12 或更高版本。打开 `玄圃_2026.11.15_aarch64.dmg`，将“玄圃”拖入 Applications，再从应用程序中打开。
 
 客户端会自动连接预置的企业服务，首次使用正常登录即可，不需要填写地址、模型或应用密钥。桌面版与原浏览器的登录状态独立。
 
@@ -11,7 +11,9 @@
 - “工作站 → 刷新”（⌘R）重新加载页面，“重新连接”重新检查服务。
 - 服务无法连接时使用“重新连接”按钮；仍失败则联系企业管理员。
 
-当前这份本机测试包连接 `http://127.0.0.1:8420/console/`，需要本机玄圃后台保持运行。退出桌面应用不会停止后台的提醒调度；退出后没有桌面系统通知，外部通知仍按后台配置发送。
+2026.11.15 版连接企业生产服务 `https://xuanpu.example.com/console/`（与后台 `public_url` 同源），用飞书登录。退出桌面应用不会停止后台的提醒调度；退出后没有桌面系统通知，外部通知仍按后台配置发送。
+
+该包为 ad-hoc 签名、未经 Apple 公证：从网络或聊天工具下载到其他 Mac 后，首次打开会被系统拦截，需要在「系统设置 → 隐私与安全性」中点「仍要打开」，或在 Finder 中右键「打开」。面向全员分发前应换用企业 Developer ID 签名并公证。
 
 ## 管理员发布配置
 
@@ -36,7 +38,16 @@ cargo test --manifest-path src-tauri/Cargo.toml
 npm run build -- --bundles app,dmg
 ```
 
-输出位于 `src-tauri/target/release/bundle/macos/玄圃.app` 和 `src-tauri/target/release/bundle/dmg/`。构建锁定文件 `package-lock.json`、`Cargo.lock` 需要跟随源码提交。
+输出位于 `src-tauri/target/release/bundle/macos/玄圃.app` 和 `src-tauri/target/release/bundle/dmg/`。
+
+`bundle_dmg.sh` 需要经 AppleScript 控制 Finder 排版窗口；在无图形会话或未授权自动化的终端里会失败（`failed to run bundle_dmg.sh`）。这时 `.app` 已经生成，可以直接用系统工具打包：
+
+```bash
+cd src-tauri/target/release/bundle
+stage=$(mktemp -d); cp -R "macos/玄圃.app" "$stage/"; ln -s /Applications "$stage/Applications"
+hdiutil create -volname 玄圃 -srcfolder "$stage" -fs HFS+ -format UDZO -ov "dmg/玄圃_<版本>_aarch64.dmg"
+hdiutil verify "dmg/玄圃_<版本>_aarch64.dmg"
+```构建锁定文件 `package-lock.json`、`Cargo.lock` 需要跟随源码提交。
 
 图标来自控制台现有“玄”标记，可用 `scripts/icon.swift` 生成源 PNG，再用 `tauri icon` 生成系统图标；图标资源已随源码提供，普通构建无需重新生成。
 

@@ -1,6 +1,6 @@
 [package]
 name = "xuanpu-desktop"
-version = "2026.10.6"
+version = "2026.11.15"
 edition = "2021"
 description = "玄圃桌面客户端"
 authors = ["LumoraX"]
