@@ -4,7 +4,7 @@
 
 | 项 | 值 |
 | --- | --- |
-| 源码 | xuanpu `main` `d4987e8`（合并 R5） |
+| 源码 | xuanpu `main` `735698d`（合并 R5） |
 | 内核 | taifeng 2026.11.14.1（PyPI，Publish 工作流 run 43691057213） |
 | 沙盒 / 存储 | taifeng-sandbox `af3e545`（2026.10.21.1）、taifeng-stores 2026.9.29.15 |
 | 服务镜像 | `xuanpu:2026.11.15.1.r5-candidate`，linux/amd64 |
