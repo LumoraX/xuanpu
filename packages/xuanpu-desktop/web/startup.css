@@ -7,3 +7,13 @@ section{margin:48px 0;min-height:140px}#status{font-size:17px}#detail{color:#a0a
 button{border:0;border-radius:11px;padding:12px 28px;background:#b9dbc8;color:#143222;font:inherit;cursor:pointer;margin-top:12px}
 button:hover{background:#d0eadb}button:focus-visible{outline:3px solid #ecfff2;outline-offset:4px}button:disabled{opacity:.6;cursor:wait}
 .footer{color:#6f8377;font-size:12px}@media(prefers-color-scheme:light){:root{color:#183c2a;background:#f7f9f7;color-scheme:light}.tagline,#detail{color:#62776a}}
+.server{color:#a0afa5;font-size:13px;word-break:break-all}.server span{color:inherit}
+button.link{background:none;padding:0 0 0 6px;margin:0;color:#b9dbc8;text-decoration:underline;font-size:13px}
+button.link:hover{background:none;color:#d0eadb}
+form{text-align:left;margin:16px auto 32px;max-width:460px;display:grid;gap:8px}
+label{font-size:14px}input{font:inherit;font-size:15px;padding:10px 12px;border-radius:10px;border:1px solid #3c5245;background:#18231e;color:inherit}
+input:focus-visible{outline:3px solid #b9dbc8;outline-offset:1px}.hint{color:#8a9b90;font-size:12px;line-height:1.7;margin:0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}#form-error{color:#ffb4a8;font-size:13px;margin:0}
+.actions{display:flex;gap:10px;flex-wrap:wrap}.actions button{margin-top:4px}
+button.secondary{background:transparent;color:#b9dbc8;border:1px solid #3c5245}button.secondary:hover{background:#1d2b24}
+@media(prefers-color-scheme:light){.server,.hint{color:#62776a}input{background:#fff;border-color:#c7d6cc}button.link,button.secondary{color:#183c2a}button.secondary{border-color:#c7d6cc}button.secondary:hover{background:#eef4ef}}

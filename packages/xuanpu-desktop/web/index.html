@@ -17,6 +17,18 @@
       <p id="detail">请稍候</p>
       <button id="retry" type="button" hidden>重新连接</button>
     </section>
+    <p class="server">服务器：<span id="server">读取中…</span> <button id="toggle" type="button" class="link">设置</button></p>
+    <form id="settings" hidden>
+      <label for="url">玄圃服务器地址</label>
+      <input id="url" name="url" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://xuanpu.example.com">
+      <p class="hint">保存到 <code id="config-path">~/.xuanpu/desktop.json</code>，只对本机生效。需使用 HTTPS（本机调试可用 http://127.0.0.1）。</p>
+      <p id="form-error" role="alert" hidden></p>
+      <div class="actions">
+        <button type="submit">保存并连接</button>
+        <button id="reset" type="button" class="secondary">恢复默认</button>
+        <button id="logs" type="button" class="secondary">打开日志</button>
+      </div>
+    </form>
     <p class="footer">你的企业工作，尽在玄圃</p>
   </main>
 </body>

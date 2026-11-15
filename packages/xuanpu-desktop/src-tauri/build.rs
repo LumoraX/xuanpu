@@ -2,7 +2,13 @@
 fn main() {
     tauri_build::try_build(
         tauri_build::Attributes::new()
-            .app_manifest(tauri_build::AppManifest::new().commands(&["connect_service"])),
+            .app_manifest(tauri_build::AppManifest::new().commands(&[
+                "connect_service",
+                "get_settings",
+                "save_settings",
+                "reset_settings",
+                "open_logs",
+            ])),
     )
     .expect("无法生成玄圃桌面资源");
 }
