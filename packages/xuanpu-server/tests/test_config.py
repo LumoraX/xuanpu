@@ -64,6 +64,40 @@ def test_minimal_config_and_defaults() -> None:
     assert config.decoded_master_keys() == {"k1": b"k" * 32}
 
 
+def test_execution_trace_section() -> None:
+    """execution_trace 段默认关闭，可按租户名单开启。"""
+    assert not parse_config(edited(), variables=VARIABLES).execution_trace.allows("acme")
+    config = parse_config(
+        edited(execution_trace={"enabled": True, "tenants": ["acme"]}), variables=VARIABLES,
+    )
+    assert config.execution_trace.allows("acme")
+    with pytest.raises(ConfigError):
+        parse_config(edited(execution_trace={"enabeld": True}), variables=VARIABLES)
+
+
+def test_butler_requires_execution_trace() -> None:
+    """管家名单内的租户必须同时开启执行追踪；默认关闭。"""
+    assert not parse_config(edited(), variables=VARIABLES).butler.allows("acme")
+    with pytest.raises(ConfigError, match="execution_trace"):
+        parse_config(edited(butler={"enabled": True, "tenants": ["acme"]}), variables=VARIABLES)
+    config = parse_config(edited(
+        butler={"enabled": True, "tenants": ["acme"], "max_artisans_per_trace": 2},
+        execution_trace={"enabled": True, "tenants": ["acme"]}), variables=VARIABLES)
+    assert config.butler.allows("acme") and config.butler.max_artisans_per_trace == 2
+
+
+def test_minimal_entry_requires_butler() -> None:
+    """极简入口按租户启用，默认关闭；名单内租户必须同时开启管家。"""
+    assert not parse_config(edited(), variables=VARIABLES).minimal_entry.allows("acme")
+    with pytest.raises(ConfigError, match="butler"):
+        parse_config(edited(minimal_entry={"enabled": True, "tenants": ["acme"]}), variables=VARIABLES)
+    config = parse_config(edited(
+        minimal_entry={"enabled": True, "tenants": ["acme"]},
+        butler={"enabled": True, "tenants": ["acme"]},
+        execution_trace={"enabled": True, "tenants": ["acme"]}), variables=VARIABLES)
+    assert config.minimal_entry.allows("acme") and not config.minimal_entry.allows("globex")
+
+
 def test_postgres_sections() -> None:
     """Postgres 后端的连接配置。"""
     config = parse_config(

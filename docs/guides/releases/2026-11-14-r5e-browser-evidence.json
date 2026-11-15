@@ -1,0 +1,59 @@
+{
+  "alice": {
+    "four_parts": true,
+    "blocks": [
+      "in_progress",
+      "today",
+      "unread",
+      "waiting"
+    ],
+    "more_link": true,
+    "tips_rendered": true,
+    "alice_data_visible": true,
+    "classic_scripts_loaded": false,
+    "ok": true
+  },
+  "bob": {
+    "four_parts": true,
+    "blocks": [
+      "in_progress",
+      "today",
+      "unread",
+      "waiting"
+    ],
+    "more_link": true,
+    "tips_rendered": true,
+    "alice_data_visible": false,
+    "classic_scripts_loaded": false,
+    "ok": true
+  },
+  "more_page": {
+    "stays_on_classic": true,
+    "functions_entry": true,
+    "logged_in": true
+  },
+  "narrow_375": {
+    "path": "/console/entry.html",
+    "viewport": 375,
+    "scroll_width": 375,
+    "send_right": 359,
+    "blocks": 4,
+    "no_horizontal_overflow": true
+  },
+  "screenshot": "未入库（本机临时目录）",
+  "model_attempts": 0,
+  "page_weight": {
+    "scripts": 6,
+    "script_bytes": 29489,
+    "style_bytes": 3791,
+    "files": [
+      "entry.js",
+      "cards.js",
+      "progress-card.js",
+      "dashboard.js",
+      "tips.js",
+      "entry-boot.js",
+      "entry.css"
+    ]
+  }
+}

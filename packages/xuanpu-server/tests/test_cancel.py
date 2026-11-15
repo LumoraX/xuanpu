@@ -15,6 +15,7 @@ from xuanpu_server.controlplane import AuditQuery
 from xuanpu_server.errors import InvalidRequestError, NotFoundError, SessionBusyError
 from xuanpu_server.platform import ROOT_PRINCIPAL
 from xuanpu_server.quota import usage_day
+from xuanpu_server.runtime.events import turn_outcome
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -326,8 +327,10 @@ async def test_cancel_over_http(world: Any, step: Any) -> None:
 
 
 async def test_cancel_right_after_sending(world: Any, step: Any, read_turn: Any) -> None:
-    """发完消息立刻取消（中间没有让出点）也能停下：等内核受理了这一轮再提交取消。
+    """发完消息立刻取消（中间没有让出点）也能停下。
 
+    内核 ADR 0117 起提交即可取消：还在排队就停下的一轮以 ``turn_failed{kind=cancelled}`` 结束，
+    已开始的以 ``turn_completed{end_reason=cancelled}`` 结束，平台都记为 cancelled。
     会话的第一轮（引擎刚打开）与之后的一轮各试一次。
     """
     await world.publish()
@@ -338,8 +341,7 @@ async def test_cancel_right_after_sending(world: Any, step: Any, read_turn: Any)
         cancelled = await world.platform.sessions.cancel(world.member, session.session_id)
         assert cancelled == [turn.submission_id]
         events = await read_turn(turn, timeout=10)
-        assert events[-1].msg.kind == "turn_completed"
-        assert events[-1].msg.data["end_reason"] == "cancelled"
+        assert turn_outcome(events[-1]) == "cancelled"
     assert world.platform.sessions.in_flight_turns("acme") == 0
 
 

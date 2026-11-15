@@ -49,7 +49,7 @@ def test_console_only_talks_to_documented_endpoints() -> None:
         "/v1/handoffs", "/v1/approval-policies", "/v1/admin/approval-policies", "/v1/approval-requests", "/v1/collaboration-notifications",
         "/v1/admin/organization", "/v1/organization", "/v1/admin/connections", "/healthz", "/v1/sessions", "/v1/packages", "/v1/audit", "/v1/usage",
         "/v1/shared-matters", "/v1/shared-contexts", "/v1/shared-notifications", "/v1/workspace", "/v1/me", "/v1/auth", "/v1/users", "/v1/assistant", "/v1/reminders", "/v1/notifications", "/v1/proactive", "/v1/work-tasks", "/v1/task-definitions",
-        "/v1/integration-actions",
+        "/v1/integration-actions", "/v1/dashboard", "/v1/traces",
     )  # fmt: skip
     assert paths
     assert all(path.startswith(allowed_prefixes) for path in paths), paths
@@ -94,3 +94,11 @@ def test_proactive_chat_routes_and_cleanup_are_connected() -> None:
     assert "resetProactive()" in workspace
     assert "renderProactiveSettings(form,settings)" in settings
     assert "...readProactive()" in settings
+
+
+def test_classic_page_hands_over_to_minimal_entry() -> None:
+    """启用极简入口的员工默认进新页；?classic=1 与管理员入口留在旧页；旧页功能脚本保留。"""
+    identity = (static_dir() / "identity.js").read_text(encoding="utf-8")
+    assert 'me.entry === "minimal" && !adminMode' in identity
+    assert 'get("classic") !== "1"' in identity
+    assert 'location.replace("entry.html")' in identity

@@ -15,6 +15,10 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from xuanpu_server.butler.dispatch_store import DispatchStore
+    from xuanpu_server.butler.groups.messages import MessageStore
+    from xuanpu_server.butler.groups.store import GroupStore
+    from xuanpu_server.butler.wake_store import WakeStore
     from xuanpu_server.connections.store import ConnectionStore
     from xuanpu_server.controlplane.models import (
         AuditQuery,
@@ -28,6 +32,7 @@ if TYPE_CHECKING:
     from xuanpu_server.reminders.store import ReminderStore
     from xuanpu_server.runtime.receipt_store import ReceiptStore
     from xuanpu_server.tenancy import ApiKeyRecord, Tenant
+    from xuanpu_server.tracing.store import SpanStore
     from xuanpu_server.workspace.store import WorkspaceStore
 
 
@@ -58,6 +63,31 @@ class ControlPlaneStore(Protocol):
     @property
     def operation_receipts(self) -> ReceiptStore:
         """与控制面共享事务域的审批操作回执。"""
+        ...
+
+    @property
+    def trace_store(self) -> SpanStore:
+        """与控制面同后端的执行追踪存储（R5-B）。"""
+        ...
+
+    @property
+    def dispatch_store(self) -> DispatchStore:
+        """与控制面同后端的管家派工记录（R5-C）。"""
+        ...
+
+    @property
+    def wake_store(self) -> WakeStore:
+        """与控制面同后端的管家唤醒事件与待本人处理项（R5-C2）。"""
+        ...
+
+    @property
+    def group_store(self) -> GroupStore:
+        """与控制面同后端的匠人编组（R5-D）。"""
+        ...
+
+    @property
+    def group_message_store(self) -> MessageStore:
+        """与控制面同后端的会诊消息区（R5-D2）。"""
         ...
 
     # --- 租户与凭据 ---

@@ -341,7 +341,7 @@ async def test_failed_assembly_closes_the_connector_sandbox(
     caplog.set_level(logging.DEBUG)
     with pytest.raises(RuntimeUnavailableError) as caught:
         await world.platform.sessions.send_message(world.member, session.session_id, "查")
-    assert str(caught.value) == "连接器 'crm' 启动失败：RuntimeError"
+    assert str(caught.value) == "连接器 'crm' 启动失败：McpToolError"
     assert caught.value.__cause__ is None
     assert CREDENTIAL not in caplog.text
     [logged] = [r.getMessage() for r in caplog.records if "启动失败" in r.getMessage()]
@@ -504,8 +504,9 @@ def group_alive(pgid: int) -> bool:
 async def test_startup_timeout_does_not_leak_the_connector_process(
     tmp_path: Path, local_sandboxes: Any
 ) -> None:
-    """连接器启动卡住、超过启动时限：内核不收回已经起来的进程，关连接器沙盒时把它强杀。
+    """连接器启动卡住、超过启动时限：已经起来的进程最终一定被收回。
 
+    内核 ADR 0123 起启动被取消时内核自己收回进程；平台关连接器沙盒时的强杀兜底保留。
     连接器集合与连接器沙盒依次关闭之后，进程（连同它的进程组）确实没了。
     """
     package_root = tmp_path / "pkg"
@@ -528,8 +529,6 @@ async def test_startup_timeout_does_not_leak_the_connector_process(
         await connectors.start(spec, package_root=package_root)
     assert (tmp_path / "work" / "pid.txt").is_file()
     [process] = handle.executor.processes
-    # 内核没有收回它：这正是要兜底的情形
-    assert process.returncode is None
 
     await connectors.close()
     await handle.close()

@@ -370,6 +370,26 @@ class PostgresReminderStore(PostgresDeliveryStore):
                 rows.reverse()
         return [NotificationRecord(**dict(row)) for row in rows]
 
+    async def unread_notifications(
+        self, tenant_id: str, user_id: str, limit: int
+    ) -> tuple[int, builtins.list[NotificationRecord]]:
+        """未读总数由数据库计算，摘要取最新的至多 ``limit`` 条。"""
+        table = self._t["notification"]
+        async with self._pool.acquire() as conn:
+            total = await conn.fetchval(
+                f"SELECT count(*) FROM {table} WHERE tenant_id=$1 AND user_id=$2 AND read_at IS NULL",
+                tenant_id,
+                user_id,
+            )
+            rows = await conn.fetch(
+                f"SELECT {NC} FROM {table} WHERE tenant_id=$1 AND user_id=$2 AND read_at IS NULL "
+                "ORDER BY notification_id DESC LIMIT $3",
+                tenant_id,
+                user_id,
+                limit,
+            )
+        return int(total), [NotificationRecord(**dict(row)) for row in rows]
+
     async def read(
         self, tenant_id: str, user_id: str, notification_id: int, now: float
     ) -> NotificationRecord:

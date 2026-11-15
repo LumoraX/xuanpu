@@ -8,6 +8,8 @@
 > 已落地的项直接从表里删掉，编号空着（原文见本文件的 git 历史）。第 1、3–14 项已在 taifeng 2026.10.1.10 落地（内核 ADR 0109–0116），
 > 平台在 P0 里换用了稳定层的接口。
 
+> 升级说明（R5-A1，已完成：平台锁定 taifeng 2026.11.14.1，执行身份进入稳定层，原第 31 项随之删除）：该版本已包含内核 ADR 0117–0129（提交受理与取消、挂起与续跑终态、中断用量、MCP 行长与握手取消、帧解码与日志只记元数据、畸形响应分类、会话过期重连、关闭错误优先级、工作区原子写与一致性检查），对应下表第 18–29 项中的多项。平台的现行处理暂时保留并继续生效；逐项核对后再删除表项与对应绕开代码，不在升级提交里一次性改动。已知可见差异：远端 MCP 的畸形响应现在交给模型的是内核的固定分类文本（如 `[-32000] invalid JSON-RPC error fields`），不再是异常类型名，见 `tests/test_remote_mcp.py`。
+
 | # | 缺口 | 影响 | 现行处理 |
 | --- | --- | --- | --- |
 | 2 | 会话日志后端（`SessionJournalCore`、`JsonlSessionJournalCore`、`WriterLockAdapter` 等，内核 ADR 0114）整体在实验层 | 无法实现共享的会话日志后端；内核的审计模式用不上 | 平台不用（ADR 0011 决策 2）：会话主存走稳定层的 `MessageStore`（taifeng-stores 的 `PostgresMessageStore`），审计走平台自己的审计表 |
@@ -25,6 +27,7 @@
 | 27 | `McpHttpClient._unwrap` 对 `error.code` 直接做 `int()`（字符串抛 `ValueError`，`null` 抛 `TypeError`）；`_read_response` 不捕获 `UnicodeDecodeError` | 远端回一个形状不对的响应，冒出的是 `McpToolError` 之外的异常，越过调用方按 `McpToolError` 写的错误处理 | 平台在远端 MCP 的调用处接住一切异常：交给模型与审计的只有异常类型，日志里记按值脱敏后的文本 |
 | 28 | `McpHttpClient` 收到 404（远端的 MCP 会话已过期）不重新握手 | 远端重启或回收会话之后，这个运行时里对它的调用一直失败，直到运行时被回收重新组装 | 未绕开：调用失败照常记过闸记录并交给模型；运行时空闲回收（`runtime_idle_seconds`）后重新组装才恢复 |
 | 29 | `McpHttpClient.close()` 发 `DELETE` 结束会话时只接 `httpx.HTTPError`；抛别的异常（例如平台的凭据传输取不到密钥）时跳过关闭自己的 httpx 客户端 | 连接池泄漏 | 平台在 `close()` 外接住平台侧的失败并记告警，无论如何都关掉自己建的传输（连接池在传输里） |
+| 32 | `OtelTelemetrySink` 只接受构造时的资源属性，不支持按事件附加属性（例如宿主自己的 trace 标识） | 平台导出的 OTel span 无法带 `xuanpu.trace_id`，只能按租户分 sink、用 `taifeng.execution_id` 与平台 span 关联 | 平台每租户一个 sink，资源属性带 `xuanpu.tenant`；文档写明关联方式，不包装或改写内核 sink |
 
 ## 另外的约定说明
 
