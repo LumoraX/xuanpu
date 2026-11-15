@@ -15,7 +15,7 @@
 **Files**：Modify `docs/architecture/kernel-seam-backlog.md`（新增三项）；在 taifeng 仓按其流程提交（能力契约 → 实现 → `tests/public_api_snapshot.txt` → architecture 同步）。
 
 - [x] 在 backlog 记缺口（第 31 项）：执行身份与 `execution_updated` 数据键只在实验层。瀑布计算不提升，平台自算（`S/tracing/waterfall.py`）。
-- [ ] taifeng 仓内完成提升并发版（遵守其 worktree 约定与真实回归红线，基础层变更须更新 `docs/real-llm-ledger`）。此步在 taifeng 仓执行，需用户确认发版。（**阻塞于用户**：本地 main `21047ec` 与 tag `v2026.11.14.1` 已就绪，推送被会话环境拒绝；需用户执行 `git push origin main && git push origin v2026.11.14.1`，PyPI 当前最新仍是 2026.11.14.0）
+- [x] taifeng 仓内完成提升并发版（遵守其 worktree 约定与真实回归红线，基础层变更须更新 `docs/real-llm-ledger`）。此步在 taifeng 仓执行，需用户确认发版。（2026-11-15 完成：用户确认后推送 main `21047ec` 与 tag `v2026.11.14.1`，Publish to PyPI 工作流 run 43691057213 通过，PyPI 已有 wheel 与 sdist）
 - [x] 记录新版本号，作为 A1 的目标版本。（2026.11.14.1，见「进度」与「实际差异」）
 
 ## A1：平台升级
@@ -24,13 +24,13 @@
 
 - [x] 读内核两版之间的变更记录，列出稳定层不兼容项与弃用项，写进本文件末尾的「实际差异」一节。
 - [x] 先写契约测试：既有事件消费者对新增字段不报错；`execution` 缺省为空的旧事件仍可回放。先看到失败或确认无关，再改。（`T/tracing/test_event_compat.py`，2 passed；放在 tracing 下而非计划写的 `T/kernel_contract/`，消费者就是采集器）
-- [ ] `uv lock --upgrade-package taifeng` 后跑三仓全量：（**阻塞**：新内核未上 PyPI；本机以 `.venv` 装本地 taifeng 等价跑过，见「升级验证」与 R5 总门槛）
+- [x] `uv lock --upgrade-package taifeng` 后跑三仓全量：（2026-11-15，PyPI taifeng 2026.11.14.1，taifeng-sandbox 按 CI 钉的 `af3e545` 锁定：`uv lock --check` 通过；xuanpu 全量 3771 passed / 60 failed / 49 errors / 445 skipped，失败集合与 main 同环境逐条一致（办公容器的 taifeng-sandbox 找不到 docker 可执行文件）；ruff All checks passed!；mypy 559 个源文件无错误。taifeng-sandbox、taifeng-stores 自身全量沿用「升级验证」一节结果）
   - `cd ../taifeng-stores && uv run pytest -q`
   - `cd ../taifeng-sandbox && uv run pytest -q`
   - `uv run pytest -q && uv run ruff check --select F,S108,I,TC packages && uv run mypy packages/*/src && uv lock --check`
 - [x] 新失败逐个查根因；属于内核缺口的记 backlog，不 monkeypatch。（见「实际差异」表，均为内核修复带来的正确新行为）
 - [ ] 真实模型验收脚本各跑一次（工单查询、审批写入、办公任务），结果记入 `docs/guides/releases/`。（**阻塞**：本环境没有真实模型凭据）
-- [ ] 提交 `chore: 内核升级到 <实际版本> 并补事件兼容契约`。（适配代码已随 `fab795b` 提交；本提交留给 `uv.lock` 刷新，阻塞同上）
+- [x] 提交 `chore: 内核升级到 2026.11.14.1 并补事件兼容契约`。（适配代码随 `fab795b`；本提交刷新 `uv.lock`、删除缺口第 31 项）
 
 ## 进度
 
