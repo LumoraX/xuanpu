@@ -504,10 +504,10 @@ def group_alive(pgid: int) -> bool:
 async def test_startup_timeout_does_not_leak_the_connector_process(
     tmp_path: Path, local_sandboxes: Any
 ) -> None:
-    """连接器启动卡住、超过启动时限：已经起来的进程不泄漏。
+    """连接器启动卡住、超过启动时限：已经起来的进程最终一定被收回。
 
-    taifeng 2026.11 起内核在握手被取消时自己收回进程（内核 ADR 0123）；平台关连接器沙盒时
-    逐个强杀的兜底仍在。连接器集合与连接器沙盒依次关闭之后，进程（连同它的进程组）确实没了。
+    内核 ADR 0123 起启动被取消时内核自己收回进程；平台关连接器沙盒时的强杀兜底保留。
+    连接器集合与连接器沙盒依次关闭之后，进程（连同它的进程组）确实没了。
     """
     package_root = tmp_path / "pkg"
     package_root.mkdir()

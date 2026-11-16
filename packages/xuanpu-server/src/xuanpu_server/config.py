@@ -22,12 +22,16 @@ from pydantic import (
     model_validator,
 )
 
+from xuanpu_server.butler.config import ButlerConfig
 from xuanpu_server.capabilities.config import CapabilityDeliveryConfig
 from xuanpu_server.collaboration.models import CollaborationConfig
 from xuanpu_server.connections.models import ConnectionConfig
+from xuanpu_server.dashboard.config import MinimalEntryConfig
 from xuanpu_server.identity.config import IdentityConfig, normalize_origin
 from xuanpu_server.organization.config import OrganizationConfig
 from xuanpu_server.shared_matters.models import SharedMatterConfig
+from xuanpu_server.tracing.config import ExecutionTraceConfig
+from xuanpu_server.tracing.otel import OtelConfig
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -308,6 +312,12 @@ class CallContextConfig(_Section):
         return result
 
 
+class TelemetryConfig(_Section):
+    """对外遥测：目前只有可选的 OTel 导出（R5-B2），默认关闭。"""
+
+    otel: OtelConfig = OtelConfig()
+
+
 class ServerConfig(_Section):
     """平台服务的完整配置。
 
@@ -338,6 +348,10 @@ class ServerConfig(_Section):
     connections: ConnectionConfig = ConnectionConfig()
     organization: OrganizationConfig = OrganizationConfig()
     capability_delivery: CapabilityDeliveryConfig = CapabilityDeliveryConfig()
+    execution_trace: ExecutionTraceConfig = ExecutionTraceConfig()
+    telemetry: TelemetryConfig = TelemetryConfig()
+    butler: ButlerConfig = ButlerConfig()
+    minimal_entry: MinimalEntryConfig = MinimalEntryConfig()
     shared_matters: SharedMatterConfig = SharedMatterConfig()
     handoffs: CollaborationConfig = CollaborationConfig()
     approvals: CollaborationConfig = CollaborationConfig()
@@ -368,6 +382,16 @@ class ServerConfig(_Section):
         self.decoded_master_keys()
         if self.state.backend == "postgres" and self.models.protocol != "chat":
             raise ValueError("state.backend=postgres 的外部会话主存仅支持 models.protocol=chat")
+        if self.butler.enabled:
+            # 管家的派工预算与执行树依赖执行追踪：名单内租户必须同时开启追踪
+            missing = [t for t in self.butler.tenants if not self.execution_trace.allows(t)]
+            if missing:
+                raise ValueError(f"butler 租户须同时在 execution_trace 中开启：{missing}")
+        if self.minimal_entry.enabled:
+            # 新页的对话只经管家：名单内租户必须同时开启管家
+            absent = [t for t in self.minimal_entry.tenants if not self.butler.allows(t)]
+            if absent:
+                raise ValueError(f"minimal_entry 租户须同时在 butler 中开启：{absent}")
         return self
 
     def decoded_master_keys(self) -> dict[str, bytes]:

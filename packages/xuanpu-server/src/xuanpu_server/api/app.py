@@ -21,11 +21,14 @@ from xuanpu_server.api.assistant import assistant_router
 from xuanpu_server.api.assistant_actions import assistant_actions_router
 from xuanpu_server.api.audit_usage import audit_usage_router
 from xuanpu_server.api.auth import Caller, bearer
+from xuanpu_server.api.butler import butler_router
 from xuanpu_server.api.capabilities import capabilities_router
 from xuanpu_server.api.collaboration_notifications import collaboration_notifications_router
 from xuanpu_server.api.connections import connections_router
 from xuanpu_server.api.console import ConsoleStaticFiles
+from xuanpu_server.api.dashboard import dashboard_router
 from xuanpu_server.api.file_bridge import file_bridge_router
+from xuanpu_server.api.groups import groups_router
 from xuanpu_server.api.handoffs import handoffs_router
 from xuanpu_server.api.history import history_router
 from xuanpu_server.api.identity import identity_router
@@ -40,6 +43,7 @@ from xuanpu_server.api.shared_matters import shared_matters_router
 from xuanpu_server.api.shared_notifications import shared_notifications_router
 from xuanpu_server.api.sse import frame, stream_turn
 from xuanpu_server.api.task_definitions import task_definitions_router
+from xuanpu_server.api.traces import traces_router
 from xuanpu_server.api.wecom import wecom_router
 from xuanpu_server.api.work_tasks import work_tasks_router
 from xuanpu_server.api.workspace import workspace_router
@@ -180,9 +184,13 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.include_router(audit_usage_router(platform))
     app.include_router(history_router(platform))
     app.include_router(assistant_router(platform))
+    app.include_router(butler_router(platform))
+    app.include_router(groups_router(platform))
     app.include_router(assistant_actions_router(platform))
     app.include_router(reminders_router(platform))
     app.include_router(workspace_router(platform))
+    app.include_router(traces_router(platform))
+    app.include_router(dashboard_router(platform))
     app.include_router(file_bridge_router(platform))
     app.include_router(work_tasks_router(platform))
     app.include_router(task_definitions_router(platform))

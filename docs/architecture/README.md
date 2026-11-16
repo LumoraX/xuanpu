@@ -10,11 +10,17 @@ R3 到人协作见[交接与组织审批](collaboration.md)：指定员工接收
 
 R4-A当前源码提供[能力目录与安装契约](capability-delivery.md)：独立交付说明、精确预检、不可变待发布配置与管理入口；分配/运行和评测发布留在B/C，尚未生产部署。
 
+R5-B 当前源码提供[执行追踪](execution-trace.md)：按租户开启后，员工会话的每次请求记成一条 trace，每个执行与工具调用是一个 span，只存元数据；本人可读执行树与瀑布。尚未生产部署。
+
+R5-C、R5-D 当前源码提供[管家](butler.md)：开启的租户里员工经 `POST /v1/assistant/messages` 对管家说话，管家自办或派给一位匠人并立即答复；匠人结束或提问后由持久唤醒事件叫醒管家，确定性验收后交付，只用员工说过的原话代答，其余转问员工；可把一次请求编组给多位匠人（并行、接力、会诊），会诊分歧高或涉及金额、对外、审批时交员工裁决，会诊有只追加的消息区与定向追问。尚未生产部署。
+
+R5-E 当前源码提供[极简入口](minimal-entry.md)：员工概览接口 `GET /v1/dashboard`（今天、等我处理、进行中、未读通知四块与确定性提示，不调模型）；按租户启用（`minimal_entry`）后员工默认进只有概览、对话、提示、输入的新页，卡片调用原模块接口（提醒、待办、日程、事项、文件、业务跟进、执行安排、企业连接、共享事项、交接与审批），「更多」保留功能页。尚未生产部署。
+
 ## 现状
 
 第一版加上 P0 底座升级（[ADR 0011](../decisions/0011-system-design-decisions.md) 决策 1）与 P1 用户身份：业务包规范、平台服务（控制面 + 运行时 + HTTP 接口 + 评测运行器）、命令行、Python 客户端、控制台五个包可用。
 
-P0 之后：会话主存可以放进 Postgres、业务包归档放进对象存储，共享数据库与对象存储，R0 明确限制为一个平台进程；能停止正在生成的那一轮；平台代为运行的 MCP 连接器进程跑在单独的连接器沙盒里；能以部署在别处的 MCP server 作连接器（`transport: remote`）；人工拒绝的连接器调用有过闸记录；有 Prometheus 指标端点与配额修改接口。依赖 taifeng `2026.11.14.1`（`external/taifeng` 子模块，ADR 0017）。
+P0 之后：会话主存可以放进 Postgres、业务包归档放进对象存储，共享数据库与对象存储，R0 明确限制为一个平台进程；能停止正在生成的那一轮；平台代为运行的 MCP 连接器进程跑在单独的连接器沙盒里；能以部署在别处的 MCP server 作连接器（`transport: remote`）；人工拒绝的连接器调用有过闸记录；有 Prometheus 指标端点与配额修改接口。依赖 taifeng `2026.11.14.1`（`external/taifeng` 子模块，ADR 0018）。
 
 ## 个人工作站
 
@@ -44,7 +50,7 @@ taifeng
 
 依赖只能自上而下；下层永远不 import 上层，也不出现上层概念。
 
-`taifeng`、`taifeng-sandbox`、`taifeng-stores` 以 git submodule 放在 `external/` 下，经 `tool.uv.sources` 以 editable 方式装入工作区，版本以子模块指针为准（[ADR 0017](../decisions/0017-kernel-as-git-submodules.md)）。它们不是 workspace 成员，各自独立开发与发布。
+`taifeng`、`taifeng-sandbox`、`taifeng-stores` 以 git submodule 放在 `external/` 下，经 `tool.uv.sources` 以 editable 方式装入工作区，版本以子模块指针为准（[ADR 0018](../decisions/0018-kernel-as-git-submodules.md)）。它们不是 workspace 成员，各自独立开发与发布。
 
 ## 四个平面
 

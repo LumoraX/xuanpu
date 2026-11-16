@@ -122,3 +122,15 @@ def test_compose_requires_proxy_network_from_env() -> None:
     example = (ROOT / 'docker/.env.example').read_text()
     for key in ['IMAGE=', 'VERSION=', 'PROXY_NETWORK=']:
         assert key in example
+
+
+def test_deploy_env_is_ignored_and_template_lists_server_keys() -> None:
+    """服务器定位信息只放在被忽略的 docker/deploy.env，仓库只带占位模板。"""
+    ignored = (ROOT / '.gitignore').read_text().splitlines()
+    assert 'deploy.env' in ignored
+    example = (ROOT / 'docker/deploy.env.example').read_text()
+    for key in ['DEPLOY_HOST=', 'DEPLOY_SERVER_IP=', 'DEPLOY_PUBLIC_URL=', 'DEPLOY_SERVER_DIR=']:
+        assert key in example
+    # 模板只能用文档保留地址与示例域名
+    assert 'DEPLOY_SERVER_IP=203.0.113.' in example
+    assert 'example.com' in example

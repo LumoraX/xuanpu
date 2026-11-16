@@ -18,7 +18,7 @@ classifiers = [
 dependencies = [
     "jsonschema>=4.23",
     # 内核只用稳定层（红线 3）
-    "taifeng>=2026.10.1.11",
+    "taifeng>=2026.11.14.1",
     "taifeng-sandbox>=2026.10.21.1",
     "taifeng-stores",
     "xuanpu-spec>=2026.10.21.1",
@@ -40,6 +40,11 @@ dependencies = [
 postgres = [
     "asyncpg>=0.29",
     "taifeng-stores[postgres]",
+]
+
+# 可选 OTel 导出（R5-B2）：复用内核 OtelTelemetrySink
+otel = [
+    "taifeng[telemetry-otel]>=2026.11.14.1",
 ]
 
 # 对象存储用 S3 兼容接口（阿里云 OSS 等）

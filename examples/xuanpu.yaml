@@ -203,6 +203,44 @@ approvals:
 #   preview_seconds: 900    # 60–900；确认时重查依赖与版本
 #   probe_seconds: 30       # 1–60；只握手/列工具，不调用业务工具或模型
 
+# 执行追踪（R5-B）：只存执行元数据，不存正文、参数与输出；员工经 GET /v1/traces 读本人记录。
+# execution_trace:
+#   enabled: false
+#   tenants: []                  # 必须同时显式开启并列出租户，空名单始终关闭
+#   max_spans_per_trace: 2048    # 16–20000；超出停止新增并标记截断
+#   max_attempts_per_span: 64    # 1–1000；超出不再记录新尝试的用量并标记不完整
+#   retention_days: 90           # 1–3650
+
+# 管家（R5-C）：员工对管家说话，管家自办或派给匠人。按租户白名单开启；
+# 名单内租户必须同时在 execution_trace 中开启。
+# butler:
+#   enabled: false
+#   tenants: []                        # 必须同时显式开启并列出租户，空名单始终关闭
+#   max_artisans_per_trace: 4          # 1–16；一次请求最多派出的匠人数
+#   max_butler_turns_per_trace: 8      # 1–64；一次请求里管家最多处理几轮（含被唤醒）
+#   max_tokens_per_trace: 400000       # 1000–20000000；管家与匠人合计
+#   max_active_traces_per_tenant: 50   # 1–10000；企业同时进行中的派工请求数
+#   wake_interval_seconds: 2.0         # 0.2–300；多久对账一次匠人是否结束或提问（R5-C2 唤醒）
+#   max_group_members: 4               # 1–8；编组每一步最多几位匠人（R5-D）
+#   max_group_steps: 3                 # 1–5；编组计划最多几步（R5-D）
+#   max_consult_rounds: 2              # 0–5；会诊里 @ 追问最多几轮，超过由管家收口（R5-D2）
+
+# 极简入口（R5-E）：名单内租户的员工默认进新页（概览、对话、提示、输入），「更多」进入功能页兜底。
+# 名单内租户必须同时开启 butler；未启用的租户仍是旧页。
+# minimal_entry:
+#   enabled: false
+#   tenants: []
+
+# 可选 OTel 导出（R5-B2）：只导出 execution_trace 名单内租户的执行事件，不含正文、参数与输出。
+# 端点只由平台管理员配置；开启时必须给 endpoint，平台不读 OTEL_* 环境变量。
+# telemetry:
+#   otel:
+#     enabled: false
+#     endpoint: http://otel-collector:4317
+#     protocol: grpc               # grpc | http/protobuf
+#     service_name: xuanpu
+#     resource_attributes: {}      # 不能覆盖 xuanpu.tenant、service.name、service.version
+
 # 可选进程外HTTP员工上下文签名；仅在配置可信接收方及租户保险库私钥后启用。
 # call_context:
 #   issuer: xuanpu

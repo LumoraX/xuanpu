@@ -84,7 +84,7 @@ uv run ruff check --select F,S108,I,TC packages
 uv run mypy packages/*/src
 ```
 
-内核 `taifeng` 与适配包 `taifeng-sandbox`、`taifeng-stores` 是 `external/` 下的 git submodule，以 editable 方式装进工作区（[ADR 0017](docs/decisions/0017-kernel-as-git-submodules.md)）。改动它们立即对平台生效，可以在本仓库里联调。
+内核 `taifeng` 与适配包 `taifeng-sandbox`、`taifeng-stores` 是 `external/` 下的 git submodule，以 editable 方式装进工作区（[ADR 0018](docs/decisions/0018-kernel-as-git-submodules.md)）。改动它们立即对平台生效，可以在本仓库里联调。
 
 三个子模块也是各自独立的仓库，可以单独开发：
 

@@ -134,7 +134,7 @@ async def test_each_caller_is_recorded_in_audit(ident: Any) -> None:
 
 
 async def test_me_for_each_caller(ident: Any) -> None:
-    """``GET /v1/me``：API key、浏览器登录、代员工调用、根凭据，同一个形状。"""
+    """``GET /v1/me``：API key、浏览器登录、代员工调用、根凭据，同一个形状（``entry`` 见 R5-E）。"""
     member = await ident.user(name="李四")
     system = await ident.system_key()
     by_key = await ident.http.get("/v1/me", headers=bearer(ident.world.admin_key))
@@ -151,6 +151,7 @@ async def test_me_for_each_caller(ident: Any) -> None:
         "key_id": admin_key_id,
         "user_id": None,
         "display_name": None,
+        "entry": "classic",
     }
     assert by_cookie.json() == {
         "actor": f"user:{member.user_id}",
@@ -159,6 +160,7 @@ async def test_me_for_each_caller(ident: Any) -> None:
         "key_id": None,
         "user_id": member.user_id,
         "display_name": "李四",
+        "entry": "classic",
     }
     # 管理员的 key 代成员调用：生效角色是成员
     assert by_act_as.json() == {
@@ -168,6 +170,7 @@ async def test_me_for_each_caller(ident: Any) -> None:
         "key_id": system_key_id,
         "user_id": member.user_id,
         "display_name": "李四",
+        "entry": "classic",
     }
     assert by_root.json() == {
         "actor": "key:root",
@@ -176,6 +179,7 @@ async def test_me_for_each_caller(ident: Any) -> None:
         "key_id": "root",
         "user_id": None,
         "display_name": None,
+        "entry": "classic",
     }
 
 

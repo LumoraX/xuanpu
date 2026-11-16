@@ -33,7 +33,7 @@ Postgres    对象存储       模型网关       沙盒后端      外部系统
 
 ## 安装
 
-内核 `taifeng`（≥ 2026.10.1.11）与 `taifeng-sandbox`、`taifeng-stores` 从 `external/` 下的 git submodule 源码安装，版本以子模块指针为准。检出时带上子模块：`git clone --recurse-submodules`，或检出后执行 `git submodule update --init`。
+内核 `taifeng`（≥ 2026.11.14.1）与 `taifeng-sandbox`、`taifeng-stores` 从 `external/` 下的 git submodule 源码安装，版本以子模块指针为准。检出时带上子模块：`git clone --recurse-submodules`，或检出后执行 `git submodule update --init`。
 
 ```bash
 cd xuanpu
@@ -746,6 +746,38 @@ R2配置中的`task_activity.enabled`控制工作动态通知，默认false；`t
 `capability_delivery`构造配置：enabled默认false；tenants默认[]，空始终关闭；max_revisions默认1000（1–10000）；max_previews默认1000（1–10000）；preview_seconds默认900（60–900）；probe_seconds默认30（1–60）。关闭不自动删除历史或纳管旧包。容量上限达到后明确拒绝新记录，当前不提供历史清除功能。
 
 预检专属data_dir/capability-probes保留未完成的清理责任。Docker按目录确定容器名回收；本机重启后未知探测目录不能证明进程已退出，会阻止启动/新预检。先核实对应进程及作用范围，确认退出后才处理专属目录，不删除普通办公工作区。详见[能力安装边界](../architecture/capability-delivery.md)。本段尚无生产镜像、服务器迁移或真实员工验收结论。
+
+## R5-B 执行追踪存储
+
+当前源码新增 `0021_execution_spans`（尚未正式部署），建立 `trace` 与 `trace_span` 两张表：按租户与员工归属，只存执行元数据（身份、父子、状态、时间、逐尝试用量），不存正文、工具参数与输出。0001–0020 保持原字节；R4 计划里的候选编号 0021–0024 开工时顺延。
+
+`execution_trace` 构造配置：enabled 默认 false；tenants 默认 []，空始终关闭；max_spans_per_trace 默认 2048（16–20000），超出停止新增并标记截断；max_attempts_per_span 默认 64（1–1000）；retention_days 默认 90（1–3650）。
+
+开启后，名单内租户的员工会话在事件枢纽上采集 span（API key 自己的会话不采集），员工经 `GET /v1/traces` 读本人的执行树与瀑布（见[执行追踪](../architecture/execution-trace.md)）。写入失败只记标准错误日志「执行追踪写入失败」并把 trace 标为不完整，不影响对话。平台每小时按租户清理超过保留天数的 trace，失败记「清理租户 … 的执行追踪失败」，下一轮重试。采集依赖内核 taifeng 2026.11.14.1 起稳定层的执行身份。
+
+员工也可以经 `GET /v1/traces/{id}/events`（SSE）跟随一条进行中的 trace：首帧完整快照，之后只推有变化的 span，全部到终态后发 `end` 收尾；断线重连带 `Last-Event-ID`，落后时重发一次快照。
+
+`telemetry.otel` 构造配置（可选 OTel 导出）：enabled 默认 false，关闭时不建任何连接；开启时必须给 endpoint（平台不读 `OTEL_*` 环境变量），protocol 为 `grpc`（默认）或 `http/protobuf`，service_name 默认 xuanpu，resource_attributes 不能覆盖 `xuanpu.tenant`、`service.name`、`service.version`。只导出 `execution_trace` 名单内租户的事件；每个租户一个内核 `OtelTelemetrySink`，资源属性带 `xuanpu.tenant`。正文过滤沿用内核（参数、输出、增量、完整提示词不导出）。导出失败由内核记告警，不影响执行。OTel span 暂不带 `xuanpu.trace_id`（内核 sink 不支持按事件附加属性，缺口清单第 32 项），用 `taifeng.execution_id` 与平台 span `ex.<execution_id>` 关联。
+
+## R5-E 极简入口与员工概览
+
+`minimal_entry` 构造配置：enabled 默认 false；tenants 默认 []，空始终关闭；名单内租户必须同时在 `butler` 名单内，否则配置加载失败（「minimal_entry 租户须同时在 butler 中开启」）。启用后，该租户员工打开 `/console/` 会跳到 `/console/entry.html`（概览、对话、提示、输入）；页脚「更多」进入 `/console/index.html?classic=1` 的功能页，管理员入口 `?admin=1` 不变。未启用的租户打开新页会回到旧页。
+
+`GET /v1/dashboard` 不调模型，模型停用时概览、通知与「更多」照常可用；某一块读取失败会在该块显示「暂时读不出」，意外异常记标准错误日志「概览块 … 读取失败」。没有新的迁移。
+
+## R5-C 管家派工存储与配置
+
+当前源码新增 `0022_butler_dispatch`（尚未正式部署）：一次派工一行，按租户与员工归属（复合外键到员工表），只存管家交给匠人的任务说明与材料引用；匠人的正文与结果仍在其任务或会话里。
+
+`butler` 构造配置：enabled 默认 false；tenants 默认 []，空始终关闭；max_artisans_per_trace 默认 4（1–16）；max_butler_turns_per_trace 默认 8（1–64）；max_tokens_per_trace 默认 400000（1000–20000000，管家与匠人合计，用量未知时不放行派工）；max_active_traces_per_tenant 默认 50（1–10000）。超限时不建派工记录，管家在答复里说明。名单内租户必须同时在 `execution_trace` 中开启，否则配置加载失败（「butler 租户须同时在 execution_trace 中开启」）。
+
+开启后，名单内租户的员工经 `POST /v1/assistant/messages` 对管家说话（见[管家](../architecture/butler.md)）；未开启的租户同一入口走既有分流。管家引擎每租户一个，线程文件在 `<data_dir>/butler/<租户目录>/threads`，每轮新建、结束即释放；管家处理失败记标准错误日志「管家处理失败」并返回 503，员工原话已保留。
+
+R5-C2 新增 `0023_butler_wakeup`（尚未正式部署）：`butler_event`（唤醒事件，按派工与宿主事实去重、带处理决定与确认标记）与 `butler_pending`（待本人处理项与代答记录，含答复原文及出处），均按租户与员工归属，外键到派工与员工表；另给派工表加进行中派工的部分索引。`butler.wake_interval_seconds` 默认 2（0.2–300）：平台每隔这么久对开启管家的租户对账一次匠人是否结束或提问并处理唤醒事件；单轮失败记「管家唤醒处理失败，下一轮重试」。唤醒后的复核会再跑一轮管家，计入 `max_butler_turns_per_trace` 与 token 上限，超限时只做确定性验收后交付。员工侧用法见[管家使用说明](butler.md)。
+
+R5-D0 新增 `0024_artisan_groups`（尚未正式部署）：`butler_group` 一个编组一行，计划与成员执行在 `record` 里按版本整体保存，按租户与员工归属（复合外键到员工表），另有未收口编组的部分索引；成员各是一条派工记录（`butler_dispatch` 的 JSON 里带 `group_id`）。`butler.max_group_members` 默认 4（1–8），`butler.max_group_steps` 默认 3（1–5）；编组全部成员加上本次请求已有的派工仍受 `max_artisans_per_trace` 约束。编组由唤醒循环推进，单个编组推进失败记「推进编组 … 失败，下一轮重试」。
+
+R5-D1 会诊不新增表：比对结论存在编组记录的 `verdicts` 里，高分歧的裁决项复用 `butler_pending`（`kind=ruling`）。R5-D2 新增 `0025_group_messages`（尚未正式部署）：`butler_group_message` 只追加，按 `(租户, 编组, 序号)` 主键、`(租户, 编组, msg_key)` 去重，复合外键到编组与员工；同一编组的追加由事务咨询锁串行。`butler.max_consult_rounds` 默认 2（0–5）：会诊里 @ 追问最多几轮，超过由管家在消息区收口；每次追问是一次派工，同样受 `max_artisans_per_trace` 约束（超限的追问记为失败，不阻塞比对）。
 
 ## 可选 HTTP 调用身份签名
 

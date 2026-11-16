@@ -183,7 +183,7 @@ GET /healthz
 GET /v1/me
 
 → {"actor": "user:usr_5f0c1b2e7d9a4c3b8e6f1a20", "role": "tenant_member", "tenant_id": "acme",
-   "key_id": null, "user_id": "usr_5f0c1b2e7d9a4c3b8e6f1a20", "display_name": "张三"}
+   "key_id": null, "user_id": "usr_5f0c1b2e7d9a4c3b8e6f1a20", "display_name": "张三", "entry": "classic"}
 ```
 
 任何调用者都能调，四种调用者同一个形状，用不上的字段为 `null`：
@@ -195,7 +195,7 @@ GET /v1/me
 | 系统代员工 | 生效角色（key 与员工中较低的） | key 的租户 | key 的标识 | 被代的员工 |
 | 根凭据 | `platform_admin` | `null` | `root` | `null` |
 
-`actor` 与审计记录里的写法相同（见[认证](#认证)）。
+`actor` 与审计记录里的写法相同（见[认证](#认证)）。`entry` 告诉控制台用哪个员工入口：代表员工且所在租户在 `minimal_entry` 名单内时为 `minimal`（极简入口，R5-E），其余一律 `classic`。
 
 ## 飞书登录
 
@@ -980,6 +980,56 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | POST /v1/installations/{id}/state | request_id、expected_version、status=draining/disabled | 当前安装状态与递增version；ready因尚无B/C发布证据409 |
 
 预检有效期默认900秒，内部证据固定归档、策略、完整MCP清单及凭据密文版本，安装前重检。diff仅含公开权限/上一安装权限及配置槽名，不回显配置值、密文指纹或实际秘密引用。新登记/预检/安装要求capability_delivery明确开启并命中租户白名单；查询与停止不受该新受理开关阻断。精确契约见[能力架构](capability-delivery.md)。
+
+## 管家入口（R5-C）
+
+`POST /v1/assistant/messages`：员工对管家说一句话。认证同 `/v1/assistant/route`。请求体：`request_id`（必填，1–80 字符 `[a-zA-Z0-9_.:-]`）、`text`（1–8000 字符）、`timezone`（IANA，默认 Asia/Shanghai）、`input_files`（本人文件版本 `{item_id, revision}`，最多 8 个，派工材料只能从中选）；多余字段 422。
+
+- 租户开启管家（且开启执行追踪）且调用方是员工：回执 `mode=butler`，含 `request_id`、`trace_id`、`message`、与 `/v1/assistant/route` 同名的草稿与打开字段（有草稿时 `proposal_id=request_id`，经 `/v1/assistant/proposals` 确认）、`dispatches`（`dispatch_id`、`package`、`entry`、`state`、`host`）、`groups`（本轮提交或回放的编组标识，R5-D）。派工与编组都不等匠人结果。
+- 否则：原样走分流，回执为 `/v1/assistant/route` 的响应加 `mode=route`。
+- 同一 `request_id` 同体回原回执、不再采样；不同体或仍在处理中 409。管家失败 503 `runtime_unavailable`，原话已在主对话，可用同一标识重试。派工预算超限不报错给员工，由管家在答复里说明（工具错误 `butler_budget_exceeded`）。
+- 回执另含 `answered_pending`：本句被管家认出是对某个待处理问题的答复时，列出转给匠人的待处理项标识（转的是原话）。
+
+### 待本人处理项（R5-C2）
+
+| 方法与路径 | 请求 | 返回 |
+| --- | --- | --- |
+| GET /v1/assistant/pending | 无 | items（pending_id、dispatch_id、kind=question/approval/ruling、question、host=task/session、host_ref、state=open/forwarding、answer、version、created_at、updated_at）；只含本人仍待处理的项，不含代答记录 |
+| POST /v1/assistant/pending/{id}/answer | request_id（1–80 字符）、text（1–2000 字符）；多余字段 422 | 更新后的项（state=answered）。原话转给匠人会话、派工回到 running。同一 request_id 同内容重试回原结果；已答复后换内容 409；kind=approval 409（请在既有待确认里处理）；kind=ruling（会诊裁决）只记进编组、不转给匠人，编组已结束或已有不同裁决 409；他人的与不存在的 404 |
+| GET /v1/assistant/groups/{group_id} | 无 | 本人编组的进展：group_id、trace_id、title、state、step、summarized、cancel_requested、version、steps（mode、members 匠人名）、members（step、member 从 1 起、dispatch_id、outcome、end_reason）、followups（step、member、asked_by、round、dispatch_id、outcome）、verdicts（step、level、reasons、rated_level、pending_id、ruled）；不含匠人正文。他人的与不存在的 404，机器身份 403 |
+| GET /v1/assistant/groups/{group_id}/messages | 无 | items：会诊消息区，按序号（seq、step、author=member/butler、member 从 1 起、round、mentions 从 1 起、text、created_at）；只追加。权限同上 |
+
+匠人结束或提问后，管家的交付、转问、代答说明写进员工主对话（助手消息，`request_id` 为 `butler:<事件>:<deliver|ask|proxy|approval>`，元数据 `butler` 含 `trace_id`、`dispatch_id`、`event`，交付另含 `passed`、`checks`、`review_label`）。
+
+设计见[管家](butler.md)。
+
+## 执行追踪（R5-B）
+
+只读，只给本人：需要当前启用的员工身份（登录或代员工），机器身份 403，他人的与不存在的 trace 一律 404。只返回元数据，不含正文。租户未开启 `execution_trace` 时没有记录。设计见[执行追踪](execution-trace.md)。
+
+| 方法与路径 | 查询 | 返回 |
+| --- | --- | --- |
+| GET /v1/traces | active=true/false 可选；cursor 可选；limit=1–100，默认 50 | items（trace_id、origin、title、created_at、updated_at、incomplete、truncated）、next_cursor、分页前 total；按创建时间倒序 |
+| GET /v1/traces/{trace_id} | 无 | trace 头、active、spans（span_id、parent_span_id、kind、name、ref、state、started_at、ended_at、attempts、input_tokens、output_tokens、usage_complete、end_reason、incomplete）；用量未知为 null |
+| GET /v1/traces/{trace_id}/waterfall | 无 | trace 头与 rows（span_id、parent_span_id、kind、name、state、depth、offset_ms、duration_ms、input_tokens、output_tokens、usage_complete、orphan）；运行中 duration_ms 为 null |
+| GET /v1/traces/{trace_id}/events | after_seq=0–2^31 可选；`Last-Event-ID` 优先 | SSE：`snapshot`（trace 头、active 与全部 spans）→ `spans`（只含变化的 span）→ `end`；事件 id 为已应用的最大事实序号；每轮（约 1 秒）发一行 `: heartbeat` 注释。不存在或无权在建流前 404，游标非数字 400 |
+
+limit 越界或 cursor 损坏返回 400/422，不当作从头开始。
+
+## 员工概览（R5-E0）
+
+`GET /v1/dashboard`，只读，不调模型。需要当前启用的员工身份（登录或代员工）；机器身份、停用员工、暂停租户 403，不返回任何块。可选查询 `timezone`（IANA 名称，默认本人助手设置里的时区；无效 400）决定「今天」的起止。
+
+返回 `timezone`、`day_start`、`day_end`（UTC 秒）与 `blocks`，按 `today`、`waiting`、`in_progress`、`unread` 排列；功能未开启的块不出现（租户未开启 `execution_trace` 时没有 `in_progress`）。每块 `status` 为 `ok`（`count` 与至多 5 条 `items`）或 `error`（`error` 为错误码，`count` 为 null）；单块失败不影响其他块。`count` 在授权过滤后对全部记录计算，不从摘要推算。
+
+| 块 | count 的来源 | items 字段 |
+| --- | --- | --- |
+| today | 当天到期的活动提醒 + 与当天有交集的日程 + 当天及之前到期的未完成待办 | kind（reminder/event/todo）、ref、title、at；待办另有 overdue |
+| waiting | 未处理的助手草稿 + 管家待本人处理项（open、forwarding；管家开启时）+ waiting_user 的交办工作 + 轮到本人审批的组织审批（审批开启时） | kind（proposal/question/approval/ruling/work_task/approval_request）、ref、title、at |
+| in_progress | 本人活动 trace 总数 | kind=trace、ref=trace_id、title、at、waiting_me、incomplete |
+| unread | 通知中心里本人未读的站内通知（不含共享与协作通知流） | kind=notification、ref=notification_id、title、at |
+
+响应另带 `tips`：确定性生成的至多 3 条提示（`kind` 为 `status` 或 `try`、`text`、点一下填进输入框的 `prompt`；状态提示没有 `prompt`），规则见[极简入口](minimal-entry.md#提示dashboardtipspy)。
 
 ## 通用集成身份与固定文件桥
 

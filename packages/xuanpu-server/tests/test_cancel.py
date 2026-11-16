@@ -329,9 +329,9 @@ async def test_cancel_over_http(world: Any, step: Any) -> None:
 async def test_cancel_right_after_sending(world: Any, step: Any, read_turn: Any) -> None:
     """发完消息立刻取消（中间没有让出点）也能停下。
 
-    内核在提交返回前就登记了这一轮（内核 ADR 0117），取消可能落在排队中（``turn_failed``、
-    ``kind=cancelled``），也可能落在已经开跑（``turn_completed``、``end_reason=cancelled``）；
-    两种收尾都算停下。会话的第一轮（引擎刚打开）与之后的一轮各试一次。
+    内核 ADR 0117 起提交即可取消：还在排队就停下的一轮以 ``turn_failed{kind=cancelled}`` 结束，
+    已开始的以 ``turn_completed{end_reason=cancelled}`` 结束，平台都记为 cancelled。
+    会话的第一轮（引擎刚打开）与之后的一轮各试一次。
     """
     await world.publish()
     session = await world.platform.sessions.create(world.member, package="support-desk")
@@ -342,7 +342,6 @@ async def test_cancel_right_after_sending(world: Any, step: Any, read_turn: Any)
         assert cancelled == [turn.submission_id]
         events = await read_turn(turn, timeout=10)
         assert turn_outcome(events[-1]) == "cancelled"
-        assert events[-1].msg.data["end_reason"] == "cancelled"
     assert world.platform.sessions.in_flight_turns("acme") == 0
 
 

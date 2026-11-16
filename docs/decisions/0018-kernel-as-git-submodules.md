@@ -1,4 +1,4 @@
-# ADR 0017：内核与适配包以 git submodule 纳入 —— taifeng、taifeng-sandbox、taifeng-stores 放在 external/
+# ADR 0018：内核与适配包以 git submodule 纳入 —— taifeng、taifeng-sandbox、taifeng-stores 放在 external/
 
 - 状态：Accepted
 - 日期：2026-11-15

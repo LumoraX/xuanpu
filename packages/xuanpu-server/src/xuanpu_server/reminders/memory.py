@@ -522,6 +522,18 @@ class InMemoryReminderStore:
         ]
         return found[-limit:] if after_id == -1 else found[:limit]
 
+    async def unread_notifications(
+        self, tenant_id: str, user_id: str, limit: int
+    ) -> tuple[int, builtins.list[NotificationRecord]]:
+        """未读总数在全部本人通知上计算，不从分页推算。"""
+        unread = [
+            n
+            for n in self._notifications.values()
+            if (n.tenant_id, n.user_id) == (tenant_id, user_id) and n.read_at is None
+        ]
+        unread.sort(key=lambda n: n.notification_id, reverse=True)
+        return len(unread), unread[:limit]
+
     async def notification_current(self, record: NotificationRecord) -> bool:
         """当前业务来源只在通知所属员工快照中解析。"""
         reminder = self._reminders.get(record.reminder_id or "")

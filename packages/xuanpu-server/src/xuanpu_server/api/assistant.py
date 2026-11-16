@@ -12,6 +12,7 @@ from xuanpu_server.api.auth import Caller  # noqa: TC001 —— FastAPI 运行�
 from xuanpu_server.assistant import RouteBody  # noqa: TC001 —— FastAPI 运行时解析
 
 if TYPE_CHECKING:
+    from xuanpu_server.assistant_reminders import RouteOutcome
     from xuanpu_server.platform import Platform
 
 
@@ -28,25 +29,7 @@ def assistant_router(platform: Platform) -> APIRouter:
             done, _ = await asyncio.wait((work, disconnected), return_when=asyncio.FIRST_COMPLETED)
             if disconnected in done:
                 return Response(status_code=499)
-            result = work.result()
-            return {
-                "session": schemas.session_view(result.session) if result.session else None,
-                "message": result.message,
-                "reminder_draft": result.reminder_draft,
-                "open_reminders": result.open_reminders,
-                "workspace_draft": result.workspace_draft,
-                "open_workspace": result.open_workspace,
-                "proposal_id": result.proposal_id,
-                "proactive_draft": result.proactive_draft,
-                "open_proactive": result.open_proactive,
-                "work_task_id": result.work_task_id,
-                "preserve_input": result.preserve_input,
-                "task_definition_draft": result.task_definition_draft,
-                "open_task_definitions": result.open_task_definitions,
-                "open_connections": result.open_connections,
-                "shared_draft": result.shared_draft, "open_shared": result.open_shared,
-                "handoff_draft":result.handoff_draft,"open_collaboration":result.open_collaboration,
-            }
+            return route_view(work.result())
         finally:
             # 普通HTTP请求的断连不会自动取消handler；显式取消采样并等待有界计量收尾。
             if not work.done():
@@ -55,6 +38,28 @@ def assistant_router(platform: Platform) -> APIRouter:
             await asyncio.gather(work, disconnected, return_exceptions=True)
 
     return router
+
+
+def route_view(result: RouteOutcome) -> dict[str, Any]:
+    """分流结果的对外形状；管家降级时复用。"""
+    return {
+        "session": schemas.session_view(result.session) if result.session else None,
+        "message": result.message,
+        "reminder_draft": result.reminder_draft,
+        "open_reminders": result.open_reminders,
+        "workspace_draft": result.workspace_draft,
+        "open_workspace": result.open_workspace,
+        "proposal_id": result.proposal_id,
+        "proactive_draft": result.proactive_draft,
+        "open_proactive": result.open_proactive,
+        "work_task_id": result.work_task_id,
+        "preserve_input": result.preserve_input,
+        "task_definition_draft": result.task_definition_draft,
+        "open_task_definitions": result.open_task_definitions,
+        "open_connections": result.open_connections,
+        "shared_draft": result.shared_draft, "open_shared": result.open_shared,
+        "handoff_draft":result.handoff_draft,"open_collaboration":result.open_collaboration,
+    }
 
 
 async def _wait_disconnect(request: Request) -> None:

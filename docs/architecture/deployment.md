@@ -4,7 +4,7 @@
 
 R0 所有协议均必须保持一个平台副本、一个服务进程，启动时先取得控制面单实例锁。`codex_responses` 模型协议使用本地会话状态。将来扩容前需要完成该协议与 Postgres 状态面的适配、对象存储替换及完整迁移验证；不能直接复制平台容器。
 
-`docker/deploy.sh` 在本机构建 linux/amd64 镜像并推送到 `docker/.env`（或环境变量）指定的镜像仓库，只有推送成功才更新 `docker/.env` 的 IMAGE 与 VERSION。镜像仓库、代理网络名、服务器地址等部署环境信息只放在不进仓库的 `docker/.env` 与部署者本机配置里，仓库只带 `docker/.env.example` 模板。临时构建上下文只包含七个运行 wheel、锁定的公开依赖、Dockerfile 和试用工单入口；真实 JSON、凭据和业务文件均不发送到构建器。安装包保留各自版本，部署记录额外保留不可变镜像 digest。
+`docker/deploy.sh` 在本机构建 linux/amd64 镜像并推送到 `docker/.env`（或环境变量）指定的镜像仓库，只有推送成功才更新 `docker/.env` 的 IMAGE 与 VERSION。镜像仓库、代理网络名、服务器地址等部署环境信息只放在不进仓库的文件里：随 Compose 上传的 `docker/.env`（镜像仓库、版本、代理网络名），以及只留部署者本机的 `docker/deploy.env`（SSH 主机别名、服务器 IP、正式入口、服务器目录）；仓库只带 `docker/.env.example` 与 `docker/deploy.env.example` 模板，发布记录用占位符代替实际值。临时构建上下文只包含七个运行 wheel、锁定的公开依赖、Dockerfile 和试用工单入口；真实 JSON、凭据和业务文件均不发送到构建器。安装包保留各自版本，部署记录额外保留不可变镜像 digest。
 
 服务器 `<部署目录>` 使用独立 Compose 项目和 Postgres。数据库不暴露宿主端口，平台仅绑定服务器回环 8420，并通过 `.env` 中 `PROXY_NETWORK` 指定的已有代理网络提供 HTTPS。Nginx 禁止响应缓冲和写请求重试，以支持 SSE 和避免重复业务。
 

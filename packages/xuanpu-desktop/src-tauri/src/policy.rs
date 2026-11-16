@@ -1,11 +1,9 @@
-//! 管理员部署配置、来源边界和下载文件名。
-use serde::Deserialize;
+//! 生效连接配置、来源边界和下载文件名。
 use std::path::PathBuf;
 use url::Url;
 
-/// 发布时写入的非敏感连接信息。
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
+/// 生效的连接信息：服务地址只来自用户在本机的设置，登录来源可由应用内置。
+#[derive(Clone, Debug)]
 pub struct Deployment {
     pub service_url: Url,
     pub auth_origins: Vec<Url>,
@@ -20,23 +18,15 @@ pub enum Navigation {
 }
 
 impl Deployment {
-    /// 校验部署配置，禁止不安全的远程明文服务。
+    /// 校验连接配置，禁止不安全的远程明文服务。
     pub fn validate(&self) -> Result<(), String> {
         if !safe_endpoint(&self.service_url)
             || self.service_url.query().is_some()
             || self.service_url.fragment().is_some()
         {
-            return Err("企业服务地址无效，请联系管理员更新客户端。".into());
+            return Err("服务器地址无效，请在启动页「设置」中重新填写。".into());
         }
-        if self.auth_origins.iter().any(|url| {
-            !safe_endpoint(url)
-                || url.path() != "/"
-                || url.query().is_some()
-                || url.fragment().is_some()
-        }) {
-            return Err("登录服务地址无效，请联系管理员更新客户端。".into());
-        }
-        Ok(())
+        validate_auth_origins(&self.auth_origins)
     }
     /// 将链接归类为业务页面、外部浏览器或禁止访问。
     pub fn navigation(&self, url: &Url) -> Navigation {
@@ -94,6 +84,16 @@ pub fn download_path(directory: &std::path::Path, suggested: &std::path::Path) -
         format!(".{extension}")
     };
     directory.join(format!("{stem}-{}{suffix}", uuid::Uuid::new_v4().simple()))
+}
+
+/// 登录来源白名单只能是 HTTPS（或本机回环 HTTP）根地址。
+pub fn validate_auth_origins(origins: &[Url]) -> Result<(), String> {
+    if origins.iter().any(|url| {
+        !safe_endpoint(url) || url.path() != "/" || url.query().is_some() || url.fragment().is_some()
+    }) {
+        return Err("登录来源配置无效，每项只能是 HTTPS 根地址。".into());
+    }
+    Ok(())
 }
 
 /// 仅允许 HTTPS 或本机回环 HTTP，且地址不可携带凭据。

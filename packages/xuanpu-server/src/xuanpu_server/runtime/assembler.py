@@ -29,6 +29,7 @@ from xuanpu_server.runtime.source_guard import (
     source_binding,
 )
 from xuanpu_server.tenancy import tenant_directory
+from xuanpu_server.tracing.config import ExecutionTraceConfig, TraceWiring
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Mapping
@@ -45,6 +46,8 @@ if TYPE_CHECKING:
     from xuanpu_server.runtime.sandbox import SandboxHandle, SandboxProvider
     from xuanpu_server.secrets import SecretVault
     from xuanpu_server.shared_matters.context_guard import SharedContexts
+    from xuanpu_server.tracing.binding import TraceBinder
+    from xuanpu_server.tracing.otel import OtelExport
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +71,9 @@ class RuntimeDefaults:
             对话时从存储续接）。
         runtime_idle_seconds: 运行时多久没有会话使用就回收（连接器进程、沙盒、引擎池
             一起关掉，下次使用时重新组装）。
+        execution_trace: 执行追踪（R5-B）：哪些租户采集 span 及其上限。
+        otel_export: 可选的 OTel 导出（平台持有；None 表示关闭，不建任何连接）。
+        trace_binder: 跨引擎 trace 绑定查询（平台持有；None 表示不查）。
     """
 
     max_session_tokens: int = 2_000_000
@@ -78,6 +84,14 @@ class RuntimeDefaults:
     capture_requests: bool = False
     session_idle_seconds: float = 300.0
     runtime_idle_seconds: float = 900.0
+    execution_trace: ExecutionTraceConfig = field(default_factory=ExecutionTraceConfig)
+    otel_export: OtelExport | None = None
+    trace_binder: TraceBinder | None = None
+
+    @property
+    def trace_wiring(self) -> TraceWiring:
+        """事件枢纽用的追踪装配。"""
+        return TraceWiring(self.execution_trace, self.otel_export, binder=self.trace_binder)
 
 
 @dataclass
