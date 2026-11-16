@@ -1,6 +1,6 @@
 # 管家使用说明（R5-C）
 
-> 给员工与开启试点的平台管理员。设计见[管家](../architecture/butler.md)，接口见 [HTTP 接口](../architecture/http-api.md#管家入口r5-c)。当前为源码实现，尚未生产部署；真实模型下的误派、漏派率尚未测量（见下文「回归」）。
+> 给员工与开启试点的平台管理员。设计见[管家](../architecture/butler.md)，接口见 [HTTP 接口](../architecture/http-api.md#管家入口r5-c)。已随 2026-11-15 生产发布部署，所有租户默认关闭（见[R5 生产发布记录](releases/2026-11-15-r5-production.md)）；真实模型回归结果见下文「回归」。
 
 ## 开启
 
@@ -30,4 +30,12 @@
 
 ## 回归
 
-真实模型回归集在 `scripts/acceptance/data/r5_butler_regression.json`（22 条：自办、该派、不该派、模糊），执行脚本 `scripts/acceptance/r5_butler_regression.py`（参数：`--base-url`、`--key-file`、`--act-as`、`--out`），输出误派与漏派条数。本版本尚未在真实模型上执行，结果待补入验收记录。
+真实模型回归集在 `scripts/acceptance/data/r5_butler_regression.json`（22 条：自办、该派、不该派、模糊），执行脚本 `scripts/acceptance/r5_butler_regression.py`（参数：`--base-url`、`--key-file`、`--act-as`、`--out`），输出误派与漏派条数。
+
+2026-11-16 在真实模型上执行（`gpt-6.1-sol`，`codex_responses`）：22 条 0 误派、0 漏派；三成员会诊通过（瀑布交叠、用量完整）。环境、过程轮次与需人工复核的用例见[R5 真实模型验收](releases/2026-11-16-r5-real-model-acceptance.md)。复现：
+
+```bash
+.venv/bin/python scripts/acceptance/r5_real_model_harness.py --model-env .env --out <输出目录>
+```
+
+`.env` 放在仓库根目录（已被 `.gitignore` 忽略），键见 `.env.example`；脚本起本机内存平台与样例工单接口，只读这个文件，不读环境变量。
