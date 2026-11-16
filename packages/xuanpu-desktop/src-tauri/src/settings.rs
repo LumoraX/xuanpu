@@ -1,8 +1,8 @@
-//! 用户级客户端设置：`~/.xuanpu/desktop.json` 覆盖应用内置的企业服务地址。
+//! 用户级客户端设置：服务器地址只由用户在本机填写，保存在 `~/.xuanpu/desktop.json`。
 //!
-//! 内置配置随应用包发布；用户文件只放公开的连接信息（服务地址、登录来源），
-//! 不放密钥。用户文件格式不对时明确报错，不悄悄退回内置地址。
-use crate::policy::Deployment;
+//! 应用包不内置任何服务器地址，只可内置公开的登录来源白名单；首次打开时由用户
+//! 填写要连接的玄圃服务器。用户文件只放公开的连接信息，不放密钥；格式不对时明确报错。
+use crate::policy::{validate_auth_origins, Deployment};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Write;
@@ -29,7 +29,22 @@ impl Paths {
     }
 }
 
-/// 用户文件内容；两项都可省略，省略的项使用内置值。
+/// 应用包内置的公开配置：只有登录来源白名单，不允许出现服务器地址。
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct Bundled {
+    pub auth_origins: Vec<Url>,
+}
+
+/// 解析应用内置配置；出现 `service_url` 等未知字段即拒绝，防止把服务器地址打进安装包。
+pub fn parse_bundled(data: &[u8]) -> Result<Bundled, String> {
+    let bundled: Bundled =
+        serde_json::from_slice(data).map_err(|error| format!("应用内置配置格式不正确：{error}"))?;
+    validate_auth_origins(&bundled.auth_origins)?;
+    Ok(bundled)
+}
+
+/// 用户文件内容；`service_url` 未填写时启动页要求用户输入，`auth_origins` 省略时沿用内置值。
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct UserSettings {
@@ -37,14 +52,6 @@ pub struct UserSettings {
     pub service_url: Option<Url>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth_origins: Option<Vec<Url>>,
-}
-
-/// 生效配置的来源，供启动页说明。
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Source {
-    User,
-    Bundled,
 }
 
 /// 读用户文件：不存在返回 None；存在但读不了或格式不对返回错误。
@@ -59,30 +66,29 @@ pub fn read_user(path: &Path) -> Result<Option<UserSettings>, String> {
         .map_err(|error| format!("{} 格式不正确：{error}", path.display()))
 }
 
-/// 合并内置与用户配置并校验；内置缺失时必须由用户文件给出服务地址。
-pub fn effective(
-    bundled: Option<&Deployment>,
-    user: Option<&UserSettings>,
-) -> Result<(Deployment, Source), String> {
+/// 首次使用、尚未填写服务器地址时的提示。
+pub const NOT_CONFIGURED: &str = "尚未设置玄圃服务器地址，请在下方填写要连接的服务器。";
+
+/// 用户是否还没填写服务器地址（文件不存在或没有 `service_url`）。
+pub fn needs_setup(user: Option<&UserSettings>) -> bool {
+    user.is_none_or(|value| value.service_url.is_none())
+}
+
+/// 合并用户设置与内置登录来源并校验；服务器地址只来自用户设置。
+pub fn effective(bundled: Option<&Bundled>, user: Option<&UserSettings>) -> Result<Deployment, String> {
     let service_url = user
         .and_then(|value| value.service_url.clone())
-        .or_else(|| bundled.map(|value| value.service_url.clone()))
-        .ok_or("尚未配置玄圃服务器地址，请在下方填写。")?;
+        .ok_or(NOT_CONFIGURED)?;
     let auth_origins = user
         .and_then(|value| value.auth_origins.clone())
         .or_else(|| bundled.map(|value| value.auth_origins.clone()))
         .unwrap_or_default();
-    let source = if user.is_some_and(|value| value.service_url.is_some()) {
-        Source::User
-    } else {
-        Source::Bundled
-    };
     let config = Deployment {
         service_url,
         auth_origins,
     };
     config.validate()?;
-    Ok((config, source))
+    Ok(config)
 }
 
 /// 把用户输入整理成工作站地址：补协议与 `/console/`，拒绝查询串与片段。
@@ -129,7 +135,7 @@ pub fn write_user(paths: &Paths, settings: &UserSettings) -> std::io::Result<()>
     fs::rename(&temporary, &paths.config)
 }
 
-/// 删除用户文件，回到内置配置；文件本来不存在不算错误。
+/// 删除用户文件，清除已保存的服务器地址；文件本来不存在不算错误。
 pub fn remove_user(paths: &Paths) -> std::io::Result<()> {
     match fs::remove_file(&paths.config) {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
@@ -164,9 +170,8 @@ fn private_file(path: &Path) -> std::io::Result<fs::File> {
 mod tests {
     use super::*;
 
-    fn bundled() -> Deployment {
-        Deployment {
-            service_url: "https://xuanpu.example.com/console/".parse().unwrap(),
+    fn bundled() -> Bundled {
+        Bundled {
             auth_origins: vec!["https://accounts.feishu.cn/".parse().unwrap()],
         }
     }
@@ -178,18 +183,42 @@ mod tests {
     }
 
     #[test]
-    fn user_service_overrides_bundled_and_keeps_auth_origins() {
+    fn service_comes_only_from_user_and_keeps_bundled_auth_origins() {
         let user = UserSettings {
             service_url: Some("https://work.example.com/console/".parse().unwrap()),
             auth_origins: None,
         };
-        let (config, source) = effective(Some(&bundled()), Some(&user)).unwrap();
+        let config = effective(Some(&bundled()), Some(&user)).unwrap();
         assert_eq!(config.service_url.as_str(), "https://work.example.com/console/");
         assert_eq!(config.auth_origins, bundled().auth_origins);
-        assert_eq!(source, Source::User);
-        let (config, source) = effective(Some(&bundled()), None).unwrap();
-        assert_eq!(config.service_url, bundled().service_url);
-        assert_eq!(source, Source::Bundled);
+        assert!(!needs_setup(Some(&user)));
+    }
+
+    #[test]
+    fn first_launch_without_user_address_asks_for_one() {
+        assert_eq!(effective(Some(&bundled()), None).unwrap_err(), NOT_CONFIGURED);
+        assert!(needs_setup(None));
+        let only_auth = UserSettings {
+            service_url: None,
+            auth_origins: Some(bundled().auth_origins),
+        };
+        assert_eq!(effective(Some(&bundled()), Some(&only_auth)).unwrap_err(), NOT_CONFIGURED);
+        assert!(needs_setup(Some(&only_auth)));
+    }
+
+    #[test]
+    fn bundled_config_rejects_any_service_address() {
+        let ok = parse_bundled(br#"{"auth_origins": ["https://accounts.feishu.cn/"]}"#).unwrap();
+        assert_eq!(ok, bundled());
+        let with_service = br#"{"service_url": "https://work.example.com/console/", "auth_origins": []}"#;
+        assert!(parse_bundled(with_service).is_err());
+        assert!(parse_bundled(br#"{"auth_origins": ["https://accounts.feishu.cn/login"]}"#).is_err());
+    }
+
+    #[test]
+    fn shipped_desktop_json_has_no_service_address() {
+        let shipped = include_bytes!("../desktop.json");
+        assert!(parse_bundled(shipped).is_ok());
     }
 
     #[test]

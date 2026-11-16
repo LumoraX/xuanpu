@@ -10,8 +10,7 @@ const formError = $("#form-error");
 // 读取当前设置并更新服务器一行；返回设置摘要
 async function loadSettings() {
   const view = await invoke("get_settings");
-  const source = view.source === "user" ? "（本机设置）" : view.source === "bundled" ? "（应用内置）" : "";
-  $("#server").textContent = view.service_url ? `${view.service_url}${source}` : "未配置";
+  $("#server").textContent = view.service_url || "未设置";
   $("#url").value = view.service_url || "";
   if (view.config_path) $("#config-path").textContent = view.config_path;
   return view;
@@ -37,6 +36,15 @@ async function connect() {
   } catch (error) {
     showFailure(typeof error === "string" ? error : "请稍后重试，或联系企业管理员。");
   }
+}
+
+// 首次使用：还没有服务器地址，请用户填写，不自动连接
+function showSetup() {
+  status.textContent = "欢迎使用玄圃";
+  detail.textContent = "请填写要连接的玄圃服务器地址。";
+  retry.hidden = true;
+  $("#connection").setAttribute("aria-busy", "false");
+  openForm();
 }
 
 // 展开设置表单
@@ -65,10 +73,9 @@ $("#reset").addEventListener("click", async () => {
   try {
     await invoke("reset_settings");
     await loadSettings();
-    form.hidden = true;
-    connect();
+    showSetup();
   } catch (error) {
-    formError.textContent = typeof error === "string" ? error : "恢复失败";
+    formError.textContent = typeof error === "string" ? error : "清除失败";
     formError.hidden = false;
   }
 });
@@ -78,7 +85,9 @@ $("#logs").addEventListener("click", () => invoke("open_logs").catch(() => {}));
 (async () => {
   try {
     const view = await loadSettings();
-    if (view.error) {
+    if (view.needs_setup) {
+      showSetup();
+    } else if (view.error) {
       showFailure(view.error);
       openForm();
     } else if (view.open_settings) {

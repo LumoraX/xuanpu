@@ -12,12 +12,12 @@ use tauri::{Manager, WebviewWindow};
 use xuanpu_desktop::applog::Logger;
 use xuanpu_desktop::connection::Connection;
 use xuanpu_desktop::policy::{is_bootstrap, Deployment};
-use xuanpu_desktop::settings::{self, Paths, Source, UserSettings};
+use xuanpu_desktop::settings::{self, Bundled, Paths, UserSettings};
 
-/// 客户端状态：内置配置、用户设置合并后的生效配置、日志与连接代次。
+/// 客户端状态：内置登录来源、用户设置合并后的生效配置、日志与连接代次。
 pub struct DesktopState {
-    bundled: Result<Deployment, String>,
-    deployment: RwLock<Result<(Arc<Deployment>, Source), String>>,
+    bundled: Result<Bundled, String>,
+    deployment: RwLock<Result<Arc<Deployment>, String>>,
     paths: Option<Paths>,
     pub log: Logger,
     connection: Connection,
@@ -29,12 +29,12 @@ impl DesktopState {
     /// 当前生效的部署配置。
     pub fn current(&self) -> Result<Arc<Deployment>, String> {
         match self.deployment.read() {
-            Ok(guard) => guard.as_ref().map(|(config, _)| config.clone()).map_err(Clone::clone),
+            Ok(guard) => guard.clone(),
             Err(_) => Err("客户端配置状态不可用，请重启玄圃。".into()),
         }
     }
 
-    /// 从内置配置与 `~/.xuanpu/desktop.json` 重新计算生效配置并记日志。
+    /// 从 `~/.xuanpu/desktop.json` 与内置登录来源重新计算生效配置并记日志。
     fn reload(&self) {
         let user = self
             .paths
@@ -43,14 +43,10 @@ impl DesktopState {
             .transpose()
             .map(Option::flatten);
         let result = user.and_then(|user| {
-            settings::effective(self.bundled.as_ref().ok(), user.as_ref())
-                .map(|(config, source)| (Arc::new(config), source))
+            settings::effective(self.bundled.as_ref().ok(), user.as_ref()).map(Arc::new)
         });
         match &result {
-            Ok((config, source)) => self.log.info(&format!(
-                "生效服务地址 {}（来源：{source:?}）",
-                config.service_url
-            )),
+            Ok(config) => self.log.info(&format!("生效服务地址 {}", config.service_url)),
             Err(error) => self.log.error(&format!("配置不可用：{error}")),
         }
         match self.deployment.write() {
@@ -60,11 +56,11 @@ impl DesktopState {
     }
 }
 
-/// 启动页显示的设置摘要；只含公开信息。
+/// 启动页显示的设置摘要；只含公开信息。`needs_setup` 表示首次使用、尚未填写服务器。
 #[derive(Serialize)]
 struct SettingsView {
     service_url: Option<String>,
-    source: Option<Source>,
+    needs_setup: bool,
     error: Option<String>,
     config_path: Option<String>,
     log_path: Option<String>,
@@ -145,16 +141,18 @@ fn error_chain(error: &dyn std::error::Error) -> String {
 fn get_settings(window: WebviewWindow, state: tauri::State<'_, DesktopState>) -> Result<SettingsView, String> {
     verify_bootstrap(&window)?;
     let open_settings = state.open_settings.lock().map(|mut flag| std::mem::take(&mut *flag)).unwrap_or(false);
-    let (service_url, source, error) = match state.deployment.read() {
-        Ok(guard) => match guard.as_ref() {
-            Ok((config, source)) => (Some(config.service_url.to_string()), Some(*source), None),
-            Err(error) => (None, None, Some(error.clone())),
-        },
-        Err(_) => (None, None, Some("客户端配置状态不可用。".to_string())),
+    let (service_url, error) = match state.current() {
+        Ok(config) => (Some(config.service_url.to_string()), None),
+        Err(error) => (None, Some(error)),
+    };
+    // 用户文件读不了或格式不对时不算首次使用，按错误展示
+    let needs_setup = match state.paths.as_ref().map(|paths| settings::read_user(&paths.config)) {
+        Some(Ok(user)) => settings::needs_setup(user.as_ref()),
+        _ => false,
     };
     Ok(SettingsView {
         service_url,
-        source,
+        needs_setup,
         error,
         config_path: state.paths.as_ref().map(|paths| paths.config.display().to_string()),
         log_path: state.log.path().map(|path| path.display().to_string()),
@@ -184,13 +182,13 @@ fn save_settings(
     Ok(url.to_string())
 }
 
-/// 删除用户设置，回到应用内置地址。
+/// 删除用户设置，清除已保存的服务器地址；之后启动页要求重新填写。
 #[tauri::command]
 fn reset_settings(window: WebviewWindow, state: tauri::State<'_, DesktopState>) -> Result<(), String> {
     verify_bootstrap(&window)?;
     let paths = state.paths.as_ref().ok_or("无法定位用户目录。")?;
     settings::remove_user(paths).map_err(|error| format!("无法删除设置文件：{error}"))?;
-    state.log.info("用户恢复内置服务地址");
+    state.log.info("用户清除了服务器地址");
     state.reload();
     Ok(())
 }
@@ -264,18 +262,15 @@ fn verify_bootstrap(window: &WebviewWindow) -> Result<(), String> {
     }
 }
 
-/// 从签名应用包读取管理员内置配置。
-fn bundled(app: &tauri::App) -> Result<Deployment, String> {
+/// 从签名应用包读取内置的登录来源白名单；应用包里不含服务器地址。
+fn bundled(app: &tauri::App) -> Result<Bundled, String> {
     let directory = app
         .path()
         .resource_dir()
         .map_err(|_| "无法读取客户端资源。")?;
     let data = std::fs::read(directory.join("desktop.json"))
-        .map_err(|_| "应用内没有预置服务器地址。")?;
-    let config: Deployment = serde_json::from_slice(&data)
-        .map_err(|_| "应用内置的连接信息格式不正确。")?;
-    config.validate()?;
-    Ok(config)
+        .map_err(|_| "应用内缺少登录来源配置。")?;
+    settings::parse_bundled(&data)
 }
 
 /// 组装状态：内置配置、用户目录、日志，再计算生效配置。
