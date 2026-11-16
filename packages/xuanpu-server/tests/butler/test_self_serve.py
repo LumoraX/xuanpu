@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -78,6 +79,31 @@ async def test_propose_rejects_business_packages(butler: dict[str, Any], step: A
     receipt = await _say(butler, "帮我处理工单")
     assert receipt["dispatches"] == [] and receipt["session_id"] is None
     assert "企业业务请交给匠人" in str(world.models.requests[-1])
+
+
+async def test_propose_describes_native_draft_formats(butler: dict[str, Any], step: Any) -> None:
+    """propose 的说明带内置能力的准确包名与草稿字段（真实模型验收中缺了它，模型只能猜）。"""
+    world = butler["world"]
+    world.models.script(step(text="好的。"))
+    await _say(butler, "你好")
+    propose = next(t for t in world.models.requests[-1].tools if t.name == "propose")
+    for marker in ("@reminders/create", "reminder字段", "@workspace/create", "workspace_draft",
+                   "kind=todo", "kind=event", "@proactive/action"):
+        assert marker in propose.description, marker
+
+
+async def test_propose_validation_error_names_fields_without_values(
+    butler: dict[str, Any], step: Any,
+) -> None:
+    """草稿结构不对时，错误说明哪个字段错了，便于模型改正；不回显取值。"""
+    world = butler["world"]
+    bad = {"package": "@reminders", "entry": "create", "remind_at": "机密-取值-不回显"}
+    world.models.script(step(calls=[("c1", "propose", {"choice": bad})]), step(text="请再说一下时间。"))
+    receipt = await _say(butler, "明天提醒我")
+    assert receipt["dispatches"] == [] and receipt.get("proposal_id") is None
+    # 只看工具结果本身（模型自己的调用参数里当然有原值）
+    outputs = re.findall(r"output='(invalid_arguments: [^']*)'", str(world.models.requests[-1]))
+    assert outputs == ["invalid_arguments: remind_at: Extra inputs are not permitted"]
 
 
 async def test_butler_tools_have_no_business_or_host_tools(butler: dict[str, Any]) -> None:

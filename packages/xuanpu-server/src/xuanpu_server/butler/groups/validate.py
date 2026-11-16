@@ -21,12 +21,18 @@ if TYPE_CHECKING:
 
 
 def parse_plan(raw: Any, config: ButlerConfig) -> GroupPlan:
-    """严格解析并核对上限；结构错误报请求错误，只给错误位置不回显内容。"""
+    """严格解析并核对上限；结构错误报请求错误，给错误位置与原因，不回显取值。
+
+    整份计划级别的规则（如第一步不能带 when）没有字段位置，必须带上原因，
+    否则模型只看到一句空的「格式不对」，无从改正（真实模型验收发现）。
+    """
     try:
         plan = GroupPlan.model_validate(raw)
     except ValidationError as exc:
-        where = sorted({".".join(str(p) for p in err["loc"]) for err in exc.errors()})
-        raise InvalidRequestError(f"编组计划格式不对：{', '.join(where)[:300]}") from exc
+        errors = exc.errors(include_url=False, include_input=False, include_context=False)
+        where = sorted({f"{'.'.join(str(p) for p in err['loc']) or '计划'}（{err['msg']}）"
+                        for err in errors})
+        raise InvalidRequestError(f"编组计划格式不对：{'; '.join(where)[:300]}") from exc
     if len(plan.steps) > config.max_group_steps:
         raise InvalidRequestError(f"编组计划最多 {config.max_group_steps} 步")
     for step in plan.steps:
