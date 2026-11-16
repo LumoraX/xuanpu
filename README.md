@@ -4,7 +4,7 @@
 
 > 玄圃：昆仑山上众神居住的园子。泰逢是山海经里的神，玄圃是承载它们的地方。
 
-> **状态**：第一版 + P0 底座升级 + P1 用户身份（依赖 taifeng 2026.10.1.10）。业务包规范、平台服务、命令行、Python 客户端、控制台可用。P0 支持 Postgres 会话主存、对象存储归档、停止生成、连接器沙盒与远端 MCP、指标与配额修改；P1 增加飞书登录、用户管理、会话归属与隔离、代员工调用、按员工审计用量、离职事件与每日对账。现支持 Responses 模型、本地持久化启动、普通员工自然语言入口与本人会话历史。个人工作站提供真实持久的文件夹/文件版本、事项、待办、日程、个人能力与助手设置；对话附件与模块共用个人空间，写入建议须本人确认。已增加[主动业务助理](docs/guides/proactive-assistant.md)：从对话识别承诺、核实进展、安排提醒并在完成后停止。玄圃原生提醒与通知中心支持一次/每日/每周、后台持久调度、站内通知及可选飞书出口。真实模型的样例工单查询、脚本和审批写入已验证；飞书提醒消息尚未向真实员工发送验收。已用 Docker 部署到一台内部服务器并验收（单实例，尚无公网域名），见[本地试用](docs/guides/local-trial.md)与 [Docker 部署](docs/guides/docker-deployment.md)。MCP 网关暂缓（ADR 0006）。已知限制见[架构总览](docs/architecture/README.md#已知限制)。
+> **状态**：第一版 + P0 底座升级 + P1 用户身份（依赖 taifeng 2026.11.14.1，以 `external/taifeng` 子模块指针为准）。业务包规范、平台服务、命令行、Python 客户端、控制台可用。P0 支持 Postgres 会话主存、对象存储归档、停止生成、连接器沙盒与远端 MCP、指标与配额修改；P1 增加飞书登录、用户管理、会话归属与隔离、代员工调用、按员工审计用量、离职事件与每日对账。现支持 Responses 模型、本地持久化启动、普通员工自然语言入口与本人会话历史。个人工作站提供真实持久的文件夹/文件版本、事项、待办、日程、个人能力与助手设置；对话附件与模块共用个人空间，写入建议须本人确认。已增加[主动业务助理](docs/guides/proactive-assistant.md)：从对话识别承诺、核实进展、安排提醒并在完成后停止。玄圃原生提醒与通知中心支持一次/每日/每周、后台持久调度、站内通知及可选飞书出口。真实模型的样例工单查询、脚本和审批写入已验证；飞书提醒消息尚未向真实员工发送验收。已用 Docker 部署到一台内部服务器并验收（单实例，尚无公网域名），见[本地试用](docs/guides/local-trial.md)与 [Docker 部署](docs/guides/docker-deployment.md)。MCP 网关暂缓（ADR 0006）。已知限制见[架构总览](docs/architecture/README.md#已知限制)。
 
 ## 定位：像用数据库一样用 agent
 
@@ -76,13 +76,31 @@ uv run xuanpu pack examples/support-desk -o support-desk.zip
 ## 开发
 
 ```bash
+git clone --recurse-submodules https://github.com/LumoraX/xuanpu.git
+# 已检出的仓库：git submodule update --init
 uv sync --all-packages --all-extras
 uv run pytest
 uv run ruff check --select F,S108,I,TC packages
 uv run mypy packages/*/src
 ```
 
-内核 `taifeng`（≥ 2026.10.1.10）从 PyPI 安装。`taifeng-sandbox`、`taifeng-stores` 尚未发布到 PyPI，开发期从同级目录取源码：这两个仓库与 `xuanpu` 要检出在同一个父目录下。
+内核 `taifeng` 与适配包 `taifeng-sandbox`、`taifeng-stores` 是 `external/` 下的 git submodule，以 editable 方式装进工作区（[ADR 0017](docs/decisions/0017-kernel-as-git-submodules.md)）。改动它们立即对平台生效，可以在本仓库里联调。
+
+三个子模块也是各自独立的仓库，可以单独开发：
+
+```bash
+cd external/taifeng
+git switch main && git pull           # 子模块默认停在固定 commit（detached HEAD），先切到分支再改
+# …改代码，在子模块里按它自己的 AGENTS.md 跑门禁…
+git commit -am "…" && git push        # 先推上游仓库
+
+cd ../..
+uv lock                               # 版本号变了才会改锁文件
+uv run pytest                         # 平台全量门禁对新组合再跑一遍
+git add external/taifeng uv.lock && git commit -m "升级 taifeng 子模块到 …"
+```
+
+子模块指针只能指向上游已推送的 commit，否则别人检出时取不到。`git submodule update --remote external/<名>` 可把子模块拉到上游分支最新。
 
 测试的前提：
 

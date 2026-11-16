@@ -552,8 +552,12 @@ async def test_rejected_remote_write_leaves_a_gate_record(
 
 
 @pytest.mark.parametrize(
-    ("tool", "kind"),
-    [("bad_code", "ValueError"), ("null_code", "TypeError"), ("not_utf8", "UnicodeDecodeError")],
+    ("tool", "detail"),
+    [
+        ("bad_code", "[-32000] invalid JSON-RPC error fields"),
+        ("null_code", "[-32000] invalid JSON-RPC error fields"),
+        ("not_utf8", "[-32000] response body is not valid JSON"),
+    ],
 )
 async def test_malformed_remote_responses_still_pass_the_gate(
     world: Any,
@@ -563,12 +567,12 @@ async def test_malformed_remote_responses_still_pass_the_gate(
     fake_remote_mcp: FakeRemoteMcp,
     caplog: pytest.LogCaptureFixture,
     tool: str,
-    kind: str,
+    detail: str,
 ) -> None:
     """远端回了内核解析不了的响应（error.code 是回显凭据的字符串或 null、响应体不是 UTF-8）。
 
-    内核解析时冒出的异常不在预料之中：调用照样记为失败、留下一条过闸记录，交给模型的只有
-    异常类型；模型的提示词、全部审计与日志里都没有明文。
+    内核把坏形状统一归为 ``McpToolError``，文本是内核写死的说明、不含远端内容（内核
+    ADR 0126）：调用照样记为失败、留下一条过闸记录；模型的提示词、全部审计与日志里都没有明文。
     """
     caplog.set_level(logging.DEBUG)
     session_id = await ready(world, serve, fake_remote_mcp)
@@ -576,7 +580,7 @@ async def test_malformed_remote_responses_still_pass_the_gate(
     assert events[-1].msg.kind == "turn_completed"
     result = output_of(events)
     assert result["is_error"] is True
-    assert result["output"] == f"connector_error: 连接器的响应无法处理：{kind}"
+    assert result["output"] == f"connector_error: {detail}"
     gate = await gate_records(world)
     assert [(r.data["tool"], r.data["decision"], r.data["is_error"]) for r in gate] == [
         (tool, "allowed", True)
@@ -595,13 +599,14 @@ async def test_kernel_logs_of_remote_sse_noise_keep_no_plaintext(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """远端的 SSE 流里夹了一条解析不了、回显凭据的 data：内核照常跳过它并记日志，日志里只有
-    长度没有内容；后面的响应照常交给模型。"""
+    类型与长度没有内容（平台的日志守卫也挂在记这条日志的模块上）；后面的响应照常交给模型。"""
     caplog.set_level(logging.DEBUG)
     session_id = await ready(world, serve, fake_remote_mcp)
     events = await ask(world, step, read_turn, session_id, [("c1", "mcp__docs__sse_noise", {})])
     assert output_of(events)["output"] == "噪声之后的结果"
-    [noise] = [r for r in caplog.records if "invalid SSE JSON" in r.getMessage()]
-    assert noise.getMessage().endswith("内容不记>")
+    [noise] = [r for r in caplog.records if "invalid frame" in r.getMessage()]
+    assert noise.name == "taifeng.mcp.message_decode"
+    assert "内容不记>" in noise.getMessage()
     assert TOKEN not in caplog.text
 
 

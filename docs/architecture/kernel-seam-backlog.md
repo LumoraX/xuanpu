@@ -1,12 +1,15 @@
 # 内核对接口缺口清单（活文档）
 
 > 平台与适配包只依赖 taifeng 稳定层（`taifeng.__all__`）。下面是平台实现时核实到的缺口，
-> 依据是本轮验证的 taifeng `2026.10.1.11`。每一项都应回 taifeng 按其 ADR 0017 立项；立项前平台按「现行处理」一栏绕开，
+> 依据是本轮验证的 taifeng `2026.11.14.1`（`external/taifeng` 子模块，ADR 0017）。每一项都应回 taifeng 按其 ADR 0017 立项；立项前平台按「现行处理」一栏绕开，
 > 不 import 私有模块、不 monkeypatch。
 >
 > 某项在内核落地后，从本表删除并更新对应实现。**编号不重排**：ADR 与代码注释按编号引用这些项，
 > 已落地的项直接从表里删掉，编号空着（原文见本文件的 git 历史）。第 1、3–14 项已在 taifeng 2026.10.1.10 落地（内核 ADR 0109–0116），
 > 平台在 P0 里换用了稳定层的接口。
+> 第 24–29 项（MCP 客户端的握手取消、日志只记元数据、坏响应归类、会话过期恢复、关闭顺序）已在
+> taifeng 2026.11.14.1 落地（内核 ADR 0122–0128）。平台对应的兜底（内核 MCP 日志守卫、远端调用处接住一切异常、
+> 连接器沙盒强杀起过的进程、`close()` 外接住平台侧失败）保留为纵深防御：`xuanpu-server` 的版本下限仍允许旧内核。
 
 | # | 缺口 | 影响 | 现行处理 |
 | --- | --- | --- | --- |
@@ -19,12 +22,6 @@
 | 20 | 尚未入 pending 的取消可静默无效 | 刚提交就停止不能直接判定已停止 | 平台等待受理，到期返回 unconfirmed；prepare 阶段另有停止意图；preserve_suspension=True 消除转挂起清除待办的竞态 |
 | 22 | 被 `CancelTurn` 打断的那次采样没有用量，也没有估算（`turn_completed` 的 `usage` 为 0） | 网关照样按 prompt 收费；计 0 的话，长上下文加「收到第一个增量就停」可以绕过当天的 token 配额 | 平台按 `introspect()["context_tokens"]` 估算计入 `input_tokens`，审计记一条 `usage_estimated`，指标 `xuanpu_usage_estimated_total` 计数 |
 | 23 | 纯过期哨兵与未核销集合求交为空时，内核静默让位 | 内核定时裁决没有独立结果事件 | 平台不把内部哨兵当用户请求；根系统 abort 已由 2026.10.1.11 的 suspension_resolved.aborted=True 明确结束 |
-| 24 | `McpStdioClient.spawn` 握手阶段只捕获 `Exception`：被取消（外层 `wait_for` 的启动时限到了）时客户端不关闭，已经起来的进程泄漏 | 每次启动超时漏一个连接器进程 | 平台的本机连接器沙盒记下经执行器起过的全部进程，关运行时时逐个强杀；容器后端随容器销毁 |
-| 25 | stdio 客户端把连接器 stdout 上的非 JSON 行原样、不限长度写进日志（`logger.warning("mcp: invalid JSON: %r", line)`） | 连接器可控的内容（可能带着注入给它的凭据）原样进平台日志 | 平台给内核 MCP 的 logger 挂过滤器：字符串与字节串只记长度，附带的异常只记类型（`runtime/connector_process.py`）。代价是这些日志里看不到内容 |
-| 26 | HTTP 客户端（`McpHttpClient`）把解析不了的 SSE 数据截前 200 字符按 `%r` 写日志（`_decode_message`），把远端给的不认识的响应 id 原样写日志（`unexpected response id=%r`） | 远端可控的内容原样进日志；内核日志记录里不知道是哪个连接器、该用哪些密钥脱敏 | 同第 25 项的过滤器。建议内核只记长度，或给宿主一个脱敏钩子 |
-| 27 | `McpHttpClient._unwrap` 对 `error.code` 直接做 `int()`（字符串抛 `ValueError`，`null` 抛 `TypeError`）；`_read_response` 不捕获 `UnicodeDecodeError` | 远端回一个形状不对的响应，冒出的是 `McpToolError` 之外的异常，越过调用方按 `McpToolError` 写的错误处理 | 平台在远端 MCP 的调用处接住一切异常：交给模型与审计的只有异常类型，日志里记按值脱敏后的文本 |
-| 28 | `McpHttpClient` 收到 404（远端的 MCP 会话已过期）不重新握手 | 远端重启或回收会话之后，这个运行时里对它的调用一直失败，直到运行时被回收重新组装 | 未绕开：调用失败照常记过闸记录并交给模型；运行时空闲回收（`runtime_idle_seconds`）后重新组装才恢复 |
-| 29 | `McpHttpClient.close()` 发 `DELETE` 结束会话时只接 `httpx.HTTPError`；抛别的异常（例如平台的凭据传输取不到密钥）时跳过关闭自己的 httpx 客户端 | 连接池泄漏 | 平台在 `close()` 外接住平台侧的失败并记告警，无论如何都关掉自己建的传输（连接池在传输里） |
 
 ## 另外的约定说明
 

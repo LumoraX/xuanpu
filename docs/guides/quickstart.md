@@ -13,9 +13,10 @@
 | Python 3.12+ 与 [uv](https://docs.astral.sh/uv/) | |
 | macOS，或装了 `bubblewrap` 的 Linux | 脚本在操作系统级的沙盒里跑。Linux 还要允许创建用户命名空间 |
 | 一个兼容 OpenAI Chat 接口的模型地址 | 要支持流式输出与工具调用。LiteLLM Proxy、各家的兼容端点都可以 |
-| 三个仓库检出在同一个父目录下 | `xuanpu`、`taifeng-sandbox`、`taifeng-stores`。后两个还没发布到 PyPI，开发期从同级目录取源码；内核 `taifeng` 从 PyPI 安装 |
+| 带子模块检出 `xuanpu` | 内核 `taifeng` 与 `taifeng-sandbox`、`taifeng-stores` 是 `external/` 下的子模块，从源码安装 |
 
 ```bash
+git clone --recurse-submodules https://github.com/LumoraX/xuanpu.git   # 已检出则 git submodule update --init
 cd xuanpu
 uv sync --all-packages --all-extras
 ```

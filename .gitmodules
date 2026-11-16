@@ -1,0 +1,10 @@
+[submodule "external/taifeng"]
+	path = external/taifeng
+	url = https://github.com/LumoraX/taifeng.git
+[submodule "external/taifeng-sandbox"]
+	path = external/taifeng-sandbox
+	url = https://github.com/LumoraX/taifeng-sandbox.git
+	branch = ci/xuanpu-runtime-20261029
+[submodule "external/taifeng-stores"]
+	path = external/taifeng-stores
+	url = https://github.com/LumoraX/taifeng-stores.git

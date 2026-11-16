@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
+SUBMODULES = ('taifeng', 'taifeng-sandbox', 'taifeng-stores')
 
 
 def _prepare_checkout(tmp_path: Path, env_file: str) -> tuple[Path, Path]:
@@ -25,6 +26,10 @@ def _prepare_checkout(tmp_path: Path, env_file: str) -> tuple[Path, Path]:
     (checkout / 'examples/ticket-api/server.py').write_text('样例输入')
     (checkout / 'config.json').write_text('must-not-enter-image')
     (directory / '.env').write_text(env_file)
+    # 内核与适配包的子模块只放占位 pyproject，构建由假 uv 接管
+    for package in SUBMODULES:
+        (checkout / 'external' / package).mkdir(parents=True)
+        (checkout / 'external' / package / 'pyproject.toml').write_text('占位')
     binaries = tmp_path / 'bin'
     binaries.mkdir()
     uv = binaries / 'uv'
@@ -56,9 +61,12 @@ if [[ "$1" == push && "$PUSH_FAILS" == yes ]]; then exit 19; fi
 
 
 def _run_deploy(tmp_path: Path, env_file: str, *, push_fails: bool = False,
-                image: str | None = 'registry/example') -> tuple[subprocess.CompletedProcess[str], Path]:
-    """在隔离副本里跑发布脚本，返回结果与部署目录。"""
+                image: str | None = 'registry/example',
+                missing_submodule: str | None = None) -> tuple[subprocess.CompletedProcess[str], Path]:
+    """在隔离副本里跑发布脚本，返回结果与部署目录；可指定一个子模块模拟未初始化。"""
     directory, binaries = _prepare_checkout(tmp_path, env_file)
+    if missing_submodule is not None:
+        shutil.rmtree(directory.parent / 'external' / missing_submodule)
     env = {key: value for key, value in os.environ.items() if key != 'IMAGE'}
     env.update(PATH=f'{binaries}:{os.environ["PATH"]}', PUSH_FAILS='yes' if push_fails else 'no',
                VERSION='release-test', DOCKER_CALLS=str(tmp_path / 'docker-calls.log'))
@@ -95,6 +103,15 @@ def test_missing_image_stops_before_build(tmp_path: Path) -> None:
     result, _ = _run_deploy(tmp_path, 'PROXY_NETWORK=proxy-test\n', image=None)
     assert result.returncode == 2
     assert '需要 IMAGE' in result.stderr
+    assert not (tmp_path / 'docker-calls.log').exists()
+
+
+@pytest.mark.parametrize('package', SUBMODULES)
+def test_missing_submodule_stops_before_build(tmp_path: Path, package: str) -> None:
+    """子模块未初始化时直接报错，不打出缺内核的镜像。"""
+    result, _ = _run_deploy(tmp_path, 'IMAGE=registry/example\n', missing_submodule=package)
+    assert result.returncode == 2
+    assert f'缺少子模块 external/{package}' in result.stderr
     assert not (tmp_path / 'docker-calls.log').exists()
 
 

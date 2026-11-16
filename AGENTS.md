@@ -42,6 +42,7 @@ taifeng 是内核，xuanpu 是建在内核上的发行版；两者的分界见 `
 ## 常用命令
 
 ```bash
+git submodule update --init                            # external/ 下的 taifeng 内核与适配包（ADR 0017）
 uv sync --all-packages
 uv run pytest                                          # 全量测试
 uv run ruff check --select F,S108,I,TC packages        # 门禁 lint

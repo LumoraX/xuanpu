@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -1958,8 +1958,8 @@ wheels = [
 
 [[package]]
 name = "taifeng"
-version = "2026.10.1.11"
-source = { registry = "https://pypi.org/simple" }
+version = "2026.11.14.1"
+source = { editable = "external/taifeng" }
 dependencies = [
     { name = "anyio" },
     { name = "httpx" },
@@ -1968,15 +1968,38 @@ dependencies = [
     { name = "rfc8785" },
     { name = "sniffio" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/71/e2/49e09c14ab8f54bfba1f8c6512ca40dc9b657077ae727cce13bf63d35a83/taifeng-2026.10.1.11.tar.gz", hash = "sha256:9e0f596fa87bf10cdfef212cd13b7cce78c8ff6da6598fd4b2bd77ad1eae9c3a", size = 3906306, upload-time = "2026-10-21T01:10:10.376Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/78/c3/35e0fcfed5d17818db7866c3a2242a1a0e87a5314f32b3899153ec16b1d0/taifeng-2026.10.1.11-py3-none-any.whl", hash = "sha256:cb279095e1c24d0dff1adb522ad75cfbd7843f40c6c238ce03b2fd39b6d1a183", size = 1173894, upload-time = "2026-10-21T01:10:08.639Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "anthropic", marker = "extra == 'anthropic'", specifier = ">=0.34" },
+    { name = "anyio", specifier = ">=4.4" },
+    { name = "fastapi", marker = "extra == 'dev'", specifier = ">=0.115" },
+    { name = "google-genai", marker = "extra == 'google'", specifier = ">=0.3" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "litellm", marker = "extra == 'litellm'", specifier = ">=1.50" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
+    { name = "openai", marker = "extra == 'openai'", specifier = ">=1.40" },
+    { name = "opentelemetry-api", marker = "extra == 'telemetry-otel'", specifier = ">=1.27" },
+    { name = "opentelemetry-exporter-otlp", marker = "extra == 'telemetry-otel'", specifier = ">=1.27" },
+    { name = "opentelemetry-sdk", marker = "extra == 'telemetry-otel'", specifier = ">=1.27" },
+    { name = "packaging", marker = "extra == 'dev'", specifier = ">=24" },
+    { name = "pydantic", specifier = ">=2.12" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "rfc8785", specifier = ">=0.1.4,<1" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.5" },
+    { name = "sniffio", specifier = ">=1.3" },
+    { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0" },
+    { name = "uvicorn", marker = "extra == 'dev'", specifier = ">=0.30" },
 ]
+provides-extras = ["openai", "anthropic", "google", "litellm", "telemetry-otel", "dev"]
 
 [[package]]
 name = "taifeng-sandbox"
 version = "2026.10.21.1"
-source = { editable = "../taifeng-sandbox" }
+source = { editable = "external/taifeng-sandbox" }
 dependencies = [
     { name = "taifeng" },
 ]
@@ -1994,7 +2017,7 @@ provides-extras = ["local", "docker", "dev"]
 [[package]]
 name = "taifeng-stores"
 version = "2026.9.29.15"
-source = { editable = "../taifeng-stores" }
+source = { editable = "external/taifeng-stores" }
 dependencies = [
     { name = "taifeng" },
 ]
@@ -2314,10 +2337,10 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.6" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "taifeng", specifier = ">=2026.10.1.11" },
-    { name = "taifeng-sandbox", editable = "../taifeng-sandbox" },
-    { name = "taifeng-stores", editable = "../taifeng-stores" },
-    { name = "taifeng-stores", extras = ["postgres"], marker = "extra == 'postgres'", editable = "../taifeng-stores" },
+    { name = "taifeng", editable = "external/taifeng" },
+    { name = "taifeng-sandbox", editable = "external/taifeng-sandbox" },
+    { name = "taifeng-stores", editable = "external/taifeng-stores" },
+    { name = "taifeng-stores", extras = ["postgres"], marker = "extra == 'postgres'", editable = "external/taifeng-stores" },
     { name = "uvicorn", specifier = ">=0.29" },
     { name = "xuanpu-spec", editable = "packages/xuanpu-spec" },
 ]

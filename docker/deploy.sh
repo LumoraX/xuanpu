@@ -23,11 +23,15 @@ cd "$REPO_DIR"
 for package in xuanpu-spec xuanpu-server xuanpu-sdk-py xuanpu-cli xuanpu-console; do
     uv build --wheel "packages/$package" --out-dir "$BUILD_CONTEXT/wheels"
 done
-for package in taifeng-sandbox taifeng-stores; do
-    uv build --wheel "$REPO_DIR/../$package" --out-dir "$BUILD_CONTEXT/wheels"
+# 内核与适配包取自 external/ 下的子模块；未初始化时直接失败，避免打出空包
+for package in taifeng taifeng-sandbox taifeng-stores; do
+    [[ -f "$REPO_DIR/external/$package/pyproject.toml" ]] || {
+        echo "缺少子模块 external/${package}，先执行 git submodule update --init" >&2; exit 2; }
+    uv build --wheel "$REPO_DIR/external/$package" --out-dir "$BUILD_CONTEXT/wheels"
 done
 uv export --frozen --no-dev --all-packages --all-extras --no-emit-workspace \
-    --no-emit-package taifeng-sandbox --no-emit-package taifeng-stores --no-editable \
+    --no-emit-package taifeng --no-emit-package taifeng-sandbox \
+    --no-emit-package taifeng-stores --no-editable \
     --output-file "$BUILD_CONTEXT/requirements.txt"
 cp "$DEPLOY_DIR/Dockerfile" "$DEPLOY_DIR/trial_tickets.py" "$BUILD_CONTEXT/"
 cp "$REPO_DIR/examples/ticket-api/server.py" "$BUILD_CONTEXT/ticket-api.py"

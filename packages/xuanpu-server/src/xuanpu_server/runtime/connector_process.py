@@ -35,6 +35,9 @@ _KERNEL_MCP_LOGGERS = (
     "taifeng.mcp.server_messages",
     "taifeng.mcp.bridge",
     "taifeng.mcp.cancellation",
+    # taifeng 2026.11 起坏帧解析与清理失败分别从这两个模块记日志（内核 ADR 0124、0128）
+    "taifeng.mcp.message_decode",
+    "taifeng.mcp.cleanup",
 )
 
 logger = logging.getLogger(__name__)

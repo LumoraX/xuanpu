@@ -19,3 +19,4 @@
 | [0013](0013-connector-sandbox-and-remote-mcp.md) | 连接器进沙盒、远端 MCP 直连 —— stdio 连接器在单独的连接器沙盒里运行，`transport: remote` 不等网关 | Accepted |
 | [0014](0014-enterprise-core-and-durable-reminders.md) | 玄圃企业核心、持久提醒与渠道分离 | Accepted（修订0009决策1/3与0012决策5，旧文保留历史） |
 | [0015](0015-proactive-business-assistant.md) | 主动业务理解与持久规则分离 | Accepted（补充0014，纯提醒继续独立于模型） |
+| [0017](0017-kernel-as-git-submodules.md) | 内核与适配包以 git submodule 纳入 —— taifeng、taifeng-sandbox、taifeng-stores 放在 external/ | Accepted |

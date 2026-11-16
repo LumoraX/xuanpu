@@ -4,11 +4,14 @@
 [tool.uv.workspace]
 members = ["packages/*"]
 
-# 两个适配包尚未发布到 PyPI，开发期从同级目录取源码；发布后删掉这两行，改由版本号约束。
-# 内核 taifeng 从 PyPI 取（xuanpu-server 声明了版本下限）。
+# 内核 taifeng 与两个适配包以 git submodule 形式放在 external/ 下，开发期从子模块取源码
+# （editable），可在本仓库内联调，也可进入子模块目录独立开发、提交、推送各自仓库。
+# 发布产物仍由 xuanpu-server 的版本下限约束；子模块指针即本仓库验证过的组合。
+# 不列入 workspace members：三者各有自己的 pyproject、锁文件与门禁。
 [tool.uv.sources]
-taifeng-sandbox = { path = "../taifeng-sandbox", editable = true }
-taifeng-stores = { path = "../taifeng-stores", editable = true }
+taifeng = { path = "external/taifeng", editable = true }
+taifeng-sandbox = { path = "external/taifeng-sandbox", editable = true }
+taifeng-stores = { path = "external/taifeng-stores", editable = true }
 xuanpu-spec = { workspace = true }
 xuanpu-server = { workspace = true }
 xuanpu-cli = { workspace = true }
@@ -39,6 +42,8 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# 子模块各有自己的 lint 配置与门禁，不归本仓库检查
+extend-exclude = ["external"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "ASYNC", "S", "B", "C4", "RET", "SIM", "TC"]

@@ -10,7 +10,7 @@ cp .env.example .env   # 首次：填 IMAGE（镜像仓库，不含 tag）与 PR
 ./deploy.sh
 ```
 
-构建依赖 uv、Docker Buildx，以及相邻的 taifeng-sandbox/taifeng-stores 源码。默认目标 linux/amd64。镜像仓库取环境变量 `IMAGE`，没有则取 `docker/.env` 里的 `IMAGE`；两处都没有时脚本报「需要 IMAGE」并退出，不会推到任何默认仓库。使用 Docker 已登录的仓库身份。推送成功后只改写 `.env` 的 IMAGE 与 VERSION，`PROXY_NETWORK` 等其他项原样保留。`OUTPUT_MODE=load ./deploy.sh` 仅构建到本机，不更新发布版本。镜像中包含控制台，服务器不需要另启前端服务。
+构建依赖 uv、Docker Buildx，以及已初始化的子模块 `external/taifeng`、`external/taifeng-sandbox`、`external/taifeng-stores`（未初始化时脚本报错退出，先执行 `git submodule update --init`），三者从子模块打成 wheel 装进镜像。默认目标 linux/amd64。镜像仓库取环境变量 `IMAGE`，没有则取 `docker/.env` 里的 `IMAGE`；两处都没有时脚本报「需要 IMAGE」并退出，不会推到任何默认仓库。使用 Docker 已登录的仓库身份。推送成功后只改写 `.env` 的 IMAGE 与 VERSION，`PROXY_NETWORK` 等其他项原样保留。`OUTPUT_MODE=load ./deploy.sh` 仅构建到本机，不更新发布版本。镜像中包含控制台，服务器不需要另启前端服务。
 
 ## 服务器布局
 
