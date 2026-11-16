@@ -20,7 +20,8 @@ jobs:
     name: 全量测试 (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     # 财务及强制退出恢复纳入同一全量，保留租约自然到期的验证时间。
-    timeout-minutes: 45
+    # 全量在托管 runner 上约 38–41 分钟，慢的 runner 上 Python 3.12 超过 45 分钟被取消，故留到 60。
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
