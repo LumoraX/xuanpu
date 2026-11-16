@@ -14,27 +14,9 @@ pub fn create_window(app: &AppHandle) -> tauri::Result<()> {
     WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("玄圃").inner_size(1280.0, 860.0).min_inner_size(800.0, 600.0)
         .disable_drag_drop_handler()
-        .on_navigation(move |url| {
-            if is_bootstrap(url) { return true; }
-            // 每次导航都读当前生效配置：用户改了服务器地址后立即按新来源判断
-            let state = nav_app.state::<DesktopState>();
-            match state.current().ok().map(|value| value.navigation(url)) {
-                Some(Navigation::Internal) => true,
-                Some(Navigation::External) => { open_external(&state, url); false }
-                _ => { state.log.info(&format!("拦截导航 {}", url.origin().ascii_serialization())); false }
-            }
-        })
+        .on_navigation(move |url| handle_navigation(&nav_app, url))
         .on_new_window(move |url, _| {
-            let state = popup_app.state::<DesktopState>();
-            match state.current().ok().map(|value| value.navigation(&url)) {
-                Some(Navigation::Internal) => {
-                    if let Some(window) = popup_app.get_webview_window("main") {
-                        if window.navigate(url).is_err() { state.log.error("无法打开业务页面"); }
-                    }
-                }
-                Some(Navigation::External) => open_external(&state, &url),
-                _ => state.log.info(&format!("拦截新窗口 {}", url.origin().ascii_serialization())),
-            }
+            handle_new_window(&popup_app, &url);
             NewWindowResponse::Deny
         })
         .on_page_load(|window, payload| {
@@ -70,6 +52,75 @@ pub fn create_window(app: &AppHandle) -> tauri::Result<()> {
             true
         }).build()?;
     Ok(())
+}
+
+/// 主窗口导航：登录入口改写为桌面模式，接力登录换取时切到前台，其余按来源策略处置。
+fn handle_navigation(app: &AppHandle, url: &url::Url) -> bool {
+    if is_bootstrap(url) {
+        return true;
+    }
+    // 每次导航都读当前生效配置：用户改了服务器地址后立即按新来源判断
+    let state = app.state::<DesktopState>();
+    let Ok(config) = state.current() else {
+        state.log.info(&format!("拦截导航 {}", url.origin().ascii_serialization()));
+        return false;
+    };
+    if let Some(target) = config.desktop_login(url) {
+        // 拦下原导航，改走带 client=desktop 的浏览器接力登录
+        state.log.info("登录入口改写为桌面模式");
+        navigate_main(app, &state, target);
+        return false;
+    }
+    if config.is_login_redeem(url) {
+        bring_to_front(app, &state);
+    }
+    match config.navigation(url) {
+        Navigation::Internal => true,
+        Navigation::External => {
+            open_external(&state, url);
+            false
+        }
+        Navigation::Deny => {
+            state.log.info(&format!("拦截导航 {}", url.origin().ascii_serialization()));
+            false
+        }
+    }
+}
+
+/// 新窗口请求：登录来源交给系统浏览器授权，企业服务同源在主窗口打开，主窗口不弹新窗。
+fn handle_new_window(app: &AppHandle, url: &url::Url) {
+    let state = app.state::<DesktopState>();
+    match state.current().ok().map(|config| config.popup(url)) {
+        Some(Navigation::Internal) => navigate_main(app, &state, url.clone()),
+        Some(Navigation::External) => open_external(&state, url),
+        _ => state.log.info(&format!("拦截新窗口 {}", url.origin().ascii_serialization())),
+    }
+}
+
+/// 让主窗口导航到指定地址；失败只记日志。
+fn navigate_main(app: &AppHandle, state: &DesktopState, url: url::Url) {
+    if let Some(window) = app.get_webview_window("main") {
+        if window.navigate(url).is_err() {
+            state.log.error("无法打开业务页面");
+        }
+    }
+}
+
+/// 浏览器接力登录完成后把主窗口切回前台；任一步失败只记日志，不影响登录导航。
+fn bring_to_front(app: &AppHandle, state: &DesktopState) {
+    let Some(window) = app.get_webview_window("main") else {
+        state.log.error("找不到主窗口，无法切到前台");
+        return;
+    };
+    if let Err(error) = window.unminimize() {
+        state.log.error(&format!("无法还原主窗口：{error}"));
+    }
+    if let Err(error) = window.show() {
+        state.log.error(&format!("无法显示主窗口：{error}"));
+    }
+    if let Err(error) = window.set_focus() {
+        state.log.error(&format!("无法聚焦主窗口：{error}"));
+    }
 }
 
 /// 外部文档交给默认浏览器；协议已由导航策略限制为 HTTPS。

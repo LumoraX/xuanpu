@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from contextlib import contextmanager
 from dataclasses import replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from xuanpu_server.errors import ConflictError, NotFoundError
 from xuanpu_server.identity.models import (
@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
     from xuanpu_server.controlplane import ControlPlaneStore
     from xuanpu_server.identity.models import (
+        DesktopHandoff,
         DisabledReason,
         ExternalIdentity,
         IdentityProvider,
@@ -59,6 +60,7 @@ class InMemoryIdentityStore:
         self._configs: dict[tuple[str, str], TenantIdentityConfig] = {}
         self._logins: dict[str, LoginSession] = {}
         self._attempts: dict[str, LoginAttempt] = {}
+        self._handoffs: dict[str, DesktopHandoff] = {}
         self._usage: dict[tuple[str, str, str], UserUsageRecord] = {}
         self._reconcile: dict[str, ReconcileState] = {}
         reminders = control_plane.reminder_store
@@ -464,16 +466,56 @@ class InMemoryIdentityStore:
             return None
         return attempt
 
-    async def purge_expired_logins(self, now: float) -> int:
-        """删除全部租户里过期的登录会话与登录尝试。"""
+    # --- 桌面接力 ---
+
+    async def create_desktop_handoff(self, handoff: DesktopHandoff) -> None:
+        """登记桌面接力；两个摘要都不能与已有记录重复。"""
+        await self._require_tenant(handoff.tenant_id)
         async with self._lock:
-            sessions = [key for key, item in self._logins.items() if item.expires_at <= now]
-            attempts = [key for key, item in self._attempts.items() if item.expires_at <= now]
-            for token_hash in sessions:
-                del self._logins[token_hash]
-            for state in attempts:
-                del self._attempts[state]
-            return len(sessions) + len(attempts)
+            nonces = {item.nonce_hash for item in self._handoffs.values()}
+            if handoff.cookie_hash in self._handoffs or handoff.nonce_hash in nonces:
+                raise ConflictError("桌面接力记录冲突")
+            self._handoffs[handoff.cookie_hash] = handoff
+
+    async def get_desktop_handoff(self, cookie_hash: str, *, now: float) -> DesktopHandoff | None:
+        """按 cookie 摘要查接力记录；过期的不返回。"""
+        handoff = self._handoffs.get(cookie_hash)
+        return handoff if handoff is not None and handoff.expires_at > now else None
+
+    async def confirm_desktop_handoff(
+        self, nonce_hash: str, *, now: float
+    ) -> DesktopHandoff | None:
+        """把未确认、未过期的记录标为已确认。"""
+        async with self._lock:
+            found = next(
+                (item for item in self._handoffs.values() if item.nonce_hash == nonce_hash), None
+            )
+            if found is None or found.confirmed or found.expires_at <= now:
+                return None
+            confirmed = replace(found, confirmed=True)
+            self._handoffs[found.cookie_hash] = confirmed
+            return confirmed
+
+    async def take_desktop_handoff(self, cookie_hash: str, *, now: float) -> DesktopHandoff | None:
+        """取出并删除已确认、未过期的记录；未确认的留着。"""
+        async with self._lock:
+            handoff = self._handoffs.get(cookie_hash)
+            if handoff is None or not handoff.confirmed:
+                return None
+            del self._handoffs[cookie_hash]
+        return handoff if handoff.expires_at > now else None
+
+    async def purge_expired_logins(self, now: float) -> int:
+        """删除全部租户里过期的登录会话、登录尝试与桌面接力。"""
+        async with self._lock:
+            purged = 0
+            tables: tuple[dict[str, Any], ...] = (self._logins, self._attempts, self._handoffs)
+            for table in tables:
+                doomed = [key for key, item in table.items() if item.expires_at <= now]
+                for key in doomed:
+                    del table[key]
+                purged += len(doomed)
+            return purged
 
     # --- 按用户用量 ---
 

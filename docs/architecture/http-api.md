@@ -259,6 +259,31 @@ Cookie: __Host-xuanpu_login=…
 - 授权码在回调地址的查询串里。`xuanpu serve` 的访问日志把回调这一行的查询串抹成 `?…`；反向代理的访问日志要部署方自己处理（见[运维手册](../guides/operations.md#public_url-与-identity)）。即使漏出去，它 5 分钟内有效、只能用一次，换令牌还要平台自己保管的 PKCE 校验串与 App Secret，单凭它换不到令牌。
 - 这两个接口不需要凭据，部署时在反向代理上按来源地址限速。
 
+### 桌面客户端的浏览器接力
+
+桌面客户端的 WebView 里，飞书授权常被飞书 App 或系统浏览器接手，回调落在系统浏览器。客户端因此以 `client=desktop` 开始登录，由浏览器完成授权与确认、WebView 换取登录会话（[ADR 0019](../decisions/0019-desktop-browser-handoff-login.md)）。`client` 只收 `browser`（默认）与 `desktop`，其他值 `400`。
+
+```
+GET /v1/auth/feishu/login?tenant=acme&client=desktop          # WebView 里
+→ 200 text/html（等待页）
+  Cache-Control: no-store
+  Content-Security-Policy: default-src 'none'; script-src 'nonce-…'; …
+  Set-Cookie: __Host-xuanpu_login=…; HttpOnly; Max-Age=600; Path=/; SameSite=lax; Secure
+```
+
+等待页显示 6 位确认码（由登录尝试 cookie 的摘要算出）和 `target="_blank"` 的飞书授权链接，桌面客户端把它交给系统浏览器打开。开始阶段失败时与浏览器登录一样 302 回落地页。
+
+飞书回调到 `/v1/auth/feishu/callback`（系统浏览器里，不带登录尝试 cookie）。对 `desktop` 的登录尝试，回调不核对该 cookie，第 1–6 步照旧；第 7 步改为建一条桌面接力记录（绑定 WebView 那个 cookie 的摘要，5 分钟有效），返回 `200` 的确认页：同一确认码与「确认登录」按钮，表单里带一次性确认串。浏览器不写登录 cookie，原有的登录会话不作废。
+
+| 接口 | 谁调 | 说明 |
+| --- | --- | --- |
+| `POST /v1/auth/feishu/desktop/confirm` | 浏览器确认页 | 表单 `nonce=<确认串>`。确认成功 `200`；确认串缺失、重复、未知、已用过、过期或请求体超过 1 KiB 都是 `400`。只能确认一次 |
+| `GET /v1/auth/feishu/desktop/status` | 等待页轮询 | 凭登录尝试 cookie，回 `{"status": …}`：`pending`（还没回调）、`confirm`（等浏览器确认）、`ready`（可以换取）、`invalid`（没带 cookie）。不缓存 |
+| `GET /v1/auth/feishu/desktop/redeem` | 等待页 | 凭登录尝试 cookie 取出**已确认**的接力记录（取出即删），重查租户与员工状态，签发登录会话、写登录 cookie，`302` 到 `return_to`；总清掉登录尝试 cookie。没有记录、未确认、已用过或过期是 `state_invalid`，员工已停用是 `user_disabled`，都按上表 302 回落地页 |
+
+- 审计：换取成功记 `login_succeeded`，`data` 为 `{"provider": "feishu", "client": "desktop"}`；首次登录在回调时记 `user_created`。指标与失败口径同上。
+- 这几个接口都不需要平台凭据：等待、轮询与换取凭 WebView 里的登录尝试 cookie，确认凭确认串；库里两者都只存摘要。确认页提示只有本人正在客户端登录、且确认码一致时才确认。
+
 ### 退出登录
 
 ```

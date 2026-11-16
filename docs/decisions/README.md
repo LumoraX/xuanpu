@@ -21,3 +21,4 @@
 | [0015](0015-proactive-business-assistant.md) | 主动业务理解与持久规则分离 | Accepted（补充0014，纯提醒继续独立于模型） |
 | [0017](0017-butler-artisan-orchestration.md) | 管家—匠人编排、执行追踪与极简入口 | R5 候选实现，生产验收尚未完成（修订 0012 决策 1 的「助理只做分流」） |
 | [0018](0018-kernel-as-git-submodules.md) | 内核与适配包以 git submodule 纳入 —— taifeng、taifeng-sandbox、taifeng-stores 放在 external/ | Accepted |
+| [0019](0019-desktop-browser-handoff-login.md) | 桌面客户端经浏览器接力完成飞书登录 —— 等待页轮询，不用深链、不开本地端口 | Accepted |

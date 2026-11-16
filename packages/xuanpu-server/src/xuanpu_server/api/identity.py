@@ -3,6 +3,8 @@
 - ``GET /v1/me``：当前调用者；
 - ``GET /v1/auth/feishu/login``、``GET /v1/auth/feishu/callback``：飞书登录（不需要凭据，结果都是
   302；流程见 ``identity.login``）；``POST /v1/auth/logout``：退出浏览器登录；
+- 桌面客户端的浏览器接力（``client=desktop``）：等待页、确认页与确认、轮询、换取三个接口在
+  ``api.desktop_login``，经这里一并挂上；
 - ``GET /v1/identity/feishu``、``PUT /v1/identity/feishu``：租户的飞书配置；
 - ``POST /v1/identity/feishu/events/{tenant_id}``：飞书事件回调（不走平台的认证，靠飞书的签名；
   流程见 ``identity.callback``）；
@@ -14,24 +16,27 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from fastapi import APIRouter, Query, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from xuanpu_server.api import schemas  # noqa: TC001 —— FastAPI 运行时解析请求体的标注
 from xuanpu_server.api.auth import Caller  # noqa: TC001 —— FastAPI 运行时解析路由标注
+from xuanpu_server.api.desktop_login import (
+    confirm_page_response,
+    desktop_login_router,
+    wait_page_response,
+)
+from xuanpu_server.api.login_http import login_response, read_bounded
 from xuanpu_server.api.users import users_router
 from xuanpu_server.errors import PlatformError
 from xuanpu_server.identity.cookies import (
-    clear_login_attempt_cookie,
     clear_login_cookie,
     cookie_values,
     login_attempt_cookie_name,
     login_cookie_name,
     read_login_cookie,
-    set_login_attempt_cookie,
-    set_login_cookie,
 )
 from xuanpu_server.identity.events import (
     MAX_EVENT_BODY_BYTES,
@@ -39,11 +44,9 @@ from xuanpu_server.identity.events import (
     SIGNATURE_HEADER,
     TIMESTAMP_HEADER,
 )
-from xuanpu_server.identity.login import LOGIN_ATTEMPT_TTL_SECONDS
 from xuanpu_server.identity.urls import callback_url, event_url
 
 if TYPE_CHECKING:
-    from xuanpu_server.identity.login import LoginRedirect
     from xuanpu_server.identity.models import TenantIdentityConfig, UserRecord
     from xuanpu_server.identity.service import IdentitySettings
     from xuanpu_server.platform import Platform
@@ -98,46 +101,12 @@ def feishu_config_view(
     }
 
 
-def login_response(
-    outcome: LoginRedirect, *, secure: bool, clear_attempt: bool
-) -> RedirectResponse:
-    """把登录流程一步的结果翻成 302：按需写登录尝试 cookie、写登录 cookie、清登录尝试 cookie。
-
-    响应不进缓存（``Cache-Control: no-store``）：里面有一次性的 cookie 与跳转。
-    """
-    response = RedirectResponse(
-        outcome.location, status_code=302, headers={"Cache-Control": "no-store"}
-    )
-    if outcome.attempt_cookie is not None:
-        set_login_attempt_cookie(
-            response, outcome.attempt_cookie, max_age=LOGIN_ATTEMPT_TTL_SECONDS, secure=secure
-        )
-    elif clear_attempt:
-        clear_login_attempt_cookie(response, secure=secure)
-    if outcome.session_token is not None:
-        set_login_cookie(
-            response, outcome.session_token, max_age=outcome.session_max_age, secure=secure
-        )
-    return response
-
-
-async def read_bounded(request: Request, limit: int) -> bytes:
-    """读请求体，读到超过 ``limit`` 就停：返回的最多 ``limit + 1`` 字节，超没超限由调用方判断。"""
-    chunks: list[bytes] = []
-    size = 0
-    async for chunk in request.stream():
-        chunks.append(chunk)
-        size += len(chunk)
-        if size > limit:
-            break
-    return b"".join(chunks)[: limit + 1]
-
-
 def identity_router(platform: Platform) -> APIRouter:
     """身份相关的路由（含 ``api.users`` 的用户管理）。"""
     router = APIRouter()
     identity = platform.identity
     router.include_router(users_router(platform))
+    router.include_router(desktop_login_router(platform))
 
     @router.get("/v1/me")
     async def me(who: Caller) -> dict[str, Any]:
@@ -156,23 +125,32 @@ def identity_router(platform: Platform) -> APIRouter:
         entry = "minimal" if who.user_id and platform.minimal_entry.allows(who.tenant_id) else "classic"
         return {**me_view(who, user), "entry": entry}
 
-    @router.get("/v1/auth/feishu/login")
+    @router.get("/v1/auth/feishu/login", response_model=None)
     async def feishu_login(
         tenant: Annotated[str | None, Query()] = None,
         return_to: Annotated[str | None, Query()] = None,
-    ) -> RedirectResponse:
-        """开始飞书登录：302 到飞书授权页（失败时 302 回落地页，带 ``login_error``）。"""
-        outcome = await identity.login.begin(tenant=tenant, return_to=return_to)
-        return login_response(outcome, secure=identity.settings.cookie_secure, clear_attempt=False)
+        client: Annotated[Literal["browser", "desktop"], Query()] = "browser",
+    ) -> RedirectResponse | HTMLResponse:
+        """开始飞书登录：302 到飞书授权页（失败时 302 回落地页，带 ``login_error``）。
 
-    @router.get("/v1/auth/feishu/callback")
+        ``client=desktop`` 成功时返回桌面客户端的等待页（见 ``api.desktop_login``）。
+        """
+        secure = identity.settings.cookie_secure
+        outcome = await identity.login.begin(tenant=tenant, return_to=return_to, client=client)
+        if client == "desktop" and outcome.attempt_cookie is not None:
+            return wait_page_response(outcome, secure=secure)
+        return login_response(outcome, secure=secure, clear_attempt=False)
+
+    @router.get("/v1/auth/feishu/callback", response_model=None)
     async def feishu_callback(
         request: Request,
         state: Annotated[str | None, Query()] = None,
         code: Annotated[str | None, Query()] = None,
         error: Annotated[str | None, Query()] = None,
-    ) -> RedirectResponse:
+    ) -> RedirectResponse | HTMLResponse:
         """飞书授权页跳回：完成登录，302 到 ``return_to``（失败时回落地页）；总清掉登录尝试 cookie。
+
+        桌面客户端发起的登录在这里建了接力记录的，返回浏览器确认页（见 ``api.desktop_login``）。
 
         登录尝试 cookie 同名不止一个时按没带处理（``state_invalid``）。浏览器还带着（恰好一个）
         旧的登录 cookie 的，登录成功后它对应的登录会话作废。
@@ -188,6 +166,8 @@ def identity_router(platform: Platform) -> APIRouter:
             attempt_cookie=attempts[0] if len(attempts) == 1 else None,
             session_cookie=sessions[0] if len(sessions) == 1 else None,
         )
+        if outcome.handoff_nonce is not None:
+            return confirm_page_response(outcome)
         return login_response(outcome, secure=secure, clear_attempt=True)
 
     @router.post("/v1/auth/logout")

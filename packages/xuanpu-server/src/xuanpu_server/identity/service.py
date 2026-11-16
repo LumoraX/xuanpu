@@ -38,6 +38,7 @@ from xuanpu_server.errors import (
 from xuanpu_server.identity.callback import FeishuEventCallback
 from xuanpu_server.identity.config import normalize_origin
 from xuanpu_server.identity.cookies import login_token_hash
+from xuanpu_server.identity.desktop import DesktopLogin
 from xuanpu_server.identity.disable import DisablePipeline
 from xuanpu_server.identity.login import FEISHU, FeishuLogin
 from xuanpu_server.identity.maintenance import IdentityMaintenance
@@ -157,6 +158,7 @@ class IdentityService:
             metrics=metrics,
             now=now,
         )
+        self.desktop = DesktopLogin(store=store, login=self.login, now=now)
         self.disabling = DisablePipeline(store=store, audit=audit, metrics=metrics, now=now)
         self.users = UserAdmin(store=store, disabling=self.disabling, audit=audit, now=now)
         self.events = FeishuEventCallback(

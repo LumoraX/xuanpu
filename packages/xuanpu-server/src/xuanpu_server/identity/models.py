@@ -25,6 +25,8 @@ LoginFailureReason = Literal[
     "identity_unavailable",
 ]
 """飞书登录失败的原因（设计 7.1），也是落地页 ``?login_error=`` 的取值。"""
+LoginClient = Literal["browser", "desktop"]
+"""发起登录的客户端：浏览器直接完成；桌面客户端走浏览器接力（见 ``identity.desktop``）。"""
 
 USER_ID_PREFIX = "usr"
 MAX_PAGE_SIZE = 1000
@@ -221,6 +223,9 @@ class LoginAttempt:
         expires_at: 到期时刻；有效期由服务层在建记录时算好。
         cookie_hash: 登录尝试 cookie 里那个随机数的 SHA-256。回调时浏览器出示的 cookie 必须与它
             对上，防登录伪造：别人把自己那次登录的回调链接发给员工，员工的浏览器没有对应的 cookie。
+            桌面接力（``client`` 为 ``desktop``）时 cookie 留在桌面客户端里，回调不核对它，改由
+            接力记录绑定到这个摘要上，只有桌面客户端能换取登录会话。
+        client: 发起登录的客户端。
     """
 
     state: str
@@ -230,6 +235,36 @@ class LoginAttempt:
     created_at: float
     expires_at: float
     cookie_hash: str = field(repr=False)
+    client: LoginClient = "browser"
+
+    def __post_init__(self) -> None:
+        """校验客户端取值（从库里读回的脏数据当场报错）。"""
+        require_choice("登录客户端", self.client, get_args(LoginClient))
+
+
+@dataclass(frozen=True)
+class DesktopHandoff:
+    """桌面接力登录：飞书在系统浏览器里回调后，等员工在浏览器里确认、桌面客户端来换取登录会话。
+
+    Attributes:
+        cookie_hash: 桌面客户端持有的登录尝试 cookie 的摘要；桌面客户端凭它查询与换取。
+        tenant_id: 租户（取自登录尝试）。
+        user_id: 飞书认出的员工。
+        return_to: 换取成功后的站内落地路径。
+        nonce_hash: 浏览器确认页里一次性确认串的摘要；确认请求凭它找到这条记录。
+        confirmed: 员工是否已在浏览器里确认。
+        created_at: 建立时间。
+        expires_at: 到期时刻。
+    """
+
+    cookie_hash: str = field(repr=False)
+    tenant_id: str
+    user_id: str
+    return_to: str
+    nonce_hash: str = field(repr=False)
+    confirmed: bool
+    created_at: float
+    expires_at: float
 
 
 @dataclass(frozen=True)
@@ -308,10 +343,12 @@ class UserQuery:
 __all__ = [
     "MAX_PAGE_SIZE",
     "USER_ID_PREFIX",
+    "DesktopHandoff",
     "DisabledReason",
     "ExternalIdentity",
     "IdentityProvider",
     "LoginAttempt",
+    "LoginClient",
     "LoginFailureReason",
     "LoginSession",
     "ReconcileState",

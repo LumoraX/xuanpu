@@ -3,18 +3,20 @@
 身份域的持久状态都经这个协议读写：用户、外部身份、租户身份配置、登录会话、登录尝试、按用户
 用量、对账状态。
 
-**租户隔离**（红线 5）：除下面四个方法外，每个方法的第一个参数都是 ``tenant_id``，存储按它
+**租户隔离**（红线 5）：除下面几个方法外，每个方法的第一个参数都是 ``tenant_id``，存储按它
 过滤，别的租户的数据按不存在处理（取不到、改不了、删不掉）。四个例外都发生在知道租户之前，
 或本来就跨租户，与 ``ControlPlaneStore.get_api_key``、``list_tenants`` 同理；拿到记录后，
 调用方一律从记录里取租户：
 
 - ``get_login_session``：请求只带登录 cookie，按令牌摘要才能找到会话与它的租户；
 - ``take_login_attempt``：身份源的回调只带 ``state``，按它才能找回这次登录；
+- ``get_desktop_handoff``、``take_desktop_handoff``、``confirm_desktop_handoff``：桌面客户端只带
+  登录尝试 cookie、浏览器确认页只带一次性确认串，按它们的摘要才能找到接力记录与它的租户；
 - ``list_identity_configs``：对账要遍历配置了某身份源的全部租户；
-- ``purge_expired_logins``：维护任务清理全部租户过期的登录会话与登录尝试。
+- ``purge_expired_logins``：维护任务清理全部租户过期的登录会话、登录尝试与桌面接力。
 
 **租户必须存在**：建记录的方法（``create_user``、``put_identity_config``、
-``create_login_attempt``、``add_user_usage``、``claim_reconcile``）在租户不存在时报
+``create_login_attempt``、``create_desktop_handoff``、``add_user_usage``、``claim_reconcile``）在租户不存在时报
 ``NotFoundError``。租户以控制面为准：Postgres 实现靠外键，内存实现构造时拿到控制面存储去查。
 
 **时间**：存储不读时钟。凡与时间有关的判断（登录会话、登录尝试是否过期，对账租约），都按调用方
@@ -35,6 +37,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from xuanpu_server.identity.models import (
+        DesktopHandoff,
         DisabledReason,
         ExternalIdentity,
         IdentityProvider,
@@ -294,8 +297,39 @@ class IdentityStore(Protocol):
         """
         ...
 
+    # --- 桌面接力 ---
+
+    async def create_desktop_handoff(self, handoff: DesktopHandoff) -> None:
+        """登记一次桌面接力（飞书已在浏览器里回调、认出了员工）。
+
+        Raises:
+            ConflictError: 同一 ``cookie_hash`` 或 ``nonce_hash`` 已存在。
+            NotFoundError: 租户不存在。
+        """
+        ...
+
+    async def get_desktop_handoff(self, cookie_hash: str, *, now: float) -> DesktopHandoff | None:
+        """按桌面客户端的登录尝试 cookie 摘要查接力记录；过期的不返回。只读。"""
+        ...
+
+    async def confirm_desktop_handoff(
+        self, nonce_hash: str, *, now: float
+    ) -> DesktopHandoff | None:
+        """员工在浏览器里确认：按确认串摘要把未确认、未过期的记录标为已确认，返回确认后的记录。
+
+        条件更新：已确认过的、不存在的或过期的返回 None（确认串只能用一次）。
+        """
+        ...
+
+    async def take_desktop_handoff(self, cookie_hash: str, *, now: float) -> DesktopHandoff | None:
+        """桌面客户端换取：取出并删除**已确认**、未过期的接力记录，只能取一次。
+
+        未确认的不删、返回 None（员工还没在浏览器里确认）；取出与删除是原子的。
+        """
+        ...
+
     async def purge_expired_logins(self, now: float) -> int:
-        """删除全部租户里 ``expires_at <= now`` 的登录会话与登录尝试，返回删掉的总条数。
+        """删除全部租户里 ``expires_at <= now`` 的登录会话、登录尝试与桌面接力，返回删掉的总条数。
 
         不带租户的维护操作（见模块说明），由周期任务调用：没走完的登录、过期没登出的会话都在
         这里清掉。
