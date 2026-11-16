@@ -2,7 +2,7 @@
 
 ## 员工安装
 
-当前版本面向 Apple Silicon Mac，要求 macOS 12 或更高版本。打开 `玄圃_2026.11.16_aarch64.dmg`，将“玄圃”拖入 Applications，再从应用程序中打开。
+当前版本是通用版，Apple Silicon 与 Intel Mac 都能用，要求 macOS 12 或更高版本。打开 `xuanpu_<版本>_universal.dmg`，将“玄圃”拖入 Applications，再从应用程序中打开。
 
 应用包不内置任何服务器地址。首次打开时启动页显示「欢迎使用玄圃」并展开设置，填写要连接的玄圃服务器地址后「保存并连接」，再正常登录即可；不需要填写模型或应用密钥。服务器地址向企业管理员索取。桌面版与原浏览器的登录状态独立。
 
@@ -28,7 +28,12 @@
 
 填写的地址必须与后台 `public_url` 同源，否则登录回调无法带上客户端的 Cookie。可选的 `auth_origins` 覆盖登录来源白名单（每项只能是 HTTPS 根地址）；不写则沿用应用内置的飞书来源。退出桌面应用不会停止后台的提醒调度；退出后没有桌面系统通知，外部通知仍按后台配置发送。
 
-该包为 ad-hoc 签名、未经 Apple 公证：从网络或聊天工具下载到其他 Mac 后，首次打开会被系统拦截，需要在「系统设置 → 隐私与安全性」中点「仍要打开」，或在 Finder 中右键「打开」。面向全员分发前应换用企业 Developer ID 签名并公证。
+该包为 ad-hoc 签名、未经 Apple 公证：从网络或聊天工具下载到其他 Mac 后，Gatekeeper 会拦截，提示「无法验证开发者」或「已损坏，无法打开」（签名本身完好，是下载隔离标记加未公证所致）。较新的 macOS 上 Finder 右键「打开」已不能放行。任选一种方式放行一次：
+
+- 终端执行 `xattr -dr com.apple.quarantine /Applications/玄圃.app`，然后正常打开；
+- 先双击打开一次被拦截后，到「系统设置 → 隐私与安全性」页面下方点「仍要打开」并输入密码。
+
+面向全员分发前应换用企业 Developer ID 签名并完成公证，员工就不需要上述步骤。
 
 ## 应用内置配置
 
@@ -50,17 +55,19 @@
 npm ci --ignore-scripts
 cargo test --manifest-path src-tauri/Cargo.toml
 npm run build -- --bundles app,dmg
+# 通用版（同时支持 Apple Silicon 与 Intel），需先 rustup target add x86_64-apple-darwin aarch64-apple-darwin
+npm run build -- --target universal-apple-darwin --bundles app
 ```
 
-输出位于 `src-tauri/target/release/bundle/macos/玄圃.app` 和 `src-tauri/target/release/bundle/dmg/`。
+输出位于 `src-tauri/target/release/bundle/macos/玄圃.app` 和 `src-tauri/target/release/bundle/dmg/`；通用版在 `src-tauri/target/universal-apple-darwin/release/bundle/` 下。
 
 `bundle_dmg.sh` 需要经 AppleScript 控制 Finder 排版窗口；在无图形会话或未授权自动化的终端里会失败（`failed to run bundle_dmg.sh`）。这时 `.app` 已经生成，可以直接用系统工具打包：
 
 ```bash
 cd src-tauri/target/release/bundle
 stage=$(mktemp -d); cp -R "macos/玄圃.app" "$stage/"; ln -s /Applications "$stage/Applications"
-hdiutil create -volname 玄圃 -srcfolder "$stage" -fs HFS+ -format UDZO -ov "dmg/玄圃_<版本>_aarch64.dmg"
-hdiutil verify "dmg/玄圃_<版本>_aarch64.dmg"
+hdiutil create -volname 玄圃 -srcfolder "$stage" -fs HFS+ -format UDZO -ov "dmg/xuanpu_<版本>_universal.dmg"
+hdiutil verify "dmg/xuanpu_<版本>_universal.dmg"
 ```构建锁定文件 `package-lock.json`、`Cargo.lock` 需要跟随源码提交。
 
 图标来自控制台现有“玄”标记，可用 `scripts/icon.swift` 生成源 PNG，再用 `tauri icon` 生成系统图标；图标资源已随源码提供，普通构建无需重新生成。
