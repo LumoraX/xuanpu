@@ -61,7 +61,7 @@
 - [x] 四个只读接口与 SSE 增量；分页总数与当前页无关；无权 404。（SSE 见 `S/api/trace_events.py`、`T/tracing/test_trace_events.py`；SDK `follow_trace`；CLI 未加）
 - [x] 瀑布行由持久 span 计算（偏移、时长、深度、状态）；运行中的行只给开始时间，不编造时长。
 - [x] OTel 配置构造注入、默认关闭；关闭时断言零连接；开启时用本机收集器替身断言父子与属性、无正文。（`S/tracing/otel.py`、`T/tracing/test_otel_export.py`；`xuanpu.trace_id` 无法写入，记缺口第 32 项）
-- [ ] 真实模型跑一次并行场景，核对交叠与用量一致，结果入验收记录。
+- [x] 真实模型跑一次并行场景，核对交叠与用量一致，结果入验收记录。（2026-11-16 以三成员会诊执行：瀑布交叠 3 对，8 个执行行用量完整，见 [R5 真实模型验收](../../guides/releases/2026-11-16-r5-real-model-acceptance.md)）
 - [x] 同步 architecture 与 guides（execution-trace、http-api、operations、SDK README、缺口清单）；提交 `feat: 开放执行树与瀑布查询及可选 OTel 导出`。
 
 ### B2 进度（2026-11-14，macOS arm64，Python 3.12.13，本机 taifeng 2026.11.14.1 + taifeng-sandbox `af3e545`）

@@ -33,8 +33,10 @@ GROUP_PLAN_SCHEMA: dict[str, Any] = {
             "properties": {
                 "mode": {"type": "string", "enum": ["parallel", "relay", "consult"]},
                 "members": {"type": "array", "items": _MEMBER},
-                "when": {"type": "string", "enum": ["completed", "failed"],
-                         "description": "可选：只在前一步是该结果时进行"},
+                # 允许 null：部分网关按严格模式要求模型填满每个字段，只给两个枚举值时
+                # 第一步只能填一个必然被拒的值（真实模型验收中连续被拒直至一轮超时）。
+                "when": {"type": ["string", "null"], "enum": ["completed", "failed", None],
+                         "description": "第一步写 null；之后的步可选，只在前一步是该结果时进行"},
             },
             "required": ["mode", "members"]}},
     },

@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from xuanpu_server.assistant_proposals import resolve_native_choice
 from xuanpu_server.assistant_reminders import (
     REMINDER_ENTRIES,
+    REMINDER_PROMPT,
     ReminderProposal,
     RouteOutcome,
 )
@@ -77,13 +78,7 @@ message面向普通员工，不使用目录、package、entry等技术术语；�
 仅输出JSON，无Markdown：{\"package\":字符串或null,\"entry\":字符串或null,\"message\":字符串或null}。
 选择时package与entry必须是目录中的准确标识，message=null；澄清/不匹配时二者都null，message为中文说明。
 用户交办会议纪要、行动项候选或表格汇总且提供附件时，选择已开通的office-assistant及其真实入口。该选择会创建后台工作任务，不自行宣称完成。
-个人提醒是平台内置能力，不依赖企业业务包或飞书。选择@reminders/create时加reminder字段：
-{"title":提醒内容,"due_at":含UTC偏移的ISO8601时间字符串,"timezone":IANA时区,"repeat":"once"或"daily"或"weekly"}。
-以now和timezone为当前时间基准解释明天/下周等，用户指定其他时区则使用该时区；不要自己猜今天。
-每天/每周的首次时间选仍在未来的最近一次（今天还未到点也可）；用户明确要求从将来某天开始则保留开始日期。
-缺少明确时间先问；不支持的重复规则说明当前范围；不要把执行任务误当成仅提醒。
-只提草稿，不说已创建或会执行。查看、取消、修改提醒选择@reminders/manage，不擅自修改。
-普通业务或澄清时不要输出reminder。"""
+""" + REMINDER_PROMPT
 
 
 class ContextItem(BaseModel):
