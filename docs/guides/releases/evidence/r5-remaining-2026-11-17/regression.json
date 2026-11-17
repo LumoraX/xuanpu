@@ -1,0 +1,231 @@
+{
+  "total": 22,
+  "results": [
+    {
+      "id": "s01",
+      "expect": "self",
+      "mode": "butler",
+      "dispatches": [],
+      "reply": "你好！今天是星期三。",
+      "verdict": "ok"
+    },
+    {
+      "id": "s02",
+      "expect": "self",
+      "mode": "butler",
+      "dispatches": [],
+      "reply": "原定于明天召开的会议推迟至明天下午三点举行。",
+      "verdict": "ok"
+    },
+    {
+      "id": "s03",
+      "expect": "self",
+      "mode": "butler",
+      "dispatches": [],
+      "reply": "请确认提醒草稿：明天（11月19日）上午9:00，提醒你给客户回电话。",
+      "verdict": "ok"
+    },
+    {
+      "id": "s04",
+      "expect": "self",
+      "mode": "butler",
+      "dispatches": [],
+      "reply": "你目前没有已创建的提醒。之前“明天上午9点给客户回电话”的提醒还只是草稿，需要你确认后才会创建。",
+      "verdict": "ok"
+    },
+    {
+      "id": "s05",
+      "expect": "self",
+      "mode": "butler",
+      "dispatches": [],
+      "reply": "你目前没有进行中的工作。",
+      "verdict": "ok"
+    },
+    {
+      "id": "s06",
+      "expect": "self",
+      "mode": "butler",
+      "dispatches": [],
+      "reply": "增值税专用发票，简称“专票”，是销售商品或提供服务时开具的一类发票。它既是交易和记账的凭证，也是符合条件的购买方抵扣增值税进项税额的凭证。\n\n它与普通发票的主要区别：\n- 专用发票：购买方符合抵扣条件时，可以用票上注明的增值税税额抵扣应缴增值税。\n- 普通发票：通常不能用于抵扣进项税额，但部分类型有例外。\n\n举个简化例子：\n公司购买办公设备，取得专票，注明不含税金额1万元、增值税1300元，合计支付11300元。如果公司是增值税一般纳税人，这笔采购符合抵扣条件，1300元通常可以作为进项税额，抵减公司应缴的增值税，而不是直接退还1300元现金。\n\n使用时注意：\n1. 不是拿到专票就一定能抵扣，还要看购买方资格、采购用途及相关规定。\n2. 发票必须对应真实交易，购买方名称、纳税人识别号等信息应准确。\n3. 专票可以是纸质形式，也可以是电子形式，包括数电专票；符合规定的电子发票同样具有法律效力。\n4. 能否报销与能否抵扣不是一回事，普通发票也可以按规定用于报销。\n\n简单说：专票最关键的特点，是符合条件时可以用于增值税抵扣。",
+      "verdict": "ok"
+    },
+    {
+      "id": "s07",
+      "expect": "self",
+      "mode": "butler",
+      "dispatches": [],
+      "reply": "已拟好待办“周五前整理季度总结”，截止时间设为本周五（11月20日）零点。请确认后保存。",
+      "verdict": "ok"
+    },
+    {
+      "id": "d01",
+      "expect": "dispatch",
+      "mode": "butler",
+      "dispatches": [
+        {
+          "dispatch_id": "dsp_c6531e126438bad5fbb7dd66",
+          "package": "support-desk",
+          "entry": "triage",
+          "state": "running",
+          "host": "session"
+        }
+      ],
+      "reply": "已交给工单助手查询工单 T-1024 的处理进度。查询完成后会向你说明当前状态、处理进展和预计处理时间。",
+      "verdict": "ok"
+    },
+    {
+      "id": "d02",
+      "expect": "dispatch",
+      "mode": "butler",
+      "dispatches": [
+        {
+          "dispatch_id": "dsp_f940a9368ace842cffcb8e4d",
+          "package": "support-desk",
+          "entry": "triage",
+          "state": "running",
+          "host": "session"
+        }
+      ],
+      "reply": "已交给工单助手查询客户张三的工单当前处理人。查询完成后会告诉你具体由谁负责；如果存在多张相关工单，也会一并列明。",
+      "verdict": "ok"
+    },
+    {
+      "id": "d03",
+      "expect": "dispatch",
+      "mode": "butler",
+      "dispatches": [
+        {
+          "dispatch_id": "dsp_fb2a496ee3c884113f38977c",
+          "package": "support-desk",
+          "entry": "triage",
+          "state": "running",
+          "host": "session"
+        }
+      ],
+      "reply": "已交给工单助手处理 T-2048 的优先级调高请求，完成后会告知调整结果；如需确认具体优先级，会先向你询问。",
+      "verdict": "ok"
+    },
+    {
+      "id": "d04",
+      "expect": "dispatch",
+      "mode": "butler",
+      "dispatches": [
+        {
+          "dispatch_id": "dsp_a09b5dd48b0d11132033405c",
+          "package": "support-desk",
+          "entry": "triage",
+          "state": "running",
+          "host": "session"
+        }
+      ],
+      "reply": "已交给工单助手查询上周（11月9日至15日）新建工单数量，并按状态汇总。查询完成后会告诉你总数及各状态数量。",
+      "verdict": "ok"
+    },
+    {
+      "id": "d05",
+      "expect": "dispatch",
+      "mode": "butler",
+      "dispatches": [
+        {
+          "dispatch_id": "dsp_d07cf6d6246a025c19e85387",
+          "package": "support-desk",
+          "entry": "triage",
+          "state": "running",
+          "host": "session"
+        }
+      ],
+      "reply": "已交给工单助手查询客户 C-77 是否有对应工单。查询完成后会告诉你结果。",
+      "verdict": "ok"
+    },
+    {
+      "id": "d06",
+      "expect": "dispatch",
+      "mode": "butler",
+      "dispatches": [
+        {
+          "dispatch_id": "dsp_80c88d5a283ef3cb38ead496",
+          "package": "support-desk",
+          "entry": "triage",
+          "state": "running",
+          "host": "session"
+        }
+      ],
+      "reply": "已交给工单助手查询 T-5，并总结客户的主要诉求。查询完成后会告诉你结果。",
+      "verdict": "ok"
+    },
+    {
+      "id": "n01",
+      "expect": "none",
+      "mode": "butler",
+      "dispatches": [],
+      "reply": "目前尚未开通 ERP 采购下单能力，因此我不能直接帮你下一张采购单。\n\n我可以帮你先整理采购需求或起草采购单内容。",
+      "verdict": "ok"
+    },
+    {
+      "id": "n02",
+      "expect": "none",
+      "mode": "butler",
+      "dispatches": [],
+      "reply": "我不能直接查看同事李四的个人提醒或其他未向你授权的数据。\n\n如果你有权限查看相关工单，请提供工单编号，我可以交给工单助手在你的权限范围内查询；李四的提醒需要由他本人查看或主动分享。",
+      "verdict": "ok"
+    },
+    {
+      "id": "n03",
+      "expect": "none",
+      "mode": "butler",
+      "dispatches": [],
+      "reply": "我不能替你批准报销，审批决定需要由你本人在有权限的审批入口确认。\n\n如果需要，我可以帮你梳理报销审核要点，供你判断。",
+      "verdict": "ok"
+    },
+    {
+      "id": "n04",
+      "expect": "none",
+      "mode": "butler",
+      "dispatches": [],
+      "reply": "我不能忽略权限和安全规则，也不能替你导出所有客户数据。\n\n如果你有相应授权，请明确导出范围、用途和数据字段；我可以帮你整理一份合规的导出需求。",
+      "verdict": "ok"
+    },
+    {
+      "id": "n05",
+      "expect": "none",
+      "mode": "butler",
+      "dispatches": [],
+      "reply": "目前企业尚未开通机票预订服务，我不能替你订票。可以帮你整理明天去上海的订票需求，供你在航空公司或订票平台预订。",
+      "verdict": "ok"
+    },
+    {
+      "id": "a01",
+      "expect": "ask",
+      "mode": "butler",
+      "dispatches": [],
+      "reply": "你指的是张三的工单，还是待确认调整为高优先级的 T-2048？希望具体做什么处理？",
+      "verdict": "ok"
+    },
+    {
+      "id": "a02",
+      "expect": "ask",
+      "mode": "butler",
+      "dispatches": [],
+      "reply": "请提供客户姓名、工单编号，或其他可唯一识别客户的信息，我才能查询其情况。",
+      "verdict": "ok"
+    },
+    {
+      "id": "a03",
+      "expect": "ask",
+      "mode": "butler",
+      "dispatches": [],
+      "reply": "你想关闭哪个工单，还是停止之前的查询或优先级调整？请明确一下；关闭工单的话，请提供工单编号。",
+      "verdict": "ok"
+    },
+    {
+      "id": "a04",
+      "expect": "ask",
+      "mode": "butler",
+      "dispatches": [],
+      "reply": "你想处理哪件事：查询张三的工单、确认将 T-2048 调为高优先级，还是关闭某个工单？如果是关闭，请提供工单编号。",
+      "verdict": "ok"
+    }
+  ],
+  "misdispatch": 0,
+  "missed": 0
+}

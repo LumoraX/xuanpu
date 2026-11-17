@@ -1,4 +1,4 @@
-"""R5 真实模型验收的本机环境：起一个内存平台，接真实模型，跑管家回归与三成员会诊。
+"""R5 真实模型验收的本机环境：起一个内存平台，接真实模型，跑管家回归、审批写入与三成员会诊。
 
 模型配置只从 ``--model-env`` 指定的私有 dotenv 读取（键与真实模型测试一致：
 ``LLM_BOOTSTRAP_PROTOCOL``、``LLM_BOOTSTRAP_BASE_URL``、``LLM_BOOTSTRAP_API_KEY``、
@@ -53,9 +53,15 @@ def gateway(env: dict[str, str], vault: Any) -> Any:
     return GatewayModelClientFactory(config, vault)
 
 
-async def assemble(directory: Path, env: dict[str, str], resources: AsyncExitStack) -> tuple[Any, str]:
-    """内存平台：acme 开启追踪、管家与极简入口，接真实模型；返回平台与根凭据。"""
+async def assemble(directory: Path, env: dict[str, str], resources: AsyncExitStack,
+                   origin: str | None = None, connections: bool = False) -> tuple[Any, str]:
+    """内存平台：acme 开启追踪、管家与极简入口，接真实模型；返回平台与根凭据。
+
+    ``origin`` 给了时平台认浏览器登录 cookie（浏览器验收用）；不给只认 API key。
+    ``connections`` 为真时 acme 开启企业连接（R3），对话里才能打开本人连接页。
+    """
     from xuanpu_server.butler.config import ButlerConfig
+    from xuanpu_server.connections.models import ConnectionConfig
     from xuanpu_server.controlplane import InMemoryControlPlane
     from xuanpu_server.dashboard.config import MinimalEntryConfig
     from xuanpu_server.identity import InMemoryIdentityStore
@@ -74,13 +80,14 @@ async def assemble(directory: Path, env: dict[str, str], resources: AsyncExitSta
     (directory / "data").mkdir()
     platform = Platform(
         store=store, identity_store=InMemoryIdentityStore(store),
-        identity_settings=IdentitySettings.from_config(None, IdentityConfig(cookie_secure=False)),
+        identity_settings=IdentitySettings.from_config(origin, IdentityConfig(cookie_secure=False)),
         vault=vault, models=gateway(env, vault), sandboxes=LocalSandboxProvider(),
         data_dir=directory / "data", root_key_hash=root_hash, instance_id="inst-r5-real-model",
         objects=LocalObjectStore(directory / "objects"),
         defaults=RuntimeDefaults(execution_trace=ExecutionTraceConfig(enabled=True, tenants=("acme",))),
         butler=ButlerConfig(enabled=True, tenants=("acme",)),
         minimal_entry=MinimalEntryConfig(enabled=True, tenants=("acme",)),
+        connections=ConnectionConfig(enabled=connections, tenants=("acme",) if connections else ()),
     )
     resources.push_async_callback(platform.close)
     await platform.start()
@@ -90,7 +97,6 @@ async def assemble(directory: Path, env: dict[str, str], resources: AsyncExitSta
 async def provision(platform: Any, base_url: str, root_key: str) -> tuple[str, str]:
     """经正式接口开通租户、签发代调用 key、存密钥并发布样例包；建一名员工。返回 key 与员工标识。"""
     from xuanpu_sdk import XuanpuClient
-    from xuanpu_server.identity import UserRecord, new_user_id
     from xuanpu_spec.archive import pack_package
 
     async with XuanpuClient(base_url, root_key) as root:
@@ -98,14 +104,24 @@ async def provision(platform: Any, base_url: str, root_key: str) -> tuple[str, s
         issued = await root.admin.issue_tenant_key("acme", "r5-acceptance", role="tenant_admin",
                                                    act_as_users=True)
     async with XuanpuClient(base_url, issued.key) as admin:
-        await admin.secrets.put("tickets-token", "demo-token")
+        await admin.secrets.put("tickets-token", TICKETS_TOKEN)
         await admin.packages.publish(pack_package(ROOT / "examples" / "support-desk"), activate=True)
-    user = UserRecord(tenant_id="acme", user_id=new_user_id(), display_name="验收员工甲",
+    return issued.key, await new_employee(platform, "验收员工甲")
+
+
+async def new_employee(platform: Any, name: str) -> str:
+    """建一名启用的成员员工（员工只由飞书登录产生，验收环境直接经身份存储建）。"""
+    from xuanpu_server.identity import UserRecord, new_user_id
+
+    user = UserRecord(tenant_id="acme", user_id=new_user_id(), display_name=name,
                       created_at=time.time(), role="tenant_member")
     await platform.identity.store.create_user(user)
-    return issued.key, user.user_id
+    return user.user_id
 
 
+# 样例工单接口替身的固定地址与凭据（examples/ticket-api/server.py）
+TICKETS_URL = "http://127.0.0.1:8431"
+TICKETS_TOKEN = "demo-token"  # noqa: S105 —— 样例替身的公开演示凭据
 CONSULT_TEXT = ("请安排三位匠人会诊：工单 T-1001 该不该升级处理？请一线客服、二线技术和质检各自独立给出结论，"
                 "全部给完后再比对，不要只交给一位。")
 # 会诊需要三位不同的匠人：样例包的两个副本，只改包名与说明，连接器与权限完全相同。
@@ -175,6 +191,13 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
                         codes["regression"] = await asyncio.to_thread(
                             run_script, "r5_butler_regression.py", base_url, key_file, user_id,
                             args.out / "regression.json")
+                    if "approval" in args.only:
+                        # 单独一名员工：回归里的改优先级用例可能留下别的审批提示
+                        approver = await new_employee(platform, "验收员工乙")
+                        codes["approval"] = await asyncio.to_thread(
+                            run_script, "r5_approval_acceptance.py", base_url, key_file, approver,
+                            args.out / "approval.json", "--tickets-url", TICKETS_URL,
+                            "--tickets-token", TICKETS_TOKEN)
                     if "consult" in args.only:
                         variants = await publish_variants(base_url, key, Path(raw))
                         print(f"会诊匠人：support-desk、{'、'.join(variants)}", flush=True)
@@ -194,8 +217,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-env", type=Path, required=True, help="私有模型配置（dotenv，权限 600）")
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--only", nargs="+", choices=("regression", "consult"),
-                        default=["regression", "consult"])
+    parser.add_argument("--only", nargs="+", choices=("regression", "approval", "consult"),
+                        default=["regression", "approval", "consult"])
     parser.add_argument("--consult-timeout", type=float, default=900.0)
     args = parser.parse_args()
     summary = asyncio.run(run(args))

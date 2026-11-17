@@ -1,0 +1,493 @@
+{
+  "ok": false,
+  "model": "gpt-6.1-sol",
+  "verdicts": {
+    "reminder-confirm": {
+      "ok": true,
+      "cards": [
+        "请确认",
+        "进展"
+      ],
+      "reply": "请确认提醒草稿：明天（11月18日）上午10点，提醒你交周报，按洛杉矶时间。确认后才会创建。"
+    },
+    "reminder-view": {
+      "ok": false,
+      "cards": [
+        "进展"
+      ],
+      "reply": "你的提醒列表：\n\n- 交周报\n- 状态：进行中\n- 时间：2026年11月18日上午10:00（洛杉矶时间）"
+    },
+    "todo-confirm": {
+      "ok": true,
+      "cards": [
+        "请确认",
+        "进展"
+      ],
+      "reply": "请确认待办草稿：整理季度总结，截止本周五（11月20日）18:00，按洛杉矶时间。确认后才会保存。"
+    },
+    "todo-view": {
+      "ok": true,
+      "cards": [
+        "你的待办",
+        "进展"
+      ],
+      "reply": "已打开你的待办列表。"
+    },
+    "event-confirm": {
+      "ok": true,
+      "cards": [
+        "请确认",
+        "进展"
+      ],
+      "reply": "已整理好日程草稿：下周三（11月25日）14:00–15:00，项目复盘会。请确认后保存。"
+    },
+    "event-view": {
+      "ok": true,
+      "cards": [
+        "你的日程",
+        "进展"
+      ],
+      "reply": "已打开你的日程列表。"
+    },
+    "matter-confirm": {
+      "ok": true,
+      "cards": [
+        "请确认",
+        "进展"
+      ],
+      "reply": "已整理好事项草稿「年度预算编制」，请确认后保存。"
+    },
+    "matter-view": {
+      "ok": true,
+      "cards": [
+        "你的事项",
+        "进展"
+      ],
+      "reply": "已打开你的事项列表。"
+    },
+    "proactive-view": {
+      "ok": true,
+      "cards": [
+        "业务跟进",
+        "进展"
+      ],
+      "reply": "已打开你的业务跟进。"
+    },
+    "definitions-view": {
+      "ok": true,
+      "cards": [
+        "你的执行安排",
+        "进展"
+      ],
+      "reply": "已打开你的执行安排。"
+    },
+    "connections-view": {
+      "ok": true,
+      "cards": [
+        "企业连接",
+        "进展"
+      ],
+      "reply": "已打开你的企业连接管理页面。"
+    },
+    "shared-view": {
+      "ok": true,
+      "cards": [
+        "共享事项",
+        "进展"
+      ],
+      "reply": "已打开共享事项，请选择要查看的资料。"
+    },
+    "handoff-view": {
+      "ok": true,
+      "cards": [
+        "工作交接与审批",
+        "进展"
+      ],
+      "reply": "已打开你的交接和审批入口，可查看收到、发出、承办或需要审批的工作。"
+    }
+  },
+  "saved": {
+    "reminder-confirm": true,
+    "todo-confirm": true,
+    "event-confirm": true,
+    "matter-confirm": true
+  },
+  "steps": [
+    {
+      "id": "reminder-confirm",
+      "module": "提醒",
+      "expect": "confirm",
+      "text": "明天上午十点提醒我交周报",
+      "clicked": true,
+      "saved": true,
+      "nodes": [
+        {
+          "kind": "user",
+          "title": null,
+          "text": "明天上午十点提醒我交周报"
+        },
+        {
+          "kind": "assistant",
+          "title": null,
+          "text": "请确认提醒草稿：明天（11月18日）上午10点，提醒你交周报，按洛杉矶时间。确认后才会创建。"
+        },
+        {
+          "kind": "card",
+          "title": "请确认",
+          "text": "请确认\n\n交周报\n\n11/18/2026, 10:00:00 AM · America/Los_Angeles\n\n已保存"
+        },
+        {
+          "kind": "card",
+          "title": "进展",
+          "text": "进展\n\nbutler · 已结束 · 2 个执行单元\n\n查看进展\n展开执行树\n看瀑布"
+        }
+      ]
+    },
+    {
+      "id": "reminder-view",
+      "module": "提醒",
+      "expect": "view",
+      "text": "打开我的提醒列表",
+      "loaded": true,
+      "nodes": [
+        {
+          "kind": "user",
+          "title": null,
+          "text": "打开我的提醒列表"
+        },
+        {
+          "kind": "assistant",
+          "title": null,
+          "text": "你的提醒列表：\n\n- 交周报\n- 状态：进行中\n- 时间：2026年11月18日上午10:00（洛杉矶时间）"
+        },
+        {
+          "kind": "card",
+          "title": "进展",
+          "text": "进展\n\nbutler · 已结束 · 2 个执行单元\n\n查看进展\n展开执行树\n看瀑布"
+        }
+      ]
+    },
+    {
+      "id": "todo-confirm",
+      "module": "待办",
+      "expect": "confirm",
+      "text": "建一个待办：整理季度总结，截止本周五 18:00",
+      "clicked": true,
+      "saved": true,
+      "nodes": [
+        {
+          "kind": "user",
+          "title": null,
+          "text": "建一个待办：整理季度总结，截止本周五 18:00"
+        },
+        {
+          "kind": "assistant",
+          "title": null,
+          "text": "请确认待办草稿：整理季度总结，截止本周五（11月20日）18:00，按洛杉矶时间。确认后才会保存。"
+        },
+        {
+          "kind": "card",
+          "title": "请确认",
+          "text": "请确认\n\n待办：整理季度总结\n\n已保存"
+        },
+        {
+          "kind": "card",
+          "title": "进展",
+          "text": "进展\n\nbutler · 已结束 · 2 个执行单元\n\n查看进展\n展开执行树\n看瀑布"
+        }
+      ]
+    },
+    {
+      "id": "todo-view",
+      "module": "待办",
+      "expect": "view",
+      "text": "打开我的待办列表",
+      "loaded": true,
+      "nodes": [
+        {
+          "kind": "user",
+          "title": null,
+          "text": "打开我的待办列表"
+        },
+        {
+          "kind": "assistant",
+          "title": null,
+          "text": "已打开你的待办列表。"
+        },
+        {
+          "kind": "card",
+          "title": "你的待办",
+          "text": "你的待办\n整理季度总结 标记完成"
+        },
+        {
+          "kind": "card",
+          "title": "进展",
+          "text": "进展\n\nbutler · 已结束 · 2 个执行单元\n\n查看进展\n展开执行树\n看瀑布"
+        }
+      ]
+    },
+    {
+      "id": "event-confirm",
+      "module": "日程",
+      "expect": "confirm",
+      "text": "下周三下午两点到三点安排一个项目复盘会",
+      "clicked": true,
+      "saved": true,
+      "nodes": [
+        {
+          "kind": "user",
+          "title": null,
+          "text": "下周三下午两点到三点安排一个项目复盘会"
+        },
+        {
+          "kind": "assistant",
+          "title": null,
+          "text": "已整理好日程草稿：下周三（11月25日）14:00–15:00，项目复盘会。请确认后保存。"
+        },
+        {
+          "kind": "card",
+          "title": "请确认",
+          "text": "请确认\n\n日程：项目复盘会\n\n已保存"
+        },
+        {
+          "kind": "card",
+          "title": "进展",
+          "text": "进展\n\nbutler · 已结束 · 2 个执行单元\n\n查看进展\n展开执行树\n看瀑布"
+        }
+      ]
+    },
+    {
+      "id": "event-view",
+      "module": "日程",
+      "expect": "view",
+      "text": "打开我的日程列表",
+      "loaded": true,
+      "nodes": [
+        {
+          "kind": "user",
+          "title": null,
+          "text": "打开我的日程列表"
+        },
+        {
+          "kind": "assistant",
+          "title": null,
+          "text": "已打开你的日程列表。"
+        },
+        {
+          "kind": "card",
+          "title": "你的日程",
+          "text": "你的日程\n项目复盘会 11/25/2026, 2:00:00 PM"
+        },
+        {
+          "kind": "card",
+          "title": "进展",
+          "text": "进展\n\nbutler · 已结束 · 2 个执行单元\n\n查看进展\n展开执行树\n看瀑布"
+        }
+      ]
+    },
+    {
+      "id": "matter-confirm",
+      "module": "事项",
+      "expect": "confirm",
+      "text": "新建一个事项：年度预算编制",
+      "clicked": true,
+      "saved": true,
+      "nodes": [
+        {
+          "kind": "user",
+          "title": null,
+          "text": "新建一个事项：年度预算编制"
+        },
+        {
+          "kind": "assistant",
+          "title": null,
+          "text": "已整理好事项草稿「年度预算编制」，请确认后保存。"
+        },
+        {
+          "kind": "card",
+          "title": "请确认",
+          "text": "请确认\n\n事项：年度预算编制\n\n已保存"
+        },
+        {
+          "kind": "card",
+          "title": "进展",
+          "text": "进展\n\nbutler · 已结束 · 2 个执行单元\n\n查看进展\n展开执行树\n看瀑布"
+        }
+      ]
+    },
+    {
+      "id": "matter-view",
+      "module": "事项",
+      "expect": "view",
+      "text": "打开我的事项列表",
+      "loaded": true,
+      "nodes": [
+        {
+          "kind": "user",
+          "title": null,
+          "text": "打开我的事项列表"
+        },
+        {
+          "kind": "assistant",
+          "title": null,
+          "text": "已打开你的事项列表。"
+        },
+        {
+          "kind": "card",
+          "title": "你的事项",
+          "text": "你的事项\n年度预算编制"
+        },
+        {
+          "kind": "card",
+          "title": "进展",
+          "text": "进展\n\nbutler · 已结束 · 2 个执行单元\n\n查看进展\n展开执行树\n看瀑布"
+        }
+      ]
+    },
+    {
+      "id": "proactive-view",
+      "module": "业务跟进",
+      "expect": "view",
+      "text": "打开我的业务跟进",
+      "loaded": true,
+      "nodes": [
+        {
+          "kind": "user",
+          "title": null,
+          "text": "打开我的业务跟进"
+        },
+        {
+          "kind": "assistant",
+          "title": null,
+          "text": "已打开你的业务跟进。"
+        },
+        {
+          "kind": "card",
+          "title": "业务跟进",
+          "text": "业务跟进\n\n暂无记录"
+        },
+        {
+          "kind": "card",
+          "title": "进展",
+          "text": "进展\n\nbutler · 已结束 · 3 个执行单元\n\n查看进展\n展开执行树\n看瀑布"
+        }
+      ]
+    },
+    {
+      "id": "definitions-view",
+      "module": "执行安排",
+      "expect": "view",
+      "text": "打开我的执行安排",
+      "loaded": true,
+      "nodes": [
+        {
+          "kind": "user",
+          "title": null,
+          "text": "打开我的执行安排"
+        },
+        {
+          "kind": "assistant",
+          "title": null,
+          "text": "已打开你的执行安排。"
+        },
+        {
+          "kind": "card",
+          "title": "你的执行安排",
+          "text": "你的执行安排\n\n暂无记录"
+        },
+        {
+          "kind": "card",
+          "title": "进展",
+          "text": "进展\n\nbutler · 已结束 · 2 个执行单元\n\n查看进展\n展开执行树\n看瀑布"
+        }
+      ]
+    },
+    {
+      "id": "connections-view",
+      "module": "企业连接",
+      "expect": "view",
+      "text": "打开我的企业连接",
+      "loaded": true,
+      "nodes": [
+        {
+          "kind": "user",
+          "title": null,
+          "text": "打开我的企业连接"
+        },
+        {
+          "kind": "assistant",
+          "title": null,
+          "text": "已打开你的企业连接管理页面。"
+        },
+        {
+          "kind": "card",
+          "title": "企业连接",
+          "text": "企业连接\n\n只读范围由企业应用与本人同意共同决定；同意与撤销都由你本人点击。\n\n暂无记录"
+        },
+        {
+          "kind": "card",
+          "title": "进展",
+          "text": "进展\n\nbutler · 已结束 · 2 个执行单元\n\n查看进展\n展开执行树\n看瀑布"
+        }
+      ]
+    },
+    {
+      "id": "shared-view",
+      "module": "共享事项",
+      "expect": "view",
+      "text": "打开共享事项",
+      "loaded": true,
+      "nodes": [
+        {
+          "kind": "user",
+          "title": null,
+          "text": "打开共享事项"
+        },
+        {
+          "kind": "assistant",
+          "title": null,
+          "text": "已打开共享事项，请选择要查看的资料。"
+        },
+        {
+          "kind": "card",
+          "title": "共享事项",
+          "text": "共享事项\n\n暂无记录\n\n邀请成员与发布资料请在「更多」的共享事项里完成。"
+        },
+        {
+          "kind": "card",
+          "title": "进展",
+          "text": "进展\n\nbutler · 已结束 · 2 个执行单元\n\n查看进展\n展开执行树\n看瀑布"
+        }
+      ]
+    },
+    {
+      "id": "handoff-view",
+      "module": "交接与审批",
+      "expect": "view",
+      "text": "打开我的交接和审批",
+      "loaded": true,
+      "nodes": [
+        {
+          "kind": "user",
+          "title": null,
+          "text": "打开我的交接和审批"
+        },
+        {
+          "kind": "assistant",
+          "title": null,
+          "text": "已打开你的交接和审批入口，可查看收到、发出、承办或需要审批的工作。"
+        },
+        {
+          "kind": "card",
+          "title": "工作交接与审批",
+          "text": "工作交接与审批\n我收到的交接\n\n暂无记录\n\n我的组织审批\n\n暂无记录"
+        },
+        {
+          "kind": "card",
+          "title": "进展",
+          "text": "进展\n\nbutler · 已结束 · 2 个执行单元\n\n查看进展\n展开执行树\n看瀑布"
+        }
+      ]
+    }
+  ]
+}

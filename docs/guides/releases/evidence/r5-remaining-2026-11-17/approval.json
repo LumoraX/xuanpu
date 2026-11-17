@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "checks": {
+    "approval_question_points_to_confirmations": true,
+    "write_held_before_approval": true,
+    "approved_requests": true,
+    "dispatch_completed": true,
+    "ticket_updated": true,
+    "approval_item_resolved": true,
+    "delivered_to_main_conversation": true
+  },
+  "receipt_message": "已交给客服工单助手，将把工单 T-1002 的优先级调整为 high，完成后会向你反馈结果。",
+  "approval_question": "「support-desk」有一项操作需要你确认，请在待确认里处理。",
+  "ticket_before": {
+    "id": "T-1002",
+    "title": "发票抬头有误",
+    "priority": "low",
+    "status": "open"
+  },
+  "ticket_after": {
+    "id": "T-1002",
+    "title": "发票抬头有误",
+    "priority": "high",
+    "status": "open"
+  },
+  "dispatch_row": {
+    "span_id": "dp.dsp_4b498dc0fd5eb6e6475634cf",
+    "parent_span_id": "ex.thr_1fba4eee769b8b16",
+    "kind": "dispatch",
+    "name": "support-desk/triage",
+    "state": "completed",
+    "depth": 1,
+    "offset_ms": 10084,
+    "duration_ms": 43983,
+    "input_tokens": null,
+    "output_tokens": null,
+    "usage_complete": false,
+    "orphan": false
+  },
+  "last_messages": [
+    "已交给客服工单助手，将把工单 T-1002 的优先级调整为 high，完成后会向你反馈结果。",
+    "「support-desk」有一项操作需要你确认，请在待确认里处理。",
+    "「support-desk」已完成，结果如下：\n已成功修改，并重新查询核实：\n\n- **工单号**：T-1002（发票抬头有误）\n- **当前优先级**：**high**（原为 low）\n- **当前状态**：open，保持不变\n- **对应处理时限**：4 小时（原 low 优先级对应 72 小时）\n\n辅助判断（仅供参考，不改变上面的结论）：工单 T-1002 的优先级已成功调整并核实为 high。当前状态为 open，处理时限为 4 小时。"
+  ]
+}
