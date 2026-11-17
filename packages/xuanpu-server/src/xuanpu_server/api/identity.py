@@ -6,7 +6,8 @@
 - ``GET /v1/identity/feishu``、``PUT /v1/identity/feishu``：租户的飞书配置；
 - ``POST /v1/identity/feishu/events/{tenant_id}``：飞书事件回调（不走平台的认证，靠飞书的签名；
   流程见 ``identity.callback``）；
-- 用户管理（``/v1/users``…）在 ``api.users``，经这里一并挂上，``api.app`` 不必再改。
+- 用户管理（``/v1/users``…）在 ``api.users``，自有账号（口令登录、设置链接、改口令）在
+  ``api.accounts``，都经这里一并挂上，``api.app`` 不必再改。
 
 对账以后也加在这里。
 """
@@ -20,6 +21,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from xuanpu_server.api import schemas  # noqa: TC001 —— FastAPI 运行时解析请求体的标注
+from xuanpu_server.api.accounts import accounts_router
 from xuanpu_server.api.auth import Caller  # noqa: TC001 —— FastAPI 运行时解析路由标注
 from xuanpu_server.api.users import users_router
 from xuanpu_server.errors import PlatformError
@@ -138,6 +140,7 @@ def identity_router(platform: Platform) -> APIRouter:
     router = APIRouter()
     identity = platform.identity
     router.include_router(users_router(platform))
+    router.include_router(accounts_router(platform))
 
     @router.get("/v1/me")
     async def me(who: Caller) -> dict[str, Any]:

@@ -90,6 +90,8 @@ curl -fsS -X PUT "$BASE/v1/identity/feishu" \
 
 ## 4. 登录与首位管理员
 
+> 不想经飞书开通首位管理员的，可以直接开通玄圃账号，见[玄圃账号](accounts.md#开通第一名管理员)。
+
 让首位管理员本人打开 `<BASE>/console/?tenant=acme`，点击「用飞书登录」。也可直接访问 `/v1/auth/feishu/login?tenant=acme&return_to=/console/`。员工首次登录为 `tenant_member`；首次成功登录同时绑定飞书 `tenant_key`，以后其他企业的登录会被拒绝。
 
 持租户管理员 key 的操作员核对姓名与用户 ID，设置 `ADMIN_USER` 为刚登录那个人的 `user_id`，再执行：

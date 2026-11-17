@@ -70,6 +70,11 @@ LoginResult = Literal[
 """
 LOGIN_RESULTS: tuple[str, ...] = get_args(LoginResult)
 
+PasswordLoginResult = Literal["succeeded", "rejected", "locked"]
+"""``xuanpu_password_logins_total`` 的 ``result``：用户名口令登录（含设置链接兑现、改口令后的重新
+登录）成功、被拒（无此人、口令错、员工停用，对外不区分），或因锁定被拒（ADR 0019）。"""
+PASSWORD_LOGIN_RESULTS: tuple[str, ...] = get_args(PasswordLoginResult)
+
 DisableReason = Literal["feishu_resigned", "feishu_frozen", "feishu_exited", "admin"]
 """``xuanpu_users_disabled_total`` 的 ``reason``：与 ``identity.models.DisabledReason`` 相同（有测试
 守着），这里另写一份的理由同 ``LoginResult``。"""
@@ -126,6 +131,7 @@ class PlatformMetrics:
         }
         self._backfill_failures = dict.fromkeys(BACKFILL_STAGES, 0)
         self._logins = dict.fromkeys(LOGIN_RESULTS, 0)
+        self._password_logins = dict.fromkeys(PASSWORD_LOGIN_RESULTS, 0)
         self._users_disabled = dict.fromkeys(DISABLE_REASONS, 0)
         self._feishu_events = dict.fromkeys(FEISHU_EVENT_RESULTS, 0)
         self._reconcile_runs = dict.fromkeys(("succeeded", "failed", "cancelled"), 0)
@@ -164,6 +170,10 @@ class PlatformMetrics:
     def login(self, result: LoginResult) -> None:
         """一次飞书登录有了结果。"""
         self._logins[result] = self._logins.get(result, 0) + 1
+
+    def password_login(self, result: PasswordLoginResult) -> None:
+        """一次用户名口令登录有了结果。"""
+        self._password_logins[result] = self._password_logins.get(result, 0) + 1
 
     def user_disabled(self, reason: DisableReason) -> None:
         """一名员工被停用了（状态确实从启用变成停用；重复停用不计）。"""
@@ -218,6 +228,10 @@ class PlatformMetrics:
             {(result,): count for result, count in self._logins.items()},
         )  # fmt: skip
         yield _counter(
+            "xuanpu_password_logins", "用户名口令登录的结果：成功、被拒或因锁定被拒", ["result"],
+            {(result,): count for result, count in self._password_logins.items()},
+        )  # fmt: skip
+        yield _counter(
             "xuanpu_users_disabled", "被停用的员工数，按停用原因分", ["reason"],
             {(reason,): count for reason, count in self._users_disabled.items()},
         )  # fmt: skip
@@ -268,9 +282,11 @@ __all__ = [
     "FEISHU_EVENT_RESULTS",
     "GATE_DECISIONS",
     "LOGIN_RESULTS",
+    "PASSWORD_LOGIN_RESULTS",
     "TURN_OUTCOMES",
     "DisableReason",
     "FeishuEventResult",
     "LoginResult",
+    "PasswordLoginResult",
     "PlatformMetrics",
 ]

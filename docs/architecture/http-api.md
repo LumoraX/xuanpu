@@ -142,11 +142,16 @@ X-Xuanpu-Act-As: usr_5f0c1b2e7d9a4c3b8e6f1a20
 | `GET /v1/auth/feishu/login?tenant=&return_to=` | 无 | 开始飞书登录，302 到飞书授权页 |
 | `GET /v1/auth/feishu/callback` | 无 | 飞书授权页跳回，完成登录，302 到 `return_to` 或落地页 |
 | `POST /v1/auth/logout` | 浏览器登录 | 退出：删掉当前登录会话，清 cookie |
+| `GET /v1/auth/methods?tenant=` | 无 | 租户可用的登录方式 |
+| `POST /v1/auth/password/login` | 无（要 `X-Requested-By`） | 用户名口令登录，写登录 cookie |
+| `POST /v1/auth/password/setup/inspect` · `POST /v1/auth/password/setup` | 无（要 `X-Requested-By`） | 查看设置链接；兑现设置链接、设口令并登录 |
+| `POST /v1/me/password` | 浏览器登录 | 改自己的口令，换发登录 cookie |
 | `GET /v1/identity/feishu` · `PUT /v1/identity/feishu` | 租户管理员 | 本租户的飞书配置 |
 | `POST /v1/identity/feishu/events/{tenant_id}` | 飞书的签名 | 飞书事件回调：URL 验证、员工离职 |
 | `GET /v1/users?status=&role=&unverified=&after=&limit=` | 租户管理员 | 列出员工 |
 | `GET /v1/users/{user_id}` | 租户管理员或本人 | 取员工 |
 | `PUT /v1/users/{user_id}/role` · `PUT /v1/users/{user_id}/status` | 租户管理员 | 改员工的角色；停用或启用员工 |
+| `POST /v1/users` · `POST /v1/users/{user_id}/password-link` | 租户管理员 | 开通玄圃账号并返回设置链接；给员工签发设置链接 |
 | `POST /v1/admin/tenants` | 平台管理员 | 新建租户 |
 | `GET /v1/admin/tenants` | 平台管理员 | 列出租户 |
 | `PUT /v1/admin/tenants/{id}/status` | 平台管理员 | 启用或停用租户 |
@@ -407,7 +412,45 @@ PUT /v1/users/{user_id}/status
 | 要降级或停用的是最后一名启用的管理员 | `409 conflict` |
 | 取值不在上面列的范围里、缺字段或有多余的字段 | `400 invalid_request` |
 
-**第一个管理员**：员工先飞书登录一次（成为普通成员），持租户管理员 API key 的人（平台管理员可以用 `POST /v1/admin/tenants/{id}/keys` 签发这把 key）调 `PUT /v1/users/{user_id}/role` 把他设为管理员；之后管理员之间互相设置。最后一名管理员离职被停用时也这样重新指定。
+**第一个管理员**：持租户管理员 API key 的人（平台管理员可以用 `POST /v1/admin/tenants/{id}/keys` 签发这把 key）调 `POST /v1/users` 直接开通一名 `tenant_admin` 的玄圃账号（见[玄圃账号](#玄圃账号)）；或者员工先飞书登录一次（成为普通成员），再调 `PUT /v1/users/{user_id}/role` 把他设为管理员。之后管理员之间互相设置。最后一名管理员离职被停用时也这样重新指定。
+
+## 玄圃账号
+
+用户名口令账号（ADR 0019），规则见[账号体系](accounts.md)。
+
+```
+POST /v1/users                          # 租户管理员
+{"username": "Zhang.San", "display_name": "张三", "role": "tenant_member"}
+→ 201 {"user": {员工对象}, "setup_link": {"url": "<public_url>/console/#password_setup=<令牌>",
+        "user_id": "usr_…", "username": "zhang.san", "purpose": "setup", "expires_at": …}}
+
+POST /v1/users/{user_id}/password-link  # 租户管理员；没开通用户名的员工必须给 username
+{"username": "zhang.san"}               # 已开通的可省略，不能改名
+→ 200 {同上的 setup_link 对象；已设过口令的 purpose 为 "reset"}
+```
+
+```
+GET  /v1/auth/methods?tenant=acme       → {"tenant": "acme", "password": true, "feishu": false}
+POST /v1/auth/password/setup/inspect    {"token": "…"}
+     → {"tenant_id", "username", "display_name", "purpose", "expires_at"}
+POST /v1/auth/password/setup            {"token": "…", "password": "…"}
+POST /v1/auth/password/login            {"tenant": "acme", "username": "…", "password": "…"}
+POST /v1/me/password                    {"current_password": "…", "new_password": "…"}
+     → 200 {"tenant_id", "user_id"}，Set-Cookie 写登录 cookie，Cache-Control: no-store
+```
+
+`tenant` 省略时用 `identity.default_tenant`。登录、查看与兑现链接三个接口不需要凭据，但必须带 `X-Requested-By: xuanpu`，带了 `Origin` 的必须等于 `public_url`。`POST /v1/me/password` 只接受浏览器登录。
+
+| 情况 | 响应 |
+| --- | --- |
+| 用户名不存在、口令错、锁定中、员工或租户停用（不区分） | `401 unauthenticated`「用户名或口令不正确」 |
+| 设置链接无效、过期、已兑现或员工已停用 | `401 unauthenticated` |
+| 改口令时当前口令不对 | `401 unauthenticated` |
+| 缺 `X-Requested-By` 或 `Origin` 不符 | `403 csrf_rejected` |
+| 不是租户管理员（开通、签发） | `403 permission_denied` |
+| 用户名或口令不合规则；需要用户名却没给；想改用户名；没有配置 `public_url`；用 API key 改口令 | `400 invalid_request` |
+| 用户名已被占用；给停用的员工签发 | `409 conflict` |
+| 口令计算排队超时 | `503 runtime_unavailable` |
 
 ## 租户
 

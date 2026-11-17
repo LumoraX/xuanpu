@@ -105,6 +105,7 @@ async function connectEntry() {
     entry.me = me;
     $("entry-user").textContent = me.display_name || "";
     $("entry-login").classList.add("hidden");
+    $("entry-password-login").classList.add("hidden");
     $("entry-main").classList.remove("hidden");
     // 历史与概览各自失败只提示，不当作未登录
     await Promise.all([loadHistory(epoch).catch(report), refreshOverview().catch(report), refreshTips()]);
@@ -112,6 +113,7 @@ async function connectEntry() {
   } catch (error) {
     if (isStale(epoch) || error.name === "AbortError") return false;
     $("entry-login").classList.remove("hidden");
+    $("entry-password-login").classList.remove("hidden");
     if (error.status !== 401) report(error);
     return false;
   }
@@ -167,5 +169,9 @@ async function logoutEntry() {
   resetEntry();
   try { await fetch("/v1/auth/logout", { method: "POST", credentials: "same-origin",
     headers: { "X-Requested-By": "xuanpu" } }); }
-  finally { $("entry-login").classList.remove("hidden"); announce("已退出"); }
+  finally {
+    $("entry-login").classList.remove("hidden");
+    $("entry-password-login").classList.remove("hidden");
+    announce("已退出");
+  }
 }

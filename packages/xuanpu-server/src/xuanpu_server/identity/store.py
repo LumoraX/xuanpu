@@ -25,6 +25,9 @@
 状态是否真的变了、企业标识只绑定一次、取出即删、租约认领，以及改角色与状态时可选的「至少留一名
 启用的管理员」（``keep_an_admin``）。
 
+**自有账号**（ADR 0019）的凭据与设置链接经 ``credentials``（``identity.credential_store``）读写，
+同一后端。
+
 两个实现：``InMemoryIdentityStore`` 用于测试与单机试用，``PostgresIdentityStore`` 用于多实例
 部署。二者对同一套契约测试负责。
 """
@@ -34,6 +37,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    from xuanpu_server.identity.credential_store import CredentialStore
     from xuanpu_server.identity.models import (
         DisabledReason,
         ExternalIdentity,
@@ -53,6 +57,11 @@ if TYPE_CHECKING:
 @runtime_checkable
 class IdentityStore(Protocol):
     """身份存储。"""
+
+    @property
+    def credentials(self) -> CredentialStore:
+        """自有账号的凭据与设置链接（同一后端）。"""
+        ...
 
     # --- 用户 ---
 

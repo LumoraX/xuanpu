@@ -35,6 +35,7 @@ FAMILIES = {
     "xuanpu_usage_estimated": "counter",
     "xuanpu_usage_write_failures": "counter",
     "xuanpu_logins": "counter",
+    "xuanpu_password_logins": "counter",
     "xuanpu_users_disabled": "counter",
     "xuanpu_feishu_events": "counter",
     "xuanpu_reconcile_runs": "counter",

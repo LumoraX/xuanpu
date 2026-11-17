@@ -36,6 +36,8 @@ function applyPermissions() {
   $("admin-connection").classList.toggle("hidden", !adminMode || (!!conn.me && !isAdmin()));
   if (conn.me) $("admin-connection").open = false;
   $("feishu-login").classList.toggle("hidden", !!conn.me?.user_id || !sameOrigin());
+  $("password-login").classList.toggle("hidden", !!conn.me || !sameOrigin());
+  $("change-password-toggle").classList.toggle("hidden", !conn.me?.user_id || !!conn.apiKey);
   for (const node of document.querySelectorAll("[data-admin]")) node.classList.toggle("hidden", !isAdmin());
   $("current-user").classList.toggle("hidden", !conn.me);
   $("user-name").textContent = conn.me ? (conn.me.display_name || "API key") + (isAdmin() ? " · 管理员" : " · 成员") : "";
@@ -261,6 +263,14 @@ function userRow(user) {
   const status = user.status === "active" ? "disabled" : "active";
   addUserAction(actions, role === "tenant_admin" ? "设为管理员" : "改为成员", user, "role", role);
   addUserAction(actions, status === "disabled" ? "停用" : "启用", user, "status", status);
+  if (user.status === "active") {
+    const link = document.createElement("button");
+    link.type = "button";
+    link.textContent = "设置链接";
+    link.className = "ghost";
+    link.addEventListener("click", () => issuePasswordLink(link, user));
+    actions.appendChild(link);
+  }
   if (user.status === "disabled") addUserAction(actions, "重试停用收尾", user, "status", "disabled");
   return row;
 }

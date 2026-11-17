@@ -8,6 +8,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from xuanpu_server.errors import ConflictError, NotFoundError
+from xuanpu_server.identity.memory_credentials import InMemoryCredentialStore
 from xuanpu_server.identity.models import (
     ReconcileState,
     UserUsageRecord,
@@ -61,6 +62,7 @@ class InMemoryIdentityStore:
         self._attempts: dict[str, LoginAttempt] = {}
         self._usage: dict[tuple[str, str, str], UserUsageRecord] = {}
         self._reconcile: dict[str, ReconcileState] = {}
+        self.credentials = InMemoryCredentialStore(self._user_exists)
         reminders = control_plane.reminder_store
         if not isinstance(reminders, InMemoryReminderStore):
             raise TypeError("内存身份存储要求内存提醒后端")
@@ -70,6 +72,10 @@ class InMemoryIdentityStore:
                 (tenant, user) in self._users and self._users[(tenant, user)].status == "active"
             )
         )
+
+    async def _user_exists(self, tenant_id: str, user_id: str) -> bool:
+        """员工是否存在（供自有账号存储判断，相当于 Postgres 的外键）。"""
+        return (tenant_id, user_id) in self._users
 
     async def _require_tenant(self, tenant_id: str) -> None:
         """租户不存在则报错。"""

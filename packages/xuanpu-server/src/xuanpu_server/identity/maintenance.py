@@ -1,4 +1,4 @@
-"""身份域的周期任务：清理过期的登录尝试与登录会话。
+"""身份域的周期任务：清理过期的登录尝试、登录会话与自有账号的设置链接。
 
 由 ``Platform.start()`` 经 ``IdentityService.start()`` 启动，``Platform.close()`` 时取消并等它结束。
 每隔 ``PURGE_INTERVAL_SECONDS`` 调一次 ``IdentityStore.purge_expired_logins(now)``：没走完的登录
@@ -72,8 +72,10 @@ class IdentityMaintenance:
             await task
 
     async def run_once(self) -> int:
-        """跑一轮：清掉全部租户里过期的登录尝试与登录会话，返回清掉的条数。"""
-        purged = await self._store.purge_expired_logins(self._now())
+        """跑一轮：清掉全部租户里过期的登录尝试、登录会话与设置链接，返回清掉的条数。"""
+        now = self._now()
+        purged = await self._store.purge_expired_logins(now)
+        purged += await self._store.credentials.purge_expired_account_tokens(now)
         if self._reconcile is not None:
             await self._reconcile()
         return purged
