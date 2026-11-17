@@ -40,6 +40,29 @@ def test_strict_parsing_rejects(raw: dict[str, Any]) -> None:
         parse_plan(raw, CONFIG)
 
 
+def test_plan_level_error_states_reason_without_values() -> None:
+    """整份计划级别的错误没有字段位置，也要说明原因，模型才能改正；不回显取值。"""
+    raw = plan({"mode": "consult", "members": [member("A")], "when": "completed"})
+    raw["title"] = "机密标题-不回显"
+    with pytest.raises(InvalidRequestError, match="第一步不能带 when") as caught:
+        parse_plan(raw, CONFIG)
+    assert "机密标题-不回显" not in str(caught.value)
+    with pytest.raises(InvalidRequestError, match=r"steps\.0\.mode"):
+        parse_plan(plan({"mode": "debate", "members": [member("A")]}), CONFIG)
+
+
+def test_explicit_null_when_is_accepted_and_schema_allows_it() -> None:
+    """严格模式下模型必须填满字段：第一步 when 显式为 null 可以通过，工具结构也允许 null。"""
+    from xuanpu_server.butler.groups.tools import GROUP_PLAN_SCHEMA
+
+    raw = plan({"mode": "consult", "members": [member("A")], "when": None},
+               {"mode": "relay", "members": [member("B")], "when": "completed"})
+    parsed = parse_plan(raw, CONFIG)
+    assert [s.when for s in parsed.steps] == [None, "completed"]
+    when = GROUP_PLAN_SCHEMA["properties"]["steps"]["items"]["properties"]["when"]
+    assert None in when["enum"] and "null" in when["type"]
+
+
 def test_limits_and_budget() -> None:
     """步数、每步成员数上限；成员总数加已有派工不能超过匠人上限。"""
     three_steps = plan(*[{"mode": "parallel", "members": [member("A")]}] * 3)

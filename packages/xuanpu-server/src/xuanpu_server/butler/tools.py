@@ -13,8 +13,14 @@ import taifeng
 from pydantic import ValidationError
 
 from xuanpu_server.assistant_proposals import NATIVE_PACKAGES, resolve_native_choice
+from xuanpu_server.assistant_reminders import REMINDER_PROMPT
+from xuanpu_server.assistant_task_definitions import TASK_DEFINITION_PROMPT
+from xuanpu_server.assistant_workspace import WORKSPACE_PROMPT
 from xuanpu_server.butler.groups.tools import GROUP_PLAN_SCHEMA
+from xuanpu_server.collaboration.routing import COLLABORATION_PROMPT
 from xuanpu_server.errors import PlatformError
+from xuanpu_server.proactive.models import PROACTIVE_ROUTING
+from xuanpu_server.shared_matters.routing import SHARED_PROMPT
 from xuanpu_server.work_tasks.models import InputFile
 
 if TYPE_CHECKING:
@@ -34,6 +40,17 @@ TOOL_NAMES = ("propose", "read_personal", "list_artisans", "dispatch_artisan", "
 _WAKE_ONLY = frozenset({"answer_artisan", "ask_user"})
 _ANY_TURN = frozenset({"read_personal", "list_artisans", "check_dispatch", "check_group"})
 _LIST_MAX = 20
+_ERRORS_MAX = 8
+# propose 的 choice 结构：与分流共用同一份内置能力约定（包名带 @，草稿字段名固定），
+# 不另写一份，避免两处漂移。真实模型验收发现缺了它时模型只能猜包名与字段。
+PROPOSE_DESCRIPTION = (
+    "提出一个平台内置能力的待确认草稿（提醒、待办、日程、事项、文件夹、执行安排、交接、共享、"
+    "业务跟进）或打开对应列表。草稿须员工本人确认。choice 只含 package、entry、message 与下列"
+    "草稿字段之一；package 与 entry 必须用下列约定里的准确标识（带 @），message 填 null，"
+    "给员工的话写在你自己的回复里。约定如下：\n"
+    + REMINDER_PROMPT + WORKSPACE_PROMPT + TASK_DEFINITION_PROMPT + PROACTIVE_ROUTING
+    + SHARED_PROMPT + COLLABORATION_PROMPT
+)
 
 
 def _refusal(name: str, turn: ButlerTurn) -> str | None:
@@ -53,6 +70,15 @@ def _json(data: object) -> str:
     return json.dumps(data, ensure_ascii=False, default=str)
 
 
+def _validation_summary(exc: ValidationError) -> str:
+    """参数校验错误：只给字段位置与原因，不回显取值，便于模型自行改正。"""
+    errors = exc.errors(include_url=False, include_input=False, include_context=False)
+    parts = [f"{'.'.join(str(p) for p in e['loc']) or '(根)'}: {e['msg']}" for e in errors[:_ERRORS_MAX]]
+    if len(errors) > _ERRORS_MAX:
+        parts.append(f"另有 {len(errors) - _ERRORS_MAX} 处")
+    return "; ".join(parts)
+
+
 class ButlerTools:
     """构造管家工具；处理函数共用平台、派工与本轮登记表。"""
 
@@ -69,10 +95,9 @@ class ButlerTools:
     def specs(self) -> list[taifeng.ToolSpec]:
         """全部管家工具。"""
         return [
-            self._spec("propose", "提出一个平台内置能力的待确认草稿（提醒、待办、日程、事项、文件夹、"
-                       "执行安排、交接、共享、业务跟进）或打开对应列表。草稿须员工本人确认。",
+            self._spec("propose", PROPOSE_DESCRIPTION,
                        {"choice": {"type": "object", "description":
-                                   "与内置能力选择同结构：package、entry 及对应草稿字段"}},
+                                   "package、entry（按工具说明里的约定）、message=null 及对应草稿字段"}},
                        ["choice"], self._propose),
             self._spec("read_personal", "查本人的提醒或进行中的工作（只读）。",
                        {"kind": {"type": "string", "enum": ["reminders", "work_tasks"]}},
@@ -109,8 +134,9 @@ class ButlerTools:
 
         handlers = GroupTools(self._groups)
         return [
-            self._spec("dispatch_group", "需要多位匠人时提交一份编组计划：每步并行（parallel，各做一部分）"
-                       "或接力（relay，前一位的成果摘要交给后一位）；立即返回，不等结果。",
+            self._spec("dispatch_group", "需要多位匠人时提交一份编组计划：每步并行（parallel，各做一部分）、"
+                       "接力（relay，前一位的成果摘要交给后一位）或会诊（consult，就同一问题各自给结论，"
+                       "全部给完后比对）；第一步的 when 写 null。立即返回，不等结果。",
                        {"plan": GROUP_PLAN_SCHEMA}, ["plan"], handlers.dispatch_group),
             self._spec("cancel_group", "请求停止一个编组的全部未结束成员；以匠人实际停下为准。",
                        {"group_id": {"type": "string"}}, ["group_id"], handlers.cancel_group),
@@ -154,7 +180,9 @@ class ButlerTools:
                 return await handler(turn, args, ctx.call_id)
             except PlatformError as exc:
                 return taifeng.ToolResult.error(f"{exc.code}: {exc.message}")
-            except (ValidationError, ValueError) as exc:
+            except ValidationError as exc:
+                return taifeng.ToolResult.error(f"invalid_arguments: {_validation_summary(exc)}")
+            except ValueError as exc:
                 return taifeng.ToolResult.error(f"invalid_arguments: {type(exc).__name__}")
 
         schema = {"type": "object", "properties": properties, "required": required,

@@ -16,6 +16,10 @@ from typing import Any
 
 from xuanpu_sdk import XuanpuClient
 
+# 管家一轮在服务端最长 90 秒（butler.engine.TURN_SECONDS）；客户端须等得比它久，
+# 否则真实模型下安排编组这类慢的一轮会被 SDK 默认的 60 秒先掐断。
+CLIENT_TIMEOUT = 120.0
+
 CASES = Path(__file__).parent / "data" / "r5_butler_regression.json"
 
 
@@ -33,7 +37,7 @@ async def run(base_url: str, key: str, act_as: str, prefix: str) -> dict[str, An
     """逐条执行并汇总。"""
     cases = json.loads(CASES.read_text())["cases"]
     results = []
-    async with XuanpuClient(base_url, key, act_as_user=act_as) as client:
+    async with XuanpuClient(base_url, key, act_as_user=act_as, timeout_seconds=CLIENT_TIMEOUT) as client:
         for case in cases:
             receipt = await client.send_to_butler(case["text"], request_id=f"{prefix}-{case['id']}")
             results.append({"id": case["id"], "expect": case["expect"], "mode": receipt.get("mode"),

@@ -1,6 +1,6 @@
 # 极简入口（活文档）
 
-> R5-E。为什么这么定见 [ADR 0017](../decisions/0017-butler-artisan-orchestration.md) 决策 8；设计与计划见 [R5-E 设计](../superpowers/specs/2026-11-14-r5e-minimal-entry-design.md)、[R5-E 计划](../superpowers/plans/2026-11-14-r5e-minimal-entry.md)。尚未生产部署。
+> R5-E。为什么这么定见 [ADR 0017](../decisions/0017-butler-artisan-orchestration.md) 决策 8；设计与计划见 [R5-E 设计](../superpowers/specs/2026-11-14-r5e-minimal-entry-design.md)、[R5-E 计划](../superpowers/plans/2026-11-14-r5e-minimal-entry.md)。已随 2026-11-15 生产发布部署，所有租户默认关闭（见[R5 生产发布记录](../guides/releases/2026-11-15-r5-production.md)）。
 
 ## 概览（`dashboard/`、`api/dashboard.py`）
 

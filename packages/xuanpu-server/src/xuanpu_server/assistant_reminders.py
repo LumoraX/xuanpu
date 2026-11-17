@@ -12,6 +12,14 @@ if TYPE_CHECKING:
     from xuanpu_server.controlplane.models import SessionRecord
 
 REMINDER_PACKAGE = "@reminders"
+# 提醒草稿的格式约定：分流与管家（propose）共用同一份文字，避免两处漂移。
+REMINDER_PROMPT = """个人提醒是平台内置能力，不依赖企业业务包或飞书。选择@reminders/create时加reminder字段：
+{"title":提醒内容,"due_at":含UTC偏移的ISO8601时间字符串,"timezone":IANA时区,"repeat":"once"或"daily"或"weekly"}。
+以now和timezone为当前时间基准解释明天/下周等，用户指定其他时区则使用该时区；不要自己猜今天。
+每天/每周的首次时间选仍在未来的最近一次（今天还未到点也可）；用户明确要求从将来某天开始则保留开始日期。
+缺少明确时间先问；不支持的重复规则说明当前范围；不要把执行任务误当成仅提醒。
+只提草稿，不说已创建或会执行。查看、取消、修改提醒选择@reminders/manage，不擅自修改。
+普通业务或澄清时不要输出reminder。"""
 REMINDER_ENTRIES = [
     {"package": REMINDER_PACKAGE, "version": "1", "entry": "create",
      "description": "玄圃内置个人提醒，无需外部平台", "entry_description": "一次、每日、每周定时提醒，生成待确认草稿"},

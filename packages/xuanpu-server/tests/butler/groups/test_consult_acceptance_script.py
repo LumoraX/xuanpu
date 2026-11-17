@@ -34,7 +34,17 @@ def test_overlap_counts_pairs_and_running_rows() -> None:
 
 
 def test_usage_complete_ignores_running_rows() -> None:
-    """已结束的行都要有完整用量；运行中的行不计。"""
+    """已结束的执行行都要有完整用量；运行中的行不计。"""
     script = _script()
-    assert script.usage_complete([_row(0, 10), _row(0, None, usage=False)])
-    assert not script.usage_complete([_row(0, 10, usage=False)])
+    assert script.usage_complete([_row(0, 10, kind="artisan"), _row(0, None, kind="artisan", usage=False)])
+    assert not script.usage_complete([_row(0, 10, kind="artisan", usage=False)])
+
+
+def test_usage_complete_only_counts_execution_rows() -> None:
+    """工具、派工、编组行本来没有用量，不参与判定；没有执行行时不算完整。"""
+    script = _script()
+    rows = [_row(0, 10, kind="butler"), _row(1, 5, kind="artisan"),
+            _row(1, 5, kind="tool", usage=False), _row(1, 9, kind="dispatch", usage=False),
+            _row(1, 9, kind="group", usage=False)]
+    assert script.usage_complete(rows)
+    assert not script.usage_complete([_row(1, 9, kind="dispatch", usage=False)])
