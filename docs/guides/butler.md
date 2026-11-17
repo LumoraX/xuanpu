@@ -26,6 +26,7 @@
 ## 可靠性
 
 - 唤醒由持久记录驱动：平台每隔 `butler.wake_interval_seconds` 对账一次。进程在处理中途被终止，重启后按已保存的处理决定续做，每次匠人结束只交付一次（PostgreSQL 下用真实子进程 SIGKILL 验证，见 `tests/butler/test_wakeup_restart.py`）。
+- 一轮最长 90 秒（安排编组这类慢的一轮在真实模型下可能接近上限），超时返回 503、原话保留。自己写客户端时读超时要长于 90 秒；Python SDK 的 `send_to_butler` 已至少等 120 秒。
 - 已知窗口：把答复转给匠人后、会话审计写入前进程被终止时，重启后可能再发一次同一答复（消息带编号，匠人可识别重复）。
 
 ## 回归
@@ -39,3 +40,12 @@
 ```
 
 `.env` 放在仓库根目录（已被 `.gitignore` 忽略），键见 `.env.example`；脚本起本机内存平台与样例工单接口，只读这个文件，不读环境变量。
+
+`r5_real_model_harness.py` 依次跑三项（`--only` 可选其一或几项）：回归集；审批写入全程（`r5_approval_acceptance.py`：管家派工改工单优先级 → 员工批准前核对未写入 → 以员工本人身份批准 → 核对派工结束、工单已改、审批提示已收、结果进主对话）；三成员会诊。极简入口在真实浏览器里的对话内查看与确认另用：
+
+```bash
+.venv/bin/python scripts/acceptance/r5_entry_chat_browser.py \
+  --chrome "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --model-env .env --out <输出目录>
+```
+
+2026-11-17 的结果见[R5 剩余验收](releases/2026-11-17-r5-remaining-acceptance.md)。

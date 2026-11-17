@@ -72,6 +72,7 @@ class _Http:
         act_as_user: str | None,
     ) -> None:
         """建立底层 HTTP 客户端。"""
+        self.timeout = timeout
         headers = {"Authorization": f"Bearer {api_key}"}
         if act_as_user is not None:
             headers["X-Xuanpu-Act-As"] = act_as_user

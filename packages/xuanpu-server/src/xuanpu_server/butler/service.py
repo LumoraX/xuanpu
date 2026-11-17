@@ -28,7 +28,7 @@ from xuanpu_server.butler.groups.runner import GroupRunner
 from xuanpu_server.butler.groups.trace import TracedGroupStore
 from xuanpu_server.butler.pending import PendingService
 from xuanpu_server.butler.review import Reviewer
-from xuanpu_server.butler.tools import ButlerTools
+from xuanpu_server.butler.tools import ButlerTools, has_draft
 from xuanpu_server.butler.turn import ButlerTurn, TurnRegistry
 from xuanpu_server.butler.wake_apply import WakeEffects
 from xuanpu_server.butler.wakeup import Wakeup
@@ -166,7 +166,7 @@ class ButlerService:
         if turn.proposal is None:
             return RouteOutcome(message=reply or None)
         return replace(turn.proposal, message=reply or turn.proposal.message,
-                       proposal_id=turn.request_id if _has_draft(turn.proposal) else None)
+                       proposal_id=turn.request_id if has_draft(turn.proposal) else None)
 
     async def _payload(self, who: Principal, body: ButlerMessageBody) -> str:
         """本轮输入：最近对话、当前时间与原话，全部作为数据交给管家。"""
@@ -193,11 +193,6 @@ class ButlerService:
         await self.pending.close()
         await self.engines.close()
 
-
-def _has_draft(outcome: RouteOutcome) -> bool:
-    """是否带待确认草稿（只打开列表的不算）。"""
-    return any((outcome.reminder_draft, outcome.workspace_draft, outcome.proactive_draft,
-                outcome.task_definition_draft, outcome.shared_draft, outcome.handoff_draft))
 
 
 def _dispatch_view(record: Any) -> dict[str, Any]:

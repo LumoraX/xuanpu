@@ -21,7 +21,7 @@
 
 | 工具 | 作用 | 约束 |
 | --- | --- | --- |
-| `propose` | 内置能力（提醒、工作站、业务跟进、执行安排、交接、共享、连接）的待确认草稿或打开列表 | 与分流共用 `assistant_proposals.resolve_native_choice`，卡片同形；每轮最多一个；业务包选择被拒。工具说明直接带上分流共用的内置能力约定（包名与草稿字段，同一份文字，如 `REMINDER_PROMPT`） |
+| `propose` | 内置能力（提醒、工作站、业务跟进、执行安排、交接、共享、连接）的待确认草稿或打开列表 | 与分流共用 `assistant_proposals.resolve_native_choice`，卡片同形；每轮最多一个；业务包选择被拒。工具说明直接带上分流共用的内置能力约定（包名与草稿字段，同一份文字，如 `REMINDER_PROMPT`；企业连接补一句 `@connections/manage`）。结果的 `needs_confirmation` 只在带草稿时为真，只打开列表为假；包名带 `@` 却不合法（如把入口拼进包名）时错误列出合法包名 |
 | `read_personal` | 本人进行中的提醒、本人工作任务 | 只读，最多 20 条，只给标题与状态 |
 | `list_artisans` | 本人此刻可用的匠人 | 经 `ArtisanResolver`（现状：租户生效版本） |
 | `dispatch_artisan` | 派给一位匠人 | 见下节 |

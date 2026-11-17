@@ -26,6 +26,7 @@ from xuanpu_server.work_tasks.models import InputFile
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
+    from xuanpu_server.assistant_reminders import RouteOutcome
     from xuanpu_server.butler.dispatcher import Dispatcher
     from xuanpu_server.butler.groups.runner import GroupRunner
     from xuanpu_server.butler.pending import PendingService
@@ -50,6 +51,9 @@ PROPOSE_DESCRIPTION = (
     "给员工的话写在你自己的回复里。约定如下：\n"
     + REMINDER_PROMPT + WORKSPACE_PROMPT + TASK_DEFINITION_PROMPT + PROACTIVE_ROUTING
     + SHARED_PROMPT + COLLABORATION_PROMPT
+    # 企业连接在分流里是目录条目而非提示词，这里补一句同义约定
+    + "\n本人企业只读连接（绑定企业微信、查看或撤销授权）选择@connections/manage，只打开本人连接页；"
+    "企业未开通时平台会拒绝，如实说明即可。"
 )
 
 
@@ -68,6 +72,12 @@ def _refusal(name: str, turn: ButlerTurn) -> str | None:
 def _json(data: object) -> str:
     """工具输出统一成 JSON 文本。"""
     return json.dumps(data, ensure_ascii=False, default=str)
+
+
+def has_draft(outcome: RouteOutcome) -> bool:
+    """是否带待确认草稿（只打开列表的不算）。"""
+    return any((outcome.reminder_draft, outcome.workspace_draft, outcome.proactive_draft,
+                outcome.task_definition_draft, outcome.shared_draft, outcome.handoff_draft))
 
 
 def _validation_summary(exc: ValidationError) -> str:
@@ -198,6 +208,12 @@ class ButlerTools:
             return taifeng.ToolResult.error("本轮已经提出过一个草稿")
         choice = Choice.model_validate_json(json.dumps(args.get("choice")))
         if choice.package not in NATIVE_PACKAGES:
+            # 以 @ 开头多半是把入口拼进了包名（如 @workspace/create）：说清合法取值，模型才能改正
+            # （真实模型下出现过，旧提示「企业业务请交给匠人」让模型放弃了草稿）
+            if (choice.package or "").startswith("@"):
+                return taifeng.ToolResult.error(
+                    "package 不对：只能是 " + "、".join(sorted(NATIVE_PACKAGES))
+                    + " 之一，不含入口；入口（如 create、manage）单独写在 entry 里")
             return taifeng.ToolResult.error("propose 只用于平台内置能力；企业业务请交给匠人")
         outcome = await resolve_native_choice(
             self._platform, turn.who, choice, now=self._now(), request_id=turn.request_id,
@@ -205,7 +221,9 @@ class ButlerTools:
         if outcome is None:
             return taifeng.ToolResult.error("这个内置能力当前不可用")
         turn.proposal = outcome
-        return taifeng.ToolResult.ok(_json({"card": outcome.message, "needs_confirmation": True}))
+        # 只打开列表时不需要确认；如实告诉模型，免得它对员工说「请确认后查看」
+        return taifeng.ToolResult.ok(_json({"card": outcome.message,
+                                            "needs_confirmation": has_draft(outcome)}))
 
     async def _read_personal(self, turn: ButlerTurn, args: dict[str, Any], _call: str,
                              ) -> taifeng.ToolResult:

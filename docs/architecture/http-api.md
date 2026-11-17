@@ -1030,7 +1030,7 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 
 - 租户开启管家（且开启执行追踪）且调用方是员工：回执 `mode=butler`，含 `request_id`、`trace_id`、`message`、与 `/v1/assistant/route` 同名的草稿与打开字段（有草稿时 `proposal_id=request_id`，经 `/v1/assistant/proposals` 确认）、`dispatches`（`dispatch_id`、`package`、`entry`、`state`、`host`）、`groups`（本轮提交或回放的编组标识，R5-D）。派工与编组都不等匠人结果。
 - 否则：原样走分流，回执为 `/v1/assistant/route` 的响应加 `mode=route`。
-- 同一 `request_id` 同体回原回执、不再采样；不同体或仍在处理中 409。管家失败 503 `runtime_unavailable`，原话已在主对话，可用同一标识重试。派工预算超限不报错给员工，由管家在答复里说明（工具错误 `butler_budget_exceeded`）。
+- 同一 `request_id` 同体回原回执、不再采样；不同体或仍在处理中 409。管家失败 503 `runtime_unavailable`，原话已在主对话，可用同一标识重试。一轮在服务端最长 90 秒，客户端的读超时应长于它：Python SDK 的 `send_to_butler` 至少等 120 秒（客户端配置更长则用配置值）。派工预算超限不报错给员工，由管家在答复里说明（工具错误 `butler_budget_exceeded`）。
 - 回执另含 `answered_pending`：本句被管家认出是对某个待处理问题的答复时，列出转给匠人的待处理项标识（转的是原话）。
 
 ### 待本人处理项（R5-C2）
