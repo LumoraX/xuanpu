@@ -68,6 +68,6 @@ async def test_search_does_not_reveal_other_users_source(r4_http, r4_ids):
 
 ## 进度（2026-11-18，分支 `feat/r4d-knowledge`）
 
-- D0：`S/knowledge/{store,service}.py`、`S/api/knowledge.py`、迁移 `0029_knowledge_governance`；测试 `T/r4_contract/test_knowledge_sources.py`（内存与 PG）：本人可检、他人看不到正文与命中数、他人不能登记、格式与编码、字面通配符与中文、有更新只提示与明确刷新、删除与回收站后失效、开关关闭。只支持本人工作区文件来源（共享正文与共享资料来源未做）；登记同步提取原子写入，未做持久构建意图/租约与故障重领。
+- D0：`S/knowledge/{store,service}.py`、`S/api/knowledge.py`、迁移 `0030_knowledge_governance`；测试 `T/r4_contract/test_knowledge_sources.py`（内存与 PG）：本人可检、他人看不到正文与命中数、他人不能登记、格式与编码、字面通配符与中文、有更新只提示与明确刷新、删除与回收站后失效、开关关闭。只支持本人工作区文件来源（共享正文与共享资料来源未做）；登记同步提取原子写入，未做持久构建意图/租约与故障重领。
 - D1：未实现（受保护问答上下文、每次模型发送前来源复核、撤权传播到上下文与缓存、清理 worker）。
 - D2：后端 `S/knowledge/memory.py` 与 `/v1/me/work-memory/*`；测试同上文件（候选须引用、本人确认、本人陈述、更正修订、删除、来源删除后记忆不再出现、他人 404）。原生「知识与记忆」入口、SDK/CLI、浏览器验收未做。

@@ -94,7 +94,7 @@ async def test_managed_package_cannot_use_legacy_activation(r4_http, r4_ids):
 
 ## 进度（2026-11-18，分支 `feat/r4b-assignments`）
 
-- B0：`S/capabilities/{assignments,resolver}.py`、迁移 `0027_capability_assignments`；测试 `T/r4_contract/test_assignments.py`（内存与 PG）。多项分配命中同一安装合并为最早一项；「命中不同发布 409」待 R4-C 引入发布后实现。
+- B0：`S/capabilities/{assignments,resolver}.py`、迁移 `0028_capability_assignments`；测试 `T/r4_contract/test_assignments.py`（内存与 PG）。多项分配命中同一安装合并为最早一项；「命中不同发布 409」待 R4-C 引入发布后实现。
 - B1：`S/capabilities/{admission,bindings}.py`（绑定表并入 0027）、协调存储只读 `capability_snapshot`；接入会话创建/续聊/恢复、对话目录与业务解析、办公与能力交办、定时/事件发生实例、管家匠人目录、旧激活接口；测试 `T/r4_contract/test_capability_entrypoints.py`。
   - 未完成：包级 managed 标记目前由「任一入口已登记」推导，未单独持久；首次纳管时排空旧在途工作的阻塞检查未做（纳管前的会话/任务缺绑定会在续跑时被拒）；一轮内每次模型调用与工具出口的逐次复核未做（目前在每轮开始与批准恢复时复核）；发生实例受理的能力分支没有专门用例。
 - B2：`WorkTaskService.capability_profile`；测试 `T/r4_contract/test_file_capability_tasks.py`。办公容器内跑通四类成果的端到端用例未在本机运行（需办公容器）。

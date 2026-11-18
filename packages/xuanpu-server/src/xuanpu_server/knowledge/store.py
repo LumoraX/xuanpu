@@ -125,7 +125,7 @@ class MemoryKnowledgeStore:
 
 
 class PostgresKnowledgeStore:
-    """PostgreSQL 实现：表 ``knowledge_source``、``knowledge_chunk``（迁移 0029）。"""
+    """PostgreSQL 实现：表 ``knowledge_source``、``knowledge_chunk``（迁移 0030）。"""
 
     def __init__(self, pool: asyncpg.Pool, *, namespace: SqlNamespace) -> None:
         """连接池与命名空间由控制面注入。"""

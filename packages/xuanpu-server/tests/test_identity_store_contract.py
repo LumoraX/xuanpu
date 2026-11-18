@@ -7,12 +7,14 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import re
 from typing import TYPE_CHECKING
 
 import pytest
 from xuanpu_server.errors import ConflictError, NotFoundError
 from xuanpu_server.identity import (
+    DesktopHandoff,
     ExternalIdentity,
     IdentityStore,
     LoginAttempt,
@@ -655,6 +657,91 @@ async def test_purge_expired_logins_across_tenants(identity: IdentityStore) -> N
     assert await identity.take_login_attempt("st_other", now=200.0) is None
     assert await identity.get_login_session("h_new", now=1100.0) is not None
     assert await identity.take_login_attempt("st_new", now=1200.0) is not None
+
+
+async def test_login_attempt_keeps_its_client(identity: IdentityStore) -> None:
+    """登录尝试记下发起的客户端，取出时原样带回；默认是浏览器。"""
+    desktop = dataclasses.replace(_attempt("st_desk"), client="desktop")
+    await identity.create_login_attempt(desktop)
+    assert await identity.take_login_attempt("st_desk", now=200.0) == desktop
+    await identity.create_login_attempt(_attempt("st_web"))
+    taken = await identity.take_login_attempt("st_web", now=200.0)
+    assert taken is not None and taken.client == "browser"
+
+
+# --- 桌面接力 ---
+
+
+def _handoff(cookie: str, nonce: str, *, tenant: str = "acme", at: float = 100.0) -> DesktopHandoff:
+    """构造桌面接力：未确认，有效 300 秒。"""
+    return DesktopHandoff(
+        cookie_hash=cookie,
+        tenant_id=tenant,
+        user_id="usr_a" if tenant == "acme" else "usr_o",
+        return_to="/console/",
+        nonce_hash=nonce,
+        confirmed=False,
+        created_at=at,
+        expires_at=at + 300,
+    )
+
+
+async def test_desktop_handoff_confirm_then_take_once(identity: IdentityStore) -> None:
+    """未确认的取不走、也不删；确认只能一次；确认后取出即删；两个摘要都不能重复。"""
+    await identity.create_user(_user("acme", "usr_a"))
+    await identity.create_desktop_handoff(_handoff("ck_1", "nc_1"))
+    for duplicate in (_handoff("ck_1", "nc_2"), _handoff("ck_2", "nc_1")):
+        with pytest.raises(ConflictError):
+            await identity.create_desktop_handoff(duplicate)
+    assert await identity.get_desktop_handoff("ck_1", now=200.0) == _handoff("ck_1", "nc_1")
+    assert await identity.take_desktop_handoff("ck_1", now=200.0) is None
+    confirmed = await identity.confirm_desktop_handoff("nc_1", now=200.0)
+    assert confirmed is not None and confirmed.confirmed
+    assert await identity.confirm_desktop_handoff("nc_1", now=200.0) is None
+    assert await identity.confirm_desktop_handoff("missing", now=200.0) is None
+    assert await identity.get_desktop_handoff("ck_1", now=200.0) == confirmed
+    assert await identity.take_desktop_handoff("ck_1", now=200.0) == confirmed
+    assert await identity.take_desktop_handoff("ck_1", now=200.0) is None
+    assert await identity.get_desktop_handoff("ck_1", now=200.0) is None
+
+
+async def test_desktop_handoff_concurrent_confirm_and_take(identity: IdentityStore) -> None:
+    """并发确认只有一个成功；并发换取只有一个拿到。"""
+    await identity.create_user(_user("acme", "usr_a"))
+    await identity.create_desktop_handoff(_handoff("ck_r", "nc_r"))
+    confirms = await asyncio.gather(
+        *(identity.confirm_desktop_handoff("nc_r", now=200.0) for _ in range(8))
+    )
+    assert sum(item is not None for item in confirms) == 1
+    takes = await asyncio.gather(
+        *(identity.take_desktop_handoff("ck_r", now=200.0) for _ in range(8))
+    )
+    assert sum(item is not None for item in takes) == 1
+
+
+async def test_expired_desktop_handoff(identity: IdentityStore) -> None:
+    """过期的查不到、确认不了；确认过又过期的取不到，这一取也把它删了；租户不存在报错。"""
+    await identity.create_user(_user("acme", "usr_a"))
+    await identity.create_desktop_handoff(_handoff("ck_e", "nc_e"))
+    assert await identity.get_desktop_handoff("ck_e", now=400.0) is None
+    assert await identity.confirm_desktop_handoff("nc_e", now=400.0) is None
+    assert await identity.confirm_desktop_handoff("nc_e", now=200.0) is not None
+    assert await identity.take_desktop_handoff("ck_e", now=400.0) is None
+    assert await identity.take_desktop_handoff("ck_e", now=200.0) is None
+    with pytest.raises(NotFoundError):
+        await identity.create_desktop_handoff(_handoff("ck_g", "nc_g", tenant="ghost"))
+
+
+async def test_purge_expired_desktop_handoffs(identity: IdentityStore) -> None:
+    """维护任务把全部租户过期的桌面接力一并清掉，未过期的不动。"""
+    await identity.create_user(_user("acme", "usr_a"))
+    await identity.create_user(_user("other", "usr_o"))
+    await identity.create_desktop_handoff(_handoff("ck_old", "nc_old", at=100.0))
+    await identity.create_desktop_handoff(_handoff("ck_oth", "nc_oth", tenant="other", at=100.0))
+    await identity.create_desktop_handoff(_handoff("ck_new", "nc_new", at=1000.0))
+    assert await identity.purge_expired_logins(now=400.0) == 2
+    assert await identity.get_desktop_handoff("ck_new", now=1100.0) is not None
+    assert await identity.confirm_desktop_handoff("nc_old", now=200.0) is None
 
 
 # --- 按用户用量 ---

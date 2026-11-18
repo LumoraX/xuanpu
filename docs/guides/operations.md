@@ -444,6 +444,30 @@ P1 控制面迁移为 `0004_identity.sql`，增加用户、外部身份、登录
 
 首次升级后的飞书应用、权限、密钥与首位管理员配置见[接入飞书登录](feishu-login.md)。对账未验证标记需要人工处理，不能根据查不到用户就手工批量停用。
 
+### 桌面接力迁移改号（0026 → 0027）
+
+桌面客户端浏览器接力（ADR 0021）的表结构曾以 `0026_desktop_handoff` 单独部署到生产，与主线的 `0026_local_credential`（玄圃自有账号）撞号，合并后改为 `0027_desktop_handoff`。**只有执行过旧 `0026_desktop_handoff` 的库**需要在升级到合并后的版本前做一次对账；其他库照常迁移即可。
+
+直接迁移会报「迁移 0026 已执行，但脚本内容与执行时不同」并拒绝执行，不会改动数据。先确认是这种情况：
+
+```bash
+docker compose exec -T postgres psql -U xuanpu -d xuanpu -At \
+  -c "SELECT version, name FROM xp_schema_migrations WHERE version >= 26 ORDER BY version"
+# 26|desktop_handoff        ← 只有这一行时才需要对账
+```
+
+停平台、按上文备份后，删掉台账里的这一行，再正常迁移：
+
+```bash
+docker compose exec -T postgres psql -U xuanpu -d xuanpu \
+  -c "DELETE FROM xp_schema_migrations WHERE version = 26 AND name = 'desktop_handoff'"
+docker compose --profile operations run --rm migrate
+# 已执行 0026_local_credential
+# 已执行 0027_desktop_handoff
+```
+
+`0027_desktop_handoff` 全部是 `IF NOT EXISTS`，已有的 `client` 列与 `desktop_handoff` 表及其中数据原样保留。只删 `name = 'desktop_handoff'` 的那一行；台账里 26 已是 `local_credential` 的库不要动。
+
 ### P0 状态面升级
 
 第一版里业务包解在共享的数据目录 `packages/` 下，会话主存是数据目录 `threads/` 下的 JSONL 文件，`state.backend: postgres` 只是把消息另外镜像进库。升级后：
@@ -745,7 +769,7 @@ R2配置中的`task_activity.enabled`控制工作动态通知，默认false；`t
 
 `capability_delivery`构造配置：enabled默认false；tenants默认[]，空始终关闭；max_revisions默认1000（1–10000）；max_previews默认1000（1–10000）；preview_seconds默认900（60–900）；probe_seconds默认30（1–60）。关闭不自动删除历史或纳管旧包。容量上限达到后明确拒绝新记录，当前不提供历史清除功能。
 
-R4-B/C 新增 0027_capability_assignments（能力分配与调用绑定）、0028_capability_releases（隔离评测与发布），R4-D 新增 0029_knowledge_governance（本人知识来源、文本块与工作记忆），均尚未正式部署。
+R4-B/C 新增 0028_capability_assignments（能力分配与调用绑定）、0029_capability_releases（隔离评测与发布），R4-D 新增 0030_knowledge_governance（本人知识来源、文本块与工作记忆），均尚未正式部署。
 
 `knowledge`构造配置：enabled默认false；tenants默认[]，空始终关闭。开启后名单内企业的员工可登记本人文件为知识来源、检索与管理本人工作记忆（见[本人知识与工作记忆](knowledge-memory.md)）。关闭不删除已登记的来源与记忆，只拒绝相关接口。
 

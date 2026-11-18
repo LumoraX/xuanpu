@@ -12,7 +12,7 @@ R4-A已实现能力登记、配置预检和待发布安装（[记录](../guides/
 
 ## 到人分配与能力决策（R4-B）
 
-`capabilities/assignments.py`、`resolver.py`，迁移0027的`capability_assignment`表。分配目标为直接到人（`{kind:user,id,user_epoch}`，固定员工生命周期代次）或可选按岗位/部门（`{kind:position|unit,id,target_version}`，经员工当前真实任职解析，目标结构版本须仍为分配时确认的版本）；`allowed_revisions`为1–20项明确修订，没有通配符；可选`valid_until`。撤销按版本CAS，代次加一，不可复活或改写，不物理删除。分配只授权使用能力，不授予读文件、使用连接或组织审批。
+`capabilities/assignments.py`、`resolver.py`，迁移0028的`capability_assignment`表。分配目标为直接到人（`{kind:user,id,user_epoch}`，固定员工生命周期代次）或可选按岗位/部门（`{kind:position|unit,id,target_version}`，经员工当前真实任职解析，目标结构版本须仍为分配时确认的版本）；`allowed_revisions`为1–20项明确修订，没有通配符；可选`valid_until`。撤销按版本CAS，代次加一，不可复活或改写，不物理删除。分配只授权使用能力，不授予读文件、使用连接或组织审批。
 
 能力决策`decide`只由认证员工和权威记录构造：员工在职且代次相符；有一个生效发布把这名员工（含代次）列在固定名单里（多个生效发布同时命中409，不猜）；发布固定的安装仍为`ready`且配置未被替换；发布所用修订在某项有效分配的范围内（多项分配命中取最早一项）；没有依据一律404。分配与发布缺一不可：分配说明谁可以用，发布说明哪个经评测的版本对谁生效。`resolvable`给出员工此刻可新受理的全部能力，即`GET /v1/me/capabilities`与对话目录的数据来源。
 
@@ -21,7 +21,7 @@ R4-A已实现能力登记、配置预检和待发布安装（[记录](../guides/
 包内任一入口登记为能力即视为纳管，纳管包的每条入口都经`CapabilityAdmission`：
 
 - **新受理**：显式`POST /v1/sessions`、对话分流（目录按员工过滤并换成决策版本）、管家匠人目录与派工、`work-tasks`交办、定时/事件发生实例（在实际发生时受理，定义固定的版本须仍是员工此刻的决策版本，否则阻塞`capability_unavailable`）。须员工身份、租户开启`capability_delivery`、有效决策；显式版本不等于决策版本404；机器身份404；纳管包里未登记的入口拒绝运行。
-- **调用绑定**：新会话与新任务各写一次`capability_binding`（迁移0027），固定员工代次、能力修订、包摘要、入口、安装与配置、分配及代次；同键重写须完全相同。会话与绑定分属不同存储，没有同一事务：进程在两者之间退出时，纳管工作因缺绑定在续跑时被拒，不猜依据。
+- **调用绑定**：新会话与新任务各写一次`capability_binding`（迁移0028），固定员工代次、能力修订、包摘要、入口、安装与配置、分配及代次；同键重写须完全相同。会话与绑定分属不同存储，没有同一事务：进程在两者之间退出时，纳管工作因缺绑定在续跑时被拒，不猜依据。
 - **续跑复核**：续聊、批准后继续、任务承载会话的每一轮都对照绑定复核——员工代次、原分配（同id同代次、未撤销未过期）、原安装（`ready`/`draining`可收尾，`disabled`拒绝）；不用此刻恰好存在的另一项授权替换失效的原依据。目前在每一轮开始与批准恢复时复核，一轮内的每次模型调用与工具出口尚未逐次复核。
 - **旧激活接口**：纳管包的`POST /v1/packages/{name}/activate`与`publish?activate=true`返回409（后者在写归档前拒绝），不发布可照常上传。
 - **开关**：`capability_delivery`关闭时纳管能力不能新建，不退回旧的全租户入口；已绑定的工作按上述当前资格收尾。
@@ -29,7 +29,7 @@ R4-A已实现能力登记、配置预检和待发布安装（[记录](../guides/
 
 ## 隔离评测与按员工发布（R4-C）
 
-`capabilities/evaluations.py`、`releases.py`，迁移0028的`capability_evaluation`、`capability_release`表；均不物理删除。
+`capabilities/evaluations.py`、`releases.py`，迁移0029的`capability_evaluation`、`capability_release`表；均不物理删除。
 
 - **评测**：`POST /v1/capability-evaluations`固定能力修订、安装配置摘要与套件摘要（严格JSON`xuanpu-eval-suite/v1`，最多50个用例，只允许包含/不包含/token上限这类预定义检查）；套件摘要须等于交付描述的`evaluation_suite_sha256`，否则409。后台串行运行，按实际轮次结局与回复独立判定，不听模型自报；总token超预算`blocked`。评测会话经`sessions.create(evaluation_id=…)`建立、写评测绑定，只在评测进行中且评测记录列名时可续，评测结束后不能复用。声明企业连接或写入/外部工具的能力本版本直接`blocked`（`external_implementation_not_verified`），不用替身补pass。进程中断时仍在进行的评测在启动时标`interrupted`，不自动重放。
 - **发布**：只读预览核对证据（评测通过、7天内、与当前安装同修订同配置摘要）、固定员工名单（1–100人含代次）与重叠的生效发布，返回确认摘要；确认发布在事务内重算，摘要不符或`supersedes`与重叠集合不一致409。被取代的发布改为`retired`，首次发布把安装置为`ready`；`POST /v1/installations/{id}/state`仍拒绝直接置ready。

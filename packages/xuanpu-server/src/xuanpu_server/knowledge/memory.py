@@ -123,7 +123,7 @@ class MemoryMemoryStore:
 
 
 class PostgresMemoryStore:
-    """PostgreSQL 实现：表 ``work_memory``（迁移 0029）。"""
+    """PostgreSQL 实现：表 ``work_memory``（迁移 0030）。"""
 
     def __init__(self, pool: asyncpg.Pool, *, namespace: SqlNamespace) -> None:
         """连接池与命名空间由控制面注入。"""

@@ -85,7 +85,7 @@ class MemoryBindingStore:
 
 
 class PostgresBindingStore:
-    """PostgreSQL 实现：表 ``capability_binding``（迁移 0027），按租户与受理对象主键。"""
+    """PostgreSQL 实现：表 ``capability_binding``（迁移 0028），按租户与受理对象主键。"""
 
     def __init__(self, pool: asyncpg.Pool, *, namespace: SqlNamespace) -> None:
         """连接池与命名空间由控制面注入。"""

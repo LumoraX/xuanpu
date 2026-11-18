@@ -4,7 +4,7 @@
 
 工作区与共享资料仍是权限与原件正本，知识索引与工作记忆都是有来源的派生记录。按租户开关 `knowledge`（默认关闭，`enabled` 与 `tenants` 同时命中才开启）。
 
-## 来源与检索（`knowledge/service.py`、`store.py`，迁移 0029）
+## 来源与检索（`knowledge/service.py`、`store.py`，迁移 0030）
 
 - 来源只能是员工本人工作区文件的明确版本（`workspace_file(item_id, revision)`），经工作区按本人权限读取；记录固定 SHA、提取器版本 `utf8-text/1`、字数与块数。共享资料包来源未实现。
 - 只接受实际能按 UTF-8 解码、格式也对的 TXT/MD/CSV/JSON；二进制、非 UTF-8、坏 JSON、不支持类型 400，不解析 PDF/OCR/网页/音视频。按行聚成约 1000 字的文本块。
@@ -13,7 +13,7 @@
 - 上限：每人 200 个来源、5000 万字、25000 块；单文件 20 MiB；查询 500 字、最多 10 条命中。
 - 登记在请求内同步提取并原子写入：进程中途退出不留半截文本块，用同一材料重试即可（未采用计划中的持久构建意图与租约）。
 
-## 工作记忆（`knowledge/memory.py`，迁移 0029 的 `work_memory`）
+## 工作记忆（`knowledge/memory.py`，迁移 0030 的 `work_memory`）
 
 - 类型只有 `confirmed_fact`（引用本人此刻可读的知识来源的一段、经本人确认）与 `user_assertion`（本人手工录入，标明非已核实）。
 - 候选（`proposed`）须带引用，确认时再核一次来源仍可读；模型只能提出候选，不能静默确认。
