@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from typing import TYPE_CHECKING
 
 from xuanpu_server.errors import (
@@ -52,6 +53,9 @@ async def evaluate(service: TaskDefinitionService,state: WorkspaceState,record: 
         try:
             decision=await service.tasks.admission.admit(original,candidate.package,candidate.entry,
                                                          candidate.package_version)
+            # 完成契约同样只由能力修订决定（R4-B2）：文件型能力的发生实例走办公成果校验
+            profile=await service.tasks.capability_profile(record.tenant_id,decision,candidate.inputs)
+            candidate=candidate.model_copy(update=asdict(profile))
         except (InvalidRequestError,NotFoundError,PermissionDeniedError):
             reason='capability_unavailable'
     if reason is not None:

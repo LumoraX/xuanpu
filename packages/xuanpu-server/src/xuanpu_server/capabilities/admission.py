@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from xuanpu_server.tenancy import Principal
 
     from .bindings import BindingStore
+    from .delivery import Delivery
     from .resolver import CapabilityDecision
     from .service import CapabilityService
 
@@ -79,6 +80,14 @@ class CapabilityAdmission:
         if version is not None and version != decision.package_version:
             raise NotFoundError('没有可用的能力')  # 知道包名和精确版本也不能绕过分配
         return decision
+
+    async def delivery(self, tenant: str, decision: CapabilityDecision) -> Delivery:
+        """决策所固定的能力修订的交付描述（输入输出契约来自已登记的修订，不来自客户端）。"""
+        state, _ = await self._service.store.capability_snapshot(tenant)
+        for revision in state.revisions.values():
+            if (revision.capability_id, revision.revision) == (decision.capability_id, decision.capability_revision):
+                return revision.delivery
+        raise NotFoundError('没有可用的能力')
 
     async def bind(self, who: Principal, kind: BindingKind, ref_id: str,
                    decision: CapabilityDecision) -> InvocationBinding:

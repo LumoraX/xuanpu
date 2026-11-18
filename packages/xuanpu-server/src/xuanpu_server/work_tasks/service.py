@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import time
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from xuanpu_server.errors import ConflictError, InvalidRequestError, NotFoundError
@@ -53,6 +54,15 @@ class TaskExecutor(Protocol):
     async def decide(self, who: Principal, task: WorkTaskRecord, decision: TaskDecision) -> WorkTaskRecord:
         """复核并处理本人决定，由执行器消费后续事件。"""
         ...
+
+
+@dataclass(frozen=True)
+class CompletionProfile:
+    """任务的执行方式与完成契约（R4-B2）：由能力修订决定，不来自客户端或模型。"""
+
+    execution_kind: Literal['office', 'capability']
+    completion_policy: Literal['office_files', 'capability_receipt']
+    output_kind: Literal['table_summary', 'capability_result']
 
 
 class WorkTaskService:
@@ -128,6 +138,28 @@ class WorkTaskService:
             self.executor.start(who, accepted)
         return accepted
 
+    async def capability_profile(self, tenant: str, decision: CapabilityDecision | None,
+                                 inputs: tuple[InputSnapshot, ...]) -> CompletionProfile:
+        """完成契约（R4-B2）：只由已登记的能力修订决定，客户端与模型都不能指定。
+
+        文件型能力（交付描述输出契约 ``office_files``）走办公任务的成果校验：固定 CSV 输入、
+        ``outputs/manifest.json`` 与 table_summary 的四类成果，缺一即失败，不凭 HTTP 回执判成功。
+        其余照旧是只读能力回执。
+        """
+        receipt = CompletionProfile('capability', 'capability_receipt', 'capability_result')
+        if decision is None or self.admission is None:
+            return receipt
+        delivery = await self.admission.delivery(tenant, decision)
+        if delivery.outputs.contract != 'office_files':
+            return receipt
+        if delivery.outputs.output_kind != 'table_summary':
+            raise InvalidRequestError('该能力的成果类型暂不支持由能力交办')
+        allowed = set(delivery.inputs.mime_types) & {'text/csv'}
+        if (not allowed or not 1 <= len(inputs) <= delivery.inputs.max_files
+                or any(entry.mime_type not in allowed for entry in inputs)):
+            raise InvalidRequestError('该能力只接受 CSV 表格材料')
+        return CompletionProfile('office', 'office_files', 'table_summary')
+
     async def _admit(self, who: Principal, package: str, entry: str | None) -> CapabilityDecision | None:
         """纳管包的新任务经能力决策（R4-B1）；未纳管或未装配能力治理时返回 None。"""
         if self.admission is None:
@@ -159,14 +191,15 @@ class WorkTaskService:
         if self.durable.allows(tenant) and package.manifest.spec.policy.sandbox.network:
             raise InvalidRequestError('持久任务只允许断网脚本，外部操作请使用平台连接器')
         inputs = await self._inputs(who, request)
+        profile = await self.capability_profile(tenant, decision, inputs)
         now = self._now()
         record = WorkTaskRecord(task_id=new_id('task'), tenant_id=tenant, user_id=user, actor=who.actor,
             request_id=request.request_id, input_fingerprint=fingerprint, matter_id=request.matter_id,
             text=request.text, timezone=request.timezone, inputs=inputs, package=package.record.name,
             package_version=package.record.version, package_digest=package.record.digest.removeprefix('sha256:'),
-            entry=request.capability.entry, execution_kind='capability', completion_policy='capability_receipt',
-            output_kind='capability_result', recovery_policy_version=2, process_owner=self.process_owner,
-            accepted_at=now, updated_at=now)
+            entry=request.capability.entry, recovery_policy_version=2, process_owner=self.process_owner,
+            accepted_at=now, updated_at=now, execution_kind=profile.execution_kind,
+            completion_policy=profile.completion_policy, output_kind=profile.output_kind)
         if self.connections is not None:
             from xuanpu_server.connections.task_bindings import snapshot
             refs=await snapshot(self.connections,who,record.package_digest)
