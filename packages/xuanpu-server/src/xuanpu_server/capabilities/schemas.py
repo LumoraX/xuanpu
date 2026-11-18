@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import Field, JsonValue, StrictInt, field_validator
 
 from .delivery import Delivery, Identifier, Name, StrictModel
+from .models import Selector  # noqa: TC001 —— Pydantic 运行时解析
 
 
 class RegisterInput(StrictModel):
@@ -44,3 +45,17 @@ class StateInput(StrictModel):
     request_id: Identifier
     expected_version: StrictInt = Field(ge=1)
     status: Literal['ready', 'draining', 'disabled']
+
+
+class AssignInput(StrictModel):
+    """分配：目标（直接到人或岗位/部门）、1–20 项明确能力修订、可选到期时间。"""
+    request_id: Identifier
+    selector: Selector
+    allowed_revisions: list[StrictInt] = Field(min_length=1, max_length=20)
+    valid_until: float | None = Field(default=None, gt=0)
+
+
+class RevokeInput(StrictModel):
+    """撤销须带当前版本（CAS）。"""
+    request_id: Identifier
+    expected_version: StrictInt = Field(ge=1)

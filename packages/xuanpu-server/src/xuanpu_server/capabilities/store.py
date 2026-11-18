@@ -35,6 +35,7 @@ def validate_state(tenant: str, before: CapabilityState, after: CapabilityState)
             if key != record.id or record.tenant_id != tenant:
                 raise ConflictError('能力记录租户或标识不一致')
     _validate_installations(before, after)
+    _validate_assignments(before, after)
 
 
 def _validate_installations(before: CapabilityState, after: CapabilityState) -> None:
@@ -50,3 +51,19 @@ def _validate_installations(before: CapabilityState, after: CapabilityState) -> 
             if (item.version != old.version + 1 or item.capability_id != old.capability_id or
                     item.created_at != old.created_at):
                 raise ConflictError('安装更新版本不一致')
+
+
+def _validate_assignments(before: CapabilityState, after: CapabilityState) -> None:
+    """分配不物理删除；目标与修订范围不可改写；撤销不可复活，改动版本逐次加一。"""
+    if before.assignments.keys() - after.assignments.keys():
+        raise ConflictError('能力分配不能物理删除')
+    for identifier, item in after.assignments.items():
+        if not any(r.capability_id == item.capability_id for r in after.revisions.values()):
+            raise ConflictError('分配引用的能力不存在')
+        old = before.assignments.get(identifier)
+        if old is None or old == item:
+            continue
+        if (item.version != old.version + 1 or item.selector != old.selector
+                or item.allowed_revisions != old.allowed_revisions or item.capability_id != old.capability_id
+                or item.created_at != old.created_at or old.status == 'revoked'):
+            raise ConflictError('能力分配只能按版本撤销，不能改写或复活')

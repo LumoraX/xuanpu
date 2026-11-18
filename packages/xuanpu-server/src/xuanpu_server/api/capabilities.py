@@ -11,9 +11,11 @@ from pydantic import JsonValue  # noqa: TC002 —— FastAPI解析响应类型
 
 from xuanpu_server.api.auth import Caller  # noqa: TC001 —— FastAPI解析认证依赖
 from xuanpu_server.capabilities.schemas import (  # noqa: TC001 —— FastAPI解析请求模型
+    AssignInput,
     InstallInput,
     PreviewInput,
     RegisterInput,
+    RevokeInput,
     StateInput,
 )
 
@@ -76,5 +78,20 @@ def capabilities_router(platform: Platform) -> APIRouter:
     async def change(identifier: str, body: StateInput, who: Caller) -> dict[str, JsonValue]:
         """停止动作不删除历史，当前阶段拒绝ready。"""
         return await platform.capabilities.installations.change(who, identifier, body)
+
+    @router.post('/v1/capabilities/{identifier}/assignments', status_code=201)
+    async def assign(identifier: str, body: AssignInput, who: Caller) -> dict[str, JsonValue]:
+        """把能力的明确修订分配给员工（或可选的岗位/部门）；只授权使用能力。"""
+        return await platform.capabilities.assignments.assign(who, identifier, body)
+
+    @router.get('/v1/capabilities/{identifier}/assignments')
+    async def assignments(identifier: str, who: Caller) -> dict[str, JsonValue]:
+        """某能力的全部分配（含已撤销），仅管理员。"""
+        return await platform.capabilities.assignments.listing(who, identifier)
+
+    @router.post('/v1/capability-assignments/{identifier}/revoke')
+    async def revoke(identifier: str, body: RevokeInput, who: Caller) -> dict[str, JsonValue]:
+        """按版本撤销分配，下一次调用即被拒。"""
+        return await platform.capabilities.assignments.revoke(who, identifier, body)
 
     return router
