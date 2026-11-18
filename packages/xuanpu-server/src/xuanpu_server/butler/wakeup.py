@@ -90,6 +90,8 @@ class Wakeup:
             for tenant in self._platform.butler_config.tenants:
                 if not self._platform.butler.enabled(tenant):
                     continue
+                # 进程中途退出留下的轮次：按同一请求标识重跑一次（R6-D）
+                await self._platform.butler.resume_stale(tenant)
                 await self.reconcile(tenant)
                 for event in await self._platform.store.wake_store.unacked(tenant):
                     try:

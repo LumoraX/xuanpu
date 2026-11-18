@@ -22,3 +22,4 @@
 | [0017](0017-butler-artisan-orchestration.md) | 管家—匠人编排、执行追踪与极简入口 | R5 候选实现，生产验收尚未完成（修订 0012 决策 1 的「助理只做分流」） |
 | [0018](0018-kernel-as-git-submodules.md) | 内核与适配包以 git submodule 纳入 —— taifeng、taifeng-sandbox、taifeng-stores 放在 external/ | Accepted |
 | [0019](0019-native-accounts.md) | 玄圃自有账号 —— 用户名口令登录，外部平台降为可选登录方式 | Accepted（取代 0007「平台不自建账号密码体系」一条） |
+| [0020](0020-butler-always-online.md) | 管家常在线 —— 回执与一轮解耦、时限与预算随任务伸缩 | Accepted（R6 实施中；修订 0017 决策 1 的实现方式） |

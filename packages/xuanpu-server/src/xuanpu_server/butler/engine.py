@@ -37,7 +37,15 @@ SKILL_ID = "butler"
 MODEL_TIER = "balanced"
 MAX_ITERATIONS = 12
 MAX_SESSION_TOKENS = 200_000
-TURN_SECONDS = 90.0
+
+
+class TurnTimeout(Exception):  # noqa: N818 —— 是一种正常结局，不是错误
+    """一轮到了时限：调用方正常收尾（已派出的工作继续），不报不可用。"""
+
+    def __init__(self, elapsed: float) -> None:
+        """记下实际跑了多久。"""
+        super().__init__(f"管家一轮到时限，已运行 {elapsed:.0f} 秒")
+        self.elapsed = elapsed
 
 
 class ButlerEngines:
@@ -76,7 +84,8 @@ class ButlerEngines:
         """跑一轮，返回管家给员工的回复文本。
 
         Raises:
-            RuntimeUnavailableError: 本轮没有正常完成（失败、挂起、超时或回复为空）。
+            TurnTimeout: 本轮到了时限（默认 ``turn_seconds``，管家可延长）。
+            RuntimeUnavailableError: 本轮没有正常完成（失败、挂起或回复为空）。
         """
         tenant = turn.who.require_tenant()
         pool = await self.pool(tenant)
@@ -89,8 +98,17 @@ class ButlerEngines:
             await hub.start()
             submission = await engine.submit(taifeng.UserMessage(text=payload))
             stream = hub.open_stream(submission)
-            async with asyncio.timeout(TURN_SECONDS):
-                return await _read_reply(stream.events(), turn)
+            seconds = self._platform.butler_config.turn_seconds
+            try:
+                async with asyncio.timeout(seconds) as deadline:
+                    turn.deadline = deadline
+                    turn.started_at = asyncio.get_running_loop().time()
+                    return await _read_reply(stream.events(), turn)
+            except TimeoutError:
+                # 只把「本轮时限到了」报成 TurnTimeout；别处冒出的 TimeoutError 照旧往上抛
+                if deadline.expired():
+                    raise TurnTimeout(asyncio.get_running_loop().time() - turn.started_at) from None
+                raise
         finally:
             self._turns.unbind(engine.thread_id)
             await pool.release(session_id, force=True)

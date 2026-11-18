@@ -1,0 +1,51 @@
+{
+  "model": "gpt-6.1-sol",
+  "concurrent": {
+    "ok": true,
+    "checks": {
+      "three_sent_without_waiting": true,
+      "slow_returned_running": true,
+      "quick_not_blocked_by_slow": true,
+      "dispatched": true,
+      "artisan_result_delivered": true
+    },
+    "sent_seconds": 9.0,
+    "arrived_seconds": {
+      "r6-quick": 9.0,
+      "r6-dispatch": 36.0,
+      "r6-slow": 78.1
+    },
+    "states": {
+      "r6-slow": "running",
+      "r6-quick": "running",
+      "r6-dispatch": "running"
+    }
+  },
+  "budget": {
+    "ok": true,
+    "checks": {
+      "budget_raised": true,
+      "group_arranged": true
+    },
+    "raises": [
+      {
+        "trace_id": "trc_d2a4011b3f06f71e136133a2",
+        "request_id": "r6-budget",
+        "budget": "artisans",
+        "from": 1,
+        "limit": 3,
+        "requested": 3,
+        "reason": "员工明确要求三位匠人分别从一线客服、二线技术和质检角度独立会诊，当前匠人预算不足以满足三人会诊。"
+      }
+    ],
+    "message": "已提高本次匠人预算：从1位增加到3位，以满足你要求的三方独立会诊。\n\n会诊已开始，已分别交给一线客服、二线技术和质检独立评估工单 T-1001 是否需要升级。三位全部完成后会统一比对并汇报。"
+  },
+  "deadline": {
+    "ok": true,
+    "receipt_state": "running",
+    "extended": 0,
+    "stopped_at_deadline": true,
+    "reply_head": "这件事我处理了10 秒，这一轮已到时限先停下。如果还需要继续，可以再跟我说一次，或者让我拆成几件交给别人做。"
+  },
+  "ok": true
+}

@@ -80,6 +80,12 @@ class WorkspaceStore(Protocol):
         """按本人持久游标分页读取主对话。"""
         ...
 
+    async def stale_routes(self, tenant: str, prefix: str, now: float, *,
+                           limit: int = 50) -> list[tuple[str, str, dict[str, Any]]]:
+        """认领中但租约已过期（持有进程已退出）的路由认领：(员工, 请求键, 认领记录)。
+        失败后已释放的认领租约为 0，不在其中。"""
+        ...
+
     async def find_message(self, tenant: str, user: str, request_id: str) -> dict[str, Any] | None:
         """按本人请求唯一索引读取缓存结果。"""
         ...

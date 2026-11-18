@@ -37,6 +37,10 @@ class TraceClient:
         ``request_id`` 必填：同键同体回原回执，同键不同体服务端返回 409。回执 ``mode`` 为
         ``butler``（含 ``trace_id`` 与 ``dispatches``）或 ``route``（租户未开启管家）。
         管家派工不等匠人结果。
+
+        管家常在线（ADR 0020）：``state`` 为 ``done`` 时回执完整；为 ``running`` 时这一轮还在
+        平台里继续（只含 ``request_id`` 与 ``trace_id``），之后回复写进主对话——可以用同一
+        ``request_id`` 再调一次取最终回执，或跟随 ``trace_id`` 的进展。
         """
         body: dict[str, Any] = {"request_id": request_id, "text": text, "timezone": timezone}
         if input_files:

@@ -53,7 +53,7 @@ const READY = `location.pathname.endsWith("entry.html") && !!document.getElement
 const COUNT = `document.getElementById("transcript").children.length`;
 const submit = text => `(() => { const box = document.getElementById("message");
   box.value = ${JSON.stringify(text)}; document.getElementById("composer").requestSubmit(); return true; })()`;
-const settled = before => `!entry.sending && document.getElementById("transcript").children.length > ${before} + 1`;
+const settled = before => `entry.inflight === 0 && document.getElementById("transcript").children.length > ${before} + 1`;
 const collect = before => `JSON.stringify([...document.getElementById("transcript").children].slice(${before}).map(n => ({
   kind: n.classList.contains("card") ? "card" : (n.classList.contains("assistant") ? "assistant" : "user"),
   title: n.querySelector("h3") ? n.querySelector("h3").textContent : null, text: n.innerText })))`;

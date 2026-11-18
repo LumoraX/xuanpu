@@ -37,9 +37,11 @@ if TYPE_CHECKING:
 
 TOOL_NAMES = ("propose", "read_personal", "list_artisans", "dispatch_artisan", "check_dispatch",
               "cancel_dispatch", "answer_pending", "answer_artisan", "ask_user",
-              "dispatch_group", "cancel_group", "check_group", "rate_divergence")
+              "dispatch_group", "cancel_group", "check_group", "rate_divergence",
+              "extend_turn", "raise_budget")
 _WAKE_ONLY = frozenset({"answer_artisan", "ask_user"})
-_ANY_TURN = frozenset({"read_personal", "list_artisans", "check_dispatch", "check_group"})
+_ANY_TURN = frozenset({"read_personal", "list_artisans", "check_dispatch", "check_group",
+                       "extend_turn", "raise_budget"})
 _LIST_MAX = 20
 _ERRORS_MAX = 8
 # propose 的 choice 结构：与分流共用同一份内置能力约定（包名带 @，草稿字段名固定），
@@ -127,6 +129,7 @@ class ButlerTools:
                        self._check_dispatch, parallel=True),
             *self._c2_specs(),
             *self._group_specs(),
+            *self._limit_specs(),
             self._spec("rate_divergence", "（仅会诊比对时）登记各位匠人结论的分歧度与综合。",
                        {"level": {"type": "string", "enum": ["low", "medium", "high"],
                                   "description": "low 措辞差异；medium 评估不同；high 结论矛盾"},
@@ -153,6 +156,25 @@ class ButlerTools:
             self._spec("check_group", "查一个编组的进展。",
                        {"group_id": {"type": "string"}}, ["group_id"], handlers.check_group,
                        parallel=True),
+        ]
+
+    def _limit_specs(self) -> list[taifeng.ToolSpec]:
+        """管家调整自己的时限与这次请求的预算（R6-B、R6-C）。"""
+        from xuanpu_server.butler.limits import LimitTools
+
+        handlers = LimitTools(self._platform)
+        return [
+            self._spec("extend_turn", "这件事你还需要更多时间亲自处理时，说明理由并延长本轮时限"
+                       "（从现在起再给 seconds 秒，有上限）。长的工作优先拆成派工或编组。",
+                       {"seconds": {"type": "integer", "minimum": 1},
+                        "reason": {"type": "string", "description": "为什么还需要这些时间"}},
+                       ["seconds", "reason"], handlers.extend_turn),
+            self._spec("raise_budget", "这件事需要比起始预算更多的 token、管家处理轮数或匠人时，说明理由"
+                       "把这次请求的该项预算提高到 to（只能提高，有上限；企业每日用量配额不变）。",
+                       {"budget": {"type": "string", "enum": ["tokens", "butler_turns", "artisans"]},
+                        "to": {"type": "integer", "minimum": 1},
+                        "reason": {"type": "string", "description": "为什么需要更多"}},
+                       ["budget", "to", "reason"], handlers.raise_budget),
         ]
 
     def _c2_specs(self) -> list[taifeng.ToolSpec]:
