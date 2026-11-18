@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 import taifeng
@@ -17,6 +18,7 @@ from xuanpu_server.assistant_reminders import REMINDER_PROMPT
 from xuanpu_server.assistant_task_definitions import TASK_DEFINITION_PROMPT
 from xuanpu_server.assistant_workspace import WORKSPACE_PROMPT
 from xuanpu_server.butler.groups.tools import GROUP_PLAN_SCHEMA
+from xuanpu_server.butler.limits import time_hint
 from xuanpu_server.collaboration.routing import COLLABORATION_PROMPT
 from xuanpu_server.errors import PlatformError
 from xuanpu_server.proactive.models import PROACTIVE_ROUTING
@@ -209,7 +211,9 @@ class ButlerTools:
             if refusal is not None:
                 return taifeng.ToolResult.error(refusal)
             try:
-                return await handler(turn, args, ctx.call_id)
+                result = await handler(turn, args, ctx.call_id)
+                hint = None if result.is_error or name == "extend_turn" else time_hint(turn)
+                return replace(result, output=result.output + hint) if hint else result
             except PlatformError as exc:
                 return taifeng.ToolResult.error(f"{exc.code}: {exc.message}")
             except ValidationError as exc:

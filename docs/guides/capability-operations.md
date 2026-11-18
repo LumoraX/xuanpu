@@ -1,11 +1,12 @@
 # 能力运营统计与验收核实
 
-> 给员工与平台管理员。设计见[能力运行结果与业务核实](../architecture/business-outcomes.md)。当前为源码实现，尚未生产部署；原生面板尚未提供，目前经 HTTP 接口使用。
+> 给员工与平台管理员。设计见[能力运行结果与业务核实](../architecture/business-outcomes.md)。当前为源码实现，尚未生产部署。管理员可在「能力配置」页底部的「运行结果与发布」查看按能力的统计，展开「查看发布与分配」后经确认停止或撤销发布、撤销分配；验收批次与核实结论目前经 HTTP 接口或 SDK 登记。
 
 ## 看统计
 
 - 员工：`GET /v1/me/capability-outcomes`（可选 `since`、`until` 秒级时间戳按受理时间选队列，`limit`、`offset` 分页）。总数与当前页无关；列表只有任务的能力、版本、状态、时间与 token。
 - 管理员：`GET /v1/admin/capability-outcomes`，按能力与修订给计数与用量，看不到任务内容或具体员工。
+- 同样的统计可用 Python SDK（`my_capability_outcomes`、`admin_capability_outcomes`、`create_acceptance_batch`、`observe_acceptance`、`get_acceptance_batch`）或命令行 `xuanpu knowledge --credentials <私有JSON> outcomes|admin-outcomes|batch <批次ID>` 读取；命令行只读，不登记核实结论。
 - 读法：技术完成率只说明任务跑完了，不等于业务做对了；token 分「实际」与「占用上界」两栏，没有记录的任务单独计数；没有价格表时费用显示为空，不是 0 元。
 
 ## 验收核实（管理员）

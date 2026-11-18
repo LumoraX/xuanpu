@@ -192,6 +192,8 @@ class CapabilityReleases:
         s = self.service
         who = await s.admin(who)
         state, _ = await s.store.capability_snapshot(who.require_tenant())
+        if not any(r.capability_id == capability_id for r in state.revisions.values()):
+            raise NotFoundError('能力不存在')
         items = sorted((r for r in state.releases.values() if r.capability_id == capability_id),
                        key=lambda r: (r.created_at, r.id))
         return {'releases': [release_view(r) for r in items], 'total': len(items)}

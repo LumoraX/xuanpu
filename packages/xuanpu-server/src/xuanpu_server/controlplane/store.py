@@ -30,6 +30,7 @@ if TYPE_CHECKING:
         UsageRecord,
     )
     from xuanpu_server.coordination.store import CoordinationStore
+    from xuanpu_server.knowledge.context_store import ContextStore
     from xuanpu_server.knowledge.memory import MemoryStore
     from xuanpu_server.knowledge.store import KnowledgeStore
     from xuanpu_server.reminders.store import ReminderStore
@@ -76,6 +77,11 @@ class ControlPlaneStore(Protocol):
     @property
     def memory_store(self) -> MemoryStore:
         """与控制面同后端的本人工作记忆（R4-D2）。"""
+        ...
+
+    @property
+    def context_store(self) -> ContextStore:
+        """与控制面同后端的知识问答上下文（R4-D1）。"""
         ...
 
     @property

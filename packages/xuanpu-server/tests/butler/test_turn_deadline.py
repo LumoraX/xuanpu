@@ -90,3 +90,19 @@ async def test_extend_requires_reason_and_positive_seconds(butler: dict[str, Any
     await _say(butler, "慢慢来", "t4")
     assert "reason 必填" in str(butler["world"].models.requests[-1])
     assert await _extensions(butler) == []
+
+
+async def test_time_hint_appears_only_late_in_the_turn() -> None:
+    """用掉六成时限之前没有提示；之后给出剩余秒数并提示先延长；没有时限时不提示。"""
+    from types import SimpleNamespace
+
+    from xuanpu_server.butler.limits import time_hint
+
+    loop = asyncio.get_running_loop()
+    assert time_hint(SimpleNamespace(deadline=None, started_at=0.0)) is None
+    async with asyncio.timeout(100) as deadline:
+        early = SimpleNamespace(deadline=deadline, started_at=loop.time())
+        assert time_hint(early) is None
+        late = SimpleNamespace(deadline=deadline, started_at=loop.time() - 300)
+        hint = time_hint(late)
+        assert hint is not None and "extend_turn" in hint and "剩余约" in hint

@@ -76,6 +76,10 @@ class KnowledgeStore(Protocol):
         """在给定来源里按字面（不区分大小写）找文本块：返回前 ``limit`` 条与匹配总数。"""
         ...
 
+    async def chunks(self, tenant: str, owner: str, pins: list[tuple[str, int]]) -> list[Chunk]:
+        """按（来源，序号）取本人的文本块；来源已删除时块已清掉，取不到的不返回。"""
+        ...
+
 
 class MemoryKnowledgeStore:
     """内存实现。"""
@@ -122,6 +126,15 @@ class MemoryKnowledgeStore:
                  if needle in c.text.casefold()
                  and (tenant, owner, sid) in self._sources]
         return found[:limit], len(found)
+
+    async def chunks(self, tenant: str, owner: str, pins: list[tuple[str, int]]) -> list[Chunk]:
+        """按（来源，序号）取块，只取本人来源。"""
+        found: list[Chunk] = []
+        for source_id, ordinal in pins:
+            if (tenant, owner, source_id) not in self._sources:
+                continue
+            found.extend(c for c in self._chunks.get((tenant, source_id), []) if c.ordinal == ordinal)
+        return found
 
 
 class PostgresKnowledgeStore:
@@ -185,3 +198,15 @@ class PostgresKnowledgeStore:
                 f'SELECT source_id,ordinal,text FROM {self._chunks} {where} ORDER BY source_id,ordinal LIMIT $5',
                 tenant, owner, source_ids, query, limit)
         return [Chunk(source_id=r['source_id'], ordinal=r['ordinal'], text=r['text']) for r in rows], int(total)
+
+    async def chunks(self, tenant: str, owner: str, pins: list[tuple[str, int]]) -> list[Chunk]:
+        """按（来源，序号）取块，只取本人来源。"""
+        if not pins:
+            return []
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(
+                f'SELECT c.source_id,c.ordinal,c.text FROM {self._chunks} c '
+                'JOIN unnest($3::text[],$4::int[]) AS p(source_id,ordinal) '
+                'ON c.source_id=p.source_id AND c.ordinal=p.ordinal WHERE c.tenant_id=$1 AND c.owner=$2',
+                tenant, owner, [s for s, _ in pins], [o for _, o in pins])
+        return [Chunk(source_id=r['source_id'], ordinal=r['ordinal'], text=r['text']) for r in rows]

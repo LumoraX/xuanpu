@@ -179,3 +179,5 @@ SDK经合成租户的正式ASGI/认证/双后端测试验证，真实员工使�
 ## 能力目录与安装（R4-A）
 
 `xuanpu capabilities --credentials <私有JSON> list|mine|register|install-preview|install|state`使用公开SDK。写入传`--body`文件；install-preview/install/state还需精确记录编号。凭据文件权限须仅当前用户可读，含base_url/api_key及可选act_as_user；拒绝正文覆盖身份。保留原操作号重试，confirmed必须由调用者明确提供。当前不激活或分配运行；[手册和实际本地命令](../../docs/guides/capability-delivery.md)。
+
+`xuanpu knowledge --credentials <私有JSON> sources|register|search|contexts|context|pin|ask|memories|outcomes|admin-outcomes|batch`经公开SDK操作本人知识来源、依据材料提问、工作记忆与能力结果（R4-D/F）。`register <item_id> <revision>`登记本人文件的明确版本；`search <词> --limit N`；`pin --request-id <操作号> --source <来源ID:块序号>`（可重复，来自检索结果）建问答；`ask <上下文ID> --request-id <操作号> --question <问题>`只依据选定片段回答并带引用；`outcomes`/`admin-outcomes`可带`--since`、`--until`（受理时间，秒）；`batch <批次ID>`看验收核实通过率。凭据规则同`capabilities`；不自动选依据、确认记忆或登记核实结论。依据来源失效时提示重新检索。[使用说明](../../docs/guides/knowledge-memory.md)。

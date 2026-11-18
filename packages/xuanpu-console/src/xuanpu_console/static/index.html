@@ -171,6 +171,7 @@
       <article class="function-card"><h2>工作交接与审批</h2><p>直接交给具体员工，核对成果、审批并独立签收。无需先建部门。</p><button id="open-collaboration" type="button">查看我的协作</button></article>
       <article class="function-card"><h2>共享协作</h2><p>直接邀请具体员工，共同核对资料。部门与岗位可选。</p><button id="open-shared" type="button">查看共享事项</button></article>
       <article class="function-card"><h2>组织与职责</h2><p>查看本人的部门与职责。获授权的同事可配置部门、岗位和业务职责。</p><button id="open-organization" type="button">查看组织与职责</button></article>
+      <article class="function-card"><h2>知识与记忆</h2><p>把本人文件登记为来源，按原文检索、依据选定片段提问，确认或删除工作记忆。</p><button id="open-knowledge" type="button">打开知识与记忆</button></article>
       <article class="function-card"><h2>我的能力</h2><p>查看企业已分配的可运行能力。能力分配与资料读取授权分别核对。</p><button id="open-capabilities" type="button">查看我的能力</button></article>
       <article class="function-card"><h2>发票报销记录与审批</h2><p>记录发票和报销内容、选择附件、查看流转进展并处理本人审批。</p><button data-workspace="finance" type="button">打开财务辅助页</button></article>
       <article class="function-card"><h2>我的文件</h2><p>文件夹、附件、版本和回收站，始终属于你的个人空间。</p><button data-workspace="file" type="button">打开文件</button></article>
@@ -182,6 +183,7 @@
       <article class="function-card"><h2>通知</h2><p>查看到期提醒和送达情况，离线期间的通知也会保留。</p><button id="open-notification-module" type="button" class="ghost">查看通知</button></article>
     </div>
     <div id="reminder-module-host"></div>
+    <section id="knowledge-panel" class="reminder-preview hidden" aria-label="知识与记忆"><div class="row"><h2>知识与记忆</h2><button id="close-knowledge" type="button">收起</button></div><p id="knowledge-feedback" role="status"></p><div id="knowledge-sources"></div><div class="row"><label>检索 <input id="knowledge-query" type="search" maxlength="500"></label><button id="knowledge-search" type="button">检索</button></div><div id="knowledge-hits"></div><div class="row"><label>依据所选片段提问 <input id="knowledge-question" type="text" maxlength="500"></label><button id="knowledge-ask" type="button">提问</button></div><div id="knowledge-answer" aria-live="polite"></div><div id="knowledge-memories"></div><div class="row"><label>记一条（标为本人陈述） <input id="knowledge-assertion" type="text" maxlength="1000"></label><button id="knowledge-remember" type="button">记下</button></div></section>
     <div id="capability-employee-host"><section id="capability-panel" class="reminder-preview hidden" aria-label="我的能力与配置"><div class="row"><h2>我的能力与配置</h2><button id="close-capabilities" type="button">收起</button></div><p id="capability-feedback" role="status"></p><div id="capability-list"></div></section></div>
   </section>
 
@@ -278,7 +280,9 @@
 <script src="task-definitions.js?v=0bd3fb8e2ad1f7dd"></script>
 <script src="proactive.js?v=309c9879b190024a"></script>
 <script src="connections.js?v=123abc4542d2d122"></script>
-<script src="capabilities.js?v=97017d66dac101ae"></script>
+<script src="capabilities.js?v=cb1089e30c47e316"></script>
+<script src="capability-operations.js?v=9780325cde150507"></script>
+<script src="knowledge.js?v=72ea157a39bedd42"></script>
 <script src="organization-forms.js?v=9dc49322557870a3"></script>
 <script src="organization.js?v=627d9b5ce73be6cc"></script>
 <script src="shared-matters.js?v=f1e21f19a2b914d3"></script>
@@ -297,7 +301,7 @@
 <script src="finance_materials.js?v=be00f569e75318ef"></script>
 <script src="finance_compliance.js?v=7b77ed4645f3abe4"></script>
 <script src="finance_operations.js?v=f6cbdc373230e97e"></script>
-<script src="identity.js?v=f16a34d29e9a0946"></script>
+<script src="identity.js?v=af23c976e37f1270"></script>
 <script src="accounts.js?v=87e3477f4061c47b"></script>
 </body>
 </html>

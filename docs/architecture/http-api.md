@@ -123,6 +123,7 @@ X-Xuanpu-Act-As: usr_5f0c1b2e7d9a4c3b8e6f1a20
 | 403 | `csrf_rejected` | 用登录 cookie 的写请求缺 `X-Requested-By: xuanpu` 头，或 `Origin` 与 `public_url` 不符（见[浏览器登录](#浏览器登录)） | |
 | 403 | `session_owner_disabled` | 会话的主人（员工）已停用：任何调用者都不能再往这个会话发消息、送审批结果（见[主人停用之后](#主人停用之后)）；换一把凭据也没用 | |
 | 403 | `shared_access_revoked` | 共享来源、原授权或身份代次失效，旧受保护上下文拒绝正文、历史、缓存回放及模型续跑；重新选择来源开始新对话 | |
+| 403 | `knowledge_source_revoked` | 知识问答依据的来源已删除、换版或不再可读；上下文已持久标 blocked 并清掉回答缓存，读取与提问都拒绝；重新检索并选依据建新上下文 | |
 | 404 | `not_found` | 资源不存在，或属于别的租户；普通成员访问别人的会话也是它（见[可见范围](#可见范围)） | |
 | 409 | `conflict` | 与现有状态冲突（版本已发布、会话已关闭、要降级或停用的是租户里最后一名启用的管理员等） | |
 | 409 | `session_busy` | 会话正由另一个实例持有 | `owner`：持有者的实例标识 |
@@ -1040,6 +1041,7 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 
 | 方法与路径 | 正文或查询 | 返回 |
 | --- | --- | --- |
+| GET /v1/admin/capability-drain | package（查询参数） | 仅管理员只读：managed、unbound_sessions（没有能力依据的进行中会话）、unbound_task_sessions（没有任务绑定的任务承载会话）、truncated（扫描 2000 个进行中会话为上界）、scheduled_not_counted=true、advice；不含会话标识、正文或员工明细 |
 | POST /v1/capabilities | request_id、delivery（严格xuanpu-delivery/v1） | 201：capability_id、revision、digest、delivery、can_run=false；相同描述复用修订 |
 | GET /v1/capabilities | limit=1–100，cursor可选 | items、分页前total、next_cursor、installations、configuration_enabled；items为说明修订 |
 | GET /v1/me/capabilities | 无；必须有启用员工身份 | 本人此刻可新受理的能力（R4-B）：capabilities[]（capability_id、capability_key、revision、title、summary、package、entry、assignment_id、can_run=true）、total、status=assigned；没有时为空列表与status=not_assigned |
@@ -1052,7 +1054,7 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | 方法与路径 | 正文 | 返回 |
 | --- | --- | --- |
 | POST /v1/capabilities/{id}/assignments | request_id、selector（`{kind:user,id,user_epoch}`或`{kind:position|unit,id,target_version}`）、allowed_revisions（1–20项明确修订）、可选valid_until | 201：id、capability_id、version、selector、allowed_revisions、valid_until、status=active、epoch、grants=capability_use_only；目标不存在404，员工代次或结构版本不符409，修订不存在400 |
-| GET /v1/capabilities/{id}/assignments | 无 | assignments（含已撤销）、total；仅管理员 |
+| GET /v1/capabilities/{id}/assignments | 无 | assignments（含已撤销）、total；仅管理员；本企业没有这个能力 404 |
 | POST /v1/capability-assignments/{id}/revoke | request_id、expected_version | 状态revoked、epoch加一、version加一；版本不符或已撤销409 |
 
 ### 能力评测与发布（R4-C）
@@ -1063,7 +1065,7 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | GET /v1/capability-evaluations/{id} | 无 | status=running/passed/failed/interrupted/blocked、reason、cases（name、passed、reasons、outcome、total_tokens）；不含输入正文 |
 | POST /v1/capabilities/{id}/release-previews | installation_id、evaluation_id、targets（1–100个user_id与user_epoch） | digest、capability_revision、changes（每人from_revision→to_revision）、supersedes；只读；证据不符或过期409 |
 | POST /v1/capabilities/{id}/releases | 预览正文加request_id、preview_digest、supersedes、confirmed=true | 201：发布记录；摘要或取代列表不符409；首次发布把安装置为ready |
-| GET /v1/capabilities/{id}/releases | 无 | releases、total |
+| GET /v1/capabilities/{id}/releases | 无 | releases、total；本企业没有这个能力 404 |
 | POST /v1/capability-releases/{id}/retire、/revoke | request_id、expected_version | status=retired或revoked（revoked代次加一）；只能从active改 |
 
 纳管包（任一入口登记为能力）的`POST /v1/sessions`、续聊与`resume`、`POST /v1/work-tasks/from-capability`与办公交办都经同一能力决策：没有有效分配或显式版本不等于决策版本404，机器身份404，原依据失效后续聊/恢复403；纳管包的`POST /v1/packages/{name}/activate`与`publish?activate=true` 409。
@@ -1091,6 +1093,11 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | POST /v1/me/knowledge/search | query（1–500 字）、limit（1–10） | hits（source_id、title、item_id、revision、ordinal、excerpt≤2000 字）、total（只计此刻可读来源） |
 | POST /v1/me/knowledge/sources/{id}/refresh | expected_version | 换成文件当前版本的新来源，旧来源删除 |
 | POST /v1/me/knowledge/sources/{id}/delete | expected_version | status=deleted，文本块清除 |
+| POST /v1/me/knowledge/contexts | request_id、pins（1–10 个 source_id + ordinal，须是本人此刻可读来源里存在的块） | 201：id、status=active、pins、answers、version；同一 request_id 回原上下文；依据不可读 400；进行中上下文满 50 个 409 |
+| GET /v1/me/knowledge/contexts | 无 | contexts（元数据，不含正文；失效的就地标 blocked）、total |
+| GET /v1/me/knowledge/contexts/{id} | 无 | 复核后给出 sources（index、source_id、title、item_id、revision、ordinal、excerpt）与 history（已有回答）；失效 403 `knowledge_source_revoked`，已结束 409 |
+| POST /v1/me/knowledge/contexts/{id}/ask | request_id、question（1–500 字） | id、question、text、citations（index、source_id、title、item_id、revision、ordinal）、grounded；同一 request_id 回原回答不再调模型；发送前或流式中失效 403 |
+| POST /v1/me/knowledge/contexts/{id}/close | expected_version | status=closed，回答正文清掉（answers=0、purged_answers 计数） |
 | GET /v1/me/work-memory | 无 | memories（生效中与待确认；过期与依据不可读的不列）、total |
 | POST /v1/me/work-memory/proposals | text、citation（source_id、ordinal）、可选 valid_until | 201：status=proposed；引用不可读 400 |
 | POST /v1/me/work-memory/assertions | text、可选 valid_until | 201：kind=user_assertion、status=active、verified_by_source=false |
@@ -1101,7 +1108,7 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 
 `POST /v1/assistant/messages`：员工对管家说一句话。认证同 `/v1/assistant/route`。请求体：`request_id`（必填，1–80 字符 `[a-zA-Z0-9_.:-]`）、`text`（1–8000 字符）、`timezone`（IANA，默认 Asia/Shanghai）、`input_files`（本人文件版本 `{item_id, revision}`，最多 8 个，派工材料只能从中选）；多余字段 422。
 
-- 租户开启管家（且开启执行追踪）且调用方是员工：请求至多等 `butler.reply_window_seconds`（默认 20 秒）。这一轮还没办完时回 `{"mode": "butler", "state": "running", "request_id", "trace_id"}`，这一轮在平台里继续，结束后回复写进主对话（`GET /v1/workspace/messages` 按游标可读），也可用同一标识再调一次取最终回执。办完时回执 `mode=butler`、`state=done`，含 `request_id`、`trace_id`、`message`、与 `/v1/assistant/route` 同名的草稿与打开字段（有草稿时 `proposal_id=request_id`，经 `/v1/assistant/proposals` 确认）、`dispatches`（`dispatch_id`、`package`、`entry`、`state`、`host`）、`groups`（本轮提交或回放的编组标识，R5-D）。派工与编组都不等匠人结果。
+- 租户开启管家（且开启执行追踪）且调用方是员工：请求至多等 `butler.reply_window_seconds`（默认 20 秒）。这一轮还没办完时回 `{"mode": "butler", "state": "running", "request_id", "trace_id"}`，这一轮在平台里继续，结束后回复写进主对话（`GET /v1/workspace/messages` 按游标可读），也可用同一标识再调一次取最终回执（这一轮正由另一实例处理时同样回 `state=running`，`trace_id` 为空并带 `elsewhere=true`，不报 409）。办完时回执 `mode=butler`、`state=done`，含 `request_id`、`trace_id`、`message`、与 `/v1/assistant/route` 同名的草稿与打开字段（有草稿时 `proposal_id=request_id`，经 `/v1/assistant/proposals` 确认）、`dispatches`（`dispatch_id`、`package`、`entry`、`state`、`host`）、`groups`（本轮提交或回放的编组标识，R5-D）。派工与编组都不等匠人结果。
 - 否则：原样走分流，回执为 `/v1/assistant/route` 的响应加 `mode=route`。
 - 同一 `request_id` 同体回原回执、不再采样；不同体 409；同一实例上仍在处理中回进行中回执，别的实例上仍在处理中 409。回复窗口内管家失败 503 `runtime_unavailable`，原话已在主对话，可用同一标识重试；窗口过后的失败写进主对话。一轮到时限（默认 300 秒，管家可延长）是正常结局，回复说明先停下，不报错。客户端读超时应长于回复窗口：Python SDK 的 `send_to_butler` 至少等 120 秒。派工预算超限不报错给员工，由管家在答复里说明（工具错误 `butler_budget_exceeded`）。
 - 回执另含 `answered_pending`：本句被管家认出是对某个待处理问题的答复时，列出转给匠人的待处理项标识（转的是原话）。

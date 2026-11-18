@@ -16,4 +16,8 @@
 uv run python examples/office-review/build.py
 ```
 
+## 复制到另一家企业
+
+同一份归档与 `delivery.json` 可以原样交给另一家企业：对方管理员发布归档（`POST /v1/packages`），用同一描述登记（`POST /v1/capabilities`），再按本企业实际填写 `report_title`、`group_column`、`amount_column` 做预检与安装，之后按本企业员工名单分配、评测、发布。两家的包摘要相同，安装配置与配置摘要各自独立；任何一家的能力、安装、发布、分配标识在另一家都是 404（`packages/xuanpu-server/tests/r4_contract/test_office_replication.py`，内存与 PG）。复制只带模板，不带对方的运行数据、评测结果或密钥。
+
 样板只做精确汇总与复核草稿：不出网、不声明外部写工具；材料里的指令只是数据；生成文件不等于业务已签收，是否进入交接由员工本人决定。重复行保留计入并在报告里提示。

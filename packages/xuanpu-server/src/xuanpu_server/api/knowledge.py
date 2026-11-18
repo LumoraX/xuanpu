@@ -1,4 +1,4 @@
-"""本人知识来源接口（R4-D0）：登记、列表、检索、刷新、删除；只给员工本人。"""
+"""本人知识来源接口（R4-D0/D1）：登记、列表、检索、刷新、删除与受保护问答；只给员工本人。"""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -7,6 +7,11 @@ from fastapi import APIRouter
 from pydantic import JsonValue  # noqa: TC002 —— FastAPI 解析响应类型
 
 from xuanpu_server.api.auth import Caller  # noqa: TC001 —— FastAPI 解析认证依赖
+from xuanpu_server.knowledge.context_store import (  # noqa: TC001 —— FastAPI 解析请求模型
+    AskInput,
+    ContextChange,
+    CreateContext,
+)
 from xuanpu_server.knowledge.memory import (  # noqa: TC001 —— FastAPI 解析请求模型
     AssertInput,
     CorrectInput,
@@ -51,6 +56,31 @@ def knowledge_router(platform: Platform) -> APIRouter:
     async def delete(source_id: str, body: SourceChange, who: Caller) -> dict[str, JsonValue]:
         """删除来源并清掉文本块。"""
         return await platform.knowledge.delete(who, source_id, body)
+
+    @router.post('/contexts', status_code=201)
+    async def create_context(body: CreateContext, who: Caller) -> dict[str, JsonValue]:
+        """固定选定的依据，建受保护问答上下文。"""
+        return await platform.knowledge_contexts.create(who, body)
+
+    @router.get('/contexts')
+    async def contexts(who: Caller) -> dict[str, JsonValue]:
+        """本人问答上下文（不含正文；失效的就地标记）。"""
+        return await platform.knowledge_contexts.listing(who)
+
+    @router.get('/contexts/{context_id}')
+    async def read_context(context_id: str, who: Caller) -> dict[str, JsonValue]:
+        """复核来源后给出依据正文与已有回答。"""
+        return await platform.knowledge_contexts.read(who, context_id)
+
+    @router.post('/contexts/{context_id}/ask')
+    async def ask(context_id: str, body: AskInput, who: Caller) -> dict[str, JsonValue]:
+        """只依据固定材料回答，带引用。"""
+        return await platform.knowledge_contexts.ask(who, context_id, body)
+
+    @router.post('/contexts/{context_id}/close')
+    async def close_context(context_id: str, body: ContextChange, who: Caller) -> dict[str, JsonValue]:
+        """结束问答并清掉回答正文。"""
+        return await platform.knowledge_contexts.close(who, context_id, body)
 
     memory = APIRouter(prefix='/v1/me/work-memory')
 

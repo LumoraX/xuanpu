@@ -35,7 +35,7 @@ from xuanpu_server.butler.tools import ButlerTools, has_draft
 from xuanpu_server.butler.turn import ButlerTurn, TurnRegistry
 from xuanpu_server.butler.wake_apply import WakeEffects
 from xuanpu_server.butler.wakeup import Wakeup
-from xuanpu_server.errors import PlatformError, RuntimeUnavailableError
+from xuanpu_server.errors import PlatformError, RouteBusyError, RuntimeUnavailableError
 from xuanpu_server.ids import new_id
 from xuanpu_server.work_tasks.models import InputFile  # noqa: TC001 —— Pydantic 运行时解析
 
@@ -181,8 +181,13 @@ class ButlerService:
             await p.workspace.append_message(
                 who, "user", body.text, body.request_id + ":user",
                 attachments=[f.item_id for f in body.input_files])
-            claim = await p.workspace.claim_route(
-                who, "butler:" + body.request_id, body.model_dump(exclude={"request_id"}))
+            try:
+                claim = await p.workspace.claim_route(
+                    who, "butler:" + body.request_id, body.model_dump(exclude={"request_id"}))
+            except RouteBusyError:
+                # 同一句话正由另一实例处理（租约未过期）：照常回「进行中」，结果由那边写进主对话
+                return {"mode": "butler", "state": "running", "request_id": body.request_id,
+                        "trace_id": None, "elsewhere": True}
             if claim["state"] == "complete":
                 return dict(claim["outcome"])
             # 记下原始输入：进程中途退出后，唤醒循环据此按同一标识重跑（R6-D）
@@ -283,7 +288,8 @@ class ButlerService:
                      for i in await self.pending.list(who) if i.kind == "question"]
         return json.dumps({
             "now": datetime.fromtimestamp(self._now(), ZoneInfo(body.timezone)).isoformat(),
-            "timezone": body.timezone, "history": history, "pending_questions": questions,
+            "timezone": body.timezone, "turn_seconds": self._platform.butler_config.turn_seconds,
+            "history": history, "pending_questions": questions,
             "materials": [f.model_dump() for f in body.input_files], "text": body.text,
         }, ensure_ascii=False)
 

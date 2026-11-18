@@ -54,6 +54,7 @@ function resetIdentity() {
   if (typeof resetSharedNotifications === "function") resetSharedNotifications();
   if (typeof resetOrganization === "function") resetOrganization();
   if (typeof resetCapabilities === "function") resetCapabilities();
+  if (typeof resetKnowledge === "function") resetKnowledge();
   if (typeof resetConnections === "function") resetConnections();
   resetReminders();
   if (typeof resetWorkspace === "function") resetWorkspace();

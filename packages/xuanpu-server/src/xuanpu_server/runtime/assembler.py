@@ -17,6 +17,11 @@ import taifeng
 
 from xuanpu_server.errors import RuntimeCleanupRequiredError, RuntimeUnavailableError
 from xuanpu_server.runtime.approval import build_policy
+from xuanpu_server.runtime.capability_guard import (
+    CapabilityModelClient,
+    CapabilityPermissionPolicy,
+    capability_check,
+)
 from xuanpu_server.runtime.connectors import ConnectorSet
 from xuanpu_server.runtime.execution_scope import ExecutionScope
 from xuanpu_server.runtime.sandbox import DEFAULT_BASE_ENV
@@ -41,6 +46,8 @@ if TYPE_CHECKING:
     from xuanpu_server.connections.managed_http import ManagedHttpTools
     from xuanpu_server.packages import ResolvedPackage
     from xuanpu_server.runtime.call_context import CallContextSigner
+    from xuanpu_server.runtime.capability_guard import AdmissionCheck
+    from xuanpu_server.runtime.capability_guard import Check as CapabilityCheck
     from xuanpu_server.runtime.events import SubmissionIndex
     from xuanpu_server.runtime.models import ModelClientFactory
     from xuanpu_server.runtime.sandbox import SandboxHandle, SandboxProvider
@@ -241,6 +248,8 @@ class RuntimeAssembler:
         """
         self._managed_connections=managed_connections
         self._source_contexts: SharedContexts | None = None
+        # 纳管能力的逐次模型调用复核（R4-B1），由平台装配 CapabilityAdmission.check
+        self.capability_admission: AdmissionCheck | None = None
         self._now = now
         self._submissions = submissions
         self._context_signer = context_signer
@@ -376,7 +385,11 @@ class RuntimeAssembler:
                 if spec.policy.sandbox.network:
                     raise RuntimeUnavailableError('持久任务脚本必须断网')
                 policy = TaskPermissionPolicy(policy, binding)
-            pool = await self._create_pool(package, policy, sandbox, connectors, key=key, source=source, script_observer=script_observer)
+            capability = capability_check(self.capability_admission, scope, package.record.name)
+            if capability is not None:
+                policy = CapabilityPermissionPolicy(policy, capability)
+            pool = await self._create_pool(package, policy, sandbox, connectors, key=key, source=source,
+                                           script_observer=script_observer, capability=capability)
         except BaseException as original:
             steps = self._failed_closures.setdefault(key, [])
             if isinstance(original, RuntimeCleanupRequiredError):
@@ -466,7 +479,7 @@ class RuntimeAssembler:
         connectors: ConnectorSet,
         *,
         key: RuntimeKey, script_observer: ScriptObserver | None = None,
-        source: RuntimeSourceBinding | None = None,
+        source: RuntimeSourceBinding | None = None, capability: CapabilityCheck | None = None,
     ) -> taifeng.EnginePool:
         """创建内核引擎池。"""
         tenant_id = package.record.tenant_id
@@ -497,6 +510,8 @@ class RuntimeAssembler:
             protected = source is not None and source.protected
             if source is not None:
                 model_client = SourceModelClient(model_client, source.check)
+            if capability is not None:
+                model_client = CapabilityModelClient(model_client, capability)
             return await taifeng.EnginePool.create(
                 skills_dir=package.skills_dir,
                 model_client=model_client,

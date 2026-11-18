@@ -125,3 +125,41 @@ async def test_switch_off_blocks_new_but_lets_bound_work_finish(r4_http, r4_worl
     assert (await _session(r4_http['alice'])).status_code == 403
     r4_world.models.script(step(text='收尾。'))
     assert (await _say(r4_http['alice'], session_id)).status_code == 200
+
+
+async def test_revocation_after_turn_start_blocks_the_model_call(r4_http, r4_world, r4_ids, step, monkeypatch):
+    """轮开始时的复核已过、随后才撤销分配：这一轮的模型请求在发出前被拒，模型零调用。"""
+    _, assignment = await _assigned(r4_http, r4_world, r4_ids)
+    session_id = (await _session(r4_http['alice'])).json()['session_id']
+    r4_world.models.script(step(text='好的。'))
+    assert (await _say(r4_http['alice'], session_id)).status_code == 200
+    before = len(r4_world.models.requests)
+
+    async def passed(record):
+        """模拟撤销恰好落在轮开始复核之后。"""
+
+    monkeypatch.setattr(r4_world.platform.sessions, '_capability_guard', passed)
+    revoked = await r4_http['admin'].post(f"/v1/capability-assignments/{assignment['id']}/revoke",
+                                          json={'request_id': 'rv-mid', 'expected_version': 1})
+    assert revoked.status_code == 200
+    r4_world.models.script(step(text='不应发出。'))
+    response = await _say(r4_http['alice'], session_id)
+    assert '不应发出' not in response.text
+    assert len(r4_world.models.requests) == before, '撤销后这一轮不能再向模型发请求'
+
+
+async def test_drain_preview_counts_unbound_inflight_work(r4_http, r4_world, r4_ids):
+    """登记前：这个包还在进行、没有能力依据的会话被数出来；登记后同样给出（续跑会被拒）；员工不能看。"""
+    from .test_assignments import register
+
+    started = await _session(r4_http['alice'], None)
+    assert started.status_code == 201, started.text
+    admin = r4_http['admin']
+    before = (await admin.get('/v1/admin/capability-drain', params={'package': PACKAGE})).json()
+    assert before['managed'] is False and before['unbound_sessions'] == 1 and before['truncated'] is False
+    assert (await admin.get('/v1/admin/capability-drain', params={'package': 'other'})).json()['unbound_sessions'] == 0
+    await register(admin, r4_ids)
+    after = (await admin.get('/v1/admin/capability-drain', params={'package': PACKAGE})).json()
+    assert after['managed'] is True and after['unbound_sessions'] == 1
+    assert started.json()['session_id'] not in str(after)
+    assert (await r4_http['alice'].get('/v1/admin/capability-drain', params={'package': PACKAGE})).status_code == 403

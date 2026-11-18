@@ -11,7 +11,12 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import ValidationError
 
-from xuanpu_server.errors import ConflictError, InvalidRequestError, PermissionDeniedError
+from xuanpu_server.errors import (
+    ConflictError,
+    InvalidRequestError,
+    PermissionDeniedError,
+    RouteBusyError,
+)
 from xuanpu_server.workspace.models import (
     KINDS,
     MAX_FILE_BYTES,
@@ -547,7 +552,7 @@ class WorkspaceService:
             if prior is not None and prior.get("state") == "complete":
                 return prior
             if prior is not None and prior.get("lease_until", 0) > self._now():
-                raise ConflictError("该消息正在处理中，请稍后重试")
+                raise RouteBusyError("该消息正在处理中，请稍后重试")
             claim = {
                 **(prior or {}),
                 "state": "claimed",

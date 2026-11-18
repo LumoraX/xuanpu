@@ -157,8 +157,10 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
                     for name, scenario, overrides in (
                         ("concurrent", scenario_concurrent, {"reply_window_seconds": 3.0}),
                         ("budget", scenario_budget, {"max_artisans_per_trace": 1}),
-                        ("deadline", scenario_deadline, {"turn_seconds": 10.0, "reply_window_seconds": 3.0}),
+                        ("deadline", scenario_deadline, {"turn_seconds": args.deadline_seconds, "reply_window_seconds": 3.0}),
                     ):
+                        if args.only and name not in args.only:
+                            continue
                         platform.butler_config = type(platform.butler_config)(**{**base, **overrides})
                         user_id = await harness.new_employee(platform, f"R6验收-{name}")
                         who = harness_principal(user_id)
@@ -173,7 +175,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
     finally:
         tickets.terminate()
         tickets.wait(timeout=10)
-    results["ok"] = all(results[n]["ok"] for n in ("concurrent", "budget", "deadline"))
+    results["ok"] = all(results[n]["ok"] for n in ("concurrent", "budget", "deadline") if n in results)
     return results
 
 
@@ -189,6 +191,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--model-env", type=Path, required=True, help="私有模型配置（dotenv，权限 600）")
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--only", action="append", choices=("concurrent", "budget", "deadline"),
+                        help="只跑这些场景（可重复）；缺省全跑")
+    parser.add_argument("--deadline-seconds", type=float, default=10.0,
+                        help="时限场景的一轮时限（秒）；短于一次模型采样时管家来不及延长")
     args = parser.parse_args()
     summary = asyncio.run(run(args))
     args.out.mkdir(parents=True, exist_ok=True)

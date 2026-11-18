@@ -325,6 +325,8 @@ class Platform:
         )
         self.sessions = self._session_manager(submissions, lease_seconds)
         self.sessions.admission = self.capabilities.admission
+        # 一轮内每次模型调用前复核能力依据（纳管包；未纳管照旧放行）
+        self.runtimes.capability_admission = self.capabilities.admission.check
         self.capabilities.evaluations.sessions = self.sessions
         from xuanpu_server.knowledge.service import KnowledgeService
 
@@ -360,6 +362,11 @@ class Platform:
         self.task_definitions=TaskDefinitionService(self.work_tasks,now=now,config=task_triggers or TriggerConfig())
         self.trigger_worker=TriggerWorker(self.task_definitions)
         self.assistant = AssistantRouter(self, models, now=now)
+        from xuanpu_server.knowledge.contexts import KnowledgeContexts
+
+        # 受保护知识问答：采样走助理路由同一配额与计量，来源删除即时使依赖上下文失效
+        self.knowledge_contexts = KnowledgeContexts(self.knowledge, store.context_store, self.assistant.sample_protected)
+        self.knowledge.removal_listeners.append(self.knowledge_contexts.source_removed)
         self.butler = ButlerService(self, models, data_dir=data_dir, now=now)
         self.dashboard = DashboardService(self, now=now)
         self.proactive = ProactiveService(workspace=self.workspace, control=store,

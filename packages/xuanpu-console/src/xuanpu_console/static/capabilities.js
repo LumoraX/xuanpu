@@ -20,6 +20,7 @@ async function openCapabilities(adminView=false){
       $("capability-list").append(connectionText("p",me.capabilities.length?"已分配能力（"+me.total+"）":"尚未分配可运行能力。个人工作方法不等于企业执行授权。"));
     }
     if(isAdmin())await capabilityManage(epoch,generation);
+    if(isAdmin()&&adminView&&typeof capabilityOperations==="function"&&capabilityLive(epoch,generation))await capabilityOperations(epoch,generation);
     if(capabilityLive(epoch,generation))capabilityNotice("登记和保存配置不会启用运行；分配及发布检查尚未完成。");
   }catch(error){if(capabilityLive(epoch,generation))capabilityNotice(error.message);}
 }

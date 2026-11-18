@@ -53,3 +53,18 @@ async def test_evaluation_and_release_paths():
         ("POST", "/v1/capability-evaluations"), ("GET", "/v1/capability-evaluations/cev_1"),
         ("POST", "/v1/capabilities/cap_1/release-previews"), ("POST", "/v1/capabilities/cap_1/releases"),
         ("GET", "/v1/capabilities/cap_1/releases"), ("POST", "/v1/capability-releases/crl_1/revoke")]
+
+
+async def test_drain_preview_path():
+    """排空预览只读，包名作为查询参数。"""
+    seen = []
+
+    def receive(request):
+        seen.append(request)
+        return httpx.Response(200, json={"ok": True})
+
+    async with XuanpuClient("https://example.test", "PRIVATE_KEY",
+                            transport=httpx.MockTransport(receive)) as client:
+        await client.capability_drain_preview("office-review")
+    assert [(r.method, r.url.path, dict(r.url.params)) for r in seen] == [
+        ("GET", "/v1/admin/capability-drain", {"package": "office-review"})]

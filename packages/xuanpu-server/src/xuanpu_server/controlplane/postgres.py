@@ -118,6 +118,9 @@ class PostgresControlPlane:
         from xuanpu_server.knowledge.memory import PostgresMemoryStore
 
         self.memory_store = PostgresMemoryStore(pool, namespace=namespace)
+        from xuanpu_server.knowledge.context_store import PostgresContextStore
+
+        self.context_store = PostgresContextStore(pool, namespace=namespace)
         from xuanpu_server.butler.wake_postgres import PostgresWakeStore
 
         self.wake_store = PostgresWakeStore(pool, namespace=namespace)

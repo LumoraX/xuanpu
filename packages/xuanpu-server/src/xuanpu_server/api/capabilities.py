@@ -58,6 +58,13 @@ def capabilities_router(platform: Platform) -> APIRouter:
         """登记精确包修订，不切换包活动指针。"""
         return await platform.capabilities.register(who, body)
 
+    @router.get('/v1/admin/capability-drain')
+    async def drain(package: str, who: Caller) -> dict[str, JsonValue]:
+        """首次纳管前的排空预览：这个包没有能力依据的在途会话数（只读，仅管理员）。"""
+        from xuanpu_server.capabilities.drain import drain_preview
+
+        return await drain_preview(platform.capabilities, who, package)
+
     @router.get('/v1/capabilities')
     async def listing(who: Caller, limit: int = 50, cursor: str | None = None) -> dict[str, JsonValue]:
         """仅管理员可枚举配置记录。"""
