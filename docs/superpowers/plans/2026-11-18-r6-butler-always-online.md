@@ -54,8 +54,8 @@
 
 **Files**：Modify `xuanpu-console` 的 `entry.js`、`progress-card.js`；SDK `traces.py`；Node 行为测试。
 
-- [ ] 发送后立即恢复输入；收到 `running` 回执显示「处理中」与进展卡；这一轮结束后把主对话的新消息补进来（按游标读，不重复）。
-- [ ] SDK：`send_to_butler` 文档写明 `state`；读超时回到不短于回复窗口即可。
+- [x] 发送后立即恢复输入；收到 `running` 回执显示「处理中」与进展卡；这一轮结束后把主对话的新消息补进来（按游标读，不重复）。
+- [x] SDK：`send_to_butler` 文档写明 `state`；读超时回到不短于回复窗口即可。
 
 ## F：验收与文档
 
