@@ -146,3 +146,20 @@ async def test_revocation_after_turn_start_blocks_the_model_call(r4_http, r4_wor
     response = await _say(r4_http['alice'], session_id)
     assert '不应发出' not in response.text
     assert len(r4_world.models.requests) == before, '撤销后这一轮不能再向模型发请求'
+
+
+async def test_drain_preview_counts_unbound_inflight_work(r4_http, r4_world, r4_ids):
+    """登记前：这个包还在进行、没有能力依据的会话被数出来；登记后同样给出（续跑会被拒）；员工不能看。"""
+    from .test_assignments import register
+
+    started = await _session(r4_http['alice'], None)
+    assert started.status_code == 201, started.text
+    admin = r4_http['admin']
+    before = (await admin.get('/v1/admin/capability-drain', params={'package': PACKAGE})).json()
+    assert before['managed'] is False and before['unbound_sessions'] == 1 and before['truncated'] is False
+    assert (await admin.get('/v1/admin/capability-drain', params={'package': 'other'})).json()['unbound_sessions'] == 0
+    await register(admin, r4_ids)
+    after = (await admin.get('/v1/admin/capability-drain', params={'package': PACKAGE})).json()
+    assert after['managed'] is True and after['unbound_sessions'] == 1
+    assert started.json()['session_id'] not in str(after)
+    assert (await r4_http['alice'].get('/v1/admin/capability-drain', params={'package': PACKAGE})).status_code == 403

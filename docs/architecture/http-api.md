@@ -1041,6 +1041,7 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 
 | 方法与路径 | 正文或查询 | 返回 |
 | --- | --- | --- |
+| GET /v1/admin/capability-drain | package（查询参数） | 仅管理员只读：managed、unbound_sessions（没有能力依据的进行中会话）、unbound_task_sessions（没有任务绑定的任务承载会话）、truncated（扫描 2000 个进行中会话为上界）、scheduled_not_counted=true、advice；不含会话标识、正文或员工明细 |
 | POST /v1/capabilities | request_id、delivery（严格xuanpu-delivery/v1） | 201：capability_id、revision、digest、delivery、can_run=false；相同描述复用修订 |
 | GET /v1/capabilities | limit=1–100，cursor可选 | items、分页前total、next_cursor、installations、configuration_enabled；items为说明修订 |
 | GET /v1/me/capabilities | 无；必须有启用员工身份 | 本人此刻可新受理的能力（R4-B）：capabilities[]（capability_id、capability_key、revision、title、summary、package、entry、assignment_id、can_run=true）、total、status=assigned；没有时为空列表与status=not_assigned |

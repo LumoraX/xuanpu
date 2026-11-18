@@ -23,6 +23,10 @@ class CapabilityClient:
             params['cursor'] = cursor
         return await self._http.request('GET', '/v1/capabilities', params=params)
 
+    async def capability_drain_preview(self, package: str) -> dict[str, Any]:
+        """首次纳管前的排空预览：这个包没有能力依据的在途会话数（只读，仅管理员）。"""
+        return await self._http.request('GET', '/v1/admin/capability-drain', params={'package': package})
+
     async def register_capability(self, body: dict[str, Any]) -> dict[str, Any]:
         """登记不可变描述，调用者提供原request_id。"""
         return await self._http.request('POST', '/v1/capabilities', json=body)
