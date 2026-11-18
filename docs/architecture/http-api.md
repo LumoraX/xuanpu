@@ -1030,6 +1030,17 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | GET /v1/capabilities/{id}/assignments | 无 | assignments（含已撤销）、total；仅管理员 |
 | POST /v1/capability-assignments/{id}/revoke | request_id、expected_version | 状态revoked、epoch加一、version加一；版本不符或已撤销409 |
 
+### 能力评测与发布（R4-C）
+
+| 方法与路径 | 正文 | 返回 |
+| --- | --- | --- |
+| POST /v1/capability-evaluations | request_id、capability_id、installation_id、suite（`xuanpu-eval-suite/v1`）、可选token_budget（1000–100000） | 202：id、status=running（声明外部通道的能力为blocked/external_implementation_not_verified）、config_digest、suite_digest；套件摘要与交付描述不符409 |
+| GET /v1/capability-evaluations/{id} | 无 | status=running/passed/failed/interrupted/blocked、reason、cases（name、passed、reasons、outcome、total_tokens）；不含输入正文 |
+| POST /v1/capabilities/{id}/release-previews | installation_id、evaluation_id、targets（1–100个user_id与user_epoch） | digest、capability_revision、changes（每人from_revision→to_revision）、supersedes；只读；证据不符或过期409 |
+| POST /v1/capabilities/{id}/releases | 预览正文加request_id、preview_digest、supersedes、confirmed=true | 201：发布记录；摘要或取代列表不符409；首次发布把安装置为ready |
+| GET /v1/capabilities/{id}/releases | 无 | releases、total |
+| POST /v1/capability-releases/{id}/retire、/revoke | request_id、expected_version | status=retired或revoked（revoked代次加一）；只能从active改 |
+
 纳管包（任一入口登记为能力）的`POST /v1/sessions`、续聊与`resume`、`POST /v1/work-tasks/from-capability`与办公交办都经同一能力决策：没有有效分配或显式版本不等于决策版本404，机器身份404，原依据失效后续聊/恢复403；纳管包的`POST /v1/packages/{name}/activate`与`publish?activate=true` 409。
 
 预检有效期默认900秒，内部证据固定归档、策略、完整MCP清单及凭据密文版本，安装前重检。diff仅含公开权限/上一安装权限及配置槽名，不回显配置值、密文指纹或实际秘密引用。新登记/预检/安装要求capability_delivery明确开启并命中租户白名单；查询与停止不受该新受理开关阻断。精确契约见[能力架构](capability-delivery.md)。

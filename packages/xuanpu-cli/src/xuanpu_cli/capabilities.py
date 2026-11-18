@@ -21,11 +21,14 @@ def add_capability_commands(commands: Any) -> None:
     parent.add_argument('--credentials', required=True, help='仅当前用户可读的私有凭据JSON')
     operations = parent.add_subparsers(dest='operation', required=True)
     for name in ('list', 'mine', 'register', 'install-preview', 'install', 'state', 'assign',
-                 'assignments', 'revoke'):
+                 'assignments', 'revoke', 'evaluate', 'evaluation', 'release-preview', 'release',
+                 'releases', 'retire-release', 'revoke-release'):
         parser = operations.add_parser(name)
-        if name in ('install-preview', 'install', 'state', 'assign', 'assignments', 'revoke'):
+        if name in ('install-preview', 'install', 'state', 'assign', 'assignments', 'revoke', 'evaluation',
+                    'release-preview', 'release', 'releases', 'retire-release', 'revoke-release'):
             parser.add_argument('identifier')
-        if name in ('register', 'install-preview', 'install', 'state', 'assign', 'revoke'):
+        if name in ('register', 'install-preview', 'install', 'state', 'assign', 'revoke', 'evaluate',
+                    'release-preview', 'release', 'retire-release', 'revoke-release'):
             parser.add_argument('--body', required=True, help='含原操作号及明确确认的JSON，不自动生成确认')
         if name == 'list':
             parser.add_argument('--limit', type=int, default=50)
@@ -63,6 +66,18 @@ async def run_capabilities(args: argparse.Namespace) -> dict[str, Any]:
             return await client.list_capability_assignments(args.identifier)
         if args.operation == 'revoke':
             return await client.revoke_capability_assignment(args.identifier, body)
+        if args.operation == 'evaluate':
+            return await client.evaluate_capability(body)
+        if args.operation == 'evaluation':
+            return await client.get_capability_evaluation(args.identifier)
+        if args.operation == 'release-preview':
+            return await client.preview_capability_release(args.identifier, body)
+        if args.operation == 'release':
+            return await client.release_capability(args.identifier, body)
+        if args.operation == 'releases':
+            return await client.list_capability_releases(args.identifier)
+        if args.operation in ('retire-release', 'revoke-release'):
+            return await client.change_capability_release(args.identifier, args.operation.split('-')[0], body)
     raise ValueError('未知能力操作')
 
 

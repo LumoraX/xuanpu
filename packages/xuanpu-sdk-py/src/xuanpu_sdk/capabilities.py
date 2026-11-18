@@ -50,3 +50,29 @@ class CapabilityClient:
     async def revoke_capability_assignment(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
         """按版本撤销分配（body 含 request_id 与 expected_version），下一次调用即被拒。"""
         return await self._http.request('POST', f'/v1/capability-assignments/{quote(identifier, safe="")}/revoke', json=body)
+
+    async def evaluate_capability(self, body: dict[str, Any]) -> dict[str, Any]:
+        """发起一次隔离评测（R4-C）；body 含 request_id、capability_id、installation_id、suite。"""
+        return await self._http.request('POST', '/v1/capability-evaluations', json=body)
+
+    async def get_capability_evaluation(self, identifier: str) -> dict[str, Any]:
+        """评测状态与逐用例判定。"""
+        return await self._http.request('GET', f'/v1/capability-evaluations/{quote(identifier, safe="")}')
+
+    async def preview_capability_release(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        """只读发布预览：证据核对、名单变化与确认摘要。"""
+        return await self._http.request('POST', f'/v1/capabilities/{quote(identifier, safe="")}/release-previews', json=body)
+
+    async def release_capability(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        """按预览摘要确认发布给固定员工名单（body 含 preview_digest、supersedes、confirmed=true）。"""
+        return await self._http.request('POST', f'/v1/capabilities/{quote(identifier, safe="")}/releases', json=body)
+
+    async def list_capability_releases(self, identifier: str) -> dict[str, Any]:
+        """某能力的全部发布。"""
+        return await self._http.request('GET', f'/v1/capabilities/{quote(identifier, safe="")}/releases')
+
+    async def change_capability_release(self, identifier: str, action: str, body: dict[str, Any]) -> dict[str, Any]:
+        """停止（retire）或撤销（revoke）一次发布，body 含 request_id 与 expected_version。"""
+        if action not in ('retire', 'revoke'):
+            raise ValueError('action 只能是 retire 或 revoke')
+        return await self._http.request('POST', f'/v1/capability-releases/{quote(identifier, safe="")}/{action}', json=body)

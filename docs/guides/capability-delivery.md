@@ -1,6 +1,6 @@
 # 能力登记与安装预检
 
-管理员可以登记交付说明、保存“待发布”安装（R4-A），并把能力分配给员工（R4-B）；评测发布尚待R4-C，产品接口里安装还不能变为可运行。员工不会因为管理员完成配置而自动获得能力，只有被分配且安装可运行时才出现在“我的能力”与对话里。
+管理员可以登记交付说明、保存“待发布”安装（R4-A），把能力分配给员工（R4-B），再经隔离评测把通过证据的版本发布给固定的员工名单（R4-C）。员工不会因为管理员完成配置而自动获得能力：既被分配、又在某次生效发布的名单里，才出现在“我的能力”与对话里。
 
 ## 管理员操作
 
@@ -22,11 +22,18 @@
 - 已登记为能力的业务包不能再用“激活版本”或“发布并激活”上线，须走能力发布流程（R4-C）；不激活的上传仍可用。纳管之前已经开始的会话或任务没有能力依据，纳管后不能继续，请先让它们收尾。
 - 原生分配界面尚未提供，目前经HTTP接口、SDK或命令行操作。
 
+## 评测与发布（R4-C）
+
+1. 评测：提交与交付描述声明摘要一致的评测套件（`xuanpu-eval-suite/v1`，最多50个用例），指定要评的安装。评测在后台用正常会话路径逐个用例运行，按实际回复判定；声明了企业连接或写入工具的能力本版本不能在隔离环境评测，会直接显示“外部实现未验证”。
+2. 预览：选定通过的评测与员工名单（最多100人，按员工当前代次），预览会列出每人当前与目标版本、需要停止的重叠发布，并给出确认摘要。评测报告7天内有效，安装配置改过须重新评测。
+3. 发布：带上预览摘要与要停止的重叠发布明确确认。期间状态有变会要求重新预览。首次发布后安装变为可运行。
+4. 停止与撤销：正常停止只拒绝新的使用，进行中的工作可以收尾；安全撤销后进行中的工作也会被拒。回退就是用旧的仍有效的配置与评测再发布一次。
+
 ## SDK和命令行
 
-SDK新增my_capabilities、list_capabilities、register_capability、preview_capability_install、install_capability、change_capability_installation，以及分配用的assign_capability、list_capability_assignments、revoke_capability_assignment。方法接受与HTTP相同的正文，不自动补request_id或confirmed；没有员工身份的机器凭据不能调用my_capabilities。
+SDK新增my_capabilities、list_capabilities、register_capability、preview_capability_install、install_capability、change_capability_installation，分配用的assign_capability、list_capability_assignments、revoke_capability_assignment，以及评测与发布用的evaluate_capability、get_capability_evaluation、preview_capability_release、release_capability、list_capability_releases、change_capability_release。方法接受与HTTP相同的正文，不自动补request_id或confirmed；没有员工身份的机器凭据不能调用my_capabilities。
 
-命令为`xuanpu capabilities --credentials <私有JSON> list|mine|register|install-preview|install|state|assign|assignments|revoke`（assign与revoke以能力或分配编号为参数，正文经--body文件；本次未补充实际运行示例）。凭据文件仅当前用户可读，字段为base_url、api_key及可选act_as_user，禁止把密钥放命令参数或写入交付描述。写入正文使用--body文件，重复提交原文件保留操作号。错误不回显正文或凭据。
+命令为`xuanpu capabilities --credentials <私有JSON> list|mine|register|install-preview|install|state|assign|assignments|revoke|evaluate|evaluation|release-preview|release|releases|retire-release|revoke-release`（编号作参数，正文经--body文件；分配、评测与发布子命令本次未补充实际运行示例）。凭据文件仅当前用户可读，字段为base_url、api_key及可选act_as_user，禁止把密钥放命令参数或写入交付描述。写入正文使用--body文件，重复提交原文件保留操作号。错误不回显正文或凭据。
 
 下面命令在本机回环合成夹具实际执行过。目录和登录入口只用于开发验收，不能接生产；运行夹具会创建合成包、员工和临时密钥，无需真实模型或员工资料：
 
