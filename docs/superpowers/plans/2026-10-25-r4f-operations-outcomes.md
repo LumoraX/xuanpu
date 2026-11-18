@@ -70,4 +70,4 @@ async def test_totals_ignore_page_and_missing_price(r4_http, r4_ids):
 ## 进度（2026-11-18，分支 `feat/r4ef-outcomes`）
 
 - F0：`S/outcomes/{service,acceptance}.py`、`S/api/outcomes.py`、迁移 `0031_business_outcomes`；测试 `T/r4_contract/test_outcome_metrics.py`（内存与 PG）：分页不改总数、各状态列出、token 实际与上界分列、未记录不当 0、无价格表费用为空、受理时间窗口、员工隔离、管理员不见明细、批次样本校验、观察只追加与纠正、通过率口径。统计每次现算（未实现聚合水位与重建中状态，因此也没有 partial）；部门维度、签收率、正确率抽检、P50/P95 耗时、执行秒未实现；未做无绑定旧工作的 unattributed 计数（不在统计里）。
-- F1：SDK（`xuanpu_sdk.knowledge.OutcomeClient`：本人/管理员统计、批次与观察）与命令行 `xuanpu knowledge outcomes|admin-outcomes|batch`（分支 `feat/r4d1-knowledge-qa`）；原生面板与导出未实现。
+- F1：SDK（`xuanpu_sdk.knowledge.OutcomeClient`：本人/管理员统计、批次与观察）与命令行 `xuanpu knowledge outcomes|admin-outcomes|batch`（分支 `feat/r4d1-knowledge-qa`）；管理员原生视图「能力配置 → 运行结果与发布」（`C/capability-operations.js`，Node 行为测试 `Q/r4_operations_behavior.cjs`）已接；员工统计页面、验收批次页面与导出未实现。
