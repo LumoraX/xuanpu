@@ -88,6 +88,10 @@ class ConflictError(PlatformError):
     status = 409
 
 
+class RouteBusyError(ConflictError):
+    """同一句话正由别的处理者持有（租约未过期）；错误码不变，供调用方区分「进行中」与内容冲突。"""
+
+
 class ApprovalConflictError(ConflictError):
     """审批被认领或需核实，返回已有操作标识供关联排查。"""
 

@@ -106,3 +106,22 @@ async def test_released_and_legacy_claims_are_left_alone(
     _after_lease(world, monkeypatch)
     assert await world.platform.butler.resume_stale("acme") == 0
     assert world.models.requests == []
+
+
+async def test_same_sentence_held_elsewhere_returns_running(any_world: Any) -> None:
+    """同一句话正由另一实例处理（租约未过期）：这边回「进行中」而不是 409，也不再调模型。"""
+    from xuanpu_server.butler.service import ButlerMessageBody
+
+    world = any_world
+    enable(world)
+    alice = await employee(world)
+    await _crashed_claim(world, alice, "r-elsewhere")
+    receipt = await world.platform.butler.message(
+        alice, ButlerMessageBody.model_validate({**INPUT, "request_id": "r-elsewhere"}))
+    assert receipt["state"] == "running" and receipt["elsewhere"] is True
+    assert not world.models.requests
+    other = ButlerMessageBody.model_validate({**INPUT, "text": "换了内容", "request_id": "r-elsewhere"})
+    from xuanpu_server.errors import ConflictError, RouteBusyError
+    with pytest.raises(ConflictError) as caught:
+        await world.platform.butler.message(alice, other)
+    assert not isinstance(caught.value, RouteBusyError), "同一标识换了内容是冲突，不能当成进行中"
