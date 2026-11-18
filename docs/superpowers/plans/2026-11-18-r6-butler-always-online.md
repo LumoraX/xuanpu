@@ -59,6 +59,10 @@
 
 ## F：验收与文档
 
-- [ ] 单测、ruff、mypy、全量。
-- [ ] 真实模型：连续交代三件事（一件慢、一件快、一件派工），第二、三件不等第一件；慢的一轮延长时限；一次请求提高预算；结果都主动回到主对话。
-- [ ] 文档：`docs/architecture/{butler,http-api}.md`、`docs/guides/{butler,operations}.md`、`examples/xuanpu.yaml`、决策索引。
+- [x] 单测、ruff、mypy、全量。（本机全量 60 failed / 50 errors 均为无办公容器的 `无法运行 docker 命令`，与基线同类；R6 相关用例全过）
+- [x] 真实模型：连续交代三件事（一件慢、一件快、一件派工），第二、三件不等第一件；慢的一轮延长时限；一次请求提高预算；结果都主动回到主对话。
+- [x] 文档：`docs/architecture/{butler,http-api}.md`、`docs/guides/{butler,operations}.md`、`examples/xuanpu.yaml`、决策索引。
+
+## 进度
+
+- 2026-11-18：A–E 实现并有单测（`T/butler/test_{async_turn,turn_deadline,budget_raise,turn_resume}.py`，PG 变体实际运行）；真实模型验收见 [R6 验收记录](../../guides/releases/2026-11-18-r6-always-online-acceptance.md)。观察：长写作任务里管家未主动 `extend_turn`，到时限正常停下。

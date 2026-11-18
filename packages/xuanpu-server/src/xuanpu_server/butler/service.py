@@ -306,8 +306,9 @@ class ButlerService:
 
 def _timed_out(turn: ButlerTurn, exc: TurnTimeout) -> str:
     """一轮到时限的收尾说明：不是失败；已交出去的工作照常进行，结束后会回报。"""
-    minutes = max(1, round(exc.elapsed / 60))
-    text = f"这件事我处理了约 {minutes} 分钟，这一轮已到时限先停下。"
+    spent = (f"约 {round(exc.elapsed / 60)} 分钟" if exc.elapsed >= 90
+             else f"{max(1, round(exc.elapsed))} 秒")
+    text = f"这件事我处理了 {spent}，这一轮已到时限先停下。"
     if turn.dispatches or turn.groups:
         names = "、".join(dict.fromkeys(d.artisan.package for d in turn.dispatches)) or "编组"
         text += f"已交出去的工作（{names}）仍在进行，完成后我会告诉你结果。"
