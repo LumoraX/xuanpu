@@ -4595,7 +4595,7 @@ dependencies = [
 
 [[package]]
 name = "xuanpu-desktop"
-version = "2026.11.16"
+version = "2026.11.18"
 dependencies = [
  "open",
  "reqwest 0.12.28",

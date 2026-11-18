@@ -444,6 +444,30 @@ P1 控制面迁移为 `0004_identity.sql`，增加用户、外部身份、登录
 
 首次升级后的飞书应用、权限、密钥与首位管理员配置见[接入飞书登录](feishu-login.md)。对账未验证标记需要人工处理，不能根据查不到用户就手工批量停用。
 
+### 桌面接力迁移改号（0026 → 0027）
+
+桌面客户端浏览器接力（ADR 0021）的表结构曾以 `0026_desktop_handoff` 单独部署到生产，与主线的 `0026_local_credential`（玄圃自有账号）撞号，合并后改为 `0027_desktop_handoff`。**只有执行过旧 `0026_desktop_handoff` 的库**需要在升级到合并后的版本前做一次对账；其他库照常迁移即可。
+
+直接迁移会报「迁移 0026 已执行，但脚本内容与执行时不同」并拒绝执行，不会改动数据。先确认是这种情况：
+
+```bash
+docker compose exec -T postgres psql -U xuanpu -d xuanpu -At \
+  -c "SELECT version, name FROM xp_schema_migrations WHERE version >= 26 ORDER BY version"
+# 26|desktop_handoff        ← 只有这一行时才需要对账
+```
+
+停平台、按上文备份后，删掉台账里的这一行，再正常迁移：
+
+```bash
+docker compose exec -T postgres psql -U xuanpu -d xuanpu \
+  -c "DELETE FROM xp_schema_migrations WHERE version = 26 AND name = 'desktop_handoff'"
+docker compose --profile operations run --rm migrate
+# 已执行 0026_local_credential
+# 已执行 0027_desktop_handoff
+```
+
+`0027_desktop_handoff` 全部是 `IF NOT EXISTS`，已有的 `client` 列与 `desktop_handoff` 表及其中数据原样保留。只删 `name = 'desktop_handoff'` 的那一行；台账里 26 已是 `local_credential` 的库不要动。
+
 ### P0 状态面升级
 
 第一版里业务包解在共享的数据目录 `packages/` 下，会话主存是数据目录 `threads/` 下的 JSONL 文件，`state.backend: postgres` 只是把消息另外镜像进库。升级后：

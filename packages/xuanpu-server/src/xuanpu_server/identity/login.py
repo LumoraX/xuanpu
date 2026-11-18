@@ -31,6 +31,10 @@
   租户同时在调飞书的登录有上限（``identity.limits``）。
 - 飞书的错误只有 20010 归为 ``not_in_app_scope``，别的（含授权码无效、App Secret 不对）都是
   ``identity_unavailable``。
+
+**桌面客户端**（``client=desktop``，ADR 0021）：开始登录时登录尝试记下 ``desktop``，登录尝试
+cookie 写在桌面客户端里；回调落在系统浏览器，不核对该 cookie，第 8 步改为建一条桌面接力记录
+（绑定到该 cookie 的摘要）并让浏览器显示确认页。之后的确认与换取见 ``identity.desktop``。
 """
 
 from __future__ import annotations
@@ -46,6 +50,7 @@ from typing import TYPE_CHECKING, Literal
 from xuanpu_server.errors import ConflictError, NotFoundError, SecretMissingError
 from xuanpu_server.identity.cookies import login_token_hash, new_login_token
 from xuanpu_server.identity.feishu import FeishuError, code_challenge, new_code_verifier
+from xuanpu_server.identity.handoff import confirm_code, new_handoff
 from xuanpu_server.identity.limits import (
     FEISHU_CALLS_PER_TENANT,
     FEISHU_QUEUE_SECONDS,
@@ -69,6 +74,7 @@ if TYPE_CHECKING:
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.identity.feishu import FeishuClient, FeishuUserInfo
     from xuanpu_server.identity.models import (
+        LoginClient,
         LoginFailureReason,
         TenantIdentityConfig,
     )
@@ -133,12 +139,16 @@ class LoginRedirect:
         attempt_cookie: 要写进浏览器的登录尝试 cookie 的值（开始登录成功时才有）。
         session_token: 要写进登录 cookie 的令牌（登录成功时才有）。
         session_max_age: 登录 cookie 的有效期（秒），与登录会话一致。
+        confirm_code: 桌面接力的确认码：开始桌面登录时显示在客户端里，回调后显示在浏览器确认页。
+        handoff_nonce: 桌面接力的一次性确认串（回调建了接力记录时才有），放进浏览器确认页的表单。
     """
 
     location: str
     attempt_cookie: str | None = field(default=None, repr=False)
     session_token: str | None = field(default=None, repr=False)
     session_max_age: int = 0
+    confirm_code: str | None = None
+    handoff_nonce: str | None = field(default=None, repr=False)
 
 
 class FeishuLogin:
@@ -186,18 +196,26 @@ class FeishuLogin:
 
     # --- 开始 ---
 
-    async def begin(self, *, tenant: str | None, return_to: str | None) -> LoginRedirect:
-        """开始登录：跳去飞书授权页，或（失败时）跳回落地页。"""
-        try:
-            return await self._begin(tenant, return_to)
-        except LoginFailedError as failure:
-            return await self._failed(failure)
+    async def begin(
+        self, *, tenant: str | None, return_to: str | None, client: LoginClient = "browser"
+    ) -> LoginRedirect:
+        """开始登录：跳去飞书授权页，或（失败时）跳回落地页。
 
-    async def _begin(self, tenant: str | None, return_to: str | None) -> LoginRedirect:
+        桌面客户端（``client="desktop"``）成功时同样给出授权页地址与登录尝试 cookie，另附确认码；
+        由接入层渲染等待页，而不是直接 302。
+        """
+        try:
+            return await self._begin(tenant, return_to, client)
+        except LoginFailedError as failure:
+            return await self.failed(failure)
+
+    async def _begin(
+        self, tenant: str | None, return_to: str | None, client: LoginClient
+    ) -> LoginRedirect:
         """开始登录的各步，失败抛 ``LoginFailedError``。"""
-        tenant_id = await self._active_tenant(tenant or self._settings.default_tenant)
+        tenant_id = await self.active_tenant(tenant or self._settings.default_tenant)
         public_url = self._public_url(tenant_id)
-        config = await self._config(tenant_id)
+        config = await self.tenant_config(tenant_id)
         now = self._now()
         state = secrets.token_urlsafe(32)
         verifier = new_code_verifier()
@@ -212,6 +230,7 @@ class FeishuLogin:
                 created_at=now,
                 expires_at=now + LOGIN_ATTEMPT_TTL_SECONDS,
                 cookie_hash=login_token_hash(cookie),
+                client=client,
             )
         )
         location = self.feishu.authorize_url(
@@ -220,7 +239,8 @@ class FeishuLogin:
             state=state,
             code_challenge=code_challenge(verifier),
         )
-        return LoginRedirect(location, attempt_cookie=cookie)
+        code = confirm_code(login_token_hash(cookie)) if client == "desktop" else None
+        return LoginRedirect(location, attempt_cookie=cookie, confirm_code=code)
 
     # --- 完成 ---
 
@@ -245,8 +265,10 @@ class FeishuLogin:
         try:
             redirect = await self._complete(state, code, error, attempt_cookie)
         except LoginFailedError as failure:
-            return await self._failed(failure)
-        await self._revoke(session_cookie)
+            return await self.failed(failure)
+        if redirect.handoff_nonce is None:
+            # 桌面接力没有在这个浏览器里登录，浏览器原有的登录会话不动
+            await self.revoke(session_cookie)
         return redirect
 
     async def _complete(
@@ -266,15 +288,27 @@ class FeishuLogin:
             raise LoginFailedError(
                 "identity_unavailable", tenant_id=tenant_id, detail="回调没有 code，或形状不对"
             )
-        await self._active_tenant(tenant_id)
+        await self.active_tenant(tenant_id)
         public_url = self._public_url(tenant_id)
-        config = await self._config(tenant_id)
+        config = await self.tenant_config(tenant_id)
         info = await self._feishu_user(config, attempt, code, public_url)
         await self._check_tenant_key(config, info)
         user = await self._user_for(tenant_id, info)
         if user.status != "active":
             raise LoginFailedError("user_disabled", tenant_id=tenant_id, user_id=user.user_id)
-        return await self._sign_in(user, info, config, attempt.return_to)
+        await self._refresh_profile(user, info)
+        if attempt.client == "desktop":
+            return await self._hand_off(attempt, user.user_id)
+        token, ttl = await self.issue_session(user, config)
+        return LoginRedirect(attempt.return_to, session_token=token, session_max_age=ttl)
+
+    async def _hand_off(self, attempt: LoginAttempt, user_id: str) -> LoginRedirect:
+        """桌面接力：建接力记录（绑定到桌面客户端的登录尝试 cookie），交浏览器显示确认页。"""
+        handoff, nonce = new_handoff(attempt, user_id, now=self._now())
+        await self._store.create_desktop_handoff(handoff)
+        return LoginRedirect(
+            "", confirm_code=confirm_code(attempt.cookie_hash), handoff_nonce=nonce
+        )
 
     async def _take_attempt(self, state: str | None, attempt_cookie: str | None) -> LoginAttempt:
         """取出并删除登录尝试，核对登录尝试 cookie。形状不对的 state 不查库。"""
@@ -283,6 +317,9 @@ class FeishuLogin:
         attempt = await self._store.take_login_attempt(state, now=self._now())
         if attempt is None:
             raise LoginFailedError("state_invalid", detail="登录尝试不存在、已用过或已过期")
+        if attempt.client == "desktop":
+            # cookie 在桌面客户端里，回调落在系统浏览器；接力记录绑定 cookie 摘要，由客户端换取
+            return attempt
         presented = login_token_hash(attempt_cookie) if attempt_cookie is not None else ""
         if not hmac.compare_digest(presented, attempt.cookie_hash):
             raise LoginFailedError(
@@ -375,20 +412,23 @@ class FeishuLogin:
         await self._audit.login(tenant_id, "user_created", data, user_id=user.user_id)
         return user
 
-    async def _sign_in(
-        self, user: UserRecord, info: FeishuUserInfo, config: TenantIdentityConfig, return_to: str
-    ) -> LoginRedirect:
-        """刷新员工信息，建登录会话（每次新令牌），记 ``login_succeeded``。"""
-        tenant_id, now = user.tenant_id, self._now()
+    async def _refresh_profile(self, user: UserRecord, info: FeishuUserInfo) -> None:
+        """刷新员工的显示名、头像、最近登录时间与 ``open_id``。"""
         await self._store.update_user_profile(
-            tenant_id,
+            user.tenant_id,
             user.user_id,
             display_name=info.name,
             avatar_url=info.avatar_url,
-            last_login_at=now,
+            last_login_at=self._now(),
             source=FEISHU,
         )
         await self._refresh_open_id(user, info)
+
+    async def issue_session(
+        self, user: UserRecord, config: TenantIdentityConfig, *, client: LoginClient = "browser"
+    ) -> tuple[str, int]:
+        """建登录会话（每次新令牌），计指标、记 ``login_succeeded``；返回 ``(令牌, 有效期秒数)``。"""
+        tenant_id, now = user.tenant_id, self._now()
         ttl = config.session_ttl_seconds or self._settings.session_ttl_seconds
         token, token_hash = new_login_token()
         await self._store.create_login_session(
@@ -402,10 +442,9 @@ class FeishuLogin:
             )
         )
         self._count("succeeded")
-        await self._audit.login(
-            tenant_id, "login_succeeded", {"provider": FEISHU}, user_id=user.user_id
-        )
-        return LoginRedirect(return_to, session_token=token, session_max_age=ttl)
+        data = {"provider": FEISHU} if client == "browser" else {"provider": FEISHU, "client": client}
+        await self._audit.login(tenant_id, "login_succeeded", data, user_id=user.user_id)
+        return token, ttl
 
     async def _refresh_open_id(self, user: UserRecord, info: FeishuUserInfo) -> None:
         """外部身份的 ``open_id`` 变了才写（应用重建后会变）；属性里别的项保留。"""
@@ -418,7 +457,7 @@ class FeishuLogin:
                 user.tenant_id, FEISHU, info.union_id, {**current, "open_id": info.open_id}
             )
 
-    async def _revoke(self, previous: str | None) -> None:
+    async def revoke(self, previous: str | None) -> None:
         """登录成功时，浏览器带着的旧登录 cookie 对应的登录会话作废。
 
         浏览器里的旧 cookie 已被新令牌覆盖，不作废它，那个会话只能等过期；拿到过旧令牌的人
@@ -433,7 +472,7 @@ class FeishuLogin:
 
     # --- 共用 ---
 
-    async def _active_tenant(self, tenant_id: str | None) -> str:
+    async def active_tenant(self, tenant_id: str | None) -> str:
         """租户必须存在且启用。"""
         if tenant_id is None:
             raise LoginFailedError(
@@ -458,7 +497,7 @@ class FeishuLogin:
             )
         return self._settings.public_url
 
-    async def _config(self, tenant_id: str) -> TenantIdentityConfig:
+    async def tenant_config(self, tenant_id: str) -> TenantIdentityConfig:
         """租户的飞书配置；没配置就不能用飞书登录。"""
         config = await self._store.get_identity_config(tenant_id, FEISHU)
         if config is None:
@@ -467,7 +506,7 @@ class FeishuLogin:
             )
         return config
 
-    async def _failed(self, failure: LoginFailedError) -> LoginRedirect:
+    async def failed(self, failure: LoginFailedError) -> LoginRedirect:
         """失败：计数、记日志；飞书认出了人的那几种另记 ``login_failed``；跳回落地页带上原因。"""
         self._count(failure.reason)
         level = logging.WARNING if failure.warn else logging.INFO

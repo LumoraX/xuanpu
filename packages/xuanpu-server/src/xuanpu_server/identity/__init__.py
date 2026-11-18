@@ -16,10 +16,12 @@ from __future__ import annotations
 
 from xuanpu_server.identity.memory import InMemoryIdentityStore
 from xuanpu_server.identity.models import (
+    DesktopHandoff,
     DisabledReason,
     ExternalIdentity,
     IdentityProvider,
     LoginAttempt,
+    LoginClient,
     LoginFailureReason,
     LoginSession,
     ReconcileState,
@@ -33,12 +35,14 @@ from xuanpu_server.identity.models import (
 from xuanpu_server.identity.store import IdentityStore
 
 __all__ = [
+    "DesktopHandoff",
     "DisabledReason",
     "ExternalIdentity",
     "IdentityProvider",
     "IdentityStore",
     "InMemoryIdentityStore",
     "LoginAttempt",
+    "LoginClient",
     "LoginFailureReason",
     "LoginSession",
     "ReconcileState",

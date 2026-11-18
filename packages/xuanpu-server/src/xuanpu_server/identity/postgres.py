@@ -23,6 +23,7 @@ import asyncpg
 
 from xuanpu_server.errors import ConflictError, NotFoundError
 from xuanpu_server.identity.models import (
+    DesktopHandoff,
     LoginAttempt,
     LoginSession,
     ReconcileState,
@@ -41,7 +42,10 @@ _CONFIG_COLUMNS = (
 )
 _LOGIN_SESSION_COLUMNS = "token_hash, tenant_id, user_id, created_at, expires_at, last_seen_at"
 _LOGIN_ATTEMPT_COLUMNS = (
-    "state, tenant_id, code_verifier, return_to, created_at, expires_at, cookie_hash"
+    "state, tenant_id, code_verifier, return_to, created_at, expires_at, cookie_hash, client"
+)
+_HANDOFF_COLUMNS = (
+    "cookie_hash, tenant_id, user_id, return_to, nonce_hash, confirmed, created_at, expires_at"
 )
 _USER_USAGE_COLUMNS = "tenant_id, day, user_id, input_tokens, output_tokens, total_tokens, turns"
 _RECONCILE_COLUMNS = "tenant_id, last_run_at, lease_owner, lease_expires_at"
@@ -225,7 +229,7 @@ class PostgresIdentityStore(PostgresUserTables):
         try:
             await self._execute(
                 f"INSERT INTO {self._t['login_attempt']} ({_LOGIN_ATTEMPT_COLUMNS}) "
-                "VALUES ($1, $2, $3, $4, $5, $6, $7)",
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
                 attempt.state,
                 attempt.tenant_id,
                 attempt.code_verifier,
@@ -233,6 +237,7 @@ class PostgresIdentityStore(PostgresUserTables):
                 attempt.created_at,
                 attempt.expires_at,
                 attempt.cookie_hash,
+                attempt.client,
             )
         except asyncpg.UniqueViolationError as exc:
             raise ConflictError("登录尝试的 state 冲突") from exc
@@ -251,16 +256,73 @@ class PostgresIdentityStore(PostgresUserTables):
         attempt = LoginAttempt(**dict(row))
         return attempt if attempt.expires_at > now else None
 
+    # --- 桌面接力 ---
+
+    async def create_desktop_handoff(self, handoff: DesktopHandoff) -> None:
+        """登记桌面接力。"""
+        try:
+            await self._execute(
+                f"INSERT INTO {self._t['desktop_handoff']} ({_HANDOFF_COLUMNS}) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+                handoff.cookie_hash,
+                handoff.tenant_id,
+                handoff.user_id,
+                handoff.return_to,
+                handoff.nonce_hash,
+                handoff.confirmed,
+                handoff.created_at,
+                handoff.expires_at,
+            )
+        except asyncpg.UniqueViolationError as exc:
+            raise ConflictError("桌面接力记录冲突") from exc
+        except asyncpg.ForeignKeyViolationError as exc:
+            raise _missing_tenant(handoff.tenant_id) from exc
+
+    async def get_desktop_handoff(self, cookie_hash: str, *, now: float) -> DesktopHandoff | None:
+        """按 cookie 摘要查接力记录；过期的不返回。"""
+        row = await self._fetchrow(
+            f"SELECT {_HANDOFF_COLUMNS} FROM {self._t['desktop_handoff']} "
+            "WHERE cookie_hash = $1 AND expires_at > $2",
+            cookie_hash,
+            now,
+        )
+        return DesktopHandoff(**dict(row)) if row is not None else None
+
+    async def confirm_desktop_handoff(
+        self, nonce_hash: str, *, now: float
+    ) -> DesktopHandoff | None:
+        """一条条件 ``UPDATE``：只把未确认、未过期的标为已确认；并发确认只有一个成功。"""
+        row = await self._fetchrow(
+            f"UPDATE {self._t['desktop_handoff']} SET confirmed = TRUE "
+            "WHERE nonce_hash = $1 AND NOT confirmed AND expires_at > $2 "
+            f"RETURNING {_HANDOFF_COLUMNS}",
+            nonce_hash,
+            now,
+        )
+        return DesktopHandoff(**dict(row)) if row is not None else None
+
+    async def take_desktop_handoff(self, cookie_hash: str, *, now: float) -> DesktopHandoff | None:
+        """一条 ``DELETE … RETURNING``：只删已确认的；过期的同样删掉但不返回。"""
+        row = await self._fetchrow(
+            f"DELETE FROM {self._t['desktop_handoff']} WHERE cookie_hash = $1 AND confirmed "
+            f"RETURNING {_HANDOFF_COLUMNS}",
+            cookie_hash,
+        )
+        if row is None:
+            return None
+        handoff = DesktopHandoff(**dict(row))
+        return handoff if handoff.expires_at > now else None
+
     async def purge_expired_logins(self, now: float) -> int:
-        """删除全部租户里过期的登录会话与登录尝试（两张表都按 ``expires_at`` 建了索引）。"""
+        """删除全部租户里过期的登录会话、登录尝试与桌面接力（三张表都按 ``expires_at`` 建了索引）。"""
+        purged = 0
         async with self._pool.acquire() as conn:
-            sessions = await conn.execute(
-                f"DELETE FROM {self._t['login_session']} WHERE expires_at <= $1", now
-            )
-            attempts = await conn.execute(
-                f"DELETE FROM {self._t['login_attempt']} WHERE expires_at <= $1", now
-            )
-        return affected(sessions) + affected(attempts)
+            for table in ("login_session", "login_attempt", "desktop_handoff"):
+                status = await conn.execute(
+                    f"DELETE FROM {self._t[table]} WHERE expires_at <= $1", now
+                )
+                purged += affected(status)
+        return purged
 
     # --- 按用户用量 ---
 

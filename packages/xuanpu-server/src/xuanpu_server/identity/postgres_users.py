@@ -43,6 +43,7 @@ _TABLES = (
     "identity_config",
     "login_session",
     "login_attempt",
+    "desktop_handoff",
     "user_usage",
     "identity_reconcile",
 )

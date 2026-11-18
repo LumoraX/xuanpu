@@ -109,6 +109,8 @@ curl -fsS -X PUT "$BASE/v1/users/$ADMIN_USER/role" \
 
 浏览器登录使用 HttpOnly cookie，不向脚本暴露令牌。写请求带 `X-Requested-By: xuanpu`，若携带 `Origin` 则必须同源。Authorization 头优先于 cookie，所以切换到飞书登录时控制台会清除保存的 key。退出清当前登录会话与页面数据。
 
+桌面客户端登录走浏览器接力（[ADR 0021](../decisions/0021-desktop-browser-handoff-login.md)）：客户端显示确认码，并在系统浏览器里打开飞书授权；授权后浏览器显示同一确认码，核对一致后点「确认登录」，客户端自动完成登录。飞书后台只需登记上表那一个重定向 URL，不需要为桌面客户端另加地址。接口细节见 [HTTP API](../architecture/http-api.md#桌面客户端的浏览器接力)。
+
 ## 5. 对账与按员工接入
 
 ```bash
