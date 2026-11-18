@@ -1070,6 +1070,16 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 
 预检有效期默认900秒，内部证据固定归档、策略、完整MCP清单及凭据密文版本，安装前重检。diff仅含公开权限/上一安装权限及配置槽名，不回显配置值、密文指纹或实际秘密引用。新登记/预检/安装要求capability_delivery明确开启并命中租户白名单；查询与停止不受该新受理开关阻断。精确契约见[能力架构](capability-delivery.md)。
 
+## 能力运行结果与验收核实（R4-F）
+
+| 方法与路径 | 参数或正文 | 返回 |
+| --- | --- | --- |
+| GET /v1/me/capability-outcomes | since、until（受理时间）、limit（1–100）、offset | window_start、window_end、cohort_basis=accepted_at、observed_at、aggregation_version、evidence_kind、totals（各状态与 unreadable/missing）、technical_completion（succeeded、cohort、rate 或 null）、tokens（settled、held_upper_bound、tasks_with_records、tasks_without_records）、cost（status=price_unavailable、amount=null）、items（本人任务元数据）、next_offset |
+| GET /v1/admin/capability-outcomes | since、until | 同上的汇总，加 capabilities（按能力与修订）；不含任务明细；仅管理员 |
+| POST /v1/admin/acceptance-batches | request_id、capability_id、capability_revision、name、criteria、samples（1–500）、evidence_kind、可选 supersedes | 201：批次与 counts（passed/failed/blocked/not_checked）、verification_rate；样本不属于该修订 400 |
+| GET /v1/acceptance-batches/{id} | 无 | 批次、每样本现行结论、counts、verification_rate（只除以已有结论的样本） |
+| POST /v1/acceptance-batches/{id}/observations | request_id、task_id、verdict（passed/failed/blocked）、evidence_ref、可选 note、supersedes | 201：观察；样本已有结论而未指明被纠正的现行观察 409 |
+
 ## 本人知识与工作记忆（R4-D）
 
 按租户开关 `knowledge`；未开启 403。只给员工本人，别人的来源或记忆一律 404。

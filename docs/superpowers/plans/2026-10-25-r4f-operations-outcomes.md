@@ -33,8 +33,8 @@
 
 **Files**：Create `S/outcomes/{models,config,store,memory,postgres,attribution,observations,queries,aggregation,pricing}.py`、`S/controlplane/migrations/0024_business_outcomes.sql`、`S/api/outcomes.py`、`T/r4_contract/{test_outcome_attribution,test_outcome_metrics,test_outcome_privacy,test_outcome_rebuild}.py`；Modify `S/workspace/task_usage.py`、`S/api/audit_usage.py`、`S/platform.py`的依赖装配；不改原usage事实。
 
-- [ ] 冻结样本批次的输入、成功标准、前提及证据类型，建批后不可悄悄删除失败样本；变更必须新修订，报告显示版本。
-- [ ] 观察记录追加式，重复同操作号回原结果；纠正追加supersedes引用，不回写R2/R3业务状态。生成观察前重查证据权限，管理员内容权限不因报表扩大。
+- [x] 冻结样本批次的输入、成功标准、前提及证据类型，建批后不可悄悄删除失败样本；变更必须新修订，报告显示版本。
+- [x] 观察记录追加式，重复同操作号回原结果；纠正追加supersedes引用，不回写R2/R3业务状态。生成观察前重查证据权限，管理员内容权限不因报表扩大。
 - [ ] 唯一约束避免重复事件/重试重复计数，跨天任务按受理队列归属；用实际observed_at呈现迟到状态。缺失binding的旧工作显示unattributed，不猜能力版本。
 - [ ] 原始账本重放可重建相同聚合，重建期间查询返回水位/版本和partial状态，不返回空0冒充已算完。累计token含重试，估算值独立字段。
 - [ ] 测试跨租户、两页列表总数、失败/取消/unknown、无价格、无部门、午夜队列、重复事件、观测纠正和权限撤销。
@@ -66,3 +66,8 @@ async def test_totals_ignore_page_and_missing_price(r4_http, r4_ids):
 - [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_outcome_views.py -q`及总门禁；实施时新增`docs/architecture/business-outcomes.md`、`docs/guides/capability-operations.md`；提交`feat: 提供按证据解释的能力运营面板`。
 
 本段不预填真实节省工时、投资回报或部门成绩，不把合成样本的结果投放成生产企业效果。
+
+## 进度（2026-11-18，分支 `feat/r4ef-outcomes`）
+
+- F0：`S/outcomes/{service,acceptance}.py`、`S/api/outcomes.py`、迁移 `0031_business_outcomes`；测试 `T/r4_contract/test_outcome_metrics.py`（内存与 PG）：分页不改总数、各状态列出、token 实际与上界分列、未记录不当 0、无价格表费用为空、受理时间窗口、员工隔离、管理员不见明细、批次样本校验、观察只追加与纠正、通过率口径。统计每次现算（未实现聚合水位与重建中状态，因此也没有 partial）；部门维度、签收率、正确率抽检、P50/P95 耗时、执行秒未实现；未做无绑定旧工作的 unattributed 计数（不在统计里）。
+- F1：原生面板、SDK/CLI、导出未实现。

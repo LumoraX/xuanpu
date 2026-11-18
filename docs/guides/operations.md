@@ -769,7 +769,7 @@ R2配置中的`task_activity.enabled`控制工作动态通知，默认false；`t
 
 `capability_delivery`构造配置：enabled默认false；tenants默认[]，空始终关闭；max_revisions默认1000（1–10000）；max_previews默认1000（1–10000）；preview_seconds默认900（60–900）；probe_seconds默认30（1–60）。关闭不自动删除历史或纳管旧包。容量上限达到后明确拒绝新记录，当前不提供历史清除功能。
 
-R4-B/C 新增 0028_capability_assignments（能力分配与调用绑定）、0029_capability_releases（隔离评测与发布），R4-D 新增 0030_knowledge_governance（本人知识来源、文本块与工作记忆），均尚未正式部署。
+R4-B/C 新增 0028_capability_assignments（能力分配与调用绑定）、0029_capability_releases（隔离评测与发布），R4-D 新增 0030_knowledge_governance（本人知识来源、文本块与工作记忆），R4-F 新增 0031_business_outcomes（验收批次与人工核实观察），均尚未正式部署。
 
 `knowledge`构造配置：enabled默认false；tenants默认[]，空始终关闭。开启后名单内企业的员工可登记本人文件为知识来源、检索与管理本人工作记忆（见[本人知识与工作记忆](knowledge-memory.md)）。关闭不删除已登记的来源与记忆，只拒绝相关接口。
 
