@@ -325,6 +325,8 @@ class Platform:
         )
         self.sessions = self._session_manager(submissions, lease_seconds)
         self.sessions.admission = self.capabilities.admission
+        # 一轮内每次模型调用前复核能力依据（纳管包；未纳管照旧放行）
+        self.runtimes.capability_admission = self.capabilities.admission.check
         self.capabilities.evaluations.sessions = self.sessions
         from xuanpu_server.knowledge.service import KnowledgeService
 
