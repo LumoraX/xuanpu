@@ -3,17 +3,17 @@
 - 复核对象由服务端执行空间（``ExecutionScope.execution_id``）推出：``session:<id>`` 对照会话绑定，
   ``task:<id>[:attempt:n]`` 对照任务绑定；不读客户端 metadata；
 - 复核时机：模型会话打开时与每次实际发出请求前；不在每个流式块上复核（每次复核要读能力快照，
-  而已在途的一次请求无法追回）；
+  而已在途的一次请求无法追回）；经权限策略的每次工具调用（脚本、文件、命令、连接器）执行前也复核；
 - 未纳管的包由 ``CapabilityAdmission.check`` 直接放行，行为不变。
 """
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import taifeng
+
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable
-
-    import taifeng
 
     from xuanpu_server.runtime.execution_scope import ExecutionScope
 
@@ -83,3 +83,32 @@ class _CapabilitySession:
             closer = getattr(stream, 'aclose', None)
             if closer is not None:
                 await closer()
+
+
+class CapabilityPermissionPolicy(taifeng.PermissionPolicy):
+    """工具出口复核：先对照调用绑定核当前资格，再交给原策略；不扩大原策略的任何权限。"""
+
+    def __init__(self, inner: taifeng.PermissionPolicy, check: Check) -> None:
+        """沿用原策略的规则与提示配置，判定仍由原策略做。"""
+        super().__init__(rules=list(inner.rules), default_mode=inner.default_mode,
+                         prompter=inner.prompter, prompter_timeout_seconds=inner.prompter_timeout_seconds,
+                         telemetry=inner.telemetry)
+        self.inner, self.capability = inner, check
+
+    async def check(self, request: taifeng.PermissionRequest) -> taifeng.PermissionDecision:
+        """资格失效即抛错，这次工具调用不执行（已有批准也不能绕过）。"""
+        await self.capability()
+        return await self.inner.check(request)
+
+    # 内核在批准恢复时对它持有的策略调用这些公开方法；判定在原策略里做，所以原样转给原策略
+    def preapprove(self, call_id: str) -> None:
+        """员工批准后的这次调用放行（记在原策略上）。"""
+        self.inner.preapprove(call_id)
+
+    def issue_grant(self, grant: taifeng.PermissionGrant) -> taifeng.PermissionGrant:
+        """发放授权（记在原策略上）。"""
+        return self.inner.issue_grant(grant)
+
+    def revoke_grant(self, grant_id: str) -> bool:
+        """收回授权（在原策略上）。"""
+        return self.inner.revoke_grant(grant_id)

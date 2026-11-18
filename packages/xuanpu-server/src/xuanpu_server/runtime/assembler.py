@@ -17,7 +17,11 @@ import taifeng
 
 from xuanpu_server.errors import RuntimeCleanupRequiredError, RuntimeUnavailableError
 from xuanpu_server.runtime.approval import build_policy
-from xuanpu_server.runtime.capability_guard import CapabilityModelClient, capability_check
+from xuanpu_server.runtime.capability_guard import (
+    CapabilityModelClient,
+    CapabilityPermissionPolicy,
+    capability_check,
+)
 from xuanpu_server.runtime.connectors import ConnectorSet
 from xuanpu_server.runtime.execution_scope import ExecutionScope
 from xuanpu_server.runtime.sandbox import DEFAULT_BASE_ENV
@@ -382,6 +386,8 @@ class RuntimeAssembler:
                     raise RuntimeUnavailableError('持久任务脚本必须断网')
                 policy = TaskPermissionPolicy(policy, binding)
             capability = capability_check(self.capability_admission, scope, package.record.name)
+            if capability is not None:
+                policy = CapabilityPermissionPolicy(policy, capability)
             pool = await self._create_pool(package, policy, sandbox, connectors, key=key, source=source,
                                            script_observer=script_observer, capability=capability)
         except BaseException as original:
