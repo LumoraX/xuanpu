@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from xuanpu_server.butler.groups.messages import MessageStore
     from xuanpu_server.butler.groups.store import GroupStore
     from xuanpu_server.butler.wake_store import WakeStore
+    from xuanpu_server.capabilities.bindings import BindingStore
     from xuanpu_server.connections.store import ConnectionStore
     from xuanpu_server.controlplane.models import (
         AuditQuery,
@@ -68,6 +69,11 @@ class ControlPlaneStore(Protocol):
     @property
     def trace_store(self) -> SpanStore:
         """与控制面同后端的执行追踪存储（R5-B）。"""
+        ...
+
+    @property
+    def binding_store(self) -> BindingStore:
+        """与控制面同后端的能力调用绑定（R4-B1）。"""
         ...
 
     @property

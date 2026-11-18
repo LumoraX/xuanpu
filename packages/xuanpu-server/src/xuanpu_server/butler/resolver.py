@@ -15,10 +15,11 @@ from typing import TYPE_CHECKING, Protocol
 import taifeng
 
 from xuanpu_server.butler.models import Artisan, ArtisanRef
-from xuanpu_server.errors import NotFoundError, RuntimeUnavailableError
+from xuanpu_server.errors import NotFoundError, PermissionDeniedError, RuntimeUnavailableError
 
 if TYPE_CHECKING:
     from xuanpu_server.butler.models import HostKind
+    from xuanpu_server.capabilities.admission import CapabilityAdmission
     from xuanpu_server.packages import PackageRegistry, ResolvedPackage
     from xuanpu_server.tenancy import Principal
     from xuanpu_server.work_tasks.config import DurableExecutionConfig
@@ -50,6 +51,8 @@ class CatalogArtisanResolver:
         self._packages = packages
         self._workspace = workspace
         self._durable = durable
+        # 能力受理（R4-B1）：纳管包只列本人有决策的入口、按决策版本；平台装配后注入
+        self.admission: CapabilityAdmission | None = None
 
     async def available(self, who: Principal) -> tuple[Artisan, ...]:
         """逐个生效包读入口说明；不启动运行时或连接器。"""
@@ -57,6 +60,9 @@ class CatalogArtisanResolver:
         records = await self._packages.list_versions(tenant)
         found: list[Artisan] = []
         for name in sorted({r.name for r in records}):
+            if self.admission is not None and await self.admission.managed(tenant, name):
+                found.extend(await self._managed(who, tenant, name))
+                continue
             if await self._packages.active_version(tenant, name) is None:
                 continue
             package = await self._packages.resolve(tenant, name)
@@ -68,13 +74,43 @@ class CatalogArtisanResolver:
     async def resolve(self, who: Principal, package: str, entry: str) -> Artisan:
         """未生效、不存在、入口未发布都是 404。"""
         tenant, _ = await self._workspace.require_employee(who)
-        if await self._packages.active_version(tenant, package) is None:
+        version = None
+        if self.admission is not None and await self.admission.managed(tenant, package):
+            decision = await self.admission.admit(who, package, entry, None)
+            assert decision is not None
+            version = decision.package_version
+        elif await self._packages.active_version(tenant, package) is None:
             raise NotFoundError("匠人不可用")
-        resolved = await self._packages.resolve(tenant, package)
+        resolved = await self._packages.resolve(tenant, package, version)
         for artisan in await self._artisans(tenant, resolved):
             if artisan.ref.entry == entry:
                 return artisan
         raise NotFoundError("匠人不可用")
+
+    async def _managed(self, who: Principal, tenant: str, name: str) -> list[Artisan]:
+        """纳管包：只列本人有能力决策的入口，按决策版本读说明。"""
+        assert self.admission is not None
+        found: list[Artisan] = []
+        for entry in await self._entries(tenant, name):
+            try:
+                decision = await self.admission.admit(who, name, entry, None)
+            except (NotFoundError, PermissionDeniedError):
+                continue
+            assert decision is not None
+            package = await self._packages.resolve(tenant, name, decision.package_version)
+            found.extend(a for a in await self._artisans(tenant, package) if a.ref.entry == entry)
+        return found
+
+    async def _entries(self, tenant: str, name: str) -> list[str]:
+        """包的全部入口（纳管包可能从未激活：读生效版本，没有则读最新已发布版本）。"""
+        version = await self._packages.active_version(tenant, name)
+        if version is None:
+            versions = await self._packages.list_versions(tenant, name)
+            if not versions:
+                return []
+            version = versions[-1].version
+        package = await self._packages.resolve(tenant, name, version)
+        return list(package.manifest.spec.skills.entries)
 
     async def _artisans(self, tenant: str, package: ResolvedPackage) -> list[Artisan]:
         """一个包的全部已发布入口。"""

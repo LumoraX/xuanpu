@@ -23,9 +23,11 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable
     from contextlib import AbstractContextManager
 
+    from xuanpu_server.capabilities.models import CapabilityState
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.coordination.outbox import CoordinationEvent
     from xuanpu_server.identity.store import IdentityStore
+    from xuanpu_server.organization.models import OrganizationState
 
 
 class InMemoryCoordinationStore:
@@ -82,6 +84,11 @@ class InMemoryCoordinationStore:
                 raise PermissionDeniedError('参与员工不存在或已停用')
             epochs[user_id], statuses[user_id] = user.lifecycle_epoch, user.status
         return epochs, statuses
+
+    async def capability_snapshot(self, tenant: str) -> tuple[CapabilityState, OrganizationState]:
+        """已提交状态的深拷贝，不取租户锁。"""
+        state = self._states.get(tenant, CoordinationState())
+        return state.capabilities.model_copy(deep=True), state.organization.model_copy(deep=True)
 
     @asynccontextmanager
     async def transaction(self, tenant: str, *, participants: tuple[str, ...] = (),

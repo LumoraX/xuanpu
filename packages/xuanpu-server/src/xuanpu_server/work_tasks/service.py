@@ -23,6 +23,8 @@ from .store import WorkTaskStore
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from xuanpu_server.capabilities.admission import CapabilityAdmission
+    from xuanpu_server.capabilities.resolver import CapabilityDecision
     from xuanpu_server.connections.service import ConnectionService
     from xuanpu_server.packages import PackageRegistry
     from xuanpu_server.tenancy import Principal
@@ -66,6 +68,8 @@ class WorkTaskService:
         self.process_owner, self._now = process_owner, now
         self.connections: ConnectionService | None = None
         self.executor: TaskExecutor | None = None
+        # 能力受理（R4-B1）：平台装配后注入；未注入时不做能力治理
+        self.admission: CapabilityAdmission | None = None
         self.durable = durable or DurableExecutionConfig()
         self.store.durable_config = self.durable
         from xuanpu_server.runtime.effect_reconciliation import EffectReconciliation
@@ -99,7 +103,9 @@ class WorkTaskService:
             if previous.input_fingerprint != fingerprint:
                 raise ConflictError("同一请求标识对应的交办内容不同")
             return previous
-        package = await self.packages.resolve(tenant, OFFICE_PACKAGE)
+        decision = await self._admit(who, OFFICE_PACKAGE, None)
+        package = await self.packages.resolve(
+            tenant, OFFICE_PACKAGE, decision.package_version if decision else None)
         if self.durable.allows(tenant) and package.manifest.spec.policy.sandbox.network:
             raise InvalidRequestError('持久任务只允许断网脚本，外部操作请使用平台连接器')
         inputs = await self._inputs(who, request)
@@ -117,9 +123,22 @@ class WorkTaskService:
             process_owner=self.process_owner, accepted_at=now, updated_at=now, output_kind=output_kind,
             recovery_policy_version=2 if self.durable.allows(tenant) else 1)
         accepted, created = await self.store.create_or_replay(who, record)
+        await self._bind(who, accepted, decision, created)
         if created and self.executor is not None:
             self.executor.start(who, accepted)
         return accepted
+
+    async def _admit(self, who: Principal, package: str, entry: str | None) -> CapabilityDecision | None:
+        """纳管包的新任务经能力决策（R4-B1）；未纳管或未装配能力治理时返回 None。"""
+        if self.admission is None:
+            return None
+        return await self.admission.admit(who, package, entry, None)
+
+    async def _bind(self, who: Principal, record: WorkTaskRecord, decision: CapabilityDecision | None,
+                    created: bool) -> None:
+        """新建的任务写调用绑定；进程若在建任务与写绑定之间退出，续跑时因缺绑定被拒（不猜依据）。"""
+        if decision is not None and created and self.admission is not None:
+            await self.admission.bind(who, "task", record.task_id, decision)
 
     async def accept_capability(self, who: Principal, request: CapabilityTaskInput) -> WorkTaskRecord:
         """目录项由实际发布包核对，不能上传脚本或指定宿主路径。"""
@@ -132,7 +151,9 @@ class WorkTaskService:
             if previous.input_fingerprint != fingerprint:
                 raise ConflictError('同一请求标识对应的交办内容不同')
             return previous
-        package = await self.packages.resolve(tenant, request.capability.package)
+        decision = await self._admit(who, request.capability.package, request.capability.entry)
+        package = await self.packages.resolve(
+            tenant, request.capability.package, decision.package_version if decision else None)
         if request.capability.entry not in package.manifest.spec.skills.entries:
             raise InvalidRequestError('该能力入口尚未发布')
         if self.durable.allows(tenant) and package.manifest.spec.policy.sandbox.network:
@@ -151,6 +172,7 @@ class WorkTaskService:
             refs=await snapshot(self.connections,who,record.package_digest)
             record=record.model_copy(update={'connection_refs':refs})
         accepted, created = await self.store.create_or_replay(who, record)
+        await self._bind(who, accepted, decision, created)
         if created and self.executor is not None:
             self.executor.start(who, accepted)
         return accepted

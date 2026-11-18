@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from xuanpu_server.errors import ConflictError, PermissionDeniedError
 from xuanpu_server.ids import new_id
 
+from .admission import CapabilityAdmission
 from .assignments import CapabilityAssignments
 from .config import CapabilityDeliveryConfig
 from .contracts import validate_package
@@ -37,6 +38,7 @@ class CapabilityService:
         self.config = config or CapabilityDeliveryConfig()
         self.installations = CapabilityInstallations(self, preflight)
         self.assignments = CapabilityAssignments(self)
+        self.admission = CapabilityAdmission(self, organization.control.binding_store)
 
     async def admin(self, who: Principal, *, mutation: bool = False) -> Principal:
         """管理员资格每次复核；关开关后仍可查看历史。"""

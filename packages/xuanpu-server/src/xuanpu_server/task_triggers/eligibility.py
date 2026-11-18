@@ -45,13 +45,26 @@ async def evaluate(service: TaskDefinitionService,state: WorkspaceState,record: 
             reason=await qualification(service.tasks,state,record,candidate,now)
         except (ConflictError,InvalidRequestError,NotFoundError):
             reason='source_unavailable'
+    decision=None
+    if reason is None and candidate is not None and service.tasks.admission is not None:
+        # 纳管能力的发生实例在实际发生时解析并固定（R4-B1）：不凭定义时准备的旧版本偷偷运行；
+        # 定义固定的版本须仍是员工此刻的决策版本，否则阻塞，不换版本
+        try:
+            decision=await service.tasks.admission.admit(original,candidate.package,candidate.entry,
+                                                         candidate.package_version)
+        except (InvalidRequestError,NotFoundError,PermissionDeniedError):
+            reason='capability_unavailable'
     if reason is not None:
         if reason in {'grant_revoked','execution_limit'}:
             pause(state,record,reason,now)
         return occurrence.model_copy(update={'status':'blocked','reason_code':reason,
             'next_eligibility_check_at':now+service.config.eligibility_seconds})
     assert candidate is not None
-    occurrence,_=accept(state,original,record,occurrence,candidate,now,origin)
+    occurrence,task=accept(state,original,record,occurrence,candidate,now,origin)
+    if decision is not None:
+        assert service.tasks.admission is not None
+        # 任务标识由发生实例确定：事务重试再写同一绑定是幂等的
+        await service.tasks.admission.bind(original,'task',task.task_id,decision)
     save_definition(state,record.model_copy(update={'executions':record.executions+1,'updated_at':now,
         'hourly_fires':tuple(value for value in record.hourly_fires if value>now-3600.)+(now,)}))
     return occurrence

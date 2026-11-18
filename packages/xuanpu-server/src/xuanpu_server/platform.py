@@ -294,9 +294,12 @@ class Platform:
                 config=call_context, vault=vault, now=now), transport=manual_http_transport)
         self.work_tasks = WorkTaskService(self.workspace, self.packages,
             process_owner=self.instance_id, now=now, durable=durable)
+        self.work_tasks.admission = self.capabilities.admission
         self.butler_config = butler or ButlerConfig()
         self.minimal_entry = minimal_entry or MinimalEntryConfig()
-        self.artisans: ArtisanResolver = CatalogArtisanResolver(self.packages, self.workspace, durable)
+        catalog_artisans = CatalogArtisanResolver(self.packages, self.workspace, durable)
+        catalog_artisans.admission = self.capabilities.admission
+        self.artisans: ArtisanResolver = catalog_artisans
         defaults = replace(defaults or RuntimeDefaults(),
                            trace_binder=DispatchTraceBinder(store, self.work_tasks.store))
         # 派工的建与改都经这一层，派工 span 随之写进管家的 trace
@@ -319,6 +322,8 @@ class Platform:
             now=now,
         )
         self.sessions = self._session_manager(submissions, lease_seconds)
+        self.sessions.admission = self.capabilities.admission
+        self.packages.managed_guard = self.capabilities.admission.managed
         from xuanpu_server.tracing.retention import TraceRetention
 
         self.trace_retention = TraceRetention(

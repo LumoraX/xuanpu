@@ -31,7 +31,7 @@ def task_definitions_router(platform: Platform) -> APIRouter:
     async def options(who: Caller) -> dict[str,Any]:
         """原生直接入口不需要模型，能力名称取真实发布目录。"""
         tenant,_=await platform.workspace.require_employee(who)
-        entries=await platform.assistant._catalog(tenant)
+        entries=await platform.assistant._catalog(tenant,who)
         return {'enabled':service.config.allows(tenant) and service.tasks.durable.allows(tenant),
                 'capabilities':[{'package':e['package'],'entry':e['entry'],
                     'label':e['entry_description'] or e['description']} for e in entries if e['package']!='office-assistant']}
