@@ -38,3 +38,15 @@ class CapabilityClient:
     async def change_capability_installation(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
         """停用保留历史；ready仍受服务端发布门禁。"""
         return await self._http.request('POST', f'/v1/installations/{quote(identifier, safe="")}/state', json=body)
+
+    async def assign_capability(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        """把能力的明确修订分配给员工或岗位/部门（R4-B）；只授权使用能力，带原 request_id。"""
+        return await self._http.request('POST', f'/v1/capabilities/{quote(identifier, safe="")}/assignments', json=body)
+
+    async def list_capability_assignments(self, identifier: str) -> dict[str, Any]:
+        """某能力的全部分配（含已撤销），仅管理员。"""
+        return await self._http.request('GET', f'/v1/capabilities/{quote(identifier, safe="")}/assignments')
+
+    async def revoke_capability_assignment(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        """按版本撤销分配（body 含 request_id 与 expected_version），下一次调用即被拒。"""
+        return await self._http.request('POST', f'/v1/capability-assignments/{quote(identifier, safe="")}/revoke', json=body)

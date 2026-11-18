@@ -31,26 +31,26 @@
 
 **Files**：Create `S/capabilities/{assignments,resolver,authorization,bindings,invalidations}.py`、`S/controlplane/migrations/0021_capability_assignments.sql`、`T/r4_contract/{test_assignments,test_assignment_epochs,test_capability_decisions}.py`；Modify A的`store/memory/postgres/service`、`S/organization/service.py`和`S/platform.py`中既有组织维护循环装配，不新增另一套停用循环。
 
-- [ ] 写user分配、过期、跨租户、停用重启、岗位离任/重新任职反例；没有部门的Alice可正常分配，客户端自报岗位无效。
-- [ ] 同一能力允许多项有效分配，但一次绑定固定一个明确有效依据；重复同发布合并展示，命中不同发布时409要求管理员整理，不按最近版本或模型偏好选。
-- [ ] 撤销先在事务增加epoch并拒绝下一次调用，再由既有维护循环回收引擎。UI收到权限摘要先清理说明/材料/草稿，再读取当前权限；不要等异步清理完成才拒绝。
-- [ ] 实现分配操作幂等与目标epoch CAS；权限仓储断开时返回503/明确阻塞，不使用旧缓存放行。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_assignments.py packages/xuanpu-server/tests/r4_contract/test_assignment_epochs.py packages/xuanpu-server/tests/r4_contract/test_capability_decisions.py -q`；先看到目标失败，再实现并转绿。
-- [ ] 提交`feat: 增加到人能力分配与当前资格解析`。
+- [x] 写user分配、过期、跨租户、停用重启、岗位离任/重新任职反例；没有部门的Alice可正常分配，客户端自报岗位无效。
+- [x] 同一能力允许多项有效分配，但一次绑定固定一个明确有效依据；重复同发布合并展示，命中不同发布时409要求管理员整理，不按最近版本或模型偏好选。
+- [x] 撤销先在事务增加epoch并拒绝下一次调用，再由既有维护循环回收引擎。UI收到权限摘要先清理说明/材料/草稿，再读取当前权限；不要等异步清理完成才拒绝。
+- [x] 实现分配操作幂等与目标epoch CAS；权限仓储断开时返回503/明确阻塞，不使用旧缓存放行。
+- [x] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_assignments.py packages/xuanpu-server/tests/r4_contract/test_assignment_epochs.py packages/xuanpu-server/tests/r4_contract/test_capability_decisions.py -q`；先看到目标失败，再实现并转绿。
+- [x] 提交`feat: 增加到人能力分配与当前资格解析`。
 
 ## B1：全入口统一鉴权和版本固定
 
 **Files**：Create `S/capabilities/{admission,runtime_guard,legacy}.py`、`T/r4_contract/{test_capability_entrypoints,test_runtime_revocation,test_legacy_bypass}.py`；Modify `S/assistant.py`的`_catalog/_resolve_business`、`S/runtime/{sessions,assembler,task_policy,approval}.py`的公开装配接缝、`S/work_tasks/{service,capability_runner,recovery}.py`、`S/task_triggers/{service,worker}.py`、`S/packages.py`及`S/api/app.py`中的旧发布/激活路由。
 
-- [ ] 目录从`_catalog(tenant)`改为以Principal解析，并将`_resolve_business`“必须等于全租户active_version”替换为本次服务端决策；不同员工可用不同固定发布。普通问答不强制开启业务包。
-- [ ] 显式创建session的package/version/entry、续聊、普通任务、时间/事件触发、批准恢复均要求相同能力决策。R2发生实例在实际发生时解析并固定，不从旧TaskDefinition prepared偷偷使用已撤销能力。
-- [ ] 覆盖旧`POST /v1/packages?activate=true`和`POST /v1/packages/{name}/activate`：已纳管包不能绕过C发布门禁；带activate=true在写归档前返回409并指向发布流程，单独activate也409；activate=false发布归档仍可用。未纳管包在兼容模式保留原行为。
+- [x] 目录从`_catalog(tenant)`改为以Principal解析，并将`_resolve_business`“必须等于全租户active_version”替换为本次服务端决策；不同员工可用不同固定发布。普通问答不强制开启业务包。
+- [x] 显式创建session的package/version/entry、续聊、普通任务、时间/事件触发、批准恢复均要求相同能力决策。R2发生实例在实际发生时解析并固定，不从旧TaskDefinition prepared偷偷使用已撤销能力。
+- [x] 覆盖旧`POST /v1/packages?activate=true`和`POST /v1/packages/{name}/activate`：已纳管包不能绕过C发布门禁；带activate=true在写归档前返回409并指向发布流程，单独activate也409；activate=false发布归档仍可用。未纳管包在兼容模式保留原行为。
 - [ ] 包级managed标记永久保留，`package+entry`解析唯一capability_key；首次纳管若存在无绑定在途/会话或未暂停的旧安排则阻塞，不能自动给旧任务补分配。原unknown只读核实沿原账本处理，不重新授权发送。
 - [ ] 入库受理与InvocationBinding在同一协调事务；事务外对象读取后再次复核。重启从绑定重建，不按新active指针取包；旧任务若无绑定，仅已明确未纳管的兼容任务可继续，禁止为纳管旧任务猜分配。
 - [ ] 运行期用公开model client/permission policy包装复核，覆盖实际模型发送、工具闸门和批准后的实际出口；不能仅在HTTP受理检查。取消、计量、effect未知账本仍沿用R2。
-- [ ] 原生“运行能力”与对话同服务，命令/API直调也不能给自己指定higher role、assignment或安装配置。
+- [x] 原生“运行能力”与对话同服务，命令/API直调也不能给自己指定higher role、assignment或安装配置。
 - [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_capability_entrypoints.py packages/xuanpu-server/tests/r4_contract/test_runtime_revocation.py packages/xuanpu-server/tests/r4_contract/test_legacy_bypass.py -q`；再跑R2/R3回归。
-- [ ] 提交`feat: 统一能力调用与恢复出口授权`。
+- [x] 提交`feat: 统一能力调用与恢复出口授权`。
 
 HTTP最小绕过反例（`r4_ids`在B0 seed只给Alice分配review）：
 
@@ -73,10 +73,10 @@ async def test_managed_package_cannot_use_legacy_activation(r4_http, r4_ids):
 
 **Files**：Create `S/capabilities/completion_profiles.py`、`S/work_tasks/capability_admission.py`、`T/r4_contract/test_file_capability_tasks.py`；Modify `S/work_tasks/{service,routing,runner,artifact_rules,models}.py`、`S/task_triggers/service.py`及`S/api/work_tasks.py`。
 
-- [ ] 先写反例：当前`accept`硬编码office-assistant、`accept_capability`固定capability_receipt，office-review不应因根轮完成而假成功。新增服务端completion profile映射：本样板`outputs.contract=office_files, output_kind=table_summary`，输入仅CSV；普通只读能力仍为capability_receipt。
-- [ ] profile只能来自已评测的能力修订/安装绑定，不接受客户端或模型传execution_kind、completion_policy和output_kind。受理文件型能力时服务端保存`execution_kind=office, completion_policy=office_files, output_kind=table_summary`及固定entry/digest；保留原WorkTaskRecord字段契约。
-- [ ] 复用现有runner的只读输入、任务专用会话、outputs/manifest.json、四角色成果校验和预算账本，不能凭HTTP读取回执判定文件成果。profile输入只允许CSV，故不进入硬编码meeting-minutes提取脚本路径。
-- [ ] 现有table_summary四类`summary_csv/summary_xlsx/report/evidence`必须齐全；缺任一失败，不弱化旧artifact_rules。原office-assistant受理及只读企微能力回执保持原语义。
+- [x] 先写反例：当前`accept`硬编码office-assistant、`accept_capability`固定capability_receipt，office-review不应因根轮完成而假成功。新增服务端completion profile映射：本样板`outputs.contract=office_files, output_kind=table_summary`，输入仅CSV；普通只读能力仍为capability_receipt。
+- [x] profile只能来自已评测的能力修订/安装绑定，不接受客户端或模型传execution_kind、completion_policy和output_kind。受理文件型能力时服务端保存`execution_kind=office, completion_policy=office_files, output_kind=table_summary`及固定entry/digest；保留原WorkTaskRecord字段契约。
+- [x] 复用现有runner的只读输入、任务专用会话、outputs/manifest.json、四角色成果校验和预算账本，不能凭HTTP读取回执判定文件成果。profile输入只允许CSV，故不进入硬编码meeting-minutes提取脚本路径。
+- [x] 现有table_summary四类`summary_csv/summary_xlsx/report/evidence`必须齐全；缺任一失败，不弱化旧artifact_rules。原office-assistant受理及只读企微能力回执保持原语义。
 - [ ] 测试原生能力手动运行与R2时间/事件发生实例走同一profile，冷恢复保持原profile/包/entry；客户端伪造profile字段422，无分配404，根轮完成但缺文件失败，正确四成果无需HTTP读取工具也成功。
 - [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_file_capability_tasks.py packages/xuanpu-server/tests/work_tasks/test_capability_tasks.py -q`；提交`feat: 接入受控文件型能力完成契约`。
 
@@ -91,3 +91,11 @@ async def test_managed_package_cannot_use_legacy_activation(r4_http, r4_ids):
 - [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_binding_faults.py packages/xuanpu-server/tests/r4_contract/test_binding_views.py -q`及总门禁；提交`feat: 提供能力分配与绑定恢复记录`。
 
 本段不将任何真实员工升级为管理员，不代替真人批准/签收；历史任务可查不等于允许重跑。
+
+## 进度（2026-11-18，分支 `feat/r4b-assignments`）
+
+- B0：`S/capabilities/{assignments,resolver}.py`、迁移 `0027_capability_assignments`；测试 `T/r4_contract/test_assignments.py`（内存与 PG）。多项分配命中同一安装合并为最早一项；「命中不同发布 409」待 R4-C 引入发布后实现。
+- B1：`S/capabilities/{admission,bindings}.py`（绑定表并入 0027）、协调存储只读 `capability_snapshot`；接入会话创建/续聊/恢复、对话目录与业务解析、办公与能力交办、定时/事件发生实例、管家匠人目录、旧激活接口；测试 `T/r4_contract/test_capability_entrypoints.py`。
+  - 未完成：包级 managed 标记目前由「任一入口已登记」推导，未单独持久；首次纳管时排空旧在途工作的阻塞检查未做（纳管前的会话/任务缺绑定会在续跑时被拒）；一轮内每次模型调用与工具出口的逐次复核未做（目前在每轮开始与批准恢复时复核）；发生实例受理的能力分支没有专门用例。
+- B2：`WorkTaskService.capability_profile`；测试 `T/r4_contract/test_file_capability_tasks.py`。办公容器内跑通四类成果的端到端用例未在本机运行（需办公容器）。
+- B3：SDK `assign_capability`/`list_capability_assignments`/`revoke_capability_assignment` 与 CLI `assign|assignments|revoke`；原生分配界面、SIGKILL 绑定故障用例、390px 与身份切换测试未做。

@@ -1017,10 +1017,20 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | --- | --- | --- |
 | POST /v1/capabilities | request_id、delivery（严格xuanpu-delivery/v1） | 201：capability_id、revision、digest、delivery、can_run=false；相同描述复用修订 |
 | GET /v1/capabilities | limit=1–100，cursor可选 | items、分页前total、next_cursor、installations、configuration_enabled；items为说明修订 |
-| GET /v1/me/capabilities | 无；必须有启用员工身份 | capabilities=[]、total=0、status=not_assigned；A没有分配事实 |
+| GET /v1/me/capabilities | 无；必须有启用员工身份 | 本人此刻可新受理的能力（R4-B）：capabilities[]（capability_id、capability_key、revision、title、summary、package、entry、assignment_id、can_run=true）、total、status=assigned；没有时为空列表与status=not_assigned |
 | POST /v1/capabilities/{id}/install-previews | request_id、revision；可选public_config、secret_refs、connection_refs | 201：id、digest、expires_at、expected_version、requirements、diff、credentials配置状态、can_install、can_run=false |
 | POST /v1/capabilities/{id}/installations | request_id、preview_id、expected_version、confirmed=true | 201：id、capability_id、version、config_revision、status=staged、can_run=false |
 | POST /v1/installations/{id}/state | request_id、expected_version、status=draining/disabled | 当前安装状态与递增version；ready因尚无B/C发布证据409 |
+
+### 能力分配（R4-B）
+
+| 方法与路径 | 正文 | 返回 |
+| --- | --- | --- |
+| POST /v1/capabilities/{id}/assignments | request_id、selector（`{kind:user,id,user_epoch}`或`{kind:position|unit,id,target_version}`）、allowed_revisions（1–20项明确修订）、可选valid_until | 201：id、capability_id、version、selector、allowed_revisions、valid_until、status=active、epoch、grants=capability_use_only；目标不存在404，员工代次或结构版本不符409，修订不存在400 |
+| GET /v1/capabilities/{id}/assignments | 无 | assignments（含已撤销）、total；仅管理员 |
+| POST /v1/capability-assignments/{id}/revoke | request_id、expected_version | 状态revoked、epoch加一、version加一；版本不符或已撤销409 |
+
+纳管包（任一入口登记为能力）的`POST /v1/sessions`、续聊与`resume`、`POST /v1/work-tasks/from-capability`与办公交办都经同一能力决策：没有有效分配或显式版本不等于决策版本404，机器身份404，原依据失效后续聊/恢复403；纳管包的`POST /v1/packages/{name}/activate`与`publish?activate=true` 409。
 
 预检有效期默认900秒，内部证据固定归档、策略、完整MCP清单及凭据密文版本，安装前重检。diff仅含公开权限/上一安装权限及配置槽名，不回显配置值、密文指纹或实际秘密引用。新登记/预检/安装要求capability_delivery明确开启并命中租户白名单；查询与停止不受该新受理开关阻断。精确契约见[能力架构](capability-delivery.md)。
 

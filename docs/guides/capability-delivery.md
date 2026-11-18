@@ -1,6 +1,6 @@
 # 能力登记与安装预检
 
-当前是R4-A。管理员可以登记交付说明并保存“待发布”安装；人员分配、业务运行和评测发布尚待R4-B/C。员工不会因为管理员完成配置而自动获得能力。
+管理员可以登记交付说明、保存“待发布”安装（R4-A），并把能力分配给员工（R4-B）；评测发布尚待R4-C，产品接口里安装还不能变为可运行。员工不会因为管理员完成配置而自动获得能力，只有被分配且安装可运行时才出现在“我的能力”与对话里。
 
 ## 管理员操作
 
@@ -15,11 +15,18 @@
 
 员工从“功能→我的能力→查看我的能力”读取本人目录，当前明确显示尚未分配。管理员登记目录不会展示给普通员工；私人“个人能力”仍是本人工作方法。
 
+## 分配给员工（R4-B）
+
+- 直接到人是默认，不需要部门或岗位：选择员工及其当前代次（`user_epoch`，员工停用或重建后旧分配不再生效），列出明确的能力修订号，可设到期时间。也可以按岗位或部门分配，须引用真实存在的结构及当前版本；员工有对应的真实任职才生效。
+- 分配只授权使用这个能力，不授予读文件、使用企业连接或审批的权限。撤销须带当前版本，撤销后员工的下一次调用即被拒，正在进行的会话或任务也不能再继续；已撤销的分配不能恢复，需要时重新分配。
+- 已登记为能力的业务包不能再用“激活版本”或“发布并激活”上线，须走能力发布流程（R4-C）；不激活的上传仍可用。纳管之前已经开始的会话或任务没有能力依据，纳管后不能继续，请先让它们收尾。
+- 原生分配界面尚未提供，目前经HTTP接口、SDK或命令行操作。
+
 ## SDK和命令行
 
-SDK新增my_capabilities、list_capabilities、register_capability、preview_capability_install、install_capability和change_capability_installation。方法接受与HTTP相同的正文，不自动补request_id或confirmed；没有员工身份的机器凭据不能调用my_capabilities。
+SDK新增my_capabilities、list_capabilities、register_capability、preview_capability_install、install_capability、change_capability_installation，以及分配用的assign_capability、list_capability_assignments、revoke_capability_assignment。方法接受与HTTP相同的正文，不自动补request_id或confirmed；没有员工身份的机器凭据不能调用my_capabilities。
 
-命令为`xuanpu capabilities --credentials <私有JSON> list|mine|register|install-preview|install|state`。凭据文件仅当前用户可读，字段为base_url、api_key及可选act_as_user，禁止把密钥放命令参数或写入交付描述。写入正文使用--body文件，重复提交原文件保留操作号。错误不回显正文或凭据。
+命令为`xuanpu capabilities --credentials <私有JSON> list|mine|register|install-preview|install|state|assign|assignments|revoke`（assign与revoke以能力或分配编号为参数，正文经--body文件；本次未补充实际运行示例）。凭据文件仅当前用户可读，字段为base_url、api_key及可选act_as_user，禁止把密钥放命令参数或写入交付描述。写入正文使用--body文件，重复提交原文件保留操作号。错误不回显正文或凭据。
 
 下面命令在本机回环合成夹具实际执行过。目录和登录入口只用于开发验收，不能接生产；运行夹具会创建合成包、员工和临时密钥，无需真实模型或员工资料：
 

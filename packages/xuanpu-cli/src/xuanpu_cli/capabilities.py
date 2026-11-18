@@ -17,14 +17,15 @@ if TYPE_CHECKING:
 
 def add_capability_commands(commands: Any) -> None:
     """列目录、登记、预检和安装不提供自动激活选项。"""
-    parent = commands.add_parser('capabilities', help='能力目录、安装预检及停止配置')
+    parent = commands.add_parser('capabilities', help='能力目录、安装预检、停止配置与到人分配')
     parent.add_argument('--credentials', required=True, help='仅当前用户可读的私有凭据JSON')
     operations = parent.add_subparsers(dest='operation', required=True)
-    for name in ('list', 'mine', 'register', 'install-preview', 'install', 'state'):
+    for name in ('list', 'mine', 'register', 'install-preview', 'install', 'state', 'assign',
+                 'assignments', 'revoke'):
         parser = operations.add_parser(name)
-        if name in ('install-preview', 'install', 'state'):
+        if name in ('install-preview', 'install', 'state', 'assign', 'assignments', 'revoke'):
             parser.add_argument('identifier')
-        if name in ('register', 'install-preview', 'install', 'state'):
+        if name in ('register', 'install-preview', 'install', 'state', 'assign', 'revoke'):
             parser.add_argument('--body', required=True, help='含原操作号及明确确认的JSON，不自动生成确认')
         if name == 'list':
             parser.add_argument('--limit', type=int, default=50)
@@ -56,6 +57,12 @@ async def run_capabilities(args: argparse.Namespace) -> dict[str, Any]:
             return await client.install_capability(args.identifier, body)
         if args.operation == 'state':
             return await client.change_capability_installation(args.identifier, body)
+        if args.operation == 'assign':
+            return await client.assign_capability(args.identifier, body)
+        if args.operation == 'assignments':
+            return await client.list_capability_assignments(args.identifier)
+        if args.operation == 'revoke':
+            return await client.revoke_capability_assignment(args.identifier, body)
     raise ValueError('未知能力操作')
 
 
