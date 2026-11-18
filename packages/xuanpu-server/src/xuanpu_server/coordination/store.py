@@ -6,8 +6,10 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     from contextlib import AbstractAsyncContextManager
 
+    from xuanpu_server.capabilities.models import CapabilityState
     from xuanpu_server.coordination.models import CoordinationTransaction
     from xuanpu_server.identity.store import IdentityStore
+    from xuanpu_server.organization.models import OrganizationState
 
 
 class CoordinationStore(Protocol):
@@ -18,6 +20,10 @@ class CoordinationStore(Protocol):
         ...
     def bind_identity(self, identity: IdentityStore) -> None:
         """内存后端取得同装配的当前身份状态，PG直接锁同库身份行。"""
+        ...
+
+    async def capability_snapshot(self, tenant: str) -> tuple[CapabilityState, OrganizationState]:
+        """只读快照（R4-B1）：能力与组织状态，一致读取、不加锁；供能力决策在别的事务里调用。"""
         ...
 
     def transaction(self, tenant: str, *, participants: tuple[str, ...] = (),

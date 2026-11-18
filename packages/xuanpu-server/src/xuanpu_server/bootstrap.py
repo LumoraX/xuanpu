@@ -305,6 +305,7 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
             connections=config.connections,
             organization=config.organization,
             capability_delivery=config.capability_delivery,
+            knowledge=config.knowledge,
             shared_matters=config.shared_matters,
             handoffs=config.handoffs, approvals=config.approvals, butler=config.butler,
             minimal_entry=config.minimal_entry,

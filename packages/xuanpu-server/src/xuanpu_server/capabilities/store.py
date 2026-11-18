@@ -35,6 +35,8 @@ def validate_state(tenant: str, before: CapabilityState, after: CapabilityState)
             if key != record.id or record.tenant_id != tenant:
                 raise ConflictError('能力记录租户或标识不一致')
     _validate_installations(before, after)
+    _validate_assignments(before, after)
+    _validate_releases(before, after)
 
 
 def _validate_installations(before: CapabilityState, after: CapabilityState) -> None:
@@ -50,3 +52,39 @@ def _validate_installations(before: CapabilityState, after: CapabilityState) -> 
             if (item.version != old.version + 1 or item.capability_id != old.capability_id or
                     item.created_at != old.created_at):
                 raise ConflictError('安装更新版本不一致')
+
+
+def _validate_assignments(before: CapabilityState, after: CapabilityState) -> None:
+    """分配不物理删除；目标与修订范围不可改写；撤销不可复活，改动版本逐次加一。"""
+    if before.assignments.keys() - after.assignments.keys():
+        raise ConflictError('能力分配不能物理删除')
+    for identifier, item in after.assignments.items():
+        if not any(r.capability_id == item.capability_id for r in after.revisions.values()):
+            raise ConflictError('分配引用的能力不存在')
+        old = before.assignments.get(identifier)
+        if old is None or old == item:
+            continue
+        if (item.version != old.version + 1 or item.selector != old.selector
+                or item.allowed_revisions != old.allowed_revisions or item.capability_id != old.capability_id
+                or item.created_at != old.created_at or old.status == 'revoked'):
+            raise ConflictError('能力分配只能按版本撤销，不能改写或复活')
+
+
+def _validate_releases(before: CapabilityState, after: CapabilityState) -> None:
+    """评测与发布不物理删除；发布的版本、目标与证据不可改写，只能 active→retired/revoked；
+    已结束的评测不再改写。"""
+    if before.releases.keys() - after.releases.keys() or before.evaluations.keys() - after.evaluations.keys():
+        raise ConflictError('评测与发布记录不能物理删除')
+    for identifier, item in after.releases.items():
+        old = before.releases.get(identifier)
+        if old is None or old == item:
+            continue
+        frozen = ('capability_id', 'capability_revision', 'installation_id', 'config_id', 'config_digest',
+                  'evaluation_id', 'targets', 'supersedes', 'created_at')
+        if (item.version != old.version + 1 or any(getattr(item, f) != getattr(old, f) for f in frozen)
+                or old.status != 'active' or item.status == 'active'):
+            raise ConflictError('发布只能从生效改为停止或撤销，不能改写')
+    for identifier, evaluation in after.evaluations.items():
+        previous = before.evaluations.get(identifier)
+        if previous is not None and previous != evaluation and previous.status != 'running':
+            raise ConflictError('已结束的评测不能改写')

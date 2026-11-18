@@ -45,7 +45,7 @@ from xuanpu_server.package_cache import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable
     from pathlib import Path
 
     from xuanpu_server.audit import AuditLog
@@ -116,6 +116,8 @@ class PackageRegistry:
             objects, data_dir / "cache" / "packages", staging=data_dir / "cache" / ".staging"
         )
         self._now = now
+        # 由平台装配注入：判断包是否已纳管为能力（R4-B1）
+        self.managed_guard: Callable[[str, str], Awaitable[bool]] | None = None
         self._publishing: dict[tuple[str, str, str], asyncio.Lock] = {}
 
     async def start(self) -> None:
@@ -158,6 +160,9 @@ class PackageRegistry:
                 _unpack_and_validate, archive, staging
             )
             await self._check_loadable(manifest, staging)
+            if activate:
+                # 纳管包不能借「发布并激活」绕过评测与发布门禁（R4-B1）；写归档之前就拒绝
+                await self._guard_activation(tenant_id, manifest.name)
             digest = await asyncio.to_thread(archive_digest, archive)
             record = PackageVersionRecord(
                 tenant_id=tenant_id,
@@ -258,8 +263,9 @@ class PackageRegistry:
             logger.exception("撤回业务包归档 %s 失败", record.location)
 
     async def activate(self, principal: Principal, name: str, version: str) -> None:
-        """把某个已发布版本设为生效版本（前进或回滚）。"""
+        """把某个已发布版本设为生效版本（前进或回滚）。纳管包 409，须走能力发布流程。"""
         tenant_id = principal.require_tenant_admin()
+        await self._guard_activation(tenant_id, name)
         previous = await self._store.get_active_version(tenant_id, name)
         await self._store.set_active_version(tenant_id, name, version, at=self._now())
         await self._audit.control(
@@ -268,6 +274,11 @@ class PackageRegistry:
             "package_activated",
             {"name": name, "version": version, "previous": previous},
         )
+
+    async def _guard_activation(self, tenant_id: str, name: str) -> None:
+        """已纳管为能力的包不走旧的激活入口（未纳管的包保持原行为）。"""
+        if self.managed_guard is not None and await self.managed_guard(tenant_id, name):
+            raise ConflictError("该业务包已纳管为能力，请通过能力发布流程上线，不能直接激活")
 
     async def list_versions(
         self, tenant_id: str, name: str | None = None

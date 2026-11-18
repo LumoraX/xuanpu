@@ -110,6 +110,7 @@ if TYPE_CHECKING:
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.identity.service import IdentitySettings
     from xuanpu_server.identity.store import IdentityStore
+    from xuanpu_server.knowledge.service import KnowledgeConfig
     from xuanpu_server.objectstore import ObjectStore
     from xuanpu_server.organization.config import OrganizationConfig
     from xuanpu_server.runtime.instance_guard import InstanceGuard
@@ -164,6 +165,7 @@ class Platform:
         connections: ConnectionConfig | None = None,
         organization: OrganizationConfig | None = None,
         capability_delivery: CapabilityDeliveryConfig | None = None,
+        knowledge: KnowledgeConfig | None = None,
         shared_matters: SharedMatterConfig | None = None,
         handoffs: CollaborationConfig | None = None,
         approvals: CollaborationConfig | None = None,
@@ -294,9 +296,12 @@ class Platform:
                 config=call_context, vault=vault, now=now), transport=manual_http_transport)
         self.work_tasks = WorkTaskService(self.workspace, self.packages,
             process_owner=self.instance_id, now=now, durable=durable)
+        self.work_tasks.admission = self.capabilities.admission
         self.butler_config = butler or ButlerConfig()
         self.minimal_entry = minimal_entry or MinimalEntryConfig()
-        self.artisans: ArtisanResolver = CatalogArtisanResolver(self.packages, self.workspace, durable)
+        catalog_artisans = CatalogArtisanResolver(self.packages, self.workspace, durable)
+        catalog_artisans.admission = self.capabilities.admission
+        self.artisans: ArtisanResolver = catalog_artisans
         defaults = replace(defaults or RuntimeDefaults(),
                            trace_binder=DispatchTraceBinder(store, self.work_tasks.store))
         # 派工的建与改都经这一层，派工 span 随之写进管家的 trace
@@ -319,6 +324,15 @@ class Platform:
             now=now,
         )
         self.sessions = self._session_manager(submissions, lease_seconds)
+        self.sessions.admission = self.capabilities.admission
+        self.capabilities.evaluations.sessions = self.sessions
+        from xuanpu_server.knowledge.service import KnowledgeService
+
+        self.knowledge = KnowledgeService(self.workspace, store.knowledge_store, config=knowledge, now=now)
+        from xuanpu_server.knowledge.memory import WorkMemoryService
+
+        self.work_memory = WorkMemoryService(self.knowledge, store.memory_store)
+        self.packages.managed_guard = self.capabilities.admission.managed
         from xuanpu_server.tracing.retention import TraceRetention
 
         self.trace_retention = TraceRetention(
@@ -401,6 +415,8 @@ class Platform:
         try:
             await self.packages.start()
             await self.capabilities.installations.preflight.inventory.recover()
+            # 上次进程里没跑完的能力评测标 interrupted，不自动重放（R4-C0）
+            await self.capabilities.evaluations.recover(list(self.capabilities.config.tenants))
             if self._closed or self._instance_guard.lost:
                 raise RuntimeError("启动准备期间已关闭或丢失持有权")
             await self.sessions.start()
@@ -431,6 +447,7 @@ class Platform:
             self.sessions.stop_accepting()
             errors: list[BaseException] = []
             actions = (self.shared_notifications.close, self.shared_publication_recovery.close, self.shared_materials.publications.close,
+                       self.capabilities.evaluations.close,
                        self.capabilities.installations.preflight.inventory.close,
                        self.organization_lifecycle.close, self.trigger_worker.close, self.task_registry.close, self.proactive_worker.close, self.reminders.close,
                        self.notification_sender.close, self.assistant.close, self.butler.close, self.trace_retention.close,

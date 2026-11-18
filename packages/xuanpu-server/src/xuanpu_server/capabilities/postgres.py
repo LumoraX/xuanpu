@@ -4,6 +4,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .models import (
+    CapabilityAssignment,
+    CapabilityEvaluation,
+    CapabilityRelease,
     CapabilityRevision,
     CapabilityState,
     Installation,
@@ -24,6 +27,9 @@ TABLES: tuple[tuple[str, str, type[BaseModel], tuple[str, ...]], ...] = (
     ('previews', 'capability_preview', InstallPreview, ('capability_id', 'revision')),
     ('configurations', 'capability_config', InstallationConfig, ('capability_id', 'revision')),
     ('installations', 'capability_installation', Installation, ('capability_id', 'config_id')),
+    ('assignments', 'capability_assignment', CapabilityAssignment, ('capability_id',)),
+    ('evaluations', 'capability_evaluation', CapabilityEvaluation, ('capability_id',)),
+    ('releases', 'capability_release', CapabilityRelease, ('capability_id',)),
 )
 
 

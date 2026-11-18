@@ -28,7 +28,9 @@ if TYPE_CHECKING:
     from asyncpg.pool import PoolConnectionProxy
     from taifeng_stores import SqlNamespace
 
+    from xuanpu_server.capabilities.models import CapabilityState
     from xuanpu_server.identity.store import IdentityStore
+    from xuanpu_server.organization.models import OrganizationState
 
     Connection = asyncpg.Connection | PoolConnectionProxy
 
@@ -82,6 +84,12 @@ class PostgresCoordinationStore:
             await save_collaboration(conn, self._namespace, tenant, before.collaboration, state.collaboration)
             await save_capabilities(conn, self._namespace, tenant, before.capabilities, state.capabilities)
             await self._save(conn, tenant, before, state)
+
+    async def capability_snapshot(self, tenant: str) -> tuple[CapabilityState, OrganizationState]:
+        """可重复读的只读事务：不取租户或员工锁，不会与调用方已持有的锁互等。"""
+        async with self._pool.acquire() as conn, conn.transaction(isolation='repeatable_read', readonly=True):
+            return (await load_capabilities(conn, self._namespace, tenant),
+                    await load_organization(conn, self._namespace, tenant))
 
     async def _lock_tenant(self, conn: Connection, tenant: str) -> None:
         """先取得租户锁，再读取用途关系以确定完整的排序员工锁集。"""

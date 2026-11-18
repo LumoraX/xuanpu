@@ -6,11 +6,15 @@ from typing import TYPE_CHECKING
 from xuanpu_server.errors import ConflictError, PermissionDeniedError
 from xuanpu_server.ids import new_id
 
+from .admission import CapabilityAdmission
+from .assignments import CapabilityAssignments
 from .config import CapabilityDeliveryConfig
 from .contracts import validate_package
 from .delivery import fingerprint
+from .evaluations import CapabilityEvaluations
 from .installations import CapabilityInstallations
 from .models import CapabilityRevision
+from .releases import CapabilityReleases
 from .views import catalog_page, installation_view, revision_view
 
 if TYPE_CHECKING:
@@ -35,6 +39,10 @@ class CapabilityService:
         self.store, self.now = organization.store, organization.now
         self.config = config or CapabilityDeliveryConfig()
         self.installations = CapabilityInstallations(self, preflight)
+        self.assignments = CapabilityAssignments(self)
+        self.admission = CapabilityAdmission(self, organization.control.binding_store)
+        self.evaluations = CapabilityEvaluations(self)
+        self.releases = CapabilityReleases(self)
 
     async def admin(self, who: Principal, *, mutation: bool = False) -> Principal:
         """管理员资格每次复核；关开关后仍可查看历史。"""
@@ -102,12 +110,8 @@ class CapabilityService:
             return result
 
     async def mine(self, who: Principal) -> dict[str, JsonValue]:
-        """A阶段没有分配或发布事实，员工可运行目录明确为空。"""
-        who = await self.organization.actor(who, employee=True)
-        async with self.store.transaction(who.require_tenant(), participants=self.participants(who)):
-            await self.organization.actor(who, employee=True)
-        return {'capabilities': [], 'total': 0, 'status': 'not_assigned',
-                'message': '尚未分配可运行能力'}
+        """本人此刻可新受理的能力（R4-B）；没有分配时明确为空。"""
+        return await self.assignments.mine(who)
 
     @staticmethod
     def participants(who: Principal) -> tuple[str, ...]:

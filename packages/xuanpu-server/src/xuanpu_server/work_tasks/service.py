@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import time
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from xuanpu_server.errors import ConflictError, InvalidRequestError, NotFoundError
@@ -23,6 +24,8 @@ from .store import WorkTaskStore
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from xuanpu_server.capabilities.admission import CapabilityAdmission
+    from xuanpu_server.capabilities.resolver import CapabilityDecision
     from xuanpu_server.connections.service import ConnectionService
     from xuanpu_server.packages import PackageRegistry
     from xuanpu_server.tenancy import Principal
@@ -53,6 +56,15 @@ class TaskExecutor(Protocol):
         ...
 
 
+@dataclass(frozen=True)
+class CompletionProfile:
+    """任务的执行方式与完成契约（R4-B2）：由能力修订决定，不来自客户端或模型。"""
+
+    execution_kind: Literal['office', 'capability']
+    completion_policy: Literal['office_files', 'capability_receipt']
+    output_kind: Literal['table_summary', 'capability_result']
+
+
 class WorkTaskService:
     """受理和人工决定与查询共用本人授权和同一持久状态。"""
 
@@ -66,6 +78,8 @@ class WorkTaskService:
         self.process_owner, self._now = process_owner, now
         self.connections: ConnectionService | None = None
         self.executor: TaskExecutor | None = None
+        # 能力受理（R4-B1）：平台装配后注入；未注入时不做能力治理
+        self.admission: CapabilityAdmission | None = None
         self.durable = durable or DurableExecutionConfig()
         self.store.durable_config = self.durable
         from xuanpu_server.runtime.effect_reconciliation import EffectReconciliation
@@ -99,7 +113,9 @@ class WorkTaskService:
             if previous.input_fingerprint != fingerprint:
                 raise ConflictError("同一请求标识对应的交办内容不同")
             return previous
-        package = await self.packages.resolve(tenant, OFFICE_PACKAGE)
+        decision = await self._admit(who, OFFICE_PACKAGE, None)
+        package = await self.packages.resolve(
+            tenant, OFFICE_PACKAGE, decision.package_version if decision else None)
         if self.durable.allows(tenant) and package.manifest.spec.policy.sandbox.network:
             raise InvalidRequestError('持久任务只允许断网脚本，外部操作请使用平台连接器')
         inputs = await self._inputs(who, request)
@@ -117,9 +133,44 @@ class WorkTaskService:
             process_owner=self.process_owner, accepted_at=now, updated_at=now, output_kind=output_kind,
             recovery_policy_version=2 if self.durable.allows(tenant) else 1)
         accepted, created = await self.store.create_or_replay(who, record)
+        await self._bind(who, accepted, decision, created)
         if created and self.executor is not None:
             self.executor.start(who, accepted)
         return accepted
+
+    async def capability_profile(self, tenant: str, decision: CapabilityDecision | None,
+                                 inputs: tuple[InputSnapshot, ...]) -> CompletionProfile:
+        """完成契约（R4-B2）：只由已登记的能力修订决定，客户端与模型都不能指定。
+
+        文件型能力（交付描述输出契约 ``office_files``）走办公任务的成果校验：固定 CSV 输入、
+        ``outputs/manifest.json`` 与 table_summary 的四类成果，缺一即失败，不凭 HTTP 回执判成功。
+        其余照旧是只读能力回执。
+        """
+        receipt = CompletionProfile('capability', 'capability_receipt', 'capability_result')
+        if decision is None or self.admission is None:
+            return receipt
+        delivery = await self.admission.delivery(tenant, decision)
+        if delivery.outputs.contract != 'office_files':
+            return receipt
+        if delivery.outputs.output_kind != 'table_summary':
+            raise InvalidRequestError('该能力的成果类型暂不支持由能力交办')
+        allowed = set(delivery.inputs.mime_types) & {'text/csv'}
+        if (not allowed or not 1 <= len(inputs) <= delivery.inputs.max_files
+                or any(entry.mime_type not in allowed for entry in inputs)):
+            raise InvalidRequestError('该能力只接受 CSV 表格材料')
+        return CompletionProfile('office', 'office_files', 'table_summary')
+
+    async def _admit(self, who: Principal, package: str, entry: str | None) -> CapabilityDecision | None:
+        """纳管包的新任务经能力决策（R4-B1）；未纳管或未装配能力治理时返回 None。"""
+        if self.admission is None:
+            return None
+        return await self.admission.admit(who, package, entry, None)
+
+    async def _bind(self, who: Principal, record: WorkTaskRecord, decision: CapabilityDecision | None,
+                    created: bool) -> None:
+        """新建的任务写调用绑定；进程若在建任务与写绑定之间退出，续跑时因缺绑定被拒（不猜依据）。"""
+        if decision is not None and created and self.admission is not None:
+            await self.admission.bind(who, "task", record.task_id, decision)
 
     async def accept_capability(self, who: Principal, request: CapabilityTaskInput) -> WorkTaskRecord:
         """目录项由实际发布包核对，不能上传脚本或指定宿主路径。"""
@@ -132,25 +183,29 @@ class WorkTaskService:
             if previous.input_fingerprint != fingerprint:
                 raise ConflictError('同一请求标识对应的交办内容不同')
             return previous
-        package = await self.packages.resolve(tenant, request.capability.package)
+        decision = await self._admit(who, request.capability.package, request.capability.entry)
+        package = await self.packages.resolve(
+            tenant, request.capability.package, decision.package_version if decision else None)
         if request.capability.entry not in package.manifest.spec.skills.entries:
             raise InvalidRequestError('该能力入口尚未发布')
         if self.durable.allows(tenant) and package.manifest.spec.policy.sandbox.network:
             raise InvalidRequestError('持久任务只允许断网脚本，外部操作请使用平台连接器')
         inputs = await self._inputs(who, request)
+        profile = await self.capability_profile(tenant, decision, inputs)
         now = self._now()
         record = WorkTaskRecord(task_id=new_id('task'), tenant_id=tenant, user_id=user, actor=who.actor,
             request_id=request.request_id, input_fingerprint=fingerprint, matter_id=request.matter_id,
             text=request.text, timezone=request.timezone, inputs=inputs, package=package.record.name,
             package_version=package.record.version, package_digest=package.record.digest.removeprefix('sha256:'),
-            entry=request.capability.entry, execution_kind='capability', completion_policy='capability_receipt',
-            output_kind='capability_result', recovery_policy_version=2, process_owner=self.process_owner,
-            accepted_at=now, updated_at=now)
+            entry=request.capability.entry, recovery_policy_version=2, process_owner=self.process_owner,
+            accepted_at=now, updated_at=now, execution_kind=profile.execution_kind,
+            completion_policy=profile.completion_policy, output_kind=profile.output_kind)
         if self.connections is not None:
             from xuanpu_server.connections.task_bindings import snapshot
             refs=await snapshot(self.connections,who,record.package_digest)
             record=record.model_copy(update={'connection_refs':refs})
         accepted, created = await self.store.create_or_replay(who, record)
+        await self._bind(who, accepted, decision, created)
         if created and self.executor is not None:
             self.executor.start(who, accepted)
         return accepted

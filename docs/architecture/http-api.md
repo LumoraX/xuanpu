@@ -1042,12 +1042,50 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | --- | --- | --- |
 | POST /v1/capabilities | request_id、delivery（严格xuanpu-delivery/v1） | 201：capability_id、revision、digest、delivery、can_run=false；相同描述复用修订 |
 | GET /v1/capabilities | limit=1–100，cursor可选 | items、分页前total、next_cursor、installations、configuration_enabled；items为说明修订 |
-| GET /v1/me/capabilities | 无；必须有启用员工身份 | capabilities=[]、total=0、status=not_assigned；A没有分配事实 |
+| GET /v1/me/capabilities | 无；必须有启用员工身份 | 本人此刻可新受理的能力（R4-B）：capabilities[]（capability_id、capability_key、revision、title、summary、package、entry、assignment_id、can_run=true）、total、status=assigned；没有时为空列表与status=not_assigned |
 | POST /v1/capabilities/{id}/install-previews | request_id、revision；可选public_config、secret_refs、connection_refs | 201：id、digest、expires_at、expected_version、requirements、diff、credentials配置状态、can_install、can_run=false |
 | POST /v1/capabilities/{id}/installations | request_id、preview_id、expected_version、confirmed=true | 201：id、capability_id、version、config_revision、status=staged、can_run=false |
 | POST /v1/installations/{id}/state | request_id、expected_version、status=draining/disabled | 当前安装状态与递增version；ready因尚无B/C发布证据409 |
 
+### 能力分配（R4-B）
+
+| 方法与路径 | 正文 | 返回 |
+| --- | --- | --- |
+| POST /v1/capabilities/{id}/assignments | request_id、selector（`{kind:user,id,user_epoch}`或`{kind:position|unit,id,target_version}`）、allowed_revisions（1–20项明确修订）、可选valid_until | 201：id、capability_id、version、selector、allowed_revisions、valid_until、status=active、epoch、grants=capability_use_only；目标不存在404，员工代次或结构版本不符409，修订不存在400 |
+| GET /v1/capabilities/{id}/assignments | 无 | assignments（含已撤销）、total；仅管理员 |
+| POST /v1/capability-assignments/{id}/revoke | request_id、expected_version | 状态revoked、epoch加一、version加一；版本不符或已撤销409 |
+
+### 能力评测与发布（R4-C）
+
+| 方法与路径 | 正文 | 返回 |
+| --- | --- | --- |
+| POST /v1/capability-evaluations | request_id、capability_id、installation_id、suite（`xuanpu-eval-suite/v1`）、可选token_budget（1000–100000） | 202：id、status=running（声明外部通道的能力为blocked/external_implementation_not_verified）、config_digest、suite_digest；套件摘要与交付描述不符409 |
+| GET /v1/capability-evaluations/{id} | 无 | status=running/passed/failed/interrupted/blocked、reason、cases（name、passed、reasons、outcome、total_tokens）；不含输入正文 |
+| POST /v1/capabilities/{id}/release-previews | installation_id、evaluation_id、targets（1–100个user_id与user_epoch） | digest、capability_revision、changes（每人from_revision→to_revision）、supersedes；只读；证据不符或过期409 |
+| POST /v1/capabilities/{id}/releases | 预览正文加request_id、preview_digest、supersedes、confirmed=true | 201：发布记录；摘要或取代列表不符409；首次发布把安装置为ready |
+| GET /v1/capabilities/{id}/releases | 无 | releases、total |
+| POST /v1/capability-releases/{id}/retire、/revoke | request_id、expected_version | status=retired或revoked（revoked代次加一）；只能从active改 |
+
+纳管包（任一入口登记为能力）的`POST /v1/sessions`、续聊与`resume`、`POST /v1/work-tasks/from-capability`与办公交办都经同一能力决策：没有有效分配或显式版本不等于决策版本404，机器身份404，原依据失效后续聊/恢复403；纳管包的`POST /v1/packages/{name}/activate`与`publish?activate=true` 409。
+
 预检有效期默认900秒，内部证据固定归档、策略、完整MCP清单及凭据密文版本，安装前重检。diff仅含公开权限/上一安装权限及配置槽名，不回显配置值、密文指纹或实际秘密引用。新登记/预检/安装要求capability_delivery明确开启并命中租户白名单；查询与停止不受该新受理开关阻断。精确契约见[能力架构](capability-delivery.md)。
+
+## 本人知识与工作记忆（R4-D）
+
+按租户开关 `knowledge`；未开启 403。只给员工本人，别人的来源或记忆一律 404。
+
+| 方法与路径 | 正文 | 返回 |
+| --- | --- | --- |
+| POST /v1/me/knowledge/sources | item_id、revision（本人工作区文件的明确版本） | 201：id、item_id、revision、title、sha256、status=ready、chunks、chars、version；格式或编码不对 400，文件不存在 404，同版本已登记回原记录 |
+| GET /v1/me/knowledge/sources | 无 | sources（含 stale 与 has_update）、total |
+| POST /v1/me/knowledge/search | query（1–500 字）、limit（1–10） | hits（source_id、title、item_id、revision、ordinal、excerpt≤2000 字）、total（只计此刻可读来源） |
+| POST /v1/me/knowledge/sources/{id}/refresh | expected_version | 换成文件当前版本的新来源，旧来源删除 |
+| POST /v1/me/knowledge/sources/{id}/delete | expected_version | status=deleted，文本块清除 |
+| GET /v1/me/work-memory | 无 | memories（生效中与待确认；过期与依据不可读的不列）、total |
+| POST /v1/me/work-memory/proposals | text、citation（source_id、ordinal）、可选 valid_until | 201：status=proposed；引用不可读 400 |
+| POST /v1/me/work-memory/assertions | text、可选 valid_until | 201：kind=user_assertion、status=active、verified_by_source=false |
+| POST /v1/me/work-memory/{id}/confirm、/reject、/delete | expected_version | 状态与递增版本 |
+| POST /v1/me/work-memory/{id}/correct | expected_version、text | 新修订（同 lineage），旧修订 superseded |
 
 ## 管家入口（R5-C）
 

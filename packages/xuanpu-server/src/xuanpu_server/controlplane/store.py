@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from xuanpu_server.butler.groups.messages import MessageStore
     from xuanpu_server.butler.groups.store import GroupStore
     from xuanpu_server.butler.wake_store import WakeStore
+    from xuanpu_server.capabilities.bindings import BindingStore
     from xuanpu_server.connections.store import ConnectionStore
     from xuanpu_server.controlplane.models import (
         AuditQuery,
@@ -29,6 +30,8 @@ if TYPE_CHECKING:
         UsageRecord,
     )
     from xuanpu_server.coordination.store import CoordinationStore
+    from xuanpu_server.knowledge.memory import MemoryStore
+    from xuanpu_server.knowledge.store import KnowledgeStore
     from xuanpu_server.reminders.store import ReminderStore
     from xuanpu_server.runtime.receipt_store import ReceiptStore
     from xuanpu_server.tenancy import ApiKeyRecord, Tenant
@@ -68,6 +71,21 @@ class ControlPlaneStore(Protocol):
     @property
     def trace_store(self) -> SpanStore:
         """与控制面同后端的执行追踪存储（R5-B）。"""
+        ...
+
+    @property
+    def memory_store(self) -> MemoryStore:
+        """与控制面同后端的本人工作记忆（R4-D2）。"""
+        ...
+
+    @property
+    def knowledge_store(self) -> KnowledgeStore:
+        """与控制面同后端的本人知识来源与文本块（R4-D）。"""
+        ...
+
+    @property
+    def binding_store(self) -> BindingStore:
+        """与控制面同后端的能力调用绑定（R4-B1）。"""
         ...
 
     @property

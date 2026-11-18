@@ -292,7 +292,7 @@ class AssistantRouter:
                 body.input_files,
             )
         await p.quota.check_new_turn(tenant)
-        catalog = await self._catalog(tenant)
+        catalog = await self._catalog(tenant, who)
         if who.user_id:
             catalog = [*COLLABORATION_ENTRIES, *SHARED_ENTRIES, *WORKSPACE_ENTRIES, *REMINDER_ENTRIES, *PROACTIVE_ENTRIES, *TASK_DEFINITION_ENTRIES, *catalog]
             if self._platform.connections.config.allows(who.require_tenant()):
@@ -391,7 +391,9 @@ class AssistantRouter:
             )
             return RouteOutcome(session=session)
         # 采样期间可能切换版本；尚未创建会话时重采样最新目录。
-        if await p.packages.active_version(tenant, match["package"]) != match["version"]:
+        # 纳管包按员工的能力决策固定版本（可能不是全租户活动版本），建会话时会再经决策复核
+        managed = await p.capabilities.admission.managed(tenant, match["package"])
+        if not managed and await p.packages.active_version(tenant, match["package"]) != match["version"]:
             raise RuntimeUnavailableError("业务配置已更新，请重试")
         if current is not None:
             current = await p.sessions.content(who, current.session_id)
@@ -410,15 +412,22 @@ class AssistantRouter:
         )
         return RouteOutcome(session=session)
 
-    async def _catalog(self, tenant: str) -> list[dict[str, str]]:
-        """只读活动版本的公开入口说明，不启动运行时或连接器。"""
+    async def _catalog(self, tenant: str, who: Principal | None = None) -> list[dict[str, str]]:
+        """只读活动版本的公开入口说明，不启动运行时或连接器。
+
+        给了员工身份时按能力分配过滤（R4-B1）：纳管包只留本人有决策的入口，版本换成决策版本。
+        """
         p = self._platform
         records = await p.packages.list_versions(tenant)
         catalog = []
         for name in sorted({r.name for r in records}):
-            if await p.packages.active_version(tenant, name) is None:
-                continue
-            package = await p.packages.resolve(tenant, name)
+            version = await p.packages.active_version(tenant, name)
+            if version is None:
+                # 纳管包可能从未激活（版本由能力决策固定）：读最新已发布版本的入口说明，再按员工过滤
+                if who is None or not await p.capabilities.admission.managed(tenant, name):
+                    continue
+                version = [r for r in records if r.name == name][-1].version
+            package = await p.packages.resolve(tenant, name, version)
             skills = (await taifeng.FilesystemSkillRegistry.load(package.skills_dir)).snapshot()
             for entry in package.manifest.spec.skills.entries:
                 skill = skills.get(entry)
@@ -435,6 +444,8 @@ class AssistantRouter:
                 )
                 if len(catalog) > 100:
                     raise RuntimeUnavailableError("可用业务过多，请联系管理员整理业务入口")
+        if who is not None:
+            catalog = await p.capabilities.admission.filter_catalog(who, catalog)
         return catalog
 
     async def _history(self, session: SessionRecord) -> list[dict[str, str]]:

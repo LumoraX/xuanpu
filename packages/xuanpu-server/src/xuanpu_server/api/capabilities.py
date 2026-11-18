@@ -11,9 +11,15 @@ from pydantic import JsonValue  # noqa: TC002 —— FastAPI解析响应类型
 
 from xuanpu_server.api.auth import Caller  # noqa: TC001 —— FastAPI解析认证依赖
 from xuanpu_server.capabilities.schemas import (  # noqa: TC001 —— FastAPI解析请求模型
+    AssignInput,
+    EvaluateInput,
     InstallInput,
     PreviewInput,
     RegisterInput,
+    ReleaseInput,
+    ReleasePreviewInput,
+    ReleaseStateInput,
+    RevokeInput,
     StateInput,
 )
 
@@ -76,5 +82,55 @@ def capabilities_router(platform: Platform) -> APIRouter:
     async def change(identifier: str, body: StateInput, who: Caller) -> dict[str, JsonValue]:
         """停止动作不删除历史，当前阶段拒绝ready。"""
         return await platform.capabilities.installations.change(who, identifier, body)
+
+    @router.post('/v1/capabilities/{identifier}/assignments', status_code=201)
+    async def assign(identifier: str, body: AssignInput, who: Caller) -> dict[str, JsonValue]:
+        """把能力的明确修订分配给员工（或可选的岗位/部门）；只授权使用能力。"""
+        return await platform.capabilities.assignments.assign(who, identifier, body)
+
+    @router.get('/v1/capabilities/{identifier}/assignments')
+    async def assignments(identifier: str, who: Caller) -> dict[str, JsonValue]:
+        """某能力的全部分配（含已撤销），仅管理员。"""
+        return await platform.capabilities.assignments.listing(who, identifier)
+
+    @router.post('/v1/capability-assignments/{identifier}/revoke')
+    async def revoke(identifier: str, body: RevokeInput, who: Caller) -> dict[str, JsonValue]:
+        """按版本撤销分配，下一次调用即被拒。"""
+        return await platform.capabilities.assignments.revoke(who, identifier, body)
+
+    @router.post('/v1/capability-evaluations', status_code=202)
+    async def evaluate(body: EvaluateInput, who: Caller) -> dict[str, JsonValue]:
+        """受理一次隔离评测，后台逐用例运行；结果经查询接口读取。"""
+        return await platform.capabilities.evaluations.start(who, body)
+
+    @router.get('/v1/capability-evaluations/{identifier}')
+    async def evaluation(identifier: str, who: Caller) -> dict[str, JsonValue]:
+        """评测状态与逐用例判定（仅管理员）。"""
+        return await platform.capabilities.evaluations.get(who, identifier)
+
+    @router.post('/v1/capabilities/{identifier}/release-previews')
+    async def release_preview(identifier: str, body: ReleasePreviewInput, who: Caller) -> dict[str, JsonValue]:
+        """只读发布预览：证据核对、名单变化与确认摘要。"""
+        return await platform.capabilities.releases.preview(who, identifier, body)
+
+    @router.post('/v1/capabilities/{identifier}/releases', status_code=201)
+    async def release(identifier: str, body: ReleaseInput, who: Caller) -> dict[str, JsonValue]:
+        """按预览摘要确认发布给固定员工名单。"""
+        return await platform.capabilities.releases.release(who, identifier, body)
+
+    @router.get('/v1/capabilities/{identifier}/releases')
+    async def releases(identifier: str, who: Caller) -> dict[str, JsonValue]:
+        """某能力的全部发布（仅管理员）。"""
+        return await platform.capabilities.releases.listing(who, identifier)
+
+    @router.post('/v1/capability-releases/{identifier}/retire')
+    async def retire(identifier: str, body: ReleaseStateInput, who: Caller) -> dict[str, JsonValue]:
+        """正常停止：不再新受理，已绑定工作按原授权收尾。"""
+        return await platform.capabilities.releases.change(who, identifier, body, 'retired')
+
+    @router.post('/v1/capability-releases/{identifier}/revoke')
+    async def revoke_release(identifier: str, body: ReleaseStateInput, who: Caller) -> dict[str, JsonValue]:
+        """安全撤销：代次加一，已绑定工作也不能继续。"""
+        return await platform.capabilities.releases.change(who, identifier, body, 'revoked')
 
     return router

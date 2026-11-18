@@ -64,6 +64,7 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
     from xuanpu_server.audit import AuditLog
+    from xuanpu_server.capabilities.admission import CapabilityAdmission
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.identity.store import IdentityStore
     from xuanpu_server.metrics import PlatformMetrics
@@ -159,6 +160,8 @@ class SessionManager:
         self._draining = False
         self._routing: dict[str, int] = {}
         self._receipt_tasks: set[asyncio.Task[None]] = set()
+        # 能力受理与续跑复核（R4-B1）；平台装配后注入，未注入时不做能力治理（单元测试与旧装配）
+        self.admission: CapabilityAdmission | None = None
         self._preparations: dict[SessionKey, set[Preparation]] = {}
 
     def stop_accepting(self) -> None:
@@ -187,8 +190,12 @@ class SessionManager:
         metadata: dict[str, str] | None = None,
         request_id: str | None = None,
         work_task_id: str | None = None,
+        evaluation_id: str | None = None,
     ) -> SessionRecord:
-        """新建会话。版本在此钉死：之后业务包切换生效版本不影响这个会话。"""
+        """新建会话。版本在此钉死：之后业务包切换生效版本不影响这个会话。
+
+        ``evaluation_id`` 只由能力评测内部传入（R4-C0）：按评测固定的修订建会话并写评测绑定。
+        """
         tenant_id = principal.require_tenant()
         labels = validate_metadata(metadata)
         stable_id = None
@@ -207,6 +214,16 @@ class SessionManager:
             )
             if existing is not None:
                 return existing
+        decision = None
+        if evaluation_id is not None:
+            if self.admission is None:
+                raise InvalidRequestError("评测会话需要能力治理")
+            version, entry = await self.admission.evaluation_target(principal, evaluation_id, package, entry)
+        elif self.admission is not None and work_task_id is None:
+            # 纳管包的新会话一律经能力决策；显式版本须等于决策版本。任务承载的会话由任务绑定治理
+            decision = await self.admission.admit(principal, package, entry, version)
+            if decision is not None:
+                version, entry = decision.package_version, decision.entry
         await self._quota.check_new_session(tenant_id)
         resolved = await self._packages.resolve(tenant_id, package, version)
         entries = resolved.manifest.spec.skills.entries
@@ -241,6 +258,12 @@ class SessionManager:
             if existing is None:
                 raise
             return existing
+        if decision is not None:
+            assert self.admission is not None
+            await self.admission.bind(principal, "session", record.session_id, decision)
+        elif evaluation_id is not None:
+            assert self.admission is not None
+            await self.admission.bind_evaluation(principal, record.session_id, evaluation_id)
         await self._audit.control(
             principal,
             tenant_id,
@@ -254,6 +277,15 @@ class SessionManager:
             session=record,
         )
         return record
+
+    async def _capability_guard(self, record: SessionRecord) -> None:
+        """续聊与批准后继续：纳管包对照调用绑定复核当前资格（任务承载的会话对照任务绑定）。"""
+        if self.admission is None:
+            return
+        if record.work_task_id is not None:
+            await self.admission.check(record.tenant_id, record.package, "task", record.work_task_id)
+        else:
+            await self.admission.check(record.tenant_id, record.package, "session", record.session_id)
 
     async def request_session(self, principal: Principal, request_id: str) -> SessionRecord | None:
         """查询该员工请求已创建的会话，供崩溃恢复判断副作用。"""
@@ -523,6 +555,7 @@ class SessionManager:
         await self._admit_turn(principal.require_tenant())
         record = await self._ownership.writable(principal, session_id)
         require_task_executor(record, work_task_id)
+        await self._capability_guard(record)
         intent = self._begin_preparation(record)
         try:
             live = await self._open(record)
@@ -565,6 +598,7 @@ class SessionManager:
             raise InvalidRequestError("resolutions 不能为空")
         record = await self._ownership.writable(principal, session_id)
         require_task_executor(record, work_task_id)
+        await self._capability_guard(record)
         from .task_recovery_guard import require_safe_resume
 
         await require_safe_resume(self._store, record, resolutions)
