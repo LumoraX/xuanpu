@@ -113,13 +113,7 @@ class ButlerService:
         if who.tenant_id is None or not self.enabled(who.tenant_id) or not who.user_id:
             return await self._route(who, body)
         await self._platform.workspace.require_employee(who)
-        key = f"{who.tenant_id}:{who.user_id}:{body.request_id}"
-        running = self._running.get(key)
-        if running is None:
-            running = _RunningTurn(trace_id=new_id("trc"))
-            running.task = asyncio.create_task(self._serve(who, body, running))
-            self._running[key] = running
-            running.task.add_done_callback(functools.partial(self._finished, key))
+        running = self._start(who, body)
         window = self._platform.butler_config.reply_window_seconds
         try:
             done, _ = await asyncio.wait({running.task}, timeout=window)
@@ -132,6 +126,43 @@ class ButlerService:
         running.detached = True
         return {"mode": "butler", "state": "running", "request_id": body.request_id,
                 "trace_id": running.trace_id}
+
+    def _start(self, who: Principal, body: ButlerMessageBody, *,
+               detached: bool = False) -> _RunningTurn:
+        """登记并启动一轮后台任务；同一句话已在本进程里跑则复用。"""
+        key = f"{who.tenant_id}:{who.user_id}:{body.request_id}"
+        running = self._running.get(key)
+        if running is None:
+            running = _RunningTurn(trace_id=new_id("trc"), detached=detached)
+            running.task = asyncio.create_task(self._serve(who, body, running))
+            self._running[key] = running
+            running.task.add_done_callback(functools.partial(self._finished, key))
+        return running
+
+    async def resume_stale(self, tenant: str) -> int:
+        """持有者已不在的轮次（进程中途退出、租约过期）：按同一请求标识重跑一次（R6-D）。
+
+        派工按派工请求标识幂等，重跑不会重复派出。已重跑过仍中断的不再重跑：主对话写明
+        没处理完、原话保留，并释放认领。返回重新启动的轮次数。
+        """
+        from xuanpu_server.butler.wakeup import principal
+
+        started = 0
+        for user, key, claim in await self._platform.workspace.stale_routes(tenant, "butler:"):
+            request_id = key.removeprefix("route:butler:")
+            raw = claim.get("butler_input")
+            if raw is None or f"{tenant}:{user}:{request_id}" in self._running:
+                continue
+            who = principal(tenant, user)
+            body = ButlerMessageBody.model_validate({**raw, "request_id": request_id})
+            if int(claim.get("resumes", 0)) >= _MAX_RESUMES:
+                await self._report_failure(who, body)
+                await self._platform.workspace.release_route(who, "butler:" + request_id,
+                                                             str(claim["token"]))
+                continue
+            self._start(who, body, detached=True)
+            started += 1
+        return started
 
     def _finished(self, key: str, task: asyncio.Task[dict[str, Any]]) -> None:
         """后台轮次结束：移出登记；没人等待时取走异常（已在 ``_serve`` 里记日志并写进主对话）。"""
@@ -154,6 +185,12 @@ class ButlerService:
                 who, "butler:" + body.request_id, body.model_dump(exclude={"request_id"}))
             if claim["state"] == "complete":
                 return dict(claim["outcome"])
+            # 记下原始输入：进程中途退出后，唤醒循环据此按同一标识重跑（R6-D）
+            resumes = int(claim.get("resumes", 0)) + (1 if "butler_input" in claim else 0)
+            await p.workspace.annotate_route(
+                who, "butler:" + body.request_id, claim["token"],
+                {"butler_input": body.model_dump(mode="json", exclude={"request_id"}),
+                 "resumes": resumes})
             renewer = asyncio.create_task(self._renew(who, body.request_id, claim["token"]))
             try:
                 receipt = await self._handle(who, body, running.trace_id)
@@ -286,6 +323,7 @@ def _dispatch_view(record: Any) -> dict[str, Any]:
 
 
 _RENEW_SECONDS = 20.0
+_MAX_RESUMES = 1
 _LEASE_SECONDS = 60.0
 
 

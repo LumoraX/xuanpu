@@ -45,9 +45,10 @@
 
 **Files**：Modify `S/butler/{service,wakeup}.py` 与认领记录；Create `T/butler/test_turn_resume.py`。
 
-- [ ] 开工先核对：主对话认领（`claim_route`）在进程退出后的状态与租约；结论写进本文件。
-- [ ] 进行中的一轮可被识别为「持有者已不在」；唤醒循环按同一 `request_id` 重跑一次；重跑失败在主对话写明，原话保留。
-- [ ] 派工按派工请求标识回放，不重复派出（复用 R5 幂等）。
+- [x] 开工先核对：主对话认领（`claim_route`）在进程退出后的状态与租约；结论写进本文件。
+  - 结论（2026-11-18）：认领记录（`workspace_request`，PG 为 JSONB）在进程退出后停在 `claimed`，租约 60 秒后过期；失败释放的租约置 0。原始输入只存指纹，重跑需要另记：一轮认领后用 `annotate_route` 记下 `butler_input` 与 `resumes`。新增 `stale_routes`（租约大于 0 且已过期、仍为 claimed）供唤醒循环扫描，不另建表。
+- [x] 进行中的一轮可被识别为「持有者已不在」；唤醒循环按同一 `request_id` 重跑一次；重跑失败在主对话写明，原话保留。
+- [x] 派工按派工请求标识回放，不重复派出（复用 R5 幂等）。
 
 ## E：极简入口与 SDK
 

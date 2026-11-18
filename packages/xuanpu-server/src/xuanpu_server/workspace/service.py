@@ -590,6 +590,18 @@ class WorkspaceService:
             who, request_id, token, {"state": "complete", "outcome": outcome, "lease_until": 0}
         )
 
+    async def annotate_route(
+        self, who: Principal, request_id: str, token: str, extra: dict[str, Any]
+    ) -> None:
+        """在认领记录上附加信息（如原始输入、重跑次数），供中断后重跑使用；令牌须一致。"""
+        await self._change_route(who, request_id, token, extra)
+
+    async def stale_routes(self, tenant: str, prefix: str, *,
+                           limit: int = 50) -> builtins.list[tuple[str, str, dict[str, Any]]]:
+        """持有者已不在的路由认领（租约过期仍为认领中）；``prefix`` 是调用方的请求标识前缀。"""
+        return await self.store.stale_routes(
+            tenant, "route:" + prefix, self._now(), limit=limit)
+
     async def renew_route(
         self, who: Principal, request_id: str, token: str, seconds: float = 60.0
     ) -> None:
