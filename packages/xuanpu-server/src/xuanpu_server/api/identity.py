@@ -25,6 +25,7 @@ from xuanpu_server.api import schemas  # noqa: TC001 —— FastAPI 运行时解
 from xuanpu_server.api.auth import Caller  # noqa: TC001 —— FastAPI 运行时解析路由标注
 from xuanpu_server.api.desktop_login import (
     confirm_page_response,
+    desktop_client_of,
     desktop_login_router,
     wait_page_response,
 )
@@ -127,14 +128,18 @@ def identity_router(platform: Platform) -> APIRouter:
 
     @router.get("/v1/auth/feishu/login", response_model=None)
     async def feishu_login(
+        request: Request,
         tenant: Annotated[str | None, Query()] = None,
         return_to: Annotated[str | None, Query()] = None,
-        client: Annotated[Literal["browser", "desktop"], Query()] = "browser",
+        client: Annotated[Literal["browser", "desktop"] | None, Query()] = None,
     ) -> RedirectResponse | HTMLResponse:
         """开始飞书登录：302 到飞书授权页（失败时 302 回落地页，带 ``login_error``）。
 
-        ``client=desktop`` 成功时返回桌面客户端的等待页（见 ``api.desktop_login``）。
+        ``client=desktop`` 成功时返回桌面客户端的等待页（见 ``api.desktop_login``）。没带
+        ``client`` 时按用户代理判断：带桌面客户端标记的按 ``desktop``，其余按 ``browser``。
         """
+        if client is None:
+            client = desktop_client_of(request.headers.get("user-agent"))
         secure = identity.settings.cookie_secure
         outcome = await identity.login.begin(tenant=tenant, return_to=return_to, client=client)
         if client == "desktop" and outcome.attempt_cookie is not None:

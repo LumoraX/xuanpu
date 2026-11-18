@@ -106,6 +106,19 @@ impl Deployment {
     }
 }
 
+/// 桌面客户端在 WebView 用户代理末尾附加的标记；服务端据此为登录入口走浏览器接力，
+/// 即使导航改写没有生效（例如网页用别的方式发起登录）也不会退回网页登录。
+pub const USER_AGENT_TOKEN: &str = "XuanpuDesktop";
+
+/// WebView 的用户代理：沿用 macOS WebKit 的默认写法，末尾附加 `XuanpuDesktop/<版本>`。
+pub fn user_agent() -> String {
+    format!(
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) {}/{}",
+        USER_AGENT_TOKEN,
+        env!("CARGO_PKG_VERSION")
+    )
+}
+
 /// 企业服务的飞书登录入口路径。
 const FEISHU_LOGIN_PATH: &str = "/v1/auth/feishu/login";
 /// 浏览器接力登录完成后桌面端换取会话的路径。
@@ -275,6 +288,13 @@ mod tests {
         ] {
             assert_eq!(config.navigation(&value.parse().unwrap()), Navigation::Deny);
         }
+    }
+
+    #[test]
+    fn user_agent_carries_desktop_token_and_version() {
+        let agent = user_agent();
+        assert!(agent.starts_with("Mozilla/5.0 (Macintosh;"));
+        assert!(agent.ends_with(&format!("XuanpuDesktop/{}", env!("CARGO_PKG_VERSION"))));
     }
 
     #[test]

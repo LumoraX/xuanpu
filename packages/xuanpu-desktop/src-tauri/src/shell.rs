@@ -5,7 +5,7 @@ use tauri::{
     webview::{DownloadEvent, NewWindowResponse, PageLoadEvent},
     AppHandle, Manager, WebviewUrl, WebviewWindowBuilder,
 };
-use xuanpu_desktop::policy::{download_path, is_bootstrap, Navigation};
+use xuanpu_desktop::policy::{download_path, is_bootstrap, user_agent, Navigation};
 
 /// 创建窗口；关闭后从 Dock 再次打开仍使用同一个持久化数据目录。
 pub fn create_window(app: &AppHandle) -> tauri::Result<()> {
@@ -14,6 +14,8 @@ pub fn create_window(app: &AppHandle) -> tauri::Result<()> {
     WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("玄圃").inner_size(1280.0, 860.0).min_inner_size(800.0, 600.0)
         .disable_drag_drop_handler()
+        // 附加 XuanpuDesktop 标记：服务端凭它为登录入口走浏览器接力
+        .user_agent(&user_agent())
         .on_navigation(move |url| handle_navigation(&nav_app, url))
         .on_new_window(move |url, _| {
             handle_new_window(&popup_app, &url);
@@ -125,6 +127,8 @@ fn bring_to_front(app: &AppHandle, state: &DesktopState) {
 
 /// 外部文档交给默认浏览器；协议已由导航策略限制为 HTTPS。
 fn open_external(state: &DesktopState, url: &url::Url) {
+    // 只记来源与路径，不记查询串（可能含授权参数）
+    state.log.info(&format!("交给系统浏览器打开 {}{}", url.origin().ascii_serialization(), url.path()));
     if open::that_detached(url.as_str()).is_err() {
         state.log.error("无法打开系统浏览器");
     }

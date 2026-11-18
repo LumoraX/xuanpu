@@ -160,3 +160,18 @@ async def test_desktop_begin_failure_redirects_to_landing(identity_world: Any) -
     async with identity_world() as ident:
         failed = await ident.begin(tenant="acme", client="desktop")
         await ident.assert_login_failed(failed, "tenant_unavailable")
+
+
+async def test_desktop_user_agent_starts_the_handoff_without_client(identity_world: Any) -> None:
+    """桌面客户端的用户代理带 XuanpuDesktop 标记：没带 client 也返回等待页；显式 client=browser
+    仍按浏览器；普通浏览器的用户代理照旧 302 去飞书。"""
+    desktop = {"User-Agent": "Mozilla/5.0 (Macintosh) AppleWebKit/605.1.15 XuanpuDesktop/2026.11.18"}
+    safari = {"User-Agent": "Mozilla/5.0 (Macintosh) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15"}
+    async with identity_world() as ident:
+        await ident.configure_feishu()
+        page = await ident.get("/v1/auth/feishu/login", params={"tenant": "acme"}, headers=desktop)
+        assert page.status_code == 200 and '<div class="code">' in page.text
+        forced = {"tenant": "acme", "client": "browser"}
+        assert (await ident.get("/v1/auth/feishu/login", params=forced, headers=desktop)).status_code == 302
+        plain = await ident.get("/v1/auth/feishu/login", params={"tenant": "acme"}, headers=safari)
+        assert plain.status_code == 302

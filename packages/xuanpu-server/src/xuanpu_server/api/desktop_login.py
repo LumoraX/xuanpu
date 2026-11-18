@@ -33,6 +33,7 @@ from xuanpu_server.identity.login import LOGIN_ATTEMPT_TTL_SECONDS
 
 if TYPE_CHECKING:
     from xuanpu_server.identity.login import LoginRedirect
+    from xuanpu_server.identity.models import LoginClient
     from xuanpu_server.platform import Platform
 
 CONFIRM_PATH = "/v1/auth/feishu/desktop/confirm"
@@ -58,6 +59,21 @@ _STYLE = (
     "@media (prefers-color-scheme:dark){body{background:#141a16;color:#e6ece8}"
     "main{background:#1f2622}.muted{color:#9fb0a5}.btn{background:#3d7a57}}"
 )
+
+
+DESKTOP_USER_AGENT_TOKEN = "XuanpuDesktop/"
+"""桌面客户端在 WebView 用户代理里附加的标记（见 ``xuanpu-desktop`` 的 ``policy::user_agent``）。"""
+
+
+def desktop_client_of(user_agent: str | None) -> LoginClient:
+    """没带 ``client`` 参数时按用户代理判断发起登录的客户端。
+
+    用户代理可以伪造，但伪造的结果只是让自己走桌面接力（与显式带 ``client=desktop`` 相同），
+    换取仍要凭只在发起方的登录尝试 cookie，不扩大任何权限。
+    """
+    if user_agent is not None and DESKTOP_USER_AGENT_TOKEN in user_agent:
+        return "desktop"
+    return "browser"
 
 
 def _page(title: str, body: str, *, script: str | None = None) -> HTMLResponse:
@@ -206,7 +222,9 @@ __all__ = [
     "CONFIRM_PATH",
     "REDEEM_PATH",
     "STATUS_PATH",
+    "DESKTOP_USER_AGENT_TOKEN",
     "confirm_page_response",
+    "desktop_client_of",
     "desktop_login_router",
     "wait_page_response",
 ]

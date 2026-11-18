@@ -261,7 +261,7 @@ Cookie: __Host-xuanpu_login=…
 
 ### 桌面客户端的浏览器接力
 
-桌面客户端的 WebView 里，飞书授权常被飞书 App 或系统浏览器接手，回调落在系统浏览器。客户端因此以 `client=desktop` 开始登录，由浏览器完成授权与确认、WebView 换取登录会话（[ADR 0019](../decisions/0019-desktop-browser-handoff-login.md)）。`client` 只收 `browser`（默认）与 `desktop`，其他值 `400`。
+桌面客户端的 WebView 里，飞书授权常被飞书 App 或系统浏览器接手，回调落在系统浏览器。客户端因此以 `client=desktop` 开始登录，由浏览器完成授权与确认、WebView 换取登录会话（[ADR 0019](../decisions/0019-desktop-browser-handoff-login.md)）。`client` 只收 `browser` 与 `desktop`，其他值 `400`。没带 `client` 时按用户代理判断：带 `XuanpuDesktop/` 标记（桌面客户端的 WebView 附加）的按 `desktop`，其余按 `browser`；伪造标记只会让自己走接力，不扩大权限。
 
 ```
 GET /v1/auth/feishu/login?tenant=acme&client=desktop          # WebView 里
