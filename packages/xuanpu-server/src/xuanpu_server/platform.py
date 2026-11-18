@@ -329,6 +329,9 @@ class Platform:
         from xuanpu_server.knowledge.service import KnowledgeService
 
         self.knowledge = KnowledgeService(self.workspace, store.knowledge_store, config=knowledge, now=now)
+        from xuanpu_server.knowledge.memory import WorkMemoryService
+
+        self.work_memory = WorkMemoryService(self.knowledge, store.memory_store)
         self.packages.managed_guard = self.capabilities.admission.managed
         from xuanpu_server.tracing.retention import TraceRetention
 

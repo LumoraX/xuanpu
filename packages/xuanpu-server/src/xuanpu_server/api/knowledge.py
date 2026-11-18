@@ -7,6 +7,12 @@ from fastapi import APIRouter
 from pydantic import JsonValue  # noqa: TC002 —— FastAPI 解析响应类型
 
 from xuanpu_server.api.auth import Caller  # noqa: TC001 —— FastAPI 解析认证依赖
+from xuanpu_server.knowledge.memory import (  # noqa: TC001 —— FastAPI 解析请求模型
+    AssertInput,
+    CorrectInput,
+    DecideInput,
+    ProposeInput,
+)
 from xuanpu_server.knowledge.service import (  # noqa: TC001 —— FastAPI 解析请求模型
     RegisterSource,
     SearchInput,
@@ -46,4 +52,44 @@ def knowledge_router(platform: Platform) -> APIRouter:
         """删除来源并清掉文本块。"""
         return await platform.knowledge.delete(who, source_id, body)
 
-    return router
+    memory = APIRouter(prefix='/v1/me/work-memory')
+
+    @memory.get('')
+    async def memories(who: Caller) -> dict[str, JsonValue]:
+        """本人生效中与待确认的记忆。"""
+        return await platform.work_memory.listing(who)
+
+    @memory.post('/proposals', status_code=201)
+    async def propose(body: ProposeInput, who: Caller) -> dict[str, JsonValue]:
+        """提出候选（须引用本人可读的来源；本人确认后才生效）。"""
+        return await platform.work_memory.propose(who, body)
+
+    @memory.post('/assertions', status_code=201)
+    async def assert_fact(body: AssertInput, who: Caller) -> dict[str, JsonValue]:
+        """本人手工录入的陈述（标明非已核实）。"""
+        return await platform.work_memory.assert_fact(who, body)
+
+    @memory.post('/{memory_id}/confirm')
+    async def confirm(memory_id: str, body: DecideInput, who: Caller) -> dict[str, JsonValue]:
+        """确认候选。"""
+        return await platform.work_memory.confirm(who, memory_id, body)
+
+    @memory.post('/{memory_id}/reject')
+    async def reject(memory_id: str, body: DecideInput, who: Caller) -> dict[str, JsonValue]:
+        """拒绝候选。"""
+        return await platform.work_memory.reject(who, memory_id, body)
+
+    @memory.post('/{memory_id}/correct')
+    async def correct(memory_id: str, body: CorrectInput, who: Caller) -> dict[str, JsonValue]:
+        """更正（生成新修订）。"""
+        return await platform.work_memory.correct(who, memory_id, body)
+
+    @memory.post('/{memory_id}/delete')
+    async def delete_memory(memory_id: str, body: DecideInput, who: Caller) -> dict[str, JsonValue]:
+        """删除。"""
+        return await platform.work_memory.delete(who, memory_id, body)
+
+    outer = APIRouter()
+    outer.include_router(router)
+    outer.include_router(memory)
+    return outer

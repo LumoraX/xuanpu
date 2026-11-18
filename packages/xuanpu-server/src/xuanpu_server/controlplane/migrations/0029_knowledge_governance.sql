@@ -10,3 +10,10 @@ CREATE TABLE "${schema}"."${prefix}knowledge_chunk" (
  PRIMARY KEY(tenant_id,source_id,ordinal),
  FOREIGN KEY(tenant_id,source_id) REFERENCES "${schema}"."${prefix}knowledge_source"(tenant_id,id)
 );
+-- 本人工作记忆：每条修订一行；只有本人确认才生效，更正生成新修订，删除不物理清除记录。
+CREATE TABLE "${schema}"."${prefix}work_memory" (
+ tenant_id TEXT NOT NULL,owner TEXT COLLATE "C" NOT NULL,id TEXT NOT NULL,record JSONB NOT NULL,
+ PRIMARY KEY(tenant_id,id),
+ FOREIGN KEY(tenant_id,owner) REFERENCES "${schema}"."${prefix}user"(tenant_id,user_id)
+);
+CREATE INDEX "${prefix}work_memory_by_owner" ON "${schema}"."${prefix}work_memory"(tenant_id,owner);

@@ -115,3 +115,47 @@ async def test_switch_off_refuses(r4_http):
     file = await _upload(alice, 'x.txt', b'hello')
     assert (await _register(alice, file['id'])).status_code == 403
     assert (await alice.post('/v1/me/knowledge/search', json={'query': 'hello'})).status_code == 403
+
+
+async def _memory(client, path: str, body: dict):
+    """调一个工作记忆写接口。"""
+    return await client.post('/v1/me/work-memory' + path, json=body)
+
+
+async def test_work_memory_needs_owner_confirmation(r4_http, enabled):
+    """候选须引用本人可读来源、确认才生效；本人陈述标明非已核实；更正生成新修订；删除后不再出现；别人看不到。"""
+    alice, bob = r4_http['alice'], r4_http['bob']
+    file = await _upload(alice, '规则.txt', '报销单须在 30 天内提交。'.encode())
+    source = (await _register(alice, file['id'])).json()
+    bad = await _memory(alice, '/proposals', {'text': '报销 30 天', 'citation': {'source_id': source['id'], 'ordinal': 9}})
+    assert bad.status_code == 400
+    proposed = await _memory(alice, '/proposals', {'text': '报销 30 天内提交',
+                                                   'citation': {'source_id': source['id'], 'ordinal': 0}})
+    assert proposed.status_code == 201 and proposed.json()['status'] == 'proposed'
+    stolen = await _memory(bob, f"/{proposed.json()['id']}/confirm", {'expected_version': 1})
+    assert stolen.status_code == 404
+    confirmed = await _memory(alice, f"/{proposed.json()['id']}/confirm", {'expected_version': 1})
+    assert confirmed.json()['status'] == 'active' and confirmed.json()['verified_by_source'] is True
+    mine = await _memory(alice, '/assertions', {'text': '我负责华东区'})
+    assert mine.json()['kind'] == 'user_assertion' and mine.json()['verified_by_source'] is False
+    corrected = await _memory(alice, f"/{confirmed.json()['id']}/correct",
+                              {'expected_version': 2, 'text': '报销 30 个自然日内提交'})
+    assert corrected.json()['revision'] == 2 and corrected.json()['lineage'] == confirmed.json()['lineage']
+    texts = [m['text'] for m in (await alice.get('/v1/me/work-memory')).json()['memories']]
+    assert texts == ['我负责华东区', '报销 30 个自然日内提交']
+    await _memory(alice, f"/{mine.json()['id']}/delete", {'expected_version': 1})
+    texts = [m['text'] for m in (await alice.get('/v1/me/work-memory')).json()['memories']]
+    assert texts == ['报销 30 个自然日内提交']
+    assert (await bob.get('/v1/me/work-memory')).json()['memories'] == []
+
+
+async def test_memory_whose_source_is_deleted_stops_appearing(r4_http, enabled):
+    """依据的来源删除后，引用它的记忆不再出现（不靠缓存回填旧内容）。"""
+    alice = r4_http['alice']
+    file = await _upload(alice, 'f.txt', '会议室 A 周一停用。'.encode())
+    source = (await _register(alice, file['id'])).json()
+    proposed = (await _memory(alice, '/proposals', {'text': 'A 周一停用',
+                                                    'citation': {'source_id': source['id'], 'ordinal': 0}})).json()
+    await _memory(alice, f"/{proposed['id']}/confirm", {'expected_version': 1})
+    await alice.post(f"/v1/me/knowledge/sources/{source['id']}/delete", json={'expected_version': source['version']})
+    assert (await alice.get('/v1/me/work-memory')).json()['memories'] == []
