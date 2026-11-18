@@ -32,7 +32,7 @@
 - 飞书的错误只有 20010 归为 ``not_in_app_scope``，别的（含授权码无效、App Secret 不对）都是
   ``identity_unavailable``。
 
-**桌面客户端**（``client=desktop``，ADR 0019）：开始登录时登录尝试记下 ``desktop``，登录尝试
+**桌面客户端**（``client=desktop``，ADR 0021）：开始登录时登录尝试记下 ``desktop``，登录尝试
 cookie 写在桌面客户端里；回调落在系统浏览器，不核对该 cookie，第 8 步改为建一条桌面接力记录
 （绑定到该 cookie 的摘要）并让浏览器显示确认页。之后的确认与换取见 ``identity.desktop``。
 """

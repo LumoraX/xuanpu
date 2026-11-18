@@ -32,6 +32,11 @@ from xuanpu_server.tracing.models import TraceOwner
 from xuanpu_server.workspace.service import WorkspaceService
 
 
+async def _no_turns(_tenant: str) -> int:
+    """本进程不跑管家轮次，没有可重跑的。"""
+    return 0
+
+
 async def pause(marker: str, phase: str) -> None:
     """写阶段标记后永久等待（等父进程 SIGKILL）。标记只含阶段名。"""
     await asyncio.to_thread(Path(marker).write_text, json.dumps({"phase": phase}))
@@ -54,7 +59,9 @@ def _platform(control: PostgresControlPlane, identity: PostgresIdentityStore,
     return SimpleNamespace(
         store=control, workspace=workspace, identity=SimpleNamespace(store=identity),
         dispatches=TracedDispatchStore(control.dispatch_store, control.trace_store, lambda: trace),
-        butler_config=config, butler=SimpleNamespace(enabled=lambda t: t == tenant),
+        butler_config=config,
+        # 只验编组推进：不跑管家轮次，中断轮次的重跑（R6-D）在这里无事可做
+        butler=SimpleNamespace(enabled=lambda t: t == tenant, resume_stale=_no_turns),
         runtimes=SimpleNamespace(defaults=SimpleNamespace(execution_trace=trace)))
 
 

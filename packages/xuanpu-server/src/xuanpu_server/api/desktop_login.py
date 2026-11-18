@@ -1,4 +1,4 @@
-"""桌面客户端浏览器接力登录的页面与路由（ADR 0019；流程见 ``identity.desktop``）。
+"""桌面客户端浏览器接力登录的页面与路由（ADR 0021；流程见 ``identity.desktop``）。
 
 - 等待页：``GET /v1/auth/feishu/login?client=desktop`` 成功时由 ``api.identity`` 调
   ``wait_page_response`` 返回，在桌面客户端的 WebView 里显示确认码、轮询进度；

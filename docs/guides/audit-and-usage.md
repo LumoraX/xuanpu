@@ -91,9 +91,13 @@ Python SDK 的 `AuditRecord.data` 在本接口返回中为 `None`；分页游标
 | `message_sent` | 用户发出一条消息 | `submission_id`、`text` |
 | `suspension_resolved_by` | 送回审批决定 | `submission_id`、`decisions`（待办标识 → 批准与否） |
 | `turn_cancel_requested` | 停止生成（确有在途对话被停时才记）。与会话上的其他操作一样，`user_id` 是会话的主人，是谁停的看 `actor` | `submission_ids`：停了哪些 |
-| `user_created` | 员工首次[飞书登录](../architecture/http-api.md#飞书登录)，平台自动给他建账号 | `provider`（`feishu`）、`display_name`、`role`（总是 `tenant_member`） |
-| `login_succeeded` | 飞书登录成功 | `provider` |
-| `login_failed` | 飞书登录失败，而且飞书确实认出了一个人：`not_in_app_scope`（不在应用的可用范围内）、`tenant_mismatch`（飞书企业不符）、`user_disabled`（员工已停用）。别的失败原因（员工拒绝授权、登录链接失效、租户不可用、调飞书失败）只计指标 `xuanpu_logins_total`、记平台日志，不写审计——登录接口不需要凭据，否则谁都能往审计里灌记录 | `reason`：失败原因，含义见[接口文档的 `login_error` 表](../architecture/http-api.md#飞书登录) |
+| `user_created` | 员工首次[飞书登录](../architecture/http-api.md#飞书登录)，平台自动给他建账号；或管理员开通[玄圃账号](accounts.md) | `provider`（`feishu` 或 `password`）、`display_name`、`role`；开通玄圃账号时另有 `username` |
+| `username_assigned` | 管理员给还没有用户名的员工（如飞书来的）开通用户名 | `username` |
+| `password_link_issued` | 管理员签发设置链接（开通或重置） | `purpose`（`setup` / `reset`）、`expires_at`；链接本身不进审计 |
+| `password_set` | 员工兑现设置链接、设好口令 | `purpose` |
+| `password_changed` | 员工改自己的口令 | — |
+| `login_succeeded` | 飞书或用户名口令登录成功 | `provider`（`feishu` / `password`） |
+| `login_failed` | 用户名口令登录失败且认出了员工：`provider` 为 `password`，`reason` 为 `bad_password`（口令错）、`locked_now`（这次口令错触发锁定）、`locked`（锁定期内）、`user_disabled`（员工或租户已停用）；用户名不存在不写审计。飞书登录失败，而且飞书确实认出了一个人：`not_in_app_scope`（不在应用的可用范围内）、`tenant_mismatch`（飞书企业不符）、`user_disabled`（员工已停用）。别的失败原因（员工拒绝授权、登录链接失效、租户不可用、调飞书失败）只计指标 `xuanpu_logins_total`、记平台日志，不写审计——登录接口不需要凭据，否则谁都能往审计里灌记录 | `reason`：失败原因，含义见[接口文档的 `login_error` 表](../architecture/http-api.md#飞书登录) |
 | `logout` | 员工退出浏览器登录 | — |
 | `identity_config_updated` | 写入或替换租户的[飞书配置](../architecture/http-api.md#飞书配置) | `app_id`、`session_ttl_seconds`、`refs`（App Secret、Encrypt Key、Verification Token 在保管库里的名字：`app`、`encrypt`、`verification`），没有明文 |
 | `user_role_changed` | [改员工的角色](../architecture/http-api.md#员工)（角色真的变了才记） | `before`、`after`：`tenant_admin` 或 `tenant_member` |

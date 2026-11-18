@@ -52,6 +52,8 @@ _LOGGED_ERROR_CHARS = 2048
 MAX_ERROR_CHARS = 4096
 # 启动失败时等进程退出片刻，让退出码与最后的 stderr 落定
 _SETTLE_SECONDS = 1.0
+# 内核在连接断开（多半是进程退出）时抛的 McpToolError 码；见 taifeng stdio 客户端
+_DISCONNECTED_CODE = -32000
 
 # 一次调用的实现：参数 → (给模型看的文本, 是否出错)
 Invoke = Callable[[dict[str, Any]], Awaitable[tuple[str, bool]]]
@@ -305,8 +307,11 @@ class StdioRun:
             try:
                 result = await client.call_tool(tool, args)
             except (taifeng.McpToolError, RuntimeError, OSError) as exc:
-                # 连接断开多半是进程退出了：等它片刻，好记下退出码与遗言
-                settle = not isinstance(exc, taifeng.McpToolError)
+                # 连接断开多半是进程退出了：等它片刻，好记下退出码与遗言。内核把断开报成
+                # McpToolError(-32000)，也要等；否则能否记到退出码取决于进程退得快不快
+                # （CI 的 Python 3.13 上偶发「退出码 未退出」）。服务端自己回的业务错误不等。
+                settle = (not isinstance(exc, taifeng.McpToolError)
+                          or exc.code == _DISCONNECTED_CODE)
                 logger.warning(
                     "连接器 %s 的工具 %s 调用失败：%s",
                     self.name,

@@ -1,6 +1,6 @@
 # 管家（活文档）
 
-> R5-C。为什么这么定见 [ADR 0017](../decisions/0017-butler-artisan-orchestration.md)；设计与计划见 [R5-C 设计](../superpowers/specs/2026-11-14-r5c-butler-design.md)、[R5-C 计划](../superpowers/plans/2026-11-14-r5c-butler.md)。当前实现到 C2（自办、单匠人派工、唤醒、验收、代答与待本人处理项）与 R5-D（编组：并行、接力、会诊与分歧裁决、会诊消息区）。尚未生产部署。
+> R5-C。为什么这么定见 [ADR 0017](../decisions/0017-butler-artisan-orchestration.md)；设计与计划见 [R5-C 设计](../superpowers/specs/2026-11-14-r5c-butler-design.md)、[R5-C 计划](../superpowers/plans/2026-11-14-r5c-butler.md)。当前实现到 C2（自办、单匠人派工、唤醒、验收、代答与待本人处理项）与 R5-D（编组：并行、接力、会诊与分歧裁决、会诊消息区）。已随 2026-11-15 生产发布部署，所有租户默认关闭（见[R5 生产发布记录](../guides/releases/2026-11-15-r5-production.md)）。
 
 员工对管家说话（`POST /v1/assistant/messages`）。管家能自己办的自己办（回答、只读查询、内置能力的待确认草稿），办不了的派给**一位**匠人——本人此刻可用的已发布业务包入口——并立刻答复，不等匠人结果。
 
@@ -13,7 +13,7 @@
 
 - 每个租户一个内核 `EnginePool`，只装平台内置技能 `butler/skills/butler/SKILL.md` 与管家工具。不加载业务包代码（红线 1），只用 `taifeng.__all__`（红线 3）。
 - 没有沙盒、脚本执行器（`script_executors={}`）、连接器、文件、命令或网络工具。技能声明 `strict_tool_names`，模型可见的工具只有下表九个；内核默认的 `read_skill`、`call_skill`、`run_script` 留在注册表里但对模型不可见。
-- 模型档位 `balanced`；每轮最多 12 次迭代、会话 token 上限 20 万、整轮 90 秒。
+- 模型档位 `balanced`；每轮最多 12 次迭代、会话 token 上限 20 万。一轮的时限默认 `butler.turn_seconds`（300 秒），管家可用 `extend_turn` 延长（见下文「常在线」）。
 - **每次输入一轮新引擎**：建引擎 → 接上与业务会话同一个事件枢纽（审计、按员工计量、执行追踪，根 span 类型 `butler`、trace 标识预先分配）→ 提交 → 读到本轮终态 → 释放引擎。员工的长期对话是主对话的持久记录（工作台消息），每轮把最近 6 条连同当前时间、时区、原话、材料清单作为 **JSON 数据** 交给管家，不依赖引擎线程跨进程续接。
 - 工具处理函数只拿得到内核线程标识；平台按线程标识找回本轮上下文（`butler/turn.py`），身份一律取自本轮，不取自模型参数。
 
@@ -21,7 +21,7 @@
 
 | 工具 | 作用 | 约束 |
 | --- | --- | --- |
-| `propose` | 内置能力（提醒、工作站、业务跟进、执行安排、交接、共享、连接）的待确认草稿或打开列表 | 与分流共用 `assistant_proposals.resolve_native_choice`，卡片同形；每轮最多一个；业务包选择被拒 |
+| `propose` | 内置能力（提醒、工作站、业务跟进、执行安排、交接、共享、连接）的待确认草稿或打开列表 | 与分流共用 `assistant_proposals.resolve_native_choice`，卡片同形；每轮最多一个；业务包选择被拒。工具说明直接带上分流共用的内置能力约定（包名与草稿字段，同一份文字，如 `REMINDER_PROMPT`；企业连接补一句 `@connections/manage`）。结果的 `needs_confirmation` 只在带草稿时为真，只打开列表为假；包名带 `@` 却不合法（如把入口拼进包名）时错误列出合法包名 |
 | `read_personal` | 本人进行中的提醒、本人工作任务 | 只读，最多 20 条，只给标题与状态 |
 | `list_artisans` | 本人此刻可用的匠人 | 经 `ArtisanResolver`（现状：租户生效版本） |
 | `dispatch_artisan` | 派给一位匠人 | 见下节 |
@@ -33,7 +33,7 @@
 
 员工输入触发的一轮不能用 `answer_artisan`、`ask_user`；被唤醒的一轮不能用 `propose`、`dispatch_artisan`、`cancel_dispatch`、`answer_pending`。
 
-工具的平台错误与参数错误作为工具错误交给模型（`<错误码>: <文案>`），不中断本轮。
+工具的平台错误与参数错误作为工具错误交给模型（`<错误码>: <文案>`），不中断本轮。参数校验错误与编组计划的结构错误给出字段位置与原因（整份计划级别的规则没有字段位置，也写明原因），不回显取值，模型据此改正。
 
 ## 派工（`butler/dispatcher.py`）
 
@@ -47,8 +47,15 @@
 ## 入口与幂等（`butler/service.py`、`api/butler.py`）
 
 - `request_id` 必填。先把原话写进主对话（`<request_id>:user`），任何后续失败输入都还在。
-- 按 `butler:<request_id>` 认领（复用工作台的路由认领与 60 秒租约）：同键同体回原回执，同键异体 409，并发同键 409。
-- 失败（模型不可用、本轮失败或挂起、超时、回复为空）统一 503 `runtime_unavailable`「输入已保留，请稍后重试」，释放认领；不自动选任何业务。同一标识重试会重新跑一轮，已建的派工按派工请求标识回放。
+- 按 `butler:<request_id>` 认领（复用工作台的路由认领与 60 秒租约，进行中每 20 秒续租）：同键同体回原回执，同键异体 409；本实例上进行中的同键重试回进行中回执，别的实例上进行中的 409。认领记录上记原始输入与重跑次数（`annotate_route`），供中断后重跑。
+- 失败（模型不可用、本轮失败或挂起、回复为空）：回复窗口内统一 503 `runtime_unavailable`「输入已保留，请稍后重试」；窗口过后在主对话写明没处理完、原话保留。都会释放认领，不自动选任何业务。同一标识重试会重新跑一轮，已建的派工按派工请求标识回放。
+
+## 常在线（R6，[ADR 0020](../decisions/0020-butler-always-online.md)）
+
+- **回执与一轮解耦**（`service.py`）：一轮是平台里的后台任务，请求至多等 `butler.reply_window_seconds`（默认 20 秒）。办完回完整回执（`state=done`）；没办完回 `state=running`、`trace_id`，这一轮继续，结束后回复写进主对话。员工可以接着说下一句，各轮互不阻塞。平台关闭时取消进行中的轮次，不写半截回复。
+- **动态时限**（`engine.py`、`limits.py`）：可改期的 `asyncio.Timeout`，默认 `turn_seconds`；`extend_turn(seconds, reason)` 从现在起延长，至多到本轮开始后 `max_turn_seconds`（默认 1 天，上限 7 天），记审计 `butler_turn_extended`。到时限是正常结局（`TurnTimeout`）：回复说明这一轮先停下、已交出的工作仍在进行，不报 503。
+- **预算随任务提高**（`limits.py`）：`max_*_per_trace` 是起始预算；`raise_budget(budget, to, reason)` 提高这次请求的 token、管家轮数或匠人数，至多到 `max_*_per_trace_ceiling`，记审计 `butler_budget_raised`（含 `trace_id`）。`budget_config` 读出后叠加到起始预算，交给派工、编组提交、复核与会诊比对四处原有检查。租户每日 token 配额不变。
+- **中断重跑**（`service.resume_stale`、`wakeup.py`）：唤醒循环每轮先查本租户「认领中但租约已过期」的管家认领（`workspace.stale_routes`，持有进程已退出；失败释放的租约为 0，不在其中），按记下的原始输入与同一标识重跑一次；重跑过仍中断的在主对话写明没处理完并释放认领。
 - 成功后写助手消息（`<request_id>:assistant`，元数据 `route` 与分流同形、另带 `butler.trace_id`），草稿因此可经既有 `/v1/assistant/proposals` 确认或取消。
 
 ## 唤醒（`butler/wakeup.py`、`butler/wake_apply.py`，迁移 0023）
@@ -79,7 +86,7 @@
 
 ## 编组（`butler/groups/`，迁移 0024，R5-D0）
 
-一件事需要多位匠人时，管家用 `dispatch_group` 提交声明式计划（不是脚本）：`title` 与 1–`max_group_steps` 步，每步 `parallel`（成员各做一部分，互不可见）、`relay`（前一位的成果引用与摘要交给后一位）或 `consult`（会诊：成员就同一问题各给结论，互不可见，全部完成后比对），每步 1–`max_group_members` 位成员（匠人、任务说明、本人本次提供的材料），后续步可带 `when`（只认前一步的 `completed` / `failed`，不符即跳过）。
+一件事需要多位匠人时，管家用 `dispatch_group` 提交声明式计划（不是脚本）：`title` 与 1–`max_group_steps` 步，每步 `parallel`（成员各做一部分，互不可见）、`relay`（前一位的成果引用与摘要交给后一位）或 `consult`（会诊：成员就同一问题各给结论，互不可见，全部完成后比对），每步 1–`max_group_members` 位成员（匠人、任务说明、本人本次提供的材料），后续步可带 `when`（只认前一步的 `completed` / `failed`，不符即跳过；第一步须为空，工具结构允许显式 `null`，以适配按严格模式要求填满每个字段的网关）。
 
 - **校验**（`validate.py`）：严格解析，未知字段拒绝；每位成员的匠人须对本人此刻可用；材料只能是本人本次提供的，会话承载不收材料；成员总数加本次请求已有派工不超过 `max_artisans_per_trace`，token 须已知且未超。不合规一律报错，不建编组、不派工。同一输入重试按 `<请求标识>:g<序号>` 回放原编组，不再核预算。
 - **执行**（`runner.py`）：每位成员是一次普通派工（`Dispatcher.launch`，不依赖管家的一轮），幂等标识 `grp:<编组>:<步>:<成员>`，各有自己的沙盒、凭据、闸门、审计与 span。推进是「看一眼、做一步、存一次」：把成员派工的真实终态写进编组 → 启动下一位该启动的成员（并行一步内全部启动；接力等前一位完成）→ 一步结束后按 `when` 选下一步 → 计划走完定终态（取消优先，有失败步即失败）。推进由提交时的工具调用与唤醒循环（每轮处理完事件后）驱动。

@@ -16,6 +16,10 @@ from typing import Any
 
 from xuanpu_sdk import XuanpuClient
 
+# 管家一轮在服务端最长 90 秒（butler.engine.TURN_SECONDS）；客户端须等得比它久，
+# 否则真实模型下安排编组这类慢的一轮会被 SDK 默认的 60 秒先掐断。
+CLIENT_TIMEOUT = 120.0
+
 DEFAULT_TEXT = ("请安排三位匠人会诊：这个工单该不该升级处理？各自给出结论，"
                 "全部给完后再比对，不要只交给一位。")
 
@@ -39,9 +43,15 @@ def overlaps(rows: list[dict[str, Any]], kind: str = "dispatch") -> int:
     return count
 
 
+# 用量按模型调用的尝试记录，只有执行类 span（管家、匠人）有用量；工具、派工、编组、等待行
+# 本来就没有尝试，恒为 usage_complete=false（见执行追踪架构文档），不参与判定。
+USAGE_KINDS = frozenset({"butler", "artisan"})
+
+
 def usage_complete(rows: list[dict[str, Any]]) -> bool:
-    """所有已结束的行都有完整用量。"""
-    return all(r.get("usage_complete") for r in rows if r.get("duration_ms") is not None)
+    """已结束的执行行（管家、匠人）都有完整用量，且至少有一行。"""
+    ended = [r for r in rows if r.get("kind") in USAGE_KINDS and r.get("duration_ms") is not None]
+    return bool(ended) and all(r.get("usage_complete") for r in ended)
 
 
 async def follow(client: XuanpuClient, group_id: str, deadline: float) -> dict[str, Any]:
@@ -57,7 +67,8 @@ async def follow(client: XuanpuClient, group_id: str, deadline: float) -> dict[s
 
 async def run(args: argparse.Namespace, key: str) -> dict[str, Any]:
     """提交（或补读）一次会诊并汇总验收结论。"""
-    async with XuanpuClient(args.base_url, key, act_as_user=args.act_as) as client:
+    async with XuanpuClient(args.base_url, key, act_as_user=args.act_as,
+                            timeout_seconds=CLIENT_TIMEOUT) as client:
         group_id = args.group
         if group_id is None:
             receipt = await client.send_to_butler(args.text, request_id=f"r5consult-{int(time.time())}")

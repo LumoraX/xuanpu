@@ -23,7 +23,7 @@ def test_static_files_present() -> None:
         "collaboration-core.js", "handoffs.js", "handoff-results.js", "organizational-approvals.js", "collaboration-notifications.js",
         "shared-matters.js", "shared-materials.js", "shared-conversation.js", "shared-notifications.js",
         "connections.js", "organization.js", "organization-forms.js", "workspace-files.js", "workspace-chat.js", "proactive.js", "work-tasks.js", "task-definitions.js",
-        "capabilities.js",
+        "capabilities.js", "accounts.js",
         "finance.js", "finance_settlement.js", "finance_compliance.js", "finance_operations.js", "finance_funding.js", "finance_records.js", "finance_materials.js",
     }
 
@@ -71,7 +71,8 @@ def test_console_can_stop_a_streaming_turn() -> None:
 def test_identity_controls_exist() -> None:
     """登录入口、员工身份、退出、用户过滤和分页都具备可访问的控件。"""
     html = (static_dir() / "index.html").read_text(encoding="utf-8")
-    for name in ("feishu-login", "login-error", "current-user", "logout", "tab-users",
+    for name in ("feishu-login", "password-login", "password-setup", "change-password", "account-create",
+                 "login-error", "current-user", "logout", "tab-users",
                  "users-status", "users-role", "users-unverified", "users-more"):
         assert f'id="{name}"' in html
     assert "用飞书登录" in html

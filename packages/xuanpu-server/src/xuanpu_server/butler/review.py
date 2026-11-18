@@ -13,6 +13,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from xuanpu_server.butler.budget import ButlerBudgetError, TraceUsage, check_butler_turn
+from xuanpu_server.butler.limits import budget_config
 from xuanpu_server.butler.proxy import check_proxy
 from xuanpu_server.butler.turn import ButlerTurn, WakeContext
 from xuanpu_server.errors import NotFoundError, PlatformError
@@ -43,7 +44,8 @@ class Reviewer:
         """在确定性结论上加复核；能代答或需转问时改写动作，不改写验收结论。"""
         owner = TraceOwnerOf.of(dispatch)
         try:
-            check_butler_turn(self._platform.butler_config, await self._usage(owner, dispatch))
+            config = await budget_config(self._platform, owner, dispatch.trace_id)
+            check_butler_turn(config, await self._usage(owner, dispatch))
         except ButlerBudgetError as exc:
             logger.info("管家复核跳过（%s）", exc.reason)
             return base

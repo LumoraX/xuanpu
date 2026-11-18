@@ -5,10 +5,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
+import httpx
+
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from .client import _Http
+
+
+# 管家一轮在服务端最长 90 秒（安排编组这类慢的一轮在真实模型下接近上限）；
+# 这个请求至少等这么久，比 SDK 默认的 60 秒长，否则服务端还在处理，客户端先断开。
+BUTLER_TIMEOUT_SECONDS = 120.0
 
 
 def trace_path(trace_id: str) -> str:
@@ -30,11 +37,18 @@ class TraceClient:
         ``request_id`` 必填：同键同体回原回执，同键不同体服务端返回 409。回执 ``mode`` 为
         ``butler``（含 ``trace_id`` 与 ``dispatches``）或 ``route``（租户未开启管家）。
         管家派工不等匠人结果。
+
+        管家常在线（ADR 0020）：``state`` 为 ``done`` 时回执完整；为 ``running`` 时这一轮还在
+        平台里继续（只含 ``request_id`` 与 ``trace_id``），之后回复写进主对话——可以用同一
+        ``request_id`` 再调一次取最终回执，或跟随 ``trace_id`` 的进展。
         """
         body: dict[str, Any] = {"request_id": request_id, "text": text, "timezone": timezone}
         if input_files:
             body["input_files"] = input_files
-        return await self._http.request("POST", "/v1/assistant/messages", json=body)
+        # 取客户端超时与管家下限中较长的一个：调用方显式给了更长的超时就照用
+        timeout = httpx.Timeout(max(self._http.timeout, BUTLER_TIMEOUT_SECONDS), connect=30.0)
+        return await self._http.request("POST", "/v1/assistant/messages", json=body,
+                                        timeout=timeout)
 
     async def list_butler_pending(self) -> list[dict[str, Any]]:
         """本人仍待处理的项（``GET /v1/assistant/pending``）：匠人的问题与需要审批的提示。"""

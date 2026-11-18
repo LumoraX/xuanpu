@@ -1,4 +1,4 @@
-"""桌面接力记录的构造与确认码（ADR 0019）；流程见 ``identity.desktop``。
+"""桌面接力记录的构造与确认码（ADR 0021）；流程见 ``identity.desktop``。
 
 单独成模块：``identity.login`` 在飞书回调时建接力记录，``identity.desktop`` 又依赖 ``identity.login``，
 放在这里两边都能直接导入，不成环。

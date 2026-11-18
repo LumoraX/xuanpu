@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -69,6 +70,16 @@ async def test_proposal_stays_pending_confirmation(butler: dict[str, Any], step:
     assert any(item["proposal_id"] == "p1" for item in pending["items"])
 
 
+async def test_opening_a_list_does_not_claim_confirmation(butler: dict[str, Any], step: Any) -> None:
+    """只打开列表：工具结果 needs_confirmation 为假，回执带列表标记而没有待确认标识。"""
+    world = butler["world"]
+    world.models.script(step(calls=[("c1", "propose", {"choice": {
+        "package": "@reminders", "entry": "manage", "message": None}})]), step(text="已打开提醒列表。"))
+    receipt = await _say(butler, "打开我的提醒列表")
+    assert receipt["open_reminders"] is True and receipt.get("proposal_id") is None
+    assert '"needs_confirmation": false' in str(world.models.requests[-1])
+
+
 async def test_propose_rejects_business_packages(butler: dict[str, Any], step: Any) -> None:
     """propose 只接受内置能力；拿业务包当草稿会被拒，不建会话也不派工。"""
     world = butler["world"]
@@ -78,6 +89,42 @@ async def test_propose_rejects_business_packages(butler: dict[str, Any], step: A
     receipt = await _say(butler, "帮我处理工单")
     assert receipt["dispatches"] == [] and receipt["session_id"] is None
     assert "企业业务请交给匠人" in str(world.models.requests[-1])
+
+
+async def test_propose_describes_native_draft_formats(butler: dict[str, Any], step: Any) -> None:
+    """propose 的说明带内置能力的准确包名与草稿字段（真实模型验收中缺了它，模型只能猜）。"""
+    world = butler["world"]
+    world.models.script(step(text="好的。"))
+    await _say(butler, "你好")
+    propose = next(t for t in world.models.requests[-1].tools if t.name == "propose")
+    for marker in ("@reminders/create", "reminder字段", "@workspace/create", "workspace_draft",
+                   "kind=todo", "kind=event", "@proactive/action", "@connections/manage"):
+        assert marker in propose.description, marker
+
+
+async def test_propose_validation_error_names_fields_without_values(
+    butler: dict[str, Any], step: Any,
+) -> None:
+    """草稿结构不对时，错误说明哪个字段错了，便于模型改正；不回显取值。"""
+    world = butler["world"]
+    bad = {"package": "@reminders", "entry": "create", "remind_at": "机密-取值-不回显"}
+    world.models.script(step(calls=[("c1", "propose", {"choice": bad})]), step(text="请再说一下时间。"))
+    receipt = await _say(butler, "明天提醒我")
+    assert receipt["dispatches"] == [] and receipt.get("proposal_id") is None
+    # 只看工具结果本身（模型自己的调用参数里当然有原值）
+    outputs = re.findall(r"output='(invalid_arguments: [^']*)'", str(world.models.requests[-1]))
+    assert outputs == ["invalid_arguments: remind_at: Extra inputs are not permitted"]
+
+
+async def test_propose_explains_entry_glued_into_package(butler: dict[str, Any], step: Any) -> None:
+    """把入口拼进包名（@workspace/create）：错误列出合法包名并说明入口单独写，不叫模型去找匠人。"""
+    world = butler["world"]
+    bad = {"package": "@workspace/create", "entry": "event", "message": None}
+    world.models.script(step(calls=[("c1", "propose", {"choice": bad})]), step(text="请稍等。"))
+    await _say(butler, "下周三下午开会")
+    sent = str(world.models.requests[-1])
+    assert "package 不对" in sent and "@workspace" in sent and "entry" in sent
+    assert "企业业务请交给匠人" not in sent.split("package 不对", 1)[1][:200]
 
 
 async def test_butler_tools_have_no_business_or_host_tools(butler: dict[str, Any]) -> None:

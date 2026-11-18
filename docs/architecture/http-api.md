@@ -142,11 +142,16 @@ X-Xuanpu-Act-As: usr_5f0c1b2e7d9a4c3b8e6f1a20
 | `GET /v1/auth/feishu/login?tenant=&return_to=` | 无 | 开始飞书登录，302 到飞书授权页 |
 | `GET /v1/auth/feishu/callback` | 无 | 飞书授权页跳回，完成登录，302 到 `return_to` 或落地页 |
 | `POST /v1/auth/logout` | 浏览器登录 | 退出：删掉当前登录会话，清 cookie |
+| `GET /v1/auth/methods?tenant=` | 无 | 租户可用的登录方式 |
+| `POST /v1/auth/password/login` | 无（要 `X-Requested-By`） | 用户名口令登录，写登录 cookie |
+| `POST /v1/auth/password/setup/inspect` · `POST /v1/auth/password/setup` | 无（要 `X-Requested-By`） | 查看设置链接；兑现设置链接、设口令并登录 |
+| `POST /v1/me/password` | 浏览器登录 | 改自己的口令，换发登录 cookie |
 | `GET /v1/identity/feishu` · `PUT /v1/identity/feishu` | 租户管理员 | 本租户的飞书配置 |
 | `POST /v1/identity/feishu/events/{tenant_id}` | 飞书的签名 | 飞书事件回调：URL 验证、员工离职 |
 | `GET /v1/users?status=&role=&unverified=&after=&limit=` | 租户管理员 | 列出员工 |
 | `GET /v1/users/{user_id}` | 租户管理员或本人 | 取员工 |
 | `PUT /v1/users/{user_id}/role` · `PUT /v1/users/{user_id}/status` | 租户管理员 | 改员工的角色；停用或启用员工 |
+| `POST /v1/users` · `POST /v1/users/{user_id}/password-link` | 租户管理员 | 开通玄圃账号并返回设置链接；给员工签发设置链接 |
 | `POST /v1/admin/tenants` | 平台管理员 | 新建租户 |
 | `GET /v1/admin/tenants` | 平台管理员 | 列出租户 |
 | `PUT /v1/admin/tenants/{id}/status` | 平台管理员 | 启用或停用租户 |
@@ -261,7 +266,7 @@ Cookie: __Host-xuanpu_login=…
 
 ### 桌面客户端的浏览器接力
 
-桌面客户端的 WebView 里，飞书授权常被飞书 App 或系统浏览器接手，回调落在系统浏览器。客户端因此以 `client=desktop` 开始登录，由浏览器完成授权与确认、WebView 换取登录会话（[ADR 0019](../decisions/0019-desktop-browser-handoff-login.md)）。`client` 只收 `browser` 与 `desktop`，其他值 `400`。没带 `client` 时按用户代理判断：带 `XuanpuDesktop/` 标记（桌面客户端的 WebView 附加）的按 `desktop`，其余按 `browser`；伪造标记只会让自己走接力，不扩大权限。
+桌面客户端的 WebView 里，飞书授权常被飞书 App 或系统浏览器接手，回调落在系统浏览器。客户端因此以 `client=desktop` 开始登录，由浏览器完成授权与确认、WebView 换取登录会话（[ADR 0021](../decisions/0021-desktop-browser-handoff-login.md)）。`client` 只收 `browser` 与 `desktop`，其他值 `400`。没带 `client` 时按用户代理判断：带 `XuanpuDesktop/` 标记（桌面客户端的 WebView 附加）的按 `desktop`，其余按 `browser`；伪造标记只会让自己走接力，不扩大权限。
 
 ```
 GET /v1/auth/feishu/login?tenant=acme&client=desktop          # WebView 里
@@ -432,7 +437,45 @@ PUT /v1/users/{user_id}/status
 | 要降级或停用的是最后一名启用的管理员 | `409 conflict` |
 | 取值不在上面列的范围里、缺字段或有多余的字段 | `400 invalid_request` |
 
-**第一个管理员**：员工先飞书登录一次（成为普通成员），持租户管理员 API key 的人（平台管理员可以用 `POST /v1/admin/tenants/{id}/keys` 签发这把 key）调 `PUT /v1/users/{user_id}/role` 把他设为管理员；之后管理员之间互相设置。最后一名管理员离职被停用时也这样重新指定。
+**第一个管理员**：持租户管理员 API key 的人（平台管理员可以用 `POST /v1/admin/tenants/{id}/keys` 签发这把 key）调 `POST /v1/users` 直接开通一名 `tenant_admin` 的玄圃账号（见[玄圃账号](#玄圃账号)）；或者员工先飞书登录一次（成为普通成员），再调 `PUT /v1/users/{user_id}/role` 把他设为管理员。之后管理员之间互相设置。最后一名管理员离职被停用时也这样重新指定。
+
+## 玄圃账号
+
+用户名口令账号（ADR 0019），规则见[账号体系](accounts.md)。
+
+```
+POST /v1/users                          # 租户管理员
+{"username": "Zhang.San", "display_name": "张三", "role": "tenant_member"}
+→ 201 {"user": {员工对象}, "setup_link": {"url": "<public_url>/console/#password_setup=<令牌>",
+        "user_id": "usr_…", "username": "zhang.san", "purpose": "setup", "expires_at": …}}
+
+POST /v1/users/{user_id}/password-link  # 租户管理员；没开通用户名的员工必须给 username
+{"username": "zhang.san"}               # 已开通的可省略，不能改名
+→ 200 {同上的 setup_link 对象；已设过口令的 purpose 为 "reset"}
+```
+
+```
+GET  /v1/auth/methods?tenant=acme       → {"tenant": "acme", "password": true, "feishu": false}
+POST /v1/auth/password/setup/inspect    {"token": "…"}
+     → {"tenant_id", "username", "display_name", "purpose", "expires_at"}
+POST /v1/auth/password/setup            {"token": "…", "password": "…"}
+POST /v1/auth/password/login            {"tenant": "acme", "username": "…", "password": "…"}
+POST /v1/me/password                    {"current_password": "…", "new_password": "…"}
+     → 200 {"tenant_id", "user_id"}，Set-Cookie 写登录 cookie，Cache-Control: no-store
+```
+
+`tenant` 省略时用 `identity.default_tenant`。登录、查看与兑现链接三个接口不需要凭据，但必须带 `X-Requested-By: xuanpu`，带了 `Origin` 的必须等于 `public_url`。`POST /v1/me/password` 只接受浏览器登录。
+
+| 情况 | 响应 |
+| --- | --- |
+| 用户名不存在、口令错、锁定中、员工或租户停用（不区分） | `401 unauthenticated`「用户名或口令不正确」 |
+| 设置链接无效、过期、已兑现或员工已停用 | `401 unauthenticated` |
+| 改口令时当前口令不对 | `401 unauthenticated` |
+| 缺 `X-Requested-By` 或 `Origin` 不符 | `403 csrf_rejected` |
+| 不是租户管理员（开通、签发） | `403 permission_denied` |
+| 用户名或口令不合规则；需要用户名却没给；想改用户名；没有配置 `public_url`；用 API key 改口令 | `400 invalid_request` |
+| 用户名已被占用；给停用的员工签发 | `409 conflict` |
+| 口令计算排队超时 | `503 runtime_unavailable` |
 
 ## 租户
 
@@ -1010,9 +1053,9 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 
 `POST /v1/assistant/messages`：员工对管家说一句话。认证同 `/v1/assistant/route`。请求体：`request_id`（必填，1–80 字符 `[a-zA-Z0-9_.:-]`）、`text`（1–8000 字符）、`timezone`（IANA，默认 Asia/Shanghai）、`input_files`（本人文件版本 `{item_id, revision}`，最多 8 个，派工材料只能从中选）；多余字段 422。
 
-- 租户开启管家（且开启执行追踪）且调用方是员工：回执 `mode=butler`，含 `request_id`、`trace_id`、`message`、与 `/v1/assistant/route` 同名的草稿与打开字段（有草稿时 `proposal_id=request_id`，经 `/v1/assistant/proposals` 确认）、`dispatches`（`dispatch_id`、`package`、`entry`、`state`、`host`）、`groups`（本轮提交或回放的编组标识，R5-D）。派工与编组都不等匠人结果。
+- 租户开启管家（且开启执行追踪）且调用方是员工：请求至多等 `butler.reply_window_seconds`（默认 20 秒）。这一轮还没办完时回 `{"mode": "butler", "state": "running", "request_id", "trace_id"}`，这一轮在平台里继续，结束后回复写进主对话（`GET /v1/workspace/messages` 按游标可读），也可用同一标识再调一次取最终回执。办完时回执 `mode=butler`、`state=done`，含 `request_id`、`trace_id`、`message`、与 `/v1/assistant/route` 同名的草稿与打开字段（有草稿时 `proposal_id=request_id`，经 `/v1/assistant/proposals` 确认）、`dispatches`（`dispatch_id`、`package`、`entry`、`state`、`host`）、`groups`（本轮提交或回放的编组标识，R5-D）。派工与编组都不等匠人结果。
 - 否则：原样走分流，回执为 `/v1/assistant/route` 的响应加 `mode=route`。
-- 同一 `request_id` 同体回原回执、不再采样；不同体或仍在处理中 409。管家失败 503 `runtime_unavailable`，原话已在主对话，可用同一标识重试。派工预算超限不报错给员工，由管家在答复里说明（工具错误 `butler_budget_exceeded`）。
+- 同一 `request_id` 同体回原回执、不再采样；不同体 409；同一实例上仍在处理中回进行中回执，别的实例上仍在处理中 409。回复窗口内管家失败 503 `runtime_unavailable`，原话已在主对话，可用同一标识重试；窗口过后的失败写进主对话。一轮到时限（默认 300 秒，管家可延长）是正常结局，回复说明先停下，不报错。客户端读超时应长于回复窗口：Python SDK 的 `send_to_butler` 至少等 120 秒。派工预算超限不报错给员工，由管家在答复里说明（工具错误 `butler_budget_exceeded`）。
 - 回执另含 `answered_pending`：本句被管家认出是对某个待处理问题的答复时，列出转给匠人的待处理项标识（转的是原话）。
 
 ### 待本人处理项（R5-C2）

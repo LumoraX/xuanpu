@@ -29,7 +29,7 @@
   - `cd ../taifeng-sandbox && uv run pytest -q`
   - `uv run pytest -q && uv run ruff check --select F,S108,I,TC packages && uv run mypy packages/*/src && uv lock --check`
 - [x] 新失败逐个查根因；属于内核缺口的记 backlog，不 monkeypatch。（见「实际差异」表，均为内核修复带来的正确新行为）
-- [ ] 真实模型验收脚本各跑一次（工单查询、审批写入、办公任务），结果记入 `docs/guides/releases/`。（**阻塞**：本环境没有真实模型凭据）
+- [ ] 真实模型验收脚本各跑一次（工单查询、审批写入、办公任务），结果记入 `docs/guides/releases/`。（部分：工单查询与审批写入已在真实模型上通过——审批写入经管家派工、员工批准、匠人写入、交付主对话全程核对，见 [R5 剩余验收](../../guides/releases/2026-11-17-r5-remaining-acceptance.md)；办公任务需要办公容器，本机未跑，CI 全量含办公容器用例）
 - [x] 提交 `chore: 内核升级到 2026.11.14.1 并补事件兼容契约`。（适配代码随 `fab795b`；本提交刷新 `uv.lock`、删除缺口第 31 项）
 
 ## 进度

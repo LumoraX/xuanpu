@@ -444,6 +444,30 @@ P1 控制面迁移为 `0004_identity.sql`，增加用户、外部身份、登录
 
 首次升级后的飞书应用、权限、密钥与首位管理员配置见[接入飞书登录](feishu-login.md)。对账未验证标记需要人工处理，不能根据查不到用户就手工批量停用。
 
+### 桌面接力迁移改号（0026 → 0027）
+
+桌面客户端浏览器接力（ADR 0021）的表结构曾以 `0026_desktop_handoff` 单独部署到生产，与主线的 `0026_local_credential`（玄圃自有账号）撞号，合并后改为 `0027_desktop_handoff`。**只有执行过旧 `0026_desktop_handoff` 的库**需要在升级到合并后的版本前做一次对账；其他库照常迁移即可。
+
+直接迁移会报「迁移 0026 已执行，但脚本内容与执行时不同」并拒绝执行，不会改动数据。先确认是这种情况：
+
+```bash
+docker compose exec -T postgres psql -U xuanpu -d xuanpu -At \
+  -c "SELECT version, name FROM xp_schema_migrations WHERE version >= 26 ORDER BY version"
+# 26|desktop_handoff        ← 只有这一行时才需要对账
+```
+
+停平台、按上文备份后，删掉台账里的这一行，再正常迁移：
+
+```bash
+docker compose exec -T postgres psql -U xuanpu -d xuanpu \
+  -c "DELETE FROM xp_schema_migrations WHERE version = 26 AND name = 'desktop_handoff'"
+docker compose --profile operations run --rm migrate
+# 已执行 0026_local_credential
+# 已执行 0027_desktop_handoff
+```
+
+`0027_desktop_handoff` 全部是 `IF NOT EXISTS`，已有的 `client` 列与 `desktop_handoff` 表及其中数据原样保留。只删 `name = 'desktop_handoff'` 的那一行；台账里 26 已是 `local_credential` 的库不要动。
+
 ### P0 状态面升级
 
 第一版里业务包解在共享的数据目录 `packages/` 下，会话主存是数据目录 `threads/` 下的 JSONL 文件，`state.backend: postgres` 只是把消息另外镜像进库。升级后：
@@ -769,9 +793,9 @@ R2配置中的`task_activity.enabled`控制工作动态通知，默认false；`t
 
 当前源码新增 `0022_butler_dispatch`（尚未正式部署）：一次派工一行，按租户与员工归属（复合外键到员工表），只存管家交给匠人的任务说明与材料引用；匠人的正文与结果仍在其任务或会话里。
 
-`butler` 构造配置：enabled 默认 false；tenants 默认 []，空始终关闭；max_artisans_per_trace 默认 4（1–16）；max_butler_turns_per_trace 默认 8（1–64）；max_tokens_per_trace 默认 400000（1000–20000000，管家与匠人合计，用量未知时不放行派工）；max_active_traces_per_tenant 默认 50（1–10000）。超限时不建派工记录，管家在答复里说明。名单内租户必须同时在 `execution_trace` 中开启，否则配置加载失败（「butler 租户须同时在 execution_trace 中开启」）。
+`butler` 构造配置：enabled 默认 false；tenants 默认 []，空始终关闭；max_artisans_per_trace 默认 4（1–16）；max_butler_turns_per_trace 默认 8（1–64）；max_tokens_per_trace 默认 400000（1000–20000000，管家与匠人合计，用量未知时不放行派工）；max_active_traces_per_tenant 默认 50（1–10000）。超限时不建派工记录，管家在答复里说明。R6 起前三项是**起始预算**，管家可用 `raise_budget` 说明理由提高到 max_tokens_per_trace_ceiling（默认 20000000，最大 10 亿）、max_butler_turns_per_trace_ceiling（默认 64，最大 1000）、max_artisans_per_trace_ceiling（默认 16，最大 64），上限不得小于起始值；租户每日 token 配额仍是硬上限。reply_window_seconds 默认 20（1–120），请求最多等这么久，没办完先回进行中；turn_seconds 默认 300（10–86400）为一轮的默认时限，max_turn_seconds 默认 86400（60–604800，不得小于 turn_seconds）为管家用 `extend_turn` 能延到的上限。延长与提高都记审计（`butler_turn_extended`、`butler_budget_raised`）。名单内租户必须同时在 `execution_trace` 中开启，否则配置加载失败（「butler 租户须同时在 execution_trace 中开启」）。
 
-开启后，名单内租户的员工经 `POST /v1/assistant/messages` 对管家说话（见[管家](../architecture/butler.md)）；未开启的租户同一入口走既有分流。管家引擎每租户一个，线程文件在 `<data_dir>/butler/<租户目录>/threads`，每轮新建、结束即释放；管家处理失败记标准错误日志「管家处理失败」并返回 503，员工原话已保留。
+开启后，名单内租户的员工经 `POST /v1/assistant/messages` 对管家说话（见[管家](../architecture/butler.md)）；未开启的租户同一入口走既有分流。管家引擎每租户一个，线程文件在 `<data_dir>/butler/<租户目录>/threads`，每轮新建、结束即释放；一轮在平台后台任务里跑，进行中每 20 秒续一次认领租约。管家处理失败记标准错误日志「管家处理失败」：回复窗口内返回 503，窗口过后写进员工主对话，原话都已保留。进程中途退出时，进行中的一轮在租约（60 秒）过期后由唤醒循环按同一请求标识重跑一次。
 
 R5-C2 新增 `0023_butler_wakeup`（尚未正式部署）：`butler_event`（唤醒事件，按派工与宿主事实去重、带处理决定与确认标记）与 `butler_pending`（待本人处理项与代答记录，含答复原文及出处），均按租户与员工归属，外键到派工与员工表；另给派工表加进行中派工的部分索引。`butler.wake_interval_seconds` 默认 2（0.2–300）：平台每隔这么久对开启管家的租户对账一次匠人是否结束或提问并处理唤醒事件；单轮失败记「管家唤醒处理失败，下一轮重试」。唤醒后的复核会再跑一轮管家，计入 `max_butler_turns_per_trace` 与 token 上限，超限时只做确定性验收后交付。员工侧用法见[管家使用说明](butler.md)。
 

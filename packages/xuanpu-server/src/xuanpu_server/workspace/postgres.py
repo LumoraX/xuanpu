@@ -379,6 +379,19 @@ class PostgresWorkspaceStore:
         found = [json.loads(row["record"]) for row in rows]
         return list(reversed(found)) if latest else found
 
+    async def stale_routes(self, tenant: str, prefix: str, now: float, *,
+                           limit: int = 50) -> list[tuple[str, str, dict[str, Any]]]:
+        """按租户与请求键前缀查认领中、租约已过期的路由认领。"""
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(
+                f"SELECT user_id,request_id,result FROM {self._t['workspace_request']} "
+                "WHERE tenant_id=$1 AND starts_with(request_id,$2) AND result->>'state'='claimed' "
+                "AND (result->>'lease_until')::float8 > 0 AND (result->>'lease_until')::float8 < $3 "
+                "ORDER BY user_id,request_id LIMIT $4",
+                tenant, prefix, now, limit,
+            )
+        return [(row["user_id"], row["request_id"], dict(json.loads(row["result"]))) for row in rows]
+
     async def find_message(self, tenant: str, user: str, request_id: str) -> dict[str, Any] | None:
         """按员工与请求唯一索引读取，避免扫描历史对话。"""
         async with self._pool.acquire() as conn:

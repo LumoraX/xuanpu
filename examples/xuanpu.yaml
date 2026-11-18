@@ -216,9 +216,15 @@ approvals:
 # butler:
 #   enabled: false
 #   tenants: []                        # 必须同时显式开启并列出租户，空名单始终关闭
-#   max_artisans_per_trace: 4          # 1–16；一次请求最多派出的匠人数
-#   max_butler_turns_per_trace: 8      # 1–64；一次请求里管家最多处理几轮（含被唤醒）
-#   max_tokens_per_trace: 400000       # 1000–20000000；管家与匠人合计
+#   max_artisans_per_trace: 4          # 1–16；一次请求起始可派出的匠人数（管家可用 raise_budget 提高）
+#   max_butler_turns_per_trace: 8      # 1–64；一次请求里管家起始可处理几轮（含被唤醒）
+#   max_tokens_per_trace: 400000       # 1000–20000000；起始 token 预算，管家与匠人合计
+#   max_artisans_per_trace_ceiling: 16         # 1–64；管家最多能把匠人数提到多少（R6）
+#   max_butler_turns_per_trace_ceiling: 64     # 1–1000
+#   max_tokens_per_trace_ceiling: 20000000     # 1000–1000000000；租户每日配额仍是硬上限
+#   reply_window_seconds: 20           # 1–120；请求最多等多久，没办完先回「进行中」（R6）
+#   turn_seconds: 300                  # 10–86400；一轮的默认时限
+#   max_turn_seconds: 86400            # 60–604800；管家用 extend_turn 最多延到多久
 #   max_active_traces_per_tenant: 50   # 1–10000；企业同时进行中的派工请求数
 #   wake_interval_seconds: 2.0         # 0.2–300；多久对账一次匠人是否结束或提问（R5-C2 唤醒）
 #   max_group_members: 4               # 1–8；编组每一步最多几位匠人（R5-D）

@@ -13,13 +13,20 @@ import taifeng
 from pydantic import ValidationError
 
 from xuanpu_server.assistant_proposals import NATIVE_PACKAGES, resolve_native_choice
+from xuanpu_server.assistant_reminders import REMINDER_PROMPT
+from xuanpu_server.assistant_task_definitions import TASK_DEFINITION_PROMPT
+from xuanpu_server.assistant_workspace import WORKSPACE_PROMPT
 from xuanpu_server.butler.groups.tools import GROUP_PLAN_SCHEMA
+from xuanpu_server.collaboration.routing import COLLABORATION_PROMPT
 from xuanpu_server.errors import PlatformError
+from xuanpu_server.proactive.models import PROACTIVE_ROUTING
+from xuanpu_server.shared_matters.routing import SHARED_PROMPT
 from xuanpu_server.work_tasks.models import InputFile
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
+    from xuanpu_server.assistant_reminders import RouteOutcome
     from xuanpu_server.butler.dispatcher import Dispatcher
     from xuanpu_server.butler.groups.runner import GroupRunner
     from xuanpu_server.butler.pending import PendingService
@@ -30,10 +37,26 @@ if TYPE_CHECKING:
 
 TOOL_NAMES = ("propose", "read_personal", "list_artisans", "dispatch_artisan", "check_dispatch",
               "cancel_dispatch", "answer_pending", "answer_artisan", "ask_user",
-              "dispatch_group", "cancel_group", "check_group", "rate_divergence")
+              "dispatch_group", "cancel_group", "check_group", "rate_divergence",
+              "extend_turn", "raise_budget")
 _WAKE_ONLY = frozenset({"answer_artisan", "ask_user"})
-_ANY_TURN = frozenset({"read_personal", "list_artisans", "check_dispatch", "check_group"})
+_ANY_TURN = frozenset({"read_personal", "list_artisans", "check_dispatch", "check_group",
+                       "extend_turn", "raise_budget"})
 _LIST_MAX = 20
+_ERRORS_MAX = 8
+# propose 的 choice 结构：与分流共用同一份内置能力约定（包名带 @，草稿字段名固定），
+# 不另写一份，避免两处漂移。真实模型验收发现缺了它时模型只能猜包名与字段。
+PROPOSE_DESCRIPTION = (
+    "提出一个平台内置能力的待确认草稿（提醒、待办、日程、事项、文件夹、执行安排、交接、共享、"
+    "业务跟进）或打开对应列表。草稿须员工本人确认。choice 只含 package、entry、message 与下列"
+    "草稿字段之一；package 与 entry 必须用下列约定里的准确标识（带 @），message 填 null，"
+    "给员工的话写在你自己的回复里。约定如下：\n"
+    + REMINDER_PROMPT + WORKSPACE_PROMPT + TASK_DEFINITION_PROMPT + PROACTIVE_ROUTING
+    + SHARED_PROMPT + COLLABORATION_PROMPT
+    # 企业连接在分流里是目录条目而非提示词，这里补一句同义约定
+    + "\n本人企业只读连接（绑定企业微信、查看或撤销授权）选择@connections/manage，只打开本人连接页；"
+    "企业未开通时平台会拒绝，如实说明即可。"
+)
 
 
 def _refusal(name: str, turn: ButlerTurn) -> str | None:
@@ -53,6 +76,21 @@ def _json(data: object) -> str:
     return json.dumps(data, ensure_ascii=False, default=str)
 
 
+def has_draft(outcome: RouteOutcome) -> bool:
+    """是否带待确认草稿（只打开列表的不算）。"""
+    return any((outcome.reminder_draft, outcome.workspace_draft, outcome.proactive_draft,
+                outcome.task_definition_draft, outcome.shared_draft, outcome.handoff_draft))
+
+
+def _validation_summary(exc: ValidationError) -> str:
+    """参数校验错误：只给字段位置与原因，不回显取值，便于模型自行改正。"""
+    errors = exc.errors(include_url=False, include_input=False, include_context=False)
+    parts = [f"{'.'.join(str(p) for p in e['loc']) or '(根)'}: {e['msg']}" for e in errors[:_ERRORS_MAX]]
+    if len(errors) > _ERRORS_MAX:
+        parts.append(f"另有 {len(errors) - _ERRORS_MAX} 处")
+    return "; ".join(parts)
+
+
 class ButlerTools:
     """构造管家工具；处理函数共用平台、派工与本轮登记表。"""
 
@@ -69,10 +107,9 @@ class ButlerTools:
     def specs(self) -> list[taifeng.ToolSpec]:
         """全部管家工具。"""
         return [
-            self._spec("propose", "提出一个平台内置能力的待确认草稿（提醒、待办、日程、事项、文件夹、"
-                       "执行安排、交接、共享、业务跟进）或打开对应列表。草稿须员工本人确认。",
+            self._spec("propose", PROPOSE_DESCRIPTION,
                        {"choice": {"type": "object", "description":
-                                   "与内置能力选择同结构：package、entry 及对应草稿字段"}},
+                                   "package、entry（按工具说明里的约定）、message=null 及对应草稿字段"}},
                        ["choice"], self._propose),
             self._spec("read_personal", "查本人的提醒或进行中的工作（只读）。",
                        {"kind": {"type": "string", "enum": ["reminders", "work_tasks"]}},
@@ -92,6 +129,7 @@ class ButlerTools:
                        self._check_dispatch, parallel=True),
             *self._c2_specs(),
             *self._group_specs(),
+            *self._limit_specs(),
             self._spec("rate_divergence", "（仅会诊比对时）登记各位匠人结论的分歧度与综合。",
                        {"level": {"type": "string", "enum": ["low", "medium", "high"],
                                   "description": "low 措辞差异；medium 评估不同；high 结论矛盾"},
@@ -109,14 +147,34 @@ class ButlerTools:
 
         handlers = GroupTools(self._groups)
         return [
-            self._spec("dispatch_group", "需要多位匠人时提交一份编组计划：每步并行（parallel，各做一部分）"
-                       "或接力（relay，前一位的成果摘要交给后一位）；立即返回，不等结果。",
+            self._spec("dispatch_group", "需要多位匠人时提交一份编组计划：每步并行（parallel，各做一部分）、"
+                       "接力（relay，前一位的成果摘要交给后一位）或会诊（consult，就同一问题各自给结论，"
+                       "全部给完后比对）；第一步的 when 写 null。立即返回，不等结果。",
                        {"plan": GROUP_PLAN_SCHEMA}, ["plan"], handlers.dispatch_group),
             self._spec("cancel_group", "请求停止一个编组的全部未结束成员；以匠人实际停下为准。",
                        {"group_id": {"type": "string"}}, ["group_id"], handlers.cancel_group),
             self._spec("check_group", "查一个编组的进展。",
                        {"group_id": {"type": "string"}}, ["group_id"], handlers.check_group,
                        parallel=True),
+        ]
+
+    def _limit_specs(self) -> list[taifeng.ToolSpec]:
+        """管家调整自己的时限与这次请求的预算（R6-B、R6-C）。"""
+        from xuanpu_server.butler.limits import LimitTools
+
+        handlers = LimitTools(self._platform)
+        return [
+            self._spec("extend_turn", "这件事你还需要更多时间亲自处理时，说明理由并延长本轮时限"
+                       "（从现在起再给 seconds 秒，有上限）。长的工作优先拆成派工或编组。",
+                       {"seconds": {"type": "integer", "minimum": 1},
+                        "reason": {"type": "string", "description": "为什么还需要这些时间"}},
+                       ["seconds", "reason"], handlers.extend_turn),
+            self._spec("raise_budget", "这件事需要比起始预算更多的 token、管家处理轮数或匠人时，说明理由"
+                       "把这次请求的该项预算提高到 to（只能提高，有上限；企业每日用量配额不变）。",
+                       {"budget": {"type": "string", "enum": ["tokens", "butler_turns", "artisans"]},
+                        "to": {"type": "integer", "minimum": 1},
+                        "reason": {"type": "string", "description": "为什么需要更多"}},
+                       ["budget", "to", "reason"], handlers.raise_budget),
         ]
 
     def _c2_specs(self) -> list[taifeng.ToolSpec]:
@@ -154,7 +212,9 @@ class ButlerTools:
                 return await handler(turn, args, ctx.call_id)
             except PlatformError as exc:
                 return taifeng.ToolResult.error(f"{exc.code}: {exc.message}")
-            except (ValidationError, ValueError) as exc:
+            except ValidationError as exc:
+                return taifeng.ToolResult.error(f"invalid_arguments: {_validation_summary(exc)}")
+            except ValueError as exc:
                 return taifeng.ToolResult.error(f"invalid_arguments: {type(exc).__name__}")
 
         schema = {"type": "object", "properties": properties, "required": required,
@@ -170,6 +230,12 @@ class ButlerTools:
             return taifeng.ToolResult.error("本轮已经提出过一个草稿")
         choice = Choice.model_validate_json(json.dumps(args.get("choice")))
         if choice.package not in NATIVE_PACKAGES:
+            # 以 @ 开头多半是把入口拼进了包名（如 @workspace/create）：说清合法取值，模型才能改正
+            # （真实模型下出现过，旧提示「企业业务请交给匠人」让模型放弃了草稿）
+            if (choice.package or "").startswith("@"):
+                return taifeng.ToolResult.error(
+                    "package 不对：只能是 " + "、".join(sorted(NATIVE_PACKAGES))
+                    + " 之一，不含入口；入口（如 create、manage）单独写在 entry 里")
             return taifeng.ToolResult.error("propose 只用于平台内置能力；企业业务请交给匠人")
         outcome = await resolve_native_choice(
             self._platform, turn.who, choice, now=self._now(), request_id=turn.request_id,
@@ -177,7 +243,9 @@ class ButlerTools:
         if outcome is None:
             return taifeng.ToolResult.error("这个内置能力当前不可用")
         turn.proposal = outcome
-        return taifeng.ToolResult.ok(_json({"card": outcome.message, "needs_confirmation": True}))
+        # 只打开列表时不需要确认；如实告诉模型，免得它对员工说「请确认后查看」
+        return taifeng.ToolResult.ok(_json({"card": outcome.message,
+                                            "needs_confirmation": has_draft(outcome)}))
 
     async def _read_personal(self, turn: ButlerTurn, args: dict[str, Any], _call: str,
                              ) -> taifeng.ToolResult:

@@ -31,6 +31,8 @@ dependencies = [
     "uvicorn>=0.29",
     "cryptography>=42",
     "PyJWT[crypto]>=2.10",
+    # 平台自有账号的口令摘要：argon2id，采用成熟实现不自研（ADR 0003、0019）
+    "argon2-cffi>=23.1",
     # 指标端点的 Prometheus 文本格式
     "prometheus_client>=0.20",
 ]

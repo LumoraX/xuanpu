@@ -26,6 +26,11 @@ from xuanpu_server.objectstore import LocalObjectStore
 from xuanpu_server.workspace.service import WorkspaceService
 
 
+async def _no_turns(_tenant: str) -> int:
+    """本进程不跑管家轮次，没有可重跑的。"""
+    return 0
+
+
 async def pause(marker: str, phase: str) -> None:
     """写阶段标记后永久等待（等父进程 SIGKILL）。标记只含阶段名。"""
     await asyncio.to_thread(Path(marker).write_text, json.dumps({"phase": phase}))
@@ -64,7 +69,8 @@ async def run(config: dict[str, Any]) -> None:
         store=control, dispatches=control.dispatch_store, workspace=workspace,
         identity=SimpleNamespace(store=identity),
         butler_config=ButlerConfig(enabled=True, tenants=tenants),
-        butler=SimpleNamespace(enabled=lambda tenant: tenant in tenants))
+        # 只验唤醒交付：不跑管家轮次，中断轮次的重跑（R6-D）在这里无事可做
+        butler=SimpleNamespace(enabled=lambda tenant: tenant in tenants, resume_stale=_no_turns))
     pending = PendingService(platform, now=time.time)
     wakeup = Wakeup(platform, WakeEffects(platform, pending, now=time.time), None,
                     now=time.time)

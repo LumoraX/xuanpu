@@ -32,6 +32,9 @@ function bootEntry() {
     params.set("return_to", location.pathname);
     location.assign("/v1/auth/feishu/login?" + params);
   });
+  // 用户名口令登录在旧页完成；登录后旧页按 /v1/me 的 entry 字段跳回本页
+  const loginTenant = new URLSearchParams(location.search).get("tenant");
+  if (loginTenant) $("entry-password-login").href = "index.html?tenant=" + encodeURIComponent(loginTenant);
   $("entry-logout").addEventListener("click", () => logoutEntry().catch(report));
   $("entry-notifications").addEventListener("click", () => { if (entry.me) appendCard(notificationCard()); });
   const loginError = new URLSearchParams(location.search).get("login_error");

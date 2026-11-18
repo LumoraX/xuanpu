@@ -108,6 +108,10 @@ class PostgresUserTables:
         self._delivery_table = namespace.table("notification_delivery")
         self._pool = pool
         self._t = {name: namespace.table(name) for name in _TABLES}
+        # 凭据存储复用本模块的 affected，放在这里导入以免循环引用
+        from xuanpu_server.identity.postgres_credentials import PostgresCredentialStore
+
+        self.credentials = PostgresCredentialStore(pool, namespace=namespace)
 
     async def _fetch(self, sql: str, *args: Any) -> list[asyncpg.Record]:
         """取多行。"""

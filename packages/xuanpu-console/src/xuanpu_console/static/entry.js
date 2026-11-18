@@ -4,9 +4,11 @@
 
 const $ = (id) => document.getElementById(id);
 const entry = {
-  epoch: 0, controller: new AbortController(), me: null, sending: false,
-  cards: new Map(), cleanups: new Set(),
+  epoch: 0, controller: new AbortController(), me: null, inflight: 0,
+  cards: new Map(), cleanups: new Set(), seen: 0, shown: new Set(),
 };
+// 管家常在线（ADR 0020）：结果随时可能写进主对话（进行中的一轮结束、匠人回报），按游标补读
+const FOLLOW_MS = 5000;
 
 // 新代际：中止在途请求、关掉流、清空页面上的全部个人状态。
 function resetEntry() {
@@ -17,7 +19,9 @@ function resetEntry() {
   entry.cleanups.clear();
   entry.cards.clear();
   entry.me = null;
-  entry.sending = false;
+  entry.inflight = 0;
+  entry.seen = 0;
+  entry.shown = new Set();
   for (const id of ["overview", "transcript", "tips"]) $(id).replaceChildren();
   $("message").value = "";
   $("entry-user").textContent = "";
@@ -80,8 +84,8 @@ function timezone() {
   catch { return "Asia/Shanghai"; }
 }
 
-function append(role, text) {
-  const node = el("div", text, "msg " + role);
+function append(role, text, extra) {
+  const node = el("div", text, "msg " + role + (extra ? " " + extra : ""));
   $("transcript").appendChild(node);
   return node;
 }
@@ -105,13 +109,16 @@ async function connectEntry() {
     entry.me = me;
     $("entry-user").textContent = me.display_name || "";
     $("entry-login").classList.add("hidden");
+    $("entry-password-login").classList.add("hidden");
     $("entry-main").classList.remove("hidden");
     // 历史与概览各自失败只提示，不当作未登录
     await Promise.all([loadHistory(epoch).catch(report), refreshOverview().catch(report), refreshTips()]);
+    followMessages(epoch);
     return !isStale(epoch);
   } catch (error) {
     if (isStale(epoch) || error.name === "AbortError") return false;
     $("entry-login").classList.remove("hidden");
+    $("entry-password-login").classList.remove("hidden");
     if (error.status !== 401) report(error);
     return false;
   }
@@ -121,10 +128,36 @@ async function connectEntry() {
 async function loadHistory(epoch) {
   const body = await entryApi("GET", "/v1/workspace/messages?latest=true&limit=50");
   if (isStale(epoch)) return;
-  for (const message of body.items || []) {
-    append(message.role === "user" ? "user" : "assistant", message.text);
-    renderMessageCards(message.metadata || {}, message.request_id || "", { restore: true });
-  }
+  for (const message of body.items || []) showMessage(message, { restore: true });
+}
+
+// 主对话里的一条消息：按标识去重（本页已显示过的不再显示），记下游标。
+function showMessage(message, options = {}) {
+  if (typeof message.id === "number") entry.seen = Math.max(entry.seen, message.id);
+  const key = message.request_id || "";
+  if (key && entry.shown.has(key)) return;
+  if (key) entry.shown.add(key);
+  append(message.role === "user" ? "user" : "assistant", message.text);
+  renderMessageCards(message.metadata || {}, key, options);
+}
+
+// 按游标补读主对话的新消息：进行中的一轮结束后的回复、匠人完成后管家的回报、别处说的话。
+function followMessages(epoch) {
+  if (typeof setTimeout !== "function") return;
+  let timer = null;
+  const tick = async () => {
+    if (isStale(epoch)) return;
+    try {
+      const body = await entryApi("GET", "/v1/workspace/messages?after_id=" + entry.seen + "&limit=50");
+      if (isStale(epoch)) return;
+      for (const message of body.items || []) showMessage(message);
+    } catch (error) {
+      if (!isStale(epoch)) report(error);
+    }
+    if (!isStale(epoch)) timer = setTimeout(tick, FOLLOW_MS);
+  };
+  timer = setTimeout(tick, FOLLOW_MS);
+  entry.cleanups.add(() => { if (timer !== null) clearTimeout(timer); });
 }
 
 // 一条助手消息带的卡片：草稿确认卡、列表卡、按钮卡、进展卡。
@@ -139,27 +172,34 @@ function requestId() {
   return "web-" + (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
 }
 
-// 发送：先占位本人原话；管家回执里的草稿与 trace 渲染成卡片。失败时输入回到输入框。
+// 发送：先占位本人原话；不锁输入框，员工可以接着交代下一件事。管家办完的回复与卡片直接显示；
+// 回执是「进行中」时先说明，这一轮结束后回复经补读出现。失败时输入回到输入框（框里已有新内容则不覆盖）。
 async function sendMessage(text) {
-  if (entry.sending || !entry.me || !text.trim()) return;
+  if (!entry.me || !text.trim()) return;
   const epoch = entry.epoch, id = requestId();
-  entry.sending = true;
-  $("send").disabled = true;
+  entry.inflight += 1;
+  entry.shown.add(id + ":user");
   append("user", text);
   try {
     const reply = await entryApi("POST", "/v1/assistant/messages",
       { json: { request_id: id, text, timezone: timezone() } });
     if (isStale(epoch)) return;
+    if (reply.state === "running") {
+      append("assistant", "收到，正在处理。好了我会在这里告诉你，你可以先说别的。", "meta");
+      if (reply.trace_id && typeof openProgressCard === "function") openProgressCard(reply.trace_id, { follow: true });
+      return;
+    }
+    entry.shown.add(id + ":assistant");
     append("assistant", reply.message || "已收到。");
     renderMessageCards({ route: reply, butler: reply.trace_id ? { trace_id: reply.trace_id } : null }, id);
     refreshOverview().catch(report);
   } catch (error) {
     if (isStale(epoch) || error.name === "AbortError") return;
-    $("message").value = text;
+    if (!$("message").value) $("message").value = text;
     if (typeof showSystemStatus === "function") showSystemStatus(error);
     report(error);
   } finally {
-    if (!isStale(epoch)) { entry.sending = false; $("send").disabled = false; }
+    if (!isStale(epoch)) entry.inflight -= 1;
   }
 }
 
@@ -167,5 +207,9 @@ async function logoutEntry() {
   resetEntry();
   try { await fetch("/v1/auth/logout", { method: "POST", credentials: "same-origin",
     headers: { "X-Requested-By": "xuanpu" } }); }
-  finally { $("entry-login").classList.remove("hidden"); announce("已退出"); }
+  finally {
+    $("entry-login").classList.remove("hidden");
+    $("entry-password-login").classList.remove("hidden");
+    announce("已退出");
+  }
 }

@@ -15,6 +15,8 @@
 - ``disabling``：员工停用流水线（``identity.disable``），「员工停用」监听者由装配处登记；
   ``disable_user``、``enable_user`` 是它与启用的入口。
 - ``users``：用户管理（``identity.users``）；``events``：飞书事件回调（``identity.callback``）。
+- ``accounts``：玄圃自有账号（``identity.accounts``，ADR 0019）：开通、设置链接、用户名口令登录、
+  改口令。
 
 两处认证都遵守身份存储的约定：``get_login_session`` 不带租户，租户一律取自返回的登录会话记录，
 再拿它去查员工与租户。
@@ -35,6 +37,7 @@ from xuanpu_server.errors import (
     PlatformError,
     SecretMissingError,
 )
+from xuanpu_server.identity.accounts import LocalAccounts
 from xuanpu_server.identity.callback import FeishuEventCallback
 from xuanpu_server.identity.config import normalize_origin
 from xuanpu_server.identity.cookies import login_token_hash
@@ -43,6 +46,7 @@ from xuanpu_server.identity.disable import DisablePipeline
 from xuanpu_server.identity.login import FEISHU, FeishuLogin
 from xuanpu_server.identity.maintenance import IdentityMaintenance
 from xuanpu_server.identity.models import TenantIdentityConfig
+from xuanpu_server.identity.passwords import PasswordHashing
 from xuanpu_server.identity.reconcile import IdentityReconcile
 from xuanpu_server.identity.users import UserAdmin
 from xuanpu_server.secrets import validate_secret_name
@@ -129,6 +133,7 @@ class IdentityService:
         audit: AuditLog,
         feishu: FeishuClient,
         metrics: PlatformMetrics | None = None,
+        password_hashing: PasswordHashing | None = None,
         now: Callable[[], float] = time.time,
     ) -> None:
         """
@@ -140,6 +145,7 @@ class IdentityService:
             audit: 审计写入口。
             feishu: 飞书接口的客户端；归本服务所有，``close`` 时关闭。
             metrics: 平台指标；None 不打点。
+            password_hashing: 口令摘要的计算与核对；省略用 argon2 的默认参数。
             now: 取当前时间的函数，测试时可替换。
         """
         self.store = store
@@ -155,6 +161,15 @@ class IdentityService:
             audit=audit,
             settings=settings,
             feishu=feishu,
+            metrics=metrics,
+            now=now,
+        )
+        self.accounts = LocalAccounts(
+            store=store,
+            control_plane=control_plane,
+            audit=audit,
+            settings=settings,
+            hashing=password_hashing or PasswordHashing(),
             metrics=metrics,
             now=now,
         )

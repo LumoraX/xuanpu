@@ -69,6 +69,25 @@ async def test_send_to_butler_posts_request_id_and_body():
     assert seen[0].headers["X-Xuanpu-Act-As"] == "member"
 
 
+async def test_send_to_butler_waits_longer_than_the_server_turn_limit():
+    """管家一轮服务端最长 90 秒：这个请求的读超时不短于 120 秒；调用方给更长的就照用。"""
+    from xuanpu_sdk.traces import BUTLER_TIMEOUT_SECONDS
+
+    seen = []
+
+    def receive(request):
+        seen.append(request.extensions["timeout"])
+        return httpx.Response(200, json={"mode": "butler", "trace_id": "t", "dispatches": []})
+
+    for configured, expected in ((60.0, BUTLER_TIMEOUT_SECONDS), (300.0, 300.0)):
+        async with XuanpuClient("https://example.test", "PRIVATE_KEY", timeout_seconds=configured,
+                                transport=httpx.MockTransport(receive)) as client:
+            await client.send_to_butler("你好", request_id="r1")
+            await client.get_trace("t")
+    assert BUTLER_TIMEOUT_SECONDS > 90
+    assert [t["read"] for t in seen] == [BUTLER_TIMEOUT_SECONDS, 60.0, 300.0, 300.0]
+
+
 async def test_butler_pending_list_and_answer():
     """待处理项：列表与答复；标识只占一个路径段，原话与幂等标识原样提交。"""
     import json

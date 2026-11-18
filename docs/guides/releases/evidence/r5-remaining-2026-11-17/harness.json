@@ -1,0 +1,9 @@
+{
+  "model": "gpt-6.1-sol",
+  "protocol": "codex_responses",
+  "exit_codes": {
+    "regression": 0,
+    "approval": 0,
+    "consult": 0
+  }
+}

@@ -21,3 +21,16 @@ def test_identity_request_isolation() -> None:
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert "identity behavior passed" in result.stdout, result.stdout + result.stderr
+
+
+def test_password_account_flows() -> None:
+    """设置链接令牌从地址栏抹掉；设口令、口令登录只经同源 cookie 请求，不带 API key。"""
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("此脚本行为测试需要 Node.js；静态测试不需要")
+    result = subprocess.run(
+        [node, str(Path(__file__).with_name("accounts_behavior.cjs")), str(static_dir())],
+        capture_output=True, text=True, timeout=20, check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "accounts behavior passed" in result.stdout, result.stdout + result.stderr

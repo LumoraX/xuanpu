@@ -210,6 +210,42 @@ async function unavailableKeepsInput(dir) {
   assert.ok(h.nodes("tips").textContent.includes("更多"));
 }
 
+// 管家常在线：慢的一句先回「进行中」、不锁输入；接着说的一句照常回复；之后按游标补读出慢的那句的回复，
+// 已显示过的不重复。
+async function runningReplyFollowsLater(dir) {
+  const timers = [];
+  let later = [];
+  const h = harness(base({
+    "POST /v1/assistant/messages": call => call.body.text === "整理全年报表"
+      ? { json: { mode: "butler", state: "running", request_id: call.body.request_id, trace_id: "trc_9" } }
+      : { json: { mode: "butler", state: "done", message: "今天周二。" } },
+    "GET /v1/workspace/messages": call => ({ json: { items: call.url.includes("after_id=") ? later : [] } }),
+    "GET /v1/traces/trc_9/events": () => ({ stream: sse([["snapshot", { title: "整理报表", active: true, spans: [] }]]) }),
+  }));
+  h.context.setTimeout = fn => { timers.push(fn); return timers.length; };
+  h.context.clearTimeout = () => {};
+  let n = 0;
+  h.context.crypto = { randomUUID: () => "id" + (++n) };
+  load(h, dir); await flush();
+  const send = async text => { h.nodes("message").value = text; h.nodes("composer").listeners.submit({ preventDefault() {} }); await flush(); };
+  await send("整理全年报表");
+  const transcript = h.nodes("transcript");
+  assert.ok(transcript.textContent.includes("正在处理"));
+  await send("今天周几");
+  assert.ok(transcript.textContent.includes("今天周二。"), "进行中时照常交代下一件事");
+  later = [
+    { id: 7, role: "user", text: "今天周几", request_id: "web-id2:user", metadata: {} },
+    { id: 8, role: "assistant", text: "今天周二。", request_id: "web-id2:assistant", metadata: {} },
+    { id: 9, role: "assistant", text: "全年报表整理好了。", request_id: "web-id1:assistant", metadata: {} },
+  ];
+  await timers.shift()(); await flush();
+  assert.ok(transcript.textContent.includes("全年报表整理好了。"));
+  assert.equal(byText(transcript, "div", "今天周二。").length, 1, "已显示过的不重复");
+  later = [];
+  await timers.shift()(); await flush();
+  assert.ok(h.calls.some(c => c.url.includes("after_id=9")), "游标前移");
+}
+
 async function classicTenantGoesBack(dir) {
   const h = harness(base({ "GET /v1/me": () => ({ json: { ...ME.json, entry: "classic" } }) }));
   load(h, dir); await flush();
@@ -349,6 +385,7 @@ async function handoffDraftUsesProposalKey() {
   await progressFromHistoryAndRestore(dir);
   await staleResultsAreDropped(dir);
   await unavailableKeepsInput(dir);
+  await runningReplyFollowsLater(dir);
   await proactiveDraftRetriesSameRequest();
   await definitionDraftAndList();
   await connectionConsentAndRevoke();

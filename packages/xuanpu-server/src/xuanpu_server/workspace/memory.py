@@ -317,6 +317,20 @@ class InMemoryWorkspaceStore:
         ]
         return deepcopy(found[-limit:] if latest else found[:limit])
 
+    async def stale_routes(self, tenant: str, prefix: str, now: float, *,
+                           limit: int = 50) -> list[tuple[str, str, dict[str, Any]]]:
+        """扫本租户各员工的幂等字典：认领中、租约大于 0 且已过期的。"""
+        found: list[tuple[str, str, dict[str, Any]]] = []
+        for (owner_tenant, user), state in sorted(self._states.items()):
+            if owner_tenant != tenant:
+                continue
+            for key, request in sorted(state.requests.items()):
+                result = request["result"]
+                if (key.startswith(prefix) and result.get("state") == "claimed"
+                        and 0 < float(result.get("lease_until", 0)) < now):
+                    found.append((user, key, dict(deepcopy(result))))
+        return found[:limit]
+
     async def find_message(self, tenant: str, user: str, request_id: str) -> dict[str, Any] | None:
         """利用幂等字典按请求查已保存消息。"""
         state = self._states.get((tenant, user), WorkspaceState())
