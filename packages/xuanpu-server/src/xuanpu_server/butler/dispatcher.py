@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from xuanpu_server.butler.budget import TraceUsage, check_dispatch
+from xuanpu_server.butler.limits import budget_config
 from xuanpu_server.butler.models import INSTRUCTION_MAX, DispatchRecord, dispatch_fingerprint
 from xuanpu_server.errors import InvalidRequestError, NotFoundError, PlatformError
 from xuanpu_server.ids import new_id
@@ -118,9 +119,9 @@ class Dispatcher:
         group_id: str | None,
     ) -> DispatchRecord:
         """核对预算后建记录；存储在同一临界区里再核一次容量。"""
-        config = self._platform.butler_config
         store = self._platform.dispatches
         owner = ctx.owner
+        config = await budget_config(self._platform, owner, ctx.trace_id)
         existing = await store.list_for_trace(owner, ctx.trace_id)
         refs = tuple(f"{m.item_id}@{m.revision}" for m in materials)
         replayed = next((r for r in existing if r.request_id == ctx.request_id), None)

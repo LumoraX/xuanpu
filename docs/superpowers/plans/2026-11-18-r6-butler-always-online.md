@@ -14,31 +14,32 @@
 
 **Files**：Modify `S/butler/{config,service}.py`、`S/api/butler.py`；Create `T/butler/test_async_turn.py`。
 
-- [ ] `ButlerConfig.reply_window_seconds`（默认 20，1–120）。
-- [ ] `ButlerService.message`：一轮作为后台任务启动并登记；等至多窗口时长。办完返回完整回执（`state: "done"`）；没办完返回 `{"mode": "butler", "state": "running", "request_id", "trace_id"}`。后台任务结束时照旧写主对话、完成认领。
-- [ ] 同一 `request_id` 在进行中重试：返回进行中回执，不再跑一轮；结束后重试返回最终回执。
-- [ ] 一员工可同时有多轮进行中（不同 `request_id`），互不阻塞。
-- [ ] 平台关闭时取消并等待全部后台轮次；被取消的一轮不写半截回复。
-- [ ] 测试：快的一轮仍同步返回；慢的一轮先回 `running`、结束后主对话出现回复；进行中再发一句立即处理；同标识重试不重跑。
+- [x] `ButlerConfig.reply_window_seconds`（默认 20，1–120）。
+- [x] `ButlerService.message`：一轮作为后台任务启动并登记；等至多窗口时长。办完返回完整回执（`state: "done"`）；没办完返回 `{"mode": "butler", "state": "running", "request_id", "trace_id"}`。后台任务结束时照旧写主对话、完成认领。
+- [x] 同一 `request_id` 在进行中重试：返回进行中回执，不再跑一轮；结束后重试返回最终回执。
+- [x] 一员工可同时有多轮进行中（不同 `request_id`），互不阻塞。
+- [x] 平台关闭时取消并等待全部后台轮次；被取消的一轮不写半截回复。
+- [x] 测试：快的一轮仍同步返回；慢的一轮先回 `running`、结束后主对话出现回复；进行中再发一句立即处理；同标识重试不重跑。
 
 ## B：一轮的动态时限
 
 **Files**：Modify `S/butler/{config,engine,tools,turn}.py`、`S/butler/skills/butler/SKILL.md`；Create `T/butler/test_turn_deadline.py`。
 
-- [ ] `ButlerConfig.turn_seconds`（默认 300，10–86400）、`max_turn_seconds`（默认 86400，60–604800，且不小于 `turn_seconds`）；去掉常量 `TURN_SECONDS`。
-- [ ] 引擎用可改期的 `asyncio.Timeout`，句柄放在本轮上下文。
-- [ ] 工具 `extend_turn(seconds, reason)`：把截止时间延到至多 `max_turn_seconds`（从本轮开始算）；写审计 `butler_turn_extended`；返回新的截止时间。
-- [ ] 到时限：一轮正常收尾，主对话写「这一轮已到时限停下」并列出已派出、仍在进行的工作；不再 503。
-- [ ] 技能：长工作优先拆成派工或编组；确需继续自己处理时先 `extend_turn` 并说明理由。
+- [x] `ButlerConfig.turn_seconds`（默认 300，10–86400）、`max_turn_seconds`（默认 86400，60–604800，且不小于 `turn_seconds`）；去掉常量 `TURN_SECONDS`。
+- [x] 引擎用可改期的 `asyncio.Timeout`，句柄放在本轮上下文。
+- [x] 工具 `extend_turn(seconds, reason)`：把截止时间延到至多 `max_turn_seconds`（从本轮开始算）；写审计 `butler_turn_extended`；返回新的截止时间。
+- [x] 到时限：一轮正常收尾，主对话写「这一轮已到时限停下」并列出已派出、仍在进行的工作；不再 503。
+- [x] 技能：长工作优先拆成派工或编组；确需继续自己处理时先 `extend_turn` 并说明理由。
 
 ## C：每次请求的预算随任务提高
 
 **Files**：Modify `S/butler/{config,budget,tools}.py` 与预算的持久位置；Create `T/butler/test_budget_raise.py`。
 
-- [ ] 开工先核对：每次请求的已用预算从哪里算（`TraceUsage`），提高后的预算存在哪里才能被唤醒的后续轮次读到；结论写进本文件。
-- [ ] 配置：`max_tokens_per_trace` 等三项含义改为起始预算，新增 `max_tokens_per_trace_ceiling`（默认 2000 万）、`max_butler_turns_per_trace_ceiling`（默认 64）、`max_artisans_per_trace_ceiling`（默认 16）。
-- [ ] 工具 `raise_budget(kind, to, reason)`：只能提高、不能超过上限；租户每日配额不变；写审计 `butler_budget_raised` 与执行追踪；回复里告诉员工。
-- [ ] 预算检查读「起始预算与已提高值中较大者」。
+- [x] 开工先核对：每次请求的已用预算从哪里算（`TraceUsage`），提高后的预算存在哪里才能被唤醒的后续轮次读到；结论写进本文件。
+  - 结论（2026-11-18）：已用量来自派工记录（匠人数）与执行追踪（管家轮数、已结束执行的 token）。预算检查都读 `ButlerConfig`，调用点四处（派工、编组提交、匠人结束后复核、会诊比对）。提高值记为控制面审计 `butler_budget_raised`（含 `trace_id`），`limits.budget_config` 按员工与 trace 读出、叠加到起始预算后交给原有检查；审计本来就持久、跨实例可见，不另建表。
+- [x] 配置：`max_tokens_per_trace` 等三项含义改为起始预算，新增 `max_tokens_per_trace_ceiling`（默认 2000 万）、`max_butler_turns_per_trace_ceiling`（默认 64）、`max_artisans_per_trace_ceiling`（默认 16）。
+- [x] 工具 `raise_budget(budget, to, reason)`：只能提高、不能超过上限；租户每日配额不变；写审计 `butler_budget_raised` 与执行追踪；回复里告诉员工。
+- [x] 预算检查读「起始预算与已提高值中较大者」。
 
 ## D：中断后的一轮由唤醒重跑
 

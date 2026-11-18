@@ -12,6 +12,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from xuanpu_server.butler.budget import ButlerBudgetError, check_butler_turn
+from xuanpu_server.butler.limits import budget_config
 from xuanpu_server.butler.review import trace_usage
 from xuanpu_server.butler.turn import ButlerTurn, CompareContext
 from xuanpu_server.errors import PlatformError
@@ -40,7 +41,7 @@ class ButlerDivergenceRater:
                    conclusions: tuple[MemberConclusion, ...]) -> Rating | None:
         """跑一轮比对；评不出返回 None。"""
         try:
-            check_butler_turn(self._platform.butler_config,
+            check_butler_turn(await budget_config(self._platform, owner, trace_id),
                               await trace_usage(self._platform, owner, trace_id))
         except ButlerBudgetError as exc:
             logger.info("会诊比对跳过（%s）", exc.reason)

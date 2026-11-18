@@ -38,10 +38,10 @@ if TYPE_CHECKING:
 TOOL_NAMES = ("propose", "read_personal", "list_artisans", "dispatch_artisan", "check_dispatch",
               "cancel_dispatch", "answer_pending", "answer_artisan", "ask_user",
               "dispatch_group", "cancel_group", "check_group", "rate_divergence",
-              "extend_turn")
+              "extend_turn", "raise_budget")
 _WAKE_ONLY = frozenset({"answer_artisan", "ask_user"})
 _ANY_TURN = frozenset({"read_personal", "list_artisans", "check_dispatch", "check_group",
-                       "extend_turn"})
+                       "extend_turn", "raise_budget"})
 _LIST_MAX = 20
 _ERRORS_MAX = 8
 # propose 的 choice 结构：与分流共用同一份内置能力约定（包名带 @，草稿字段名固定），
@@ -159,7 +159,7 @@ class ButlerTools:
         ]
 
     def _limit_specs(self) -> list[taifeng.ToolSpec]:
-        """管家调整自己的时限（R6-B）。"""
+        """管家调整自己的时限与这次请求的预算（R6-B、R6-C）。"""
         from xuanpu_server.butler.limits import LimitTools
 
         handlers = LimitTools(self._platform)
@@ -169,6 +169,12 @@ class ButlerTools:
                        {"seconds": {"type": "integer", "minimum": 1},
                         "reason": {"type": "string", "description": "为什么还需要这些时间"}},
                        ["seconds", "reason"], handlers.extend_turn),
+            self._spec("raise_budget", "这件事需要比起始预算更多的 token、管家处理轮数或匠人时，说明理由"
+                       "把这次请求的该项预算提高到 to（只能提高，有上限；企业每日用量配额不变）。",
+                       {"budget": {"type": "string", "enum": ["tokens", "butler_turns", "artisans"]},
+                        "to": {"type": "integer", "minimum": 1},
+                        "reason": {"type": "string", "description": "为什么需要更多"}},
+                       ["budget", "to", "reason"], handlers.raise_budget),
         ]
 
     def _c2_specs(self) -> list[taifeng.ToolSpec]:

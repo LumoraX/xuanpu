@@ -1,6 +1,9 @@
 """管家调整自己的时限与预算（R6，ADR 0020）：随任务伸缩，但有上限、要说明理由、全部留痕。
 
 - ``extend_turn``：把本轮的截止时间延后，至多到本轮开始后 ``max_turn_seconds``。
+- ``raise_budget``：提高这次请求的 token、管家轮数或匠人数预算，至多到 ``*_ceiling``；
+  租户每日 token 配额不受影响。提高值记在审计里（``butler_budget_raised``），
+  ``budget_config`` 读出后叠加到起始预算上，唤醒的后续轮次与其他实例都看得到。
 - 每次调整写一条控制面审计；结果作为工具输出交给模型，由它在回复里告诉员工。
 """
 
@@ -12,11 +15,38 @@ from typing import TYPE_CHECKING, Any
 
 import taifeng
 
+from xuanpu_server.butler.config import BUDGET_KINDS
+from xuanpu_server.controlplane.models import AuditQuery
+
 if TYPE_CHECKING:
+    from xuanpu_server.butler.config import ButlerConfig
     from xuanpu_server.butler.turn import ButlerTurn
     from xuanpu_server.platform import Platform
+    from xuanpu_server.tracing.models import TraceOwner
 
 _REASON_MAX = 500
+_RAISED = "butler_budget_raised"
+_RAISES_SCANNED = 1000
+
+
+async def budget_config(platform: Platform, owner: TraceOwner, trace_id: str) -> ButlerConfig:
+    """这条 trace 生效的预算：起始预算叠加管家提高过的值（只升不降，不超过上限）。"""
+    config = platform.butler_config
+    records = await platform.store.query_audit(owner.tenant_id, AuditQuery(
+        kind=_RAISED, user_id=owner.user_id, limit=_RAISES_SCANNED))
+    raised: dict[str, int] = {}
+    for record in records:
+        data = record.data or {}
+        kind, limit = data.get("budget"), data.get("limit")
+        if data.get("trace_id") != trace_id or kind not in BUDGET_KINDS or not isinstance(limit, int):
+            continue
+        raised[kind] = max(raised.get(kind, 0), limit)
+    update = {}
+    for kind, limit in raised.items():
+        start = getattr(config, f"max_{kind}_per_trace")
+        ceiling = getattr(config, f"max_{kind}_per_trace_ceiling")
+        update[f"max_{kind}_per_trace"] = max(start, min(limit, ceiling))
+    return config.model_copy(update=update) if update else config
 
 
 def _reason(args: dict[str, Any]) -> str | None:
@@ -62,3 +92,27 @@ class LimitTools:
             "extended": True, "remaining_seconds": round(target - now), "capped": capped,
             "note": "已到本轮时限上限，更长的工作请拆成派工或编组" if capped else ""},
             ensure_ascii=False))
+
+    async def raise_budget(self, turn: ButlerTurn, args: dict[str, Any], _call: str,
+                           ) -> taifeng.ToolResult:
+        """把这次请求的某项预算提高到 ``to``；只能提高，超过上限按上限截断并如实告知。"""
+        reason, kind, target = _reason(args), args.get("budget"), args.get("to")
+        if reason is None or kind not in BUDGET_KINDS or not isinstance(target, int):
+            return taifeng.ToolResult.error(
+                "invalid_arguments: budget 须为 tokens、butler_turns 或 artisans，to 为整数，reason 必填")
+        current = getattr(await budget_config(self._platform, turn.owner(), turn.trace_id),
+                          f"max_{kind}_per_trace")
+        ceiling = getattr(self._platform.butler_config, f"max_{kind}_per_trace_ceiling")
+        limit = min(target, ceiling)
+        if limit <= current:
+            return taifeng.ToolResult.ok(json.dumps({
+                "raised": False, "limit": current, "ceiling": ceiling,
+                "note": "当前预算已不低于所请求的值" if current < ceiling else "已到这项预算的上限"},
+                ensure_ascii=False))
+        await self._platform.audit.control(
+            turn.who, turn.who.require_tenant(), _RAISED,
+            {"trace_id": turn.trace_id, "request_id": turn.request_id, "budget": kind,
+             "from": current, "limit": limit, "requested": target, "reason": reason})
+        return taifeng.ToolResult.ok(json.dumps({
+            "raised": True, "from": current, "limit": limit, "capped": limit < target,
+            "note": "请在回复里告诉员工这次提高了多少、为什么"}, ensure_ascii=False))

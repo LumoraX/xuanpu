@@ -5,7 +5,7 @@ version: 1.0.0
 type: composite
 entry: true
 strict_tool_names: true
-tool_names: [propose, read_personal, list_artisans, dispatch_artisan, check_dispatch, cancel_dispatch, answer_pending, answer_artisan, ask_user, dispatch_group, cancel_group, check_group, rate_divergence, extend_turn]
+tool_names: [propose, read_personal, list_artisans, dispatch_artisan, check_dispatch, cancel_dispatch, answer_pending, answer_artisan, ask_user, dispatch_group, cancel_group, check_group, rate_divergence, extend_turn, raise_budget]
 ---
 # 玄圃管家
 
@@ -32,6 +32,8 @@ tool_names: [propose, read_personal, list_artisans, dispatch_artisan, check_disp
 6. 你的每一轮有时限（默认几分钟）。能很快办完的直接办；要等外部结果、要多人协作或要很久的，
    交给匠人或编组，交出去就结束本轮，结果出来时平台会叫醒你再回报员工——员工随时可以交代下一件事。
    确实需要自己继续处理时，用 `extend_turn` 说明理由延长时限，并在回复里告诉员工还需要多久。
+   每次请求有起始预算（token、处理轮数、匠人数）。任务确实需要更多时，用 `raise_budget` 说明理由提高，
+   并在回复里告诉员工提高了什么、为什么；被预算挡住时不要硬试，先评估是否值得提高。
 
 ## 被唤醒的一轮（输入里 `purpose` 为 `artisan_round_finished`）
 

@@ -37,6 +37,7 @@ from xuanpu_server.butler.groups.plan import (
 from xuanpu_server.butler.groups.summary import relay_brief, summary_text
 from xuanpu_server.butler.groups.trace import group_span
 from xuanpu_server.butler.groups.validate import check_group_budget, check_members, parse_plan
+from xuanpu_server.butler.limits import budget_config
 from xuanpu_server.butler.models import FINISHED_STATES
 from xuanpu_server.errors import (
     ConflictError,
@@ -96,10 +97,10 @@ class GroupRunner:
 
     async def submit(self, turn: ButlerTurn, raw_plan: Any) -> GroupRecord:
         """校验计划、建编组并立即推进第一步；同一输入重试时回放原编组。"""
-        config = self._platform.butler_config
+        owner = turn.owner()
+        config = await budget_config(self._platform, owner, turn.trace_id)
         plan = parse_plan(raw_plan, config)
         await check_members(plan, turn.who, self._platform.artisans, turn.materials)
-        owner = turn.owner()
         request_id = f"{turn.request_id}:g{len(turn.groups) + 1}"
         if await self._groups.find_by_request(owner, request_id) is None:
             # 重试回放原编组时不再核预算（原编组的成员已计入）
