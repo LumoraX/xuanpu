@@ -332,6 +332,12 @@ class Platform:
         from xuanpu_server.knowledge.memory import WorkMemoryService
 
         self.work_memory = WorkMemoryService(self.knowledge, store.memory_store)
+        from xuanpu_server.outcomes.service import OutcomeService
+
+        self.outcomes = OutcomeService(self.capabilities, self.workspace, store.binding_store, now=now)
+        from xuanpu_server.outcomes.acceptance import AcceptanceService
+
+        self.acceptance = AcceptanceService(self.capabilities, store.binding_store)
         self.packages.managed_guard = self.capabilities.admission.managed
         from xuanpu_server.tracing.retention import TraceRetention
 

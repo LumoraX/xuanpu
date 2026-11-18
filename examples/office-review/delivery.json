@@ -1,0 +1,52 @@
+{
+  "format": "xuanpu-delivery/v1",
+  "capability_key": "office-review",
+  "title": "办公材料汇总与复核",
+  "summary": "本人CSV表格按指定列精确汇总，披露异常行，生成复核报告与证据",
+  "scenario_key": "office-review",
+  "package": {
+    "name": "office-review",
+    "version": "1.0.0",
+    "digest": "sha256:7c091a853a1d97464fc950a02233755f11a8d09478d15d200519cb85c3e9bb7d",
+    "entry": "review"
+  },
+  "inputs": {
+    "contract": "office_files",
+    "mime_types": [
+      "text/csv"
+    ],
+    "max_files": 8
+  },
+  "outputs": {
+    "contract": "office_files",
+    "output_kind": "table_summary"
+  },
+  "permissions": {
+    "shell": true,
+    "network": false,
+    "approval": "standard",
+    "model_tier": "balanced",
+    "max_tokens": 200000,
+    "max_iterations": 40,
+    "tools": [],
+    "connections": []
+  },
+  "requirements": {
+    "public_config": {
+      "report_title": {
+        "kind": "string",
+        "required": false
+      },
+      "group_column": {
+        "kind": "string",
+        "required": true
+      },
+      "amount_column": {
+        "kind": "string",
+        "required": true
+      }
+    },
+    "secret_refs": []
+  },
+  "evaluation_suite_sha256": "515e442b9b6d57e2d0833f0945f4718fdba6c49372931f185551a8aeb763e569"
+}

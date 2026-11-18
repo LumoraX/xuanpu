@@ -1,0 +1,21 @@
+# R4-E 样板：办公材料汇总与交接复核。只做精确汇总与草稿，不替他人做组织决定。
+# 交付描述（delivery.json）与评测套件在本目录之外，不进入这个归档，避免摘要自引用。
+apiVersion: xuanpu/v1
+kind: Package
+metadata:
+  name: office-review
+  version: 1.0.0
+  description: 本人CSV表格的精确汇总、异常行披露与复核报告
+spec:
+  skills:
+    entries: [review]
+  model:
+    tier: balanced
+  policy:
+    approval: standard
+    sandbox:
+      network: false
+      shell: true
+    budget:
+      maxSessionTokens: 200000
+      maxIterations: 40

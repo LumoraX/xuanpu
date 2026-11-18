@@ -1,0 +1,4 @@
+{"record_count": 3, "duplicate_rows": 0,
+ "groups": [{"group": "乙", "currency": "未注明", "amount": "80.00", "records": 1},
+            {"group": "甲", "currency": "未注明", "amount": "170.00", "records": 2}],
+ "totals": [{"currency": "未注明", "amount": "250.00", "records": 3}]}

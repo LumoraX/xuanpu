@@ -58,6 +58,10 @@ class BindingStore(Protocol):
         """读取；没有返回 None。"""
         ...
 
+    async def tasks(self, tenant_id: str, user_id: str | None = None) -> list[InvocationBinding]:
+        """任务绑定（可按员工过滤），按创建时间与对象排序；只给归因统计用。"""
+        ...
+
 
 class MemoryBindingStore:
     """内存实现（试用与测试）。"""
@@ -82,6 +86,12 @@ class MemoryBindingStore:
     async def get(self, tenant_id: str, kind: BindingKind, ref_id: str) -> InvocationBinding | None:
         """按受理对象读。"""
         return self._rows.get((tenant_id, kind, ref_id))
+
+    async def tasks(self, tenant_id: str, user_id: str | None = None) -> list[InvocationBinding]:
+        """任务绑定。"""
+        found = [b for (t, k, _), b in self._rows.items() if t == tenant_id and k == 'task'
+                 and (user_id is None or b.user_id == user_id)]
+        return sorted(found, key=lambda b: (b.created_at, b.ref_id))
 
 
 class PostgresBindingStore:
@@ -113,3 +123,15 @@ class PostgresBindingStore:
                 f'SELECT record FROM {self._table} WHERE tenant_id=$1 AND kind=$2 AND ref_id=$3',
                 tenant_id, kind, ref_id)
         return InvocationBinding.model_validate_json(row['record']) if row is not None else None
+
+    async def tasks(self, tenant_id: str, user_id: str | None = None) -> list[InvocationBinding]:
+        """任务绑定（按员工过滤时走 user_id 列）。"""
+        query = f"SELECT record FROM {self._table} WHERE tenant_id=$1 AND kind='task'"
+        args: list[object] = [tenant_id]
+        if user_id is not None:
+            query += ' AND user_id=$2'
+            args.append(user_id)
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(query, *args)
+        found = [InvocationBinding.model_validate_json(r['record']) for r in rows]
+        return sorted(found, key=lambda b: (b.created_at, b.ref_id))
