@@ -60,6 +60,9 @@ class InMemoryControlPlane:
         from xuanpu_server.knowledge.memory import MemoryMemoryStore
 
         self.memory_store = MemoryMemoryStore()
+        from xuanpu_server.knowledge.context_store import MemoryContextStore
+
+        self.context_store = MemoryContextStore()
         from xuanpu_server.butler.wake_store import MemoryWakeStore
 
         self.wake_store = MemoryWakeStore()

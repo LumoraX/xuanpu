@@ -360,6 +360,11 @@ class Platform:
         self.task_definitions=TaskDefinitionService(self.work_tasks,now=now,config=task_triggers or TriggerConfig())
         self.trigger_worker=TriggerWorker(self.task_definitions)
         self.assistant = AssistantRouter(self, models, now=now)
+        from xuanpu_server.knowledge.contexts import KnowledgeContexts
+
+        # 受保护知识问答：采样走助理路由同一配额与计量，来源删除即时使依赖上下文失效
+        self.knowledge_contexts = KnowledgeContexts(self.knowledge, store.context_store, self.assistant.sample_protected)
+        self.knowledge.removal_listeners.append(self.knowledge_contexts.source_removed)
         self.butler = ButlerService(self, models, data_dir=data_dir, now=now)
         self.dashboard = DashboardService(self, now=now)
         self.proactive = ProactiveService(workspace=self.workspace, control=store,

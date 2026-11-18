@@ -15,6 +15,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import logging
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
@@ -30,7 +31,7 @@ from xuanpu_server.ids import new_id
 from .store import Chunk, KnowledgeSource, SourceRef
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable
 
     from pydantic import JsonValue
 
@@ -39,6 +40,7 @@ if TYPE_CHECKING:
 
     from .store import KnowledgeStore
 
+logger = logging.getLogger(__name__)
 EXTRACTOR = 'utf8-text/1'
 MIME_FORMATS = {'text/plain': 'text', 'text/markdown': 'text', 'text/csv': 'csv', 'application/json': 'json'}
 MAX_SOURCES, MAX_CHARS, MAX_CHUNKS = 200, 50_000_000, 25_000
@@ -141,6 +143,8 @@ class KnowledgeService:
         """依赖由平台注入。"""
         self.workspace, self.store, self.now = workspace, store, now
         self.config = config or KnowledgeConfig()
+        # 来源删除后通知依赖方（问答上下文）立即失效；依赖方读取时也会再核，失败时仍拒绝使用
+        self.removal_listeners: list[Callable[[str, str, str], Awaitable[None]]] = []
 
     async def _employee(self, who: Principal) -> tuple[str, str]:
         """在职员工且租户开启知识功能。"""
@@ -241,7 +245,15 @@ class KnowledgeService:
         source = await self._own(who, source_id)
         changed = source.model_copy(update={'status': 'deleted', 'epoch': source.epoch + 1,
                                             'version': source.version + 1, 'updated_at': self.now()})
-        return source_view(await self.store.update(changed, expected_version=body.expected_version))
+        deleted = await self.store.update(changed, expected_version=body.expected_version)
+        for listener in self.removal_listeners:
+            try:
+                await listener(deleted.tenant_id, deleted.owner, deleted.id)
+            except Exception:
+                # 来源已删除且文本块已清：依赖方下次访问会复核到来源不在并拒绝，不会用到旧正文；
+                # 这里只是没能提前清掉回答缓存，记错误日志由运维跟进，不让员工的删除失败
+                logger.exception('来源 %s 删除后通知依赖方失败', deleted.id)
+        return source_view(deleted)
 
     async def refresh(self, who: Principal, source_id: str, body: SourceChange) -> dict[str, JsonValue]:
         """员工明确刷新：登记文件当前版本为新来源，旧来源删除（旧引用不改写）。"""

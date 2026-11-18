@@ -12,6 +12,14 @@
 - 检索：`POST /v1/me/knowledge/search`，正文 `{"query": "关键词", "limit": 10}`。只在你此刻能读到的来源里按字面找，结果给出来源、版本与位置。
 - 原文件改了新版本，来源列表会提示「有更新」，检索仍按登记的版本；要用新版本请刷新：`POST /v1/me/knowledge/sources/{id}/refresh`。不需要的来源可删除：`POST /v1/me/knowledge/sources/{id}/delete`（都带 `expected_version`）。原文件删除或移入回收站后，来源自动失效。
 
+## 依据材料提问
+
+- 先检索，再从结果里选 1–10 段作依据建问答：`POST /v1/me/knowledge/contexts`，正文 `{"request_id": "...", "pins": [{"source_id": "...", "ordinal": 0}]}`。
+- 提问：`POST /v1/me/knowledge/contexts/{id}/ask`，正文 `{"request_id": "...", "question": "..."}`。回答只依据你选的那几段，用 `[编号]` 标出依据，`citations` 给出对应的文件、版本与位置；找不到依据时会直说，`grounded` 为 `false`。材料里写的指令不会被执行。
+- 查看依据正文与已有回答：`GET /v1/me/knowledge/contexts/{id}`；列出全部问答：`GET /v1/me/knowledge/contexts`。
+- 依据的来源被删除、刷新到新版本，或原文件被移入回收站后，这个问答立即或在下次打开时失效，已有回答一并清掉，返回 `knowledge_source_revoked`。请重新检索、选依据，开一个新问答；恢复文件或重新授权也不会让旧问答复活。已经显示给你或送达模型的内容无法追回。
+- 不再需要时可结束：`POST /v1/me/knowledge/contexts/{id}/close`（带 `expected_version`），回答正文会被清掉。
+
 ## 工作记忆
 
 - 候选：`POST /v1/me/work-memory/proposals`，须引用你的一个知识来源的一段；确认后才生效（`/{id}/confirm`），也可以拒绝（`/{id}/reject`）。

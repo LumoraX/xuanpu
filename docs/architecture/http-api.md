@@ -123,6 +123,7 @@ X-Xuanpu-Act-As: usr_5f0c1b2e7d9a4c3b8e6f1a20
 | 403 | `csrf_rejected` | 用登录 cookie 的写请求缺 `X-Requested-By: xuanpu` 头，或 `Origin` 与 `public_url` 不符（见[浏览器登录](#浏览器登录)） | |
 | 403 | `session_owner_disabled` | 会话的主人（员工）已停用：任何调用者都不能再往这个会话发消息、送审批结果（见[主人停用之后](#主人停用之后)）；换一把凭据也没用 | |
 | 403 | `shared_access_revoked` | 共享来源、原授权或身份代次失效，旧受保护上下文拒绝正文、历史、缓存回放及模型续跑；重新选择来源开始新对话 | |
+| 403 | `knowledge_source_revoked` | 知识问答依据的来源已删除、换版或不再可读；上下文已持久标 blocked 并清掉回答缓存，读取与提问都拒绝；重新检索并选依据建新上下文 | |
 | 404 | `not_found` | 资源不存在，或属于别的租户；普通成员访问别人的会话也是它（见[可见范围](#可见范围)） | |
 | 409 | `conflict` | 与现有状态冲突（版本已发布、会话已关闭、要降级或停用的是租户里最后一名启用的管理员等） | |
 | 409 | `session_busy` | 会话正由另一个实例持有 | `owner`：持有者的实例标识 |
@@ -1091,6 +1092,11 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | POST /v1/me/knowledge/search | query（1–500 字）、limit（1–10） | hits（source_id、title、item_id、revision、ordinal、excerpt≤2000 字）、total（只计此刻可读来源） |
 | POST /v1/me/knowledge/sources/{id}/refresh | expected_version | 换成文件当前版本的新来源，旧来源删除 |
 | POST /v1/me/knowledge/sources/{id}/delete | expected_version | status=deleted，文本块清除 |
+| POST /v1/me/knowledge/contexts | request_id、pins（1–10 个 source_id + ordinal，须是本人此刻可读来源里存在的块） | 201：id、status=active、pins、answers、version；同一 request_id 回原上下文；依据不可读 400；进行中上下文满 50 个 409 |
+| GET /v1/me/knowledge/contexts | 无 | contexts（元数据，不含正文；失效的就地标 blocked）、total |
+| GET /v1/me/knowledge/contexts/{id} | 无 | 复核后给出 sources（index、source_id、title、item_id、revision、ordinal、excerpt）与 history（已有回答）；失效 403 `knowledge_source_revoked`，已结束 409 |
+| POST /v1/me/knowledge/contexts/{id}/ask | request_id、question（1–500 字） | id、question、text、citations（index、source_id、title、item_id、revision、ordinal）、grounded；同一 request_id 回原回答不再调模型；发送前或流式中失效 403 |
+| POST /v1/me/knowledge/contexts/{id}/close | expected_version | status=closed，回答正文清掉（answers=0、purged_answers 计数） |
 | GET /v1/me/work-memory | 无 | memories（生效中与待确认；过期与依据不可读的不列）、total |
 | POST /v1/me/work-memory/proposals | text、citation（source_id、ordinal）、可选 valid_until | 201：status=proposed；引用不可读 400 |
 | POST /v1/me/work-memory/assertions | text、可选 valid_until | 201：kind=user_assertion、status=active、verified_by_source=false |

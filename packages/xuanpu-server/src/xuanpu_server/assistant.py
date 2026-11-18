@@ -60,7 +60,7 @@ from xuanpu_server.work_tasks.models import InputFile  # noqa: TC001 — Pydanti
 from xuanpu_server.work_tasks.routing import accept_office_route
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable
 
     from xuanpu_server.controlplane.models import SessionRecord
     from xuanpu_server.platform import Platform
@@ -480,6 +480,7 @@ class AssistantRouter:
         *, system_prompt: str | None = None, audit_kind: str = "assistant_route_sampled",
         source_context_id: str | None = None,
         private_session_id: str | None = None,
+        source_check: Callable[[], Awaitable[object]] | None = None,
     ) -> str:
         """只采样文本，完成后按实际用量入账；中断时估算，防取消绕过配额。"""
         cancel = taifeng.CancellationToken()
@@ -488,7 +489,10 @@ class AssistantRouter:
         started = False
         try:
             client = await self._models.create(who.require_tenant(), "fast")
-            if source_context_id is not None or private_session_id is not None:
+            if source_check is not None:
+                from xuanpu_server.runtime.source_guard import SourceModelClient
+                client = SourceModelClient(client, source_check)
+            elif source_context_id is not None or private_session_id is not None:
                 from xuanpu_server.runtime.source_guard import SourceModelClient
                 async def check_source() -> object:
                     """实际发送及流式输出各块都重新检查持久来源。"""
@@ -594,6 +598,21 @@ class AssistantRouter:
         except Exception:
             p.metrics.usage_write_failed()
             logger.error("业务分流用量写入失败")
+
+    async def sample_protected(self, who: Principal, payload: str, *, system_prompt: str, audit_kind: str,
+                               check: Callable[[], Awaitable[object]]) -> str:
+        """受保护只读回答（R4-D1 知识问答）：配额、并发准入、超时与计量同路由采样；
+        实际发送前与每个流式块都调用 ``check`` 复核来源，失效即停止，不把旧正文继续送出。"""
+        tenant = who.require_tenant()
+        await self._platform.workspace.require_employee(who)
+        await self._platform.quota.check_new_turn(tenant)
+        await self._platform.sessions.admit_routing(tenant)
+        try:
+            async with asyncio.timeout(TIMEOUT_SECONDS):
+                return await self._sample(who, payload, system_prompt=system_prompt, audit_kind=audit_kind,
+                                          source_check=check)
+        finally:
+            self._platform.sessions.release_routing(tenant)
 
     async def sample_proactive(self, tenant: str, user: str, payload: str) -> str:
         """后台评估复用平台模型、租户配额、并发准入和员工计量。"""

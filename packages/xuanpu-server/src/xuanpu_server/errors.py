@@ -156,6 +156,12 @@ class SharedAccessRevokedError(PermissionDeniedError):
     code = "shared_access_revoked"
 
 
+class KnowledgeRevokedError(PermissionDeniedError):
+    """知识问答依据的来源已删除、改版或不再可读：旧问答上下文不再补读正文或送往模型。"""
+
+    code = "knowledge_source_revoked"
+
+
 class RuntimeCleanupRequiredError(RuntimeUnavailableError):
     """启动失败但仍持有明确资源，宿主必须保留清理动作直到成功。"""
 
