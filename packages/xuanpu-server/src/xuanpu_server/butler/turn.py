@@ -87,6 +87,10 @@ class ButlerTurn:
     answered: list[str] = field(default_factory=list)
     groups: list[str] = field(default_factory=list)
     compare: CompareContext | None = None
+    deadline: asyncio.Timeout | None = None
+    """本轮可改期的时限（R6-B）；``extend_turn`` 经它延长。"""
+    started_at: float = 0.0
+    """本轮开始时的事件循环时间；延长不超过它加 ``max_turn_seconds``。"""
 
     def has_output(self) -> bool:
         """本轮是否产出了回复之外的结果（草稿、派工、答复、代答或转问）。"""

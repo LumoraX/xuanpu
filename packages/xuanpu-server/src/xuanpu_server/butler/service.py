@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import json
 import logging
 import time
@@ -24,7 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from xuanpu_server.assistant import RouteBody
 from xuanpu_server.butler.dispatcher import Dispatcher
-from xuanpu_server.butler.engine import ButlerEngines
+from xuanpu_server.butler.engine import ButlerEngines, TurnTimeout
 from xuanpu_server.butler.groups.rater import ButlerDivergenceRater
 from xuanpu_server.butler.groups.runner import GroupRunner
 from xuanpu_server.butler.groups.trace import TracedGroupStore
@@ -118,7 +119,7 @@ class ButlerService:
             running = _RunningTurn(trace_id=new_id("trc"))
             running.task = asyncio.create_task(self._serve(who, body, running))
             self._running[key] = running
-            running.task.add_done_callback(lambda t, k=key: self._finished(k, t))
+            running.task.add_done_callback(functools.partial(self._finished, key))
         window = self._platform.butler_config.reply_window_seconds
         try:
             done, _ = await asyncio.wait({running.task}, timeout=window)
@@ -206,6 +207,8 @@ class ButlerService:
         await p.sessions.admit_routing(tenant)
         try:
             reply = await self.engines.run(turn, await self._payload(who, body))
+        except TurnTimeout as exc:
+            reply = _timed_out(turn, exc)
         except PlatformError:
             raise
         except Exception:
@@ -262,6 +265,18 @@ class ButlerService:
         await self.pending.close()
         await self.engines.close()
 
+
+
+def _timed_out(turn: ButlerTurn, exc: TurnTimeout) -> str:
+    """一轮到时限的收尾说明：不是失败；已交出去的工作照常进行，结束后会回报。"""
+    minutes = max(1, round(exc.elapsed / 60))
+    text = f"这件事我处理了约 {minutes} 分钟，这一轮已到时限先停下。"
+    if turn.dispatches or turn.groups:
+        names = "、".join(dict.fromkeys(d.artisan.package for d in turn.dispatches)) or "编组"
+        text += f"已交出去的工作（{names}）仍在进行，完成后我会告诉你结果。"
+    else:
+        text += "如果还需要继续，可以再跟我说一次，或者让我拆成几件交给别人做。"
+    return text
 
 
 def _dispatch_view(record: Any) -> dict[str, Any]:
