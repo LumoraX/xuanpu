@@ -24,11 +24,11 @@
 
 **Files**：Create `examples/office-review/{delivery.json,README.md}`、`examples/office-review/package/xuanpu.yaml`、`examples/office-review/package/skills/review/SKILL.md`、`examples/office-review/package/skills/review/scripts/review_rows.py`、`examples/office-review/evals/{suite.json,inputs/basic.csv,inputs/invalid.csv,expected/basic.json}`、`T/r4_contract/{test_office_review_package,test_office_review_results}.py`；Modify `examples/README.md`。
 
-- [ ] 只将`examples/office-review/package/`交给现有pack_package；delivery.json和evals为同级外部交付件，不进入被引用ZIP。先构建包再把其digest写入外部delivery，测试重复构建ZIP逐字节相同、修改外部delivery不改变包SHA，避免自引用摘要。
-- [ ] 包/交付描述通过现有规范与A解析，固定B2的office_files/table_summary profile，不把模型选择当完成类型；默认关闭出网、不声明任何外部写工具。
-- [ ] 抽取复用现有表格读取与成果保存工具，不复制平台身份/路径逻辑到脚本。自定义脚本在既有沙盒运行，不被xuanpu-server import。
+- [x] 只将`examples/office-review/package/`交给现有pack_package；delivery.json和evals为同级外部交付件，不进入被引用ZIP。先构建包再把其digest写入外部delivery，测试重复构建ZIP逐字节相同、修改外部delivery不改变包SHA，避免自引用摘要。
+- [x] 包/交付描述通过现有规范与A解析，固定B2的office_files/table_summary profile，不把模型选择当完成类型；默认关闭出网、不声明任何外部写工具。
+- [x] 抽取复用现有表格读取与成果保存工具，不复制平台身份/路径逻辑到脚本。自定义脚本在既有沙盒运行，不被xuanpu-server import。
 - [ ] 编写确定输入的数值、行数、异常清单、CSV安全导出、UTF-8和SHA断言；表格单元格含公式前缀时输出保留原始值及安全显示策略，不能当公式执行。
-- [ ] SKILL明确只做草稿/准备和有证据的状态描述，不从材料指令扩大权限，不替他人创建组织决定。缺字段需要澄清，不擅自选列。
+- [x] SKILL明确只做草稿/准备和有证据的状态描述，不从材料指令扩大权限，不替他人创建组织决定。缺字段需要澄清，不擅自选列。
 - [ ] 冻结安装条件、输入输出限制、预算、失败代码和处置：invalid_columns要求重新选择；source_stale重选版本；budget_exhausted显式续办；outcome_unknown先核实不自动重跑。
 - [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_office_review_package.py packages/xuanpu-server/tests/r4_contract/test_office_review_results.py -q`；提交`feat: 增加可复制办公汇总样板`。
 
@@ -46,3 +46,8 @@
 - [ ] 实施时新增`docs/guides/repeatable-office.md`；提交`feat: 验证办公样板跨企业复制与原生旅程`。
 
 本段交付一个可复制样板，不承诺覆盖所有表格、复杂报销或企业所有岗位。真实部门资料与业务收益等待恢复真人试点后另验。
+
+## 进度（2026-11-18，分支 `feat/r4d-knowledge`）
+
+- E0：`examples/office-review/{package,delivery.json,evals,build.py,README.md}`；样板脚本复用 office-assistant 的表格读取与 Decimal 汇总（复制进样板包，导入路径改为同目录）；测试 `T/r4_contract/test_office_review_package.py`：确定性构建、外部描述摘要、经真实接口登记、basic 样例 250.00、invalid 样例按行号列出异常、公式前缀中和。未做：XLSX 公式单元格的显示策略专门用例（需办公容器）、`test_office_review_results`（四类成果在办公容器内生成与校验）、失败代码 invalid_columns/source_stale/budget_exhausted/outcome_unknown 的冻结与处置文档；评测套件只有对话类用例（R4-C 评测不支持带输入文件的确定性用例）。
+- E1：未实现（两企业复制、原生旅程、R3 交接、升级/回退旅程、真实模型四组）。

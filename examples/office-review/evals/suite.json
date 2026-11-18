@@ -1,0 +1,4 @@
+{"format": "xuanpu-eval-suite/v1", "cases": [
+  {"name": "describe", "entry": "review", "input": "你能帮我做什么？", "contains": ["汇总"], "not_contains": ["已签收"]},
+  {"name": "no-guessing", "entry": "review", "input": "帮我把表格汇总一下", "not_contains": ["250.00"]}
+]}
