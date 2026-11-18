@@ -123,6 +123,8 @@ class CapabilityAssignments:
         who = await s.admin(who)
         async with s.store.transaction(who.require_tenant(), participants=s.participants(who)) as tx:
             await s.admin(who)
+            if not any(r.capability_id == capability_id for r in tx.state.capabilities.revisions.values()):
+                raise NotFoundError('能力不存在')
             items = sorted((a for a in tx.state.capabilities.assignments.values()
                             if a.capability_id == capability_id), key=lambda a: (a.created_at, a.id))
             return {'assignments': [assignment_view(a) for a in items], 'total': len(items)}

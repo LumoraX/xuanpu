@@ -1054,7 +1054,7 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | 方法与路径 | 正文 | 返回 |
 | --- | --- | --- |
 | POST /v1/capabilities/{id}/assignments | request_id、selector（`{kind:user,id,user_epoch}`或`{kind:position|unit,id,target_version}`）、allowed_revisions（1–20项明确修订）、可选valid_until | 201：id、capability_id、version、selector、allowed_revisions、valid_until、status=active、epoch、grants=capability_use_only；目标不存在404，员工代次或结构版本不符409，修订不存在400 |
-| GET /v1/capabilities/{id}/assignments | 无 | assignments（含已撤销）、total；仅管理员 |
+| GET /v1/capabilities/{id}/assignments | 无 | assignments（含已撤销）、total；仅管理员；本企业没有这个能力 404 |
 | POST /v1/capability-assignments/{id}/revoke | request_id、expected_version | 状态revoked、epoch加一、version加一；版本不符或已撤销409 |
 
 ### 能力评测与发布（R4-C）
@@ -1065,7 +1065,7 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | GET /v1/capability-evaluations/{id} | 无 | status=running/passed/failed/interrupted/blocked、reason、cases（name、passed、reasons、outcome、total_tokens）；不含输入正文 |
 | POST /v1/capabilities/{id}/release-previews | installation_id、evaluation_id、targets（1–100个user_id与user_epoch） | digest、capability_revision、changes（每人from_revision→to_revision）、supersedes；只读；证据不符或过期409 |
 | POST /v1/capabilities/{id}/releases | 预览正文加request_id、preview_digest、supersedes、confirmed=true | 201：发布记录；摘要或取代列表不符409；首次发布把安装置为ready |
-| GET /v1/capabilities/{id}/releases | 无 | releases、total |
+| GET /v1/capabilities/{id}/releases | 无 | releases、total；本企业没有这个能力 404 |
 | POST /v1/capability-releases/{id}/retire、/revoke | request_id、expected_version | status=retired或revoked（revoked代次加一）；只能从active改 |
 
 纳管包（任一入口登记为能力）的`POST /v1/sessions`、续聊与`resume`、`POST /v1/work-tasks/from-capability`与办公交办都经同一能力决策：没有有效分配或显式版本不等于决策版本404，机器身份404，原依据失效后续聊/恢复403；纳管包的`POST /v1/packages/{name}/activate`与`publish?activate=true` 409。
