@@ -87,6 +87,7 @@ Python SDK 的 `AuditRecord.data` 在本接口返回中为 `None`；分页游标
 | `reminder.fired` | 后台到期生成站内通知，与通知和下一次时间同事务提交；actor为`system:reminders` | `reminder_id`、`version`、`notification_id` |
 | `session_created` | 新建会话 | `package`、`version`、`entry`、`metadata` |
 | `assistant_route_sampled` | 直接对话入口完成或中断业务识别；计入租户与员工 token 用量，不增加业务轮数 | `estimated`、`input_tokens`、`output_tokens`、`total_tokens`、`turns=0`；不记录识别提示词与模型原文 |
+| `knowledge_answer_sampled` | 员工在受保护知识问答里提问，模型完成或中断回答（R4-D1）；计入租户与员工 token 用量，不增加业务轮数 | `estimated`、`input_tokens`、`output_tokens`、`total_tokens`、`turns=0`；不记录问题、依据正文与回答原文 |
 | `session_closed` | 关闭会话。员工停用后由平台关掉的，`actor` 是 `system:user-disabled` | — |
 | `message_sent` | 用户发出一条消息 | `submission_id`、`text` |
 | `suspension_resolved_by` | 送回审批决定 | `submission_id`、`decisions`（待办标识 → 批准与否） |

@@ -1,6 +1,6 @@
 # 本人知识与工作记忆
 
-> 给员工与开启试点的平台管理员。设计见[本人知识与工作记忆](../architecture/knowledge-governance.md)。当前为源码实现，尚未生产部署；原生界面尚未提供，目前经 HTTP 接口使用。
+> 给员工与开启试点的平台管理员。设计见[本人知识与工作记忆](../architecture/knowledge-governance.md)。当前为源码实现，尚未生产部署；原生界面尚未提供，目前经 HTTP 接口、Python SDK（`XuanpuClient` 的 `search_knowledge`、`create_knowledge_context`、`ask_knowledge` 等）或命令行 `xuanpu knowledge` 使用。
 
 ## 开启
 

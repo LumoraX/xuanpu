@@ -314,6 +314,8 @@ def build_parser() -> argparse.ArgumentParser:
     add_shared_commands(commands)
     from xuanpu_cli.collaboration_commands import add_collaboration_commands
     add_collaboration_commands(commands)
+    from xuanpu_cli.knowledge_commands import add_knowledge_commands
+    add_knowledge_commands(commands)
     return parser
 
 
