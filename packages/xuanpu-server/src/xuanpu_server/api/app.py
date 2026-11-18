@@ -37,6 +37,7 @@ from xuanpu_server.api.integration_actions import integration_actions_router
 from xuanpu_server.api.knowledge import knowledge_router
 from xuanpu_server.api.organization import organization_router
 from xuanpu_server.api.organizational_approvals import organizational_approvals_router
+from xuanpu_server.api.outcomes import outcomes_router
 from xuanpu_server.api.proactive import proactive_router
 from xuanpu_server.api.reminders import reminders_router
 from xuanpu_server.api.shared_contexts import shared_contexts_router
@@ -176,6 +177,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.include_router(organization_router(platform))
     app.include_router(capabilities_router(platform))
     app.include_router(knowledge_router(platform))
+    app.include_router(outcomes_router(platform))
     app.include_router(shared_matters_router(platform))
     app.include_router(handoffs_router(platform))
     app.include_router(organizational_approvals_router(platform))
