@@ -110,6 +110,7 @@ if TYPE_CHECKING:
     from xuanpu_server.controlplane.store import ControlPlaneStore
     from xuanpu_server.identity.service import IdentitySettings
     from xuanpu_server.identity.store import IdentityStore
+    from xuanpu_server.knowledge.service import KnowledgeConfig
     from xuanpu_server.objectstore import ObjectStore
     from xuanpu_server.organization.config import OrganizationConfig
     from xuanpu_server.runtime.instance_guard import InstanceGuard
@@ -164,6 +165,7 @@ class Platform:
         connections: ConnectionConfig | None = None,
         organization: OrganizationConfig | None = None,
         capability_delivery: CapabilityDeliveryConfig | None = None,
+        knowledge: KnowledgeConfig | None = None,
         shared_matters: SharedMatterConfig | None = None,
         handoffs: CollaborationConfig | None = None,
         approvals: CollaborationConfig | None = None,
@@ -324,6 +326,9 @@ class Platform:
         self.sessions = self._session_manager(submissions, lease_seconds)
         self.sessions.admission = self.capabilities.admission
         self.capabilities.evaluations.sessions = self.sessions
+        from xuanpu_server.knowledge.service import KnowledgeService
+
+        self.knowledge = KnowledgeService(self.workspace, store.knowledge_store, config=knowledge, now=now)
         self.packages.managed_guard = self.capabilities.admission.managed
         from xuanpu_server.tracing.retention import TraceRetention
 

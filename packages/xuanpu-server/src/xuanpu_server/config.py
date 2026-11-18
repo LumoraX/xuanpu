@@ -28,6 +28,7 @@ from xuanpu_server.collaboration.models import CollaborationConfig
 from xuanpu_server.connections.models import ConnectionConfig
 from xuanpu_server.dashboard.config import MinimalEntryConfig
 from xuanpu_server.identity.config import IdentityConfig, normalize_origin
+from xuanpu_server.knowledge.service import KnowledgeConfig  # noqa: TC001 —— Pydantic 运行时解析
 from xuanpu_server.organization.config import OrganizationConfig
 from xuanpu_server.shared_matters.models import SharedMatterConfig
 from xuanpu_server.tracing.config import ExecutionTraceConfig
@@ -348,6 +349,7 @@ class ServerConfig(_Section):
     connections: ConnectionConfig = ConnectionConfig()
     organization: OrganizationConfig = OrganizationConfig()
     capability_delivery: CapabilityDeliveryConfig = CapabilityDeliveryConfig()
+    knowledge: KnowledgeConfig = KnowledgeConfig()
     execution_trace: ExecutionTraceConfig = ExecutionTraceConfig()
     telemetry: TelemetryConfig = TelemetryConfig()
     butler: ButlerConfig = ButlerConfig()

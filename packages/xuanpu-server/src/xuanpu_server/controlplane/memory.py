@@ -54,6 +54,9 @@ class InMemoryControlPlane:
         from xuanpu_server.capabilities.bindings import MemoryBindingStore
 
         self.binding_store = MemoryBindingStore()
+        from xuanpu_server.knowledge.store import MemoryKnowledgeStore
+
+        self.knowledge_store = MemoryKnowledgeStore()
         from xuanpu_server.butler.wake_store import MemoryWakeStore
 
         self.wake_store = MemoryWakeStore()

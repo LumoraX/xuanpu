@@ -30,6 +30,7 @@ if TYPE_CHECKING:
         UsageRecord,
     )
     from xuanpu_server.coordination.store import CoordinationStore
+    from xuanpu_server.knowledge.store import KnowledgeStore
     from xuanpu_server.reminders.store import ReminderStore
     from xuanpu_server.runtime.receipt_store import ReceiptStore
     from xuanpu_server.tenancy import ApiKeyRecord, Tenant
@@ -69,6 +70,11 @@ class ControlPlaneStore(Protocol):
     @property
     def trace_store(self) -> SpanStore:
         """与控制面同后端的执行追踪存储（R5-B）。"""
+        ...
+
+    @property
+    def knowledge_store(self) -> KnowledgeStore:
+        """与控制面同后端的本人知识来源与文本块（R4-D）。"""
         ...
 
     @property
