@@ -37,6 +37,10 @@ def validate_state(tenant: str, before: CapabilityState, after: CapabilityState)
     _validate_installations(before, after)
     _validate_assignments(before, after)
     _validate_releases(before, after)
+    for field in ('batches', 'observations'):
+        old_items, new_items = getattr(before, field), getattr(after, field)
+        if any(key not in new_items or new_items[key] != value for key, value in old_items.items()):
+            raise ConflictError('验收批次与核实观察只能追加，不能改写或删除')
 
 
 def _validate_installations(before: CapabilityState, after: CapabilityState) -> None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .models import (
+    AcceptanceBatch,
     CapabilityAssignment,
     CapabilityEvaluation,
     CapabilityRelease,
@@ -12,6 +13,7 @@ from .models import (
     Installation,
     InstallationConfig,
     InstallPreview,
+    Observation,
 )
 
 if TYPE_CHECKING:
@@ -30,6 +32,8 @@ TABLES: tuple[tuple[str, str, type[BaseModel], tuple[str, ...]], ...] = (
     ('assignments', 'capability_assignment', CapabilityAssignment, ('capability_id',)),
     ('evaluations', 'capability_evaluation', CapabilityEvaluation, ('capability_id',)),
     ('releases', 'capability_release', CapabilityRelease, ('capability_id',)),
+    ('batches', 'acceptance_batch', AcceptanceBatch, ('capability_id',)),
+    ('observations', 'acceptance_observation', Observation, ('batch_id',)),
 )
 
 

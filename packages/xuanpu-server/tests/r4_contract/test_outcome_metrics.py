@@ -93,3 +93,43 @@ async def test_window_and_isolation(r4_http, r4_world):
     assert [c['capability_id'] for c in admin['capabilities']] == ['cap_x']
     assert 'task_' not in str(admin) and '汇总正文' not in str(admin)
     assert (await r4_http['alice'].get('/v1/admin/capability-outcomes')).status_code == 403
+
+
+async def test_acceptance_batch_and_observations(r4_http, r4_world):
+    """批次样本须属于该能力修订；结论只追加、纠正须指明现行观察；通过率只除以有结论的样本。"""
+    await _capability(r4_world)
+    for index in range(4):
+        await _seed(r4_world, 'usr_alice', index, 'succeeded', 1000.0 + index)
+    admin = r4_http['admin']
+    samples = [f'task_usr_alice_{i}' for i in range(4)]
+    bad = await admin.post('/v1/admin/acceptance-batches', json={
+        'request_id': 'b0', 'capability_id': 'cap_x', 'capability_revision': 1, 'name': '首批',
+        'criteria': '金额与预期一致', 'samples': [*samples, 'task_other']})
+    assert bad.status_code == 400
+    created = await admin.post('/v1/admin/acceptance-batches', json={
+        'request_id': 'b1', 'capability_id': 'cap_x', 'capability_revision': 1, 'name': '首批',
+        'criteria': '金额与预期一致', 'samples': samples})
+    assert created.status_code == 201, created.text
+    batch = created.json()
+    assert batch['counts'] == {'passed': 0, 'failed': 0, 'blocked': 0, 'not_checked': 4}
+    assert batch['verification_rate'] is None
+    path = f"/v1/acceptance-batches/{batch['id']}/observations"
+
+    async def observe(request_id, task, verdict, supersedes=None):
+        body = {'request_id': request_id, 'task_id': task, 'verdict': verdict, 'evidence_ref': 'evidence.json#' + task}
+        if supersedes:
+            body['supersedes'] = supersedes
+        return await admin.post(path, json=body)
+
+    first = await observe('o1', samples[0], 'failed')
+    assert first.status_code == 201
+    assert (await observe('o1', samples[0], 'failed')).json() == first.json()
+    assert (await observe('o2', samples[0], 'passed')).status_code == 409
+    assert (await observe('o3', samples[0], 'passed', first.json()['id'])).status_code == 201
+    await observe('o4', samples[1], 'failed')
+    await observe('o5', samples[2], 'blocked')
+    assert (await observe('o6', 'task_other', 'passed')).status_code == 400
+    detail = (await admin.get(f"/v1/acceptance-batches/{batch['id']}")).json()
+    assert detail['counts'] == {'passed': 1, 'failed': 1, 'blocked': 1, 'not_checked': 1}
+    assert detail['verification_rate'] == 0.5
+    assert (await r4_http['alice'].get(f"/v1/acceptance-batches/{batch['id']}")).status_code == 403

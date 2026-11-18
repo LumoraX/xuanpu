@@ -160,6 +160,29 @@ class CapabilityRelease(Record):
     supersedes: str | None = None
 
 
+class AcceptanceBatch(Record):
+    """冻结的验收批次：能力修订、验收标准与样本任务；建后不可改，变更须另建新批次（supersedes）。"""
+    capability_id: str
+    capability_revision: int = Field(ge=1)
+    name: str = Field(min_length=1, max_length=120)
+    criteria: str = Field(min_length=1, max_length=2000)
+    samples: tuple[str, ...] = Field(min_length=1, max_length=500)
+    evidence_kind: Literal['synthetic', 'real_model', 'pilot'] = 'synthetic'
+    supersedes: str | None = None
+    created_by: str
+
+
+class Observation(Record):
+    """一条人工核实观察（只追加）：样本、结论与证据引用；纠正另记一条并指向被纠正的那条。"""
+    batch_id: str
+    task_id: str
+    verdict: Literal['passed', 'failed', 'blocked']
+    evidence_ref: str = Field(min_length=1, max_length=500)
+    note: str = Field(default='', max_length=1000)
+    observer: str
+    supersedes: str | None = None
+
+
 class CapabilityState(StrictModel):
     """同一协调事务内的登记、预检、配置和安装。"""
     revisions: dict[str, CapabilityRevision] = Field(default_factory=dict)
@@ -169,3 +192,5 @@ class CapabilityState(StrictModel):
     assignments: dict[str, CapabilityAssignment] = Field(default_factory=dict)
     evaluations: dict[str, CapabilityEvaluation] = Field(default_factory=dict)
     releases: dict[str, CapabilityRelease] = Field(default_factory=dict)
+    batches: dict[str, AcceptanceBatch] = Field(default_factory=dict)
+    observations: dict[str, Observation] = Field(default_factory=dict)
