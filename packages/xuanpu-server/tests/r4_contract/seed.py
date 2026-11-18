@@ -27,6 +27,18 @@ spec:
     return pack_package(root)
 
 
+SUITE = {'format': 'xuanpu-eval-suite/v1', 'cases': [
+    {'name': 'review', 'entry': 'review', 'input': '核对这份材料', 'contains': ['核对完成']}]}
+
+
+def suite_digest(suite: dict) -> str:
+    """套件摘要（与平台计算口径一致：规范 JSON 的 SHA-256）。"""
+    from xuanpu_server.capabilities.delivery import fingerprint
+    from xuanpu_server.capabilities.models import EvaluationSuite
+
+    return fingerprint(EvaluationSuite.model_validate(suite).model_dump(mode='json'))
+
+
 def delivery(digest: str, version: str = '1.0.0') -> dict:
     """交付描述独立于归档，不包含其自身摘要或租户配置。"""
     return {
@@ -39,5 +51,5 @@ def delivery(digest: str, version: str = '1.0.0') -> dict:
                         'model_tier': 'balanced', 'max_tokens': 10000, 'max_iterations': 10,
                         'tools': [], 'connections': []},
         'requirements': {'public_config': {}, 'secret_refs': []},
-        'evaluation_suite_sha256': 'a' * 64,
+        'evaluation_suite_sha256': suite_digest(SUITE),
     }

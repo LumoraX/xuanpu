@@ -190,8 +190,12 @@ class SessionManager:
         metadata: dict[str, str] | None = None,
         request_id: str | None = None,
         work_task_id: str | None = None,
+        evaluation_id: str | None = None,
     ) -> SessionRecord:
-        """新建会话。版本在此钉死：之后业务包切换生效版本不影响这个会话。"""
+        """新建会话。版本在此钉死：之后业务包切换生效版本不影响这个会话。
+
+        ``evaluation_id`` 只由能力评测内部传入（R4-C0）：按评测固定的修订建会话并写评测绑定。
+        """
         tenant_id = principal.require_tenant()
         labels = validate_metadata(metadata)
         stable_id = None
@@ -211,7 +215,11 @@ class SessionManager:
             if existing is not None:
                 return existing
         decision = None
-        if self.admission is not None and work_task_id is None:
+        if evaluation_id is not None:
+            if self.admission is None:
+                raise InvalidRequestError("评测会话需要能力治理")
+            version, entry = await self.admission.evaluation_target(principal, evaluation_id, package, entry)
+        elif self.admission is not None and work_task_id is None:
             # 纳管包的新会话一律经能力决策；显式版本须等于决策版本。任务承载的会话由任务绑定治理
             decision = await self.admission.admit(principal, package, entry, version)
             if decision is not None:
@@ -253,6 +261,9 @@ class SessionManager:
         if decision is not None:
             assert self.admission is not None
             await self.admission.bind(principal, "session", record.session_id, decision)
+        elif evaluation_id is not None:
+            assert self.admission is not None
+            await self.admission.bind_evaluation(principal, record.session_id, evaluation_id)
         await self._audit.control(
             principal,
             tenant_id,

@@ -89,6 +89,40 @@ class CapabilityAdmission:
                 return revision.delivery
         raise NotFoundError('没有可用的能力')
 
+    async def evaluation_target(self, who: Principal, evaluation_id: str, package: str,
+                                entry: str | None) -> tuple[str, str]:
+        """评测会话的版本与入口：只给进行中的评测、仅管理员、包与入口须属于被评的能力修订。"""
+        await self._service.admin(who)
+        state, _ = await self._service.store.capability_snapshot(who.require_tenant())
+        evaluation = state.evaluations.get(evaluation_id)
+        if evaluation is None or evaluation.status != 'running':
+            raise NotFoundError('评测不存在或已结束')
+        revision = next(r for r in state.revisions.values()
+                        if r.capability_id == evaluation.capability_id and r.revision == evaluation.capability_revision)
+        target = revision.delivery.package
+        if target.name != package or (entry is not None and entry != target.entry):
+            raise NotFoundError('评测不存在或已结束')
+        return target.version, target.entry
+
+    async def bind_evaluation(self, who: Principal, session_id: str, evaluation_id: str) -> InvocationBinding:
+        """评测会话的绑定：记评测而不记分配与发布；续跑时只认进行中且列名的评测。"""
+        state, _ = await self._service.store.capability_snapshot(who.require_tenant())
+        evaluation = state.evaluations[evaluation_id]
+        config = state.configurations[evaluation.config_id]
+        revision = next(r for r in state.revisions.values()
+                        if r.capability_id == evaluation.capability_id and r.revision == evaluation.capability_revision)
+        package = revision.delivery.package
+        assert who.user_id is not None or who.key_id is not None
+        binding = InvocationBinding(
+            tenant_id=who.require_tenant(), kind='session', ref_id=session_id, user_id=who.actor,
+            user_epoch=1, capability_id=evaluation.capability_id, capability_revision=revision.revision,
+            package_name=package.name, package_version=package.version, package_digest=package.digest,
+            entry=package.entry, installation_id=evaluation.installation_id,
+            installation_version=state.installations[evaluation.installation_id].version,
+            config_id=config.id, config_revision=config.config_revision, config_digest=config.digest,
+            evaluation_id=evaluation_id, created_at=self._service.now())
+        return await self._bindings.put(binding)
+
     async def bind(self, who: Principal, kind: BindingKind, ref_id: str,
                    decision: CapabilityDecision) -> InvocationBinding:
         """写一次调用绑定。"""
@@ -108,16 +142,27 @@ class CapabilityAdmission:
         binding = await self._bindings.get(tenant, kind, ref_id)
         if binding is None:
             raise PermissionDeniedError('这项工作没有能力依据，不能继续')
+        state, _ = await self._service.store.capability_snapshot(tenant)
+        installation = state.installations.get(binding.installation_id)
+        if binding.evaluation_id is not None:
+            # 隔离评测的会话：只在它所属的评测仍在进行、且评测记录列有这个会话时放行
+            evaluation = state.evaluations.get(binding.evaluation_id)
+            if evaluation is None or evaluation.status != 'running' or ref_id not in evaluation.sessions:
+                raise PermissionDeniedError('评测已结束，这个评测会话不能继续')
+            return
         user = await self._service.organization.identity.get_user(tenant, binding.user_id)
         if user is None or user.status != 'active' or user.lifecycle_epoch != binding.user_epoch:
             raise PermissionDeniedError('员工状态已变化，这项工作不能继续')
-        state, _ = await self._service.store.capability_snapshot(tenant)
-        assignment = state.assignments.get(binding.assignment_id)
-        installation = state.installations.get(binding.installation_id)
         now = self._service.now()
+        assignment = state.assignments.get(binding.assignment_id or '')
         if (assignment is None or assignment.status != 'active' or assignment.epoch != binding.assignment_epoch
                 or (assignment.valid_until is not None and assignment.valid_until <= now)):
             raise PermissionDeniedError('能力分配已撤销或过期，这项工作不能继续')
+        if binding.release_id is not None:
+            # 正常停止（retired）的发布让原绑定收尾；安全撤销（revoked）后原绑定也不能继续
+            release = state.releases.get(binding.release_id)
+            if release is None or release.status == 'revoked' or release.epoch != binding.release_epoch:
+                raise PermissionDeniedError('能力发布已撤销，这项工作不能继续')
         if installation is None or installation.status not in _CONTINUABLE:
             raise PermissionDeniedError('能力已停用，这项工作不能继续')
 

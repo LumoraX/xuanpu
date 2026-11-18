@@ -11,8 +11,10 @@ from .assignments import CapabilityAssignments
 from .config import CapabilityDeliveryConfig
 from .contracts import validate_package
 from .delivery import fingerprint
+from .evaluations import CapabilityEvaluations
 from .installations import CapabilityInstallations
 from .models import CapabilityRevision
+from .releases import CapabilityReleases
 from .views import catalog_page, installation_view, revision_view
 
 if TYPE_CHECKING:
@@ -39,6 +41,8 @@ class CapabilityService:
         self.installations = CapabilityInstallations(self, preflight)
         self.assignments = CapabilityAssignments(self)
         self.admission = CapabilityAdmission(self, organization.control.binding_store)
+        self.evaluations = CapabilityEvaluations(self)
+        self.releases = CapabilityReleases(self)
 
     async def admin(self, who: Principal, *, mutation: bool = False) -> Principal:
         """管理员资格每次复核；关开关后仍可查看历史。"""

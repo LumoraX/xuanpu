@@ -21,12 +21,42 @@ async def _ready(client, world, ids) -> str:
         'request_id': 'install', 'preview_id': preview.json()['id'], 'expected_version': 0,
         'confirmed': True})
     assert installed.status_code == 201, installed.text
+    await seed_release(world, cap, installed.json()['id'], ['usr_alice', 'usr_bob'])
+    return cap
+
+
+async def seed_release(world, cap: str, installation_id: str, users: list[str]) -> str:
+    """测试专用写入：把安装置为 ready，并写一份已通过的评测与覆盖这些员工的生效发布。
+
+    生产里这两步只能经评测与发布接口（R4-C，另有专门用例）；这里只为单独检验分配语义。
+    """
+    from xuanpu_server.capabilities.models import (
+        CapabilityEvaluation,
+        CapabilityRelease,
+        ReleaseTarget,
+    )
+
+    from .seed import SUITE
+
+    targets = [ReleaseTarget(user_id=u, user_epoch=await _epoch(world, u)) for u in users]
     store = world.platform.organization.store
     async with store.transaction('acme') as tx:
-        item = tx.state.capabilities.installations[installed.json()['id']]
-        tx.state.capabilities.installations[item.id] = item.model_copy(
-            update={'status': 'ready', 'version': item.version + 1})
-    return cap
+        state = tx.state.capabilities
+        item = state.installations[installation_id]
+        state.installations[item.id] = item.model_copy(update={'status': 'ready', 'version': item.version + 1})
+        config = state.configurations[item.config_id]
+        evaluation = CapabilityEvaluation(
+            tenant_id='acme', id='cev_seed_' + cap, created_at=time.time(), capability_id=cap,
+            capability_revision=config.revision, installation_id=item.id, config_id=config.id,
+            config_digest=config.digest, suite_digest='0' * 64, suite=SUITE, token_budget=100_000,
+            status='passed', finished_at=time.time())
+        state.evaluations[evaluation.id] = evaluation
+        release = CapabilityRelease(
+            tenant_id='acme', id='crl_seed_' + cap, created_at=time.time(), capability_id=cap,
+            capability_revision=config.revision, installation_id=item.id, config_id=config.id,
+            config_digest=config.digest, evaluation_id=evaluation.id, targets=tuple(targets))
+        state.releases[release.id] = release
+    return release.id
 
 
 async def _epoch(world, user: str) -> int:

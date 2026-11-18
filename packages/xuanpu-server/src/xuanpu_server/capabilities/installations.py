@@ -163,7 +163,7 @@ class CapabilityInstallations:
             if old is not None:
                 return old
             if body.status == 'ready':
-                raise ConflictError('尚无有效分配和评测发布，请先完成发布检查')
+                raise ConflictError('安装只能经评测证据与发布确立为可运行，请通过能力发布流程')
             if item.version != body.expected_version:
                 raise ConflictError('安装版本已变化')
             changed = item.model_copy(update={'status': body.status, 'version': item.version + 1})

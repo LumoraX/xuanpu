@@ -323,6 +323,7 @@ class Platform:
         )
         self.sessions = self._session_manager(submissions, lease_seconds)
         self.sessions.admission = self.capabilities.admission
+        self.capabilities.evaluations.sessions = self.sessions
         self.packages.managed_guard = self.capabilities.admission.managed
         from xuanpu_server.tracing.retention import TraceRetention
 
@@ -406,6 +407,8 @@ class Platform:
         try:
             await self.packages.start()
             await self.capabilities.installations.preflight.inventory.recover()
+            # 上次进程里没跑完的能力评测标 interrupted，不自动重放（R4-C0）
+            await self.capabilities.evaluations.recover(list(self.capabilities.config.tenants))
             if self._closed or self._instance_guard.lost:
                 raise RuntimeError("启动准备期间已关闭或丢失持有权")
             await self.sessions.start()
@@ -436,6 +439,7 @@ class Platform:
             self.sessions.stop_accepting()
             errors: list[BaseException] = []
             actions = (self.shared_notifications.close, self.shared_publication_recovery.close, self.shared_materials.publications.close,
+                       self.capabilities.evaluations.close,
                        self.capabilities.installations.preflight.inventory.close,
                        self.organization_lifecycle.close, self.trigger_worker.close, self.task_registry.close, self.proactive_worker.close, self.reminders.close,
                        self.notification_sender.close, self.assistant.close, self.butler.close, self.trace_retention.close,

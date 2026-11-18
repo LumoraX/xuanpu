@@ -39,10 +39,11 @@ class InvocationBinding(BaseModel):
     config_id: str
     config_revision: int
     config_digest: str
-    assignment_id: str
-    assignment_epoch: int
+    assignment_id: str | None = None
+    assignment_epoch: int | None = None
     release_id: str | None = None
     release_epoch: int | None = None
+    evaluation_id: str | None = None
     created_at: float
 
 
