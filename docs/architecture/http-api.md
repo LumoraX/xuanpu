@@ -1045,6 +1045,23 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 
 预检有效期默认900秒，内部证据固定归档、策略、完整MCP清单及凭据密文版本，安装前重检。diff仅含公开权限/上一安装权限及配置槽名，不回显配置值、密文指纹或实际秘密引用。新登记/预检/安装要求capability_delivery明确开启并命中租户白名单；查询与停止不受该新受理开关阻断。精确契约见[能力架构](capability-delivery.md)。
 
+## 本人知识与工作记忆（R4-D）
+
+按租户开关 `knowledge`；未开启 403。只给员工本人，别人的来源或记忆一律 404。
+
+| 方法与路径 | 正文 | 返回 |
+| --- | --- | --- |
+| POST /v1/me/knowledge/sources | item_id、revision（本人工作区文件的明确版本） | 201：id、item_id、revision、title、sha256、status=ready、chunks、chars、version；格式或编码不对 400，文件不存在 404，同版本已登记回原记录 |
+| GET /v1/me/knowledge/sources | 无 | sources（含 stale 与 has_update）、total |
+| POST /v1/me/knowledge/search | query（1–500 字）、limit（1–10） | hits（source_id、title、item_id、revision、ordinal、excerpt≤2000 字）、total（只计此刻可读来源） |
+| POST /v1/me/knowledge/sources/{id}/refresh | expected_version | 换成文件当前版本的新来源，旧来源删除 |
+| POST /v1/me/knowledge/sources/{id}/delete | expected_version | status=deleted，文本块清除 |
+| GET /v1/me/work-memory | 无 | memories（生效中与待确认；过期与依据不可读的不列）、total |
+| POST /v1/me/work-memory/proposals | text、citation（source_id、ordinal）、可选 valid_until | 201：status=proposed；引用不可读 400 |
+| POST /v1/me/work-memory/assertions | text、可选 valid_until | 201：kind=user_assertion、status=active、verified_by_source=false |
+| POST /v1/me/work-memory/{id}/confirm、/reject、/delete | expected_version | 状态与递增版本 |
+| POST /v1/me/work-memory/{id}/correct | expected_version、text | 新修订（同 lineage），旧修订 superseded |
+
 ## 管家入口（R5-C）
 
 `POST /v1/assistant/messages`：员工对管家说一句话。认证同 `/v1/assistant/route`。请求体：`request_id`（必填，1–80 字符 `[a-zA-Z0-9_.:-]`）、`text`（1–8000 字符）、`timezone`（IANA，默认 Asia/Shanghai）、`input_files`（本人文件版本 `{item_id, revision}`，最多 8 个，派工材料只能从中选）；多余字段 422。

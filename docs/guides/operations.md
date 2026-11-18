@@ -745,6 +745,10 @@ R2配置中的`task_activity.enabled`控制工作动态通知，默认false；`t
 
 `capability_delivery`构造配置：enabled默认false；tenants默认[]，空始终关闭；max_revisions默认1000（1–10000）；max_previews默认1000（1–10000）；preview_seconds默认900（60–900）；probe_seconds默认30（1–60）。关闭不自动删除历史或纳管旧包。容量上限达到后明确拒绝新记录，当前不提供历史清除功能。
 
+R4-B/C 新增 0027_capability_assignments（能力分配与调用绑定）、0028_capability_releases（隔离评测与发布），R4-D 新增 0029_knowledge_governance（本人知识来源、文本块与工作记忆），均尚未正式部署。
+
+`knowledge`构造配置：enabled默认false；tenants默认[]，空始终关闭。开启后名单内企业的员工可登记本人文件为知识来源、检索与管理本人工作记忆（见[本人知识与工作记忆](knowledge-memory.md)）。关闭不删除已登记的来源与记忆，只拒绝相关接口。
+
 预检专属data_dir/capability-probes保留未完成的清理责任。Docker按目录确定容器名回收；本机重启后未知探测目录不能证明进程已退出，会阻止启动/新预检。先核实对应进程及作用范围，确认退出后才处理专属目录，不删除普通办公工作区。详见[能力安装边界](../architecture/capability-delivery.md)。本段尚无生产镜像、服务器迁移或真实员工验收结论。
 
 ## R5-B 执行追踪存储
