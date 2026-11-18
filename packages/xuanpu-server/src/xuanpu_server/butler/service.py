@@ -283,7 +283,8 @@ class ButlerService:
                      for i in await self.pending.list(who) if i.kind == "question"]
         return json.dumps({
             "now": datetime.fromtimestamp(self._now(), ZoneInfo(body.timezone)).isoformat(),
-            "timezone": body.timezone, "history": history, "pending_questions": questions,
+            "timezone": body.timezone, "turn_seconds": self._platform.butler_config.turn_seconds,
+            "history": history, "pending_questions": questions,
             "materials": [f.model_dump() for f in body.input_files], "text": body.text,
         }, ensure_ascii=False)
 

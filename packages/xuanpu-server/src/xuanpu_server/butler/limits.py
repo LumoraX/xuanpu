@@ -5,6 +5,8 @@
   租户每日 token 配额不受影响。提高值记在审计里（``butler_budget_raised``），
   ``budget_config`` 读出后叠加到起始预算上，唤醒的后续轮次与其他实例都看得到。
 - 每次调整写一条控制面审计；结果作为工具输出交给模型，由它在回复里告诉员工。
+- 主动延长的提示（``time_hint``）：本轮用掉六成时限后，每个工具输出末尾附上剩余秒数，
+  提醒管家在被截断前延长或把剩下的交出去；只是提示，不替管家延长。
 """
 
 from __future__ import annotations
@@ -25,6 +27,7 @@ if TYPE_CHECKING:
     from xuanpu_server.tracing.models import TraceOwner
 
 _REASON_MAX = 500
+_HINT_AT = 0.6
 _RAISED = "butler_budget_raised"
 _RAISES_SCANNED = 1000
 
@@ -53,6 +56,21 @@ def _reason(args: dict[str, Any]) -> str | None:
     """理由必填，去空白后截断；空理由返回 None。"""
     text = str(args.get("reason") or "").strip()
     return text[:_REASON_MAX] or None
+
+
+def time_hint(turn: ButlerTurn) -> str | None:
+    """本轮已用掉六成以上时限时给出剩余时间提示；没有时限或还早时返回 None。"""
+    deadline = turn.deadline
+    when = deadline.when() if deadline is not None else None
+    if when is None:
+        return None
+    now = asyncio.get_running_loop().time()
+    window = when - turn.started_at
+    if window <= 0 or now - turn.started_at < window * _HINT_AT:
+        return None
+    remaining = max(0, round(when - now))
+    return (f"\n（本轮剩余约 {remaining} 秒。这件事还需要更久的话，先调用 extend_turn 说明理由延长，"
+            "或把剩下的交给匠人；不要做到一半被截断。）")
 
 
 class LimitTools:

@@ -66,3 +66,4 @@
 ## 进度
 
 - 2026-11-18：A–E 实现并有单测（`T/butler/test_{async_turn,turn_deadline,budget_raise,turn_resume}.py`，PG 变体实际运行）；真实模型验收见 [R6 验收记录](../../guides/releases/2026-11-18-r6-always-online-acceptance.md)。观察：长写作任务里管家未主动 `extend_turn`，到时限正常停下。
+- 2026-11-18（续）：针对未主动延长，输入加 `turn_seconds`、说明要求预计超时先延长，工具输出在用掉六成时限后附剩余秒数提示（`limits.time_hint`，单测 `test_time_hint_appears_only_late_in_the_turn`）；尚未用真实模型复验长写作场景。
