@@ -23,7 +23,7 @@ def test_static_files_present() -> None:
         "collaboration-core.js", "handoffs.js", "handoff-results.js", "organizational-approvals.js", "collaboration-notifications.js",
         "shared-matters.js", "shared-materials.js", "shared-conversation.js", "shared-notifications.js",
         "connections.js", "organization.js", "organization-forms.js", "workspace-files.js", "workspace-chat.js", "proactive.js", "work-tasks.js", "task-definitions.js",
-        "capabilities.js", "accounts.js",
+        "capabilities.js", "knowledge.js", "accounts.js",
         "finance.js", "finance_settlement.js", "finance_compliance.js", "finance_operations.js", "finance_funding.js", "finance_records.js", "finance_materials.js",
     }
 

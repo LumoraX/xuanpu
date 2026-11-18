@@ -1,6 +1,10 @@
 # 本人知识与工作记忆
 
-> 给员工与开启试点的平台管理员。设计见[本人知识与工作记忆](../architecture/knowledge-governance.md)。当前为源码实现，尚未生产部署；原生界面尚未提供，目前经 HTTP 接口、Python SDK（`XuanpuClient` 的 `search_knowledge`、`create_knowledge_context`、`ask_knowledge` 等）或命令行 `xuanpu knowledge` 使用。
+> 给员工与开启试点的平台管理员。设计见[本人知识与工作记忆](../architecture/knowledge-governance.md)。当前为源码实现，尚未生产部署。员工可在「功能 → 知识与记忆」里登记来源、检索、勾选依据提问、管理记忆；也可经 HTTP 接口、Python SDK（`XuanpuClient` 的 `search_knowledge`、`create_knowledge_context`、`ask_knowledge` 等）或命令行 `xuanpu knowledge` 使用。
+
+## 页面操作
+
+「功能 → 知识与记忆」：从我的文件登记来源（只列 UTF-8 文本类文件可登记成功）；输入词检索，勾选要作依据的片段后提问，回答下方列出引用的文件、版本与段落。依据失效时页面会先清掉旧回答，再提示重新检索。记忆列表里「本人陈述」表示未经材料核实；待确认的记忆可确认或不采纳，任何记忆都可删除。不用模型时，检索、来源与记忆管理照常可用。
 
 ## 开启
 
