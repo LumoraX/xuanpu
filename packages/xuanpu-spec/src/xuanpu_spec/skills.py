@@ -27,6 +27,7 @@ class SkillSummary:
         directory: skill 所在目录名。
         entry: 是否声明为入口。
         tool_names: 声明使用的工具。
+        display_name: 给员工看的名字（frontmatter ``display_name``，1–40 字单行）；None 表示用 skill_id。
         problem: 读取或解析失败的原因；None 表示正常。
     """
 
@@ -34,6 +35,7 @@ class SkillSummary:
     directory: str
     entry: bool = False
     tool_names: tuple[str, ...] = ()
+    display_name: str | None = None
     problem: str | None = None
 
 
@@ -72,12 +74,22 @@ def _summarize(directory: Path) -> SkillSummary:
         )
     tools = front.get("tool_names") or ()
     tool_names = tuple(str(item) for item in tools) if isinstance(tools, list | tuple) else ()
+    display = front.get("display_name")
+    if display is not None and not _valid_display(display):
+        return SkillSummary(skill_id=name, directory=directory.name,
+                            problem="display_name 须是 1–40 字的单行文字")
     return SkillSummary(
         skill_id=name,
         directory=directory.name,
         entry=front.get("entry") is True,
         tool_names=tool_names,
+        display_name=display,
     )
+
+
+def _valid_display(value: object) -> bool:
+    """显示名：字符串、1–40 字、单行。"""
+    return isinstance(value, str) and 1 <= len(value.strip()) and len(value) <= 40 and not set(value) & {"\n", "\r"}
 
 
 def scan_skills(skills_dir: Path) -> list[SkillSummary]:

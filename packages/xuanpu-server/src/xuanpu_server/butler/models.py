@@ -59,6 +59,8 @@ class ArtisanRef(BaseModel):
     digest: str = Field(min_length=1, max_length=128)
     entry: str = Field(min_length=1, max_length=128)
     decision_ref: str
+    # 给员工看的匠人名（业务包 metadata.displayName）；旧派工记录没有，回退到包名
+    display_name: str | None = Field(default=None, max_length=40)
 
     @field_validator("decision_ref")
     @classmethod
@@ -75,6 +77,7 @@ class Artisan(BaseModel):
     description: str = Field(max_length=2000)
     entry_description: str = Field(max_length=2000)
     host: HostKind
+    entry_display_name: str | None = Field(default=None, max_length=40)
 
 
 class DispatchRecord(BaseModel):

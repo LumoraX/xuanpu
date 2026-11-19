@@ -196,9 +196,12 @@ def key_view(record: ApiKeyRecord) -> dict[str, Any]:
 
 
 def package_view(record: PackageVersionRecord, *, active: str | None) -> dict[str, Any]:
-    """业务包版本的对外表示。不含服务器上的存放位置。"""
+    """业务包版本的对外表示。不含服务器上的存放位置；``display_name`` 是匠人给员工看的名字。"""
+    from xuanpu_spec import parse_manifest
+
     return {
         "name": record.name,
+        "display_name": parse_manifest(record.manifest_yaml).metadata.display_name or record.name,
         "version": record.version,
         "digest": record.digest,
         "active": record.version == active,
@@ -207,11 +210,13 @@ def package_view(record: PackageVersionRecord, *, active: str | None) -> dict[st
     }
 
 
-def session_view(record: SessionRecord, *, include_content: bool = True) -> dict[str, Any]:
-    """会话的对外表示。"""
+def session_view(record: SessionRecord, *, include_content: bool = True,
+                 display_name: str | None = None) -> dict[str, Any]:
+    """会话的对外表示；``display_name`` 是匠人给员工看的名字（业务包没声明时等于包名）。"""
     return {
         "session_id": record.session_id,
         "package": record.package,
+        "display_name": display_name or record.package,
         "version": record.version,
         "entry": record.entry,
         "status": record.status,

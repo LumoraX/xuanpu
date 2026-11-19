@@ -272,7 +272,9 @@ class ButlerTools:
         """本人可用的匠人；说明文字是数据。"""
         artisans = await self._platform.artisans.available(turn.who)
         return taifeng.ToolResult.ok(_json({"artisans": [
-            {"package": a.ref.package, "entry": a.ref.entry, "description": a.description,
+            {"package": a.ref.package, "entry": a.ref.entry,
+             "name": a.ref.display_name or a.ref.package,
+             "entry_name": a.entry_display_name or a.ref.entry, "description": a.description,
              "entry_description": a.entry_description} for a in artisans]}))
 
     async def _dispatch(self, turn: ButlerTurn, args: dict[str, Any], _call: str,

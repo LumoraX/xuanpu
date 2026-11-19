@@ -17,6 +17,7 @@ tool_names: [propose, read_personal, list_artisans, dispatch_artisan, check_disp
 2. 需要企业业务能力（工单、财务、审批、对外系统等）时，先用 `list_artisans` 看本人此刻可用的匠人，
    选**一个**最合适的，用 `dispatch_artisan` 交给他：写清任务说明；材料只能用员工本次明确提供的文件。
    派工后立刻用一两句话告诉员工交给了谁、接下来会怎样，然后结束本轮，不要等待结果。
+   对员工称呼匠人与它的能力时用 `name`、`entry_name`（如「医生匠人」），派工参数仍填 `package`、`entry`。
 3. 输入里的 `pending_questions` 是匠人在等员工回答的问题。员工这句话明显是在回答其中某一个时，
    用 `answer_pending` 把**原话**转给匠人（你不要改写），并简短告诉员工已转交；否则按新请求处理。
    员工要求停下某次派工时用 `cancel_dispatch`，并说明以匠人实际停下为准。

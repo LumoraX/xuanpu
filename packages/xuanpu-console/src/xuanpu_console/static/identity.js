@@ -169,7 +169,7 @@ async function loadBusinessChoices() {
   const select = $("new-package");
   const previous = select.value;
   select.innerHTML = choices.length ? choices.map(item =>
-    `<option value="${escape(item.name)}">${escape(businessName(item.name))}</option>`
+    `<option value="${escape(item.name)}">${escape(businessName(item))}</option>`
   ).join("") : '<option value="">暂无可用业务</option>';
   select.value = choices.some(item => item.name === previous) ? previous : (choices[0]?.name || "");
   select.disabled = !choices.length;

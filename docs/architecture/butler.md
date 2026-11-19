@@ -119,3 +119,7 @@
 - 管家每轮新建引擎，内核 `todo_write` 清单不跨轮；跨轮记忆只有主对话最近 6 条。
 - 持久任务承载的派工路径只有单元级覆盖（本机测试环境无法运行办公容器）；会话承载有端到端测试。
 - 真实模型下的误派、漏派率尚未测量：回归集与脚本已就绪（`scripts/acceptance/r5_butler_regression.py`），本环境没有真实模型凭据，未执行。
+
+## 匠人的名字（ADR 0022）
+
+`list_artisans` 给管家 `name`（业务包 `metadata.displayName`）与 `entry_name`（入口 skill 的 `display_name`），没有声明时等于包名、入口名；管家对员工用这些名字，派工参数仍是 `package`、`entry`。派工时显示名冻结进 `ArtisanRef.display_name`，回报（「某某已完成」「某某需要你回答」「某某有一项操作需要你确认」）用它，旧派工记录用包名。

@@ -166,7 +166,7 @@ X-Xuanpu-Act-As: usr_5f0c1b2e7d9a4c3b8e6f1a20
 | `POST /v1/packages/{name}/evals` | 租户管理员 | 运行评测用例，返回报告 |
 | `POST /v1/sessions` · `GET /v1/sessions?status=&mine=&limit=` | 租户成员 | 新建、列出会话（只列[看得见的](#可见范围)） |
 | `GET /v1/sessions/{id}` · `DELETE /v1/sessions/{id}` | 租户成员 | 取会话、关闭会话 |
-| `GET /v1/sessions/{id}/pending` | 租户成员 | 会话当前等待处理的审批请求 |
+| `GET /v1/sessions/{id}/pending` | 租户成员 | 会话当前等待处理的审批请求；审批项 `detail.display_name` 是工具给员工看的名字（清单 `tools[].displayName`，没声明时等于 `detail.target`） |
 | `GET /v1/sessions/{id}/events?submission_id=&after_seq=` | 租户成员 | 回放一轮对话已记入审计的事件 |
 | `POST /v1/sessions/{id}/messages` | 租户成员 | 发消息；响应是事件流 |
 | `POST /v1/sessions/{id}/resume` | 租户成员 | 送回审批结果；响应是事件流 |
@@ -588,7 +588,7 @@ Content-Type: application/zip
 
 `activate` 省略时只发布、不生效。
 
-`GET /v1/packages` 返回 `{"packages": [ … ]}`：本租户全部已发布的版本，同名的按版本号从低到高；`?name=` 只看一个包。
+`GET /v1/packages` 返回 `{"packages": [ … ]}`：本租户全部已发布的版本，同名的按版本号从低到高；`?name=` 只看一个包。每项带 `display_name`（这个版本清单里的 `metadata.displayName`，没声明时等于包名）。
 
 ```
 POST /v1/packages/{name}/activate
@@ -616,7 +616,7 @@ POST /v1/sessions
 {"package": "support-desk", "version": "1.0.0", "entry": "triage", "metadata": {"customer": "C-42"}}
 
 → 201
-{"session_id": "ses_1197ee27deb1aa819440d23c", "package": "support-desk", "version": "1.0.0",
+{"session_id": "ses_1197ee27deb1aa819440d23c", "package": "support-desk", "display_name": "工单助手", "version": "1.0.0",
  "entry": "triage", "status": "active", "owner": null,
  "created_at": 1790753324.73, "updated_at": 1790753324.73,
  "created_by": "key:be139be29730", "metadata": {"customer": "C-42"}, "user_id": null}
@@ -624,7 +624,7 @@ POST /v1/sessions
 
 | 字段 | 说明 |
 | --- | --- |
-| `package` | 必填 |
+| `package` | 必填。响应另带 `display_name`：会话所钉版本清单里的匠人显示名，没声明时等于包名 |
 | `version` | 省略用生效版本。会话创建时钉住版本 |
 | `entry` | 省略用清单 `entries` 的第一个；不在 `entries` 里是 `400` |
 | `metadata` | 业务方自己的关联标识：最多 16 项，键值都是字符串、各 1–256 个字符。原样返回并进审计 |
