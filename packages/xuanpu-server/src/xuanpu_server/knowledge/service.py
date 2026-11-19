@@ -35,6 +35,7 @@ if TYPE_CHECKING:
 
     from pydantic import JsonValue
 
+    from xuanpu_server.shared_matters.materials import SharedMaterials
     from xuanpu_server.tenancy import Principal
     from xuanpu_server.workspace.service import WorkspaceService
 
@@ -60,11 +61,14 @@ class KnowledgeConfig(BaseModel):
 
 
 class RegisterSource(BaseModel):
-    """登记本人一份文件的明确版本。"""
+    """登记一份材料的明确版本：本人工作区文件（item_id），或本人此刻有权读的共享事项材料
+    （matter_id + material_id）。"""
 
     model_config = ConfigDict(frozen=True, extra='forbid', strict=True)
-    kind: Literal['workspace_file'] = 'workspace_file'
-    item_id: str = Field(min_length=1, max_length=128)
+    kind: Literal['workspace_file', 'shared_material'] = 'workspace_file'
+    item_id: str | None = Field(default=None, min_length=1, max_length=128)
+    matter_id: str | None = Field(default=None, min_length=1, max_length=128)
+    material_id: str | None = Field(default=None, min_length=1, max_length=128)
     revision: int = Field(ge=1)
 
 
@@ -130,6 +134,7 @@ def chunk(source_id: str, text: str) -> list[Chunk]:
 def source_view(source: KnowledgeSource, *, has_update: bool = False) -> dict[str, JsonValue]:
     """来源视图：版本与依据，不含正文。"""
     return {'id': source.id, 'kind': source.ref.kind, 'item_id': source.ref.item_id,
+            'matter_id': source.ref.matter_id, 'material_id': source.ref.material_id,
             'revision': source.ref.revision, 'title': source.title, 'sha256': source.sha256,
             'status': source.status, 'chunks': source.chunks, 'chars': source.chars, 'version': source.version,
             'has_update': has_update, 'created_at': source.created_at, 'updated_at': source.updated_at}
@@ -145,6 +150,8 @@ class KnowledgeService:
         self.config = config or KnowledgeConfig()
         # 来源删除后通知依赖方（问答上下文）立即失效；依赖方读取时也会再核，失败时仍拒绝使用
         self.removal_listeners: list[Callable[[str, str, str], Awaitable[None]]] = []
+        # 共享事项材料来源：由平台装配；没有时只接受本人工作区文件
+        self.shared: SharedMaterials | None = None
 
     async def _employee(self, who: Principal) -> tuple[str, str]:
         """在职员工且租户开启知识功能。"""
@@ -156,21 +163,18 @@ class KnowledgeService:
     async def register(self, who: Principal, body: RegisterSource) -> dict[str, JsonValue]:
         """登记一份本人文件的明确版本：按本人权限下载、核对格式与上限、原子写入。"""
         tenant, user = await self._employee(who)
-        ref = SourceRef(kind='workspace_file', item_id=body.item_id, revision=body.revision)
+        try:
+            ref = SourceRef(kind=body.kind, item_id=body.item_id, matter_id=body.matter_id,
+                            material_id=body.material_id, revision=body.revision)
+        except ValueError as exc:
+            raise InvalidRequestError('来源引用字段与类型不符') from exc
         live = [s for s in await self.store.sources(tenant, user) if s.status != 'deleted']
         existing = next((s for s in live if s.ref == ref), None)
         if existing is not None:
             return source_view(existing)
         if len(live) >= MAX_SOURCES:
             raise ConflictError('知识来源数量已达上限')
-        item = await self.workspace.get(who, body.item_id)
-        version = next((v for v in await self.workspace.versions(who, body.item_id)
-                        if v['revision'] == body.revision), None)
-        if item.get('trashed_at') is not None or version is None:
-            raise NotFoundError('材料或版本不存在')
-        if version['size'] > MAX_FILE_BYTES:
-            raise InvalidRequestError('单个文件不能超过 20 MiB')
-        content, mime, _ = await self.workspace.download(who, body.item_id, body.revision)
+        content, mime, title, sha = await self._fetch(who, ref)
         text = extract(content, mime)
         source_id = new_id('ksr')
         chunks = chunk(source_id, text)
@@ -179,13 +183,52 @@ class KnowledgeService:
             raise ConflictError('知识来源的文本总量已达上限')
         now = self.now()
         source = KnowledgeSource(
-            tenant_id=tenant, owner=user, id=source_id, ref=ref, title=str(item['data'].get('name', '')),
-            sha256=str(version['sha256']), mime_type=mime, extractor=EXTRACTOR, chars=len(text),
+            tenant_id=tenant, owner=user, id=source_id, ref=ref, title=title,
+            sha256=sha, mime_type=mime, extractor=EXTRACTOR, chars=len(text),
             chunks=len(chunks), created_at=now, updated_at=now)
         return source_view(await self.store.add(source, chunks))
 
+    async def _fetch(self, who: Principal, ref: SourceRef) -> tuple[bytes, str, str, str]:
+        """按本人当前权限取材料正文：返回（内容、类型、标题、SHA）。"""
+        if ref.kind == 'shared_material':
+            if self.shared is None:
+                raise InvalidRequestError('企业尚未开启共享资料来源')
+            assert ref.matter_id is not None and ref.material_id is not None
+            content, mime, name, sha = await self.shared.download(who, ref.matter_id, ref.material_id, ref.revision)
+            if len(content) > MAX_FILE_BYTES:
+                raise InvalidRequestError('单个文件不能超过 20 MiB')
+            return content, mime, name, sha
+        assert ref.item_id is not None
+        item = await self.workspace.get(who, ref.item_id)
+        version = next((v for v in await self.workspace.versions(who, ref.item_id)
+                        if v['revision'] == ref.revision), None)
+        if item.get('trashed_at') is not None or version is None:
+            raise NotFoundError('材料或版本不存在')
+        if version['size'] > MAX_FILE_BYTES:
+            raise InvalidRequestError('单个文件不能超过 20 MiB')
+        content, mime, _ = await self.workspace.download(who, ref.item_id, ref.revision)
+        return content, mime, str(item['data'].get('name', '')), str(version['sha256'])
+
+    async def _shared_readable(self, who: Principal, source: KnowledgeSource) -> bool:
+        """共享材料：按当前共享授权、材料未撤回、版本仍是登记时的 SHA 判定。"""
+        if self.shared is None:
+            return False
+        ref = source.ref
+        assert ref.matter_id is not None and ref.material_id is not None
+        service = self.shared.service
+        try:
+            who = await service.actor(who)
+            async with service.store.transaction(who.require_tenant(), participants=(str(who.user_id),)) as tx:
+                _, selected = self.shared.readable(tx, who, ref.matter_id, ref.material_id, ref.revision)
+        except (NotFoundError, PermissionDeniedError):
+            return False
+        return selected.sha256 == source.sha256
+
     async def _readable(self, who: Principal, source: KnowledgeSource) -> tuple[bool, bool]:
-        """此刻是否仍可读（文件在、版本在、SHA 一致），以及是否有更新的版本。"""
+        """此刻是否仍可读（文件在、版本在、SHA 一致），以及是否有更新的版本（共享材料不提示更新）。"""
+        if source.ref.kind == 'shared_material':
+            return await self._shared_readable(who, source), False
+        assert source.ref.item_id is not None
         try:
             item = await self.workspace.get(who, source.ref.item_id)
             versions = await self.workspace.versions(who, source.ref.item_id)
@@ -260,6 +303,8 @@ class KnowledgeService:
         source = await self._own(who, source_id)
         if source.version != body.expected_version:
             raise ConflictError('来源已变化，请刷新后重试')
+        if source.ref.kind != 'workspace_file' or source.ref.item_id is None:
+            raise ConflictError('共享资料来源不自动换版：请删除后登记需要的版本')
         item = await self.workspace.get(who, source.ref.item_id)
         current = int(item['data'].get('current_revision', source.ref.revision))
         if current == source.ref.revision and source.status == 'ready':

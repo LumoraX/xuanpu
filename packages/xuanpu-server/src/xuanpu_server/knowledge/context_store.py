@@ -25,7 +25,7 @@ class Pin(BaseModel):
     ordinal: int
     source_epoch: int
     sha256: str
-    item_id: str
+    item_id: str | None = None
     revision: int
     title: str
 

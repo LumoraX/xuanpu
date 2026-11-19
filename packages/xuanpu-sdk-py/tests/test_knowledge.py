@@ -23,6 +23,7 @@ async def test_knowledge_and_context_paths():
     seen, transport = _recorder()
     async with XuanpuClient("https://example.test", "PRIVATE_KEY", transport=transport) as client:
         await client.register_knowledge_source("itm_1", 2)
+        await client.register_shared_knowledge_source("shm_1", "mat_1", 1)
         await client.list_knowledge_sources()
         await client.search_knowledge("预算", limit=3)
         await client.change_knowledge_source("ksr/1", "refresh", 1)
@@ -41,7 +42,7 @@ async def test_knowledge_and_context_paths():
         with pytest.raises(ValueError):
             await client.decide_work_memory("wm_1", "share", 1)
     assert [(r.method, r.url.raw_path.decode()) for r in seen] == [
-        ("POST", "/v1/me/knowledge/sources"), ("GET", "/v1/me/knowledge/sources"),
+        ("POST", "/v1/me/knowledge/sources"), ("POST", "/v1/me/knowledge/sources"), ("GET", "/v1/me/knowledge/sources"),
         ("POST", "/v1/me/knowledge/search"), ("POST", "/v1/me/knowledge/sources/ksr%2F1/refresh"),
         ("POST", "/v1/me/knowledge/contexts"), ("GET", "/v1/me/knowledge/contexts"),
         ("GET", "/v1/me/knowledge/contexts/kcx_1"), ("POST", "/v1/me/knowledge/contexts/kcx_1/ask"),
@@ -49,7 +50,8 @@ async def test_knowledge_and_context_paths():
         ("POST", "/v1/me/work-memory/proposals"), ("POST", "/v1/me/work-memory/assertions"),
         ("POST", "/v1/me/work-memory/wm_1/confirm"), ("POST", "/v1/me/work-memory/wm_1/correct")]
     assert json.loads(seen[0].content) == {"item_id": "itm_1", "revision": 2}
-    assert json.loads(seen[7].content) == {"request_id": "q1", "question": "口径？"}
+    assert json.loads(seen[1].content)["kind"] == "shared_material"
+    assert json.loads(seen[8].content) == {"request_id": "q1", "question": "口径？"}
 
 
 async def test_outcome_and_acceptance_paths():

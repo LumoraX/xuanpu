@@ -1090,7 +1090,7 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 
 | 方法与路径 | 正文 | 返回 |
 | --- | --- | --- |
-| POST /v1/me/knowledge/sources | item_id、revision（本人工作区文件的明确版本） | 201：id、item_id、revision、title、sha256、status=ready、chunks、chars、version；格式或编码不对 400，文件不存在 404，同版本已登记回原记录 |
+| POST /v1/me/knowledge/sources | `kind=workspace_file`（默认）+ item_id、revision；或 `kind=shared_material` + matter_id、material_id、revision（本人此刻有权读的共享事项材料） | 201：id、item_id、revision、title、sha256、status=ready、chunks、chars、version；格式或编码不对 400，文件不存在 404，同版本已登记回原记录 |
 | GET /v1/me/knowledge/sources | 无 | sources（含 stale 与 has_update）、total |
 | POST /v1/me/knowledge/search | query（1–500 字）、limit（1–10） | hits（source_id、title、item_id、revision、ordinal、excerpt≤2000 字）、total（只计此刻可读来源） |
 | POST /v1/me/knowledge/sources/{id}/refresh | expected_version | 换成文件当前版本的新来源，旧来源删除 |
