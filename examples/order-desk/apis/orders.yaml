@@ -1,0 +1,55 @@
+openapi: 3.0.3
+info:
+  title: 订单系统
+  version: 1.0.0
+servers:
+  - url: http://127.0.0.1:8432
+paths:
+  /orders:
+    get:
+      operationId: listOrders
+      summary: 按状态列出订单（paid 已付款未发货，shipped 已发货）
+      parameters:
+        - name: status
+          in: query
+          description: 订单状态
+          schema: {type: string, enum: [paid, shipped]}
+      responses:
+        "200": {description: 订单列表}
+  /orders/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: 订单号，形如 O-2001
+        schema: {type: string}
+    get:
+      operationId: getOrder
+      summary: 查一张订单
+      responses:
+        "200": {description: 订单}
+        "404": {description: 订单不存在}
+    patch:
+      operationId: markShipped
+      summary: 把订单标记为已发货（可带运单号）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ShipPatch"}
+      responses:
+        "200": {description: 修改后的订单}
+  /reports/shipping:
+    get:
+      operationId: shippingReport
+      summary: 发货统计：待发货数、加急数、最长等待天数
+      responses:
+        "200": {description: 统计}
+components:
+  schemas:
+    ShipPatch:
+      type: object
+      properties:
+        status: {type: string, enum: [shipped]}
+        tracking: {type: string, description: 运单号}
+      required: [status]

@@ -93,10 +93,18 @@ function pinTranscript() {
   const list = $("transcript");
   if (typeof MutationObserver !== "function" || list.dataset.pinned) return;
   list.dataset.pinned = "1";
-  let pinned = true;
-  list.addEventListener("scroll", () => { pinned = list.scrollHeight - list.scrollTop - list.clientHeight < 160; });
-  new MutationObserver(() => { if (pinned) list.scrollTop = list.scrollHeight; })
-    .observe(list, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class", "open"] });
+  // 只有员工自己滚动（滚轮、触摸、按键、拖动）才改变「跟到底」；布局变化引起的滚动不算
+  let pinned = true, touchedAt = 0;
+  for (const name of ["wheel", "touchmove", "keydown", "mousedown"]) list.addEventListener(name, () => { touchedAt = Date.now(); }, { passive: true });
+  list.addEventListener("scroll", () => {
+    if (Date.now() - touchedAt < 1500) pinned = list.scrollHeight - list.scrollTop - list.clientHeight < 160;
+  });
+  const follow = () => { if (pinned) list.scrollTop = list.scrollHeight; };
+  const observer = new MutationObserver(follow);
+  observer.observe(list, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class", "open"] });
+  // 卡片里的图形、折叠区长高不一定有 DOM 变化：定时再对齐一次
+  const timer = setInterval(follow, 500);
+  entry.cleanups.add(() => { observer.disconnect(); clearInterval(timer); delete list.dataset.pinned; });
 }
 
 function stickBottom(wasNear) {

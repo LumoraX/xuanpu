@@ -344,6 +344,17 @@ async function stagedCourtyardFollowsFocus(dir) {
   C.card.update(other, "spans");
   await other.court.chain;
   assert.equal(scene.filter(x => x[0] === "play").length, plays, "不是焦点的卡片不演");
+  // 真实试用发现：员工答复匠人提问那一句会开新的一轮，办完后小院应回到还在办的那件事
+  const reply = { spans: new Map(), header: {}, wantsFocus: true };
+  C.card.mount(reply, element());
+  reply.spans.set("ex.r", span("ex.r", "butler", "管家", null, "running", 20));
+  C.card.update(reply, "snapshot");
+  await reply.court.chain;
+  assert.ok(C.stage.isFocus(reply.court), "答复那一句先成为焦点");
+  reply.spans.set("ex.r", { ...span("ex.r", "butler", "管家", null, "completed", 20), ended_at: T(22) });
+  C.card.update(reply, "spans");
+  await reply.court.chain;
+  assert.ok(C.stage.isFocus(progress.court), "答复办完后回到还在办的那件事");
 }
 
 function unsupportedFallsBack(dir) {

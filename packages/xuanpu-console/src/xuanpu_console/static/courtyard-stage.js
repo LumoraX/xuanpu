@@ -79,6 +79,15 @@
     }
     stage.played.set(state, next);
     describe(state);
+    handBack(state, next, details);
+  }
+
+  // 焦点这件事已经办完（例如员工答复匠人提问的那一句），而更早的事还在办：小院回到那件事上。
+  function handBack(state, next, details) {
+    const model = C().model;
+    if (!model.finished(next) || model.openItems(next, details).length) return;
+    const other = (C().card.busyStates ? C().card.busyStates() : []).find(s => s !== state);
+    if (other) focus(other);
   }
 
   // 小院下方一句：在演哪件事、办到哪了。

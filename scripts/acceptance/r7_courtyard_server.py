@@ -1,7 +1,8 @@
 """R7 小院本机试用服务：起一个接真实模型的玄圃，供浏览器或桌面客户端登录后亲手试小院。
 
 复用 R5 真实模型环境（``r5_real_model_harness``）：内存平台（退出即清空）、本机沙盒、样例业务包
-``support-desk`` 与两位副本（会诊用）、工单接口替身。租户 ``acme`` 开启执行追踪、管家与极简入口。
+``support-desk`` 与两位副本（会诊用）、工单接口替身；另有订单助手 ``order-desk`` 与报销助手
+``expense-helper``，连 ``examples/demo-office-api`` 的样例办公系统替身。租户 ``acme`` 开启执行追踪、管家与极简入口。
 开通一名用户名口令员工，登录后直接进入极简入口。只监听 loopback；模型配置只从 ``--model-env``
 读取，凭据不写进输出。Ctrl-C 退出。
 
@@ -22,6 +23,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 TRY_THESE = (
+    "还有哪些订单没发货？哪几张最急？",
+    "我想报销昨天的客户午餐 186 元，没有发票。（会停下等你批准提交）",
     "帮我查一下工单 T-1001 现在什么状态、该多久处理完，查完简单总结给我。",
     "把工单 T-1002 的优先级调到 high，改完告诉我结果。（会停下等你批准）",
     "请安排三位匠人会诊：工单 T-1001 该不该升级处理？请一线客服、二线技术和质检各自独立给出结论，"
@@ -56,6 +59,22 @@ async def account(platform: object, username: str, password: str) -> bool:
     return True
 
 
+# 样例办公系统替身（订单、报销）的公开演示凭据，与 examples/demo-office-api/server.py 一致
+OFFICE_TOKEN = "demo-token"  # noqa: S105
+DEMO_ARTISANS = ("order-desk", "expense-helper")
+
+
+async def publish_demo(origin: str, key: str) -> None:
+    """发布订单助手与报销助手，并存好它们连接样例办公系统用的凭据。"""
+    from xuanpu_sdk import XuanpuClient
+    from xuanpu_spec.archive import pack_package
+
+    async with XuanpuClient(origin, key) as admin:
+        await admin.secrets.put("office-token", OFFICE_TOKEN)
+        for name in DEMO_ARTISANS:
+            await admin.packages.publish(pack_package(ROOT / "examples" / name), activate=True)
+
+
 async def serve(args: argparse.Namespace) -> None:
     """起平台、开通环境与账号，然后一直服务到 Ctrl-C。"""
     from xuanpu_console import static_dir
@@ -68,6 +87,7 @@ async def serve(args: argparse.Namespace) -> None:
     origin = f"http://127.0.0.1:{args.port}"
     password = args.password
     tickets = subprocess.Popen([sys.executable, str(ROOT / "examples" / "ticket-api" / "server.py")])  # noqa: S603
+    office = subprocess.Popen([sys.executable, str(ROOT / "examples" / "demo-office-api" / "server.py")])  # noqa: S603
     try:
         with tempfile.TemporaryDirectory() as raw:
             async with AsyncExitStack() as resources:
@@ -76,6 +96,7 @@ async def serve(args: argparse.Namespace) -> None:
                 async with listen(create_app(platform, console_dir=static_dir()), args.port):
                     key, _ = await harness.provision(platform, origin, root_key)
                     await harness.publish_variants(origin, key, Path(raw))
+                    await publish_demo(origin, key)
                     compliant = await account(platform, args.username, password)
                     print(f"""
 ==================== 小院试用服务已就绪 ====================
@@ -91,8 +112,9 @@ async def serve(args: argparse.Namespace) -> None:
 ==========================================================""", flush=True)
                     await asyncio.Event().wait()
     finally:
-        tickets.terminate()
-        tickets.wait(timeout=10)
+        for child in (tickets, office):
+            child.terminate()
+            child.wait(timeout=10)
 
 
 def main() -> None:

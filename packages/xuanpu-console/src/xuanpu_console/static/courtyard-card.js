@@ -274,5 +274,13 @@
   }
 
   globalThis.Courtyard = globalThis.Courtyard || {};
-  globalThis.Courtyard.card = { supported, mount, update, select };
+  // 还在办的事（有没到终态的派工，或还在等本人处理），最近打开的在前。常驻小院据此交还焦点。
+  function busyStates() {
+    const model = C().model, recent = [...live].reverse().filter(s => s.prev.length);
+    const working = s => s.prev.some(x => x.kind === "dispatch" && !model.TERMINAL.has(x.state)) || model.openItems(s.prev, s.details()).length > 0;
+    // 匠人还在干活或在等本人的优先，其次是管家还在想的
+    return [...recent.filter(working), ...recent.filter(s => !working(s) && !model.finished(s.prev))];
+  }
+
+  globalThis.Courtyard.card = { supported, mount, update, select, busyStates };
 })();
