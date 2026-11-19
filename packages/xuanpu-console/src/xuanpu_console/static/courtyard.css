@@ -32,6 +32,7 @@
 .cy-raw { margin-top: 3px; font-size: 12.5px; color: var(--muted); }
 .cy-raw summary { cursor: pointer; width: max-content; }
 .cy-raw p { margin: 2px 0 0; }
+.cy-raw .cy-more { white-space: pre-wrap; color: var(--fg); max-height: 320px; overflow: auto; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
 .cy-looks { grid-template-columns: 130px minmax(0, 1fr); align-items: start; }
 .cy-preview { background: #e3ece6; border-radius: 12px; text-align: center; padding: 6px 0 8px; color: #2b2f3a; font-family: var(--cy-round); }
 .cy-rows { display: grid; gap: 8px; min-width: 0; }

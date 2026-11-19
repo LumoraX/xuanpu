@@ -146,6 +146,23 @@ function resultDropsRepeatedNarration(C) {
   assert.equal(C.model.resultText("我先查询工单 T-1001。", said), "我先查询工单 T-1001。", "全被去掉时保留原文");
 }
 
+// 真实会诊发现：span 全部结束后仍在等本人裁决；裁决项正文是各位的完整结论（带 Markdown）。
+function rulingKeepsWaitingAndStaysShort(C) {
+  const t = soloTimeline();
+  const ended = [{ ...t.root, state: "completed", ended_at: T(3) }, { ...t.dp, state: "completed", ended_at: T(9) }, { ...t.ex, state: "completed" }];
+  const long = "### 评估依据\n- **服务质量：** 无证据\n".repeat(20);
+  const details = { dispatch: () => ({ host: "session", items: [{ pending_id: "pnd_r", kind: "ruling", question: long, state: "open", created_at: T(10) }] }), group: () => undefined };
+  same(C.model.summary(ended, Date.parse(T(20)), details).state, "停在这儿，等你");
+  const items = C.model.story(ended, details);
+  assert.equal(items.filter(i => i.type === "done").length, 0, "还在等裁决就不说办完");
+  const ruling = items.find(i => i.type === "ruling");
+  assert.equal(ruling.text, "几位匠人的结论分歧大，这事我不能替你定，请你裁决。");
+  assert.ok(!ruling.more.includes("**") && !ruling.more.includes("###"), "结论去掉 Markdown 记号后折叠");
+  assert.equal(ruling.pending, "pnd_r");
+  const butler = C.model.poses(ended, details).butler;
+  assert.ok(butler.red && butler.at === "table", "管家在圆桌边等你裁决");
+}
+
 function orphanSpansDoNotCrash(C) {
   const lost = [span("tl.x", "tool", "query", "ex.missing", "running", 1), span("a", "artisan", "x", "b", "running", 0), span("b", "artisan", "y", "a", "running", 0)];
   same(C.model.diff([], lost, none), []);
@@ -303,6 +320,7 @@ consultSitsAtTable(C);
 finishedSnapshotPoses(C);
 butlerRepliesBeforeArtisanFinishes(C);
 resultDropsRepeatedNarration(C);
+rulingKeepsWaitingAndStaysShort(C);
 orphanSpansDoNotCrash(C);
 looks(C);
 (async () => {

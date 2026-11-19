@@ -147,7 +147,7 @@
       chip.setAttribute("aria-pressed", String(state.sel === key));
       return chip;
     }));
-    const sum = model.summary(spans, Date.now());
+    const sum = model.summary(spans, Date.now(), details);
     const line = [sum.artisans ? "请了 " + sum.artisans + " 位匠人" : "", sum.tools ? "动了 " + sum.tools + " 次工具" : "",
       sum.seconds !== null ? "用了 " + sum.seconds + " 秒" : ""].filter(Boolean).join("，");
     const focus = state.sel === "all" ? "butler" : state.sel, pose = model.poses(spans, details)[focus] || {};
@@ -190,6 +190,13 @@
     if (item.running) bubble.append(el("span", " …", "cy-dots"));
     body.append(nm, bubble);
     if (item.quote) body.appendChild(el("p", "出处：" + item.quote, "cy-quote"));
+    if (item.more) {
+      const more = el("details", null, "cy-raw"), key = "more@" + item.at;
+      if (state.open.has(key)) more.open = true;
+      more.addEventListener("toggle", () => { if (more.open) state.open.add(key); else state.open.delete(key); });
+      more.append(el("summary", item.moreLabel || "细节"), el("p", item.more, "cy-more"));
+      body.appendChild(more);
+    }
     if (item.type === "check" && item.checks) {
       const chips = el("div", null, "cy-checks"), names = { terminal: "到终态", succeeded: "成功", outputs: "有成果", no_pending: "没有未决确认", no_unknown: "没有未知结果" };
       for (const [k, ok] of Object.entries(item.checks)) chips.appendChild(el("span", (ok ? "✓ " : "✗ ") + names[k], ok ? "" : "no"));

@@ -105,6 +105,11 @@
     return all.length > 0 && all.every(s => TERMINAL.has(s.state)) && dispatches.every(s => TERMINAL.has(s.state));
   }
   const busy = spans => spans.some(s => s.kind === "dispatch" && !TERMINAL.has(s.state));
+  // 这条 trace 里还在等本人处理的项（提问、审批、裁决）。span 都结束了也可能还在等本人裁决。
+  function openItems(spans, details) {
+    return spans.filter(s => s.kind === "dispatch").flatMap(s => ((details.dispatch(s.ref) || {}).items || []))
+      .filter(i => ["question", "approval", "ruling"].includes(i.kind) && (i.state === "open" || i.state === "forwarding"));
+  }
 
   const openItem = (detail, kinds) => (detail && detail.items || []).find(i => kinds.includes(i.kind) && (i.state === "open" || i.state === "forwarding"));
 
@@ -112,8 +117,9 @@
   function poses(spans, details) {
     const map = index(spans), result = {}, root = rootOf(spans);
     const butler = { at: "home", pose: null, face: "open", prop: null, bubble: null, red: false };
+    const ruling = openItems(spans, details).some(i => i.kind === "ruling");
     if (root) {
-      if (root.state === "waiting_input") Object.assign(butler, { at: "table", bubble: "等你裁决", red: true });
+      if (root.state === "waiting_input" || ruling) Object.assign(butler, { at: "table", bubble: "等你裁决", red: true, prop: null });
       else if (root.state === "waiting_children" || busy(spans)) Object.assign(butler, { prop: "tea", face: "happy" });
       else if (root.state === "completed") butler.face = "happy";
       else if (root.state === "failed") butler.face = "dizzy";
@@ -221,7 +227,7 @@
         items.push({ at, who: "butler", type: "say", text: "匠人交回了结果，我复核了一遍。" });
       }
     }
-    if (finished(spans)) {
+    if (finished(spans) && !openItems(spans, details).length) {
       const end = Math.max(...spans.map(s => ms(s.ended_at)).filter(n => !Number.isNaN(n)));
       items.push({ at: (Number.isFinite(end) ? end : 0) + 2, who: "butler", type: "done", text: "这一趟办完了，结果在上面的对话里。" });
     }
@@ -240,16 +246,20 @@
     const at = ms(item.created_at);
     if (item.kind === "proxied") return { at, who: "butler", to: pkg, type: "answer", text: item.answer || "", quote: item.source_quote };
     if (item.kind === "approval") return { at, who: pkg, type: "seal", text: item.question, open: item.state === "open", pending: item.pending_id };
-    if (item.kind === "ruling") return { at, who: "butler", type: "ruling", text: item.question, open: item.state === "open", pending: item.pending_id };
+    if (item.kind === "ruling") {
+      const open = item.state === "open" || item.state === "forwarding";
+      return { at, who: "butler", type: "ruling", text: open ? "几位匠人的结论分歧大，这事我不能替你定，请你裁决。" : "你已经裁决过了。",
+        more: resultText(item.question, []), moreLabel: "看各位的结论", answer: item.answer, open, pending: open ? item.pending_id : null };
+    }
     const open = item.state === "open" || item.state === "forwarding";
     return { at, who: pkg, type: "ask", text: item.question, answer: item.answer, open, pending: open ? item.pending_id : null };
   }
 
   // 顶部一句：状态、请了几位匠人、动了几次工具、用了多久。
-  function summary(spans, now) {
+  function summary(spans, now, details) {
     const root = rootOf(spans), map = index(spans);
     const tools = spans.filter(s => s.kind === "tool" && ownerOf(map, s) && ownerOf(map, s) !== "butler").length;
-    const waitYou = spans.some(s => s.state === "waiting_input");
+    const waitYou = spans.some(s => s.state === "waiting_input") || (details ? openItems(spans, details).length > 0 : false);
     const start = Math.min(...spans.map(s => ms(s.started_at)).filter(n => !Number.isNaN(n)));
     const done = finished(spans);
     const ended = done ? Math.max(...spans.map(s => ms(s.ended_at)).filter(n => !Number.isNaN(n))) : now;
@@ -259,5 +269,5 @@
   }
 
   globalThis.Courtyard = globalThis.Courtyard || {};
-  globalThis.Courtyard.model = { PLACE, TERMINAL, finished, resultText, stationFor, reasonText, ownerOf, artisans, poses, diff, story, summary, howFor, index };
+  globalThis.Courtyard.model = { PLACE, TERMINAL, finished, openItems, resultText, stationFor, reasonText, ownerOf, artisans, poses, diff, story, summary, howFor, index };
 })();
