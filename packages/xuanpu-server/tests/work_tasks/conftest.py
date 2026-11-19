@@ -82,30 +82,6 @@ async def task_api(world_opener, local_sandboxes):
             await world.platform.close()
 
 
-@pytest.fixture(scope='session')
-def office_image(tmp_path_factory):
-    """独立办公镜像只从两个白名单构建文件创建，不发送仓库或运行数据。"""
-    import shutil
-    import subprocess
-    from pathlib import Path
-
-    repository = Path(__file__).resolve().parents[4]
-    tag = 'xuanpu-office:r1-20261021'
-    fingerprint = hashlib.sha256((repository / 'docker/office-requirements.lock').read_bytes()
-        + (repository / 'docker/office-sandbox.Dockerfile').read_bytes()).hexdigest()
-    inspected = subprocess.run(['docker', 'image', 'inspect', '--format',
-        '{{index .Config.Labels "xuanpu.office.build"}}', tag], capture_output=True, text=True)
-    if inspected.returncode == 0 and inspected.stdout.strip() == fingerprint:
-        return tag
-    context = tmp_path_factory.mktemp('office-build')
-    shutil.copy(repository / 'docker/office-sandbox.Dockerfile', context / 'Dockerfile')
-    shutil.copy(repository / 'docker/office-requirements.lock', context / 'office-requirements.lock')
-    result = subprocess.run(['docker','build','--label', 'xuanpu.office.build=' + fingerprint,
-        '-t',tag,str(context)], capture_output=True, text=True)
-    assert result.returncode == 0, result.stdout + result.stderr
-    return tag
-
-
 @pytest.fixture
 async def office_worker(office_image, tmp_path):
     """通过真实沙盒守护进程调用业务脚本，执行时断网并只读挂载输入和包。"""

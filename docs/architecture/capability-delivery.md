@@ -43,6 +43,8 @@ R4-A已实现能力登记、配置预检和待发布安装（[记录](../guides/
 
 完成契约只由决策固定的能力修订决定（`WorkTaskService.capability_profile`），客户端与模型都不能指定：输出契约为`office_files`/`table_summary`的能力按办公任务受理（`execution_kind=office`、`completion_policy=office_files`），只接受交付描述声明的CSV输入，沿用`outputs/manifest.json`与四类成果校验，缺一失败，不凭只读回执判成功；其余能力照旧`capability_receipt`。手动交办与发生实例共用同一判定。
 
+成果摘要回执的来源也是固定的（`TaskRunner._script_receipt`）：平台只认该能力登记的入口skill自己的`summarize`脚本（内置办公包是`table-summary`子skill）在沙盒里实际执行后的完整stdout，其中`outputs_sha256`逐项给出`outputs/`下文件的SHA-256；冻结导出后清单与四类成果的摘要必须与这份回执逐项相同，否则任务失败、不保存任何成果。包里其他skill或其他脚本的输出、模型写出的文件都不能充当回执。此前回执只认`table-summary`这个skill名，按文件型能力登记的包（入口skill不叫这个名字）跑完脚本也会在成果校验处失败；`examples/office-review`在办公容器里的端到端用例（`tests/r4_contract/test_office_review_results.py`）暴露并修正了这一点。
+
 ## 严格描述与权限
 
 格式为xuanpu-delivery/v1；未知字段拒绝。输入与输出只接受office_files、capability_receipt或read_only_answer固定契约，成果类型须匹配输出契约。A只核对声明，文件成果适配及运行完成核验留给B2。
