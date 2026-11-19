@@ -1,5 +1,6 @@
 // 进展卡：一条 trace 一张。订阅 /v1/traces/{id}/events（快照 → 变化 → end），
-// 展开看执行树，再展开看瀑布。记录不完整时明确标注。刷新后由主对话历史重建、重新订阅。
+// 支持 SVG 时由小院（courtyard-card.js，R7）演出并讲「经过」，执行树与瀑布放进「执行树」页签；
+// 不支持时只显示执行树。记录不完整时明确标注。刷新后由主对话历史重建、重新订阅。
 "use strict";
 
 const STATE_NAMES = {
@@ -30,11 +31,23 @@ function createProgress(traceId) {
     toggleTree.textContent = tree.classList.contains("hidden") ? "展开执行树" : "收起执行树";
   });
   const showFall = button("看瀑布", () => loadWaterfall(traceId, fall));
+  const court = Boolean(globalThis.Courtyard && Courtyard.card && Courtyard.card.supported());
   progress.follow = () => {
     if (progress.following) return;
     progress.following = true;
-    followTrace(traceId, progress, () => renderProgress(progress, summary, tree));
+    followTrace(traceId, progress, frame => {
+      renderProgress(progress, summary, tree);
+      if (court) Courtyard.card.update(progress, frame);
+    });
   };
+  if (court) {
+    row.append(button("查看进展", () => progress.follow()));
+    node.append(summary, row);
+    const panel = Courtyard.card.mount(progress, node);
+    tree.classList.remove("hidden");
+    panel.append(tree, button("看瀑布", () => loadWaterfall(traceId, fall)), fall);
+    return progress;
+  }
   row.append(button("查看进展", () => progress.follow()), toggleTree, showFall);
   node.append(summary, row, tree, fall);
   return progress;
@@ -52,7 +65,7 @@ async function followTrace(traceId, progress, render) {
     await readFrames(response, (name, data) => {
       if (isStale(epoch)) return;
       applyFrame(progress, name, data);
-      render();
+      render(name);
     });
   } catch (error) {
     if (!isStale(epoch) && error.name !== "AbortError") report(error);

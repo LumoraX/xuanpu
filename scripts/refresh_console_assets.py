@@ -9,7 +9,6 @@ from pathlib import Path
 def main() -> None:
     """只按资源实际字节重写本地入口，重复执行不改变内容。"""
     directory = Path(__file__).resolve().parents[1] / 'packages/xuanpu-console/src/xuanpu_console/static'
-    index = directory / 'index.html'
 
     def fingerprint(match: re.Match[str]) -> str:
         """保留文件名并替换旧查询指纹，不修改导航链接。"""
@@ -17,7 +16,10 @@ def main() -> None:
         digest = hashlib.sha256((directory / name).read_bytes()).hexdigest()[:16]
         return match[1] + name + '?v=' + digest + '"'
 
-    index.write_text(re.sub(r'((?:src|href)=")([^"?]+\.(?:js|css))(?:\?[^\"]*)?"', fingerprint, index.read_text()))
+    # 功能页与极简入口（R7 起入口也带小院脚本）都按实际字节刷新
+    for page in ('index.html', 'entry.html'):
+        path = directory / page
+        path.write_text(re.sub(r'((?:src|href)=")([^"?]+\.(?:js|css))(?:\?[^\"]*)?"', fingerprint, path.read_text()))
 
 
 if __name__ == '__main__':
