@@ -113,3 +113,22 @@ def test_first_say_wins_without_conflict() -> None:
     later = apply_fact(span, fact(2, "tl.c1", say="另一句"), max_attempts=None)
     assert later.say == "先查档案" and not later.incomplete
     assert span_view(later)["say"] == "先查档案"
+
+
+def test_unpaired_reasoning_never_shows() -> None:
+    """没闭合的推理、被截掉开头的推理、行内的开始标记：推理部分一律不显示（复核发现）。"""
+    assert narration("<think>secret reasoning: password is hunter2") is None
+    assert narration("x" * 50 + " the api key is abc</think>我去查一下。") == "我去查一下。"
+    assert narration("好的<thinking>内部推理") == "好的"
+    assert narration("<THINK>a</THINK>我先查工单。<think>b") == "我先查工单。"
+
+
+def test_buffer_is_bounded_per_collector() -> None:
+    """没有结束事件的执行不让缓冲无限增长。"""
+    from xuanpu_server.tracing import collector as module
+
+    c = TraceCollector(MemorySpanStore(), ALICE, CONFIG, ref="ses_1")
+    for i in range(module._SAID_MEMORY + 10):  # noqa: SLF001
+        c._hear(f"ex{i}", "话")  # noqa: SLF001
+    assert len(c._said) == module._SAID_MEMORY  # noqa: SLF001
+    assert "ex0" not in c._said  # noqa: SLF001

@@ -262,6 +262,31 @@ async function openItemOffersAction(dir) {
   assert.ok(calls.includes("open:pnd_9"));
 }
 
+// 复核发现：工具每变一次都重取派工细节，忙的 trace 上动画越拖越后；展开的「细节」每帧被收起。
+async function toolStepsDoNotRefetchAndDetailsStayOpen(dir) {
+  const t = soloTimeline();
+  const { C, calls } = cardHarness(dir, { "/v1/assistant/dispatches/dsp_1": () => ({ host: "session", instruction: "查", items: [] }) });
+  const progress = { spans: new Map(), header: {} }, node = element();
+  C.card.mount(progress, node);
+  for (const s of [t.root, t.dp, t.ex, t.tool]) progress.spans.set(s.span_id, s);
+  C.card.update(progress, "snapshot");
+  await progress.court.chain;
+  const fetches = () => calls.filter(u => u.startsWith("/v1/assistant/dispatches/")).length;
+  const before = fetches();
+  const details = () => find(node, n => n.tag === "details");
+  details()[0].open = true; details()[0].listeners.toggle();
+  progress.spans.set(t.tool.span_id, { ...t.tool, state: "completed", ended_at: T(6) });
+  progress.spans.set("tl.a2", span("tl.a2", "tool", "bank.list_payments", "ex.a", "running", 7));
+  C.card.update(progress, "spans");
+  await progress.court.chain;
+  assert.equal(fetches(), before, "只有工具在变时不重取派工细节");
+  assert.equal(details()[0].open, true, "本人展开过的细节在下一帧仍展开");
+  progress.spans.set(t.ex.span_id, { ...t.ex, state: "waiting_input" });
+  C.card.update(progress, "spans");
+  await progress.court.chain;
+  assert.equal(fetches(), before + 1, "匠人状态变了才重取");
+}
+
 function unsupportedFallsBack(dir) {
   const { C } = cardHarness(dir, {}, false);
   assert.equal(C.card.supported(), false, "没有 SVG 时进展卡只显示执行树");
@@ -284,6 +309,7 @@ looks(C);
   await finishedSnapshotSettles(dir);
   await missingDetailStillRenders(dir);
   await openItemOffersAction(dir);
+  await toolStepsDoNotRefetchAndDetailsStayOpen(dir);
   unsupportedFallsBack(dir);
   console.log("courtyard model passed");
 })().catch(error => { console.error(error); process.exit(1); });

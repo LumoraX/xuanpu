@@ -42,6 +42,8 @@ _MAX_PENDING = 10_000
 _TERMINAL = frozenset({"completed", "failed", "cancelled"})
 _ENDED_MEMORY = 1024
 _TURN_ENDS = frozenset({"turn_completed", "turn_failed", "turn_suspended"})
+# 旁白缓冲最多记这么多个执行；执行没见到结束事件（取消、崩溃）时不会无限增长
+_SAID_MEMORY = 1024
 
 
 @dataclass
@@ -133,6 +135,7 @@ class TraceCollector:
                 with contextlib.suppress(Exception):
                     await self._store.mark_incomplete(self._owner, trace.trace_id)
         self._traces.clear()
+        self._said.clear()
 
     def _handle(self, event: taifeng.EventMsg) -> None:
         """找到所属 trace，追加草稿；根执行结束时登记 trace 结束。"""
@@ -144,6 +147,8 @@ class TraceCollector:
             return
         trace = self._trace_for(event)
         if trace is None:
+            # 记不了的执行：攒的话也作废，免得挂到之后无关的工具上
+            self._said.pop(identity.execution_id, None)
             return
         found = self._narrated(identity.execution_id, event.msg.kind,
                                drafts(event, root_kind=self._root_kind, ref=self._ref))
@@ -166,7 +171,9 @@ class TraceCollector:
     def _hear(self, execution_id: str, delta: object) -> None:
         """记下执行对员工说的一段话；非文本增量忽略（不是正文就没有可记的）。"""
         if isinstance(delta, str) and delta:
-            self._said[execution_id] = append(self._said.get(execution_id, ""), delta)
+            self._said[execution_id] = append(self._said.pop(execution_id, ""), delta)
+            while len(self._said) > _SAID_MEMORY:
+                self._said.pop(next(iter(self._said)))
 
     def _narrated(self, execution_id: str, kind: str, found: list[Draft]) -> list[Draft]:
         """工具开始时把攒下的话挂到第一个工具 span 上并清空；一轮结束时清空。"""

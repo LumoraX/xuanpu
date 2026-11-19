@@ -46,7 +46,7 @@
   // 挂到一张进展卡上；返回执行树页签的容器，进展卡把原来的执行树与瀑布放进去。
   function mount(progress, node) {
     const state = { progress, prev: [], dispatch: new Map(), group: new Map(), chain: Promise.resolve(),
-      sel: "all", tab: "story", looks: C().art.loadLooks(), editing: "butler", settled: false };
+      sel: "all", tab: "story", looks: C().art.loadLooks(), editing: "butler", settled: false, open: new Set() };
     const wrap = el("div", null, "courtyard"), stage = el("div", null, "cy-stage");
     const tabs = el("div", null, "cy-tabs"), story = el("div", null, "cy-panel"), tree = el("div", null, "cy-panel hidden");
     const looks = el("div", null, "cy-panel cy-looks hidden");
@@ -113,7 +113,8 @@
     const prev = C().model.index(state.prev), map = C().model.index(next), wanted = { dispatch: new Set(), group: new Set() };
     for (const span of next) {
       const before = prev.get(span.span_id);
-      if (before && before.state === span.state) continue;
+      // 工具一步一变，不必为它重取细节；派工、匠人执行、编组变了才可能多出问答、结果或验收
+      if (!["dispatch", "artisan", "group"].includes(span.kind) || (before && before.state === span.state)) continue;
       for (let cur = span, hops = 0; cur && hops < 64; cur = map.get(cur.parent_span_id), hops++) {
         if (cur.kind === "dispatch" && cur.ref) { wanted.dispatch.add(cur.ref); break; }
         if (cur.kind === "group" && cur.ref) { wanted.group.add(cur.ref); break; }
@@ -122,7 +123,12 @@
     for (const span of next) if (span.kind === "dispatch" && span.ref && !state.dispatch.has(span.ref)) wanted.dispatch.add(span.ref);
     const get = async (kind, id) => {
       try { state[kind].set(id, await entryApi("GET", (kind === "dispatch" ? "/v1/assistant/dispatches/" : "/v1/assistant/groups/") + encodeURIComponent(id))); }
-      catch (error) { if (error && error.name === "AbortError") throw error; state[kind].set(id, null); }
+      catch (error) {
+        if (error && error.name === "AbortError") throw error;
+        // 404（不是本人的或已清理）属正常；其余如实记下，经过里不出现这一段
+        if (!error || error.status !== 404) console.error("小院细节读取失败", kind, id, error);
+        state[kind].set(id, null);
+      }
     };
     await Promise.all([...[...wanted.group].map(id => get("group", id)), ...[...wanted.dispatch].map(id => get("dispatch", id))]);
   }
@@ -192,7 +198,10 @@
     if (item.answer) body.appendChild(el("p", "你的答复：" + item.answer, "cy-quote"));
     if (item.open && item.pending && typeof openPending === "function") body.appendChild(button("去处理", () => openPending(item.pending), "primary"));
     if (item.tool && item.type === "step") {
-      const more = el("details", null, "cy-raw");
+      const more = el("details", null, "cy-raw"), key = item.tool + "@" + item.at;
+      // 每帧会重画经过：记住本人展开过的「细节」
+      if (state.open.has(key)) more.open = true;
+      more.addEventListener("toggle", () => { if (more.open) state.open.add(key); else state.open.delete(key); });
       more.append(el("summary", "细节"), el("p", "工具：" + item.tool + (item.failed ? "（出错）" : "") + (item.said ? "" : "；匠人这一步没说话，句子是按工具名拼的"), "meta"));
       body.appendChild(more);
     }

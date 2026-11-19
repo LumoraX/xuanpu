@@ -10,6 +10,9 @@ import re
 SAY_MAX = 160
 BUFFER_MAX = 2000
 _THINK = re.compile(r"<(think|thinking)>.*?</\1>", re.IGNORECASE | re.DOTALL)
+# 推理块没配对时（模型没闭合就去调工具，或缓冲截掉了开头）：结束标记之前、开始标记之后都当推理丢掉
+_THINK_CLOSE = re.compile(r"^.*</(?:think|thinking)>", re.IGNORECASE | re.DOTALL)
+_THINK_OPEN = re.compile(r"<(?:think|thinking)>.*$", re.IGNORECASE | re.DOTALL)
 _CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 _SPACE = re.compile(r"\s+")
 # 句末标点：放不下时按这些切句
@@ -23,7 +26,7 @@ def narration(text: str) -> str | None:
     一句会丢掉要紧的那句）；放不下时从结尾往前按整句保留，离动作最近的话优先；最后一句本身
     就过长时从开头截并加「…」。没有可显示内容时返回 None。
     """
-    cleaned = _SPACE.sub(" ", _CONTROL.sub(" ", _THINK.sub("", text))).strip()
+    cleaned = _SPACE.sub(" ", _CONTROL.sub(" ", strip_reasoning(text))).strip()
     if not cleaned:
         return None
     if len(cleaned) <= SAY_MAX:
@@ -36,6 +39,12 @@ def narration(text: str) -> str | None:
     if kept:
         return kept.strip()
     return "…" + cleaned[-(SAY_MAX - 1):]
+
+
+def strip_reasoning(text: str) -> str:
+    """去掉推理：成对的块整块去掉；剩下孤立的结束标记连同之前的内容、孤立的开始标记连同之后的内容
+    一并去掉。宁可少显示一句，也不让推理露出来。"""
+    return _THINK_OPEN.sub("", _THINK_CLOSE.sub("", _THINK.sub("", text)))
 
 
 def _sentences(text: str) -> list[str]:

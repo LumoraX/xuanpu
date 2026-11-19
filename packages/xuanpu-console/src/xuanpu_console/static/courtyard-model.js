@@ -163,7 +163,7 @@
         if (TERMINAL.has(span.state) && (fresh || !TERMINAL.has(before.state))) {
           const detail = details.dispatch(span.ref), ok = span.state === "completed";
           beats.push({ type: "return", actor: pkg, ok, how: howFor(map, span, details), dispatch: span.ref });
-          beats.push({ type: "check", actor: "butler", ok, checks: detail ? detail.checks : null, of: pkg });
+          beats.push({ type: "check", actor: "butler", ok, checks: detail ? detail.checks : null, of: pkg, dispatch: span.ref });
         }
       } else if (span.kind === "artisan" && who && who !== "butler") {
         if (fresh && map.get(span.parent_span_id) && map.get(span.parent_span_id).kind === "dispatch") beats.push({ type: "wake", actor: who, span: span.span_id });
