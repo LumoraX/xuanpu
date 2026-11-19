@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from ..work_tasks.conftest import office_image, recovery_world  # noqa: F401
+from ..work_tasks.conftest import recovery_world  # noqa: F401
 
 
 @pytest.fixture

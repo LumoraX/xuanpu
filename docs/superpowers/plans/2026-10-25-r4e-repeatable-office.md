@@ -27,7 +27,7 @@
 - [x] 只将`examples/office-review/package/`交给现有pack_package；delivery.json和evals为同级外部交付件，不进入被引用ZIP。先构建包再把其digest写入外部delivery，测试重复构建ZIP逐字节相同、修改外部delivery不改变包SHA，避免自引用摘要。
 - [x] 包/交付描述通过现有规范与A解析，固定B2的office_files/table_summary profile，不把模型选择当完成类型；默认关闭出网、不声明任何外部写工具。
 - [x] 抽取复用现有表格读取与成果保存工具，不复制平台身份/路径逻辑到脚本。自定义脚本在既有沙盒运行，不被xuanpu-server import。
-- [ ] 编写确定输入的数值、行数、异常清单、CSV安全导出、UTF-8和SHA断言；表格单元格含公式前缀时输出保留原始值及安全显示策略，不能当公式执行。
+- [x] 编写确定输入的数值、行数、异常清单、CSV安全导出、UTF-8和SHA断言；表格单元格含公式前缀时输出保留原始值及安全显示策略，不能当公式执行。
 - [x] SKILL明确只做草稿/准备和有证据的状态描述，不从材料指令扩大权限，不替他人创建组织决定。缺字段需要澄清，不擅自选列。
 - [ ] 冻结安装条件、输入输出限制、预算、失败代码和处置：invalid_columns要求重新选择；source_stale重选版本；budget_exhausted显式续办；outcome_unknown先核实不自动重跑。
 - [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_office_review_package.py packages/xuanpu-server/tests/r4_contract/test_office_review_results.py -q`；提交`feat: 增加可复制办公汇总样板`。
@@ -51,3 +51,12 @@
 
 - E0：`examples/office-review/{package,delivery.json,evals,build.py,README.md}`；样板脚本复用 office-assistant 的表格读取与 Decimal 汇总（复制进样板包，导入路径改为同目录）；测试 `T/r4_contract/test_office_review_package.py`：确定性构建、外部描述摘要、经真实接口登记、basic 样例 250.00、invalid 样例按行号列出异常、公式前缀中和。未做：XLSX 公式单元格的显示策略专门用例（需办公容器）、`test_office_review_results`（四类成果在办公容器内生成与校验）、失败代码 invalid_columns/source_stale/budget_exhausted/outcome_unknown 的冻结与处置文档；评测套件只有对话类用例（R4-C 评测不支持带输入文件的确定性用例）。
 - E1（分支 `feat/r4d1-knowledge-qa`）：两企业复制 `T/r4_contract/test_office_replication.py`（内存与 PG）：同一归档摘要、各自本地配置得到不同配置摘要、跨企业的预检/停用/发布与分配列表均 404（发布与分配列表对本企业不存在的能力改为 404）；复制说明写在样板 README。升级/回退旅程 `T/r4_contract/test_office_rollback.py`（升级窗口旧发布照常可用、升级后新会话用新版旧会话不变、回退后新会话回旧版）——这条旅程暴露并修正了两处问题：换配置把安装打回 staged 导致升级期间全员不能新受理；发布绑定安装当前配置导致无法回退。未做：两企业各自跑出 250.00 成果（需办公容器）、原生旅程、R3 交接、真实模型四组。
+
+## 进度（2026-11-19，分支 `test/office-review-results`）
+
+- E0 成果用例：新增 `T/r4_contract/test_office_review_results.py`，在办公沙盒镜像里实际运行样板（需要 Docker）。脚本层 3 项：`basic.csv` 得甲 170.00、乙 80.00、总计 250.00、有效行 3，`summary.csv`、`summary.xlsx`、`report.md`、`evidence.json` 与 `outputs/manifest.json` 齐全，脚本回执 `outputs_sha256` 与文件逐项一致，证据记有输入 SHA；分组文本以 `=` `+` `-` `@` 开头时 XLSX 里是字符串单元格、公式单元格数为 0，CSV 加单引号，证据保留原值；`invalid.csv` 非零退出、按文件与行号列出第 3、4 行、不生成清单。平台层 3 项（内存与 PG 各一遍）：管理员经产品接口发布、登记、预检、安装、评测、分配、发布，员工上传 CSV 经 `POST /v1/work-tasks/from-capability` 交办，任务成功并保存四类成果，回执的大小、摘要与下载字节一致；`invalid.csv` 的任务以 `source_or_output_invalid` 失败、没有成果、模型看到的脚本输出列有文件与行号。
+- E1 两企业运行：同一归档在两家合成企业各自安装、评测、发布给各自员工，各自跑出 250.00；对方员工与管理员读取任务、任务事件、成果文件与输入文件标识一律 404，各自任务列表只有自己的任务。
+- 这条用例暴露并修正一处缺陷：成果摘要回执原先只认名为 `table-summary` 的 skill（`TaskRunner._script_receipt`），按文件型能力登记的样板入口 skill 是 `review`，脚本跑完也会在成果校验处以「缺少真实汇总脚本回执」失败——样板此前无法经能力入口跑出成果。现改为认「该能力登记的入口 skill 自己的 `summarize`」（内置办公包的 `table-summary` 不变），并补了不需要容器的判定用例（`test_file_capability_tasks.py`，5 组）。契约写入 `docs/architecture/capability-delivery.md` 与 `docs/guides/capability-delivery.md`。
+- 办公镜像夹具 `office_image` 上移到 `T/conftest.py`，`work_tasks`、`task_triggers`、`r4_contract` 共用；没有可用容器时新用例与既有办公容器用例以同样的原因失败。
+- 仍未做：失败代码 invalid_columns/source_stale/budget_exhausted/outcome_unknown 的冻结与处置文档；跨企业的审批与知识来源标识 404、复制描述导出不含运行数据的专门断言；原生旅程、R3 交接、真实模型四组；评测套件仍只有对话类用例。
+
