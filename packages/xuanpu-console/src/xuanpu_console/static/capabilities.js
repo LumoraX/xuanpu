@@ -18,6 +18,7 @@ async function openCapabilities(adminView=false){
       const me=await api("GET","/v1/me/capabilities");if(!capabilityLive(epoch,generation))return;
       if(!Array.isArray(me.capabilities)||!Number.isInteger(me.total))throw new Error("能力目录响应不完整，请重新读取。");
       $("capability-list").append(connectionText("p",me.capabilities.length?"已分配能力（"+me.total+"）":"尚未分配可运行能力。个人工作方法不等于企业执行授权。"));
+      if(typeof capabilityMine==="function")await capabilityMine(epoch,generation);
     }
     if(isAdmin())await capabilityManage(epoch,generation);
     if(isAdmin()&&adminView&&typeof capabilityOperations==="function"&&capabilityLive(epoch,generation))await capabilityOperations(epoch,generation);

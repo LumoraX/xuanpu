@@ -1078,6 +1078,8 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | --- | --- | --- |
 | GET /v1/me/capability-outcomes | since、until（受理时间）、limit（1–100）、offset | window_start、window_end、cohort_basis=accepted_at、observed_at、aggregation_version、evidence_kind、totals（各状态与 unreadable/missing）、technical_completion（succeeded、cohort、rate 或 null）、tokens（settled、held_upper_bound、tasks_with_records、tasks_without_records）、cost（status=price_unavailable、amount=null）、items（本人任务元数据）、next_offset |
 | GET /v1/admin/capability-outcomes | since、until | 同上的汇总，加 capabilities（按能力与修订）；不含任务明细；仅管理员 |
+| GET /v1/me/capability-outcomes/export | since、until | CSV（UTF-8 带 BOM）：task_id、capability_id、capability_revision、release_id、status、accepted_at、finished_at、tokens_settled（无记录为空）；与页面同权限同口径；响应头 `X-Xuanpu-Aggregation-Version` |
+| GET /v1/admin/capability-outcomes/export | since、until | CSV：每行一个能力修订的计数、技术完成率、token（已结算/占用上界/无记录任务数）与费用口径（无价格表时 `price_unavailable`、金额为空）；不含任务或员工；仅管理员。文字以 `= + - @` 开头时前加单引号 |
 | POST /v1/admin/acceptance-batches | request_id、capability_id、capability_revision、name、criteria、samples（1–500）、evidence_kind、可选 supersedes | 201：批次与 counts（passed/failed/blocked/not_checked）、verification_rate；样本不属于该修订 400 |
 | GET /v1/acceptance-batches/{id} | 无 | 批次、每样本现行结论、counts、verification_rate（只除以已有结论的样本） |
 | POST /v1/acceptance-batches/{id}/observations | request_id、task_id、verdict（passed/failed/blocked）、evidence_ref、可选 note、supersedes | 201：观察；样本已有结论而未指明被纠正的现行观察 409 |
