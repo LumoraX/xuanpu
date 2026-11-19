@@ -279,8 +279,13 @@ class TaskRunner:
 
     async def _script_receipt(self, who: Principal, task: WorkTaskRecord,
                               invocation: taifeng.ScriptInvocation, result: taifeng.ScriptResult | None) -> None:
-        """固定版本脚本的实际完整stdout才可提供成果摘要，执行前先使旧回执失效。"""
-        if (task.output_kind != 'table_summary' or invocation.descriptor.skill_id != 'table-summary'
+        """固定版本脚本的实际完整stdout才可提供成果摘要，执行前先使旧回执失效。
+
+        认的脚本只有两处：内置办公包的 table-summary 子skill，以及文件型能力（R4-B2）已登记的
+        入口skill自己的 summarize；包里其他脚本的输出不能充当成果回执。
+        """
+        owners = {'table-summary'} | ({task.entry} if task.entry else set())
+        if (task.output_kind != 'table_summary' or invocation.descriptor.skill_id not in owners
             or invocation.descriptor.name != 'summarize'):
             return
         current = await self.store.get(who, task.task_id)
