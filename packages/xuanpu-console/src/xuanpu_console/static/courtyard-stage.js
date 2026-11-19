@@ -5,7 +5,9 @@
 
 (function () {
   const C = () => globalThis.Courtyard;
-  const stage = { scene: null, focus: null, played: new WeakMap(), roster: [], caption: null, looks: null };
+  const stage = { scene: null, focus: null, played: new WeakMap(), roster: [], caption: null, looks: null, log: [] };
+  // 最近演了什么（排查用）：每帧一条，记焦点、帧类型、是对齐终态还是出节拍
+  function note(entry) { stage.log.push({ at: Date.now(), ...entry }); if (stage.log.length > 80) stage.log.shift(); }
   const IDLE = "管家在管家台待命，匠人们在垫子上歇着。说一句话，看他们怎么办。";
 
   function mounted() { return stage.scene !== null; }
@@ -54,6 +56,7 @@
   // 让小院演这件事：先把画面对齐到它此刻的事实，之后的帧再出动画。
   function focus(state) {
     if (!mounted() || !state) return;
+    note({ focus: true, spans: (state.prev || []).length });
     stage.focus = state;
     const spans = state.prev || [];
     stage.scene.cast(C().model.artisans(spans));
@@ -71,9 +74,12 @@
     const model = C().model, before = stage.played.get(state);
     stage.scene.cast(model.artisans(next));
     if (!before || frame === "snapshot" || reducedMotion()) {
+      note({ frame, settle: true, spans: next.length });
       stage.scene.settle(model.poses(next, details));
     } else {
-      stage.scene.play(model.diff(before, next, details));
+      const beats = model.diff(before, next, details);
+      note({ frame, beats: beats.map(b => b.type + ":" + b.actor) });
+      stage.scene.play(beats);
       // 动画是讲解，事实为准：排完后对齐到最新记录（期间又来了新帧则交给那一帧）
       stage.scene.idle().then(() => { if (stage.played.get(state) === next) stage.scene.settle(model.poses(next, state.details())); });
     }
@@ -83,11 +89,19 @@
   }
 
   // 焦点这件事已经办完（例如员工答复匠人提问的那一句），而更早的事还在办：小院回到那件事上。
+  // 先让员工看清「办完了」，过一会儿再交还；期间员工又发了新话（焦点变了）就不交还。
+  const HAND_BACK_MS = 6000;
   function handBack(state, next, details) {
     const model = C().model;
-    if (!model.finished(next) || model.openItems(next, details).length) return;
-    const other = (C().card.busyStates ? C().card.busyStates() : []).find(s => s !== state);
-    if (other) focus(other);
+    if (!model.finished(next) || model.openItems(next, details).length || state.handingBack) return;
+    state.handingBack = true;
+    const back = () => {
+      state.handingBack = false;
+      if (stage.focus !== state) return;
+      const other = (C().card.busyStates ? C().card.busyStates() : []).find(s => s !== state);
+      if (other) focus(other);
+    };
+    if (typeof setTimeout === "function" && !stage.immediate) setTimeout(back, HAND_BACK_MS); else back();
   }
 
   // 小院下方一句：在演哪件事、办到哪了。
@@ -104,5 +118,7 @@
   function isFocus(state) { return stage.focus === state; }
 
   globalThis.Courtyard = globalThis.Courtyard || {};
-  globalThis.Courtyard.stage = { mount, mounted, focus, update, select, restyle, isFocus };
+  globalThis.Courtyard.stage = { mount, mounted, focus, update, select, restyle, isFocus, recent: () => stage.log.slice(),
+    // 测试用：交还焦点不等待
+    immediate: on => { stage.immediate = Boolean(on); } };
 })();

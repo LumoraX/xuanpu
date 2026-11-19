@@ -162,8 +162,17 @@
       const station = lastStep.kind === "wait" ? "bed" : stationFor(lastStep.name);
       return Object.assign(pose, { at: "station", station, pose: "working", face: "open", bubble: "想想下一步…" });
     }
+    // 已接下活、还没动手：醒着，告诉大家开始办了
     const how = howFor(map, dispatch, details);
-    return Object.assign(pose, { at: how === "table" ? "table" : "home", pose: null, face: "open" });
+    return Object.assign(pose, { at: how === "table" ? "table" : "home", pose: null, face: "open", bubble: "收到，开始办…" });
+  }
+
+  // 交代时管家头顶说的一句：任务说明的第一句，去掉「处理员工最新请求：」这类开场。
+  function briefLine(instruction) {
+    if (!instruction) return "这件事交给你了";
+    const body = String(instruction).replace(/^[^：:]{0,12}[：:]/, "").trim();
+    const first = body.split(/[。！？!?；;\n]/)[0].trim() || body;
+    return first.length > 18 ? first.slice(0, 17) + "…" : first;
   }
 
   // 两次快照之间发生了什么 → 一串动画节拍。同一快照比两次不产生节拍。
@@ -175,7 +184,8 @@
       const who = ownerOf(map, span);
       if (span.kind === "dispatch") {
         const pkg = pkgOf(span);
-        if (fresh) beats.push({ type: "brief", actor: pkg, how: howFor(map, span, details), dispatch: span.ref, span: span.span_id });
+        if (fresh) beats.push({ type: "brief", actor: pkg, how: howFor(map, span, details), dispatch: span.ref, span: span.span_id,
+          text: briefLine((details.dispatch(span.ref) || {}).instruction) });
         if (TERMINAL.has(span.state) && (fresh || !TERMINAL.has(before.state))) {
           const detail = details.dispatch(span.ref), ok = span.state === "completed";
           beats.push({ type: "return", actor: pkg, ok, how: howFor(map, span, details), dispatch: span.ref });
@@ -280,5 +290,5 @@
   }
 
   globalThis.Courtyard = globalThis.Courtyard || {};
-  globalThis.Courtyard.model = { PLACE, TERMINAL, finished, openItems, resultText, stationFor, reasonText, ownerOf, artisans, poses, diff, story, summary, howFor, index };
+  globalThis.Courtyard.model = { PLACE, TERMINAL, finished, openItems, briefLine, resultText, stationFor, reasonText, ownerOf, artisans, poses, diff, story, summary, howFor, index };
 })();

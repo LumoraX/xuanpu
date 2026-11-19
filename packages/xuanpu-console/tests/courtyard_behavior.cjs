@@ -175,6 +175,19 @@ function artisanStaysAtLastStationWhileThinking(C) {
   assert.equal(C.model.poses(done, none).finance.at, "home", "办完回垫子");
 }
 
+// 真实试用发现：交代时只有「交代任务」看不出交代了什么；管家要说出任务的第一句。
+function briefSaysTheTask(C) {
+  assert.equal(C.model.briefLine("处理员工最新请求：报销上周五打车去客户公司 58 元，有发票。请按制度核对"), "报销上周五打车去客户公司 58 元…");
+  assert.equal(C.model.briefLine("查上月没付的报销"), "查上月没付的报销");
+  assert.equal(C.model.briefLine(undefined), "这件事交给你了");
+  const t = soloTimeline();
+  const details = { dispatch: () => ({ host: "session", instruction: "查上月差旅没付的报销。只读。", items: [] }), group: () => undefined };
+  assert.equal(C.model.diff([t.root], [t.root, t.dp], details).find(b => b.type === "brief").text, "查上月差旅没付的报销");
+  const pose = C.model.poses([t.root, t.dp], details).finance;
+  assert.equal(pose.face, "open", "接下活还没动手时是醒着的");
+  assert.equal(pose.bubble, "收到，开始办…");
+}
+
 function orphanSpansDoNotCrash(C) {
   const lost = [span("tl.x", "tool", "query", "ex.missing", "running", 1), span("a", "artisan", "x", "b", "running", 0), span("b", "artisan", "y", "a", "running", 0)];
   same(C.model.diff([], lost, none), []);
@@ -324,6 +337,7 @@ async function stagedCourtyardFollowsFocus(dir) {
     "/v1/assistant/dispatches/dsp_1": () => ({ host: "session", instruction: "查", items: [] }),
   }, true, ["courtyard-art.js", "courtyard-model.js", "courtyard-card.js", "courtyard-stage.js"]);
   assert.ok(C.stage.mount(element(), {}));
+  C.stage.immediate(true);
   await new Promise(resolve => setImmediate(resolve));
   same(scene.filter(x => x[0] === "cast").slice(-1)[0], ["cast", ["finance", "support-desk"]], "打开就让可用匠人上垫子待命");
   const progress = { spans: new Map(), header: {}, wantsFocus: true }, node = element();
@@ -375,6 +389,7 @@ butlerRepliesBeforeArtisanFinishes(C);
 resultDropsRepeatedNarration(C);
 rulingKeepsWaitingAndStaysShort(C);
 artisanStaysAtLastStationWhileThinking(C);
+briefSaysTheTask(C);
 orphanSpansDoNotCrash(C);
 looks(C);
 (async () => {

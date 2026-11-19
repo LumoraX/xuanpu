@@ -104,7 +104,7 @@
     face(f) { this.g.dataset.face = f || "open"; }
     pose(p) { this.g.classList.remove("working", "asking", "sleeping"); if (p) this.g.classList.add(p); }
     hold(k) { this.propNode.innerHTML = k ? art().PROPS[k] : ""; }
-    bubble(text, kind) { this.bw = bubbleNodes(this.bubbleNode, text ? clip(text, 16) : "", kind); this.place(); }
+    bubble(text, kind) { this.bw = bubbleNodes(this.bubbleNode, text ? clip(text, 20) : "", kind); this.place(); }
     async say(text, ms, kind) { this.bubble(text, kind); await this.scene.clock.run(ms); this.bubble(null); }
     jump(x, y) { this.x = x; this.y = y; this.place(); }
   }
@@ -217,19 +217,23 @@
     handler({ scene, beat, butler, actor, key: beat.dispatch || beat.actor, run: ms => scene.clock.run(ms), F: art().FLY });
   }
 
+  // 写信：管家提笔写下任务，信飞到匠人手里，匠人读信
   async function briefLetter(c, b) {
-    b.hold("quill"); await b.say("写信交代", 900); b.hold(null);
-    await fly(c.scene, c.F.letter, { x: b.x + 24, y: b.y - 60 }, { x: c.actor.x, y: c.actor.y - 60 }, 800, 110);
+    b.hold("quill"); await b.say("写信：" + c.beat.text, 2200); b.hold(null);
+    fire(c.scene, "call:" + c.key);
+    await fly(c.scene, c.F.letter, { x: b.x + 24, y: b.y - 60 }, { x: c.actor.x, y: c.actor.y - 60 }, 900, 110);
   }
 
+  // 当面：管家走到匠人跟前（会诊是请到圆桌），先叫醒，再把任务说出来
   async function briefInPerson(c, b) {
     if (c.beat.how === "table") {
       await b.walk(TABLE.x, TABLE.y); fire(c.scene, "call:" + c.key);
-      await waitFor(c.scene, "seated:" + c.key); await b.say("请你看看这件事", 1400);
+      await waitFor(c.scene, "seated:" + c.key);
     } else {
       await b.walk(c.actor.home.x - 62, c.actor.home.y + 16); fire(c.scene, "call:" + c.key);
-      await b.say("交代任务", 1500);
+      await b.say(c.beat.text ? "醒醒，有活了" : "交代任务", 900);
     }
+    await b.say(c.beat.text || "这件事交给你了", 2600);
   }
 
   async function returnHome(c, a) {
@@ -258,14 +262,14 @@
         b.hold("tea"); b.face("happy");
       });
       c.actor.do(async a => {
-        if (c.beat.how === "table") {
-          await waitFor(c.scene, "call:" + c.key); a.pose(null); a.face("open");
-          await a.walk(a.seat.x, a.seat.y); fire(c.scene, "seated:" + c.key);
-        }
-        await waitFor(c.scene, "briefed:" + c.key);
+        // 管家一到（或信一发出）就醒来，先听再答
+        await waitFor(c.scene, "call:" + c.key);
         a.pose(null); a.face("open");
-        if (c.beat.how === "letter") { a.hold("letter"); await c.run(800); a.hold(null); }
-        await a.say("收到！", 700);
+        if (c.beat.how === "table") { await a.walk(a.seat.x, a.seat.y); fire(c.scene, "seated:" + c.key); }
+        await waitFor(c.scene, "briefed:" + c.key);
+        if (c.beat.how === "letter") { a.hold("letter"); await a.say("读信…", 1200); a.hold(null); }
+        a.face("happy"); await a.say("收到！我这就去办", 1400); a.face("open");
+        a.bubble("收到，开始办…");
       });
     },
     wake: c => c.actor.do(async a => { a.pose(null); a.face("open"); }),
@@ -308,7 +312,6 @@
       b.bubble(null); b.face("happy"); b.hold("scroll"); await b.say("这就回话", 900); b.hold(null);
       await fly(c.scene, c.F.scroll, { x: b.x + 20, y: b.y - 56 }, { x: 84, y: 160 }, 800, 50);
       await b.walk(DESK.x, DESK.y);
-      for (const [key, a] of c.scene.actors) if (key !== "butler" && a.seat && a.x !== a.home.x) a.do(async x => { x.bubble(null); await x.walk(x.home.x, x.home.y); x.pose("sleeping"); x.face("closed"); });
     }),
   };
 
