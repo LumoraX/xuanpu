@@ -34,6 +34,15 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+# 平台约定（R7）：匠人动手前先说一句，成为小院里的旁白；只在投递时追加，派工记录不含
+NARRATE_HINT = "（每次动手前，先用一句话告诉员工你要做什么。）"
+
+
+def delivered(instruction: str) -> str:
+    """交给匠人的说明：派工说明加说话约定。"""
+    return instruction + "\n\n" + NARRATE_HINT
+
+
 @dataclass(frozen=True)
 class LaunchContext:
     """一次派工的归属与挂接：谁、哪条 trace、父 span、幂等标识、时区。"""
@@ -194,7 +203,7 @@ class Dispatcher:
     ) -> str:
         """持久任务承载：与 from-capability 同一受理口径。"""
         task = await self._platform.work_tasks.accept_capability(ctx.who, CapabilityTaskInput(
-            request_id="butler:" + record.dispatch_id, text=record.instruction,
+            request_id="butler:" + record.dispatch_id, text=delivered(record.instruction),
             timezone=ctx.timezone, input_files=materials,
             capability=CapabilityReference(package=record.artisan.package,
                                            entry=record.artisan.entry)))
@@ -209,7 +218,8 @@ class Dispatcher:
         running = await self._platform.dispatches.update(
             ctx.owner, record.dispatch_id, expected_version=record.version, to="running",
             at=self._at(), host_ref=session.session_id)
-        started = await sessions.send_message(ctx.who, session.session_id, record.instruction)
+        started = await sessions.send_message(ctx.who, session.session_id,
+                                             delivered(record.instruction))
         self._drain(started)
         return running
 
