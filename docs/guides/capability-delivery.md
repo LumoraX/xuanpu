@@ -16,6 +16,8 @@
 
 成果为文件的能力（交付描述的输出契约是`office_files`/`table_summary`）对业务包有一条固定要求：入口skill要自带名为`summarize`的脚本，脚本成功时在标准输出打印一行JSON，其中`outputs_sha256`列出`outputs/manifest.json`与清单里每个成果文件的SHA-256。平台只按这份回执核对并保存成果；脚本失败、没有回执或文件在脚本之后被改写，任务都会失败，不保存任何文件。写法可直接参照`examples/office-review/package/skills/review/scripts/summarize.py`。
 
+写入口skill时另有两点（真实模型验收里出过错）：交办消息给模型的固定输入路径是`inputs/input_1.csv`这种带`inputs/`前缀的写法，脚本应把它与`input_1.csv`当作同一个文件，仍只接受工作区`inputs/`下的固定输入名；入口skill没有子skill时在frontmatter写`strict_tool_names: true`，模型就看不到`call_skill`，不会在入口里调用自己而被内核以`cycle_detected`拒绝。另外`scripts/`目录下每个`.py`都会被内核当成可运行脚本，共享代码放到别的目录（样板放在`lib/`）。
+
 员工从“功能→我的能力→查看我的能力”读取本人目录，当前明确显示尚未分配。管理员登记目录不会展示给普通员工；私人“个人能力”仍是本人工作方法。
 
 ## 分配给员工（R4-B）

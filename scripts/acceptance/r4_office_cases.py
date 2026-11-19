@@ -231,9 +231,13 @@ async def _transcript(platform: Any, who: Any, task_id: str) -> dict[str, Any]:
         for r in rows
         if r.kind == "tool_call_completed"
     ]
-    # 出错的工具调用记下输出开头（定位环境问题用；工具输出只在本机验收环境里）
+    # 出错的工具调用记下输出开头与末尾（脚本的失败原因在 stderr 末行；工具输出只在本机验收环境里）
     errors = [
-        {"name": str(r.data.get("name")), "output_head": str(r.data.get("output", ""))[:300]}
+        {
+            "name": str(r.data.get("name")),
+            "output_head": str(r.data.get("output", ""))[:300],
+            "output_tail": str(r.data.get("output", ""))[-300:],
+        }
         for r in rows
         if r.kind == "tool_call_completed" and r.data.get("is_error") is True
     ]

@@ -17,12 +17,14 @@ from xuanpu_spec import pack_package
 
 SAMPLE = Path(__file__).resolve().parents[4] / 'examples' / 'office-review'
 SCRIPTS = SAMPLE / 'package' / 'skills' / 'review' / 'scripts'
+LIB = SCRIPTS.parent / 'lib'
 
 
 def _scripts(monkeypatch: pytest.MonkeyPatch, workspace: Path):
     """加载样板脚本模块（输入目录指向临时工作区）。"""
     monkeypatch.setenv('WORKSPACE', str(workspace))
     monkeypatch.syspath_prepend(str(SCRIPTS))
+    monkeypatch.syspath_prepend(str(LIB))
     for name in ('documents', 'rows', 'summarize'):
         sys.modules.pop(name, None)
     return importlib.import_module('rows'), importlib.import_module('summarize')
@@ -79,3 +81,98 @@ def test_formula_prefixes_are_neutralised_in_exports(monkeypatch: pytest.MonkeyP
     """自由文本以 = + - @ 开头时导出前加单引号，不会被表格软件当公式执行。"""
     _, summarize = _scripts(monkeypatch, tmp_path)
     assert summarize.safe_csv('=1+1') == "'=1+1" and summarize.safe_csv('甲') == '甲'
+
+
+def _documents(monkeypatch: pytest.MonkeyPatch, workspace: Path):
+    """加载样板的输入路径规则模块（输入目录指向临时工作区）。"""
+    monkeypatch.setenv('WORKSPACE', str(workspace))
+    monkeypatch.syspath_prepend(str(SCRIPTS))
+    monkeypatch.syspath_prepend(str(LIB))
+    sys.modules.pop('documents', None)
+    return importlib.import_module('documents')
+
+
+def _handoff_paths() -> list[str]:
+    """平台交办消息里「固定输入」给模型的路径（与 runner 同一函数生成，不手抄格式）。"""
+    from types import SimpleNamespace
+
+    from xuanpu_server.work_tasks.runner import TaskRunner
+
+    entry = SimpleNamespace(relative_name='input_1.csv', sha256='0' * 64, mime_type='text/csv')
+    task = SimpleNamespace(execution_kind='office', inputs=(entry,), timezone='Asia/Shanghai',
+                           accepted_at=0.0, text='汇总')
+    message = TaskRunner._message(task)  # type: ignore[arg-type]
+    line = next(item for item in message.splitlines() if item.startswith('固定输入：'))
+    return [ref['path'] for ref in json.loads(line.removeprefix('固定输入：'))]
+
+
+def test_handoff_path_and_bare_name_resolve_to_same_input(monkeypatch: pytest.MonkeyPatch,
+                                                          tmp_path: Path) -> None:
+    """缺陷 1：交办消息给的是 inputs/input_1.csv，脚本须与 input_1.csv 按同一个文件处理。"""
+    documents = _documents(monkeypatch, tmp_path)
+    _input(tmp_path, 'basic.csv')
+    expected = (tmp_path / 'inputs' / 'input_1.csv').resolve()
+    assert _handoff_paths() == ['inputs/input_1.csv']
+    for name in ['input_1.csv', *_handoff_paths(), './inputs/input_1.csv']:
+        assert documents.input_path(name) == expected, name
+
+
+@pytest.mark.parametrize('name', ['../inputs/input_1.csv', 'inputs/../input_1.csv', '/inputs/input_1.csv',
+                                  'outputs/input_1.csv', 'inputs/inputs/input_1.csv', 'inputs\\input_1.csv',
+                                  'input_9.csv', 'inputs/notes.csv', ''])
+def test_input_path_still_rejects_escapes(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, name: str) -> None:
+    """规范化只认工作区 inputs/ 下的固定输入名；跳出 inputs、其他目录或任意文件名一律拒绝。"""
+    documents = _documents(monkeypatch, tmp_path)
+    _input(tmp_path, 'basic.csv')
+    (tmp_path / 'outputs').mkdir()
+    (tmp_path / 'outputs' / 'input_1.csv').write_text('项目,金额\n')
+    with pytest.raises(ValueError, match='输入名称不合法'):
+        documents.input_path(name)
+
+
+@pytest.mark.parametrize('raw', ['["inputs/input_1.csv"]', '["input_1.csv"]', "['inputs/input_1.csv']",
+                                 'inputs/input_1.csv', 'input_1.csv'])
+def test_inputs_argument_forms_are_normalised(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, raw: str) -> None:
+    """run_script 把参数逐个 str() 成 argv：JSON 数组、模型直接传数组（Python 表示）或单个名称都按同一列表处理。"""
+    documents = _documents(monkeypatch, tmp_path)
+    _input(tmp_path, 'basic.csv')
+    assert documents.input_names(raw) == ['input_1.csv']
+
+
+def test_inputs_argument_rejects_duplicates_and_garbage(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """同一文件两种写法算重复；非字符串元素、空列表、超过 8 个一律拒绝。"""
+    documents = _documents(monkeypatch, tmp_path)
+    for raw in ['["input_1.csv", "inputs/input_1.csv"]', '[]', '[1]', '{"a": 1}',
+                json.dumps([f'input_{i}.csv' for i in range(1, 10)])]:
+        with pytest.raises(ValueError, match='输入'):
+            documents.input_names(raw)
+
+
+def _review_skill():
+    """按内核实际加载方式读样板入口 skill。"""
+    import asyncio
+
+    import taifeng
+
+    registry = asyncio.run(taifeng.FilesystemSkillRegistry.load(SAMPLE / 'package' / 'skills'))
+    skill = registry.snapshot().get('review')
+    assert skill is not None
+    return skill
+
+
+def test_entry_skill_cannot_call_itself() -> None:
+    """缺陷 2：入口 review 对模型只暴露 run_script，不暴露 call_skill（否则模型会自调用被 cycle_detected 拒绝）。"""
+    skill = _review_skill()
+    assert 'call_skill' not in skill.visible_tool_names()
+    assert 'run_script' in skill.visible_tool_names()
+    assert not skill.child_skills
+    assert {script.name for script in skill.scripts} == {'inspect_headers', 'summarize'}
+
+
+def test_skill_instructions_match_handoff_paths() -> None:
+    """SKILL.md 说明与交办消息的路径写法一致，并写明直接 run_script、不调用 skill。"""
+    text = (SAMPLE / 'package' / 'skills' / 'review' / 'SKILL.md').read_text()
+    assert _handoff_paths()[0] in text
+    assert 'skill_id' in text and 'run_script' in text and 'call_skill' in text
+    for script in _review_skill().scripts:
+        assert 'inputs/input_1.csv' in script.args_schema['properties']['inputs']['description']
