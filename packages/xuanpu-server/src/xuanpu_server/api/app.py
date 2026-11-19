@@ -27,8 +27,8 @@ from xuanpu_server.api.collaboration_notifications import collaboration_notifica
 from xuanpu_server.api.connections import connections_router
 from xuanpu_server.api.console import ConsoleStaticFiles
 from xuanpu_server.api.dashboard import dashboard_router
-from xuanpu_server.api.file_bridge import file_bridge_router
 from xuanpu_server.api.dispatches import dispatches_router
+from xuanpu_server.api.file_bridge import file_bridge_router
 from xuanpu_server.api.groups import groups_router
 from xuanpu_server.api.handoffs import handoffs_router
 from xuanpu_server.api.history import history_router
