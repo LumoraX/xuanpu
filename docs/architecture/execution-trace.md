@@ -2,7 +2,7 @@
 
 > R5-B。为什么这么定见 [ADR 0017](../decisions/0017-butler-artisan-orchestration.md) 决策 5；设计与计划见 [R5-B 设计](../superpowers/specs/2026-11-14-r5b-trace-span-design.md)、[R5-B 计划](../superpowers/plans/2026-11-14-r5b-trace-span.md)。
 
-员工的一次请求引出的全部执行记成一条 **trace**，其中每个执行单元是一个 **span**。只存元数据：身份、父子、状态、起止时间、逐尝试用量；不存正文、工具参数与输出、推理内容或凭据。正文仍从会话历史按原权限读取。
+员工的一次请求引出的全部执行记成一条 **trace**，其中每个执行单元是一个 **span**。只存元数据：身份、父子、状态、起止时间、逐尝试用量，以及工具 span 上匠人动手前说的一句旁白（R7，见下文）；不存其余正文、工具参数与输出、推理内容或凭据。正文仍从会话历史按原权限读取。
 
 ## 采集
 
@@ -19,6 +19,12 @@
 | `turn_completed` / `turn_failed` | completed、failed 或 cancelled（结束原因是代码） |
 
 trace 边界：根执行开始一轮时打开；同一根执行挂起后续跑仍在同一条；根执行完成、失败或取消时结束，同一尝试的迟到事件丢弃，下一轮另开。没见过开头或父执行的执行（晚订阅、冷恢复）单独成 trace 并标不完整。引擎在执行中途被关闭时，未结束的 trace 标不完整。跨引擎的父子见下节。
+
+## 旁白（R7，`tracing/narration.py`，[ADR 0022](../decisions/0022-execution-story.md)）
+
+- 采集器为每个执行攒下它对员工说出口的话（`assistant_text` 增量，上限 2000 字，超出丢开头）；同一执行的 `tool_call_started` 到来时取走、清洗成一句挂到该工具 span 的 `say`（并行的一批只挂第一个），`turn_completed`/`turn_failed`/`turn_suspended` 时清空。
+- 清洗：去成对 `<think>` 块与控制字符、折叠空白，取最后一句，最长 160 字（过长从开头截并加「…」）；为空则没有旁白。
+- `say` 首值为准：重复或迟到的不同旁白不覆盖，也不算结构冲突。推理、工具参数与输出不读。
 
 ## 跨引擎关联（`tracing/binding.py`、`butler/trace_link.py`）
 

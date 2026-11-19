@@ -1121,6 +1121,7 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | POST /v1/assistant/pending/{id}/answer | request_id（1–80 字符）、text（1–2000 字符）；多余字段 422 | 更新后的项（state=answered）。原话转给匠人会话、派工回到 running。同一 request_id 同内容重试回原结果；已答复后换内容 409；kind=approval 409（请在既有待确认里处理）；kind=ruling（会诊裁决）只记进编组、不转给匠人，编组已结束或已有不同裁决 409；他人的与不存在的 404 |
 | GET /v1/assistant/groups/{group_id} | 无 | 本人编组的进展：group_id、trace_id、title、state、step、summarized、cancel_requested、version、steps（mode、members 匠人名）、members（step、member 从 1 起、dispatch_id、outcome、end_reason）、followups（step、member、asked_by、round、dispatch_id、outcome）、verdicts（step、level、reasons、rated_level、pending_id、ruled）；不含匠人正文。他人的与不存在的 404，机器身份 403 |
 | GET /v1/assistant/groups/{group_id}/messages | 无 | items：会诊消息区，按序号（seq、step、author=member/butler、member 从 1 起、round、mentions 从 1 起、text、created_at）；只追加。权限同上 |
+| GET /v1/assistant/dispatches/{dispatch_id} | 无 | 本人一次派工的细节（R7）：dispatch_id、trace_id、group_id、artisan（package、entry）、host=task/session、state、end_reason、instruction、created_at、updated_at、checks（terminal、succeeded、outputs、no_pending、no_unknown；还没验收为 null）、result（匠人回复摘录，最多 600 字；没有为 null）、items（pending_id、kind=question/approval/ruling/proxied、question、state、answer、source_quote、created_at）；不含匠人内部过程。权限同上 |
 
 匠人结束或提问后，管家的交付、转问、代答说明写进员工主对话（助手消息，`request_id` 为 `butler:<事件>:<deliver|ask|proxy|approval>`，元数据 `butler` 含 `trace_id`、`dispatch_id`、`event`，交付另含 `passed`、`checks`、`review_label`）。
 
@@ -1133,7 +1134,7 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | 方法与路径 | 查询 | 返回 |
 | --- | --- | --- |
 | GET /v1/traces | active=true/false 可选；cursor 可选；limit=1–100，默认 50 | items（trace_id、origin、title、created_at、updated_at、incomplete、truncated）、next_cursor、分页前 total；按创建时间倒序 |
-| GET /v1/traces/{trace_id} | 无 | trace 头、active、spans（span_id、parent_span_id、kind、name、ref、state、started_at、ended_at、attempts、input_tokens、output_tokens、usage_complete、end_reason、incomplete）；用量未知为 null |
+| GET /v1/traces/{trace_id} | 无 | trace 头、active、spans（span_id、parent_span_id、kind、name、ref、state、started_at、ended_at、attempts、input_tokens、output_tokens、usage_complete、end_reason、incomplete、say——工具 span 上匠人动手前说的一句话，最多 160 字，没有为 null，R7）；用量未知为 null |
 | GET /v1/traces/{trace_id}/waterfall | 无 | trace 头与 rows（span_id、parent_span_id、kind、name、state、depth、offset_ms、duration_ms、input_tokens、output_tokens、usage_complete、orphan）；运行中 duration_ms 为 null |
 | GET /v1/traces/{trace_id}/events | after_seq=0–2^31 可选；`Last-Event-ID` 优先 | SSE：`snapshot`（trace 头、active 与全部 spans）→ `spans`（只含变化的 span）→ `end`；事件 id 为已应用的最大事实序号；每轮（约 1 秒）发一行 `: heartbeat` 注释。不存在或无权在建流前 404，游标非数字 400 |
 
