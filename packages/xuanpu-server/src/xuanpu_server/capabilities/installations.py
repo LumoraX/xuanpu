@@ -124,9 +124,13 @@ class CapabilityInstallations:
             public_config=preview.public_config, secret_refs=preview.secret_refs,
             connection_refs=preview.connection_refs, evidence=preview.evidence, digest=preview.evidence_digest)
         state.configurations[config.id] = config
+        # 换配置（升级）不撤销已有发布：已生效或排空中的安装保持原状态，生效发布照旧引用各自的配置快照；
+        # 新配置要经评测与发布才会被谁用上
+        keep = old is not None and old.status in ('ready', 'draining')
         installation = Installation(tenant_id=tx.tenant_id, id=old.id if old else new_id('ins'),
             version=old.version + 1 if old else 1, created_at=old.created_at if old else self.service.now(),
-            capability_id=capability_id, config_id=config.id, config_revision=config_revision)
+            capability_id=capability_id, config_id=config.id, config_revision=config_revision,
+            status=old.status if keep and old is not None else 'staged')
         state.installations[installation.id] = installation
         return installation
 

@@ -61,19 +61,22 @@ class CapabilityReleases:
 
     def _evidence(self, state: CapabilityState, capability_id: str, installation_id: str,
                   evaluation_id: str) -> tuple[str, int, str]:
-        """安装与评测须对得上：同一能力修订、同一安装配置摘要、评测通过且未过期。"""
+        """安装与评测须对得上：评测针对的就是这个安装的某个配置快照（摘要与修订一致）、评测通过且未过期。
+
+        发布固定评测时的配置快照，不要求是安装当前的配置：升级后仍可用旧修订的配置与证据回退。
+        """
         installation = state.installations.get(installation_id)
         if installation is None or installation.capability_id != capability_id:
             raise NotFoundError('安装不存在')
         if installation.status not in ('staged', 'ready'):
             raise ConflictError('安装已停止，不能发布')
-        config = state.configurations[installation.config_id]
         evaluation = state.evaluations.get(evaluation_id)
         if evaluation is None or evaluation.capability_id != capability_id:
             raise NotFoundError('评测不存在')
-        if (evaluation.config_digest != config.digest or evaluation.capability_revision != config.revision
-                or evaluation.installation_id != installation.id):
-            raise ConflictError('评测证据与当前安装配置不一致，请重新评测')
+        config = state.configurations.get(evaluation.config_id)
+        if (config is None or config.capability_id != capability_id or evaluation.config_digest != config.digest
+                or evaluation.capability_revision != config.revision or evaluation.installation_id != installation.id):
+            raise ConflictError('评测证据与这个安装的配置不一致，请重新评测')
         if evaluation.status != 'passed':
             raise ConflictError('评测未通过，不能发布')
         if evaluation.finished_at is None or self.service.now() - evaluation.finished_at > EVIDENCE_SECONDS:
@@ -152,7 +155,8 @@ class CapabilityReleases:
             installation = installation.model_copy(update={'status': 'ready', 'version': installation.version + 1})
             state.installations[installation.id] = installation
             tx.emit('capability.state_changed', installation.id, installation.version, actor=who.actor, at=s.now())
-        config = state.configurations[installation.config_id]
+        # 固定评测时的配置快照（预览摘要已覆盖它），不取安装此刻的配置
+        config = state.configurations[str(preview['config_id'])]
         record = CapabilityRelease(
             tenant_id=who.require_tenant(), id=new_id('crl'), created_at=s.now(), capability_id=capability_id,
             capability_revision=config.revision, installation_id=installation.id, config_id=config.id,

@@ -50,4 +50,4 @@
 ## 进度（2026-11-18，分支 `feat/r4d-knowledge`）
 
 - E0：`examples/office-review/{package,delivery.json,evals,build.py,README.md}`；样板脚本复用 office-assistant 的表格读取与 Decimal 汇总（复制进样板包，导入路径改为同目录）；测试 `T/r4_contract/test_office_review_package.py`：确定性构建、外部描述摘要、经真实接口登记、basic 样例 250.00、invalid 样例按行号列出异常、公式前缀中和。未做：XLSX 公式单元格的显示策略专门用例（需办公容器）、`test_office_review_results`（四类成果在办公容器内生成与校验）、失败代码 invalid_columns/source_stale/budget_exhausted/outcome_unknown 的冻结与处置文档；评测套件只有对话类用例（R4-C 评测不支持带输入文件的确定性用例）。
-- E1（分支 `feat/r4d1-knowledge-qa`）：两企业复制 `T/r4_contract/test_office_replication.py`（内存与 PG）：同一归档摘要、各自本地配置得到不同配置摘要、跨企业的预检/停用/发布与分配列表均 404（发布与分配列表对本企业不存在的能力改为 404）；复制说明写在样板 README。未做：两企业各自跑出 250.00 成果（需办公容器）、原生旅程、R3 交接、升级/回退旅程、真实模型四组。
+- E1（分支 `feat/r4d1-knowledge-qa`）：两企业复制 `T/r4_contract/test_office_replication.py`（内存与 PG）：同一归档摘要、各自本地配置得到不同配置摘要、跨企业的预检/停用/发布与分配列表均 404（发布与分配列表对本企业不存在的能力改为 404）；复制说明写在样板 README。升级/回退旅程 `T/r4_contract/test_office_rollback.py`（升级窗口旧发布照常可用、升级后新会话用新版旧会话不变、回退后新会话回旧版）——这条旅程暴露并修正了两处问题：换配置把安装打回 staged 导致升级期间全员不能新受理；发布绑定安装当前配置导致无法回退。未做：两企业各自跑出 250.00 成果（需办公容器）、原生旅程、R3 交接、真实模型四组。
