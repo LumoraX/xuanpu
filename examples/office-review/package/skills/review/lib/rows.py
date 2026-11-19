@@ -8,7 +8,7 @@ import sys
 from decimal import Decimal
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))  # 样板把 documents.py 放在同一目录
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # 共享规则放在 lib/，不在 scripts/ 下以免被当成可运行脚本
 from documents import check_archive, input_path  # noqa: E402
 
 MONEY = re.compile(r'^[+-]?\d{1,12}(?:\.\d{1,6})?$')

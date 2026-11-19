@@ -11,7 +11,8 @@ from collections import defaultdict
 from decimal import Decimal, localcontext
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'lib'))  # 共享规则不放 scripts/，免得被内核当成脚本
+from documents import input_names, run_main  # noqa: E402
 from rows import input_path, records  # noqa: E402
 
 
@@ -96,9 +97,7 @@ def save(evidence: dict, output: Path) -> None:
 
 def main() -> None:
     """验证显式列映射后生成全部成果，任意错误都不生成成功清单。"""
-    names = json.loads(sys.argv[1])
-    if not isinstance(names,list) or not 1 <= len(names) <= 8 or len(set(names)) != len(names):
-        raise ValueError('输入文件列表不合法')
+    names = input_names(sys.argv[1])
     output = Path(os.environ['WORKSPACE']) / 'outputs'
     if (output / 'manifest.json').exists():
         (output / 'manifest.json').unlink()
@@ -112,4 +111,4 @@ def main() -> None:
 
 
 if __name__ == '__main__':
-    main()
+    run_main(main)

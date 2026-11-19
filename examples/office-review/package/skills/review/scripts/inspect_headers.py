@@ -6,15 +6,14 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'lib'))  # 共享规则不放 scripts/，免得被内核当成脚本
+from documents import input_names, run_main  # noqa: E402
 from rows import input_path, raw_rows  # noqa: E402
 
 
 def main() -> None:
     """按工作表返回首个非空行的真实列名，保持输入和归档资源限制。"""
-    names = json.loads(sys.argv[1])
-    if not isinstance(names,list) or not 1 <= len(names) <= 8 or len(set(names)) != len(names):
-        raise ValueError('输入文件列表不合法')
+    names = input_names(sys.argv[1])
     headers = []
     seen = set()
     for name in names:
@@ -31,4 +30,4 @@ def main() -> None:
 
 
 if __name__=='__main__':
-    main()
+    run_main(main)

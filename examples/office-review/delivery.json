@@ -7,7 +7,7 @@
   "package": {
     "name": "office-review",
     "version": "1.0.0",
-    "digest": "sha256:7c091a853a1d97464fc950a02233755f11a8d09478d15d200519cb85c3e9bb7d",
+    "digest": "sha256:de662f09c08fe6024790580990686c29203ba9cc252a7b340c390549182a6d7c",
     "entry": "review"
   },
   "inputs": {
