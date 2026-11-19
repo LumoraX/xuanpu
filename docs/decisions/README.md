@@ -24,3 +24,4 @@
 | [0019](0019-native-accounts.md) | 玄圃自有账号 —— 用户名口令登录，外部平台降为可选登录方式 | Accepted（取代 0007「平台不自建账号密码体系」一条） |
 | [0020](0020-butler-always-online.md) | 管家常在线 —— 回执与一轮解耦、时限与预算随任务伸缩 | Accepted（R6 实施中；修订 0017 决策 1 的实现方式） |
 | [0021](0021-desktop-browser-handoff-login.md) | 桌面客户端经浏览器接力完成飞书登录 —— 等待页轮询，不用深链、不开本地端口 | Accepted |
+| [0022](0022-display-names.md) | 匠人、skill 与工具各有给员工看的名字 | Accepted |

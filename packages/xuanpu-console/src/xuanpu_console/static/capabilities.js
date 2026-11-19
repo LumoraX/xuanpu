@@ -18,6 +18,7 @@ async function openCapabilities(adminView=false){
       const me=await api("GET","/v1/me/capabilities");if(!capabilityLive(epoch,generation))return;
       if(!Array.isArray(me.capabilities)||!Number.isInteger(me.total))throw new Error("能力目录响应不完整，请重新读取。");
       $("capability-list").append(connectionText("p",me.capabilities.length?"已分配能力（"+me.total+"）":"尚未分配可运行能力。个人工作方法不等于企业执行授权。"));
+      if(typeof capabilityMine==="function")await capabilityMine(epoch,generation);
     }
     if(isAdmin())await capabilityManage(epoch,generation);
     if(isAdmin()&&adminView&&typeof capabilityOperations==="function"&&capabilityLive(epoch,generation))await capabilityOperations(epoch,generation);
@@ -99,6 +100,11 @@ function capabilityCard(host,item,installation,enabled,epoch,generation){
     const link=connectionText("a","");link.href=url;link.download="delivery.json";link.click();URL.revokeObjectURL(url);
   }));
   if(enabled)card.append(connectionButton("配置并预检",()=>capabilityConfigure(card,item,epoch,generation)));
+  if(installation&&installation.status!=="disabled"&&typeof capabilityRelease==="function"){
+    card.append(connectionButton("分配给员工",()=>capabilityAssign(card,item,epoch,generation)),
+      connectionButton("发起评测",()=>capabilityEvaluate(card,item,installation,epoch,generation)),
+      connectionButton("发布给员工",()=>capabilityRelease(card,item,installation,epoch,generation)));
+  }
   host.append(card);
 }
 function capabilityField(host,title,definition,choices=null){

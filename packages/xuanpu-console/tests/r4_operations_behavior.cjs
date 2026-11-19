@@ -16,13 +16,18 @@ const summary=(tasks,rate)=>({totals:{tasks,succeeded:1,failed:1,outcome_unknown
 const elements=new Map(),calls=[];let counter=0;
 const responses={
   '/v1/me/capabilities':{capabilities:[],total:0},
+  '/v1/me/capability-outcomes?limit=20':{...summary(2,0.5),items:[{task_id:'t1',capability_id:'cap_x',capability_revision:1,status:'succeeded',tokens_settled:null}]},
   '/v1/capabilities?limit=50':{items:[],installations:[],total:0,next_cursor:null,configuration_enabled:false},
   '/v1/admin/capability-outcomes':{...summary(2,0.5),capabilities:[{capability_id:'cap_x',capability_revision:1,...summary(2,null)}]},
   '/v1/capabilities/cap_x/releases':{releases:[{id:'crl_1',capability_revision:1,status:'active',targets:[{user_id:'usr_a'}],version:3}],total:1},
   '/v1/capabilities/cap_x/assignments':{assignments:[{id:'cas_1',selector:{kind:'user',id:'usr_a'},allowed_revisions:[1],status:'active',version:2}],total:1},
 };
-const c={console,JSON,Map,Set,Number,Object,Array,String,Math,Promise,Blob,URL,
-  document:{createElement:tag=>new Element(tag),addEventListener(){}},
+const fetched=[],clicked=[];
+const c={console,JSON,Map,Set,Number,Object,Array,String,Math,Promise,Blob,
+  URL:{createObjectURL:()=>'blob:x',revokeObjectURL(){}},setTimeout:fn=>fn(),
+  url:p=>p,requestOptions:()=>({}),headers:()=>({}),
+  fetch:async p=>{fetched.push(p);return {ok:true,blob:async()=>'csv'};},
+  document:{createElement:tag=>{const n=new Element(tag);if(tag==='a')n.click=()=>clicked.push(n.download);return n;},addEventListener(){}},
   crypto:{randomUUID:()=>'req-'+(++counter)},conn:{epoch:1,me:{user_id:'usr_admin'}},isAdmin:()=>true,
   $:id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id);},
   api:async(method,url,opts)=>{calls.push({method,url,opts});if(method==='POST')return {};
@@ -38,10 +43,16 @@ const button=(host,label)=>all(host).find(n=>n.tagName==='button'&&n.textContent
 async function main(){
   await c.openCapabilities(false);
   assert.ok(!calls.some(x=>x.url==='/v1/admin/capability-outcomes'),'员工视图不读运营统计');
+  const mine=text(c.$('capability-list'));
+  assert.ok(mine.includes('我的能力工作')&&mine.includes('无用量记录'),'员工看到本人结果，没有用量记录的不显示 0');
+  await button(c.$('capability-list'),'导出本人记录（CSV）').click();
+  assert.deepEqual([...fetched],['/v1/me/capability-outcomes/export']);assert.equal(clicked.at(-1),'我的能力工作.csv');
   await c.openCapabilities(true);
   const host=c.$('capability-list'),shown=text(host);
   assert.ok(shown.includes('技术完成率 50%')&&shown.includes('技术完成率 暂无'),'没有数据的完成率不能显示成 0');
   assert.ok(shown.includes('未配置价格表')&&!shown.includes('0 元'),'没有价格表时不估算费用');
+  await button(host,'导出汇总（CSV）').click();
+  assert.equal(fetched.at(-1),'/v1/admin/capability-outcomes/export');
   await button(host,'查看发布与分配').click();
   const before=calls.filter(x=>x.method==='POST').length;
   await button(host,'撤销发布').click();

@@ -54,6 +54,7 @@ if TYPE_CHECKING:
     from xuanpu_server.tenancy import Principal
 
 logger = logging.getLogger(__name__)
+_LABEL_CACHE = 512
 
 ARCHIVE_CONTENT_TYPE = "application/zip"
 
@@ -110,6 +111,7 @@ class PackageRegistry:
             now: 取当前时间的函数，测试时可替换。
         """
         self._store = store
+        self._labels: dict[tuple[str, str, str], PackageLabels] = {}
         self._audit = audit
         self._objects = objects
         self._cache = PackageCache(
@@ -314,5 +316,34 @@ class PackageRegistry:
             record=record, manifest=parse_manifest(record.manifest_yaml), root=root
         )
 
+    async def labels(self, tenant_id: str, name: str, version: str) -> PackageLabels | None:
+        """给员工看的名字：匠人显示名与工具显示名（工具按运行时名字 ``mcp__``/``api__`` 索引）。
 
-__all__ = ["ARCHIVE_CONTENT_TYPE", "PackageRegistry", "ResolvedPackage"]
+        版本发布后不可变，按（租户、包、版本）缓存；版本不存在返回 None，由调用方用技术名。
+        """
+        key = (tenant_id, name, version)
+        cached = self._labels.get(key)
+        if cached is not None:
+            return cached
+        record = await self._store.get_package_version(tenant_id, name, version)
+        if record is None:
+            return None
+        manifest = parse_manifest(record.manifest_yaml)
+        tools = {f"{'api' if c.transport == 'http' else 'mcp'}__{c.name}__{t.name}": t.display_name
+                 for c in manifest.spec.connectors for t in c.tools if t.display_name}
+        labels = PackageLabels(display_name=manifest.metadata.display_name, tools=tools)
+        if len(self._labels) >= _LABEL_CACHE:
+            self._labels.pop(next(iter(self._labels)))
+        self._labels[key] = labels
+        return labels
+
+
+@dataclass(frozen=True)
+class PackageLabels:
+    """一个包版本给员工看的名字。"""
+
+    display_name: str | None
+    tools: dict[str, str]
+
+
+__all__ = ["ARCHIVE_CONTENT_TYPE", "PackageLabels", "PackageRegistry", "ResolvedPackage"]

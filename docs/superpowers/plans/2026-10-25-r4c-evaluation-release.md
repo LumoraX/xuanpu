@@ -74,5 +74,6 @@ async def test_release_requires_matching_evaluation(r4_http, r4_ids):
 ## 进度（2026-11-18，分支 `feat/r4c-releases`，基于 R4-B）
 
 - C0：`S/capabilities/evaluations.py`、迁移 `0029_capability_releases`；评测会话经评测绑定运行，结束后不能复用。用例只支持包含/不包含/token 上限（JSON 字段相等、CSV 行数金额等检查未做）；每个用例的回复只存前 2000 字，未写对象存储；未用 PG 持久租约 worker（进程内后台任务，重启标 interrupted）；平台/沙盒策略指纹与模型指纹未进证据；声明外部通道的能力一律 blocked，未实现替换策略。
-- C1：`S/capabilities/releases.py`；测试 `T/r4_contract/test_release_flow.py`（内存与 PG）：套件摘要绑定、未通过与摘要不符拒绝、ready 只能经发布、名单外与无分配的员工不可用、重叠须取代、停止只拒新建、撤销拒已绑定、评测会话不能复用。首次纳管的排空预览为只读接口 `GET /v1/admin/capability-drain`（数出没有能力依据的在途会话，用例 `test_drain_preview_counts_unbound_inflight_work`；登记不因此阻塞，定时安排不统计）；发布预览未列每人未完成任务数。
+- C1：`S/capabilities/releases.py`；测试 `T/r4_contract/test_release_flow.py`（内存与 PG）：套件摘要绑定、未通过与摘要不符拒绝、ready 只能经发布、名单外与无分配的员工不可用、重叠须取代、停止只拒新建、撤销拒已绑定、评测会话不能复用。发布固定评测时的配置快照（决策不再要求安装当前配置等于发布配置），升级换配置不再把安装打回 staged，回退可直接引用旧修订的配置与评测（`T/r4_contract/test_office_rollback.py`）；首次纳管的排空预览为只读接口 `GET /v1/admin/capability-drain`（数出没有能力依据的在途会话，用例 `test_drain_preview_counts_unbound_inflight_work`；登记不因此阻塞，定时安排不统计）；发布预览未列每人未完成任务数。
+- C2（续）：原生“发起评测/查看评测结果/发布给员工（预览→确认）”与“运行结果与发布”里的停止、撤销（`C/{capability-release,capability-operations}.js`，Node 行为测试 `Q/r4_{release,operations}_behavior.cjs`）；评测报告下载未做。
 - C2：SDK `evaluate_capability`/`get_capability_evaluation`/`preview_capability_release`/`release_capability`/`list_capability_releases`/`change_capability_release` 与对应 CLI；原生界面、PG 进程故障注入、并发批准与撤权组合用例未做。

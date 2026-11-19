@@ -29,6 +29,12 @@ class KnowledgeClient:
         return await self._http.request('POST', '/v1/me/knowledge/sources',
                                         json={'item_id': item_id, 'revision': revision})
 
+    async def register_shared_knowledge_source(self, matter_id: str, material_id: str,
+                                               revision: int) -> dict[str, Any]:
+        """登记本人此刻有权读的共享事项材料的明确版本（每次使用按当前共享授权复核）。"""
+        return await self._http.request('POST', '/v1/me/knowledge/sources', json={
+            'kind': 'shared_material', 'matter_id': matter_id, 'material_id': material_id, 'revision': revision})
+
     async def list_knowledge_sources(self) -> dict[str, Any]:
         """本人来源（含 stale 与 has_update）。"""
         return await self._http.request('GET', '/v1/me/knowledge/sources')

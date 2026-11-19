@@ -29,6 +29,7 @@ async def test_lists_and_resolves_active_entries(world: Any) -> None:
     assert one.ref.version == "1.0.0" and len(one.ref.digest) == 64
     assert one.ref.decision_ref == "catalog:support-desk@1.0.0"
     assert one.host == "session" and one.entry_description
+    assert one.ref.display_name == "工单助手", "派工冻结匠人显示名，员工看到的是它而不是包名"
     assert await world.platform.artisans.resolve(alice, "support-desk", one.ref.entry) == one
 
 
@@ -79,3 +80,21 @@ async def test_durable_tenant_and_offline_package_use_tasks(world: Any) -> None:
     networked = (await platform.packages.resolve("acme", "support-desk")).manifest.spec.policy \
         .sandbox.network
     assert hosts == ({"session"} if networked else {"task"})
+
+
+def test_wake_messages_use_display_name_and_fall_back() -> None:
+    """回报里的匠人名用显示名；旧派工记录没有显示名时用包名。"""
+    from xuanpu_server.butler.models import ArtisanRef
+    from xuanpu_server.butler.wake_apply import _name
+
+    base = {"package": "support-desk", "version": "1.0.0", "digest": "a" * 64, "entry": "triage",
+            "decision_ref": "catalog:support-desk@1.0.0"}
+
+    class Dispatch:
+        """只带匠人引用的派工替身。"""
+
+        def __init__(self, artisan: ArtisanRef) -> None:
+            self.artisan = artisan
+
+    assert _name(Dispatch(ArtisanRef(**base, display_name="医生匠人"))) == "医生匠人"
+    assert _name(Dispatch(ArtisanRef(**base))) == "support-desk"

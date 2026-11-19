@@ -225,3 +225,17 @@ def test_permissive_policy_and_missing_evals_warn(
     assert len(report.warnings) == 2
     assert any("relaxed" in warning for warning in report.warnings)
     assert any("评测用例" in warning for warning in report.warnings)
+
+
+def test_skill_display_name_is_read_and_checked(make_package: Any, samples: Any) -> None:
+    """SKILL.md 的 display_name 被读出；不合规（超长）作为问题报告，不静默截断。"""
+    from xuanpu_spec.skills import scan_skills
+
+    named = samples.faq.replace("name: faq\n", "name: faq\ndisplay_name: 常见问题解答\n")
+    root = make_package(skills={"triage": samples.triage, "faq": named})
+    found = {s.skill_id: s for s in scan_skills(root / "skills")}
+    assert found["faq"].display_name == "常见问题解答" and found["triage"].display_name is None
+    bad = samples.faq.replace("name: faq\n", "name: faq\ndisplay_name: " + "长" * 41 + "\n")
+    root = make_package(skills={"triage": samples.triage, "faq": bad}, name="bad")
+    problem = {s.skill_id: s for s in scan_skills(root / "skills")}["faq"].problem
+    assert problem is not None and "display_name" in problem

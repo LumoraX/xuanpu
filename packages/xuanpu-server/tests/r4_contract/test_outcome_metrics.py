@@ -133,3 +133,34 @@ async def test_acceptance_batch_and_observations(r4_http, r4_world):
     assert detail['counts'] == {'passed': 1, 'failed': 1, 'blocked': 1, 'not_checked': 1}
     assert detail['verification_rate'] == 0.5
     assert (await r4_http['alice'].get(f"/v1/acceptance-batches/{batch['id']}")).status_code == 403
+
+
+async def test_csv_export_matches_page_and_hides_bodies(r4_http, r4_world):
+    """导出与页面同口径：员工只导出本人、无记录 token 为空不填 0；管理员只有汇总；无正文；员工不能导管理员表。"""
+    import csv
+    import io
+
+    await _capability(r4_world)
+    await _seed(r4_world, 'usr_alice', 1, 'succeeded', 1000.0, 10)
+    await _seed(r4_world, 'usr_alice', 2, 'failed', 1001.0)
+    await _seed(r4_world, 'usr_bob', 3, 'succeeded', 1002.0, 5)
+    mine = await r4_http['alice'].get('/v1/me/capability-outcomes/export')
+    assert mine.status_code == 200 and mine.headers['content-type'].startswith('text/csv')
+    assert mine.content.startswith(b'\xef\xbb\xbf')
+    rows = list(csv.DictReader(io.StringIO(mine.content.decode('utf-8-sig'))))
+    assert sorted(r['task_id'] for r in rows) == ['task_usr_alice_1', 'task_usr_alice_2']
+    assert {r['task_id']: r['tokens_settled'] for r in rows} == {'task_usr_alice_1': '10', 'task_usr_alice_2': ''}
+    assert '汇总正文' not in mine.text
+    admin = await r4_http['admin'].get('/v1/admin/capability-outcomes/export')
+    summary = list(csv.DictReader(io.StringIO(admin.content.decode('utf-8-sig'))))
+    assert len(summary) == 1 and summary[0]['tasks'] == '3' and summary[0]['cost_amount'] == ''
+    assert summary[0]['cost_status'] == 'price_unavailable' and 'task_' not in admin.text
+    assert (await r4_http['alice'].get('/v1/admin/capability-outcomes/export')).status_code == 403
+
+
+def test_export_neutralises_formula_prefixes():
+    """以公式符号开头的文字前加单引号；数字与空值照常。"""
+    from xuanpu_server.outcomes.export import safe
+
+    assert safe('=SUM(A1)') == "'=SUM(A1)" and safe('@cmd') == "'@cmd"
+    assert safe(None) == '' and safe(12) == '12' and safe('cap_x') == 'cap_x'

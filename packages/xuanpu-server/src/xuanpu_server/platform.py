@@ -331,6 +331,8 @@ class Platform:
         from xuanpu_server.knowledge.service import KnowledgeService
 
         self.knowledge = KnowledgeService(self.workspace, store.knowledge_store, config=knowledge, now=now)
+        # 共享事项材料也可登记为知识来源，每次使用都按当前共享授权复核
+        self.knowledge.shared = self.shared_materials
         from xuanpu_server.knowledge.memory import WorkMemoryService
 
         self.work_memory = WorkMemoryService(self.knowledge, store.memory_store)

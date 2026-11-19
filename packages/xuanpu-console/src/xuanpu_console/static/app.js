@@ -90,7 +90,8 @@ $("tabs").addEventListener("click", (event) => {
 // streaming：正在流式输出的那一轮 { sessionId, submissionId }（停止按钮停的是它）；
 // submissionId 在收到 turn 帧之前为 null；没有在输出时 streaming 为 null
 const chat = { sessionId: null, status: null, streaming: null, generation: 0, creating: false, routing: false, routeContext: [] };
-function businessName(name) { return name === "support-desk" ? "工单助手" : name; }
+// 匠人给员工看的名字由业务包声明（metadata.displayName），服务端在会话与业务包视图里给出
+function businessName(item) { return item.display_name || item.package || item.name || ""; }
 function sessionMemoryKey() {
   const me = conn.me;
   return me ? `xuanpu.lastSession.${me.tenant_id}.${me.user_id || me.key_id}` : null;
@@ -106,7 +107,7 @@ async function loadSessions() {
     item.dataset.id = session.session_id;
     item.classList.toggle("active", session.session_id === chat.sessionId);
     item.innerHTML =
-      `<div>${escape(businessName(session.package))} <span class="tag ${session.status === "active" ? "ok" : ""}">${session.status === "active" ? "进行中" : "已结束"}</span></div>` +
+      `<div>${escape(businessName(session))} <span class="tag ${session.status === "active" ? "ok" : ""}">${session.status === "active" ? "进行中" : "已结束"}</span></div>` +
       `<div class="meta">${when(session.updated_at)}</div>`;
     item.addEventListener("click", () => openSession(session).catch(fail));
     list.appendChild(item);
@@ -176,7 +177,7 @@ async function openSession(session, {fromRoute = false} = {}) {
   chat.status = session.status;
   for (const item of $("session-list").children) item.classList.toggle("active", item.dataset.id === session.session_id);
   $("chat-head").innerHTML =
-    `<span>${escape(businessName(session.package))} · ${session.status === "active" ? "进行中" : "已结束，可以开始新对话"}</span>` +
+    `<span>${escape(businessName(session))} · ${session.status === "active" ? "进行中" : "已结束，可以开始新对话"}</span>` +
     `<span><button type="button" id="close-session" class="danger" ${session.status !== "active" ? "disabled" : ""}>关闭会话</button></span>`;
   $("close-session").addEventListener("click", closeSession);
   $("transcript").innerHTML = "";
@@ -246,7 +247,7 @@ async function loadPending() {
     const card = document.createElement("div");
     card.className = "card";
     const detail = item.detail || {};
-    const summary = detail.target ? `${detail.scope || ""} ${detail.target}` : item.reason;
+    const summary = detail.target ? (detail.display_name || detail.target) : item.reason;
     card.innerHTML =
       `<div><strong>${escape(item.reason === "permission" ? "审批" : item.reason)}</strong> ${escape(summary)}<br>` +
       `<code>${escape(JSON.stringify(detail.args ?? detail, null, 1))}</code></div>` +

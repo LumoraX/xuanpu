@@ -70,6 +70,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from pathlib import Path
 
+    from xuanpu_server.controlplane.models import SessionRecord
     from xuanpu_server.platform import Platform
     from xuanpu_server.runtime.sessions import Turn
 
@@ -359,6 +360,11 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
 
     # --- 会话 ---
 
+    async def named(record: SessionRecord) -> str | None:
+        """会话所属匠人给员工看的名字（业务包 metadata.displayName）；版本记录不在时用包名。"""
+        labels = await platform.packages.labels(record.tenant_id, record.package, record.version)
+        return labels.display_name if labels else None
+
     @app.post("/v1/sessions", status_code=201)
     async def create_session(body: schemas.CreateSessionBody, who: Caller) -> dict[str, Any]:
         """新建会话。"""
@@ -369,7 +375,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
             entry=body.entry,
             metadata=body.metadata,
         )
-        return schemas.session_view(record)
+        return schemas.session_view(record, display_name=await named(record))
 
     @app.get("/v1/sessions")
     async def list_sessions(
@@ -380,24 +386,38 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     ) -> dict[str, Any]:
         """列出调用者看得见的会话；``mine=true`` 只看自己的（普通成员总是只看自己的）。"""
         records = await platform.sessions.list_sessions(who, status=status, mine=mine, limit=limit)
-        return {"sessions": [schemas.session_view(record, include_content=can_read_content(who, record)) for record in records]}
+        return {"sessions": [schemas.session_view(record, include_content=can_read_content(who, record),
+                                                  display_name=await named(record)) for record in records]}
 
     @app.get("/v1/sessions/{session_id}")
     async def get_session(session_id: str, who: Caller) -> dict[str, Any]:
         """取会话。"""
         record = await platform.sessions.get(who, session_id)
-        return schemas.session_view(record, include_content=can_read_content(who, record))
+        return schemas.session_view(record, include_content=can_read_content(who, record),
+                                    display_name=await named(record))
 
     @app.delete("/v1/sessions/{session_id}")
     async def close_session(session_id: str, who: Caller) -> dict[str, Any]:
         """关闭会话。进行中的对话会被取消。"""
         record = await platform.sessions.close(who, session_id)
-        return schemas.session_view(record, include_content=can_read_content(who, record))
+        return schemas.session_view(record, include_content=can_read_content(who, record),
+                                    display_name=await named(record))
 
     @app.get("/v1/sessions/{session_id}/pending")
     async def pending_requests(session_id: str, who: Caller) -> dict[str, Any]:
-        """会话当前等待处理的审批或表单请求。"""
-        return {"pending": await platform.sessions.pending(who, session_id)}
+        """会话当前等待处理的审批或表单请求；审批项的工具附上给员工看的名字。"""
+        items = await platform.sessions.pending(who, session_id)
+        record = await platform.sessions.get(who, session_id)
+        labels = await platform.packages.labels(record.tenant_id, record.package, record.version)
+        named_items = []
+        for item in items:
+            detail = item.get("detail")
+            if isinstance(detail, dict) and isinstance(detail.get("target"), str):
+                # 另造副本：待处理记录与已发出的事件共用对象，不能就地改
+                shown = (labels.tools.get(detail["target"]) if labels else None) or detail["target"]
+                item = {**item, "detail": {**detail, "display_name": shown}}
+            named_items.append(item)
+        return {"pending": named_items}
 
     @app.get("/v1/sessions/{session_id}/events")
     async def replay_events(
