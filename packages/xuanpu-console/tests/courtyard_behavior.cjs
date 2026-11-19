@@ -41,8 +41,8 @@ function beatsInOrder(C) {
   const t = soloTimeline();
   const details = { dispatch: () => ({ host: "session", instruction: "查上月没付的报销", checks: { terminal: true, succeeded: true, outputs: true, no_pending: true, no_unknown: true }, result: "两笔没付。", items: [] }), group: () => undefined };
   const step1 = [t.root, t.roster, t.dp, t.ex, t.tool];
-  const first = C.model.diff([], step1, details).map(b => b.type);
-  same(first, ["butler_tool", "brief", "wake", "work"]);
+  const first = C.model.diff([], step1, details).map(b => b.tool || b.type);
+  same(first, ["think", "list_artisans", "brief", "wake", "work"], "管家先想、翻名册，再交代；匠人醒来去干活");
   assert.equal(C.model.diff(step1, step1, details).length, 0, "同一快照比两次不产生节拍");
   const done = [{ ...t.root, state: "waiting_children" }, t.roster, { ...t.dp, state: "completed", ended_at: T(9) },
     { ...t.ex, state: "completed" }, { ...t.tool, state: "completed", ended_at: T(7) }];
@@ -163,6 +163,18 @@ function rulingKeepsWaitingAndStaysShort(C) {
   assert.ok(butler.red && butler.at === "table", "管家在圆桌边等你裁决");
 }
 
+// 真实试用发现：工具一眨眼就完，匠人在两步之间想时应留在上一步的家具旁，而不是坐回垫子。
+function artisanStaysAtLastStationWhileThinking(C) {
+  const t = soloTimeline();
+  const between = [t.root, t.dp, t.ex, { ...t.tool, state: "completed", ended_at: T(5) }];
+  const pose = C.model.poses(between, none).finance;
+  assert.equal(pose.at, "station");
+  assert.equal(pose.station, "cabinet");
+  assert.equal(pose.bubble, "想想下一步…");
+  const done = [t.root, { ...t.dp, state: "completed" }, { ...t.ex, state: "completed" }, { ...t.tool, state: "completed" }];
+  assert.equal(C.model.poses(done, none).finance.at, "home", "办完回垫子");
+}
+
 function orphanSpansDoNotCrash(C) {
   const lost = [span("tl.x", "tool", "query", "ex.missing", "running", 1), span("a", "artisan", "x", "b", "running", 0), span("b", "artisan", "y", "a", "running", 0)];
   same(C.model.diff([], lost, none), []);
@@ -204,7 +216,7 @@ function element(tag = "div") {
 }
 const find = (root, pred, out = []) => { for (const c of root.children) { if (pred(c)) out.push(c); find(c, pred, out); } return out; };
 
-function cardHarness(dir, routes, withSvg = true) {
+function cardHarness(dir, routes, withSvg = true, names = ["courtyard-art.js", "courtyard-model.js", "courtyard-card.js"]) {
   const calls = [], cleanups = new Set();
   const document = { createElement: element };
   if (withSvg) document.createElementNS = (ns, tag) => element(tag);
@@ -216,7 +228,7 @@ function cardHarness(dir, routes, withSvg = true) {
     if (!handler) throw Object.assign(new Error("未预期的请求 " + url), { status: 404 });
     return handler();
   };
-  const C = load(dir, ["courtyard-art.js", "courtyard-model.js", "courtyard-card.js"], { document, el, button, entryApi, entry: { cleanups }, openPending: id => calls.push("open:" + id) });
+  const C = load(dir, names, { document, el, button, entryApi, entry: { cleanups, epoch: 0 }, isStale: () => false, openPending: id => calls.push("open:" + id) });
   const scene = [];
   C.scene = { create: () => ({ cast: keys => scene.push(["cast", [...keys]]), settle: p => scene.push(["settle", p]), play: b => scene.push(["play", b.map(x => x.type)]), restyle() {}, select() {}, destroy() {}, idle: async () => {} }) };
   return { C, calls, scene };
@@ -304,6 +316,36 @@ async function toolStepsDoNotRefetchAndDetailsStayOpen(dir) {
   assert.equal(fetches(), before + 1, "匠人状态变了才重取");
 }
 
+// R7：常驻小院——打开就在（可用匠人待命），新请求立刻上台演；卡片不再自带场景。
+async function stagedCourtyardFollowsFocus(dir) {
+  const t = soloTimeline();
+  const { C, scene } = cardHarness(dir, {
+    "/v1/assistant/artisans": () => ({ items: [{ package: "finance" }, { package: "support-desk" }] }),
+    "/v1/assistant/dispatches/dsp_1": () => ({ host: "session", instruction: "查", items: [] }),
+  }, true, ["courtyard-art.js", "courtyard-model.js", "courtyard-card.js", "courtyard-stage.js"]);
+  assert.ok(C.stage.mount(element(), {}));
+  await new Promise(resolve => setImmediate(resolve));
+  same(scene.filter(x => x[0] === "cast").slice(-1)[0], ["cast", ["finance", "support-desk"]], "打开就让可用匠人上垫子待命");
+  const progress = { spans: new Map(), header: {}, wantsFocus: true }, node = element();
+  C.card.mount(progress, node);
+  assert.equal(find(node, n => n.textContent === "在小院里看").length, 1, "卡片能把这件事放到小院里看");
+  for (const s of [t.root, t.dp]) progress.spans.set(s.span_id, s);
+  C.card.update(progress, "snapshot");
+  await progress.court.chain;
+  assert.ok(C.stage.isFocus(progress.court), "刚发出的请求成为小院焦点");
+  progress.spans.set(t.ex.span_id, t.ex);
+  progress.spans.set(t.tool.span_id, t.tool);
+  C.card.update(progress, "spans");
+  await progress.court.chain;
+  same(scene.filter(x => x[0] === "play").slice(-1)[0], ["play", ["wake", "work"]], "之后的帧在小院里演出");
+  const other = { spans: new Map([[t.root.span_id, t.root]]), header: {} };
+  C.card.mount(other, element());
+  const plays = scene.filter(x => x[0] === "play").length;
+  C.card.update(other, "spans");
+  await other.court.chain;
+  assert.equal(scene.filter(x => x[0] === "play").length, plays, "不是焦点的卡片不演");
+}
+
 function unsupportedFallsBack(dir) {
   const { C } = cardHarness(dir, {}, false);
   assert.equal(C.card.supported(), false, "没有 SVG 时进展卡只显示执行树");
@@ -321,6 +363,7 @@ finishedSnapshotPoses(C);
 butlerRepliesBeforeArtisanFinishes(C);
 resultDropsRepeatedNarration(C);
 rulingKeepsWaitingAndStaysShort(C);
+artisanStaysAtLastStationWhileThinking(C);
 orphanSpansDoNotCrash(C);
 looks(C);
 (async () => {
@@ -328,6 +371,7 @@ looks(C);
   await missingDetailStillRenders(dir);
   await openItemOffersAction(dir);
   await toolStepsDoNotRefetchAndDetailsStayOpen(dir);
+  await stagedCourtyardFollowsFocus(dir);
   unsupportedFallsBack(dir);
   console.log("courtyard model passed");
 })().catch(error => { console.error(error); process.exit(1); });

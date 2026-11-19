@@ -121,6 +121,8 @@
     if (root) {
       if (root.state === "waiting_input" || ruling) Object.assign(butler, { at: "table", bubble: "等你裁决", red: true, prop: null });
       else if (root.state === "waiting_children" || busy(spans)) Object.assign(butler, { prop: "tea", face: "happy" });
+      // 管家还在想怎么办（还没派出任何人）
+      else if (root.state === "running" && !spans.some(s => s.kind === "dispatch")) Object.assign(butler, { bubble: "我想想怎么办…" });
       else if (root.state === "completed") butler.face = "happy";
       else if (root.state === "failed") butler.face = "dizzy";
     }
@@ -140,7 +142,11 @@
     }
     const detail = details.dispatch(dispatch.ref);
     const mine = spans.filter(s => dispatchAbove(map, s) === dispatch);
-    const tool = mine.filter(s => (s.kind === "tool" || s.kind === "wait") && !TERMINAL.has(s.state)).sort(byStart).pop();
+    const steps = mine.filter(s => s.kind === "tool" || s.kind === "wait").sort(byStart);
+    const tool = steps.filter(s => !TERMINAL.has(s.state)).pop();
+    // 真实工具往往一眨眼就完，匠人大部分时间在两步之间想：执行还没完就留在上一步的家具旁
+    const running = mine.some(s => s.kind === "artisan" && s.state === "running");
+    const lastStep = running ? steps[steps.length - 1] : null;
     const waiting = mine.some(s => s.kind === "artisan" && s.state === "waiting_input") || dispatch.state === "waiting_input";
     if (waiting) {
       const approval = openItem(detail, ["approval"]);
@@ -151,6 +157,10 @@
       const station = tool.kind === "wait" ? "bed" : stationFor(tool.name);
       return Object.assign(pose, { at: "station", station, pose: station === "bed" ? "sleeping" : "working",
         face: station === "bed" ? "closed" : "open", bubble: tool.say || PLACE[station] });
+    }
+    if (lastStep) {
+      const station = lastStep.kind === "wait" ? "bed" : stationFor(lastStep.name);
+      return Object.assign(pose, { at: "station", station, pose: "working", face: "open", bubble: "想想下一步…" });
     }
     const how = howFor(map, dispatch, details);
     return Object.assign(pose, { at: how === "table" ? "table" : "home", pose: null, face: "open" });
@@ -191,6 +201,7 @@
         }
       } else if (span.kind === "butler" && !span.parent_span_id) {
         if (fresh && span !== rootOf(nextSpans)) beats.push({ type: "butler_tool", actor: "butler", tool: "review", prop: "magnifier", text: "复核结果" });
+        else if (fresh && span.state === "running") beats.push({ type: "butler_tool", actor: "butler", tool: "think", prop: null, text: "我想想怎么办…" });
         if (span.state === "waiting_children") beats.push({ type: "wait", actor: "butler" });
         else if (span.state === "waiting_input") beats.push({ type: "ruling", actor: "butler" });
         else if (span.state === "completed") beats.push({ type: "reply", actor: "butler" });

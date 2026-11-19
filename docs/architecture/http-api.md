@@ -1108,6 +1108,10 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 
 `POST /v1/assistant/messages`：员工对管家说一句话。认证同 `/v1/assistant/route`。请求体：`request_id`（必填，1–80 字符 `[a-zA-Z0-9_.:-]`）、`text`（1–8000 字符）、`timezone`（IANA，默认 Asia/Shanghai）、`input_files`（本人文件版本 `{item_id, revision}`，最多 8 个，派工材料只能从中选）；多余字段 422。
 
+流式回执（R7）：请求带 `Accept: text/event-stream` 时以 SSE 返回，不再等回复窗口：`started`（`mode`、`request_id`、`trace_id`，立刻推送，进展可马上订阅）→ 若干 `delta`（`text`：管家回复的文本增量，按生成推送）→ 最后一帧 `receipt`（与 JSON 回执相同）或 `error`（`code`、`message`；输入已保留）。身份与请求体校验在建流前完成，出错照常以 HTTP 状态返回；未开启管家的租户只推一帧 `receipt`。订阅者断开时这一轮照常在后台跑完，结果写进主对话。不带该头时行为不变（JSON 回执）。
+
+`GET /v1/assistant/artisans`（R7）：本人此刻可用的匠人 `items`（`package`、`entry`、`description`、`host`），只给当前启用的员工（机器身份 403）。
+
 - 租户开启管家（且开启执行追踪）且调用方是员工：请求至多等 `butler.reply_window_seconds`（默认 20 秒）。这一轮还没办完时回 `{"mode": "butler", "state": "running", "request_id", "trace_id"}`，这一轮在平台里继续，结束后回复写进主对话（`GET /v1/workspace/messages` 按游标可读），也可用同一标识再调一次取最终回执（这一轮正由另一实例处理时同样回 `state=running`，`trace_id` 为空并带 `elsewhere=true`，不报 409）。办完时回执 `mode=butler`、`state=done`，含 `request_id`、`trace_id`、`message`、与 `/v1/assistant/route` 同名的草稿与打开字段（有草稿时 `proposal_id=request_id`，经 `/v1/assistant/proposals` 确认）、`dispatches`（`dispatch_id`、`package`、`entry`、`state`、`host`）、`groups`（本轮提交或回放的编组标识，R5-D）。派工与编组都不等匠人结果。
 - 否则：原样走分流，回执为 `/v1/assistant/route` 的响应加 `mode=route`。
 - 同一 `request_id` 同体回原回执、不再采样；不同体 409；同一实例上仍在处理中回进行中回执，别的实例上仍在处理中 409。回复窗口内管家失败 503 `runtime_unavailable`，原话已在主对话，可用同一标识重试；窗口过后的失败写进主对话。一轮到时限（默认 300 秒，管家可延长）是正常结局，回复说明先停下，不报错。客户端读超时应长于回复窗口：Python SDK 的 `send_to_butler` 至少等 120 秒。派工预算超限不报错给员工，由管家在答复里说明（工具错误 `butler_budget_exceeded`）。

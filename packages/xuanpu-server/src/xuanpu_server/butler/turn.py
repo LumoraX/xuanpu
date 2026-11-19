@@ -7,12 +7,15 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from xuanpu_server.errors import PermissionDeniedError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from xuanpu_server.assistant_reminders import RouteOutcome
     from xuanpu_server.butler.groups.divergence import Rating
     from xuanpu_server.butler.models import DispatchRecord
@@ -21,6 +24,8 @@ if TYPE_CHECKING:
     from xuanpu_server.tracing.models import TraceOwner
     from xuanpu_server.work_tasks.models import InputFile
 
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class WakeContext:
@@ -91,6 +96,17 @@ class ButlerTurn:
     """本轮可改期的时限（R6-B）；``extend_turn`` 经它延长。"""
     started_at: float = 0.0
     """本轮开始时的事件循环时间；延长不超过它加 ``max_turn_seconds``。"""
+    on_text: Callable[[str], None] | None = None
+    """回复文本增量的监听（R7 流式回执）；不改变回复本身，监听出错不影响本轮。"""
+
+    def heard(self, delta: str) -> None:
+        """把一段回复文本交给监听者；监听者自己的错误只记日志。"""
+        if self.on_text is None or not delta:
+            return
+        try:
+            self.on_text(delta)
+        except Exception:
+            logger.exception("管家回复增量监听失败")
 
     def has_output(self) -> bool:
         """本轮是否产出了回复之外的结果（草稿、派工、答复、代答或转问）。"""

@@ -87,3 +87,13 @@
 @media (prefers-reduced-motion: reduce) {
   .courtyard-svg .bob, .courtyard-svg .zz, .courtyard-svg .steam, .courtyard-svg .station.on *, .courtyard-svg .deskphone.ring { animation: none !important; }
 }
+
+/* 常驻小院（R7）：宽窗口在左侧常驻（滚动对话时仍看得见），窄窗口在页面上方。 */
+.stage:empty { display: none; }
+.cy-stage-wrap { margin-top: 0; }
+.cy-caption { margin: 0; font-size: 13.5px; color: var(--muted); }
+@media (min-width: 1100px) {
+  .entry-main { max-width: 1440px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, 600px); column-gap: 20px; align-items: start; }
+  .entry-main > .stage { grid-column: 1; grid-row: 1 / span 4; position: sticky; top: 12px; }
+  .entry-main > :not(.stage) { grid-column: 2; }
+}

@@ -44,9 +44,14 @@
   }
 
   // 挂到一张进展卡上；返回执行树页签的容器，进展卡把原来的执行树与瀑布放进去。
+  // 页面上有常驻小院（courtyard-stage.js）时，卡片自己不画场景，只讲经过，演出交给常驻小院。
+  const staged = () => Boolean(C().stage && C().stage.mounted());
+
   function mount(progress, node) {
     const state = { progress, prev: [], dispatch: new Map(), group: new Map(), chain: Promise.resolve(),
-      sel: "all", tab: "story", looks: C().art.loadLooks(), editing: "butler", settled: false, open: new Set() };
+      sel: "all", tab: "story", looks: C().art.loadLooks(), editing: "butler", settled: false, open: new Set(),
+      wantsFocus: Boolean(progress.wantsFocus), scene: null };
+    state.details = () => lookup(state);
     const wrap = el("div", null, "courtyard"), stage = el("div", null, "cy-stage");
     const tabs = el("div", null, "cy-tabs"), story = el("div", null, "cy-panel"), tree = el("div", null, "cy-panel hidden");
     const looks = el("div", null, "cy-panel cy-looks hidden");
@@ -55,15 +60,21 @@
     const tab = (label, key) => { const b = button(label, () => showTab(state, key)); b.dataset.tab = key; return b; };
     tabs.append(tab("经过", "story"), tab("执行树", "tree"), tab("换角色", "looks"));
     state.nodes.tabs = tabs;
-    wrap.append(stage, tabs, story, tree, looks);
+    if (staged()) {
+      const watch = button("在小院里看", () => { C().stage.focus(state); const s = document.getElementById("stage"); if (s && s.scrollIntoView) s.scrollIntoView({ block: "nearest" }); });
+      tabs.appendChild(watch);
+      wrap.append(tabs, story, tree, looks);
+    } else {
+      wrap.append(stage, tabs, story, tree, looks);
+      state.scene = C().scene.create(stage, {
+        look: key => C().art.resolveLook(state.looks, key),
+        onSelect: key => select(state, key),
+      });
+    }
     node.appendChild(wrap);
-    state.scene = C().scene.create(stage, {
-      look: key => C().art.resolveLook(state.looks, key),
-      onSelect: key => select(state, key),
-    });
     progress.court = state;
     live.add(state);
-    entry.cleanups.add(() => { live.delete(state); state.scene.destroy(); });
+    entry.cleanups.add(() => { live.delete(state); if (state.scene) state.scene.destroy(); });
     showTab(state, "story");
     return tree;
   }
@@ -78,7 +89,7 @@
   function select(state, key) {
     state.sel = key === state.sel && key !== "all" ? "all" : key;
     showTab(state, "story");
-    state.scene.select(state.sel);
+    if (state.scene) state.scene.select(state.sel); else C().stage.select(state, state.sel);
     renderStory(state);
   }
 
@@ -93,6 +104,12 @@
     const next = [...state.progress.spans.values()].map(s => ({ ...s }));
     await fetchDetails(state, next);
     const details = lookup(state), model = C().model;
+    if (!state.scene) {
+      state.prev = next;
+      if (staged()) C().stage.update(state, frame, next, details);
+      renderStory(state);
+      return;
+    }
     state.scene.cast(model.artisans(next));
     if (frame === "snapshot" || !state.settled || reducedMotion()) {
       state.scene.settle(model.poses(next, details));
@@ -249,12 +266,13 @@
     C().art.saveLooks(state.looks);
     for (const other of live) {
       if (other !== state) other.looks = JSON.parse(JSON.stringify(state.looks));
-      other.scene.restyle();
+      if (other.scene) other.scene.restyle();
       renderStory(other);
     }
+    if (staged()) C().stage.restyle();
     renderLooks(state);
   }
 
   globalThis.Courtyard = globalThis.Courtyard || {};
-  globalThis.Courtyard.card = { supported, mount, update };
+  globalThis.Courtyard.card = { supported, mount, update, select };
 })();

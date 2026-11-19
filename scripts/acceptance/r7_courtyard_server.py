@@ -51,7 +51,7 @@ async def serve(args: argparse.Namespace) -> None:
 
     env = harness.load_model_env(args.model_env)
     origin = f"http://127.0.0.1:{args.port}"
-    password = secrets.token_urlsafe(9)
+    password = args.password or secrets.token_urlsafe(9)
     tickets = subprocess.Popen([sys.executable, str(ROOT / "examples" / "ticket-api" / "server.py")])  # noqa: S603
     try:
         with tempfile.TemporaryDirectory() as raw:
@@ -86,6 +86,7 @@ def main() -> None:
     parser.add_argument("--model-env", type=Path, required=True, help="私有模型配置（dotenv，权限 600）")
     parser.add_argument("--port", type=int, default=8420)
     parser.add_argument("--username", default="demo")
+    parser.add_argument("--password", default=None, help="不给则每次随机生成")
     args = parser.parse_args()
     try:
         asyncio.run(serve(args))

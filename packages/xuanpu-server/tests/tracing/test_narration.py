@@ -11,7 +11,7 @@ import taifeng
 from xuanpu_server.tracing.collector import TraceCollector
 from xuanpu_server.tracing.config import ExecutionTraceConfig
 from xuanpu_server.tracing.memory import MemorySpanStore
-from xuanpu_server.tracing.narration import SAY_MAX, narration
+from xuanpu_server.tracing.narration import SAY_MAX, narration, without_narration
 from xuanpu_server.tracing.rules import apply_fact, new_span
 from xuanpu_server.tracing.views import span_view
 
@@ -132,3 +132,12 @@ def test_buffer_is_bounded_per_collector() -> None:
         c._hear(f"ex{i}", "话")  # noqa: SLF001
     assert len(c._said) == module._SAID_MEMORY  # noqa: SLF001
     assert "ex0" not in c._said  # noqa: SLF001
+
+
+def test_result_drops_narration_lines() -> None:
+    """交付给员工的结果去掉每步前说过的话；全去掉了就保留原文（R7 真实试用发现）。"""
+    said = ["我先查询工单 T-1001 的当前信息。", "我已查到工单；现在计算时限。"]
+    full = "我先查询工单 T-1001 的当前信息。我已查到工单；现在计算时限。\n\n\n工单 T-1001：开放，24 小时内处理。"
+    assert without_narration(full, said) == "工单 T-1001：开放，24 小时内处理。"
+    assert without_narration(said[0], said) == said[0]
+    assert without_narration("结果", []) == "结果"

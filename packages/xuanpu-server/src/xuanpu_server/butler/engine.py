@@ -147,7 +147,9 @@ async def _read_reply(events: AsyncIterator[taifeng.EventMsg], turn: ButlerTurn)
         if kind == "turn_started" and identity is not None and identity.parent_execution_id is None:
             turn.note_root(execution_span(identity.execution_id))
         elif kind == "assistant_text":
-            text.append(str(event.msg.data.get("delta", "")))
+            delta = str(event.msg.data.get("delta", ""))
+            text.append(delta)
+            turn.heard(delta)
         elif kind == "turn_completed":
             reply = "".join(text).strip()
             if not reply and not turn.has_output():

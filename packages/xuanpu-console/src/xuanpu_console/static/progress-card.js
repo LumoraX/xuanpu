@@ -12,8 +12,12 @@ const MAX_FOLLOWED = 3;
 
 function openProgressCard(traceId, options = {}) {
   const existing = entry.cards.get("trace:" + traceId);
-  if (existing) { existing.follow(); return existing.node; }
-  const progress = createProgress(traceId);
+  if (existing) {
+    existing.follow();
+    if (options.focus && existing.court && globalThis.Courtyard && Courtyard.stage) Courtyard.stage.focus(existing.court);
+    return existing.node;
+  }
+  const progress = createProgress(traceId, options);
   entry.cards.set("trace:" + traceId, progress);
   appendCard(progress.node);
   // 历史里的旧 trace 只在最近几张上自动订阅，其余点「查看进展」再订阅
@@ -22,10 +26,12 @@ function openProgressCard(traceId, options = {}) {
   return progress.node;
 }
 
-function createProgress(traceId) {
+function createProgress(traceId, options = {}) {
   const node = card("进展"), summary = el("p", "尚未读取", "meta"), tree = el("div", null, "tree hidden");
   const fall = el("div", null, "waterfall hidden"), row = el("div", null, "row");
-  const progress = { node, following: false, spans: new Map(), header: null };
+  // focus：刚发出的请求，常驻小院立刻跟上它
+  const progress = { node, following: false, spans: new Map(), header: null, wantsFocus: Boolean(options.focus),
+    waitStart: Boolean(options.focus) };
   const toggleTree = button("展开执行树", () => {
     tree.classList.toggle("hidden");
     toggleTree.textContent = tree.classList.contains("hidden") ? "展开执行树" : "收起执行树";
@@ -59,8 +65,8 @@ async function followTrace(traceId, progress, render) {
   const stop = () => controller.abort();
   entry.cleanups.add(stop);
   try {
-    const response = await fetch("/v1/traces/" + encodeURIComponent(traceId) + "/events", {
-      credentials: "same-origin", signal: controller.signal, headers: { "X-Requested-By": "xuanpu" } });
+    const response = await openEvents(traceId, progress, controller, epoch);
+    if (!response) return;
     if (!response.ok) throw new Error("进展读取失败（" + response.status + "）");
     await readFrames(response, (name, data) => {
       if (isStale(epoch)) return;
@@ -72,6 +78,18 @@ async function followTrace(traceId, progress, render) {
   } finally {
     entry.cleanups.delete(stop);
     if (!isStale(epoch)) progress.following = false;
+  }
+}
+
+// 刚发出的请求：管家这一轮开始后执行记录才落库（约半秒一批），之前读是 404，等它出现再订阅。
+const START_WAIT_TRIES = 120;
+async function openEvents(traceId, progress, controller, epoch) {
+  for (let tries = 0; ; tries++) {
+    const response = await fetch("/v1/traces/" + encodeURIComponent(traceId) + "/events", {
+      credentials: "same-origin", signal: controller.signal, headers: { "X-Requested-By": "xuanpu" } });
+    if (response.status !== 404 || !progress.waitStart || tries >= START_WAIT_TRIES) return response;
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    if (isStale(epoch)) return null;
   }
 }
 

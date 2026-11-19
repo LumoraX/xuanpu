@@ -14,15 +14,19 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from xuanpu_server.butler.inspector import inspect, session_round, task_snapshot
+from xuanpu_server.butler.trace_link import dispatch_span
 from xuanpu_server.butler.wake_models import ButlerEvent, WakeDecision
 from xuanpu_server.controlplane.models import AuditQuery
 from xuanpu_server.errors import NotFoundError
 from xuanpu_server.ids import new_id
 from xuanpu_server.tenancy import Principal
+from xuanpu_server.tracing.models import TraceOwner
+from xuanpu_server.tracing.narration import without_narration
 from xuanpu_server.work_tasks.models import TERMINAL as TASK_TERMINAL
 
 if TYPE_CHECKING:
@@ -170,6 +174,7 @@ class Wakeup:
         if event.kind == "asked":
             return WakeDecision(action="await_approval")
         snapshot = await self._snapshot(who, event, dispatch)
+        snapshot = replace(snapshot, result_text=await self._result_only(dispatch, snapshot.result_text))
         if snapshot.outcome == "suspended":
             return WakeDecision(action="await_approval", artisan_text=snapshot.result_text or None)
         result = inspect(snapshot)
@@ -180,6 +185,32 @@ class Wakeup:
             return base
         can_answer = snapshot.host == "session" and snapshot.outcome == "completed"
         return await self._reviewer.review(who, event, dispatch, base, can_answer=can_answer)
+
+    async def _result_only(self, dispatch: DispatchRecord, text: str) -> str:
+        """去掉匠人回复里已作为旁白讲过的话（R7）；读不到执行记录时如实保留原文并记日志。"""
+        if not text:
+            return text
+        owner = TraceOwner(tenant_id=dispatch.tenant_id, user_id=dispatch.user_id)
+        try:
+            view = await self._platform.store.trace_store.get(owner, dispatch.trace_id)
+        except Exception:
+            logger.exception("派工 %s 读执行记录失败，结果保留原文", dispatch.dispatch_id)
+            return text
+        by_id = {s.span_id: s for s in view.spans}
+        root = dispatch_span(dispatch.dispatch_id)
+
+        def mine(span_id: str | None) -> bool:
+            """这个 span 在本次派工之下。"""
+            seen: set[str] = set()
+            while span_id is not None and span_id not in seen:
+                if span_id == root:
+                    return True
+                seen.add(span_id)
+                span_id = by_id[span_id].parent_span_id if span_id in by_id else None
+            return False
+
+        said = [s.say for s in view.spans if s.say and mine(s.span_id)]
+        return without_narration(text, said)
 
     async def _snapshot(self, who: Principal, event: ButlerEvent, dispatch: DispatchRecord,
                         ) -> HostSnapshot:

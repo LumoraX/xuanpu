@@ -15,6 +15,7 @@ _THINK_CLOSE = re.compile(r"^.*</(?:think|thinking)>", re.IGNORECASE | re.DOTALL
 _THINK_OPEN = re.compile(r"<(?:think|thinking)>.*$", re.IGNORECASE | re.DOTALL)
 _CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 _SPACE = re.compile(r"\s+")
+_SPACE_LINES = re.compile(r"\n{3,}")
 # 句末标点：放不下时按这些切句
 _ENDS = "。！？!?；;"
 
@@ -63,3 +64,16 @@ def append(buffer: str, delta: str) -> str:
     """缓冲追加增量；超过上限时丢掉开头，只留离动作最近的部分。"""
     joined = buffer + delta
     return joined[-BUFFER_MAX:]
+
+
+def without_narration(text: str, said: list[str]) -> str:
+    """从匠人一轮的回复全文里去掉已作为旁白讲过的话（每次动手前那一句），只留结果。
+
+    旁白按原样逐段去掉；全部去掉后为空则保留原文（宁可重复，不丢结果）。
+    """
+    kept = text
+    for line in said:
+        if line and not line.startswith("…"):
+            kept = kept.replace(line, "")
+    kept = _SPACE_LINES.sub("\n\n", kept).strip()
+    return kept or text
