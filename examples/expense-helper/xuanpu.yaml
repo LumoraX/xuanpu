@@ -4,7 +4,7 @@ apiVersion: xuanpu/v1
 kind: Package
 metadata:
   name: expense-helper
-  version: 1.0.0
+  version: 1.0.1
   description: 报销助手：按报销制度核对一笔费用能不能报、怎么报，起草并提交报销单
 spec:
   skills:
