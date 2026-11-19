@@ -390,7 +390,7 @@ GET /v1/users?status=active&limit=100
 → {"users": [{"user_id": "usr_5f0c1b2e7d9a4c3b8e6f1a20", "display_name": "张三",
               "avatar_url": "https://…/avatar.png", "role": "tenant_member", "status": "active",
               "disabled_reason": null, "created_at": 1790900000.0, "last_login_at": 1790903600.0,
-              "disabled_at": null, "unverified_since": null}],
+              "disabled_at": null, "unverified_since": null, "lifecycle_epoch": 1}],
    "next_after": null}
 ```
 

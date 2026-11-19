@@ -100,6 +100,11 @@ function capabilityCard(host,item,installation,enabled,epoch,generation){
     const link=connectionText("a","");link.href=url;link.download="delivery.json";link.click();URL.revokeObjectURL(url);
   }));
   if(enabled)card.append(connectionButton("配置并预检",()=>capabilityConfigure(card,item,epoch,generation)));
+  if(installation&&installation.status!=="disabled"&&typeof capabilityRelease==="function"){
+    card.append(connectionButton("分配给员工",()=>capabilityAssign(card,item,epoch,generation)),
+      connectionButton("发起评测",()=>capabilityEvaluate(card,item,installation,epoch,generation)),
+      connectionButton("发布给员工",()=>capabilityRelease(card,item,installation,epoch,generation)));
+  }
   host.append(card);
 }
 function capabilityField(host,title,definition,choices=null){

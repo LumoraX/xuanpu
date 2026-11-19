@@ -409,11 +409,15 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
         items = await platform.sessions.pending(who, session_id)
         record = await platform.sessions.get(who, session_id)
         labels = await platform.packages.labels(record.tenant_id, record.package, record.version)
+        named_items = []
         for item in items:
             detail = item.get("detail")
             if isinstance(detail, dict) and isinstance(detail.get("target"), str):
-                detail["display_name"] = (labels.tools.get(detail["target"]) if labels else None) or detail["target"]
-        return {"pending": items}
+                # 另造副本：待处理记录与已发出的事件共用对象，不能就地改
+                shown = (labels.tools.get(detail["target"]) if labels else None) or detail["target"]
+                item = {**item, "detail": {**detail, "display_name": shown}}
+            named_items.append(item)
+        return {"pending": named_items}
 
     @app.get("/v1/sessions/{session_id}/events")
     async def replay_events(

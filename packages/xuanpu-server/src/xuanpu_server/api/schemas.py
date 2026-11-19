@@ -164,6 +164,8 @@ def user_view(user: UserRecord) -> dict[str, Any]:
         "last_login_at": user.last_login_at,
         "disabled_at": user.disabled_at,
         "unverified_since": user.unverified_since,
+        # 能力分配与发布按「员工 + 生命周期代次」固定目标；离职再入职代次加一，旧授权不沿用
+        "lifecycle_epoch": user.lifecycle_epoch,
     }
 
 

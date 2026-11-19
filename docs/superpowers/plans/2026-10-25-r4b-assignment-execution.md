@@ -98,4 +98,4 @@ async def test_managed_package_cannot_use_legacy_activation(r4_http, r4_ids):
 - B1：`S/capabilities/{admission,bindings}.py`（绑定表并入 0028）、协调存储只读 `capability_snapshot`；接入会话创建/续聊/恢复、对话目录与业务解析、办公与能力交办、定时/事件发生实例、管家匠人目录、旧激活接口；测试 `T/r4_contract/test_capability_entrypoints.py`。
   - 未完成：包级 managed 标记目前由「任一入口已登记」推导，未单独持久；首次纳管时排空旧在途工作的阻塞检查未做（纳管前的会话/任务缺绑定会在续跑时被拒）；一轮内每次模型调用前的复核已做（`S/runtime/capability_guard.py`，用例 `test_revocation_after_turn_start_blocks_the_model_call`：撤销落在轮开始复核之后，模型零调用）；工具出口经权限策略逐次复核（`CapabilityPermissionPolicy`，单测 `T/test_capability_guard.py`，含批准恢复的 `preapprove` 转发）；发生实例受理的能力分支没有专门用例。
 - B2：`WorkTaskService.capability_profile`；测试 `T/r4_contract/test_file_capability_tasks.py`。办公容器内跑通四类成果的端到端用例未在本机运行（需办公容器）。
-- B3：SDK `assign_capability`/`list_capability_assignments`/`revoke_capability_assignment` 与 CLI `assign|assignments|revoke`；原生分配界面、SIGKILL 绑定故障用例、390px 与身份切换测试未做。
+- B3：SDK `assign_capability`/`list_capability_assignments`/`revoke_capability_assignment` 与 CLI `assign|assignments|revoke`；原生“分配给员工”（`C/capability-release.js`，员工按 `lifecycle_epoch` 固定；`GET /v1/users` 视图增加 `lifecycle_epoch`）已接；SIGKILL 绑定故障用例、真实浏览器 390px 与身份切换验收未做。
