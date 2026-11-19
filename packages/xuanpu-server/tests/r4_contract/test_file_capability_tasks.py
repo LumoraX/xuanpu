@@ -51,3 +51,48 @@ async def test_client_cannot_choose_completion_contract(r4_http, r4_world, r4_id
         'request_id': 'forged', 'text': '汇总', 'capability': {'package': PACKAGE, 'entry': ENTRY},
         'completion_policy': 'capability_receipt'})
     assert forged.status_code == 400
+
+
+@pytest.mark.parametrize(('entry', 'skill', 'script', 'accepted'), [
+    ('review', 'review', 'summarize', True),          # 文件型能力：入口 skill 自己的汇总脚本
+    (None, 'table-summary', 'summarize', True),       # 内置办公包：table-summary 子 skill
+    ('review', 'review', 'inspect_headers', False),   # 同一 skill 的其他脚本不算
+    ('review', 'helper', 'summarize', False),         # 包里别的 skill 的同名脚本不算
+    (None, 'review', 'summarize', False),             # 未经能力入口受理的任务不认能力入口
+])
+async def test_summary_receipt_only_from_the_registered_entry_script(entry, skill, script, accepted):
+    """成果摘要回执只认能力入口 skill（或内置 table-summary）的 summarize 完整 stdout。"""
+    import json
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    import taifeng
+    from xuanpu_server.work_tasks.runner import TaskRunner
+
+    saved: list[dict] = []
+
+    class Store:
+        """只记录回执写入的任务存储替身。"""
+
+        async def get(self, who, task_id):
+            """当前任务版本。"""
+            return SimpleNamespace(state_version=3)
+
+        async def transition(self, who, task_id, status, **fields):
+            """记下本次状态写入。"""
+            saved.append(fields)
+
+    runner = TaskRunner(Store(), None, None, None, None, SimpleNamespace(now=lambda: 1.0), None)
+    task = SimpleNamespace(task_id='task1', output_kind='table_summary', entry=entry)
+    invocation = taifeng.ScriptInvocation(descriptor=taifeng.ScriptDescriptor(
+        skill_id=skill, name=script, language='python', path=Path('scripts') / (script + '.py'),
+        timeout_seconds=30, max_output_bytes=65536, args_schema={}), args={}, cancel=taifeng.CancellationToken())
+    hashes = {'outputs/manifest.json': 'a' * 64, 'outputs/summary.csv': 'b' * 64}
+    result = taifeng.ScriptResult(exit_code=0, stdout=json.dumps({'outputs_sha256': hashes}), stderr='', duration_ms=1)
+    await runner._script_receipt(ALICE, task, invocation, None)
+    await runner._script_receipt(ALICE, task, invocation, result)
+    if not accepted:
+        assert saved == []
+        return
+    assert [entry['event_kind'] for entry in saved] == ['script_started', 'script_receipt_received']
+    assert saved[0]['output_hashes'] == {} and saved[1]['output_hashes'] == hashes

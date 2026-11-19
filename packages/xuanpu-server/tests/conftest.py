@@ -456,6 +456,43 @@ def docker_test_user() -> str | None:
     return f"{os.getuid()}:{os.getgid()}" if sys.platform == "linux" else None
 
 
+@pytest.fixture(name="docker_user")
+def docker_user_fixture() -> str | None:
+    """``docker_test_user`` 的夹具形式，给带 ``__init__.py``、不能相对导入本文件的测试目录用。"""
+    return docker_test_user()
+
+
+@pytest.fixture(scope="session")
+def office_image(tmp_path_factory: pytest.TempPathFactory) -> str:
+    """独立办公镜像只从两个白名单构建文件创建，不发送仓库或运行数据。
+
+    全部办公容器用例共用；没有可用的 Docker 时在这里失败（构建命令非零）。
+    """
+    import hashlib
+
+    repository = Path(__file__).resolve().parents[3]
+    tag = "xuanpu-office:r1-20261021"
+    fingerprint = hashlib.sha256(
+        (repository / "docker/office-requirements.lock").read_bytes()
+        + (repository / "docker/office-sandbox.Dockerfile").read_bytes()
+    ).hexdigest()
+    inspected = subprocess.run(  # noqa: S603, S607 —— 参数全部来自测试代码
+        ["docker", "image", "inspect", "--format", '{{index .Config.Labels "xuanpu.office.build"}}', tag],
+        capture_output=True, text=True,
+    )  # fmt: skip
+    if inspected.returncode == 0 and inspected.stdout.strip() == fingerprint:
+        return tag
+    context = tmp_path_factory.mktemp("office-build")
+    shutil.copy(repository / "docker/office-sandbox.Dockerfile", context / "Dockerfile")
+    shutil.copy(repository / "docker/office-requirements.lock", context / "office-requirements.lock")
+    result = subprocess.run(  # noqa: S603, S607 —— 参数全部来自测试代码
+        ["docker", "build", "--label", "xuanpu.office.build=" + fingerprint, "-t", tag, str(context)],
+        capture_output=True, text=True,
+    )  # fmt: skip
+    assert result.returncode == 0, result.stdout + result.stderr
+    return tag
+
+
 def _sandbox_provider(kind: str) -> Any:
     """按参数选沙盒供给方。Docker 变体在没有 Docker 时跳过。"""
     if kind == "local":
