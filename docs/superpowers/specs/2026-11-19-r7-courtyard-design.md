@@ -53,7 +53,7 @@ R5 已能把一次请求的执行记成 trace/span，入口里的「进展卡」
 
 1. **旁白（`say`）**
    - `TraceCollector` 为每个执行维护一段缓冲：收到 `assistant_text` 追加 `delta`（缓冲上限 2000 字，超出丢头部）；收到同一执行的 `tool_call_started` 时取出缓冲、清洗成一句挂到该工具 span 的 `say` 并清空；执行一轮结束（`turn_completed/failed/suspended`）清空。
-   - 清洗（纯函数 `tracing/narration.py: narration(text) -> str | None`）：去掉成对 `<think>…</think>` 块、去控制字符、折叠空白；取最后一个完整句子起的末段，最长 160 字（超出从开头截并加「…」）；空串返回 None。
+   - 清洗（纯函数 `tracing/narration.py: narration(text) -> str | None`）：去掉成对 `<think>…</think>` 块、去控制字符、折叠空白；不超过 160 字整段保留，超过时从结尾往前按整句保留（单句过长从开头截并加「…」）；空串返回 None。
    - `assistant_reasoning` 一律不读。
    - `SpanFact.say` / `SpanRecord.say`：可空，≤160 字；首次出现即定，之后不同值不覆盖也不标冲突（迟到或重复投递无害）。span 以 JSONB 存，无需迁移。`span_view` 输出 `say`。OTel 不导出。
 2. **匠人说话约定**：派工发给匠人的说明末尾追加平台约定一行「（每次动手前，先用一句话告诉员工你要做什么。）」。只在投递时追加（会话的首条消息、任务的 text），派工记录里的 `instruction` 与幂等指纹不变。

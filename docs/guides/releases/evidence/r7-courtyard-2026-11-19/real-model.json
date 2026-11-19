@@ -1,0 +1,210 @@
+{
+  "ok": true,
+  "checks": {
+    "has_butler_root": true,
+    "has_dispatch": true,
+    "has_artisan_tools": true,
+    "some_tool_has_say": true,
+    "no_leak_in_say": true,
+    "detail_has_instruction": true,
+    "detail_not_echo_tenant": true,
+    "delivered_with_checks": true
+  },
+  "trace_id": "trc_45fe7f8405b83a476a8d09b5",
+  "say_ratio": "3/3",
+  "says": [
+    {
+      "tool": "api__tickets__getTicket",
+      "say": "我先查询工单 T-1001 的当前状态和优先级，随后根据优先级计算预计处理时限。"
+    },
+    {
+      "tool": "read_skill",
+      "say": "我已查到工单为“无法登录”、当前状态为开放、优先级为普通；现在读取分诊规则以调用规定的 SLA 计算脚本。"
+    },
+    {
+      "tool": "run_script",
+      "say": "我现在用工单的普通优先级运行 SLA 计算，获取预计处理时限。"
+    }
+  ],
+  "spans": [
+    {
+      "span_id": "ex.thr_77673b322c97f4f2",
+      "parent_span_id": null,
+      "kind": "butler",
+      "name": "butler",
+      "ref": "bt_d250bc1ba1038c14b534d0ed",
+      "state": "completed",
+      "started_at": "2026-11-19T13:40:13.347895+00:00",
+      "ended_at": "2026-11-19T13:40:53.840613+00:00",
+      "attempts": 1,
+      "input_tokens": 12334,
+      "output_tokens": 140,
+      "usage_complete": true,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "tl.call_093af2fc8dde406e978e001011e984f1",
+      "parent_span_id": "ex.thr_77673b322c97f4f2",
+      "kind": "tool",
+      "name": "list_artisans",
+      "ref": null,
+      "state": "completed",
+      "started_at": "2026-11-19T13:40:19.895149+00:00",
+      "ended_at": "2026-11-19T13:40:19.902672+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "tl.call_a55d1e7afc16431ebf3b43298663d183",
+      "parent_span_id": "ex.thr_77673b322c97f4f2",
+      "kind": "tool",
+      "name": "dispatch_artisan",
+      "ref": null,
+      "state": "completed",
+      "started_at": "2026-11-19T13:40:29.655973+00:00",
+      "ended_at": "2026-11-19T13:40:29.689094+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "dp.dsp_2194312dfd1ca8ead5834b2f",
+      "parent_span_id": "ex.thr_77673b322c97f4f2",
+      "kind": "dispatch",
+      "name": "support-desk/triage",
+      "ref": "dsp_2194312dfd1ca8ead5834b2f",
+      "state": "completed",
+      "started_at": "2026-11-19T13:40:29.663269+00:00",
+      "ended_at": "2026-11-19T13:41:27.059988+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": "ok",
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "ex.thr_a60c940f4a9a3336",
+      "parent_span_id": "dp.dsp_2194312dfd1ca8ead5834b2f",
+      "kind": "artisan",
+      "name": "triage",
+      "ref": "ses_8bb5b899e2f379054d6aac47ebe96618",
+      "state": "completed",
+      "started_at": "2026-11-19T13:40:29.695869+00:00",
+      "ended_at": "2026-11-19T13:41:14.555606+00:00",
+      "attempts": 1,
+      "input_tokens": 5420,
+      "output_tokens": 364,
+      "usage_complete": true,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "tl.call_b643912addab4d9a8dadeec17e5de846",
+      "parent_span_id": "ex.thr_a60c940f4a9a3336",
+      "kind": "tool",
+      "name": "api__tickets__getTicket",
+      "ref": null,
+      "state": "completed",
+      "started_at": "2026-11-19T13:40:40.377564+00:00",
+      "ended_at": "2026-11-19T13:40:40.399969+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": null,
+      "incomplete": false,
+      "say": "我先查询工单 T-1001 的当前状态和优先级，随后根据优先级计算预计处理时限。"
+    },
+    {
+      "span_id": "tl.call_99a9340490b348799f533e7e3576949a",
+      "parent_span_id": "ex.thr_a60c940f4a9a3336",
+      "kind": "tool",
+      "name": "read_skill",
+      "ref": null,
+      "state": "completed",
+      "started_at": "2026-11-19T13:40:54.384887+00:00",
+      "ended_at": "2026-11-19T13:40:54.386132+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": null,
+      "incomplete": false,
+      "say": "我已查到工单为“无法登录”、当前状态为开放、优先级为普通；现在读取分诊规则以调用规定的 SLA 计算脚本。"
+    },
+    {
+      "span_id": "tl.call_a7425f6e99554aab95ae6d5d7db454f8",
+      "parent_span_id": "ex.thr_a60c940f4a9a3336",
+      "kind": "tool",
+      "name": "run_script",
+      "ref": null,
+      "state": "completed",
+      "started_at": "2026-11-19T13:41:00.804236+00:00",
+      "ended_at": "2026-11-19T13:41:00.838033+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": null,
+      "incomplete": false,
+      "say": "我现在用工单的普通优先级运行 SLA 计算，获取预计处理时限。"
+    },
+    {
+      "span_id": "ex.thr_ed5abbf6ed6d8bf0",
+      "parent_span_id": null,
+      "kind": "butler",
+      "name": "butler",
+      "ref": "bt_6d948033c9bb62b6f0598948",
+      "state": "completed",
+      "started_at": "2026-11-19T13:41:15.286491+00:00",
+      "ended_at": "2026-11-19T13:41:27.057955+00:00",
+      "attempts": 1,
+      "input_tokens": 4225,
+      "output_tokens": 77,
+      "usage_complete": true,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    }
+  ],
+  "dispatches": {
+    "dsp_2194312dfd1ca8ead5834b2f": {
+      "dispatch_id": "dsp_2194312dfd1ca8ead5834b2f",
+      "trace_id": "trc_45fe7f8405b83a476a8d09b5",
+      "group_id": null,
+      "artisan": {
+        "package": "support-desk",
+        "entry": "triage"
+      },
+      "host": "session",
+      "state": "delivered",
+      "end_reason": "ok",
+      "instruction": "查询工单 T-1001 当前状态和预计处理完成时限，并在查询后给出简短总结。仅查询和总结，不要修改工单或其他信息。",
+      "created_at": "2026-11-19T13:40:29.663269+00:00",
+      "updated_at": "2026-11-19T13:41:27.061031+00:00",
+      "checks": {
+        "terminal": true,
+        "succeeded": true,
+        "outputs": true,
+        "no_pending": true,
+        "no_unknown": true
+      },
+      "result": "我先查询工单 T-1001 的当前状态和优先级，随后根据优先级计算预计处理时限。我已查到工单为“无法登录”、当前状态为开放、优先级为普通；现在读取分诊规则以调用规定的 SLA 计算脚本。我现在用工单的普通优先级运行 SLA 计算，获取预计处理时限。工单 **T-1001** 查询结果：\n\n- **当前状态：** 开放\n- **优先级：** 普通\n- **预计处理完成时限：** 24 小时\n- **问题：** 无法登录\n\n简短总结：该工单目前仍在处理中，按普通优先级预计将在 **24 小时内**完成处理。",
+      "items": []
+    }
+  }
+}

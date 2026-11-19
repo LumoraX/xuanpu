@@ -12,30 +12,42 @@ BUFFER_MAX = 2000
 _THINK = re.compile(r"<(think|thinking)>.*?</\1>", re.IGNORECASE | re.DOTALL)
 _CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 _SPACE = re.compile(r"\s+")
-# 句末标点：取最后一句时，从倒数第二个句末之后开始
+# 句末标点：放不下时按这些切句
 _ENDS = "。！？!?；;"
 
 
 def narration(text: str) -> str | None:
-    """把一段旁白清洗成一句：去推理块与控制字符、折叠空白，取最后一句，过长从开头截。
+    """把一段旁白清洗成可显示的一段：去推理块与控制字符、折叠空白。
 
-    没有可显示内容时返回 None。
+    放得下（≤ ``SAY_MAX``）就整段保留（真实模型常把「做什么」和「不做什么」拆成两句，只留
+    一句会丢掉要紧的那句）；放不下时从结尾往前按整句保留，离动作最近的话优先；最后一句本身
+    就过长时从开头截并加「…」。没有可显示内容时返回 None。
     """
     cleaned = _SPACE.sub(" ", _CONTROL.sub(" ", _THINK.sub("", text))).strip()
     if not cleaned:
         return None
-    sentence = _last_sentence(cleaned)
-    if len(sentence) > SAY_MAX:
-        sentence = "…" + sentence[-(SAY_MAX - 1):]
-    return sentence
+    if len(cleaned) <= SAY_MAX:
+        return cleaned
+    kept = ""
+    for sentence in reversed(_sentences(cleaned)):
+        if len(sentence) + len(kept) > SAY_MAX:
+            break
+        kept = sentence + kept
+    if kept:
+        return kept.strip()
+    return "…" + cleaned[-(SAY_MAX - 1):]
 
 
-def _last_sentence(text: str) -> str:
-    """最后一句完整的话；整段只有一句（或末尾没有句末标点）时取最后一个句末之后的部分。"""
-    body = text.rstrip(_ENDS + " ")
-    cut = max(body.rfind(mark) for mark in _ENDS)
-    tail = text[cut + 1:].strip() if cut >= 0 else text
-    return tail or text
+def _sentences(text: str) -> list[str]:
+    """按句末标点切开，标点留在句尾。"""
+    found, start = [], 0
+    for index, char in enumerate(text):
+        if char in _ENDS:
+            found.append(text[start:index + 1])
+            start = index + 1
+    if start < len(text):
+        found.append(text[start:])
+    return found
 
 
 def append(buffer: str, delta: str) -> str:

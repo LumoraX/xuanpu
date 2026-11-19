@@ -92,9 +92,19 @@
     return order;
   }
 
-  function rootOf(spans) {
-    return spans.find(s => s.kind === "butler" && !s.parent_span_id) || spans.find(s => s.kind === "butler") || null;
+  // 管家的根：同一条 trace 里可能有多轮（第一轮交代完就回话，之后被唤醒复核），取最早的一轮。
+  function roots(spans) {
+    return spans.filter(s => s.kind === "butler" && !s.parent_span_id).sort(byStart);
   }
+  function rootOf(spans) {
+    return roots(spans)[0] || spans.find(s => s.kind === "butler") || null;
+  }
+  // 这次请求办完了：管家各轮与全部派工都到了终态。管家第一轮回话时匠人往往还在干活。
+  function finished(spans) {
+    const all = roots(spans), dispatches = spans.filter(s => s.kind === "dispatch");
+    return all.length > 0 && all.every(s => TERMINAL.has(s.state)) && dispatches.every(s => TERMINAL.has(s.state));
+  }
+  const busy = spans => spans.some(s => s.kind === "dispatch" && !TERMINAL.has(s.state));
 
   const openItem = (detail, kinds) => (detail && detail.items || []).find(i => kinds.includes(i.kind) && (i.state === "open" || i.state === "forwarding"));
 
@@ -103,8 +113,8 @@
     const map = index(spans), result = {}, root = rootOf(spans);
     const butler = { at: "home", pose: null, face: "open", prop: null, bubble: null, red: false };
     if (root) {
-      if (root.state === "waiting_children") Object.assign(butler, { prop: "tea", face: "happy" });
-      else if (root.state === "waiting_input") Object.assign(butler, { at: "table", bubble: "等你裁决", red: true });
+      if (root.state === "waiting_input") Object.assign(butler, { at: "table", bubble: "等你裁决", red: true });
+      else if (root.state === "waiting_children" || busy(spans)) Object.assign(butler, { prop: "tea", face: "happy" });
       else if (root.state === "completed") butler.face = "happy";
       else if (root.state === "failed") butler.face = "dizzy";
     }
@@ -174,6 +184,7 @@
           beats.push({ type: "done_tool", actor: who, ok: span.state === "completed", span: span.span_id });
         }
       } else if (span.kind === "butler" && !span.parent_span_id) {
+        if (fresh && span !== rootOf(nextSpans)) beats.push({ type: "butler_tool", actor: "butler", tool: "review", prop: "magnifier", text: "复核结果" });
         if (span.state === "waiting_children") beats.push({ type: "wait", actor: "butler" });
         else if (span.state === "waiting_input") beats.push({ type: "ruling", actor: "butler" });
         else if (span.state === "completed") beats.push({ type: "reply", actor: "butler" });
@@ -193,7 +204,7 @@
         for (const item of (detail && detail.items) || []) items.push(fromItem(item, pkg));
         if (TERMINAL.has(span.state)) {
           const end = ms(span.ended_at) || at;
-          if (detail && detail.result) items.push({ at: end, who: pkg, type: "result", text: detail.result });
+          if (detail && detail.result) items.push({ at: end, who: pkg, type: "result", text: resultText(detail.result, spans.filter(s => s.say && dispatchAbove(map, s) === span).map(s => s.say)) });
           else if (span.state !== "completed") items.push({ at: end, who: pkg, type: "fail", text: reasonText(span.end_reason || (detail && detail.end_reason)) });
           items.push({ at: end + 1, who: "butler", to: pkg, type: "check", ok: span.state === "completed", checks: detail ? detail.checks : null });
         }
@@ -206,11 +217,23 @@
           text: span.say || (station === "bed" ? "我在等「" + span.name + "」的结果。" : "我在" + PLACE[station] + "用了「" + span.name + "」。"),
           running: !done, failed: span.state === "failed", ms: done ? ms(span.ended_at) - at : null,
         });
-      } else if (span.kind === "butler" && !span.parent_span_id && span.state === "completed") {
-        items.push({ at: ms(span.ended_at) || at, who: "butler", type: "done", text: "这一趟办完了，回话在上面的对话里。" });
+      } else if (span.kind === "butler" && !span.parent_span_id && span !== rootOf(spans)) {
+        items.push({ at, who: "butler", type: "say", text: "匠人交回了结果，我复核了一遍。" });
       }
     }
+    if (finished(spans)) {
+      const end = Math.max(...spans.map(s => ms(s.ended_at)).filter(n => !Number.isNaN(n)));
+      items.push({ at: (Number.isFinite(end) ? end : 0) + 2, who: "butler", type: "done", text: "这一趟办完了，结果在上面的对话里。" });
+    }
     return items.filter(i => i).sort((a, b) => (a.at || 0) - (b.at || 0));
+  }
+
+  // 结果摘录：去掉前面已经作为步骤讲过的旁白，再去掉 Markdown 的加粗与标题记号。
+  function resultText(text, said) {
+    let out = String(text);
+    for (const line of said) out = out.split(line).join("");
+    out = out.replace(/\*\*|__/g, "").replace(/^#{1,6}\s*/gm, "").replace(/\n{3,}/g, "\n\n").trim();
+    return out || String(text);
   }
 
   function fromItem(item, pkg) {
@@ -228,12 +251,13 @@
     const tools = spans.filter(s => s.kind === "tool" && ownerOf(map, s) && ownerOf(map, s) !== "butler").length;
     const waitYou = spans.some(s => s.state === "waiting_input");
     const start = Math.min(...spans.map(s => ms(s.started_at)).filter(n => !Number.isNaN(n)));
-    const ended = root && TERMINAL.has(root.state) ? ms(root.ended_at) : now;
-    const state = !root ? "还没开始" : root.state === "completed" ? "办完了" : root.state === "failed" ? "没办成"
-      : waitYou ? "停在这儿，等你" : "正在办";
+    const done = finished(spans);
+    const ended = done ? Math.max(...spans.map(s => ms(s.ended_at)).filter(n => !Number.isNaN(n))) : now;
+    const state = !root ? "还没开始" : waitYou ? "停在这儿，等你" : !done ? "正在办"
+      : root.state === "failed" ? "没办成" : "办完了";
     return { state, artisans: artisans(spans).length, tools, seconds: Number.isFinite(start) && Number.isFinite(ended) ? Math.max(0, Math.round((ended - start) / 1000)) : null };
   }
 
   globalThis.Courtyard = globalThis.Courtyard || {};
-  globalThis.Courtyard.model = { PLACE, TERMINAL, stationFor, reasonText, ownerOf, artisans, poses, diff, story, summary, howFor, index };
+  globalThis.Courtyard.model = { PLACE, TERMINAL, finished, resultText, stationFor, reasonText, ownerOf, artisans, poses, diff, story, summary, howFor, index };
 })();

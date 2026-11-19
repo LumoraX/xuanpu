@@ -11,7 +11,7 @@
   const ST = { cabinet: { x: 345, y: 248 }, books: { x: 455, y: 248 }, computer: { x: 580, y: 250 },
     tv: { x: 715, y: 256 }, bed: { x: 835, y: 238 }, bench: { x: 810, y: 422 } };
   const SHORT = { list_artisans: "翻名册…", answer_artisan: "照你原话答", rate_divergence: "比对结论", propose: "拟草稿",
-    read_personal: "看看你的事", check_dispatch: "问问进展", cancel_dispatch: "请先停下", cancel_group: "请先停下",
+    review: "复核结果", read_personal: "看看你的事", check_dispatch: "问问进展", cancel_dispatch: "请先停下", cancel_group: "请先停下",
     ask_user: "转问你", extend_turn: "多给点时间", raise_budget: "提高预算" };
   const SIGNAL_WAIT_MS = 6000;
 
@@ -233,6 +233,7 @@
           }
           fire(scene, "briefed:" + beat.actor);
           if (beat.how !== "letter") await b.walk(DESK.x, DESK.y);
+          b.hold("tea"); b.face("happy");
         });
         actor.do(async a => {
           if (beat.how === "table") {

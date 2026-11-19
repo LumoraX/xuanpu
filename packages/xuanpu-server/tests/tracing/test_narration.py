@@ -46,9 +46,16 @@ async def _says(events: list[taifeng.EventMsg]) -> dict[str, str | None]:
     return {span.span_id: span.say for span in view.spans}
 
 
-def test_narration_takes_last_sentence() -> None:
-    """取最后一句完整的话；开场的客套话不要。"""
-    assert narration("好的。我先去档案柜翻上月的报销单。") == "我先去档案柜翻上月的报销单。"
+def test_narration_keeps_whole_line_when_it_fits() -> None:
+    """放得下就整段保留：真实模型把「做什么」与「不做什么」拆成两句时，两句都要。"""
+    said = "我先只读查询工单 T-1001 的状态。不会修改工单或优先级。"
+    assert narration(said) == said
+
+
+def test_narration_keeps_trailing_sentences_when_too_long() -> None:
+    """放不下时按整句从结尾往前保留，开头的长铺垫丢掉。"""
+    said = narration("铺垫" * 100 + "。我先去档案柜翻上月的报销单。只读，不改。")
+    assert said == "我先去档案柜翻上月的报销单。只读，不改。"
 
 
 def test_narration_strips_think_blocks_and_whitespace() -> None:

@@ -120,6 +120,32 @@ function finishedSnapshotPoses(C) {
   assert.equal(summary.seconds, 10);
 }
 
+// 真实模型验收发现：管家第一轮交代完就回话（根完成），匠人还在干活；之后被唤醒再跑一轮复核。
+function butlerRepliesBeforeArtisanFinishes(C) {
+  const t = soloTimeline();
+  const replied = { ...t.root, state: "completed", ended_at: T(3) };
+  const working = [replied, t.dp, t.ex, t.tool];
+  same(C.model.summary(working, Date.parse(T(5))).state, "正在办", "匠人还在干活就不算办完");
+  assert.equal(C.model.story(working, none).filter(i => i.type === "done").length, 0);
+  assert.equal(C.model.poses(working, none).butler.prop, "tea", "管家端茶等匠人");
+  const review = span("ex.r", "butler", "管家", null, "completed", 12, { ended_at: T(14) });
+  const all = [replied, { ...t.dp, state: "completed", ended_at: T(10) }, { ...t.ex, state: "completed" }, { ...t.tool, state: "completed", ended_at: T(8) }, review];
+  const items = C.model.story(all, none);
+  assert.equal(items.filter(i => i.type === "done").length, 1, "办完只说一次");
+  assert.equal(items[items.length - 1].type, "done", "办完排在最后");
+  assert.ok(items.some(i => i.text === "匠人交回了结果，我复核了一遍。"));
+  same(C.model.summary(all, Date.parse(T(30))).seconds, 14);
+  assert.ok(C.model.diff(working, all, none).some(b => b.tool === "review"));
+}
+
+// 真实模型的结果摘录会把旁白再说一遍，还带 Markdown 记号。
+function resultDropsRepeatedNarration(C) {
+  const said = ["我先查询工单 T-1001。", "现在运行 SLA 计算。"];
+  const raw = "我先查询工单 T-1001。现在运行 SLA 计算。工单 **T-1001** 查询结果：\n\n\n- **状态：** 开放";
+  assert.equal(C.model.resultText(raw, said), "工单 T-1001 查询结果：\n\n- 状态： 开放");
+  assert.equal(C.model.resultText("我先查询工单 T-1001。", said), "我先查询工单 T-1001。", "全被去掉时保留原文");
+}
+
 function orphanSpansDoNotCrash(C) {
   const lost = [span("tl.x", "tool", "query", "ex.missing", "running", 1), span("a", "artisan", "x", "b", "running", 0), span("b", "artisan", "y", "a", "running", 0)];
   same(C.model.diff([], lost, none), []);
@@ -250,6 +276,8 @@ missingDetailsDegrade(C);
 waitingForYou(C);
 consultSitsAtTable(C);
 finishedSnapshotPoses(C);
+butlerRepliesBeforeArtisanFinishes(C);
+resultDropsRepeatedNarration(C);
 orphanSpansDoNotCrash(C);
 looks(C);
 (async () => {
