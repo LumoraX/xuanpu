@@ -39,6 +39,11 @@ class WakeStore(Protocol):
         """确认事件已处理完；重复确认无副作用。"""
         ...
 
+    async def events_for_dispatch(self, owner: TraceOwner, dispatch_id: str,
+                                  ) -> tuple[ButlerEvent, ...]:
+        """本人一次派工的全部唤醒事件，按创建先后；他人的看不到。"""
+        ...
+
     async def open_pending(self, item: PendingItem) -> tuple[PendingItem, bool]:
         """建待处理项；同键已存在则返回原项与 False。"""
         ...
@@ -103,6 +108,14 @@ class MemoryWakeStore:
             event = self._event(tenant_id, event_id)
             if event.acked_at is None:
                 self._events[(tenant_id, event_id)] = event.model_copy(update={"acked_at": at})
+
+    async def events_for_dispatch(self, owner: TraceOwner, dispatch_id: str,
+                                  ) -> tuple[ButlerEvent, ...]:
+        """按创建先后。"""
+        found = [e for e in self._events.values()
+                 if (e.tenant_id, e.user_id, e.dispatch_id)
+                 == (owner.tenant_id, owner.user_id, dispatch_id)]
+        return tuple(sorted(found, key=lambda e: (e.created_at, e.event_id)))
 
     def _event(self, tenant_id: str, event_id: str) -> ButlerEvent:
         """按标识取事件。"""

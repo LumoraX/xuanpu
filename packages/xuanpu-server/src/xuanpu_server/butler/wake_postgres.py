@@ -55,6 +55,15 @@ class PostgresWakeStore:
             "ORDER BY created_at,event_id LIMIT $2", tenant_id, limit)
         return tuple(ButlerEvent.model_validate_json(r["record"]) for r in rows)
 
+    async def events_for_dispatch(self, owner: TraceOwner, dispatch_id: str,
+                                  ) -> tuple[ButlerEvent, ...]:
+        """按创建先后；按员工过滤，他人的看不到。"""
+        rows = await self._pool.fetch(
+            f"SELECT record FROM {self._events} WHERE tenant_id=$1 AND user_id=$2 "
+            "AND dispatch_id=$3 ORDER BY created_at,event_id",
+            owner.tenant_id, owner.user_id, dispatch_id)
+        return tuple(ButlerEvent.model_validate_json(r["record"]) for r in rows)
+
     async def decide(self, tenant_id: str, event_id: str, decision: WakeDecision) -> ButlerEvent:
         """锁行；已有决定则保持。"""
         async with self._pool.acquire() as conn, conn.transaction():

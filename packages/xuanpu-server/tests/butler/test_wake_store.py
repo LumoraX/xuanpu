@@ -91,3 +91,15 @@ async def test_pending_isolation_and_versions(store: DispatchStore) -> None:  # 
         await wake.update_pending(ALICE, "pnd_1", expected_version=1, at=T0, state="resolved")
     assert await wake.list_pending(ALICE) == ()
     assert len(await wake.list_pending(ALICE, open_only=False, dispatch_id="dsp_1")) == 1
+
+
+async def test_events_for_dispatch_in_order_and_owner_only(store: DispatchStore) -> None:  # noqa: F811
+    """一次派工的事件按创建先后；他人与别的租户读不到（R7-3）。"""
+    await store.create(ALICE, _record(), **LIMITS)
+    wake = _wake(store)
+    await wake.emit(_event("bev_2", "round:2", 10))
+    await wake.emit(_event("bev_1", "round:1"))
+    assert [e.event_id for e in await wake.events_for_dispatch(ALICE, "dsp_1")] == ["bev_1", "bev_2"]
+    assert await wake.events_for_dispatch(BOB, "dsp_1") == ()
+    assert await wake.events_for_dispatch(GLOBEX_ALICE, "dsp_1") == ()
+    assert await wake.events_for_dispatch(ALICE, "dsp_x") == ()
