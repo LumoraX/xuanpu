@@ -46,7 +46,8 @@ def dispatch_detail(record: DispatchRecord, events: tuple[ButlerEvent, ...],
 def _item(item: PendingItem) -> dict[str, Any]:
     """问题、审批、裁决或代答记录；代答带出处原文。"""
     return {
-        "kind": item.kind, "question": item.question, "state": item.state,
+        "pending_id": item.pending_id, "kind": item.kind, "question": item.question,
+        "state": item.state,
         "answer": item.answer,
         "source_quote": None if item.answer_source is None else item.answer_source.quote,
         "created_at": item.created_at.isoformat(),
