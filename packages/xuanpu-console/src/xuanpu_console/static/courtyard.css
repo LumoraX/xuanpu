@@ -88,12 +88,32 @@
   .courtyard-svg .bob, .courtyard-svg .zz, .courtyard-svg .steam, .courtyard-svg .station.on *, .courtyard-svg .deskphone.ring { animation: none !important; }
 }
 
-/* 常驻小院（R7）：宽窗口在左侧常驻（滚动对话时仍看得见），窄窗口在页面上方。 */
+/* 常驻小院（R7）：宽窗口里整页就是小院，右侧整列是对话记录，输入框在最下面横贯；窄窗口按上下排。 */
 .stage:empty { display: none; }
 .cy-stage-wrap { margin-top: 0; }
 .cy-caption { margin: 0; font-size: 13.5px; color: var(--muted); }
 @media (min-width: 1100px) {
-  .entry-main { max-width: 1440px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, 600px); column-gap: 20px; align-items: start; }
-  .entry-main > .stage { grid-column: 1; grid-row: 1 / span 4; position: sticky; top: 12px; }
-  .entry-main > :not(.stage) { grid-column: 2; }
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .entry-main {
+    flex: 1; min-height: 0; max-width: none; width: 100%; margin: 0; padding: 12px 16px;
+    display: grid; gap: 10px 16px;
+    grid-template-columns: minmax(0, 1fr) minmax(380px, 30vw);
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-areas: "stage overview" "stage transcript" "stage tips" "composer composer";
+  }
+  .entry-main.hidden { display: none !important; }
+  .entry-main > .stage { grid-area: stage; min-height: 0; display: flex; }
+  .entry-main > .overview { grid-area: overview; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .entry-main > .overview .block { padding: 6px 8px; }
+  .entry-main > .overview .block .count { font-size: 17px; }
+  .entry-main > .overview .block ul { display: none; }
+  .entry-main > .transcript { grid-area: transcript; min-height: 0; overflow-y: auto; padding-right: 4px; }
+  .entry-main > .tips { grid-area: tips; }
+  .entry-main > .composer { grid-area: composer; position: static; padding: 0; }
+  .stage > .cy-stage-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+  .stage .cy-stage { flex: 1; min-height: 0; border-radius: 14px;
+    /* 画面按比例放进整块区域，留白处接上墙与地板的颜色 */
+    background: linear-gradient(#e3ece6 0 32%, #cddbd3 32% 38.5%, #ecdcc0 38.5%); }
+  .stage .cy-stage .courtyard-svg { width: 100%; height: 100%; }
+  .entry-footer { padding: 6px 16px; }
 }

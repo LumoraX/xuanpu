@@ -88,15 +88,38 @@ function timezone() {
   catch { return "Asia/Shanghai"; }
 }
 
+// 对话记录在宽窗口里是独立的滚动区：员工没往上翻时，任何新内容（含卡片后来长高）都跟着滚到底。
+function pinTranscript() {
+  const list = $("transcript");
+  if (typeof MutationObserver !== "function" || list.dataset.pinned) return;
+  list.dataset.pinned = "1";
+  let pinned = true;
+  list.addEventListener("scroll", () => { pinned = list.scrollHeight - list.scrollTop - list.clientHeight < 160; });
+  new MutationObserver(() => { if (pinned) list.scrollTop = list.scrollHeight; })
+    .observe(list, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class", "open"] });
+}
+
+function stickBottom(wasNear) {
+  const list = $("transcript");
+  if (wasNear && typeof list.scrollHeight === "number") list.scrollTop = list.scrollHeight;
+}
+
+function nearBottom() {
+  const list = $("transcript");
+  return typeof list.scrollHeight !== "number" || list.scrollHeight - list.scrollTop - list.clientHeight < 160;
+}
+
 function append(role, text, extra) {
-  const node = el("div", text, "msg " + role + (extra ? " " + extra : ""));
+  const near = nearBottom(), node = el("div", text, "msg " + role + (extra ? " " + extra : ""));
   $("transcript").appendChild(node);
+  stickBottom(near);
   return node;
 }
 
 function appendCard(card) {
+  const near = nearBottom();
   $("transcript").appendChild(card);
-  if (typeof card.scrollIntoView === "function") card.scrollIntoView({ block: "nearest" });
+  stickBottom(near);
   return card;
 }
 
@@ -115,6 +138,7 @@ async function connectEntry() {
     $("entry-login").classList.add("hidden");
     $("entry-password-login").classList.add("hidden");
     $("entry-main").classList.remove("hidden");
+    pinTranscript();
     // 常驻小院（R7）：打开就在，说一句话后跟上这次请求；不支持 SVG 时没有这一块
     if (globalThis.Courtyard && Courtyard.stage) Courtyard.stage.mount($("stage"), { onSelect: (s, k) => Courtyard.card.select(s, k) });
     // 历史与概览各自失败只提示，不当作未登录
@@ -234,7 +258,9 @@ function onStarted(data, live) {
 
 function onDelta(data, live) {
   if (!live.bubble) live.bubble = append("assistant", "", "streaming");
+  const near = nearBottom();
   live.bubble.textContent += data.text || "";
+  stickBottom(near);
 }
 
 function endBubble(live, text, extra) {
