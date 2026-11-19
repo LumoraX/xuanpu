@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from xuanpu_server.tracing.narration import SAY_MAX
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
@@ -92,6 +94,8 @@ class SpanFact(BaseModel):
     state: SpanState | None = None
     usage: AttemptUsage | None = None
     end_reason: str | None = None
+    # 旁白：执行在调用这个工具前对员工说的一句话（R7，ADR 0022）；不含推理、参数与输出
+    say: str | None = Field(default=None, max_length=SAY_MAX)
 
     @field_validator("span_id", "parent_span_id", "ref", "attempt_id")
     @classmethod
@@ -113,6 +117,15 @@ class SpanFact(BaseModel):
             raise ValueError("结束原因必须是小写代码")
         return value
 
+    @field_validator("say")
+    @classmethod
+    def _say(cls, value: str | None) -> str | None:
+        """旁白去控制字符；清洗后为空则没有旁白。"""
+        if value is None:
+            return None
+        cleaned = _CONTROL.sub(" ", value).strip()
+        return cleaned or None
+
 
 class SpanRecord(BaseModel):
     """一个 span 的当前状态。``attempts`` 按首次出现顺序保存每次尝试的用量。"""
@@ -130,6 +143,7 @@ class SpanRecord(BaseModel):
     attempts: tuple[AttemptUsage, ...] = ()
     end_reason: str | None = None
     incomplete: bool = False
+    say: str | None = Field(default=None, max_length=SAY_MAX)
 
     @property
     def input_tokens(self) -> int | None:

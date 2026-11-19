@@ -26,7 +26,7 @@ def span_view(span: SpanRecord) -> dict[str, Any]:
         "ended_at": None if span.ended_at is None else span.ended_at.isoformat(),
         "attempts": len(span.attempts), "input_tokens": span.input_tokens,
         "output_tokens": span.output_tokens, "usage_complete": span.usage_complete,
-        "end_reason": span.end_reason, "incomplete": span.incomplete,
+        "end_reason": span.end_reason, "incomplete": span.incomplete, "say": span.say,
     }
 
 

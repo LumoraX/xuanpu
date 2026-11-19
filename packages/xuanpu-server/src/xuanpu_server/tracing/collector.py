@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import dataclasses
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime  # noqa: TC003 —— 数据类字段
@@ -21,6 +22,7 @@ from typing import TYPE_CHECKING
 from xuanpu_server.ids import new_id
 from xuanpu_server.tracing.events import drafts, event_time
 from xuanpu_server.tracing.models import SpanFact, TraceOwner
+from xuanpu_server.tracing.narration import append, narration
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -39,6 +41,7 @@ _FLUSH_SECONDS = 0.5
 _MAX_PENDING = 10_000
 _TERMINAL = frozenset({"completed", "failed", "cancelled"})
 _ENDED_MEMORY = 1024
+_TURN_ENDS = frozenset({"turn_completed", "turn_failed", "turn_suspended"})
 
 
 @dataclass
@@ -92,6 +95,8 @@ class TraceCollector:
         self._preset: str | None = trace_id
         self._binder = binder
         self._task: asyncio.Task[None] | None = None
+        # 每个执行自上次动手以来对员工说的话；调用工具时取走成为旁白（ADR 0022）
+        self._said: dict[str, str] = {}
 
     def start(self) -> None:
         """启动后台写入。"""
@@ -134,10 +139,14 @@ class TraceCollector:
         identity = event.execution
         if identity is None or self._ended.get(identity.execution_id) == identity.attempt_id:
             return
+        if event.msg.kind == "assistant_text":
+            self._hear(identity.execution_id, event.msg.data.get("delta"))
+            return
         trace = self._trace_for(event)
         if trace is None:
             return
-        found = drafts(event, root_kind=self._root_kind, ref=self._ref)
+        found = self._narrated(identity.execution_id, event.msg.kind,
+                               drafts(event, root_kind=self._root_kind, ref=self._ref))
         if self._pending_total + len(found) > _MAX_PENDING:
             trace.dropped = True
             return
@@ -153,6 +162,23 @@ class TraceCollector:
             self._ended[identity.execution_id] = identity.attempt_id
             if len(self._ended) > _ENDED_MEMORY:
                 self._ended.pop(next(iter(self._ended)))
+
+    def _hear(self, execution_id: str, delta: object) -> None:
+        """记下执行对员工说的一段话；非文本增量忽略（不是正文就没有可记的）。"""
+        if isinstance(delta, str) and delta:
+            self._said[execution_id] = append(self._said.get(execution_id, ""), delta)
+
+    def _narrated(self, execution_id: str, kind: str, found: list[Draft]) -> list[Draft]:
+        """工具开始时把攒下的话挂到第一个工具 span 上并清空；一轮结束时清空。"""
+        if kind in _TURN_ENDS:
+            self._said.pop(execution_id, None)
+            return found
+        if kind != "tool_call_started":
+            return found
+        said = narration(self._said.pop(execution_id, ""))
+        if said is None:
+            return found
+        return [dataclasses.replace(d, say=said) if d.kind == "tool" else d for d in found]
 
     def _trace_for(self, event: taifeng.EventMsg) -> _Trace | None:
         """按执行身份找 trace；需要时新开。"""

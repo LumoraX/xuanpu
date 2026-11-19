@@ -46,6 +46,7 @@ class Draft:
     state: SpanState | None = None
     usage: AttemptUsage | None = None
     end_reason: str | None = None
+    say: str | None = None
 
     def fields(self) -> dict[str, Any]:
         """转成 ``SpanFact`` 的关键字参数（不含序号）。"""
