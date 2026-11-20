@@ -5,7 +5,7 @@ import pytest
 from xuanpu_server.errors import PermissionDeniedError
 from xuanpu_server.tenancy import Principal
 
-from ..conftest import docker_test_user
+from ..conftest import docker_host_env, docker_test_user
 
 
 async def test_cold_recovery_does_not_adopt_new_consent(r3_world,r3_http,r3_connected):
@@ -102,11 +102,10 @@ async def test_inflight_task_revoke_blocks_before_terminal_result(r3_world,r3_ht
         'connector_name':'wecom','operation_id':'self_profile','operation':'self_profile.read',
         'endpoint':'/cgi-bin/user/get','server_bound_parameters':['userid','access_token']})
     assert result.status_code==201,result.text
-    from pathlib import Path
 
     from xuanpu_server.runtime.sandbox import DockerSandboxProvider
     platform.runtimes._sandboxes=DockerSandboxProvider(user=docker_test_user(), image="python:3.12-slim",memory_mb=512,
-        docker_env={'PATH':'/usr/local/bin:/usr/bin:/bin','HOME':str(Path.home())},
+        docker_env=docker_host_env(),
         labels={'xuanpu.test':'r3-active-revoke'})
     started,release=asyncio.Event(),asyncio.Event()
     async def handler(request):

@@ -40,7 +40,7 @@ async def main() -> None:
         identity_settings=IdentitySettings.from_config(None, IdentityConfig()),
         vault=EncryptedVault(control, keys={'k1':generate_master_key()}, primary='k1'), models=models,
         sandboxes=DockerSandboxProvider(user=module.docker_test_user(), image=config['image'], memory_mb=512,
-            docker_env={'PATH':'/usr/local/bin:/usr/bin:/bin','HOME':str(Path.home())},
+            docker_env=module.docker_host_env(),
             labels={'xuanpu.test':'r1-restart'}), data_dir=Path(config['data']),
         objects=LocalObjectStore(Path(config['objects'])), root_key_hash='0'*64, instance_id='inst-test')
     await platform.start()
