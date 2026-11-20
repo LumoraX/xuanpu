@@ -11,7 +11,8 @@ from pathlib import Path
 import pytest
 from xuanpu_console import static_dir
 
-ENTRY_SCRIPTS = ["entry.js", "cards.js", "module-cards.js", "collab-cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]
+COURTYARD_SCRIPTS = ["courtyard-art.js", "courtyard-model.js", "courtyard-scene.js", "courtyard-card.js", "courtyard-stage.js"]
+ENTRY_SCRIPTS = ["entry.js", "cards.js", "module-cards.js", "collab-cards.js", *COURTYARD_SCRIPTS, "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]
 
 
 def test_entry_behavior() -> None:
@@ -33,7 +34,7 @@ def test_entry_assets_and_fingerprints() -> None:
     html = (directory / "entry.html").read_text(encoding="utf-8")
     urls = re.findall(r'(?:src|href)="([^"]+\.(?:js|css)\?v=[0-9a-f]{16})"', html)
     names = [url.split("?")[0] for url in urls]
-    assert names == ["entry.css", *ENTRY_SCRIPTS]
+    assert names == ["entry.css", "courtyard.css", *ENTRY_SCRIPTS]
     for url in urls:
         name = url.split("?")[0]
         digest = hashlib.sha256((directory / name).read_bytes()).hexdigest()[:16]
@@ -57,6 +58,7 @@ def test_entry_only_uses_original_endpoints() -> None:
     assert paths <= {
         "/v1/me", "/v1/auth/logout", "/v1/auth/feishu", "/v1/workspace/messages", "/v1/workspace/items",
         "/v1/workspace/files", "/v1/assistant/messages", "/v1/assistant/proposals", "/v1/assistant/pending",
+        "/v1/assistant/dispatches", "/v1/assistant/groups", "/v1/assistant/artisans",
         "/v1/reminders", "/v1/notifications", "/v1/work-tasks", "/v1/traces", "/v1/dashboard",
         "/v1/proactive", "/v1/task-definitions", "/v1/me/connections", "/v1/shared-matters",
         "/v1/handoffs", "/v1/approval-requests", "/v1/organization/people", "/v1/approval-policies",

@@ -1110,6 +1110,10 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 
 `POST /v1/assistant/messages`：员工对管家说一句话。认证同 `/v1/assistant/route`。请求体：`request_id`（必填，1–80 字符 `[a-zA-Z0-9_.:-]`）、`text`（1–8000 字符）、`timezone`（IANA，默认 Asia/Shanghai）、`input_files`（本人文件版本 `{item_id, revision}`，最多 8 个，派工材料只能从中选）；多余字段 422。
 
+流式回执（R7）：请求带 `Accept: text/event-stream` 时以 SSE 返回，不再等回复窗口：`started`（`mode`、`request_id`、`trace_id`，立刻推送，进展可马上订阅）→ 若干 `delta`（`text`：管家回复的文本增量，按生成推送）→ 最后一帧 `receipt`（与 JSON 回执相同）或 `error`（`code`、`message`；输入已保留）。身份与请求体校验在建流前完成，出错照常以 HTTP 状态返回；未开启管家的租户只推一帧 `receipt`。订阅者断开时这一轮照常在后台跑完，结果写进主对话。不带该头时行为不变（JSON 回执）。
+
+`GET /v1/assistant/artisans`（R7）：本人此刻可用的匠人 `items`（`package`、`entry`、`description`、`host`），只给当前启用的员工（机器身份 403）。
+
 - 租户开启管家（且开启执行追踪）且调用方是员工：请求至多等 `butler.reply_window_seconds`（默认 20 秒）。这一轮还没办完时回 `{"mode": "butler", "state": "running", "request_id", "trace_id"}`，这一轮在平台里继续，结束后回复写进主对话（`GET /v1/workspace/messages` 按游标可读），也可用同一标识再调一次取最终回执（这一轮正由另一实例处理时同样回 `state=running`，`trace_id` 为空并带 `elsewhere=true`，不报 409）。办完时回执 `mode=butler`、`state=done`，含 `request_id`、`trace_id`、`message`、与 `/v1/assistant/route` 同名的草稿与打开字段（有草稿时 `proposal_id=request_id`，经 `/v1/assistant/proposals` 确认）、`dispatches`（`dispatch_id`、`package`、`entry`、`state`、`host`）、`groups`（本轮提交或回放的编组标识，R5-D）。派工与编组都不等匠人结果。
 - 否则：原样走分流，回执为 `/v1/assistant/route` 的响应加 `mode=route`。
 - 同一 `request_id` 同体回原回执、不再采样；不同体 409；同一实例上仍在处理中回进行中回执，别的实例上仍在处理中 409。回复窗口内管家失败 503 `runtime_unavailable`，原话已在主对话，可用同一标识重试；窗口过后的失败写进主对话。一轮到时限（默认 300 秒，管家可延长）是正常结局，回复说明先停下，不报错。客户端读超时应长于回复窗口：Python SDK 的 `send_to_butler` 至少等 120 秒。派工预算超限不报错给员工，由管家在答复里说明（工具错误 `butler_budget_exceeded`）。
@@ -1123,6 +1127,7 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | POST /v1/assistant/pending/{id}/answer | request_id（1–80 字符）、text（1–2000 字符）；多余字段 422 | 更新后的项（state=answered）。原话转给匠人会话、派工回到 running。同一 request_id 同内容重试回原结果；已答复后换内容 409；kind=approval 409（请在既有待确认里处理）；kind=ruling（会诊裁决）只记进编组、不转给匠人，编组已结束或已有不同裁决 409；他人的与不存在的 404 |
 | GET /v1/assistant/groups/{group_id} | 无 | 本人编组的进展：group_id、trace_id、title、state、step、summarized、cancel_requested、version、steps（mode、members 匠人名）、members（step、member 从 1 起、dispatch_id、outcome、end_reason）、followups（step、member、asked_by、round、dispatch_id、outcome）、verdicts（step、level、reasons、rated_level、pending_id、ruled）；不含匠人正文。他人的与不存在的 404，机器身份 403 |
 | GET /v1/assistant/groups/{group_id}/messages | 无 | items：会诊消息区，按序号（seq、step、author=member/butler、member 从 1 起、round、mentions 从 1 起、text、created_at）；只追加。权限同上 |
+| GET /v1/assistant/dispatches/{dispatch_id} | 无 | 本人一次派工的细节（R7）：dispatch_id、trace_id、group_id、artisan（package、entry）、host=task/session、state、end_reason、instruction、created_at、updated_at、checks（terminal、succeeded、outputs、no_pending、no_unknown；还没验收为 null）、result（匠人回复摘录，最多 600 字；没有为 null）、items（pending_id、kind=question/approval/ruling/proxied、question、state、answer、source_quote、created_at）；不含匠人内部过程。权限同上 |
 
 匠人结束或提问后，管家的交付、转问、代答说明写进员工主对话（助手消息，`request_id` 为 `butler:<事件>:<deliver|ask|proxy|approval>`，元数据 `butler` 含 `trace_id`、`dispatch_id`、`event`，交付另含 `passed`、`checks`、`review_label`）。
 
@@ -1135,7 +1140,7 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | 方法与路径 | 查询 | 返回 |
 | --- | --- | --- |
 | GET /v1/traces | active=true/false 可选；cursor 可选；limit=1–100，默认 50 | items（trace_id、origin、title、created_at、updated_at、incomplete、truncated）、next_cursor、分页前 total；按创建时间倒序 |
-| GET /v1/traces/{trace_id} | 无 | trace 头、active、spans（span_id、parent_span_id、kind、name、ref、state、started_at、ended_at、attempts、input_tokens、output_tokens、usage_complete、end_reason、incomplete）；用量未知为 null |
+| GET /v1/traces/{trace_id} | 无 | trace 头、active、spans（span_id、parent_span_id、kind、name、ref、state、started_at、ended_at、attempts、input_tokens、output_tokens、usage_complete、end_reason、incomplete、say——工具 span 上匠人动手前说的一句话，最多 160 字，没有为 null，R7）；用量未知为 null |
 | GET /v1/traces/{trace_id}/waterfall | 无 | trace 头与 rows（span_id、parent_span_id、kind、name、state、depth、offset_ms、duration_ms、input_tokens、output_tokens、usage_complete、orphan）；运行中 duration_ms 为 null |
 | GET /v1/traces/{trace_id}/events | after_seq=0–2^31 可选；`Last-Event-ID` 优先 | SSE：`snapshot`（trace 头、active 与全部 spans）→ `spans`（只含变化的 span）→ `end`；事件 id 为已应用的最大事实序号；每轮（约 1 秒）发一行 `: heartbeat` 注释。不存在或无权在建流前 404，游标非数字 400 |
 

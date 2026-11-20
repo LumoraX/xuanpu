@@ -32,6 +32,10 @@ a { color: var(--accent); }
 .msg { padding: 8px 12px; border-radius: 10px; max-width: 100%; overflow-wrap: anywhere; white-space: pre-wrap; }
 .msg.user { align-self: flex-end; background: var(--accent); color: #fff; }
 .msg.assistant { align-self: flex-start; background: var(--card); border: 1px solid var(--line); }
+.msg.streaming:empty::before { content: "管家在处理，左边小院里看他们在做什么"; color: var(--muted); }
+.msg.streaming::after { content: "▍"; color: var(--accent); animation: entry-caret 1s steps(2) infinite; }
+@keyframes entry-caret { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .msg.streaming::after { animation: none; } }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; overflow-wrap: anywhere; }
 .card h3 { margin: 0 0 6px; font-size: 14px; }
 .card .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }

@@ -40,7 +40,7 @@ from xuanpu_server.ids import new_id
 from xuanpu_server.work_tasks.models import InputFile  # noqa: TC001 —— Pydantic 运行时解析
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import AsyncIterator, Callable
     from pathlib import Path
 
     from xuanpu_server.assistant_reminders import RouteOutcome
@@ -127,6 +127,43 @@ class ButlerService:
         return {"mode": "butler", "state": "running", "request_id": body.request_id,
                 "trace_id": running.trace_id}
 
+    async def open_stream(self, who: Principal, body: ButlerMessageBody,
+                          ) -> dict[str, Any] | _RunningTurn:
+        """流式回执的开头（R7）：未开启管家的租户直接给分流回执；否则启动这一轮并返回它。
+
+        身份校验在这里做完，出错照常以 HTTP 状态返回；之后的事件由 ``stream_events`` 推送。
+        """
+        if who.tenant_id is None or not self.enabled(who.tenant_id) or not who.user_id:
+            return await self._route(who, body)
+        await self._platform.workspace.require_employee(who)
+        return self._start(who, body)
+
+    async def stream_events(self, body: ButlerMessageBody, running: _RunningTurn,
+                            ) -> AsyncIterator[tuple[str, dict[str, Any]]]:
+        """先推 ``started``（带预先确定的 trace 标识），再推回复增量，最后推回执或错误。
+
+        订阅者断开时这一轮照常在后台跑完，结果进主对话（与回复窗口过后一致）。
+        """
+        yield "started", {"mode": "butler", "request_id": body.request_id, "trace_id": running.trace_id}
+        sent = 0
+        try:
+            while True:
+                waiter = asyncio.ensure_future(running.changed.wait())
+                try:
+                    await asyncio.wait({running.task, waiter}, return_when=asyncio.FIRST_COMPLETED)
+                finally:
+                    waiter.cancel()
+                running.changed.clear()
+                if len(running.deltas) > sent:
+                    yield "delta", {"text": "".join(running.deltas[sent:])}
+                    sent = len(running.deltas)
+                if running.task.done():
+                    break
+        except BaseException:
+            running.detached = True
+            raise
+        yield _final(running.task)
+
     def _start(self, who: Principal, body: ButlerMessageBody, *,
                detached: bool = False) -> _RunningTurn:
         """登记并启动一轮后台任务；同一句话已在本进程里跑则复用。"""
@@ -198,7 +235,7 @@ class ButlerService:
                  "resumes": resumes})
             renewer = asyncio.create_task(self._renew(who, body.request_id, claim["token"]))
             try:
-                receipt = await self._handle(who, body, running.trace_id)
+                receipt = await self._handle(who, body, running.trace_id, running.hear)
                 await p.workspace.complete_route(who, "butler:" + body.request_id,
                                                  claim["token"], receipt)
                 return receipt
@@ -238,14 +275,14 @@ class ButlerService:
             attachments=[f.item_id for f in body.input_files], input_files=body.input_files))
         return {"mode": "route", **route_view(outcome)}
 
-    async def _handle(self, who: Principal, body: ButlerMessageBody,
-                      trace_id: str) -> dict[str, Any]:
+    async def _handle(self, who: Principal, body: ButlerMessageBody, trace_id: str,
+                      on_text: Callable[[str], None] | None = None) -> dict[str, Any]:
         """跑一轮管家并写助手消息；失败统一成可重试的错误，输入已保留。"""
         p, tenant = self._platform, who.require_tenant()
         await p.quota.check_new_turn(tenant)
         turn = ButlerTurn(who=who, request_id=body.request_id, trace_id=trace_id,
                           timezone=body.timezone, materials=tuple(body.input_files),
-                          user_text=body.text)
+                          user_text=body.text, on_text=on_text)
         await p.sessions.admit_routing(tenant)
         try:
             reply = await self.engines.run(turn, await self._payload(who, body))
@@ -323,6 +360,19 @@ def _timed_out(turn: ButlerTurn, exc: TurnTimeout) -> str:
     return text
 
 
+def _final(task: asyncio.Task[dict[str, Any]]) -> tuple[str, dict[str, Any]]:
+    """一轮结束时的最后一帧：回执，或错误码与文案（平台错误如实给出，其余统一为内部错误）。"""
+    if task.cancelled():
+        return "error", {"code": "runtime_unavailable", "message": "这一轮被中止，输入已保留，请稍后重试"}
+    error = task.exception()
+    if error is None:
+        return "receipt", task.result()
+    if isinstance(error, PlatformError):
+        return "error", {"code": error.code, "message": str(error)}
+    logger.error("管家一轮以意外错误结束：%s", type(error).__name__)
+    return "error", {"code": "internal_error", "message": "管家处理出错，输入已保留，请稍后重试"}
+
+
 def _dispatch_view(record: Any) -> dict[str, Any]:
     """回执里的派工：只给标识、匠人与状态。"""
     return {"dispatch_id": record.dispatch_id, "package": record.artisan.package,
@@ -341,3 +391,11 @@ class _RunningTurn:
     trace_id: str
     task: asyncio.Task[dict[str, Any]] = field(init=False)
     detached: bool = False
+    # 管家回复的文本增量（R7 流式回执）：按到达顺序累积，多个订阅者各自记读到哪里
+    deltas: list[str] = field(default_factory=list)
+    changed: asyncio.Event = field(default_factory=asyncio.Event)
+
+    def hear(self, delta: str) -> None:
+        """记下一段回复文本并唤醒订阅者。"""
+        self.deltas.append(delta)
+        self.changed.set()

@@ -43,6 +43,12 @@
 4. 建派工记录：`request_id` = `<员工请求标识>:d<序号>`，同一输入重试回放原派工，不重复启动；`trace_id` 为本次请求的 trace，`parent_span_id` 为管家根 span（`ex.<execution_id>`）。
 5. 启动承载：持久任务（`accept_capability`，请求标识 `butler:<派工>`）或会话（钉住派工时的版本建会话并发出说明；这一轮在后台读完）。成功推进到 `running` 并记 `host_ref`；启动失败记 `failed`（`start_failed`）后把错误交给模型。
 6. 立即返回；匠人结束后的唤醒与验收在 C2。
+7. 唤醒时取匠人结果（`wakeup._result_only`）：从这一轮回复全文里去掉本次派工下各工具 span 的旁白（`tracing/narration.without_narration`），交付消息、派工细节与复核只用结果；读不到执行记录时保留原文并记日志。
+8. 投递给匠人的说明（会话的首条消息、任务的 text）末尾追加说话约定 `NARRATE_HINT`「（每次动手前，先用一句话告诉员工你要做什么。）」，供执行旁白（R7，[ADR 0023](../decisions/0023-execution-story.md)）；派工记录的 `instruction` 与幂等指纹不含它。
+
+### 派工细节（`api/dispatches.py`，R7）
+
+`GET /v1/assistant/dispatches/{id}` 给本人看一次派工：任务说明、承载方式、状态、最近一次带验收的决定的五项结果（还没验收为 null）、最近一次决定的匠人回复摘录（600 字）、该派工的全部待处理项（问题、审批、裁决、代答，代答带出处原文与 `pending_id`）。唤醒事件按派工读（`WakeStore.events_for_dispatch`，内存与 PostgreSQL 各一份）。他人的与不存在的 404，机器身份 403。小院的「经过」用它。
 
 ## 入口与幂等（`butler/service.py`、`api/butler.py`）
 
@@ -118,6 +124,7 @@
 - 唤醒是轮询，延迟约为对账间隔加匠人一轮的审计落盘时间。
 - 管家每轮新建引擎，内核 `todo_write` 清单不跨轮；跨轮记忆只有主对话最近 6 条。
 - 持久任务承载的派工路径只有单元级覆盖（本机测试环境无法运行办公容器）；会话承载有端到端测试。
+- 说话约定在任务承载时随任务的 `text` 保存，员工在「更多」的交办工作里会看到这一行，也计入任务请求的幂等指纹；若将来改动约定文字，已建任务按同一请求标识重新受理会冲突（目前没有重新受理的路径）。
 - 真实模型下的误派、漏派率尚未测量：回归集与脚本已就绪（`scripts/acceptance/r5_butler_regression.py`），本环境没有真实模型凭据，未执行。
 
 ## 匠人的名字（ADR 0022）

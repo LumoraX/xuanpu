@@ -54,11 +54,13 @@ def gateway(env: dict[str, str], vault: Any) -> Any:
 
 
 async def assemble(directory: Path, env: dict[str, str], resources: AsyncExitStack,
-                   origin: str | None = None, connections: bool = False) -> tuple[Any, str]:
+                   origin: str | None = None, connections: bool = False,
+                   default_tenant: str | None = None) -> tuple[Any, str]:
     """内存平台：acme 开启追踪、管家与极简入口，接真实模型；返回平台与根凭据。
 
     ``origin`` 给了时平台认浏览器登录 cookie（浏览器验收用）；不给只认 API key。
     ``connections`` 为真时 acme 开启企业连接（R3），对话里才能打开本人连接页。
+    ``default_tenant`` 给了时登录页不带 ``?tenant=`` 也登录到这个租户（本机试用服务用）。
     """
     from xuanpu_server.butler.config import ButlerConfig
     from xuanpu_server.connections.models import ConnectionConfig
@@ -80,7 +82,8 @@ async def assemble(directory: Path, env: dict[str, str], resources: AsyncExitSta
     (directory / "data").mkdir()
     platform = Platform(
         store=store, identity_store=InMemoryIdentityStore(store),
-        identity_settings=IdentitySettings.from_config(origin, IdentityConfig(cookie_secure=False)),
+        identity_settings=IdentitySettings.from_config(
+            origin, IdentityConfig(cookie_secure=False, default_tenant=default_tenant)),
         vault=vault, models=gateway(env, vault), sandboxes=LocalSandboxProvider(),
         data_dir=directory / "data", root_key_hash=root_hash, instance_id="inst-r5-real-model",
         objects=LocalObjectStore(directory / "objects"),

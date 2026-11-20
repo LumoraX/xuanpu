@@ -79,3 +79,23 @@ async def test_unavailable_artisan_is_refused(butler: dict[str, Any], step: Any)
     receipt = response.json()
     assert receipt["dispatches"] == []
     assert "not_found" in str(world.models.requests[-1])
+
+
+async def test_delivery_appends_narration_hint(butler: dict[str, Any], step: Any) -> None:
+    """匠人收到的说明末尾带说话约定；派工记录里的说明与幂等指纹不变（R7-2）。"""
+    from xuanpu_server.butler.dispatcher import NARRATE_HINT
+    from xuanpu_server.controlplane.models import AuditQuery
+
+    world = butler["world"]
+    world.models.script_for("INSTR-", step(text="好的"))
+    world.models.script(step(calls=[_dispatch_call()]), step(text="已交给工单匠人。"))
+    response = await asyncio.wait_for(butler["http"].post(
+        "/v1/assistant/messages", json={"request_id": "h1", "text": "帮我看看工单 T-1"}), 30)
+    assert response.status_code == 200, response.text
+    store = world.platform.store
+    [record] = await store.dispatch_store.list_for_trace(ALICE, response.json()["trace_id"])
+    assert record.instruction == INSTRUCTION
+    sent = await store.query_audit("acme", AuditQuery(session_id=record.host_ref,
+                                                      kind="message_sent", limit=10))
+    text = sent[0].data["text"]
+    assert text.startswith(INSTRUCTION) and text.endswith(NARRATE_HINT)

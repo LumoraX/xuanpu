@@ -20,7 +20,7 @@ def new_span(fact: SpanFact) -> SpanRecord:
         raise FactRejectedError("新 span 必须带 kind 与 name")
     record = SpanRecord(
         span_id=fact.span_id, kind=fact.kind, name=fact.name,
-        parent_span_id=fact.parent_span_id, ref=fact.ref, started_at=fact.at,
+        parent_span_id=fact.parent_span_id, ref=fact.ref, started_at=fact.at, say=fact.say,
     )
     return apply_fact(record, fact, max_attempts=None)
 
@@ -32,6 +32,7 @@ def apply_fact(span: SpanRecord, fact: SpanFact, *, max_attempts: int | None) ->
     - 类型、父级、引用一经确定不再改变；冲突视为不完整而不是覆盖。
     - 同一尝试到达终态后，它的迟到状态事实不复活 span；新尝试可以重新运行。
     - 用量按尝试保存绝对值，重复快照覆盖而非累加；尝试数超上限时丢弃并标不完整。
+    - 旁白首值为准。
     """
     incomplete = span.incomplete or _conflicts(span, fact)
     attempt = fact.attempt_id or span.current_attempt_id
@@ -46,6 +47,8 @@ def apply_fact(span: SpanRecord, fact: SpanFact, *, max_attempts: int | None) ->
         "name": span.name if fact.name is None else fact.name,
         "parent_span_id": span.parent_span_id or fact.parent_span_id,
         "ref": span.ref or fact.ref,
+        # 旁白首值为准：重复或迟到的不同旁白不覆盖，也不算结构冲突
+        "say": span.say or fact.say,
         "state": state,
         "ended_at": ended_at,
         "end_reason": end_reason,

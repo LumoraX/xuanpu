@@ -1,5 +1,6 @@
 // 进展卡：一条 trace 一张。订阅 /v1/traces/{id}/events（快照 → 变化 → end），
-// 展开看执行树，再展开看瀑布。记录不完整时明确标注。刷新后由主对话历史重建、重新订阅。
+// 支持 SVG 时由小院（courtyard-card.js，R7）演出并讲「经过」，执行树与瀑布放进「执行树」页签；
+// 不支持时只显示执行树。记录不完整时明确标注。刷新后由主对话历史重建、重新订阅。
 "use strict";
 
 const STATE_NAMES = {
@@ -11,8 +12,12 @@ const MAX_FOLLOWED = 3;
 
 function openProgressCard(traceId, options = {}) {
   const existing = entry.cards.get("trace:" + traceId);
-  if (existing) { existing.follow(); return existing.node; }
-  const progress = createProgress(traceId);
+  if (existing) {
+    existing.follow();
+    if (options.focus && existing.court && globalThis.Courtyard && Courtyard.stage) Courtyard.stage.focus(existing.court);
+    return existing.node;
+  }
+  const progress = createProgress(traceId, options);
   entry.cards.set("trace:" + traceId, progress);
   appendCard(progress.node);
   // 历史里的旧 trace 只在最近几张上自动订阅，其余点「查看进展」再订阅
@@ -21,20 +26,34 @@ function openProgressCard(traceId, options = {}) {
   return progress.node;
 }
 
-function createProgress(traceId) {
+function createProgress(traceId, options = {}) {
   const node = card("进展"), summary = el("p", "尚未读取", "meta"), tree = el("div", null, "tree hidden");
   const fall = el("div", null, "waterfall hidden"), row = el("div", null, "row");
-  const progress = { node, following: false, spans: new Map(), header: null };
+  // focus：刚发出的请求，常驻小院立刻跟上它
+  const progress = { node, following: false, spans: new Map(), header: null, wantsFocus: Boolean(options.focus),
+    waitStart: Boolean(options.focus) };
   const toggleTree = button("展开执行树", () => {
     tree.classList.toggle("hidden");
     toggleTree.textContent = tree.classList.contains("hidden") ? "展开执行树" : "收起执行树";
   });
   const showFall = button("看瀑布", () => loadWaterfall(traceId, fall));
+  const court = Boolean(globalThis.Courtyard && Courtyard.card && Courtyard.card.supported());
   progress.follow = () => {
     if (progress.following) return;
     progress.following = true;
-    followTrace(traceId, progress, () => renderProgress(progress, summary, tree));
+    followTrace(traceId, progress, frame => {
+      renderProgress(progress, summary, tree);
+      if (court) Courtyard.card.update(progress, frame);
+    });
   };
+  if (court) {
+    row.append(button("查看进展", () => progress.follow()));
+    node.append(summary, row);
+    const panel = Courtyard.card.mount(progress, node);
+    tree.classList.remove("hidden");
+    panel.append(tree, button("看瀑布", () => loadWaterfall(traceId, fall)), fall);
+    return progress;
+  }
   row.append(button("查看进展", () => progress.follow()), toggleTree, showFall);
   node.append(summary, row, tree, fall);
   return progress;
@@ -46,19 +65,31 @@ async function followTrace(traceId, progress, render) {
   const stop = () => controller.abort();
   entry.cleanups.add(stop);
   try {
-    const response = await fetch("/v1/traces/" + encodeURIComponent(traceId) + "/events", {
-      credentials: "same-origin", signal: controller.signal, headers: { "X-Requested-By": "xuanpu" } });
+    const response = await openEvents(traceId, progress, controller, epoch);
+    if (!response) return;
     if (!response.ok) throw new Error("进展读取失败（" + response.status + "）");
     await readFrames(response, (name, data) => {
       if (isStale(epoch)) return;
       applyFrame(progress, name, data);
-      render();
+      render(name);
     });
   } catch (error) {
     if (!isStale(epoch) && error.name !== "AbortError") report(error);
   } finally {
     entry.cleanups.delete(stop);
     if (!isStale(epoch)) progress.following = false;
+  }
+}
+
+// 刚发出的请求：管家这一轮开始后执行记录才落库（约半秒一批），之前读是 404，等它出现再订阅。
+const START_WAIT_TRIES = 120;
+async function openEvents(traceId, progress, controller, epoch) {
+  for (let tries = 0; ; tries++) {
+    const response = await fetch("/v1/traces/" + encodeURIComponent(traceId) + "/events", {
+      credentials: "same-origin", signal: controller.signal, headers: { "X-Requested-By": "xuanpu" } });
+    if (response.status !== 404 || !progress.waitStart || tries >= START_WAIT_TRIES) return response;
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    if (isStale(epoch)) return null;
   }
 }
 

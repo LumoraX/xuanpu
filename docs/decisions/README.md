@@ -25,3 +25,4 @@
 | [0020](0020-butler-always-online.md) | 管家常在线 —— 回执与一轮解耦、时限与预算随任务伸缩 | Accepted（R6 实施中；修订 0017 决策 1 的实现方式） |
 | [0021](0021-desktop-browser-handoff-login.md) | 桌面客户端经浏览器接力完成飞书登录 —— 等待页轮询，不用深链、不开本地端口 | Accepted |
 | [0022](0022-display-names.md) | 匠人、skill 与工具各有给员工看的名字 | Accepted |
+| [0023](0023-execution-story.md) | 执行旁白与小院 —— 匠人动手前说的那句话进 trace，进展卡换成小院 | Accepted（修订 0017 决策 5「span 不含正文」一处） |

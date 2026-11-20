@@ -1,0 +1,34 @@
+openapi: 3.0.3
+info:
+  title: 报销系统
+  version: 1.0.0
+servers:
+  - url: http://127.0.0.1:8432
+paths:
+  /expenses:
+    get:
+      operationId: listExpenses
+      summary: 列出本人的报销单
+      responses:
+        "200": {description: 报销单列表}
+    post:
+      operationId: submitClaim
+      summary: 提交一张报销单
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Claim"}
+      responses:
+        "201": {description: 新建的报销单}
+components:
+  schemas:
+    Claim:
+      type: object
+      properties:
+        title: {type: string, description: 事由}
+        amount: {type: number, description: 金额（元）}
+        spent_on: {type: string, description: 发生日期 YYYY-MM-DD}
+        has_invoice: {type: boolean, description: 是否有发票}
+        note: {type: string, description: 说明（无发票时写明原因）}
+      required: [title, amount, has_invoice]

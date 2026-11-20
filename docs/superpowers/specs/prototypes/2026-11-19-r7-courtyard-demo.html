@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>玄圃小院</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:var(--background,#fbfbf9);color:var(--foreground,#1f2328);font:15px/1.6 var(--font-sans,-apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif)}
+.page{--xp-ink:#2b2f3a;--xp-seal:#d2432f;--xp-jade:#2f6f5e;--xp-paper:#fffaf0;--xp-round:"Yuanti SC","STYuanti","PingFang SC",var(--font-sans,system-ui),sans-serif;max-width:940px;margin:0 auto;padding:20px 16px 28px}
+h1{font-family:var(--xp-round);font-size:26px;line-height:1.25;margin:0 0 4px;font-weight:700;letter-spacing:.02em}
+h2{font-family:var(--xp-round);font-size:18px;line-height:1.3;margin:30px 0 4px}
+.lead,.sub{margin:0 0 14px;color:var(--muted-foreground,#6b7280);max-width:40em}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--ring,#2f6f5e);outline-offset:2px}
+
+.scns{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:8px;margin-bottom:10px}
+.scn{text-align:left;padding:9px 12px;border-radius:12px;border:1px solid var(--border,#e2e5e3);background:var(--card,#fff);color:var(--card-foreground,#1f2328);display:grid;gap:2px}
+.scn b{font-weight:600;font-size:14px;line-height:1.4}
+.scn span{font-size:12.5px;color:var(--muted-foreground,#6b7280)}
+.scn[aria-pressed="true"]{border-color:var(--primary,#2f6f5e);box-shadow:inset 0 0 0 1px var(--primary,#2f6f5e)}
+
+.stagewrap{overflow-x:auto;border-radius:16px;border:1px solid var(--border,#e2e5e3)}
+.stage{position:relative;min-width:640px;line-height:0}
+.stage svg{width:100%;height:auto;display:block;font-family:var(--xp-round)}
+.gate{position:absolute;inset:0;background:rgba(43,47,58,.3);display:grid;place-items:end center;line-height:1.55;padding:16px}
+.gate.top{place-items:start center}
+.gate[hidden]{display:none}
+.gcard{position:relative;width:min(430px,92%);background:var(--xp-paper);color:var(--xp-ink);border:2px solid var(--xp-seal);border-radius:14px;padding:16px 18px;box-shadow:0 10px 0 rgba(43,47,58,.18);font-family:var(--xp-round)}
+.gcard h3{margin:0 0 6px;font-size:17px}
+.gcard p{margin:0 0 12px;font-size:14px}
+.gcard .two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.gcard .two div{border:1.5px solid var(--xp-ink);border-radius:10px;padding:8px 10px;font-size:13.5px;background:#fff}
+.gcard .two b{display:block;font-size:13px}
+.gbtn{display:flex;gap:8px;flex-wrap:wrap}
+.gbtn button{border:2px solid var(--xp-ink);background:#fff;color:var(--xp-ink);border-radius:999px;padding:6px 14px;font-family:inherit}
+.gbtn button.go{background:var(--xp-seal);border-color:var(--xp-seal);color:#fff}
+.gcard .seal{position:absolute;right:16px;bottom:10px;width:46px;height:46px;border-radius:50%;border:2px dashed var(--xp-seal);color:transparent;display:grid;place-items:center;font-size:22px;font-weight:700}
+.gcard.stamped .seal{border-style:solid;background:var(--xp-seal);color:#fff;animation:xp-stamp .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes xp-stamp{from{transform:scale(2.4) rotate(-24deg);opacity:0}to{transform:scale(1) rotate(-8deg);opacity:1}}
+
+.bar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:10px 0 0}
+#cap{margin:0;font-family:var(--xp-round);font-size:16px;flex:1 1 320px;min-height:1.6em}
+.ctl{display:flex;gap:6px}
+.chip{border:1px solid var(--border,#e2e5e3);background:var(--secondary,#f1f3f2);color:var(--secondary-foreground,#1f2328);border-radius:999px;padding:5px 12px;font-size:13.5px}
+.chip[aria-pressed="true"]{background:var(--primary,#2f6f5e);color:var(--primary-foreground,#fff);border-color:transparent}
+.chip:disabled{opacity:.5;cursor:default}
+
+.tabs{display:flex;gap:6px;margin-top:14px;align-items:center;flex-wrap:wrap}
+.tabs .tip{font-size:12.5px;color:var(--muted-foreground,#6b7280);margin-left:4px}
+.panel{margin-top:8px;border:1px solid var(--border,#e2e5e3);border-radius:12px;padding:10px 12px;background:var(--card,#fff);color:var(--card-foreground,#1f2328)}
+.panel[hidden]{display:none}
+.who{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.who button{display:flex;align-items:center;gap:6px;padding:3px 10px 3px 3px;border-radius:999px;border:1px solid var(--border,#e2e5e3);background:none;color:inherit;font-size:13.5px;line-height:1.25;text-align:left}
+.who button.all{padding:3px 12px;min-height:38px}
+.who button[aria-pressed="true"]{border-color:var(--primary,#2f6f5e);box-shadow:inset 0 0 0 1px var(--primary,#2f6f5e)}
+.who svg{width:30px;height:30px;background:#e3ece6;border-radius:50%;flex:none}
+.who small{display:block;font-size:11.5px;color:var(--muted-foreground,#6b7280)}
+.who small.you{color:#d2432f}
+.sum{display:flex;gap:12px;align-items:center;margin:0 0 10px;padding:8px 12px;border-radius:12px;background:var(--secondary,#f1f3f2);color:var(--secondary-foreground,#1f2328)}
+.sum svg{width:52px;height:52px;background:#e3ece6;border-radius:14px;flex:none}
+.sum b{font-family:var(--xp-round);font-size:16px;display:block}
+.sum span{font-size:13px;opacity:.8}
+.trail{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:3px;font-size:12.5px}
+.feed{max-height:470px;overflow:auto;display:grid;gap:12px;padding:2px 4px 2px 0}
+.msg{display:grid;grid-template-columns:38px minmax(0,1fr);gap:8px;align-items:start}
+.msg .av svg{width:38px;height:38px;background:#e3ece6;border-radius:50%;display:block}
+.msg .nm{font-size:12.5px;color:var(--muted-foreground,#6b7280);display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:3px}
+.msg .nm b{font-family:var(--xp-round);font-weight:600;color:var(--card-foreground,#1f2328);font-size:13.5px}
+.place{display:inline-flex;gap:3px;align-items:center;border:1px solid var(--border,#e2e5e3);border-radius:999px;padding:0 7px 0 5px;font-size:12px;line-height:1.6}
+.place svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.bub{display:inline-block;max-width:min(100%,34em);padding:8px 12px;border-radius:4px 16px 16px 16px;background:var(--secondary,#f1f3f2);color:var(--secondary-foreground,#1f2328);font-size:14.5px;line-height:1.6}
+.bub .tag{display:block;font-size:12px;font-family:var(--xp-round);opacity:.75}
+.bub.letter{background:#fffaf0;color:#2b2f3a;border:1.5px solid #2b2f3a;border-radius:6px;font-family:"Kaiti SC",STKaiti,KaiTi,var(--xp-round);font-size:15.5px;box-shadow:3px 3px 0 rgba(43,47,58,.14)}
+.bub.seal{background:#fff1ee;color:#7a2015;border:1.5px solid #d2432f}
+.bub.result{border-left:4px solid #2f6f5e;border-radius:4px 16px 16px 4px}
+.bub.fail{background:none;border:1.5px dashed var(--border,#c9cdd2);color:var(--muted-foreground,#6b7280)}
+.bub.plain{background:none;border:1.5px dashed var(--border,#c9cdd2);color:var(--muted-foreground,#6b7280);font-size:13.5px}
+.bub.plain code{font:12.5px var(--font-mono,ui-monospace,Menlo,monospace)}
+.dots{display:inline-flex;gap:3px;margin-left:6px;vertical-align:middle}
+.dots i{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.3;animation:xp-dot 1s infinite}
+.dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
+@keyframes xp-dot{50%{opacity:1}}
+.checks{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.checks span{font-size:12px;border-radius:999px;padding:0 8px;border:1px solid #2f6f5e;color:#2f6f5e;background:var(--card,#fff)}
+.checks span.no{border-color:var(--border,#c9cdd2);color:var(--muted-foreground,#6b7280);text-decoration:line-through}
+.quote{margin:5px 0 0;padding:2px 0 2px 9px;border-left:3px solid currentColor;font-size:13px;opacity:.8}
+.msg.you{grid-template-columns:minmax(0,1fr);justify-items:end}
+.msg.you .nm{justify-content:flex-end}
+.msg.you .bub{background:var(--primary,#2f6f5e);color:var(--primary-foreground,#fff);border-radius:16px 4px 16px 16px}
+details.raw{margin-top:3px;font-size:12.5px;color:var(--muted-foreground,#6b7280)}
+details.raw summary{cursor:pointer;width:max-content}
+details.raw dl{margin:4px 0 0;display:grid;grid-template-columns:max-content 1fr;gap:2px 10px}
+details.raw dt{opacity:.8}
+details.raw dd{margin:0;color:var(--card-foreground,#1f2328)}
+details.raw code{font:12px var(--font-mono,ui-monospace,Menlo,monospace)}
+.nb-empty{font-size:14px;color:var(--muted-foreground,#6b7280);margin:6px 0}
+.today{display:flex;gap:8px;align-items:flex-start;margin:10px 0 0;font-size:12.5px;color:var(--muted-foreground,#6b7280);line-height:1.5}
+.today input{margin-top:3px;accent-color:var(--primary,#2f6f5e)}
+@media (prefers-reduced-motion:reduce){.dots i{animation:none}}
+
+/* 场景内：固定色板，只作用于这幅画 */
+.ik{stroke:#2b2f3a;stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}
+#scene .actor{cursor:pointer}
+.actor .ring{opacity:0}
+.actor.sel .ring{opacity:1}
+.actor .eyes{display:none}
+.actor[data-face="open"] .eyes-open,.actor[data-face="closed"] .eyes-closed,.actor[data-face="happy"] .eyes-happy,.actor[data-face="dizzy"] .eyes-dizzy{display:inline}
+.actor .bob{animation:xp-bob 2.6s ease-in-out infinite}
+.actor.walking .bob{animation:xp-hop .3s ease-in-out infinite alternate}
+.actor.sleeping .bob{animation:xp-breathe 3.2s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
+.actor .arm{transform-box:fill-box;transition:transform .2s}
+.actor .arm-l{transform-origin:65% 10%;transform:rotate(14deg)}
+.actor .arm-r{transform-origin:35% 10%;transform:rotate(-14deg)}
+.actor.asking .arm-l{transform:rotate(152deg)}
+.actor.working .arm-r{animation:xp-tap .3s ease-in-out infinite alternate}
+.actor .zz{display:none;font-size:15px;fill:#5a6072;animation:xp-zz 2.4s ease-in-out infinite}
+.actor.sleeping .zz{display:inline}
+.actor .steam{animation:xp-zz 2s ease-in-out infinite}
+.actor .tag{font-size:12.5px;fill:#2b2f3a;paint-order:stroke;stroke:#fff8;stroke-width:3px}
+.station .peek{opacity:0;transition:opacity .2s}
+.station.on .peek{opacity:1}
+.station .pick{transform-box:fill-box;transition:transform .25s}
+.station.on .pick{transform:translateY(-10px) rotate(-9deg)}
+.station .scr{transition:fill .2s}
+#st-computer.on .scr{fill:#eafff5}
+#st-computer .ln{opacity:.22}
+#st-computer.on .ln{opacity:1;animation:xp-type 1s steps(2) infinite}
+#st-computer.on .ln:nth-child(2n){animation-delay:.35s}
+#st-tv .tvbar{transform-box:fill-box;transform-origin:50% 100%;opacity:.25}
+#st-tv.on .scr{fill:#2f3a55}
+#st-tv.on .tvbar{opacity:1;animation:xp-bar 1.1s ease-in-out infinite alternate}
+#st-tv.on .tvbar:nth-child(2n){animation-delay:.4s}
+#st-bench .gear{transform-box:fill-box;transform-origin:center}
+#st-bench.on .gear{animation:xp-spin 1.6s linear infinite}
+#deskphone.ring{animation:xp-ring .09s linear infinite alternate;transform-box:fill-box;transform-origin:50% 100%}
+#talk text,#bubbles text{font-size:14px}
+@keyframes xp-bob{50%{transform:translateY(-1.6px)}}
+@keyframes xp-hop{to{transform:translateY(-6px)}}
+@keyframes xp-breathe{50%{transform:scaleY(.955)}}
+@keyframes xp-tap{to{transform:rotate(-78deg)}}
+@keyframes xp-zz{0%{opacity:0;transform:translate(0,4px)}40%{opacity:1}100%{opacity:0;transform:translate(6px,-12px)}}
+@keyframes xp-type{50%{opacity:.35}}
+@keyframes xp-bar{to{transform:scaleY(.45)}}
+@keyframes xp-spin{to{transform:rotate(360deg)}}
+@keyframes xp-ring{from{transform:rotate(-7deg)}to{transform:rotate(7deg)}}
+@media (prefers-reduced-motion:reduce){.actor .bob,.actor .zz,.actor .steam{animation:none}}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>玄圃小院</h1>
+  <p class="lead">一次请求的执行记录，画成一间小院：管家怎么交代，匠人在哪儿忙，哪一步停下来等你。选一句话看它被办完，点任意角色听它讲自己做了什么。</p>
+
+  <div class="scns" role="group" aria-label="选一句对管家说的话">
+    <button class="scn" data-s="solo" aria-pressed="true"><b>「上月差旅报销还有哪几笔没付？」</b><span>一位匠人，管家当面交代</span></button>
+    <button class="scn" data-s="para" aria-pressed="false"><b>「周五去拜访云杉科技，帮我把材料备好」</b><span>三位匠人，写信分头办，中途要你盖章</span></button>
+    <button class="scn" data-s="consult" aria-pressed="false"><b>「这家供应商的报价能不能接？」</b><span>两位匠人围桌会诊，最后你来裁决</span></button>
+  </div>
+
+  <div class="stagewrap"><div class="stage">
+    <svg id="scene" viewBox="0 0 900 520" role="img" aria-label="小院场景：管家与五位匠人，过程见下方文字">
+      <g id="back"></g><g id="actors"></g><g id="fx"></g><g id="talk"></g><g id="bubbles"></g>
+    </svg>
+    <div class="gate" id="gate" hidden></div>
+  </div></div>
+
+  <div class="bar">
+    <p id="cap" aria-live="polite"></p>
+    <div class="ctl">
+      <button class="chip" id="pp">暂停</button>
+      <button class="chip" id="sp" aria-pressed="false">2 倍速</button>
+      <button class="chip" id="re">重播</button>
+    </div>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="细节">
+    <button class="chip" id="tab-nb" role="tab" aria-pressed="true">经过</button>
+    <button class="chip" id="tab-tree" role="tab" aria-pressed="false">执行树</button>
+    <span class="tip">点小院里任意一个角色，只听它讲。</span>
+  </div>
+  <div class="panel" id="p-nb">
+    <div class="who" id="nbwho" role="group" aria-label="看谁的经过"></div>
+    <div id="nbhead"></div>
+    <div class="feed" id="nblog"></div>
+    <label class="today"><input type="checkbox" id="today"><span>只显示平台今天给得出的内容。匠人自己说的话（为什么这么做、查到了什么）现在不外发，要新开放才有；勾上看看今天实际能显示成什么样。</span></label>
+  </div>
+  <div class="panel" id="p-tree" hidden>
+    <div id="tree"></div>
+    <p class="hint">上面的画面只由这些事实驱动：谁、父子关系、类型、名字、状态。演示里的事实是手写的，形状与进展接口推送的一致；工具名为示意。</p>
+  </div>
+
+  <h2>换个角色</h2>
+  <p class="sub">每个角色由样子、颜色、配饰三样拼成，改了立刻在小院里生效，并记在这台设备上。</p>
+  <div class="custom" id="custom"></div>
+
+  <h2>画面和记录怎么对上</h2>
+  <p class="sub">每个动作都对应一条已有的事实，没有为了好看编出来的情节。<span class="red">红色</span>只用在轮到你的地方。</p>
+  <div class="legend">
+    <section><h3>管家怎么交代</h3><dl>
+      <div><dt>走过去当面说</dt><dd>派给一位匠人，会话承载，匠人当场开工</dd></div>
+      <div><dt>写信，信飞过去</dt><dd>任务承载：持久任务，进程重启也不丢</dd></div>
+      <div><dt>几封信一起寄</dt><dd>编组「并行」，各办一部分，互不可见</dd></div>
+      <div><dt>请到圆桌当面说</dt><dd>编组「会诊」，各给结论，比对后才前进</dd></div>
+      <div><dt>文件夹传给下一位</dt><dd>编组「接力」（这次演示没放）</dd></div>
+      <div><dt>电话铃响</dt><dd>匠人有问题。管家只按你的原话代答，否则转问你</dd></div>
+    </dl></section>
+    <section><h3>匠人在哪儿忙</h3><dl>
+      <div><dt>档案柜</dt><dd>查记录、查库类工具</dd></div>
+      <div><dt>电脑</dt><dd>连接器与外部接口（工单、银行、飞书）</dd></div>
+      <div><dt>书架</dt><dd>读技能、读资料</dd></div>
+      <div><dt>工作台</dt><dd>沙盒里跑脚本</dd></div>
+      <div><dt>看板</dt><dd>只读报表、看板</dd></div>
+      <div><dt>小床</dt><dd>排队中，或在等外部结果</dd></div>
+    </dl></section>
+    <section><h3>神态</h3><dl>
+      <div><dt>在垫子上打盹</dt><dd>你此刻能用、但没活的匠人</dd></div>
+      <div><dt>管家端茶</dt><dd>管家在等匠人</dd></div>
+      <div><dt class="red">举着纸，红圈空着</dt><dd>写入动作停下，等你盖章</dd></div>
+      <div><dt>晕了</dt><dd>失败。如实上报，不自动重跑</dd></div>
+      <div><dt>放大镜加五个勾</dt><dd>验收：到终态、成功、有成果、无未决确认、无未知结果</dd></div>
+    </dl></section>
+  </div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const NS='http://www.w3.org/2000/svg', INK='#2b2f3a';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const wide=c=>c.charCodeAt(0)>0x2000;
+const textW=(s,fs=14)=>[...s].reduce((w,c)=>w+(wide(c)?fs:fs*.58),0);
+const wrap=(s,n)=>{const out=[];let cur='',w=0;for(const c of s){const cw=wide(c)?1:.58;if(w+cw>n&&!'，。？！、：；）」》'.includes(c)){out.push(cur);cur='';w=0;}cur+=c;w+=cw;}if(cur)out.push(cur);return out;};
+const el=(tag,attrs,parent)=>{const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;};
+const S=`stroke="${INK}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"`;
+const L={back:$('#back'),actors:$('#actors'),fx:$('#fx'),talk:$('#talk'),bubbles:$('#bubbles')};
+
+/* ---------- 角色：样子 × 颜色 × 配饰 ---------- */
+const COLORS={white:{n:'米白',b:'#f7f2e8',d:'#d9cfbd'},apricot:{n:'杏',b:'#f2b872',d:'#cf8f45'},peach:{n:'桃',b:'#f4a9a3',d:'#d47f78'},yellow:{n:'鹅黄',b:'#f6dc7a',d:'#d6b548'},green:{n:'竹青',b:'#a3d3b0',d:'#74ab85'},blue:{n:'天青',b:'#a4c9e3',d:'#74a2c2'},purple:{n:'藕紫',b:'#c9b8e6',d:'#9f8ac4'}};
+const SPECIES={fox:'狐',cat:'猫',rabbit:'兔',bear:'熊',chick:'小鸡',sprout:'芽'};
+const ACCS={none:'不戴',bowtie:'领结',monocle:'单片镜',glasses:'眼镜',headset:'耳机',apron:'围裙',hat:'草帽'};
+const TOP={rabbit:120,fox:108,sprout:108,chick:104};
+const DEFAULT_CAST={
+  butler:{name:'管家',species:'fox',color:'apricot',acc:'bowtie'},
+  finance:{name:'财务匠人',species:'bear',color:'white',acc:'glasses'},
+  support:{name:'客服匠人',species:'rabbit',color:'peach',acc:'headset'},
+  reader:{name:'阅读匠人',species:'cat',color:'purple',acc:'monocle'},
+  office:{name:'办公匠人',species:'sprout',color:'green',acc:'apron'},
+  review:{name:'审阅匠人',species:'chick',color:'yellow',acc:'hat'},
+};
+const CAST=JSON.parse(JSON.stringify(DEFAULT_CAST));
+try{const saved=JSON.parse(localStorage.getItem('xuanpu-courtyard-cast')||'null');if(saved)for(const k in CAST)if(saved[k])Object.assign(CAST[k],saved[k]);}catch(e){/* 存储不可用时用默认角色 */}
+const saveCast=()=>{try{localStorage.setItem('xuanpu-courtyard-cast',JSON.stringify(CAST));}catch(e){/* 只是不记住 */}};
+
+function charMarkup(c){
+  const col=COLORS[c.color]||COLORS.white,b=col.b,d=col.d;
+  let back='',front='',mouth=`<path d="M-3,-27 q3,3.2 6,0" fill="none" ${S}/>`;
+  if(c.species==='cat')back=`<path d="M-23,-40 L-20,-63 L-4,-50Z" fill="${b}" ${S}/><path d="M23,-40 L20,-63 L4,-50Z" fill="${b}" ${S}/><path d="M-18.5,-48 L-17.5,-57 L-10,-51Z" fill="#f7b5ae"/><path d="M18.5,-48 L17.5,-57 L10,-51Z" fill="#f7b5ae"/>`;
+  if(c.species==='rabbit')back=`<ellipse cx="-11" cy="-64" rx="6.5" ry="17" transform="rotate(-9 -11 -64)" fill="${b}" ${S}/><ellipse cx="11" cy="-64" rx="6.5" ry="17" transform="rotate(9 11 -64)" fill="${b}" ${S}/><ellipse cx="-11" cy="-65" rx="2.6" ry="10" transform="rotate(-9 -11 -64)" fill="#f7b5ae"/><ellipse cx="11" cy="-65" rx="2.6" ry="10" transform="rotate(9 11 -64)" fill="#f7b5ae"/>`;
+  if(c.species==='bear')back=`<circle cx="-18" cy="-50" r="9" fill="${b}" ${S}/><circle cx="18" cy="-50" r="9" fill="${b}" ${S}/><circle cx="-18" cy="-50" r="4" fill="${d}"/><circle cx="18" cy="-50" r="4" fill="${d}"/>`;
+  if(c.species==='fox'){back=`<path d="M20,-6 C42,-2 48,-24 37,-36 C39,-22 31,-17 20,-19Z" fill="${b}" ${S}/><path d="M37,-36 C40,-30 39,-25 36,-22 C36,-27 35,-30 33,-32Z" fill="#fff" ${S}/><path d="M-25,-38 L-24,-67 L-4,-51Z" fill="${b}" ${S}/><path d="M25,-38 L24,-67 L4,-51Z" fill="${b}" ${S}/><path d="M-24.4,-58 L-24,-67 L-17.5,-61.5Z" fill="${INK}"/><path d="M24.4,-58 L24,-67 L17.5,-61.5Z" fill="${INK}"/>`;front=`<ellipse cx="0" cy="-26" rx="10" ry="6.5" fill="#fff" opacity=".85"/>`;}
+  if(c.species==='chick'){back=`<path d="M-4,-50 q-6,-12 2,-15 q-1,6 2,8 q0,-8 7,-9 q-3,8 -1,16Z" fill="${b}" ${S}/>`;mouth=`<path d="M-4.5,-28.5 L4.5,-28.5 L0,-22.5Z" fill="#f2a03b" ${S}/>`;}
+  if(c.species==='sprout')back=`<path d="M0,-48 V-62" fill="none" stroke="#3f8a5a" stroke-width="3" stroke-linecap="round"/><path d="M0,-62 C-13,-75 -21,-62 -1,-60Z" fill="#7cc48f" ${S}/><path d="M0,-62 C13,-77 23,-64 1,-60Z" fill="#9bd6a8" ${S}/>`;
+  const acc={
+    none:'',
+    bowtie:`<path d="M0,-17 L-10,-22.5 L-10,-11.5Z M0,-17 L10,-22.5 L10,-11.5Z" fill="${INK}" ${S}/><circle cx="0" cy="-17" r="2.6" fill="#f2c14e" stroke="${INK}" stroke-width="1.5"/>`,
+    monocle:`<circle cx="9" cy="-34" r="7" fill="rgba(255,255,255,.4)" stroke="#a87a22" stroke-width="2"/><path d="M15.5,-31 q6,9 2,18" fill="none" stroke="#a87a22" stroke-width="1.5" stroke-linecap="round"/>`,
+    glasses:`<circle cx="-9" cy="-34" r="6.5" fill="rgba(255,255,255,.4)" stroke="${INK}" stroke-width="1.8"/><circle cx="9" cy="-34" r="6.5" fill="rgba(255,255,255,.4)" stroke="${INK}" stroke-width="1.8"/><path d="M-2.5,-34 h5" stroke="${INK}" stroke-width="1.8"/>`,
+    headset:`<path d="M-24,-36 C-24,-64 24,-64 24,-36" fill="none" stroke="${INK}" stroke-width="3.2" stroke-linecap="round"/><rect x="-30" y="-42" width="9" height="14" rx="3.5" fill="#5a6072" ${S}/><rect x="21" y="-42" width="9" height="14" rx="3.5" fill="#5a6072" ${S}/><path d="M-25,-28 q1,9 13,7" fill="none" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/><circle cx="-11" cy="-21" r="2.2" fill="${INK}"/>`,
+    apron:`<path d="M-14,-21 h28 v14 q0,6 -6,6 h-16 q-6,0 -6,-6Z" fill="#fffaf0" ${S}/><rect x="-5.5" y="-14" width="11" height="8" rx="2" fill="none" stroke="${INK}" stroke-width="1.5"/>`,
+    hat:`<ellipse cx="0" cy="-49" rx="27" ry="6.5" fill="#e8c56a" ${S}/><path d="M-14,-50 C-14,-66 14,-66 14,-50Z" fill="#e8c56a" ${S}/><path d="M-13.5,-53 q13.5,4 27,0" fill="none" stroke="#2f6f5e" stroke-width="3"/>`,
+  }[c.acc]||'';
+  return `${back}
+  <ellipse cx="-10" cy="-1.5" rx="7.5" ry="4" fill="${d}" ${S}/><ellipse cx="10" cy="-1.5" rx="7.5" ry="4" fill="${d}" ${S}/>
+  <path d="M-26,-27 C-26,-57 26,-57 26,-27 C26,-7 17,-1 0,-1 C-17,-1 -26,-7 -26,-27Z" fill="${b}" ${S}/>
+  <ellipse cx="0" cy="-13.5" rx="14" ry="10.5" fill="#fff" opacity=".42"/>
+  <ellipse class="arm arm-l" cx="-24.5" cy="-19" rx="5.5" ry="9" fill="${b}" ${S}/><ellipse class="arm arm-r" cx="24.5" cy="-19" rx="5.5" ry="9" fill="${b}" ${S}/>
+  ${front}
+  <ellipse cx="-17" cy="-27" rx="4.2" ry="2.6" fill="#f08a8a" opacity=".5"/><ellipse cx="17" cy="-27" rx="4.2" ry="2.6" fill="#f08a8a" opacity=".5"/>
+  <g class="eyes eyes-open"><circle cx="-9" cy="-34" r="3.1" fill="${INK}"/><circle cx="9" cy="-34" r="3.1" fill="${INK}"/><circle cx="-8" cy="-35.2" r="1.1" fill="#fff"/><circle cx="10" cy="-35.2" r="1.1" fill="#fff"/></g>
+  <g class="eyes eyes-closed"><path d="M-12.5,-34 q3.5,3.4 7,0 M5.5,-34 q3.5,3.4 7,0" fill="none" ${S}/></g>
+  <g class="eyes eyes-happy"><path d="M-12.5,-32.5 q3.5,-5 7,0 M5.5,-32.5 q3.5,-5 7,0" fill="none" ${S}/></g>
+  <g class="eyes eyes-dizzy"><path d="M-12,-37 l6,6 m0,-6 l-6,6 M6,-37 l6,6 m0,-6 l-6,6" fill="none" ${S}/></g>
+  ${mouth}${acc}`;
+}
+
+function mini(key,size,face){return `<svg viewBox="-40 -86 80 96" width="${size}" height="${size}" aria-hidden="true"><g class="actor" data-face="${face||'open'}"><g class="bob">${charMarkup(CAST[key])}</g></g></svg>`;}
+const PROPS={
+  letter:`<g transform="translate(30,-22) rotate(-10)"><rect x="-10" y="-7" width="20" height="14" rx="2" fill="#fffaf0" ${S}/><path d="M-10,-6 L0,2 L10,-6" fill="none" ${S}/></g>`,
+  scroll:`<g transform="translate(31,-24) rotate(12)"><rect x="-5" y="-12" width="10" height="24" rx="4.5" fill="#fffaf0" ${S}/><path d="M-5,-3 h10 M-5,3 h10" stroke="#5e9c76" stroke-width="2"/></g>`,
+  phone:`<path d="M25,-45 c-6,3 -6,18 0,21 l4,-3 c-3,-3 -3,-12 0,-15Z" fill="${INK}" ${S}/>`,
+  tea:`<g transform="translate(30,-19)"><path d="M-7,-5 h14 v5 a7,6 0 0 1 -14,0Z" fill="#fffaf0" ${S}/><path d="M7,-3 q5,0 4,4 q-1,3 -5,2" fill="none" ${S}/><path class="steam" d="M-2,-9 q-3,-4 0,-7 M3,-9 q-3,-4 0,-7" fill="none" stroke="#8b92a1" stroke-width="1.6" stroke-linecap="round"/></g>`,
+  magnifier:`<g transform="translate(31,-30)"><path d="M6,6 l8,9" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><circle r="8.5" fill="rgba(255,255,255,.6)" ${S}/></g>`,
+  quill:`<g transform="translate(30,-24) rotate(20)"><path d="M0,10 L-1,-4 C-6,-12 2,-22 6,-22 C8,-14 5,-8 1,-4Z" fill="#fffaf0" ${S}/></g>`,
+  book:`<g transform="translate(30,-22)"><rect x="-10" y="-8" width="20" height="15" rx="2" fill="#7fa99b" ${S}/><path d="M0,-8 v15" fill="none" ${S}/></g>`,
+  paper:`<g transform="translate(32,-34)"><rect x="-11" y="-14" width="22" height="28" rx="2.5" fill="#fffaf0" ${S}/><path d="M-6,-8 h12 M-6,-3 h12 M-6,2 h6" stroke="#9aa0ad" stroke-width="1.6" stroke-linecap="round"/><circle cx="4" cy="8" r="4.4" fill="none" stroke="#d2432f" stroke-width="1.7" stroke-dasharray="2.2 2"/></g>`,
+  stamped:`<g transform="translate(32,-34)"><rect x="-11" y="-14" width="22" height="28" rx="2.5" fill="#fffaf0" ${S}/><path d="M-6,-8 h12 M-6,-3 h12 M-6,2 h6" stroke="#9aa0ad" stroke-width="1.6" stroke-linecap="round"/><circle cx="4" cy="8" r="4.8" fill="#d2432f"/></g>`,
+};
+const FX={
+  letter:`<rect x="-12" y="-8" width="24" height="16" rx="2" fill="#fffaf0" ${S}/><path d="M-12,-7 L0,2 L12,-7" fill="none" ${S}/>`,
+  note:`<rect x="-12" y="-8" width="24" height="16" rx="2" fill="#d9dce3" ${S}/><path d="M-12,-7 L0,2 L12,-7" fill="none" ${S}/>`,
+  scroll:`<rect x="-6" y="-13" width="12" height="26" rx="5" fill="#fffaf0" ${S}/><path d="M-6,-3 h12 M-6,3 h12" stroke="#5e9c76" stroke-width="2"/>`,
+};
+
+/* ---------- 时钟：可暂停、可倍速、换情景时整体作废 ---------- */
+const CANCEL=Symbol('cancel');let vt=0;
+const clock={speed:1,paused:false,gen:0,tasks:new Set()};
+let last=performance.now();
+function tick(now){
+  const dt=Math.min(64,now-last);last=now;
+  if(!clock.paused){
+    const step=dt*clock.speed;vt+=step;
+    for(const t of [...clock.tasks]){t.left-=step;if(t.onTick)t.onTick(1-Math.max(0,t.left)/t.total);if(t.left<=0){clock.tasks.delete(t);t.resolve();}}
+    sortActors();
+  }
+  requestAnimationFrame(tick);
+}
+const run=(ms,onTick)=>new Promise((resolve,reject)=>clock.tasks.add({left:ms,total:Math.max(1,ms),onTick,resolve,reject}));
+const sleep=ms=>run(ms);
+const ease=p=>p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+let signals={};
+const sig=n=>signals[n]||(signals[n]=(()=>{let r;const p=new Promise(res=>{r=res;});return{p,r};})());
+const fire=n=>sig(n).r();
+const waitFor=n=>Promise.race([sig(n).p,sleep(20000)]);
+
+function sortActors(){
+  const kids=[...L.actors.children],sorted=kids.slice().sort((a,b)=>a._y()-b._y());
+  if(kids.some((k,i)=>k!==sorted[i]))sorted.forEach(n=>L.actors.appendChild(n));
+}
+function fly(markup,x1,y1,x2,y2,ms,arc){
+  const g=el('g',{},L.fx);g.innerHTML=markup;
+  return run(ms,p=>{const e=ease(p);g.setAttribute('transform',`translate(${(x1+(x2-x1)*e).toFixed(1)},${(y1+(y2-y1)*e-arc*4*e*(1-e)).toFixed(1)}) rotate(${((1-e)*-20).toFixed(1)})`);}).finally(()=>g.remove());
+}
+function bubbleMarkup(text,kind){
+  const w=textW(text)+24,h=28,seal=kind==='seal',bad=kind==='bad';
+  const fill=seal?'#fff1ee':bad?'#e6e8ee':'#ffffff',stroke=seal?'#d2432f':INK,color=seal?'#b3311f':INK;
+  return `<path d="M-6,-1 L0,8 L6,-1Z" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round"/><rect class="bx" x="${-w/2}" y="${-h}" width="${w}" height="${h}" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="2"/><path d="M-4.5,-1 h9" stroke="${fill}" stroke-width="3"/><text class="bt" x="0" y="-9" text-anchor="middle" fill="${color}">${esc(text)}</text>`;
+}
+
+class Actor{
+  constructor(key,x,y){
+    this.key=key;this.x=x;this.y=y;this.home={x,y};this.chain=Promise.resolve();this.bw=0;
+    this.g=el('g',{class:'actor','data-face':'open'},L.actors);this.g._y=()=>this.y;
+    this.g.addEventListener('click',()=>select(key));
+    this.g.innerHTML=`<ellipse cx="0" cy="1" rx="26" ry="6" fill="#2b2f3a" opacity=".13"/><ellipse class="ring" cx="0" cy="1" rx="33" ry="10" fill="none" stroke="#2f6f5e" stroke-width="2.6" stroke-dasharray="6 4"/><g class="bob"><g transform="scale(1.2)"><g class="skin"></g><g class="prop"></g></g><text class="zz" x="26" y="-74">z</text></g><text class="tag" x="0" y="19" text-anchor="middle"></text>`;
+    this.b=el('g',{},L.bubbles);
+    this.skin();this.place();
+  }
+  get cfg(){return CAST[this.key];}
+  skin(){this.g.querySelector('.skin').innerHTML=charMarkup(this.cfg);this.g.querySelector('.tag').textContent=this.cfg.name;this.place();}
+  place(){
+    this.g.setAttribute('transform',`translate(${this.x.toFixed(1)},${this.y.toFixed(1)})`);
+    // 气泡不出画：贴边时只挪气泡框，尖角仍指着角色
+    const half=this.bw/2,shift=Math.max(half+4-this.x,Math.min(0,896-half-this.x));
+    this.b.setAttribute('transform',`translate(${this.x.toFixed(1)},${(this.y-(TOP[this.cfg.species]||100)).toFixed(1)})`);
+    this.b.querySelectorAll('.bx,.bt').forEach(n=>n.setAttribute('transform',`translate(${shift.toFixed(1)},0)`));
+  }
+  do(fn){this.chain=this.chain.then(()=>fn(this)).catch(e=>{if(e!==CANCEL)console.error(e);});return this.chain;}
+  async walk(x,y){
+    const sx=this.x,sy=this.y,dx=x-sx,dy=y-sy,dist=Math.hypot(dx,dy);if(dist<2)return;
+    this.g.classList.add('walking');
+    await run(dist/.27,p=>{const e=ease(p);this.x=sx+dx*e;this.y=sy+dy*e;this.place();});
+    this.g.classList.remove('walking');
+  }
+  face(f){this.g.dataset.face=f;}
+  pose(p){this.g.classList.remove('working','asking','sleeping');if(p)this.g.classList.add(p);}
+  nap(){this.pose('sleeping');this.face('closed');}
+  wake(){this.pose(null);this.face('open');}
+  hold(k){this.g.querySelector('.prop').innerHTML=k?PROPS[k]:'';}
+  bubble(t,kind){this.b.innerHTML=t?bubbleMarkup(t,kind):'';this.bw=t?textW(t)+24:0;this.place();}
+  async say(t,ms,kind){this.bubble(t,kind);await sleep(ms);this.bubble(null);}
+}
+
+/* ---------- 小院：后墙、家具、工位 ---------- */
+const HOMES={finance:300,support:400,reader:500,office:600,review:700};
+const ST={cabinet:{x:345,y:248,id:'st-cabinet'},books:{x:455,y:248,id:'st-books'},computer:{x:580,y:250,id:'st-computer'},tv:{x:715,y:256,id:'st-tv'},bed:{x:835,y:238,id:'st-bed'},bench:{x:810,y:422,id:'st-bench'}};
+const SEATS={L:{x:352,y:450},R:{x:548,y:450}};
+function shelfMarkup(){
+  const cols=['#f4a9a3','#f2c14e','#7fa99b','#a4c9e3','#c9b8e6','#fffaf0','#5e9c76'];
+  let m=`<rect class="ik" x="-50" y="-130" width="100" height="130" rx="6" fill="#b98a5e"/>`,k=0;
+  for(let r=0;r<3;r++){
+    const y=-123+r*41;m+=`<rect x="-43" y="${y}" width="86" height="34" rx="2" fill="#7a573c"/>`;
+    let x=-40;
+    while(x<33){const w=6+((k*5)%4)*1.5,h=21+((k*7)%4)*3,pick=(r===0&&k===4)?' class="pick"':'';m+=`<rect${pick} x="${x}" y="${y+34-h}" width="${w}" height="${h}" rx="1.5" fill="${cols[k%cols.length]}" stroke="${INK}" stroke-width="1.4"/>`;x+=w+1.5;k++;}
+  }
+  return m;
+}
+function buildRoom(){
+  const planks=[244,292,350,418,492].map(y=>`<path d="M0,${y} H900" stroke="#dfcba6" stroke-width="2"/>`).join('');
+  const cushions=Object.values(HOMES).map(x=>`<ellipse cx="${x}" cy="334" rx="33" ry="9.5" fill="#c9dfd2" stroke="#9dbfae" stroke-width="2"/>`).join('');
+  const drawer=(y,mid)=>`<g class="${mid?'dr-mid':''}">${mid?`<g class="peek"><rect class="ik" x="-22" y="${y-11}" width="14" height="14" rx="2" fill="#f2c14e"/><rect class="ik" x="-4" y="${y-14}" width="14" height="17" rx="2" fill="#fffaf0"/><rect class="ik" x="13" y="${y-9}" width="12" height="12" rx="2" fill="#f4a9a3"/></g>`:''}<rect class="ik" x="-30" y="${y}" width="60" height="31" rx="4" fill="#a9c9bb"/><rect x="-9" y="${y+12}" width="18" height="6" rx="3" fill="${INK}"/></g>`;
+  const label=(x,y,t)=>`<text x="${x}" y="${y}" text-anchor="middle" font-size="12.5" fill="#4a5262">${t}</text>`;
+  L.back.innerHTML=`
+  <rect width="900" height="200" fill="#e3ece6"/><rect y="166" width="900" height="34" fill="#cddbd3"/><path d="M0,166 H900" stroke="#b5c8bd" stroke-width="2"/>
+  <rect y="200" width="900" height="320" fill="#ecdcc0"/>${planks}<path class="ik" d="M0,200 H900" fill="none"/>
+  <g transform="translate(80,98)"><circle r="54" fill="#bfe0d0" stroke="#8a6243" stroke-width="7"/><circle r="50.5" fill="none" stroke="${INK}" stroke-width="2"/><path d="M-30,40 q6,-44 -4,-78 M-18,44 q10,-40 4,-70" fill="none" stroke="#5e9c76" stroke-width="3" stroke-linecap="round"/><path d="M-33,-8 q-14,-4 -16,-16 q13,2 16,16Z M-30,-24 q10,-10 22,-8 q-8,10 -22,8Z M-14,6 q12,-8 22,-2 q-10,8 -22,2Z" fill="#5e9c76"/><circle cx="14" cy="6" r="13" fill="${INK}"/><path d="M-9,50 C-9,26 37,26 37,48 Q14,58 -9,50Z" fill="${INK}"/></g>
+  ${label(80,180,'你在窗外')}
+  <g transform="translate(868,0)"><path class="ik" d="M0,0 V24" fill="none"/><ellipse class="ik" cx="0" cy="44" rx="15" ry="20" fill="#f2c14e"/><path class="ik" d="M-9,27 h18 M-9,61 h18 M0,64 v12" fill="none"/></g>
+  <g transform="translate(520,26)"><rect class="ik" x="-60" y="-16" width="120" height="32" rx="5" fill="#8a6243"/><text x="3" y="7" text-anchor="middle" font-size="19" letter-spacing="6" fill="#f6e7c8" font-family="Kaiti SC,STKaiti,KaiTi,serif">玄圃小院</text></g>
+  <ellipse cx="170" cy="448" rx="152" ry="50" fill="#cfe3d6" stroke="#a9cbb8" stroke-width="2"/><ellipse cx="170" cy="448" rx="138" ry="41" fill="none" stroke="#a9cbb8" stroke-width="2" stroke-dasharray="3 7"/>
+  ${cushions}
+  <g class="station" id="st-cabinet" transform="translate(345,215)"><rect class="ik" x="-37" y="-120" width="74" height="120" rx="7" fill="#7fa99b"/>${drawer(-112)}${drawer(-75,true)}${drawer(-38)}</g>${label(345,88,'档案柜')}
+  <g class="station" id="st-books" transform="translate(455,215)">${shelfMarkup()}</g>${label(455,78,'书架')}
+  <g class="station" id="st-computer" transform="translate(580,215)"><rect class="ik" x="-37" y="-118" width="74" height="52" rx="6" fill="${INK}"/><rect class="scr" x="-31" y="-112" width="62" height="40" rx="3" fill="#9fb8ae"/><g><rect class="ln" x="-25" y="-106" width="30" height="4" rx="2" fill="#2f6f5e"/><rect class="ln" x="-25" y="-98" width="46" height="4" rx="2" fill="#2f6f5e"/><rect class="ln" x="-25" y="-90" width="22" height="4" rx="2" fill="#2f6f5e"/><rect class="ln" x="-25" y="-82" width="38" height="4" rx="2" fill="#2f6f5e"/></g><path class="ik" d="M-7,-66 h14 l3,8 h-20Z" fill="#5a6072"/><rect class="ik" x="-61" y="-58" width="122" height="11" rx="4" fill="#c99a6b"/><rect class="ik" x="-55" y="-47" width="9" height="47" fill="#b98a5e"/><rect class="ik" x="46" y="-47" width="9" height="47" fill="#b98a5e"/><rect class="ik" x="-21" y="-65" width="42" height="7" rx="2" fill="#fffaf0"/></g>${label(580,90,'电脑')}
+  <g class="station" id="st-tv" transform="translate(715,215)"><rect class="ik" x="-53" y="-154" width="106" height="68" rx="7" fill="${INK}"/><rect class="scr" x="-47" y="-148" width="94" height="56" rx="3" fill="#56607a"/><g>${[16,28,20,36,24].map((h,i)=>`<rect class="tvbar" x="${-38+i*16}" y="${-98-h}" width="10" height="${h}" rx="2" fill="${i%2?'#7cc48f':'#f2c14e'}"/>`).join('')}</g><rect class="ik" x="-47" y="-42" width="94" height="42" rx="5" fill="#c99a6b"/><path class="ik" d="M0,-42 V0" fill="none"/><circle cx="-7" cy="-21" r="2.4" fill="${INK}"/><circle cx="7" cy="-21" r="2.4" fill="${INK}"/><rect class="ik" x="24" y="-55" width="16" height="13" rx="2" fill="#d99873"/><path d="M32,-55 q-12,-12 -10,-24 q10,6 10,24Z M32,-55 q10,-14 6,-26 q-9,8 -6,26Z" fill="#5e9c76" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/></g>${label(715,52,'看板')}
+  <g class="station" id="st-bed" transform="translate(835,215)"><rect class="ik" x="-49" y="-82" width="98" height="66" rx="13" fill="#b98a5e"/><rect class="ik" x="-45" y="-32" width="90" height="72" rx="8" fill="#fffaf0"/><ellipse class="ik" cx="0" cy="-22" rx="29" ry="10.5" fill="#ffffff"/></g>${label(835,124,'小床')}`;
+
+  const item=(y,id,markup,x)=>{const g=el('g',{transform:`translate(${x},${y})`,id,class:'station'},L.actors);g._y=()=>y;g.innerHTML=markup;return g;};
+  item(430,'st-desk',`<rect class="ik" x="-80" y="-36" width="160" height="36" rx="5" fill="#b98a5e"/><rect x="-70" y="-28" width="62" height="20" rx="3" fill="none" stroke="#8a6243" stroke-width="2"/><rect x="8" y="-28" width="62" height="20" rx="3" fill="none" stroke="#8a6243" stroke-width="2"/><rect class="ik" x="-87" y="-48" width="174" height="13" rx="5" fill="#c99a6b"/>
+    <g transform="translate(-60,-48)"><g id="deskphone"><rect class="ik" x="-14" y="-11" width="28" height="11" rx="3.5" fill="${INK}"/><path d="M-16,-17 q16,-10 32,0" fill="none" stroke="${INK}" stroke-width="6" stroke-linecap="round"/><circle cx="0" cy="-5.5" r="2.6" fill="#f2c14e"/></g></g>
+    <g transform="translate(62,-48)"><path class="ik" d="M-10,0 a10,10 0 0 1 20,0Z" fill="#f2c14e"/><circle cx="0" cy="-11.5" r="2.2" fill="${INK}"/><rect x="-12" y="-1.5" width="24" height="3.5" rx="1.7" fill="${INK}"/></g>
+    <text x="0" y="-13" text-anchor="middle" font-size="12.5" fill="#f6e7c8">管家台</text>`,170);
+  item(455,'st-table',`<path class="ik" d="M-8,-12 h16 v10 h12 v5 h-40 v-5 h12Z" fill="#b98a5e"/><ellipse class="ik" cx="0" cy="-30" rx="64" ry="20" fill="#c99a6b"/><g transform="translate(0,-38)"><path class="ik" d="M10,-1 q9,-2 9,-9" fill="none"/><ellipse class="ik" rx="12" ry="8.5" fill="#7fa99b"/><circle class="ik" cx="0" cy="-9" r="2.6" fill="#7fa99b"/></g><text x="0" y="16" text-anchor="middle" font-size="12.5" fill="#4a5262">圆桌</text>`,450);
+  item(455,'st-bench',`<rect class="ik" x="-62" y="-30" width="10" height="30" fill="#b98a5e"/><rect class="ik" x="52" y="-30" width="10" height="30" fill="#b98a5e"/><rect class="ik" x="-58" y="-16" width="116" height="7" rx="2" fill="#b98a5e"/><rect class="ik" x="-70" y="-42" width="140" height="13" rx="4" fill="#c99a6b"/><rect class="ik" x="-54" y="-57" width="20" height="15" rx="2" fill="#5a6072"/><g class="gear"><circle class="ik" cx="0" cy="-53" r="10" fill="#f2c14e" stroke-dasharray="5 3.4"/><circle cx="0" cy="-53" r="3.4" fill="${INK}"/></g><rect class="ik" x="30" y="-59" width="24" height="17" rx="2" fill="#7fa99b"/><text x="0" y="16" text-anchor="middle" font-size="12.5" fill="#4a5262">工作台</text>`,810);
+  item(262,'st-blanket',`<rect class="ik" x="-47" y="-8" width="94" height="52" rx="9" fill="#9fcfb2"/><path d="M-47,5 h94" stroke="#fff" stroke-width="3" opacity=".7"/><path d="M-26,20 h8 M-4,28 h8 M18,20 h8" stroke="#74ab85" stroke-width="3" stroke-linecap="round"/><rect class="ik" x="-50" y="38" width="100" height="12" rx="5" fill="#b98a5e"/>`,835).setAttribute('transform','translate(835,215)');
+}
+const stationOn=(s,on)=>document.getElementById(s.id).classList.toggle('on',on);
+const ring=on=>document.getElementById('deskphone').classList.toggle('ring',on);
+
+/* ---------- 对话气泡（你 / 管家回话）、旁白、执行树 ---------- */
+function showUser(t){
+  const lines=wrap(t,12),w=Math.max(...lines.map(l=>textW(l)))+26,h=lines.length*20+16;
+  L.talk.innerHTML=`<g id="said" transform="translate(146,12)"><path d="M2,${h/2-6} l-12,7 l12,5Z" fill="#2f6f5e"/><rect width="${w}" height="${h}" rx="13" fill="#2f6f5e"/><text fill="#fff">${lines.map((l,i)=>`<tspan x="13" y="${25+i*20}">${esc(l)}</tspan>`).join('')}</text></g>`;
+}
+function showReply(t){
+  const lines=wrap(t,16),w=Math.max(...lines.map(l=>textW(l)))+26,h=lines.length*20+16;
+  const g=el('g',{transform:'translate(20,202)'},L.talk);
+  g.innerHTML=`<path d="M52,2 l8,-13 l8,13Z" fill="#fff" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><rect width="${w}" height="${h}" rx="13" fill="#fff" stroke="${INK}" stroke-width="2"/><path d="M54,1 h12" stroke="#fff" stroke-width="3"/><text fill="${INK}">${lines.map((l,i)=>`<tspan x="13" y="${25+i*20}">${esc(l)}</tspan>`).join('')}</text>`;
+}
+const narrate=t=>{if(t)$('#cap').textContent=t;};
+const KIND={butler:'管家',dispatch:'派工',group:'编组',artisan:'匠人',tool:'工具',wait:'等待'};
+const STATE={queued:'排队中',running:'进行中',waiting_children:'等匠人',waiting_input:'等你回复',completed:'已完成',failed:'失败',cancelled:'已取消',unknown:'未知'};
+let spans=new Map();
+function renderTree(){
+  const kids=new Map();
+  for(const s of spans.values()){const p=s.parent||'';if(!kids.has(p))kids.set(p,[]);kids.get(p).push(s);}
+  const ul=p=>{const list=kids.get(p);if(!list)return '';return '<ul>'+list.map(s=>`<li><span class="k">${KIND[s.kind]||s.kind}</span> ${esc(s.name)}<span class="s ${s.state==='waiting_input'?'you':(s.state==='failed'||s.state==='cancelled')?'bad':''}">${STATE[s.state]||s.state}</span>${ul(s.id)}</li>`).join('')+'</ul>';};
+  $('#tree').innerHTML=ul('')||'<span class="k">还没有记录</span>';
+}
+
+
+/* ---------- 经过：像群聊一样，每个角色用自己的话讲做了什么 ---------- */
+const PKG={butler:'平台内置的管家，不属于任何业务包',finance:'来自业务包 finance（1.4.2），本职是「报销核对」',support:'来自业务包 support-desk（2.0.1），本职是「工单整理」',reader:'来自业务包 shared-reader（0.9.3），本职是「资料查找」',office:'来自业务包 office-assistant（3.2.0），本职是「文书」',review:'来自业务包 office-review（1.1.0），本职是「合同审阅」'};
+const PLACE={cabinet:'档案柜',books:'书架',computer:'电脑',tv:'看板',bed:'小床',bench:'工作台'};
+const ICON={
+  cabinet:'<rect x="5" y="2" width="10" height="16" rx="2"/><path d="M5 7.5h10M5 12.5h10M9 5h2M9 10h2M9 15h2"/>',
+  books:'<rect x="3" y="3" width="4" height="14" rx="1"/><rect x="8" y="5" width="4" height="12" rx="1"/><path d="M14 6l3 10.5"/>',
+  computer:'<rect x="3" y="3" width="14" height="10" rx="2"/><path d="M7 17h6M10 13v4"/>',
+  tv:'<rect x="2" y="3" width="16" height="11" rx="2"/><path d="M6 11V8M10 11V6M14 11V9M6 17h8"/>',
+  bed:'<path d="M2 16V6M2 13h16v3M18 13v-2a3 3 0 0 0-3-3H8v5"/><circle cx="5" cy="10" r="1.5"/>',
+  bench:'<path d="M2 9h16M4 9v8M16 9v8M4 13h12"/><circle cx="10" cy="5" r="2.2"/>',
+};
+const placeChip=k=>`<span class="place"><svg viewBox="0 0 20 20" aria-hidden="true">${ICON[k]}</svg>${PLACE[k]}</span>`;
+// 每一步「自己的话」：[开始时说的, 办完补的一句]。按情景与事实标识对应
+const TALK={
+solo:{'ex.b':['要查报销和付款流水。我没有财务系统的权限，去请能办的匠人。'],'tl.b1':['我翻了名册，你现在能用 5 位匠人。这事财务匠人最合适。'],
+  'tl.a1':['我先去档案柜，翻上月已批准的差旅报销单。','翻到 7 张。'],'tl.a2':['再到电脑上对银行流水，把已经付掉的划出去。','5 张已经付了，剩 2 张没找到付款。']},
+para:{'ex.b':['材料有三块：工单、合同和纪要、简报。互不耽误，我请三位匠人同时办。'],'tl.b1':['我翻了名册，挑了客服、阅读、办公三位。'],
+  'gp.1':['我排了张分工单：客服匠人理工单，阅读匠人找合同和纪要，办公匠人做简报。三位同时开工，互相看不到对方的过程。'],
+  'tl.a1':['工单不少，我先到电脑上让工单系统整批导出。','导出任务提交了。'],'wt.a1':['导出要等一会儿，我去小床上眯一下。','导出好了，起床。'],
+  'tl.a4':['导出里只有近三个月的，我再去档案柜对一下更早的记录。','一共 23 张，4 张没关，「对账单延迟」出现了 6 次。'],
+  'tl.a2':['我去书架找现行合同和最近的纪要。','只翻到 2 份合同草稿，没有签过字的版本。'],
+  'tl.a3':['我在工作台上先把简报的版式排出来。','草稿排好了，就差客户全称。'],
+  'tl.b2':['你原话里说过「云杉科技」，我照原话答了办公匠人。'],
+  'tl.a5':['简报好了，我到电脑上准备发给同去的 3 位同事。','发出去了。']},
+consult:{'ex.b':['接不接既要看价钱，也要看条款。我请财务和审阅两位各看一遍，再比对。'],'tl.b1':['我翻了名册，请财务匠人和审阅匠人来会诊。'],
+  'gp.1':['我请两位会诊：同一个问题各给各的结论，互相看不到对方的过程。'],
+  'tl.a1':['我先去看板，看这类采购近一年的成本走势。','单价一直在降，近三个月均价 2.31 元。'],
+  'tl.a3':['再去档案柜，查去年跟这家的成交价。','去年均价 2.34 元，这次报 2.25 元，低了 4%。'],
+  'tl.a2':['我去书架，对着公司的采购合同范本一条条看。','付款条款对不上：对方要求预付 50%。'],
+  'tl.b2':['两位结论相反，又涉及金额。这种事我不能替你定，请你裁决。']},
+};
+let feed=[],openNotes={},sel='all',todayOnly=false;
+function post(e){e.t=vt;feed.push(e);renderNotes();return e;}
+function logFact(f,span,isNew){
+  const k=span.kind,tk=(TALK[current]||{})[f.id]||[];
+  if(k==='butler'){
+    if(isNew)post({who:'butler',type:'say',text:tk[0],design:true});
+    else if(f.state==='completed')post({who:'butler',type:'reply',text:f.reply,tok:f.tok});
+  }else if(k==='group'){
+    if(isNew)post({who:'butler',type:'say',text:tk[0]});
+  }else if(k==='dispatch'){
+    if(isNew)post({who:'butler',to:f.artisan,type:'letter',how:f.gather?'在圆桌边当面对':f.host==='task'?'写信给':'当面交代',said:f.host!=='task',text:f.full});
+    else if(f.inspect)post({who:'butler',to:span.artisan,type:'check',ok:f.ok,text:f.ok?`我验收了${span.name}的成果，五项都过了。`:`${span.name}这一份没办成。我记成失败，不会偷偷重跑。`});
+  }else if(k==='artisan'){
+    const key=span.artisan;
+    if(f.ask)post({who:key,type:'ask',text:'管家，'+f.ask});
+    else if(f.approval)post({who:key,type:'seal',text:'我想'+f.what+'。这是对外发送，要你盖章，我先停在这儿。'});
+    else if(f.state==='failed')post({who:key,type:'fail',text:f.reason});
+    else if(f.state==='completed')post({who:key,type:'result',text:f.result,tok:f.tok});
+  }else{
+    const p=spans.get(span.parent);if(!p)return;
+    const key=p.kind==='butler'?'butler':p.artisan;
+    if(isNew)openNotes[f.id]=post({who:key,type:'say',text:tk[0]||f.label,fin:tk[1],design:!f.more,to:f.to,place:f.station,tool:span.name,wait:k==='wait',inp:f.inp,out:f.out,running:f.state==='running',t0:vt,quote:f.more&&f.more[1]&&f.more[1][1]});
+    else{const e=openNotes[f.id];if(!e)return;e.running=false;e.dur=(vt-e.t0)/1000;e.cancelled=f.state==='cancelled';e.done=e.cancelled?'没有发。':e.fin;renderNotes();}
+  }
+}
+function stateOf(key){
+  for(const sp of spans.values())if((key==='butler'&&sp.kind==='butler')||(sp.kind==='artisan'&&sp.artisan===key))return sp.state;
+  return null;
+}
+const secs=x=>x<1.5?'一下子':Math.round(x)+' 秒';
+const VOICE={running:'我正在忙。',waiting_children:'我把活交出去了，在等匠人们办完。',waiting_input:'我停下了，在等你。',completed:'我这边办完了。',failed:'这次没办成。',cancelled:'这次被叫停了。'};
+function headMarkup(shown){
+  if(sel==='all'){
+    const st=stateOf('butler'),waitYou=[...spans.values()].some(x=>x.state==='waiting_input');
+    if(!feed.length)return `<p class="nb-empty">还没开始。选上面一句话，这里会像群聊一样把经过讲给你听。</p>`;
+    const helpers=new Set(feed.filter(e=>e.who!=='you'&&e.who!=='butler').map(e=>e.who)).size,tools=feed.filter(e=>e.tool&&!e.wait&&e.who!=='butler').length;
+    const title=st==='completed'?'办完了':waitYou?'停在这儿，等你':'正在办';
+    return `<div class="sum">${mini('butler',52,st==='completed'?'happy':'open')}<div><b>${title}</b><span>${helpers?`请了 ${helpers} 位匠人，`:''}${tools?`他们动了 ${tools} 次工具，`:''}到现在 ${Math.max(1,Math.round((st==='completed'?feed[feed.length-1].t:vt)/1000))} 秒。</span></div></div>`;
+  }
+  const st=stateOf(sel),face=st==='failed'?'dizzy':st==='completed'?'happy':st?'open':'closed';
+  const trail=[...new Set(shown.filter(e=>e.place&&e.who===sel).map(e=>e.place))];
+  return `<div class="sum">${mini(sel,52,face)}<div><b>${esc(CAST[sel].name)}：${st?VOICE[st]:(sel==='butler'?'我在管家台待命。':'这一趟没有我的活，我在垫子上打盹。')}</b><span>${PKG[sel]}</span>${trail.length?`<div class="trail">去过 ${trail.map(placeChip).join(' → ')}</div>`:''}</div></div>`;
+}
+function msgMarkup(e,i){
+  if(e.type==='you')return `<div class="msg you"><div><div class="nm"><b>你</b></div><div class="bub">${esc(e.text)}</div></div></div>`;
+  const face=e.type==='fail'?'dizzy':(e.type==='result'||e.type==='reply'||(e.type==='check'&&e.ok))?'happy':e.wait&&e.running?'closed':'open';
+  const name=`<b>${esc(CAST[e.who].name)}</b>`;
+  let nm=name,body='',extra='',raw='';
+  if(e.type==='letter'){nm=`${name} ${e.how} <b>${esc(CAST[e.to].name)}</b>${e.said?' 说':''}`;body=`<div class="bub letter">${esc(e.text)}</div>`;}
+  else if(e.type==='ask'){nm=`${name} 打电话问管家`;body=`<div class="bub">${esc(e.text)}</div>`;}
+  else if(e.type==='seal'){nm=`${name} 等你盖章`;body=`<div class="bub seal">${esc(e.text)}</div>`;}
+  else if(e.type==='result'){nm=`${name} 交回成果`;body=`<div class="bub result">${esc(e.text)}</div>`;}
+  else if(e.type==='fail'){nm=`${name} 没办成`;body=`<div class="bub fail">${esc(e.text)}</div>`;}
+  else if(e.type==='reply'){nm=`${name} 回你的话`;body=`<div class="bub result">${esc(e.text)}</div>`;}
+  else if(e.type==='check'){body=`<div class="bub">${esc(e.text)}<div class="checks">${e.ok?['到终态','成功','有成果','没有未决确认','没有未知结果'].map(c=>`<span>✓ ${c}</span>`).join(''):'<span>✓ 到终态</span><span class="no">成功</span>'}</div></div>`;}
+  else{
+    if(e.place&&!(todayOnly&&e.design))nm+=` 在 ${placeChip(e.place)}`;
+    if(e.dur!=null)nm+=` <span>${secs(e.dur)}</span>`;
+    const dots=e.running?'<span class="dots" aria-label="进行中"><i></i><i></i><i></i></span>':'';
+    if(todayOnly&&e.design)body=`<div class="bub plain">${e.wait?'在等：'+esc(e.tool):'用了工具 <code>'+esc(e.tool)+'</code>'}${e.cancelled?'，已取消':''}${dots}</div>`;
+    else body=`<div class="bub">${esc(e.text)}${e.done?' '+esc(e.done):''}${dots}${e.quote?`<div class="quote">${esc(e.quote)}</div>`:''}</div>`;
+    if(e.tool&&!(todayOnly&&e.design)){
+      const rows=[[e.wait?'在等':'工具',`<code>${esc(e.tool)}</code>`],e.inp&&['给它的',esc(e.inp)],e.out&&!e.running&&!e.cancelled&&['拿回的',esc(e.out)],e.dur!=null&&['用时',e.dur.toFixed(1)+' 秒']].filter(Boolean);
+      raw=`<details class="raw" data-i="${i}"${e.open?' open':''}><summary>细节</summary><dl>${rows.map(r=>`<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('')}</dl></details>`;
+    }
+  }
+  if(e.tok)raw=`<details class="raw" data-i="${i}"${e.open?' open':''}><summary>细节</summary><dl><dt>用量</dt><dd>读入 ${e.tok[0].toLocaleString()}，写出 ${e.tok[1].toLocaleString()}（token）</dd></dl></details>`;
+  return `<div class="msg"><div class="av">${mini(e.who,38,face)}</div><div><div class="nm">${nm}</div>${body}${extra}${raw}</div></div>`;
+}
+function renderNotes(){
+  const who=$('#nbwho'),log=$('#nblog');if(!who)return;
+  const involved=Object.keys(HOMES).filter(k=>k===sel||feed.some(e=>e.who===k||e.to===k));
+  who.innerHTML=`<button class="all" data-k="all" aria-pressed="${sel==='all'}">全部经过</button>`+['butler',...involved].map(k=>{const st=stateOf(k);return `<button data-k="${k}" aria-pressed="${k===sel}">${mini(k,30,st==='failed'?'dizzy':'open')}<span>${esc(CAST[k].name)}<small class="${st==='waiting_input'?'you':''}">${st?STATE[st]:(k==='butler'?'待命':'打盹')}</small></span></button>`;}).join('');
+  who.querySelectorAll('button').forEach(b=>{b.onclick=()=>select(b.dataset.k);});
+  const shown=feed.map((e,i)=>[e,i]).filter(([e])=>!(todayOnly&&e.design&&!e.tool)).filter(([e])=>sel==='all'||e.who===sel||e.to===sel||(e.who==='you'&&sel==='butler'));
+  $('#nbhead').innerHTML=headMarkup(shown.map(x=>x[0]));
+  const stick=log.scrollHeight-log.scrollTop-log.clientHeight<60;
+  log.innerHTML=shown.map(([e,i])=>msgMarkup(e,i)).join('');
+  log.querySelectorAll('details.raw').forEach(d=>{d.ontoggle=()=>{feed[+d.dataset.i].open=d.open;};});
+  if(stick)log.scrollTop=log.scrollHeight;
+  for(const k in actors)actors[k].g.classList.toggle('sel',k===sel);
+}
+function select(key){sel=(key===sel&&key!=='all')?'all':key;showTab('nb');renderNotes();}
+function showTab(t){
+  $('#p-nb').hidden=t!=='nb';$('#p-tree').hidden=t!=='tree';
+  $('#tab-nb').setAttribute('aria-pressed',String(t==='nb'));$('#tab-tree').setAttribute('aria-pressed',String(t==='tree'));
+}
+$('#tab-nb').onclick=()=>showTab('nb');$('#tab-tree').onclick=()=>showTab('tree');
+$('#today').onchange=e=>{todayOnly=e.target.checked;renderNotes();};
+
+/* ---------- 导演：一条事实进来，对应的角色排一个动作 ---------- */
+let actors={},A={},waiting=false;
+function onButler(f,isNew){
+  const b=actors.butler;
+  if(isNew){b.do(async()=>{narrate(f.note);await b.say('我来看看…',1200);});return;}
+  if(f.state==='waiting_children'){waiting=true;b.do(async()=>{await b.walk(b.home.x,b.home.y);if(waiting){b.hold('tea');b.face('happy');}});}
+  else if(f.state==='running'){waiting=false;b.do(async()=>{b.face('open');});}
+  else if(f.state==='waiting_input'){b.do(async()=>{b.hold(null);b.bubble('等你裁决','seal');});}
+  else if(f.state==='completed'){
+    waiting=false;
+    b.do(async()=>{
+      narrate(f.note);b.bubble(null);b.face('happy');b.hold('scroll');await b.say('这就回话',900);b.hold(null);
+      await fly(FX.scroll,b.x+20,b.y-56,84,160,800,50);showReply(f.reply);
+      for(const k in A)if(A[k].gather){const a=actors[k];a.do(async()=>{a.bubble(null);await a.walk(a.home.x,a.home.y);a.nap();});}
+      await b.walk(b.home.x,b.home.y);
+    });
+  }
+}
+function onButlerTool(f){
+  const b=actors.butler;
+  if(f.name==='list_artisans')b.do(async()=>{narrate(f.note);b.hold('book');await b.say('翻名册：谁能办？',1400);b.hold(null);});
+  if(f.name==='answer_artisan')b.do(async()=>{await waitFor('rang:'+f.to);narrate(f.note);ring(false);b.face('open');b.hold('phone');await b.say('你说过：「'+f.answer+'」',2100);b.hold(waiting?'tea':null);fire('answered:'+f.to);});
+  if(f.name==='rate_divergence')b.do(async()=>{
+    await Promise.all(Object.values(A).filter(s=>s.gather).map(s=>waitFor('arrived:'+s.dp)));
+    narrate(f.note);b.hold('magnifier');await b.walk(450,496);await b.say('两位结论不一样',1500);await b.say('还涉及金额',1400);b.hold(null);
+  });
+}
+function onGroup(f,isNew){
+  if(!isNew)return;
+  const b=actors.butler;
+  b.do(async()=>{narrate(f.note);b.hold('quill');await b.say(f.say,1200);b.hold(null);});
+}
+function onDispatch(f,isNew){
+  const b=actors.butler;
+  if(isNew){
+    const a=actors[f.artisan],st=A[f.artisan]={dp:f.id,host:f.host,gather:f.gather,seat:SEATS[f.gather]};
+    if(st.gather)b.do(async()=>{narrate(f.note);b.hold(null);b.face('open');await b.walk(450,496);await b.say(f.name+'，请到圆桌',1000);fire('called:'+f.id);await waitFor('seated:'+f.id);await b.say(f.brief,1700);fire('briefed:'+f.id);});
+    else if(st.host==='task')b.do(async()=>{narrate(f.note);b.face('open');b.hold('quill');await b.say('写信：'+f.brief,1100);b.hold(null);await fly(FX.letter,b.x+24,b.y-60,a.x,a.y-60,800,110);fire('briefed:'+f.id);});
+    else b.do(async()=>{narrate(f.note);b.hold(null);b.face('open');await b.walk(a.x-62,a.y+16);fire('called:'+f.id);await b.say(f.brief,1900);fire('briefed:'+f.id);await sleep(400);});
+    return;
+  }
+  if(f.inspect)b.do(async()=>{
+    await waitFor('arrived:'+f.id);narrate(f.note);b.face('open');b.hold('magnifier');
+    if(f.ok){for(let i=1;i<=5;i++){b.bubble('验收 '+'✓'.repeat(i));await sleep(250);}await sleep(450);}
+    else{b.bubble('验收 ✓');await sleep(400);b.bubble('验收 ✓✗','bad');await sleep(1300);}
+    b.bubble(null);b.hold(waiting?'tea':null);if(waiting)b.face('happy');
+  });
+}
+function leave(a,st){
+  if(st.at){st.at.n=Math.max(0,(st.at.n||1)-1);if(!st.at.n)stationOn(st.at,false);st.at=null;}
+  st.label=null;a.pose(null);a.face('open');a.bubble(null);
+}
+function onArtisan(f,isNew){
+  const k=spans.get(f.id).artisan,a=actors[k],st=A[k];
+  if(isNew){
+    a.do(async()=>{
+      if(st.gather){await waitFor('called:'+st.dp);a.wake();await a.say('来了',500);await a.walk(st.seat.x,st.seat.y);fire('seated:'+st.dp);await waitFor('briefed:'+st.dp);}
+      else if(st.host==='session'){await waitFor('called:'+st.dp);a.wake();await waitFor('briefed:'+st.dp);}
+      else{await waitFor('briefed:'+st.dp);a.wake();a.hold('letter');await sleep(900);a.hold(null);}
+      await a.say('收到！',800);
+    });
+    return;
+  }
+  if(f.ask)a.do(async()=>{narrate(f.note);a.pose('asking');a.hold('phone');a.bubble(f.ask);ring(true);fire('rang:'+k);await waitFor('answered:'+k);a.hold(null);a.pose(null);await a.say('明白了',800);});
+  else if(f.approval)a.do(async()=>{narrate(f.note);a.pose('asking');a.hold('paper');a.bubble('等你盖章','seal');});
+  else if('stamped' in f)a.do(async()=>{
+    narrate(f.note);
+    if(f.stamped){a.hold('stamped');a.face('happy');await a.say('盖好了！',1000);}else await a.say('好，不发',1000);
+    a.hold(null);a.face('open');a.pose(st.at?'working':null);if(st.label)a.bubble(st.label);
+  });
+  else if(f.state==='failed')a.do(async()=>{
+    leave(a,st);narrate(f.note);a.face('dizzy');a.bubble('没办成','bad');await sleep(1200);
+    await fly(FX.note,a.x,a.y-60,actors.butler.x+24,actors.butler.y-60,800,100);fire('arrived:'+st.dp);
+    await a.walk(a.home.x,a.home.y);
+  });
+  else if(f.state==='completed')a.do(async()=>{
+    leave(a,st);narrate(f.note);a.face('happy');
+    if(st.gather){a.hold('scroll');await a.walk(st.seat.x,st.seat.y);a.hold(null);a.bubble(f.conclusion);fire('arrived:'+st.dp);return;}
+    if(st.host==='session'){a.hold('scroll');await a.walk(292,448);a.hold(null);await fly(FX.scroll,a.x-10,a.y-50,actors.butler.x+30,actors.butler.y-40,450,24);}
+    else await fly(FX.letter,a.x,a.y-60,actors.butler.x+24,actors.butler.y-60,800,100);
+    fire('arrived:'+st.dp);await a.walk(a.home.x,a.home.y);a.nap();
+  });
+}
+function onWork(f,span){
+  const p=spans.get(span.parent);if(!p)return;
+  if(p.kind==='butler'){onButlerTool(f);return;}
+  const k=p.artisan,a=actors[k],st=A[k];
+  if(f.state==='running')a.do(async()=>{
+    narrate(f.note);a.bubble(null);
+    const s=ST[f.station],off=[0,34,-34][(s.n||0)%3];s.n=(s.n||0)+1;
+    await a.walk(s.x+off,s.y);stationOn(s,true);st.at=s;st.label=f.label;
+    if(f.station==='bed')a.nap();else{a.face('open');a.pose('working');}
+    a.bubble(f.label);
+  });
+  else a.do(async()=>{await sleep(700);leave(a,st);if(f.state==='completed'){a.face('happy');await a.say('✓',450);a.face('open');}});
+}
+function apply(f){
+  if(f.user){showUser(f.user);narrate('你对管家说了一句话');post({who:'you',type:'you',text:f.user});return;}
+  const prev=spans.get(f.id),isNew=!prev;
+  const span=Object.assign(prev||{},{id:f.id,state:f.state});
+  if(isNew)Object.assign(span,{parent:f.parent,kind:f.kind,name:f.name,artisan:f.artisan});
+  spans.set(f.id,span);renderTree();logFact(f,span,isNew);
+  ({butler:onButler,group:onGroup,dispatch:onDispatch,artisan:onArtisan,tool:()=>onWork(f,span),wait:()=>onWork(f,span)})[span.kind](f,isNew);
+}
+
+/* ---------- 三段事实流（d = 距上一条的毫秒数） ---------- */
+const SCN={
+solo:()=>[
+  {d:500,user:'上月差旅报销还有哪几笔没付？'},
+  {d:1000,id:'ex.b',kind:'butler',name:'管家',state:'running',note:'管家听完，先看这事自己能不能办',think:'要查报销记录和付款流水。我没有财务系统的权限，得交给能办的匠人。'},
+  {d:1500,id:'tl.b1',parent:'ex.b',kind:'tool',name:'list_artisans',state:'completed',title:'翻名册',note:'要查账。管家翻名册：谁能办，你有没有资格用',think:'看你此刻有资格用哪些匠人。',out:'5 位可用：财务、客服、阅读、办公、审阅'},
+  {d:1700,id:'dp.1',parent:'ex.b',kind:'dispatch',name:'财务匠人',state:'running',artisan:'finance',host:'session',brief:'查上月差旅没付的报销',full:'查出上月（10 月）已批准但还没付款的差旅报销，列出每笔的单号、申请人和金额，并给出合计。只读，不要发起付款。',note:'管家走过去，当面把事交代给财务匠人'},
+  {d:300,id:'ex.a1',parent:'dp.1',kind:'artisan',name:'财务匠人',state:'running',artisan:'finance'},
+  {d:300,id:'ex.b',state:'waiting_children'},
+  {d:3400,id:'tl.a1',parent:'ex.a1',kind:'tool',name:'query_reimbursements',state:'running',station:'cabinet',label:'翻报销档案',note:'财务匠人去档案柜，翻上月的报销记录。管家端起茶等着',think:'先从报销记录里筛出上月已批准的差旅单。',inp:'月份 2026-10，类别 差旅，状态 已批准',out:'7 条记录'},
+  {d:3200,id:'tl.a1',state:'completed'},
+  {d:300,id:'tl.a2',parent:'ex.a1',kind:'tool',name:'bank.list_payments',state:'running',station:'computer',label:'对付款流水',note:'再到电脑上，对一遍银行付款流水',think:'再对银行流水，把已经付出去的划掉，免得把在途付款算成没付。',inp:'对公付款，2026-10-01 至 2026-11-18',out:'5 条已付，剩 2 条在流水里找不到'},
+  {d:3200,id:'tl.a2',state:'completed'},
+  {d:500,id:'ex.a1',state:'completed',note:'查完了，财务匠人把结果送到管家台前',result:'两笔没付：BX-1042（周岚，1,960 元）、BX-1057（何川，1,320 元），合计 3,280 元。',tok:[5210,640]},
+  {d:600,id:'dp.1',state:'completed',inspect:true,ok:true,note:'管家逐项验收：到终态、成功、有成果、没有未决确认、没有未知结果'},
+  {d:400,id:'ex.b',state:'completed',reply:'有两笔没付，共 3,280 元。明细放进你的空间了。',note:'验收通过，管家回话',tok:[2140,310]},
+],
+para:()=>[
+  {d:500,user:'周五去拜访云杉科技，帮我把材料备好'},
+  {d:1000,id:'ex.b',kind:'butler',name:'管家',state:'running',note:'管家听完：这事得几位匠人分头办',think:'材料分三块：工单、合同和纪要、简报。三块互不依赖，可以分头办。'},
+  {d:1500,id:'tl.b1',parent:'ex.b',kind:'tool',name:'list_artisans',state:'completed',title:'翻名册',note:'管家翻名册，挑出三位你此刻能用的匠人',think:'看你此刻有资格用哪些匠人。',out:'5 位可用：财务、客服、阅读、办公、审阅'},
+  {d:1700,id:'gp.1',parent:'ex.b',kind:'group',name:'拜访准备（并行）',state:'running',say:'排一张分工单',plan:'一步，并行。客服匠人理工单，阅读匠人找合同和纪要，办公匠人做简报。',note:'管家排好分工单：三位各办一部分，互相看不到对方的过程'},
+  {d:300,id:'dp.1',parent:'gp.1',kind:'dispatch',name:'客服匠人',state:'running',artisan:'support',host:'task',brief:'理一下云杉的工单',full:'整理云杉科技近三个月的工单：总数、还没关闭的、反复出现的问题。只读。',note:'管家写信派工。信是持久任务，进程重启也丢不了'},
+  {d:200,id:'dp.2',parent:'gp.1',kind:'dispatch',name:'阅读匠人',state:'running',artisan:'reader',host:'task',brief:'找出合同和纪要',full:'找出与云杉科技现行有效的合同和最近两次往来纪要，给出要点。只读。'},
+  {d:200,id:'dp.3',parent:'gp.1',kind:'dispatch',name:'办公匠人',state:'running',artisan:'office',host:'task',brief:'做一页拜访简报',full:'做一页拜访简报：客户概况、近期问题、这次要谈的三件事。可以发给同去的同事，发送前须本人确认。'},
+  {d:300,id:'ex.b',state:'waiting_children'},
+  {d:2600,id:'ex.a1',parent:'dp.1',kind:'artisan',name:'客服匠人',state:'running',artisan:'support'},
+  {d:1800,id:'ex.a2',parent:'dp.2',kind:'artisan',name:'阅读匠人',state:'running',artisan:'reader'},
+  {d:300,id:'tl.a1',parent:'ex.a1',kind:'tool',name:'ticket.export',state:'running',station:'computer',label:'导出工单',note:'客服匠人到电脑上，从工单系统导出云杉的工单',think:'工单量大，先整批导出再筛。',inp:'客户 云杉科技，近 90 天',out:'导出任务已提交'},
+  {d:1500,id:'ex.a3',parent:'dp.3',kind:'artisan',name:'办公匠人',state:'running',artisan:'office'},
+  {d:300,id:'tl.a2',parent:'ex.a2',kind:'tool',name:'read_documents',state:'running',station:'books',label:'翻合同与纪要',note:'阅读匠人去书架，找合同和往来纪要',think:'先找现行合同，再找纪要。',inp:'关键词 云杉科技 合同',out:'找到 2 份合同草稿，没有已签署的版本'},
+  {d:1900,id:'tl.a3',parent:'ex.a3',kind:'tool',name:'run_script',state:'running',station:'bench',label:'排简报',note:'办公匠人在工作台上排简报',think:'先把版式排好，客户名和要点后填。',inp:'模板 拜访简报，一页',out:'草稿已生成，缺客户全称'},
+  {d:500,id:'tl.a1',state:'completed'},
+  {d:300,id:'wt.a1',parent:'ex.a1',kind:'wait',name:'等导出完成',state:'running',station:'bed',label:'等导出…',title:'等工单系统导出',note:'导出要等一会儿，客服匠人先去小床上眯着'},
+  {d:2200,id:'tl.a3',state:'completed'},
+  {d:400,id:'ex.a3',state:'waiting_input',ask:'客户全称怎么写？',note:'办公匠人拿不准，打电话问管家'},
+  {d:1500,id:'ex.b',state:'running'},
+  {d:300,id:'tl.b2',parent:'ex.b',kind:'tool',name:'answer_artisan',state:'completed',to:'office',answer:'云杉科技',title:'代你答复办公匠人',more:[['答复','云杉科技'],['出处','你这次请求的原话：「周五去拜访云杉科技，帮我把材料备好」']],think:'这个问题你的原话里有现成答案，也不涉及金额、对外发送或审批，可以照原话代答。',note:'你原话里说过「云杉科技」。管家照原话代答，并记下出处'},
+  {d:300,id:'ex.b',state:'waiting_children'},
+  {d:2600,id:'ex.a3',state:'running'},
+  {d:500,id:'tl.a2',state:'completed'},
+  {d:400,id:'ex.a2',state:'failed',reason:'只找到未签署的草稿，不能当作现行合同，所以没有交出成果。',note:'阅读匠人没找到能用的合同版本，如实报「没办成」'},
+  {d:800,id:'dp.2',state:'failed',inspect:true,ok:false,note:'管家验收：这一份没成功。记为失败，不自动重跑'},
+  {d:1500,id:'wt.a1',state:'completed'},
+  {d:300,id:'tl.a4',parent:'ex.a1',kind:'tool',name:'query_ticket_history',state:'running',station:'cabinet',label:'查历史工单',note:'导出好了，客服匠人再去档案柜核对历史工单',think:'导出里只有近 90 天，反复出现的问题要对一下更早的记录。',inp:'客户 云杉科技，标记 重复问题',out:'23 张工单，4 张未关闭，「对账单延迟」出现 6 次'},
+  {d:800,id:'tl.a5',parent:'ex.a3',kind:'tool',name:'feishu.send_message',state:'running',station:'computer',label:'准备发简报',note:'简报排好了，办公匠人准备发给同去的同事',think:'任务说明允许发给同去的同事。但发送是写入，得先停下等本人确认。',inp:'收件人 销售组 3 人，附件《云杉科技拜访简报》',out:'已发送'},
+  {d:2400,id:'tl.a4',state:'completed'},
+  {d:400,id:'ex.a1',state:'completed',note:'客服匠人办完，回信给管家',result:'近三个月 23 张工单，4 张未关闭。「对账单延迟」反复出现 6 次，建议当面说明。',tok:[6820,910]},
+  {d:700,id:'dp.1',state:'completed',inspect:true,ok:true,note:'管家验收客服匠人的成果'},
+  {d:1200,id:'ex.a3',state:'waiting_input',approval:true,what:'把《云杉科技拜访简报》发给同去的 3 位同事',note:'对外发送是写入动作：办公匠人停下，举着纸等你盖章'},
+  {gate:'approve',to:'office',then:v=>[
+    v==='1'?{d:200,id:'ex.a3',state:'running',stamped:true,note:'你盖了章，办公匠人把简报发出去'}:{d:200,id:'ex.a3',state:'running',stamped:false,note:'你没同意。办公匠人不发，简报只留在你的空间'},
+    {d:1900,id:'tl.a5',state:v==='1'?'completed':'cancelled'},
+    {d:500,id:'ex.a3',state:'completed',note:'办公匠人办完，回信给管家',result:'一页简报已排好，放进你的空间。'+(v==='1'?'已发给同去的 3 位同事。':'按你的意思没有发出。'),tok:[4380,1260]},
+    {d:700,id:'dp.3',state:'completed',inspect:true,ok:true,note:'管家验收办公匠人的成果'},
+    {d:500,id:'gp.1',state:'failed'},
+    {d:300,id:'ex.b',state:'completed',reply:'工单和简报备好了，简报'+(v==='1'?'已发出':'没有发')+'。合同没找到，这一步失败，没有自动重试。',note:'管家汇总：逐位说明实际结果，失败的不遮掩',tok:[3910,720]},
+  ]},
+],
+consult:()=>[
+  {d:500,user:'这家供应商的报价能不能接？'},
+  {d:1000,id:'ex.b',kind:'butler',name:'管家',state:'running',note:'管家听完：这事值得两位匠人各看一遍',think:'接不接既看价钱也看条款，两边的判断可能不一样。请两位各看一遍，再比对。'},
+  {d:1500,id:'tl.b1',parent:'ex.b',kind:'tool',name:'list_artisans',state:'completed',title:'翻名册',note:'管家翻名册，请财务和审阅两位来会诊',think:'看你此刻有资格用哪些匠人。',out:'5 位可用：财务、客服、阅读、办公、审阅'},
+  {d:1700,id:'gp.1',parent:'ex.b',kind:'group',name:'报价会诊（会诊）',state:'running',say:'请两位会诊',plan:'一步，会诊。财务匠人从成本看，审阅匠人从条款看，各给结论。',note:'会诊：两位就同一个问题各给结论，互相看不到对方的过程'},
+  {d:300,id:'dp.1',parent:'gp.1',kind:'dispatch',name:'财务匠人',state:'running',artisan:'finance',host:'session',gather:'L',brief:'从成本看，能接吗？',full:'这家供应商的报价，从成本角度看能不能接？给出结论和依据。只读。',note:'管家走到圆桌边，把两位请过来当面说'},
+  {d:200,id:'dp.2',parent:'gp.1',kind:'dispatch',name:'审阅匠人',state:'running',artisan:'review',host:'session',gather:'R',brief:'从条款看，能接吗？',full:'这家供应商的报价，从合同条款角度看能不能接？给出结论和依据。只读。'},
+  {d:200,id:'ex.a1',parent:'dp.1',kind:'artisan',name:'财务匠人',state:'running',artisan:'finance'},
+  {d:200,id:'ex.a2',parent:'dp.2',kind:'artisan',name:'审阅匠人',state:'running',artisan:'review'},
+  {d:200,id:'ex.b',state:'waiting_children'},
+  {d:8500,id:'tl.a1',parent:'ex.a1',kind:'tool',name:'report.cost_trend',state:'running',station:'tv',label:'看成本走势',note:'财务匠人去看板前，看这类采购的成本走势',think:'先看这类采购近一年的成本走势，判断报价在不在正常区间。',inp:'品类 包装耗材，近 12 个月',out:'单价整体下行，近三月均价 2.31 元'},
+  {d:2600,id:'tl.a2',parent:'ex.a2',kind:'tool',name:'read_skill',state:'running',station:'books',label:'翻合同范本',note:'审阅匠人去书架，对照合同范本看条款',think:'对照公司的采购合同范本，逐条看付款、违约和验收。',inp:'技能「采购合同审阅」里的范本条款',out:'付款条款与范本不符：对方要求预付 50%'},
+  {d:1200,id:'tl.a1',state:'completed'},
+  {d:300,id:'tl.a3',parent:'ex.a1',kind:'tool',name:'query_purchases',state:'running',station:'cabinet',label:'查去年采购价',note:'财务匠人再去档案柜，查去年的采购价',think:'再和去年同一家的成交价比。',inp:'同一家供应商，2025 年成交记录',out:'去年均价 2.34 元，这次报 2.25 元，低 4%'},
+  {d:2000,id:'tl.a2',state:'completed'},
+  {d:400,id:'ex.a2',state:'completed',conclusion:'先别接：预付条款不利',result:'先别接。对方要求预付 50%，与合同范本不符，建议先谈付款条款。',tok:[4120,520],note:'审阅匠人回到圆桌，亮出结论'},
+  {d:1200,id:'tl.a3',state:'completed'},
+  {d:400,id:'ex.a1',state:'completed',conclusion:'能接：比去年低 4%',result:'能接。报价比去年低 4%，也低于近三个月均价。',tok:[5630,480],note:'财务匠人回到圆桌，亮出结论'},
+  {d:2600,id:'ex.b',state:'running'},
+  {d:300,id:'tl.b2',parent:'ex.b',kind:'tool',name:'rate_divergence',state:'completed',title:'比对两份结论',more:[['评级','分歧高。两份结论相反，且涉及金额']],think:'一位说能接，一位说先别接。涉及金额的分歧我不能替你综合。',note:'管家比对两份结论：不一致，而且涉及金额。这种事管家不替你定'},
+  {d:300,id:'ex.b',state:'waiting_input'},
+  {gate:'ruling',then:v=>[
+    {d:300,id:'dp.1',state:'completed'},{d:100,id:'dp.2',state:'completed'},{d:200,id:'gp.1',state:'completed'},
+    {d:300,id:'ex.b',state:'completed',reply:'按你的裁决记下了：'+v+'。两位的原结论都留在汇总里。',note:'裁决只记进这次会诊，不转给任何匠人。少数意见也不抹掉',tok:[3350,410]},
+  ]},
+],
+};
+
+/* ---------- 等你：盖章 / 裁决 ---------- */
+const AUTO=location.hash.includes('auto');
+function gate(f){
+  const gen=clock.gen,box=$('#gate');
+  return new Promise(res=>{
+    box.innerHTML=f.gate==='approve'
+      ?`<div class="gcard" role="group" aria-label="等你确认"><div class="seal" aria-hidden="true">准</div><h3>办公匠人想发出一条消息</h3><p>把《云杉科技拜访简报》发给同去的 3 位同事。对外发送属于写入，要你本人确认。</p><div class="gbtn"><button class="go" data-v="1">盖章同意</button><button data-v="0">先不发</button></div></div>`
+      :`<div class="gcard" role="group" aria-label="等你裁决"><h3>两位匠人结论不一致，请你裁决</h3><div class="two"><div><b>${esc(CAST.finance.name)}</b>能接。比去年同类采购低 4%。</div><div><b>${esc(CAST.review.name)}</b>先别接。对方要求预付 50%，与合同范本不符。</div></div><div class="gbtn"><button data-v="能接">按财务的：能接</button><button data-v="先别接">按审阅的：先别接</button></div></div>`;
+    box.classList.toggle('top',f.gate==='ruling');box.hidden=false;
+    const pick=async v=>{
+      if(gen!==clock.gen)return;
+      if(f.gate==='approve'&&v==='1'){box.querySelector('.gcard').classList.add('stamped');await new Promise(r=>setTimeout(r,700));}
+      box.hidden=true;res(v);
+    };
+    box.querySelectorAll('button').forEach(b=>{b.onclick=()=>pick(b.dataset.v);});
+    if(AUTO&&!location.hash.includes('hold'))setTimeout(()=>pick(box.querySelector('button').dataset.v),600);
+  });
+}
+
+/* ---------- 播放 ---------- */
+let current='solo';
+async function settle(){
+  let prev;
+  do{prev=Object.values(actors).map(a=>a.chain);await Promise.all(prev);}
+  while(Object.values(actors).some((a,i)=>a.chain!==prev[i]));
+}
+function reset(){
+  clock.gen++;for(const t of clock.tasks)t.reject(CANCEL);clock.tasks.clear();
+  signals={};spans=new Map();A={};waiting=false;vt=0;feed=[];openNotes={};
+  for(const a of Object.values(actors)){a.g.remove();a.b.remove();}
+  L.fx.innerHTML='';L.talk.innerHTML='';L.bubbles.innerHTML='';$('#gate').hidden=true;
+  for(const s of Object.values(ST)){s.n=0;stationOn(s,false);}
+  ring(false);
+  actors={butler:new Actor('butler',170,398)};
+  for(const k in HOMES){actors[k]=new Actor(k,HOMES[k],330);actors[k].nap();}
+  renderTree();sortActors();renderNotes();
+}
+async function play(key){
+  current=key;reset();
+  const gen=clock.gen,q=SCN[key]();
+  document.querySelectorAll('.scn').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s===key)));
+  setPaused(false);
+  try{
+    while(q.length){
+      const f=q.shift();
+      if(f.d)await sleep(f.d);
+      if(gen!==clock.gen)return;
+      if(f.gate){
+        await settle();if(gen!==clock.gen)return;
+        narrate(f.gate==='approve'?'办公匠人停在这一步，等你盖章':'两位都说完了，轮到你裁决');
+        const v=await gate(f);if(gen!==clock.gen)return;
+        post({who:'you',to:f.to,type:'you',text:f.gate==='ruling'?'我的裁决：'+v:(v==='1'?'盖章同意，发吧':'先不发')});
+        q.unshift(...f.then(v));continue;
+      }
+      apply(f);
+    }
+    await settle();if(gen!==clock.gen)return;
+    narrate('这一趟办完了。换一句话再看，或者到下面换个角色。');
+  }catch(e){if(e!==CANCEL)throw e;}
+}
+function setPaused(p){clock.paused=p;$('#pp').textContent=p?'继续':'暂停';}
+$('#pp').onclick=()=>setPaused(!clock.paused);
+$('#sp').onclick=e=>{clock.speed=clock.speed===1?2:1;e.currentTarget.setAttribute('aria-pressed',String(clock.speed===2));};
+$('#re').onclick=()=>play(current);
+document.querySelectorAll('.scn').forEach(b=>{b.onclick=()=>play(b.dataset.s);});
+
+/* ---------- 换角色 ---------- */
+let editing='butler';
+function buildCustom(){
+  const c=CAST[editing],box=$('#custom'),isButler=editing==='butler';
+  const opts=(obj,cur,attr)=>Object.entries(obj).map(([k,v])=>`<button class="chip" data-${attr}="${k}" aria-pressed="${k===cur}">${v}</button>`).join('');
+  box.innerHTML=`<div class="pv">${mini(editing,124)}<div>${esc(c.name)}</div></div>
+  <div class="rows">
+    <div class="row"><span>改谁</span><div class="opts">${Object.keys(CAST).map(k=>`<button class="who" data-who="${k}" aria-pressed="${k===editing}" aria-label="${esc(CAST[k].name)}" title="${esc(CAST[k].name)}">${mini(k,40)}</button>`).join('')}</div></div>
+    <div class="row"><span>样子</span><div class="opts">${opts(SPECIES,c.species,'species')}</div></div>
+    <div class="row"><span>颜色</span><div class="opts">${Object.entries(COLORS).map(([k,v])=>`<button class="sw" data-color="${k}" aria-pressed="${k===c.color}" aria-label="${v.n}" title="${v.n}" style="background:${v.b}"></button>`).join('')}</div></div>
+    <div class="row"><span>配饰</span><div class="opts">${opts(ACCS,c.acc,'acc')}</div></div>
+    <div class="row"><span>名字</span><div class="opts"><input id="nm" maxlength="6" value="${esc(c.name)}" ${isButler?'':'disabled'} aria-label="名字"><span class="note">${isButler?'管家的称呼由你定':'匠人的名字来自业务包，这里不改'}</span></div></div>
+    <div class="row"><span></span><div class="opts"><button class="chip" id="rst">恢复默认</button></div></div>
+  </div>`;
+  box.querySelectorAll('[data-who]').forEach(b=>{b.onclick=()=>{editing=b.dataset.who;buildCustom();};});
+  for(const attr of ['species','color','acc'])box.querySelectorAll(`[data-${attr}]`).forEach(b=>{b.onclick=()=>{c[attr]=b.dataset[attr];changed();};});
+  const nm=box.querySelector('#nm');
+  nm.onchange=()=>{c.name=nm.value.trim()||DEFAULT_CAST[editing].name;changed();};
+  box.querySelector('#rst').onclick=()=>{for(const k in CAST)Object.assign(CAST[k],DEFAULT_CAST[k]);for(const a of Object.values(actors))a.skin();saveCast();buildCustom();renderNotes();};
+}
+function changed(){saveCast();if(actors[editing])actors[editing].skin();buildCustom();renderNotes();}
+
+const pre=(location.hash.match(/sel=(\w+)/)||[])[1];if(pre&&CAST[pre])sel=pre;if(location.hash.includes('today'))todayOnly=true;
+buildRoom();buildCustom();reset();
+// 自检用：#auto 时用定时器推进并自动点确认，#t=毫秒 时停在那一刻；平时走 requestAnimationFrame
+const stopAt=+(location.hash.match(/t=(\d+)/)||[0,0])[1];
+if(AUTO){let total=0;const raf=window.requestAnimationFrame;window.requestAnimationFrame=()=>0;setInterval(()=>{if(stopAt&&total>=stopAt)return;total+=16;tick(last+16);},4);void raf;}
+else requestAnimationFrame(t=>{last=t;requestAnimationFrame(tick);});
+const start=(location.hash.match(/solo|para|consult/)||['solo'])[0];
+if(matchMedia('(prefers-reduced-motion: reduce)').matches&&!AUTO){current=start;narrate('选上面一句话，或点「重播」开始。');}
+else play(start);
+})();
+</script>
+</body>
+</html>

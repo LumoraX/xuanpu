@@ -1,0 +1,552 @@
+{
+  "ok": true,
+  "checks": {
+    "group_is_consult": true,
+    "three_members_under_group": true,
+    "member_details_readable": true,
+    "no_leak_in_say": true
+  },
+  "trace_id": "trc_80e3e7d6d1bfd57c7927679f",
+  "verdicts": [
+    {
+      "step": 0,
+      "level": "high",
+      "reasons": [
+        "rated_high"
+      ],
+      "rated_level": "high",
+      "pending_id": "pnd_a4eac149556d0a7047d5c0a6",
+      "ruled": false
+    }
+  ],
+  "say_ratio": "6/6",
+  "says": [
+    {
+      "tool": "api__tickets__getTicket",
+      "say": "我先查询工单 T-1001 的当前内容、状态和优先级，再依据客户影响、紧急程度及服务处置要求独立评估是否需要升级。"
+    },
+    {
+      "tool": "api__tickets__getTicket",
+      "say": "我先独立查阅工单 T-1001 的当前内容、状态和优先级，作为后续质检判断的唯一事实依据。"
+    },
+    {
+      "tool": "api__tickets__getTicket",
+      "say": "我先独立查阅工单 T-1001 的完整信息，再基于技术影响面、风险、解决难度和当前优先级给出是否升级的明确结论。"
+    },
+    {
+      "tool": "read_skill",
+      "say": "我已确认工单处于开放状态、当前优先级为普通；接下来我会按工单优先级计算处理时限，并据此结合影响面、风险和难度评估是否应升级。"
+    },
+    {
+      "tool": "run_script",
+      "say": "我接着依据该工单的当前优先级运行 SLA 计算，核对其处理时限是否存在升级依据。"
+    },
+    {
+      "tool": "run_script",
+      "say": "我现在执行普通优先级的 SLA 计算，以便把工单当前时限纳入升级判断。"
+    }
+  ],
+  "spans": [
+    {
+      "span_id": "ex.thr_6e45847126de64aa",
+      "parent_span_id": null,
+      "kind": "butler",
+      "name": "butler",
+      "ref": "bt_98b77fff93ab333f7a71e818",
+      "state": "completed",
+      "started_at": "2026-11-19T14:16:57.014659+00:00",
+      "ended_at": "2026-11-19T14:17:23.725987+00:00",
+      "attempts": 1,
+      "input_tokens": 13089,
+      "output_tokens": 351,
+      "usage_complete": true,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "tl.call_8ac02d21adf541e6b72385b3bce9e91f",
+      "parent_span_id": "ex.thr_6e45847126de64aa",
+      "kind": "tool",
+      "name": "list_artisans",
+      "ref": null,
+      "state": "completed",
+      "started_at": "2026-11-19T14:17:04.373895+00:00",
+      "ended_at": "2026-11-19T14:17:04.390109+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "tl.call_3438fff202bf44cebd81d8e01ff13f53",
+      "parent_span_id": "ex.thr_6e45847126de64aa",
+      "kind": "tool",
+      "name": "dispatch_group",
+      "ref": null,
+      "state": "completed",
+      "started_at": "2026-11-19T14:17:15.949238+00:00",
+      "ended_at": "2026-11-19T14:17:16.022953+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "gp.grp_2f5b821bd0c4192df00ba35f",
+      "parent_span_id": "ex.thr_6e45847126de64aa",
+      "kind": "group",
+      "name": "工单 T-1001 是否升级处理会诊",
+      "ref": "grp_2f5b821bd0c4192df00ba35f",
+      "state": "running",
+      "started_at": "2026-11-19T14:17:15.969042+00:00",
+      "ended_at": null,
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "dp.dsp_b1ac36454b7c67872a1c1ed2",
+      "parent_span_id": "gp.grp_2f5b821bd0c4192df00ba35f",
+      "kind": "dispatch",
+      "name": "support-desk/triage",
+      "ref": "dsp_b1ac36454b7c67872a1c1ed2",
+      "state": "completed",
+      "started_at": "2026-11-19T14:17:15.973284+00:00",
+      "ended_at": "2026-11-19T14:18:02.199823+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": "ok",
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "dp.dsp_ac12e1f28596a28e9805a938",
+      "parent_span_id": "gp.grp_2f5b821bd0c4192df00ba35f",
+      "kind": "dispatch",
+      "name": "support-tier2/triage",
+      "ref": "dsp_ac12e1f28596a28e9805a938",
+      "state": "completed",
+      "started_at": "2026-11-19T14:17:15.994345+00:00",
+      "ended_at": "2026-11-19T14:18:36.056079+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": "ok",
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "ex.thr_3af46670a4cb24d3",
+      "parent_span_id": "dp.dsp_b1ac36454b7c67872a1c1ed2",
+      "kind": "artisan",
+      "name": "triage",
+      "ref": "ses_2b9fb2928efbacef730c3897e724b64f",
+      "state": "completed",
+      "started_at": "2026-11-19T14:17:15.998746+00:00",
+      "ended_at": "2026-11-19T14:17:51.370674+00:00",
+      "attempts": 1,
+      "input_tokens": 2186,
+      "output_tokens": 624,
+      "usage_complete": true,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "dp.dsp_3df082e8cdf199790d1f39dc",
+      "parent_span_id": "gp.grp_2f5b821bd0c4192df00ba35f",
+      "kind": "dispatch",
+      "name": "support-qa/triage",
+      "ref": "dsp_3df082e8cdf199790d1f39dc",
+      "state": "completed",
+      "started_at": "2026-11-19T14:17:16.010864+00:00",
+      "ended_at": "2026-11-19T14:18:17.741681+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": "ok",
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "ex.thr_98ae360501ce09e6",
+      "parent_span_id": "dp.dsp_ac12e1f28596a28e9805a938",
+      "kind": "artisan",
+      "name": "triage",
+      "ref": "ses_a22aeaf52468d3061eaa6e8a3fec142d",
+      "state": "completed",
+      "started_at": "2026-11-19T14:17:16.013274+00:00",
+      "ended_at": "2026-11-19T14:18:15.987844+00:00",
+      "attempts": 1,
+      "input_tokens": 5545,
+      "output_tokens": 882,
+      "usage_complete": true,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "ex.thr_bfa2d5e44e4b2832",
+      "parent_span_id": "dp.dsp_3df082e8cdf199790d1f39dc",
+      "kind": "artisan",
+      "name": "triage",
+      "ref": "ses_502cad1c8b0d5578b3b1280186b13f6a",
+      "state": "completed",
+      "started_at": "2026-11-19T14:17:16.026582+00:00",
+      "ended_at": "2026-11-19T14:18:06.204533+00:00",
+      "attempts": 1,
+      "input_tokens": 3526,
+      "output_tokens": 655,
+      "usage_complete": true,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "tl.call_a9fc798cd9fd4b978f2cb91c9033d112",
+      "parent_span_id": "ex.thr_3af46670a4cb24d3",
+      "kind": "tool",
+      "name": "api__tickets__getTicket",
+      "ref": null,
+      "state": "completed",
+      "started_at": "2026-11-19T14:17:25.172738+00:00",
+      "ended_at": "2026-11-19T14:17:25.195318+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": null,
+      "incomplete": false,
+      "say": "我先查询工单 T-1001 的当前内容、状态和优先级，再依据客户影响、紧急程度及服务处置要求独立评估是否需要升级。"
+    },
+    {
+      "span_id": "tl.call_18deefa72d644ab7b151918edffbaa16",
+      "parent_span_id": "ex.thr_bfa2d5e44e4b2832",
+      "kind": "tool",
+      "name": "api__tickets__getTicket",
+      "ref": null,
+      "state": "completed",
+      "started_at": "2026-11-19T14:17:25.616761+00:00",
+      "ended_at": "2026-11-19T14:17:25.620891+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": null,
+      "incomplete": false,
+      "say": "我先独立查阅工单 T-1001 的当前内容、状态和优先级，作为后续质检判断的唯一事实依据。"
+    },
+    {
+      "span_id": "tl.call_da37fdda9371420192816abd8d9d3ed6",
+      "parent_span_id": "ex.thr_98ae360501ce09e6",
+      "kind": "tool",
+      "name": "api__tickets__getTicket",
+      "ref": null,
+      "state": "completed",
+      "started_at": "2026-11-19T14:17:26.138250+00:00",
+      "ended_at": "2026-11-19T14:17:26.142216+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": null,
+      "incomplete": false,
+      "say": "我先独立查阅工单 T-1001 的完整信息，再基于技术影响面、风险、解决难度和当前优先级给出是否升级的明确结论。"
+    },
+    {
+      "span_id": "tl.call_7f11ec5f7c714aaf989701807c850955",
+      "parent_span_id": "ex.thr_98ae360501ce09e6",
+      "kind": "tool",
+      "name": "read_skill",
+      "ref": null,
+      "state": "completed",
+      "started_at": "2026-11-19T14:17:43.327879+00:00",
+      "ended_at": "2026-11-19T14:17:43.329043+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": null,
+      "incomplete": false,
+      "say": "我已确认工单处于开放状态、当前优先级为普通；接下来我会按工单优先级计算处理时限，并据此结合影响面、风险和难度评估是否应升级。"
+    },
+    {
+      "span_id": "tl.call_c1af2f13486442458660b1a3989b4c90",
+      "parent_span_id": "ex.thr_bfa2d5e44e4b2832",
+      "kind": "tool",
+      "name": "run_script",
+      "ref": null,
+      "state": "completed",
+      "started_at": "2026-11-19T14:17:47.241295+00:00",
+      "ended_at": "2026-11-19T14:17:47.272731+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": null,
+      "incomplete": false,
+      "say": "我接着依据该工单的当前优先级运行 SLA 计算，核对其处理时限是否存在升级依据。"
+    },
+    {
+      "span_id": "tl.call_a28125388db74868af5ee050008293ed",
+      "parent_span_id": "ex.thr_98ae360501ce09e6",
+      "kind": "tool",
+      "name": "run_script",
+      "ref": null,
+      "state": "completed",
+      "started_at": "2026-11-19T14:17:51.582976+00:00",
+      "ended_at": "2026-11-19T14:17:51.614250+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": null,
+      "incomplete": false,
+      "say": "我现在执行普通优先级的 SLA 计算，以便把工单当前时限纳入升级判断。"
+    },
+    {
+      "span_id": "ex.thr_29d75ec5de44b734",
+      "parent_span_id": null,
+      "kind": "butler",
+      "name": "butler",
+      "ref": "bt_f8928ac437ca7e74d8f5f527",
+      "state": "completed",
+      "started_at": "2026-11-19T14:17:52.941198+00:00",
+      "ended_at": "2026-11-19T14:18:02.196914+00:00",
+      "attempts": 1,
+      "input_tokens": 4369,
+      "output_tokens": 152,
+      "usage_complete": true,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "ex.thr_18d398e74e558a14",
+      "parent_span_id": null,
+      "kind": "butler",
+      "name": "butler",
+      "ref": "bt_b543bf2e7288caea43a2e104",
+      "state": "completed",
+      "started_at": "2026-11-19T14:18:06.234509+00:00",
+      "ended_at": "2026-11-19T14:18:17.739962+00:00",
+      "attempts": 1,
+      "input_tokens": 4433,
+      "output_tokens": 145,
+      "usage_complete": true,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "ex.thr_bd9efbfc652032af",
+      "parent_span_id": null,
+      "kind": "butler",
+      "name": "butler",
+      "ref": "bt_b6fd437e6bbc9e011fc0cc16",
+      "state": "completed",
+      "started_at": "2026-11-19T14:18:17.755667+00:00",
+      "ended_at": "2026-11-19T14:18:36.054364+00:00",
+      "attempts": 1,
+      "input_tokens": 4550,
+      "output_tokens": 114,
+      "usage_complete": true,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "ex.thr_d0181371afbe0a55",
+      "parent_span_id": null,
+      "kind": "butler",
+      "name": "butler",
+      "ref": "bt_4c4af95544d2e1c5c1cea584",
+      "state": "completed",
+      "started_at": "2026-11-19T14:18:36.061305+00:00",
+      "ended_at": "2026-11-19T14:19:17.972219+00:00",
+      "attempts": 1,
+      "input_tokens": 11105,
+      "output_tokens": 431,
+      "usage_complete": true,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    },
+    {
+      "span_id": "tl.call_1533818b70a641cf94cf408200edfb3d",
+      "parent_span_id": "ex.thr_d0181371afbe0a55",
+      "kind": "tool",
+      "name": "rate_divergence",
+      "ref": null,
+      "state": "completed",
+      "started_at": "2026-11-19T14:19:07.026500+00:00",
+      "ended_at": "2026-11-19T14:19:07.026966+00:00",
+      "attempts": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_complete": false,
+      "end_reason": null,
+      "incomplete": false,
+      "say": null
+    }
+  ],
+  "dispatches": {
+    "dsp_b1ac36454b7c67872a1c1ed2": {
+      "dispatch_id": "dsp_b1ac36454b7c67872a1c1ed2",
+      "trace_id": "trc_80e3e7d6d1bfd57c7927679f",
+      "group_id": "grp_2f5b821bd0c4192df00ba35f",
+      "artisan": {
+        "package": "support-desk",
+        "entry": "triage"
+      },
+      "host": "session",
+      "state": "completed",
+      "end_reason": "ok",
+      "instruction": "请作为一线客服，独立查阅并评估工单 T-1001 是否应该升级处理，重点从客户影响、紧急程度和服务处置角度给出明确结论及依据。不要参考其他成员意见。",
+      "created_at": "2026-11-19T14:17:15.973284+00:00",
+      "updated_at": "2026-11-19T14:18:02.199823+00:00",
+      "checks": {
+        "terminal": true,
+        "succeeded": true,
+        "outputs": true,
+        "no_pending": true,
+        "no_unknown": true
+      },
+      "result": "我先查询工单 T-1001 的当前内容、状态和优先级，再依据客户影响、紧急程度及服务处置要求独立评估是否需要升级。工单 **T-1001** 当前信息：\n\n- **问题**：无法登录\n- **状态**：处理中（open）\n- **当前优先级**：普通（normal）\n\n## 独立评估结论\n\n**建议升级处理，至少提升为高优先级人工跟进。**\n\n依据如下：\n\n1. **客户影响**：登录失败会直接阻断客户使用账户及后续服务，属于核心功能不可用，影响程度高。\n2. **紧急程度**：客户无法进入系统通常需要尽快恢复；在未确认是单个账户还是大范围故障前，不宜按普通优先级长期排队。\n3. **服务处置**：应立即确认账号范围、错误提示、是否涉及密码重置或安全锁定，并检查是否存在系统性登录故障。若影响多个客户，应进一步按重大故障流程处理。\n\n目前工单详情不足，尚不能判断影响范围、是否涉及安全风险或已持续多久；但仅凭“无法登录”这一核心访问故障，**维持普通优先级的依据不足**。建议先升级并由专人跟进，同时补充影响范围和复现信息。\n\n我未直接修改工单优先级。",
+      "items": [
+        {
+          "pending_id": "pnd_a4eac149556d0a7047d5c0a6",
+          "kind": "ruling",
+          "question": "这次会诊需要你来裁决（各位匠人的结论相互矛盾）。各位匠人的结论如下：\n· 成员1（support-desk）：我先查询工单 T-1001 的当前内容、状态和优先级，再依据客户影响、紧急程度及服务处置要求独立评估是否需要升级。工单 **T-1001** 当前信息：\n\n- **问题**：无法登录\n- **状态**：处理中（open）\n- **当前优先级**：普通（normal）\n\n## 独立评估结论\n\n**建议升级处理，至少提升为高优先级人工跟进。**\n\n依据如下：\n\n1. **客户影响**：登录失败会直接阻断客户使用账户及后续服务，属于核心功能不可用，影响程度高。\n2. **紧急程度**：客户无法进入系统通常需要尽快恢复；在未确认是单个账户还是大范围故障前，不宜按普通优先级长期排队。\n3. **服务处置**：应立即确认账号范围、错误提示、是否涉及密码重置或安全锁定，并检查是否存在系统性登录故障。若影响多个客户，应进一步按重大故障流程处理。\n\n目前工单详情不足，尚不能判断影响范围、是否涉及安全风险或已持续多久；但仅凭“无法登录”这一核心访问故障，**维持普通优先级的依据不足**。建议先升级并由专人跟进，同时补充影响范围和复现信息。\n\n我未直接修改工单优先级。\n· 成员2（support-tier2）：我先独立查阅工单 T-1001 的完整信息，再基于技术影响面、风险、解决难度和当前优先级给出是否升级的明确结论。我已确认工单处于开放状态、当前优先级为普通；接下来我会按工单优先级计算处理时限，并据此结合影响面、风险和难度评估是否应升级。我现在执行普通优先级的 SLA 计算，以便把工单当前时限纳入升级判断。## 工单 T-1001 升级评估\n\n**结论：目前不建议直接升级，维持普通优先级处理。**\n\n### 依据\n\n- **当前信息**：标题仅显示“无法登录”，工单状态为开放，当前优先级为普通。\n- **技术影响面**：现有信息无法确认是单个用户、单个账号，还是大范围用户均无法登录；因此暂不能认定存在系统性影响。\n- **风险**：登录故障可能涉及认证服务、账号状态或权限配置，确实存在扩大为业务不可用的风险。但目前没有错误日志、影响用户数、持续时间或故障范围等证据，尚不足以支持高风险判断。\n- **解决难度**：仅凭“无法登录”无法判断是密码/账号配置等低复杂度问题，还是认证链路、网络或后端服务故障等高复杂度问题，暂不能据此升级。\n- **处理时限**：普通优先级对应 **24 小时**处理时限。\n\n### 建议的升级触发条件\n\n若进一步确认以下任一情况，应立即升级：\n\n1. 多名用户或大范围用户同时无法登录；\n2. 核心业务、生产环境或关键客户受到影响；\n3. 认证服务持续报错、不可用或存在数据/安全风险；\n4. 已超过 24 小时仍无法定位或恢复；\n5. 需要跨团队处理认证、网络、身份服务等系统性问题。\n\n因此，基于当前可核实信息，建议先按普通优先级排查，并补充影响范围、发生时间、错误信息和受影响账号数量；暂不修改工单优先级。\n· 成员3（support-qa）：我先独立查阅工单 T-1001 的当前内容、状态和优先级，作为后续质检判断的唯一事实依据。我接着依据该工单的当前优先级运行 SLA 计算，核对其处理时限是否存在升级依据。我能帮你查工单、核对处理时限，并评估或调整优先级。\n\n## 独立质检结论：暂不建议升级处理\n\n**工单：** T-1001  \n**问题：** 无法登录  \n**当前状态：** open  \n**当前优先级：** normal  \n**对应处理时限：** 24 小时\n\n### 评估依据\n\n- **服务质量：** 目前仅能确认问题主题为“无法登录”，没有看到客户影响范围、重复来电、投诉升级或服务中断等信息，暂无严重服务质量问题的证据。\n- **处理时限：** normal 优先级的处理时限为 **24 小时**。现有资料未提供工单创建时间、已处理时长或是否超时，因此无法认定已经违反时限。\n- **流程合规：** 工单仍为开放状态，优先级为 normal；从现有记录看，没有发现应立即升级或关闭的流程触发条件。\n\n### 明确结论\n\n基于目前可核实的信息，**不应仅因“无法登录”这一问题标题就升级处理**。建议继续按 normal 优先级跟进，并以 24 小时为处理时限进行监控。\n\n如果后续确认已超过 24 小时未处理，或发现影响大量用户、存在安全风险、客户重复投诉等情况，则应重新评估并升级。\n请直接回复你的决定。",
+          "state": "open",
+          "answer": null,
+          "source_quote": null,
+          "created_at": "2026-11-19T14:19:17.974513+00:00"
+        }
+      ]
+    },
+    "dsp_ac12e1f28596a28e9805a938": {
+      "dispatch_id": "dsp_ac12e1f28596a28e9805a938",
+      "trace_id": "trc_80e3e7d6d1bfd57c7927679f",
+      "group_id": "grp_2f5b821bd0c4192df00ba35f",
+      "artisan": {
+        "package": "support-tier2",
+        "entry": "triage"
+      },
+      "host": "session",
+      "state": "completed",
+      "end_reason": "ok",
+      "instruction": "请作为二线技术，独立查阅并评估工单 T-1001 是否应该升级处理，重点从技术影响面、风险和解决难度角度给出明确结论及依据。不要参考其他成员意见。",
+      "created_at": "2026-11-19T14:17:15.994345+00:00",
+      "updated_at": "2026-11-19T14:18:36.056079+00:00",
+      "checks": {
+        "terminal": true,
+        "succeeded": true,
+        "outputs": true,
+        "no_pending": true,
+        "no_unknown": true
+      },
+      "result": "我先独立查阅工单 T-1001 的完整信息，再基于技术影响面、风险、解决难度和当前优先级给出是否升级的明确结论。我已确认工单处于开放状态、当前优先级为普通；接下来我会按工单优先级计算处理时限，并据此结合影响面、风险和难度评估是否应升级。我现在执行普通优先级的 SLA 计算，以便把工单当前时限纳入升级判断。## 工单 T-1001 升级评估\n\n**结论：目前不建议直接升级，维持普通优先级处理。**\n\n### 依据\n\n- **当前信息**：标题仅显示“无法登录”，工单状态为开放，当前优先级为普通。\n- **技术影响面**：现有信息无法确认是单个用户、单个账号，还是大范围用户均无法登录；因此暂不能认定存在系统性影响。\n- **风险**：登录故障可能涉及认证服务、账号状态或权限配置，确实存在扩大为业务不可用的风险。但目前没有错误日志、影响用户数、持续时间或故障范围等证据，尚不足以支持高风险判断。\n- **解决难度**：仅凭“无法登录”无法判断是密码/账号配置等低复杂度问题，还是认证链路、网络或后端服务故障等高复杂度问题，暂不能据此升级。\n- **处理时限**：普通优先级对应 **24 小时**处理时限。\n\n### 建议的升级触发条件\n\n若进一步确认以下任一情况，应立即升级：\n\n1. 多名用户或大范围用户同时无法登录；\n2. 核心业务、生产环境或关键客户受到影响；\n3. 认证服务持续报错、不",
+      "items": []
+    },
+    "dsp_3df082e8cdf199790d1f39dc": {
+      "dispatch_id": "dsp_3df082e8cdf199790d1f39dc",
+      "trace_id": "trc_80e3e7d6d1bfd57c7927679f",
+      "group_id": "grp_2f5b821bd0c4192df00ba35f",
+      "artisan": {
+        "package": "support-qa",
+        "entry": "triage"
+      },
+      "host": "session",
+      "state": "completed",
+      "end_reason": "ok",
+      "instruction": "请作为质检，独立查阅并评估工单 T-1001 是否应该升级处理，重点从服务质量、处理时限和流程合规角度给出明确结论及依据。不要参考其他成员意见。",
+      "created_at": "2026-11-19T14:17:16.010864+00:00",
+      "updated_at": "2026-11-19T14:18:17.741681+00:00",
+      "checks": {
+        "terminal": true,
+        "succeeded": true,
+        "outputs": true,
+        "no_pending": true,
+        "no_unknown": true
+      },
+      "result": "我先独立查阅工单 T-1001 的当前内容、状态和优先级，作为后续质检判断的唯一事实依据。我接着依据该工单的当前优先级运行 SLA 计算，核对其处理时限是否存在升级依据。我能帮你查工单、核对处理时限，并评估或调整优先级。\n\n## 独立质检结论：暂不建议升级处理\n\n**工单：** T-1001  \n**问题：** 无法登录  \n**当前状态：** open  \n**当前优先级：** normal  \n**对应处理时限：** 24 小时\n\n### 评估依据\n\n- **服务质量：** 目前仅能确认问题主题为“无法登录”，没有看到客户影响范围、重复来电、投诉升级或服务中断等信息，暂无严重服务质量问题的证据。\n- **处理时限：** normal 优先级的处理时限为 **24 小时**。现有资料未提供工单创建时间、已处理时长或是否超时，因此无法认定已经违反时限。\n- **流程合规：** 工单仍为开放状态，优先级为 normal；从现有记录看，没有发现应立即升级或关闭的流程触发条件。\n\n### 明确结论\n\n基于目前可核实的信息，**不应仅因“无法登录”这一问题标题就升级处理**。建议继续按 normal 优先级跟进，并以 24 小时为处理时限进行监控。\n\n如果后续确认已超过 24 小时未处理，或发现影响大量用户、存在安全风险、客户重复投诉等情况，则应重新评估并升级。",
+      "items": []
+    }
+  },
+  "groups": {
+    "grp_2f5b821bd0c4192df00ba35f": {
+      "group_id": "grp_2f5b821bd0c4192df00ba35f",
+      "trace_id": "trc_80e3e7d6d1bfd57c7927679f",
+      "title": "工单 T-1001 是否升级处理会诊",
+      "state": "running",
+      "step": 0,
+      "summarized": false,
+      "cancel_requested": false,
+      "version": 12,
+      "steps": [
+        {
+          "mode": "consult",
+          "members": [
+            "support-desk",
+            "support-tier2",
+            "support-qa"
+          ]
+        }
+      ],
+      "members": [
+        {
+          "step": 0,
+          "member": 1,
+          "dispatch_id": "dsp_b1ac36454b7c67872a1c1ed2",
+          "outcome": "completed",
+          "end_reason": "ok"
+        },
+        {
+          "step": 0,
+          "member": 2,
+          "dispatch_id": "dsp_ac12e1f28596a28e9805a938",
+          "outcome": "completed",
+          "end_reason": "ok"
+        },
+        {
+          "step": 0,
+          "member": 3,
+          "dispatch_id": "dsp_3df082e8cdf199790d1f39dc",
+          "outcome": "completed",
+          "end_reason": "ok"
+        }
+      ],
+      "followups": [],
+      "verdicts": [
+        {
+          "step": 0,
+          "level": "high",
+          "reasons": [
+            "rated_high"
+          ],
+          "rated_level": "high",
+          "pending_id": "pnd_a4eac149556d0a7047d5c0a6",
+          "ruled": false
+        }
+      ],
+      "created_at": "2026-11-19T14:17:15.969042+00:00",
+      "updated_at": "2026-11-19T14:19:17.975294+00:00"
+    }
+  }
+}

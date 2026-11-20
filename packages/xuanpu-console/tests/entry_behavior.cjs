@@ -54,7 +54,8 @@ function harness(routes) {
     if (!handler) throw new Error("未预期的请求 " + method + " " + url);
     const result = await handler(call, init);
     const status = result.status || 200;
-    return { ok: status < 400, status, text: async () => JSON.stringify(result.json || {}), body: result.stream };
+    const headers = { get: name => (result.headers || {})[name.toLowerCase()] || null };
+    return { ok: status < 400, status, headers, text: async () => JSON.stringify(result.json || {}), body: result.stream };
   };
   const context = vm.createContext({
     console: { error() {}, log: console.log }, crypto, AbortController, DOMException, TextDecoder, TextEncoder, URLSearchParams, Intl,
@@ -177,6 +178,43 @@ async function progressFromHistoryAndRestore(dir) {
   const bars = all(transcript, n => n.className.startsWith("bar"));
   assert.equal(bars.length, 2);
   assert.ok(bars[0].className.includes("running"));
+}
+
+// R7：回执以流到达——第一帧就开进展卡，回复逐段出现，最后以回执为准。
+async function streamingReply(dir) {
+  const h = harness(base({
+    "POST /v1/assistant/messages": () => ({ headers: { "content-type": "text/event-stream" }, stream: sse([
+      ["started", { mode: "butler", request_id: "x", trace_id: "trc_s" }],
+      ["delta", { text: "你好，" }], ["delta", { text: "我在" }],
+      ["receipt", { mode: "butler", state: "done", message: "你好，我在。", trace_id: "trc_s" }]]) }),
+    "GET /v1/traces/trc_s/events": () => ({ stream: sse([["snapshot", { title: "问候", active: false, spans: [] }], ["end", {}]]) }),
+  }));
+  load(h, dir); await flush();
+  h.nodes("message").value = "你好";
+  h.nodes("composer").listeners.submit({ preventDefault() {} });
+  await flush();
+  const sent = h.calls.find(c => c.url === "/v1/assistant/messages");
+  assert.ok(sent.headers.Accept.includes("text/event-stream"), "要流");
+  assert.ok(h.calls.some(c => c.url === "/v1/traces/trc_s/events"), "第一帧就订阅进展");
+  const replies = all(h.nodes("transcript"), n => n.className.startsWith("msg assistant"));
+  assert.equal(replies.length, 1);
+  assert.equal(replies[0].textContent, "你好，我在。", "回复以回执为准");
+  assert.ok(!replies[0].className.includes("streaming"));
+}
+
+async function streamingErrorKeepsInput(dir) {
+  const h = harness(base({
+    "POST /v1/assistant/messages": () => ({ headers: { "content-type": "text/event-stream" }, stream: sse([
+      ["started", { mode: "butler", request_id: "x", trace_id: null }],
+      ["error", { code: "runtime_unavailable", message: "管家暂时无法处理，输入已保留，请稍后重试" }]]) }),
+  }));
+  load(h, dir); await flush();
+  h.nodes("message").value = "帮我办件事";
+  h.nodes("composer").listeners.submit({ preventDefault() {} });
+  h.nodes("message").value = "";
+  await flush();
+  assert.equal(h.nodes("message").value, "帮我办件事", "失败时原话回到输入框");
+  assert.equal(all(h.nodes("transcript"), n => n.className.startsWith("msg assistant")).length, 0, "没写完的回复气泡撤掉");
 }
 
 async function staleResultsAreDropped(dir) {
@@ -383,6 +421,8 @@ async function handoffDraftUsesProposalKey() {
   await sendAndConfirm(dir);
   await listCardUsesVersion(dir);
   await progressFromHistoryAndRestore(dir);
+  await streamingReply(dir);
+  await streamingErrorKeepsInput(dir);
   await staleResultsAreDropped(dir);
   await unavailableKeepsInput(dir);
   await runningReplyFollowsLater(dir);
