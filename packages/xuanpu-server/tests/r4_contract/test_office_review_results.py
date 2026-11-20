@@ -19,7 +19,6 @@ import json
 import re
 import zipfile
 from contextlib import asynccontextmanager
-from pathlib import Path
 from types import SimpleNamespace
 from xml.etree import ElementTree
 
@@ -32,7 +31,8 @@ SHEET_NS = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'
 ROLES = {'summary_csv', 'summary_xlsx', 'report', 'evidence'}
 ARGS = ['["input_1.csv"]', '项目', '金额', '']
 SCRIPT_ARGS = {'inputs': ARGS[0], 'group_column': '项目', 'amount_column': '金额', 'currency_column': ''}
-DOCKER_ENV = {'PATH': '/usr/local/bin:/usr/bin:/bin', 'HOME': str(Path.home())}
+# 容器里的命令搜索路径（与宿主机上找 docker 的路径无关）
+CONTAINER_PATH = '/usr/local/bin:/usr/bin:/bin'
 
 
 def _sample(name: str) -> bytes:
@@ -77,7 +77,7 @@ def _summary(evidence: dict) -> dict:
 
 
 @pytest.fixture
-async def review_script(office_image, docker_user, tmp_path):
+async def review_script(office_image, docker_user, docker_env, tmp_path):
     """样板包与输入只读挂进断网的办公容器，经真实沙盒执行器跑包里的脚本。"""
     import shlex
 
@@ -89,7 +89,7 @@ async def review_script(office_image, docker_user, tmp_path):
     (workspace / 'inputs').mkdir(parents=True)
     environment = await DockerEnvironment.create(DockerSandboxConfig(
         image=office_image, user=docker_user, workspace_host_dir=workspace, memory_mb=512, cpus=1,
-        network=False, docker_env=DOCKER_ENV,
+        network=False, docker_env=docker_env,
         mounts=(Mount(SAMPLE / 'package', '/package'), Mount(inputs, '/workspace/inputs')),
         labels={'xuanpu.test': '1', 'xuanpu.office': '1'}))
 
@@ -98,7 +98,7 @@ async def review_script(office_image, docker_user, tmp_path):
         (inputs / 'input_1.csv').write_bytes(content)
         process = await environment.executor().start(taifeng.CommandSpec(
             command=shlex.join(['python3', '-u', '-I', '/package/skills/review/scripts/' + script, *args]),
-            shell=False, cwd='/workspace', env={'PATH': DOCKER_ENV['PATH'], 'WORKSPACE': '/workspace'}))
+            shell=False, cwd='/workspace', env={'PATH': CONTAINER_PATH, 'WORKSPACE': '/workspace'}))
         stdout, stderr = await process.communicate()
         return SimpleNamespace(code=await process.wait(), stdout=stdout.decode(), stderr=stderr.decode(),
                                outputs=workspace / 'outputs')
@@ -193,12 +193,12 @@ async def open_stage(identity_stores, world_opener, sandboxes):
 
 
 @pytest.fixture
-async def stage(identity_stores, world_opener, office_image, docker_user):
+async def stage(identity_stores, world_opener, office_image, docker_user, docker_env):
     """办公镜像上的平台：任务在断网办公容器里执行，输入只读挂载。"""
     from xuanpu_server.runtime.sandbox import DockerSandboxProvider
 
     provider = DockerSandboxProvider(user=docker_user, image=office_image, memory_mb=512,
-                                     docker_env=DOCKER_ENV, labels={'xuanpu.test': 'r4-office-review'})
+                                     docker_env=docker_env, labels={'xuanpu.test': 'r4-office-review'})
     async with open_stage(identity_stores, world_opener, provider) as opened:
         yield opened
 

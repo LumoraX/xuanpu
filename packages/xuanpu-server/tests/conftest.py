@@ -451,9 +451,27 @@ def docker_run_label() -> str:
     return "=".join(DOCKER_RUN_LABEL)
 
 
+def docker_host_env() -> dict[str, str]:
+    """宿主机上运行 docker 命令的环境（不继承宿主环境，只给找命令与守护进程所需的）。
+
+    除 Linux 的默认目录外，带上 docker 命令实际所在的目录：Mac 上 Docker Desktop 把它装在
+    ``~/.docker/bin``，不在 ``/usr/local/bin`` 里，只写死默认目录会报「找不到 docker」。
+    """
+    found = shutil.which("docker")
+    dirs = [str(Path(found).parent)] if found else []
+    dirs += [d for d in ("/usr/local/bin", "/usr/bin", "/bin") if d not in dirs]
+    return {"PATH": ":".join(dirs), "HOME": str(Path.home())}
+
+
 def docker_test_user() -> str | None:
     """rootful Linux测试匹配私有绑定目录的所有者；Mac共享保留镜像默认身份。"""
     return f"{os.getuid()}:{os.getgid()}" if sys.platform == "linux" else None
+
+
+@pytest.fixture(name="docker_env")
+def docker_env_fixture() -> dict[str, str]:
+    """``docker_host_env`` 的夹具形式，给不能相对导入本文件的测试目录用。"""
+    return docker_host_env()
 
 
 @pytest.fixture(name="docker_user")

@@ -15,7 +15,7 @@ from xuanpu_server.tenancy import Principal, Tenant
 from xuanpu_server.work_tasks.models import InputSnapshot, WorkTaskRecord
 from xuanpu_server.workspace.service import WorkspaceService
 
-from ..conftest import docker_test_user
+from ..conftest import docker_host_env, docker_test_user
 
 
 @pytest.fixture
@@ -98,8 +98,7 @@ async def office_worker(office_image, tmp_path):
     workspace.mkdir()
     (workspace / 'inputs').mkdir()
     config = DockerSandboxConfig(image=office_image, user=docker_test_user(), workspace_host_dir=workspace, memory_mb=512,
-        cpus=1, network=False, docker_env={'PATH': '/usr/local/bin:/usr/bin:/bin',
-                                         'HOME':str(Path.home())},
+        cpus=1, network=False, docker_env=docker_host_env(),
         mounts=(Mount(package, '/package'), Mount(inputs, '/workspace/inputs')),
         labels={'xuanpu.test':'1', 'xuanpu.office':'1'})
     environment = await DockerEnvironment.create(config)
@@ -132,7 +131,7 @@ async def office_world(identity_stores, world_opener, office_image):
 
     control, identity = identity_stores
     provider = DockerSandboxProvider(user=docker_test_user(), image=office_image,
-        docker_env={'PATH':'/usr/local/bin:/usr/bin:/bin', 'HOME':str(Path.home())},
+        docker_env=docker_host_env(),
         memory_mb=512, labels={'xuanpu.test':'1'})
     world = await world_opener(store=control, identity_store=identity, sandboxes=provider)
     await world.platform.packages.publish(world.admin,
@@ -156,7 +155,7 @@ async def recovery_world(identity_stores, world_opener, office_image, tmp_path, 
 
     control, identity = identity_stores
     provider = DockerSandboxProvider(user=docker_test_user(), image=office_image, memory_mb=512,
-        docker_env={'PATH':'/usr/local/bin:/usr/bin:/bin','HOME':str(Path.home())},
+        docker_env=docker_host_env(),
         labels={'xuanpu.test':'r2-recovery'})
     world = await world_opener(store=control, identity_store=identity, sandboxes=provider,
         durable_execution=DurableExecutionConfig(enabled=True, verified_text_bounds=True))
