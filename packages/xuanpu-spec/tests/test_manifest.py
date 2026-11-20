@@ -428,3 +428,20 @@ def test_version_ordering(samples: Any) -> None:
     assert sorted(reversed(ordered), key=version_key) == ordered
     with pytest.raises(ValueError, match="语义化版本"):
         version_key("1.0")
+
+
+def test_display_names_are_optional_and_bounded(samples: Any) -> None:
+    """匠人与工具显示名可选；超过 40 字或换行拒绝；不填时为 None（用技术名）。"""
+    plain = parse_manifest(samples.manifest)
+    assert plain.metadata.display_name is None
+    named = parse_manifest(_edited(samples.manifest, metadata__displayName="医生匠人"))
+    assert named.metadata.display_name == "医生匠人"
+    assert "displayName: 医生匠人" in dump_manifest(named)
+    for bad in ("", "甲" * 41, "两\n行"):
+        with pytest.raises((ValidationError, ManifestError)):
+            parse_manifest(_edited(samples.manifest, metadata__displayName=bad))
+    data = yaml.safe_load(samples.manifest)
+    data["spec"]["connectors"][0]["tools"] = [{"name": "search_customer", "effect": "read",
+                                                 "displayName": "查客户"}]
+    tool = parse_manifest(yaml.safe_dump(data, allow_unicode=True)).spec.connectors[0].tools[0]
+    assert tool.display_name == "查客户"

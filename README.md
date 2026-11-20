@@ -127,6 +127,24 @@ uv run mypy packages/*/src
 - 沙盒相关用例真的起隔离进程：macOS 用系统自带的 `sandbox-exec`；Linux 需要装 `bubblewrap` 并允许创建用户命名空间。容器后端的用例（含连接器容器、办公执行容器）在本机有 Docker 时才跑。
 - 对象存储的 S3 实现用 moto 在本机起一个 S3 服务来测，不连真实的 OSS。
 
+### CI 门禁
+
+`.github/workflows/ci.yml` 在每次推送 main 与每个 PR 上跑两类任务：
+
+- **静态检查**：上面的 ruff、mypy，另跑 `packages/xuanpu-server/tests/test_ci_shards.py` 核对全量分片的覆盖。
+- **全量测试**：Python 3.12、3.13 各按目录切成 4 个分片，共 8 个任务并行，每个任务有自己的 runner 与 Postgres 服务。分片用 pytest 自带的路径参数和 `--ignore` 表达，`--durations=20`、`-o faulthandler_timeout=120` 每片都带：
+
+  | 分片 | 范围 | 3.12 串行时的实测占比 |
+  | --- | --- | --- |
+  | `r3_contract` | `packages/xuanpu-server/tests/r3_contract` | 约 34% |
+  | `r4_contract+work_tasks+butler` | 平台服务下这三个目录 | 约 23% |
+  | `server 其余` | `packages/xuanpu-server` 减去上面四个目录 | 约 22% |
+  | `其他包` | `packages` 减去 `packages/xuanpu-server` | 约 20% |
+
+  后两片用「整体减去已列目录」的写法，新增测试目录或新包自动进兜底分片。`test_ci_shards.py` 对全量和每个分片各做一次 `--collect-only`，所有分片的并集必须等于全量、两两不相交，并检查运行命令仍带上述两个参数；改分片只改 `ci.yml` 的 matrix。
+
+  本机想复现某一片，把 matrix 里该片的 `args` 接在 `uv run pytest` 后面即可，例如 `uv run pytest packages/xuanpu-server/tests/r3_contract`。
+
 ## 许可
 
 Apache-2.0

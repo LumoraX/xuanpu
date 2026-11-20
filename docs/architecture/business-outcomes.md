@@ -1,6 +1,6 @@
 # 能力运行结果与业务核实
 
-> R4-F。计划见 [R4-F 计划](../superpowers/plans/2026-10-25-r4f-operations-outcomes.md)。当前源码实现到 F0（统计与验收批次）与 F1 的一部分：管理员原生视图「能力配置 → 运行结果与发布」（`console/static/capability-operations.js`，只显示计数与用量，完成率无数据显示「暂无」、无价格表不估算费用）、SDK `OutcomeClient` 与命令行 `xuanpu knowledge outcomes|admin-outcomes|batch`；员工本人统计页面、验收批次页面与导出未实现。尚未生产部署。
+> R4-F。计划见 [R4-F 计划](../superpowers/plans/2026-10-25-r4f-operations-outcomes.md)。当前源码实现到 F0（统计与验收批次）与 F1 的一部分：管理员原生视图「能力配置 → 运行结果与发布」（`console/static/capability-operations.js`，只显示计数与用量，完成率无数据显示「暂无」、无价格表不估算费用）、SDK `OutcomeClient` 与命令行 `xuanpu knowledge outcomes|admin-outcomes|batch`；员工「我的能力」本人结果与 CSV 导出（`outcomes/export.py`：与页面同权限同口径，字段白名单，无记录为空不填 0，文字公式前缀加单引号）已提供；验收批次页面未实现。尚未生产部署。
 
 ## 运行结果与资源（`outcomes/service.py`）
 

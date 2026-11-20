@@ -8,7 +8,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from xuanpu_server.errors import ConflictError
 
@@ -18,12 +18,24 @@ if TYPE_CHECKING:
 
 
 class SourceRef(BaseModel):
-    """本人工作区文件的精确版本（共享资料包来源待后续版本）。"""
+    """来源的精确版本：本人工作区文件（``item_id``），或本人此刻有权读的共享事项材料
+    （``matter_id`` + ``material_id``）。登记不复制分享权：每次使用都按当前共享授权复核。"""
 
     model_config = ConfigDict(frozen=True, extra='forbid')
-    kind: Literal['workspace_file']
-    item_id: str = Field(min_length=1, max_length=128)
+    kind: Literal['workspace_file', 'shared_material']
+    item_id: str | None = Field(default=None, min_length=1, max_length=128)
+    matter_id: str | None = Field(default=None, min_length=1, max_length=128)
+    material_id: str | None = Field(default=None, min_length=1, max_length=128)
     revision: int = Field(ge=1)
+
+    @model_validator(mode='after')
+    def _shape(self) -> SourceRef:
+        """工作区文件只带 item_id；共享材料只带 matter_id 与 material_id。"""
+        workspace = self.item_id is not None and self.matter_id is None and self.material_id is None
+        shared = self.item_id is None and self.matter_id is not None and self.material_id is not None
+        if (self.kind == 'workspace_file' and not workspace) or (self.kind == 'shared_material' and not shared):
+            raise ValueError('来源引用字段与类型不符')
+        return self
 
 
 class KnowledgeSource(BaseModel):
@@ -151,12 +163,12 @@ class PostgresKnowledgeStore:
         async with self._pool.acquire() as conn, conn.transaction():
             live = await conn.fetchval(
                 f"SELECT count(*) FROM {self._sources} WHERE tenant_id=$1 AND owner=$2 AND ref=$3 "
-                "AND record->>'status'<>'deleted'", source.tenant_id, source.owner, source.ref.model_dump_json())
+                "AND record->>'status'<>'deleted'", source.tenant_id, source.owner, source.ref.model_dump_json(exclude_none=True))
             if live:
                 raise ConflictError('这份材料的这个版本已经登记过')
             await conn.execute(
                 f'INSERT INTO {self._sources} (tenant_id,owner,id,ref,record) VALUES($1,$2,$3,$4,$5)',
-                source.tenant_id, source.owner, source.id, source.ref.model_dump_json(), source.model_dump_json())
+                source.tenant_id, source.owner, source.id, source.ref.model_dump_json(exclude_none=True), source.model_dump_json())
             await conn.executemany(
                 f'INSERT INTO {self._chunks} (tenant_id,owner,source_id,ordinal,text) VALUES($1,$2,$3,$4,$5)',
                 [(source.tenant_id, source.owner, c.source_id, c.ordinal, c.text) for c in chunks])

@@ -188,7 +188,7 @@ async function appendWorkspaceApprovals(generation,epoch) {
     const {pending}=await api("GET",`/v1/sessions/${session.session_id}/pending`);
     if(!workspaceCurrent(generation,epoch))return;
     for(const item of pending) {
-      const card=wsText("article","","workspace-record");card.append(wsText("h3","等你确认 · "+businessName(session.package)),wsText("p",item.detail?.target || item.reason),wsButton("查看并处理",()=>{closeWorkspace();document.querySelector('[data-tab="sessions"]').click();return openSession(session);}));$("workspace-content").prepend(card);
+      const card=wsText("article","","workspace-record");card.append(wsText("h3","等你确认 · "+businessName(session)),wsText("p",item.detail?.display_name || item.detail?.target || item.reason),wsButton("查看并处理",()=>{closeWorkspace();document.querySelector('[data-tab="sessions"]').click();return openSession(session);}));$("workspace-content").prepend(card);
     }
   }
 }

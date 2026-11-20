@@ -44,7 +44,7 @@
 5. 启动承载：持久任务（`accept_capability`，请求标识 `butler:<派工>`）或会话（钉住派工时的版本建会话并发出说明；这一轮在后台读完）。成功推进到 `running` 并记 `host_ref`；启动失败记 `failed`（`start_failed`）后把错误交给模型。
 6. 立即返回；匠人结束后的唤醒与验收在 C2。
 7. 唤醒时取匠人结果（`wakeup._result_only`）：从这一轮回复全文里去掉本次派工下各工具 span 的旁白（`tracing/narration.without_narration`），交付消息、派工细节与复核只用结果；读不到执行记录时保留原文并记日志。
-8. 投递给匠人的说明（会话的首条消息、任务的 text）末尾追加说话约定 `NARRATE_HINT`「（每次动手前，先用一句话告诉员工你要做什么。）」，供执行旁白（R7，[ADR 0022](../decisions/0022-execution-story.md)）；派工记录的 `instruction` 与幂等指纹不含它。
+8. 投递给匠人的说明（会话的首条消息、任务的 text）末尾追加说话约定 `NARRATE_HINT`「（每次动手前，先用一句话告诉员工你要做什么。）」，供执行旁白（R7，[ADR 0023](../decisions/0023-execution-story.md)）；派工记录的 `instruction` 与幂等指纹不含它。
 
 ### 派工细节（`api/dispatches.py`，R7）
 
@@ -126,3 +126,7 @@
 - 持久任务承载的派工路径只有单元级覆盖（本机测试环境无法运行办公容器）；会话承载有端到端测试。
 - 说话约定在任务承载时随任务的 `text` 保存，员工在「更多」的交办工作里会看到这一行，也计入任务请求的幂等指纹；若将来改动约定文字，已建任务按同一请求标识重新受理会冲突（目前没有重新受理的路径）。
 - 真实模型下的误派、漏派率尚未测量：回归集与脚本已就绪（`scripts/acceptance/r5_butler_regression.py`），本环境没有真实模型凭据，未执行。
+
+## 匠人的名字（ADR 0022）
+
+`list_artisans` 给管家 `name`（业务包 `metadata.displayName`）与 `entry_name`（入口 skill 的 `display_name`），没有声明时等于包名、入口名；管家对员工用这些名字，派工参数仍是 `package`、`entry`。派工时显示名冻结进 `ArtisanRef.display_name`，回报（「某某已完成」「某某需要你回答」「某某有一项操作需要你确认」）用它，旧派工记录用包名。

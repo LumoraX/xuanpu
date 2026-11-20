@@ -3,6 +3,7 @@ metadata:
   name: support-desk
   version: {version}
   description: 客服工单助手
+  displayName: 工单助手
 spec:
   skills:
     entries: [triage]
@@ -21,4 +22,4 @@ spec:
         CRM_REGION: {{value: cn}}
       tools:
         - {{name: search_customer, effect: read}}
-        - {{name: update_ticket, effect: write}}
+        - {{name: update_ticket, effect: write, displayName: 修改工单}}

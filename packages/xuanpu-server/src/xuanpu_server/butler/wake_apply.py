@@ -159,8 +159,8 @@ class WakeEffects:
 
 
 def _name(dispatch: DispatchRecord) -> str:
-    """给员工看的匠人名。"""
-    return dispatch.artisan.package
+    """给员工看的匠人名：业务包声明的显示名，没有就用包名。"""
+    return dispatch.artisan.display_name or dispatch.artisan.package
 
 
 def _excerpt(text: str | None) -> str:

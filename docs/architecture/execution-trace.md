@@ -20,7 +20,7 @@
 
 trace 边界：根执行开始一轮时打开；同一根执行挂起后续跑仍在同一条；根执行完成、失败或取消时结束，同一尝试的迟到事件丢弃，下一轮另开。没见过开头或父执行的执行（晚订阅、冷恢复）单独成 trace 并标不完整。引擎在执行中途被关闭时，未结束的 trace 标不完整。跨引擎的父子见下节。
 
-## 旁白（R7，`tracing/narration.py`，[ADR 0022](../decisions/0022-execution-story.md)）
+## 旁白（R7，`tracing/narration.py`，[ADR 0023](../decisions/0023-execution-story.md)）
 
 - 采集器为每个执行攒下它对员工说出口的话（`assistant_text` 增量，上限 2000 字，超出丢开头）；同一执行的 `tool_call_started` 到来时取走、清洗成一句挂到该工具 span 的 `say`（并行的一批只挂第一个），`turn_completed`/`turn_failed`/`turn_suspended` 时清空。
 - 清洗：去成对 `<think>` 块与控制字符、折叠空白；不超过 160 字就整段保留，超过时从结尾往前按整句保留（最后一句本身过长则从开头截并加「…」）；为空则没有旁白。真实模型常把「做什么」与「不做什么」拆成两句，只留最后一句会丢掉要紧的那句（R7 真实模型验收发现）。

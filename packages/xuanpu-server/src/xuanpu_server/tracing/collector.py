@@ -97,7 +97,7 @@ class TraceCollector:
         self._preset: str | None = trace_id
         self._binder = binder
         self._task: asyncio.Task[None] | None = None
-        # 每个执行自上次动手以来对员工说的话；调用工具时取走成为旁白（ADR 0022）
+        # 每个执行自上次动手以来对员工说的话；调用工具时取走成为旁白（ADR 0023）
         self._said: dict[str, str] = {}
 
     def start(self) -> None:

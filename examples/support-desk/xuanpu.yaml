@@ -6,6 +6,7 @@ metadata:
   name: support-desk
   version: 1.0.0
   description: 客服工单助手：查工单、给出处理时限、改派优先级
+  displayName: 工单助手
 spec:
   skills:
     entries: [triage]
@@ -24,9 +25,9 @@ spec:
       auth: {type: bearer, secret: tickets-token}
       timeoutSeconds: 15
       tools:                    # 白名单：文档里没列在这里的 operation 不会变成工具
-        - {name: listTickets}   # GET，默认分类 read
-        - {name: getTicket}
-        - {name: updateTicket, effect: write}
+        - {name: listTickets, displayName: 列出工单}   # GET，默认分类 read
+        - {name: getTicket, displayName: 查看工单}
+        - {name: updateTicket, effect: write, displayName: 修改工单}
   evals:
     - name: greet
       entry: triage

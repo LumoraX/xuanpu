@@ -33,13 +33,14 @@ async function knowledgeSources(epoch,generation){
   const labels={ready:"可检索",stale:"原文件已不可读"};
   for(const source of body.sources){
     const card=connectionText("article","");card.className="function-card";
-    card.append(connectionText("h4",source.title+" · 第 "+source.revision+" 版"),
+    card.append(connectionText("h4",source.title+" · 第 "+source.revision+" 版"+(source.kind==="shared_material"?" · 共享资料":"")),
       connectionText("p",(labels[source.status]||source.status)+" · "+source.chunks+" 段"+(source.has_update?" · 原文件有新版本":"")));
     if(source.has_update)card.append(connectionButton("换成新版本",()=>knowledgeChange(source,"refresh",epoch,generation)));
     card.append(connectionButton("删除来源",()=>knowledgeChange(source,"delete",epoch,generation)));
     host.append(card);
   }
-  host.append(connectionButton("从我的文件登记来源",()=>knowledgePickFile(host,epoch,generation)));
+  host.append(connectionButton("从我的文件登记来源",()=>knowledgePickFile(host,epoch,generation)),
+    connectionButton("从共享资料登记来源",()=>knowledgePickShared(host,epoch,generation)));
 }
 async function knowledgeChange(source,action,epoch,generation){
   try{
@@ -64,6 +65,31 @@ async function knowledgePickFile(host,epoch,generation){
         await api("POST","/v1/me/knowledge/sources",{json:{item_id:item.id,revision}});
         if(knowledgeLive(epoch,generation)){knowledgeNotice("已登记。");await knowledgeSources(epoch,generation);}
       }catch(error){if(knowledgeLive(epoch,generation))knowledgeNotice(error.status===400?"只支持 UTF-8 的 TXT、Markdown、CSV、JSON 文件。":error.message);}
+    });
+  }catch(error){if(knowledgeLive(epoch,generation))knowledgeNotice(error.message);}
+}
+// 共享事项里本人此刻能读的材料；登记不复制分享权，被移出事项或材料撤回后来源失效
+async function knowledgePickShared(host,epoch,generation){
+  try{
+    const page=await api("GET","/v1/shared-matters?limit=50");if(!knowledgeLive(epoch,generation))return;
+    const label=connectionText("label","选择共享事项 "),select=connectionText("select","");
+    const empty=connectionText("option","请选择");empty.value="";select.append(empty);
+    for(const item of page.items||[]){const option=connectionText("option",String(item.title));option.value=item.id;select.append(option);}
+    label.append(select);host.append(label);
+    select.addEventListener("change",async()=>{
+      if(!select.value)return;
+      try{
+        const listed=await api("GET","/v1/shared-matters/"+encodeURIComponent(select.value)+"/materials");if(!knowledgeLive(epoch,generation))return;
+        for(const material of listed.items||[]){
+          const latest=(material.revisions||[]).reduce((a,b)=>b.revision>a.revision?b:a,material.revisions[0]);if(!latest)continue;
+          host.append(connectionButton("登记「"+material.name+"」第 "+latest.revision+" 版",async()=>{
+            try{
+              await api("POST","/v1/me/knowledge/sources",{json:{kind:"shared_material",matter_id:select.value,material_id:material.id,revision:latest.revision}});
+              if(knowledgeLive(epoch,generation)){knowledgeNotice("已登记。被移出事项或材料撤回后，这个来源会自动失效。");await knowledgeSources(epoch,generation);}
+            }catch(error){if(knowledgeLive(epoch,generation))knowledgeNotice(error.status===400?"只支持 UTF-8 的 TXT、Markdown、CSV、JSON 文件。":error.message);}
+          }));
+        }
+      }catch(error){if(knowledgeLive(epoch,generation))knowledgeNotice(error.message);}
     });
   }catch(error){if(knowledgeLive(epoch,generation))knowledgeNotice(error.message);}
 }

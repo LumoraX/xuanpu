@@ -1,6 +1,6 @@
 # R7 小院真实模型验收（2026-11-19）
 
-设计见 [R7 设计](../../superpowers/specs/2026-11-19-r7-courtyard-design.md)，决策见 [ADR 0022](../../decisions/0022-execution-story.md)。
+设计见 [R7 设计](../../superpowers/specs/2026-11-19-r7-courtyard-design.md)，决策见 [ADR 0023](../../decisions/0023-execution-story.md)。
 
 ## 环境
 

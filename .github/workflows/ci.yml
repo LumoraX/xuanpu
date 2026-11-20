@@ -17,16 +17,39 @@ permissions:
 
 jobs:
   tests:
-    name: 全量测试 (Python ${{ matrix.python-version }})
+    name: 全量测试 (Python ${{ matrix.python-version }} · ${{ matrix.shard.name }})
     runs-on: ubuntu-latest
-    # 财务及强制退出恢复纳入同一全量，保留租约自然到期的验证时间。
-    # 全量在托管 runner 上约 38–41 分钟，慢的 runner 上 Python 3.12 超过 45 分钟被取消，故留到 60。
-    timeout-minutes: 60
+    # 2026-11-19 前全量在一个任务里串行：3.12 实测 52–65 分钟（曾在 60 分钟被取消、放宽到 90），3.13 约 50 分钟。
+    # 现按目录切成 4 个分片各开一个任务，每片独占自己的 runner 与两个 Postgres 服务，
+    # 进程、端口、临时目录、模块级全局状态都不跨片共享，用例本身不需要为并行做任何改动。
+    # 单片按 3.12 实测折算最长约 20 分钟（r3_contract），45 分钟足够覆盖慢 runner。
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         # 与 pyproject classifiers 声明的受支持版本一一对应
         python-version: ["3.12", "3.13"]
+        # 分片只用 pytest 自带的路径参数与 --ignore 表达；最后两片用「整体减去已列目录」写法，
+        # 新增测试目录或新包会自动落进兜底分片，不会漏跑。
+        # 所有分片的并集必须等于全量且两两不相交，由 tests/test_ci_shards.py 核对（静态检查任务里也单独跑）。
+        # 改分片时只改这里；各片耗时占比见 README「CI 门禁」。
+        shard:
+          - name: r3_contract
+            args: packages/xuanpu-server/tests/r3_contract
+          - name: r4_contract+work_tasks+butler
+            args: >-
+              packages/xuanpu-server/tests/r4_contract
+              packages/xuanpu-server/tests/work_tasks
+              packages/xuanpu-server/tests/butler
+          - name: server 其余
+            args: >-
+              packages/xuanpu-server
+              --ignore=packages/xuanpu-server/tests/r3_contract
+              --ignore=packages/xuanpu-server/tests/r4_contract
+              --ignore=packages/xuanpu-server/tests/work_tasks
+              --ignore=packages/xuanpu-server/tests/butler
+          - name: 其他包
+            args: packages --ignore=packages/xuanpu-server
     # 控制面与状态面的用例对真实数据库执行
     services:
       postgres:
@@ -92,17 +115,18 @@ jobs:
           packages/xuanpu-server/tests/work_tasks/test_tools.py
           packages/xuanpu-server/tests/work_tasks/test_table_summary.py
 
-      - name: 全量测试
+      - name: 全量测试（本分片）
         env:
           FINANCE_TEST_PG_CONTAINER: ${{ job.services.finance_postgres.id }}
         run: >-
           uv run --frozen --python ${{ matrix.python-version }} --all-packages --all-extras pytest -q
           --durations=20 -o faulthandler_timeout=120
+          ${{ matrix.shard.args }}
 
   lint:
     # F 未用/未定义名 · S108 硬编码 /tmp · I 导入排序 · TC 仅类型用 import 进 TYPE_CHECKING。
     # I 与 TC 必须同时入闸：TC 挪动 import 会制造 I001，单卡任一条都会被另一条反弹。
-    name: 静态检查 (ruff F + S108 + I + TC · mypy strict)
+    name: 静态检查 (ruff F + S108 + I + TC · mypy strict · 分片覆盖)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -124,3 +148,7 @@ jobs:
 
       - name: mypy strict 必须零错
         run: uv run --frozen --all-packages --all-extras mypy packages/*/src
+
+      - name: 全量测试分片覆盖核对
+        # 各分片收集到的用例并集必须等于全量、两两不相交；只做收集不跑用例，几十秒内出结果
+        run: uv run --frozen --all-packages --all-extras pytest -q packages/xuanpu-server/tests/test_ci_shards.py

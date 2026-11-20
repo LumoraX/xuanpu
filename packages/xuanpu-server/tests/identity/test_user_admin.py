@@ -31,6 +31,7 @@ USER_FIELDS = {
     "last_login_at",
     "disabled_at",
     "unverified_since",
+    "lifecycle_epoch",
 }
 """员工对外表示的全部字段：没有外部身份、登录会话之类的东西。"""
 

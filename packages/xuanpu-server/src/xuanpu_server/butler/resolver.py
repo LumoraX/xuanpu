@@ -10,9 +10,11 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Protocol
 
 import taifeng
+from xuanpu_spec.skills import scan_skills
 
 from xuanpu_server.butler.models import Artisan, ArtisanRef
 from xuanpu_server.errors import NotFoundError, PermissionDeniedError, RuntimeUnavailableError
@@ -115,6 +117,7 @@ class CatalogArtisanResolver:
     async def _artisans(self, tenant: str, package: ResolvedPackage) -> list[Artisan]:
         """一个包的全部已发布入口。"""
         skills = (await taifeng.FilesystemSkillRegistry.load(package.skills_dir)).snapshot()
+        names = {s.skill_id: s.display_name for s in await asyncio.to_thread(scan_skills, package.skills_dir)}
         record = package.record
         host = self._host(tenant, package)
         found = []
@@ -126,10 +129,12 @@ class CatalogArtisanResolver:
                 package=record.name, version=record.version,
                 digest=record.digest.removeprefix("sha256:"), entry=entry,
                 decision_ref=f"catalog:{record.name}@{record.version}",
+                display_name=package.manifest.metadata.display_name,
             )
             found.append(Artisan(
                 ref=ref, description=package.manifest.metadata.description[:2000],
                 entry_description=skill.description[:2000], host=host,
+                entry_display_name=names.get(entry),
             ))
         return found
 

@@ -87,7 +87,8 @@ def decide(state: CapabilityState, org: OrganizationState, *, capability_id: str
     if release is None:
         raise NotFoundError('没有可用的能力')
     installation = state.installations.get(release.installation_id)
-    if installation is None or installation.status != 'ready' or installation.config_id != release.config_id:
+    # 发布固定的是它自己的配置快照（可以不是安装当前的配置：灰度不同版本、回退旧版都靠这个）
+    if installation is None or installation.status != 'ready' or release.config_id not in state.configurations:
         raise NotFoundError('没有可用的能力')
     revision = next((r for r in state.revisions.values()
                      if r.capability_id == capability_id and r.revision == release.capability_revision), None)

@@ -15,6 +15,8 @@ const elements=new Map(),calls=[];
 let reader=null,counter=0;
 const defaults=(method,url)=>{
   if(url==='/v1/me/knowledge/sources')return {sources:[],total:0};
+  if(url==='/v1/shared-matters?limit=50')return {items:[{id:'shm_1',title:'共同核对'}]};
+  if(url==='/v1/shared-matters/shm_1/materials')return {items:[{id:'mat_1',name:'口径.txt',revisions:[{revision:1},{revision:2}]}]};
   if(url==='/v1/me/work-memory')return {memories:[{id:'wm_1',kind:'user_assertion',text:'周会在周一',status:'active',version:1}],total:1};
   if(url==='/v1/me/knowledge/search')return {hits:[{source_id:'ksr_1',ordinal:0,title:'口径.txt',revision:1,excerpt:'按到账日确认'}],total:1};
   if(url==='/v1/me/knowledge/contexts')return {id:'kcx_1',status:'active',version:1};
@@ -38,6 +40,12 @@ async function main(){
   const pending=c.openKnowledge();c.resetKnowledge();finish({sources:[{id:'x',title:'旧身份',revision:1,status:'ready',chunks:1,version:1}]});await pending;
   assert.ok(!text(c.$('knowledge-sources')).includes('旧身份'),'迟到响应不能回填旧身份');
   reader=null;await c.openKnowledge();
+  const sources=c.$('knowledge-sources');
+  await all(sources).find(n=>n.tagName==='button'&&n.textContent==='从共享资料登记来源').events.click();
+  const select=all(sources).find(n=>n.tagName==='select');select.value='shm_1';await select.events.change();
+  await all(sources).find(n=>n.tagName==='button'&&n.textContent.startsWith('登记「口径.txt」')).events.click();
+  const shared=calls.filter(x=>x.method==='POST'&&x.url==='/v1/me/knowledge/sources').at(-1);
+  assert.equal(JSON.stringify(shared.opts.json),JSON.stringify({kind:'shared_material',matter_id:'shm_1',material_id:'mat_1',revision:2}),'登记共享材料的最新可读版本');
   c.$('knowledge-question').value='口径？';
   await c.knowledgeAsk();
   assert.equal(calls.filter(x=>x.url==='/v1/me/knowledge/contexts').length,0,'未选依据不能建问答');
@@ -55,7 +63,7 @@ async function main(){
   await c.knowledgeAsk();
   assert.equal(c.$('knowledge-answer').children.length,0,'依据失效须先清掉旧回答');
   assert.ok(c.$('knowledge-feedback').textContent.includes('重新检索'));
-  console.log('知识与记忆：迟到响应、未选依据、重试操作号、依据失效清屏通过');
+  console.log('知识与记忆：迟到响应、共享资料登记、未选依据、重试操作号、依据失效清屏通过');
 }
 let finished=false;
 // 有未完成的等待时 Node 会静默退出：没跑完全部断言也算失败

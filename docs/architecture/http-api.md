@@ -166,7 +166,7 @@ X-Xuanpu-Act-As: usr_5f0c1b2e7d9a4c3b8e6f1a20
 | `POST /v1/packages/{name}/evals` | 租户管理员 | 运行评测用例，返回报告 |
 | `POST /v1/sessions` · `GET /v1/sessions?status=&mine=&limit=` | 租户成员 | 新建、列出会话（只列[看得见的](#可见范围)） |
 | `GET /v1/sessions/{id}` · `DELETE /v1/sessions/{id}` | 租户成员 | 取会话、关闭会话 |
-| `GET /v1/sessions/{id}/pending` | 租户成员 | 会话当前等待处理的审批请求 |
+| `GET /v1/sessions/{id}/pending` | 租户成员 | 会话当前等待处理的审批请求；审批项 `detail.display_name` 是工具给员工看的名字（清单 `tools[].displayName`，没声明时等于 `detail.target`） |
 | `GET /v1/sessions/{id}/events?submission_id=&after_seq=` | 租户成员 | 回放一轮对话已记入审计的事件 |
 | `POST /v1/sessions/{id}/messages` | 租户成员 | 发消息；响应是事件流 |
 | `POST /v1/sessions/{id}/resume` | 租户成员 | 送回审批结果；响应是事件流 |
@@ -390,7 +390,7 @@ GET /v1/users?status=active&limit=100
 → {"users": [{"user_id": "usr_5f0c1b2e7d9a4c3b8e6f1a20", "display_name": "张三",
               "avatar_url": "https://…/avatar.png", "role": "tenant_member", "status": "active",
               "disabled_reason": null, "created_at": 1790900000.0, "last_login_at": 1790903600.0,
-              "disabled_at": null, "unverified_since": null}],
+              "disabled_at": null, "unverified_since": null, "lifecycle_epoch": 1}],
    "next_after": null}
 ```
 
@@ -588,7 +588,7 @@ Content-Type: application/zip
 
 `activate` 省略时只发布、不生效。
 
-`GET /v1/packages` 返回 `{"packages": [ … ]}`：本租户全部已发布的版本，同名的按版本号从低到高；`?name=` 只看一个包。
+`GET /v1/packages` 返回 `{"packages": [ … ]}`：本租户全部已发布的版本，同名的按版本号从低到高；`?name=` 只看一个包。每项带 `display_name`（这个版本清单里的 `metadata.displayName`，没声明时等于包名）。
 
 ```
 POST /v1/packages/{name}/activate
@@ -616,7 +616,7 @@ POST /v1/sessions
 {"package": "support-desk", "version": "1.0.0", "entry": "triage", "metadata": {"customer": "C-42"}}
 
 → 201
-{"session_id": "ses_1197ee27deb1aa819440d23c", "package": "support-desk", "version": "1.0.0",
+{"session_id": "ses_1197ee27deb1aa819440d23c", "package": "support-desk", "display_name": "工单助手", "version": "1.0.0",
  "entry": "triage", "status": "active", "owner": null,
  "created_at": 1790753324.73, "updated_at": 1790753324.73,
  "created_by": "key:be139be29730", "metadata": {"customer": "C-42"}, "user_id": null}
@@ -624,7 +624,7 @@ POST /v1/sessions
 
 | 字段 | 说明 |
 | --- | --- |
-| `package` | 必填 |
+| `package` | 必填。响应另带 `display_name`：会话所钉版本清单里的匠人显示名，没声明时等于包名 |
 | `version` | 省略用生效版本。会话创建时钉住版本 |
 | `entry` | 省略用清单 `entries` 的第一个；不在 `entries` 里是 `400` |
 | `metadata` | 业务方自己的关联标识：最多 16 项，键值都是字符串、各 1–256 个字符。原样返回并进审计 |
@@ -1078,6 +1078,8 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | --- | --- | --- |
 | GET /v1/me/capability-outcomes | since、until（受理时间）、limit（1–100）、offset | window_start、window_end、cohort_basis=accepted_at、observed_at、aggregation_version、evidence_kind、totals（各状态与 unreadable/missing）、technical_completion（succeeded、cohort、rate 或 null）、tokens（settled、held_upper_bound、tasks_with_records、tasks_without_records）、cost（status=price_unavailable、amount=null）、items（本人任务元数据）、next_offset |
 | GET /v1/admin/capability-outcomes | since、until | 同上的汇总，加 capabilities（按能力与修订）；不含任务明细；仅管理员 |
+| GET /v1/me/capability-outcomes/export | since、until | CSV（UTF-8 带 BOM）：task_id、capability_id、capability_revision、release_id、status、accepted_at、finished_at、tokens_settled（无记录为空）；与页面同权限同口径；响应头 `X-Xuanpu-Aggregation-Version` |
+| GET /v1/admin/capability-outcomes/export | since、until | CSV：每行一个能力修订的计数、技术完成率、token（已结算/占用上界/无记录任务数）与费用口径（无价格表时 `price_unavailable`、金额为空）；不含任务或员工；仅管理员。文字以 `= + - @` 开头时前加单引号 |
 | POST /v1/admin/acceptance-batches | request_id、capability_id、capability_revision、name、criteria、samples（1–500）、evidence_kind、可选 supersedes | 201：批次与 counts（passed/failed/blocked/not_checked）、verification_rate；样本不属于该修订 400 |
 | GET /v1/acceptance-batches/{id} | 无 | 批次、每样本现行结论、counts、verification_rate（只除以已有结论的样本） |
 | POST /v1/acceptance-batches/{id}/observations | request_id、task_id、verdict（passed/failed/blocked）、evidence_ref、可选 note、supersedes | 201：观察；样本已有结论而未指明被纠正的现行观察 409 |
@@ -1088,7 +1090,7 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 
 | 方法与路径 | 正文 | 返回 |
 | --- | --- | --- |
-| POST /v1/me/knowledge/sources | item_id、revision（本人工作区文件的明确版本） | 201：id、item_id、revision、title、sha256、status=ready、chunks、chars、version；格式或编码不对 400，文件不存在 404，同版本已登记回原记录 |
+| POST /v1/me/knowledge/sources | `kind=workspace_file`（默认）+ item_id、revision；或 `kind=shared_material` + matter_id、material_id、revision（本人此刻有权读的共享事项材料） | 201：id、item_id、revision、title、sha256、status=ready、chunks、chars、version；格式或编码不对 400，文件不存在 404，同版本已登记回原记录 |
 | GET /v1/me/knowledge/sources | 无 | sources（含 stale 与 has_update）、total |
 | POST /v1/me/knowledge/search | query（1–500 字）、limit（1–10） | hits（source_id、title、item_id、revision、ordinal、excerpt≤2000 字）、total（只计此刻可读来源） |
 | POST /v1/me/knowledge/sources/{id}/refresh | expected_version | 换成文件当前版本的新来源，旧来源删除 |

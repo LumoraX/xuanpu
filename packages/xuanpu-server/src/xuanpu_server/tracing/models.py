@@ -94,7 +94,7 @@ class SpanFact(BaseModel):
     state: SpanState | None = None
     usage: AttemptUsage | None = None
     end_reason: str | None = None
-    # 旁白：执行在调用这个工具前对员工说的一句话（R7，ADR 0022）；不含推理、参数与输出
+    # 旁白：执行在调用这个工具前对员工说的一句话（R7，ADR 0023）；不含推理、参数与输出
     say: str | None = Field(default=None, max_length=SAY_MAX)
 
     @field_validator("span_id", "parent_span_id", "ref", "attempt_id")

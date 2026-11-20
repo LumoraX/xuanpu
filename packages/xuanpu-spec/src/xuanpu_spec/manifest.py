@@ -54,12 +54,21 @@ class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
 
 
+# 给员工看的名字（匠人、工具、skill）：1–40 字、单行；不填就用技术名
+DisplayName = Annotated[str, StringConstraints(min_length=1, max_length=40, pattern=r"^[^\r\n]+$")]
+
+
 class Metadata(_Strict):
-    """包的身份信息。"""
+    """包的身份信息。
+
+    Attributes:
+        display_name: 这个匠人给员工看的名字（如「医生匠人」「设计师匠人」）；不填用 ``name``。
+    """
 
     name: Name
     version: Version
     description: Annotated[str, StringConstraints(max_length=500)] = ""
+    display_name: DisplayName | None = Field(default=None, alias="displayName")
 
 
 class SkillsSpec(_Strict):
@@ -134,10 +143,11 @@ class EnvValue(_Strict):
 
 
 class ConnectorTool(_Strict):
-    """连接器里单个工具的声明。"""
+    """连接器里单个工具的声明；``display_name`` 是审批与进度里给员工看的名字（不填用 ``name``）。"""
 
     name: Identifier
     effect: Effect | None = None
+    display_name: DisplayName | None = Field(default=None, alias="displayName")
 
 
 HttpAuthType = Literal["bearer", "header", "query", "basic"]

@@ -122,7 +122,7 @@
 ### Task 6: 文档与门禁
 
 **Files:**
-- Create: `docs/decisions/0022-execution-story.md`（放宽 0017 决策 5：允许 `say`）
+- Create: `docs/decisions/0023-execution-story.md`（放宽 0017 决策 5：允许 `say`）
 - Modify: `docs/decisions/README.md`、`docs/architecture/execution-trace.md`、`butler.md`、`minimal-entry.md`、`http-api.md`、`docs/guides/minimal-entry.md`
 
 - [ ] Step 1: 写文档

@@ -27,7 +27,7 @@
 
 ## 小院（R7，`courtyard-*.js`、`courtyard.css`）
 
-为什么这么定见 [ADR 0022](../decisions/0022-execution-story.md)；设计见 [R7 设计](../superpowers/specs/2026-11-19-r7-courtyard-design.md)。
+为什么这么定见 [ADR 0023](../decisions/0023-execution-story.md)；设计见 [R7 设计](../superpowers/specs/2026-11-19-r7-courtyard-design.md)。
 
 - **常驻小院**（`courtyard-stage.js`，页面 `#stage`）：打开入口就在——宽窗口（≥1100px）整页是小院，右侧整列是概览与对话记录（独立滚动，员工没往上翻时跟着最新内容），输入框在最下面横贯；窄窗口按上下排。管家在管家台、本人可用的匠人（`GET /v1/assistant/artisans`）在垫子上待命。员工发一句话后对话以流式回执发出：第一帧拿到 trace 标识，进展卡立刻打开并让小院以这件事为焦点（trace 落库前订阅会 404，进展卡每秒重试至多 120 秒）；管家回复逐段出现（没写出字时气泡提示看小院）。一次只演一件事：最新发出的请求，或员工在某张进展卡上点「在小院里看」的那件；进展卡只讲「经过」与执行树，不再各带场景。管家还没派人时头顶「我想想怎么办…」；匠人一轮未完时留在上一步的家具旁「想想下一步…」（真实工具往往一眨眼就完）。
 - **分层**：`courtyard-model.js` 是纯函数（执行记录 + 细节 → 角色位置、动画节拍、经过条目），`courtyard-art.js` 画角色，`courtyard-scene.js` 只按节拍或终态画 SVG，`courtyard-card.js` 接进进展卡（订阅帧 → 取细节 → 画 → 写经过）。所有文字走 `textContent`，SVG 只放常量画法。

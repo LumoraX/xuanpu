@@ -88,6 +88,7 @@ spec:
 | `name` | 必填。小写字母开头，只含小写字母、数字、连字符，最长 63 | 包名，租户内唯一 |
 | `version` | 必填。语义化版本 `主.次.修订`，可带预发布后缀（`1.2.0-rc.1`），不支持构建元数据（`+…`） | 发布后不可变 |
 | `description` | 最长 500 个字符 | |
+| `displayName` | 可选，1–40 字、单行 | 这个匠人给员工看的名字（如「医生匠人」「设计师匠人」），出现在管家回报、会话列表与待确认里；不填用 `name` |
 
 ### `spec.skills`
 
@@ -121,7 +122,7 @@ spec:
 | `name` | 全部 | 必填 | 命名规则同包名。出现在工具名里 |
 | `transport` | 全部 | `stdio` | `stdio`：平台在连接器沙盒里启动的 MCP server 进程；`http`：按 OpenAPI 文档调用的接口；`remote`：部署在别处的 MCP server |
 | `effect` | 全部 | `external` | 这个连接器的工具默认的副作用分类：`read`、`write`、`external` |
-| `tools` | 全部 | 空（开放全部） | 白名单。每项 `{name, effect}`，`effect` 省略时用默认分类；不能重名 |
+| `tools` | 全部 | 空（开放全部） | 白名单。每项 `{name, effect, displayName}`，`effect` 省略时用默认分类；`displayName`（可选，1–40 字单行）是审批与待确认里给员工看的工具名，不填用 `name`；不能重名 |
 | `command` | stdio | 必填 | 启动 MCP server 的命令，字符串数组。工作目录是业务包根目录。进程在连接器沙盒里运行，能读、能写什么见[编写业务包](../guides/writing-packages.md#mcp-连接器stdio) |
 | `env` | stdio | 空 | 传给进程的环境变量。每项是 `{value: 字面量}` 或 `{secret: 密钥名}`，二选一。不能设置动态链接器变量（`LD_*`、`DYLD_*`，不分大小写） |
 | `openapi` | http | 必填 | OpenAPI 3.x 文档在包内的相对路径（YAML 或 JSON，最大 8 MiB） |
@@ -159,6 +160,7 @@ spec:
 - **工具可见性**：模型只看得到当前 skill 在 `tool_names` 里点名的连接器工具；内核自带的 `call_skill`、`read_skill` 总是可用，skill 声明了 `scripts` 就自动可用 `run_script`。
 - **连接器工具名**：stdio 与 remote 连接器是 `mcp__<连接器名>__<工具名>`，HTTP 连接器是 `api__<连接器名>__<operationId>`；skill 在 `tool_names` 里按这个名字引用。引用了清单里没有的连接器、前缀与传输方式不符、或白名单之外的工具，校验不通过。
 - **入口**：清单 `entries` 里的 skill 必须在 SKILL.md 里声明 `entry: true`。
+- **显示名**：SKILL.md 可写 `display_name`（1–40 字单行），管家介绍匠人能做什么时用它；不填用 `name`。三处显示名（匠人、skill、工具）都只影响给员工看的文字，不参与授权、审批规则或工具调用。
 - **版本**：发布后不可变，改动必须发新版本。不兼容的规范变更升 `apiVersion`。
 
 ## HTTP 连接器

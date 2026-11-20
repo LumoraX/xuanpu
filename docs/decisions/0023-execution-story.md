@@ -1,4 +1,4 @@
-# ADR 0022：执行旁白与小院 —— 匠人动手前说的那句话进 trace
+# ADR 0023：执行旁白与小院 —— 匠人动手前说的那句话进 trace
 
 状态：Accepted（2026-11-19，用户认可原型并要求实施；R7）。修订 [ADR 0017](0017-butler-artisan-orchestration.md) 决策 5 的「span 不含正文」一处，其余不变。
 
