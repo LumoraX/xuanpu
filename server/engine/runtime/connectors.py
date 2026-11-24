@@ -601,7 +601,7 @@ class ConnectorSet:
                 binding=await managed.lookup(self._tenant_id,self._package_digest,spec.name,operation_id)
                 if binding is not None:
                     return await managed.invoke(self._tenant_id,self._package_digest,spec,
-                        document.operations[operation_id],resolve_base_url(spec,document),args,ctx)
+                        document.operations[operation_id],resolve_base_url(spec,document),args,ctx,binding=binding)
             return await invoker(operation_id)(args)
 
         found: list[_Pending] = []
