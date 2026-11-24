@@ -23,6 +23,7 @@ ParameterLocation = Literal["path", "query", "header"]
 
 MAX_DOCUMENT_BYTES = 8 * 1024 * 1024
 _MAX_REF_DEPTH = 32
+_MAX_EXPANDED_NODES = 50_000
 _IDENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
 _SLUG = re.compile(r"[^A-Za-z0-9]+")
 # 请求方自己会放的头，不允许 OpenAPI 参数覆盖
@@ -100,6 +101,7 @@ class _Resolver:
     def __init__(self, document: dict[str, Any]) -> None:
         """记住整份文档以便查引用。"""
         self._document = document
+        self._nodes = 0
 
     def lookup(self, ref: str) -> Any:
         """按 ``#/a/b/c`` 找到目标。"""
@@ -114,9 +116,12 @@ class _Resolver:
         return node
 
     def expand(self, value: Any, depth: int = 0) -> Any:
-        """递归展开引用；引用成环或过深时报错，不无限递归。"""
+        """递归展开引用；引用成环、过深或展开规模过大时报错，防止指数级膨胀。"""
         if depth > _MAX_REF_DEPTH:
             raise OpenApiError("$ref 嵌套过深或成环")
+        self._nodes += 1
+        if self._nodes > _MAX_EXPANDED_NODES:
+            raise OpenApiError("OpenAPI 展开规模超过上限")
         if isinstance(value, dict):
             if "$ref" in value and isinstance(value["$ref"], str):
                 return self.expand(self.lookup(value["$ref"]), depth + 1)
@@ -183,7 +188,10 @@ def _operation(method: str, path: str, raw: dict[str, Any], shared: list[Paramet
         raise OpenApiError(f"{where}：路径级头参数重复声明")
     operation_headers: set[str] = set()
     merged: dict[tuple[str, str], Parameter] = {(p.location, p.name): p for p in shared}
-    for item in raw.get("parameters") or []:
+    raw_parameters = raw.get("parameters")
+    if raw_parameters is not None and not isinstance(raw_parameters, list):
+        raise OpenApiError(f"{where}：parameters 必须是列表")
+    for item in raw_parameters or []:
         parameter = _parameter(item, where)
         if parameter is not None:
             if parameter.location == "header":
@@ -236,18 +244,31 @@ def parse_openapi(text: str) -> ApiDocument:
         raise OpenApiError("OpenAPI 文档没有 paths")
     operations: dict[str, Operation] = {}
     for path, item in paths.items():
+        if (
+            not isinstance(path, str)
+            or not path.startswith("/")
+            or any(ch in path for ch in "?#")
+            or any(ch.isspace() for ch in path)
+        ):
+            raise OpenApiError(f"路径 {path!r} 必须以 / 开头且不能包含查询、片段或空白")
         if not isinstance(item, dict):
             raise OpenApiError(f"路径 {path} 的定义不是映射")
         expanded = resolver.expand(item)
+        raw_shared = expanded.get("parameters")
+        if raw_shared is not None and not isinstance(raw_shared, list):
+            raise OpenApiError(f"路径 {path} 的 parameters 必须是列表")
         shared = [
             parameter
-            for entry in expanded.get("parameters") or []
-            if (parameter := _parameter(entry, str(path))) is not None
+            for entry in raw_shared or []
+            if (parameter := _parameter(entry, path)) is not None
         ]
         for method in METHODS:
             if method not in expanded:
                 continue
-            operation = _operation(method, str(path), expanded[method], shared)
+            raw_operation = expanded[method]
+            if not isinstance(raw_operation, dict):
+                raise OpenApiError(f"{method.upper()} {path} 的定义必须是映射")
+            operation = _operation(method, path, raw_operation, shared)
             if operation.operation_id in operations:
                 raise OpenApiError(f"operationId 重复：{operation.operation_id}")
             operations[operation.operation_id] = operation
