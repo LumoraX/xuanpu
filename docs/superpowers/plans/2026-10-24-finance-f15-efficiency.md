@@ -10,10 +10,10 @@
 
 ## Task 1: 真实基线与最小Skill修复
 
-Files: examples/finance/skills/{finance-assistant,expense-reimbursement,invoice-intake,finance-review}/SKILL.md；设计pack对应4文件；packages/xuanpu-finance/tests/test_f15_skill_contract.py。
+Files: examples/finance/skills/{finance-assistant,expense-reimbursement,invoice-intake,finance-review}/SKILL.md；设计pack对应4文件；tests/finance/test_f15_skill_contract.py。
 
 - [x] 依据final6真实raw保留三阶段35次/205306tokens的精确计量、委派与重复API清单，独立设计审查。
-- [x] 新增契约测试：缺事实入口直接追问；普通报销单次expense委派；本人提交预检不交审批Skill；修订保留当前真实单据未改字段；小批历史5/长原文1、游标与截断边界。先运行`uv run pytest packages/xuanpu-finance/tests/test_f15_skill_contract.py -q`取得实际RED并保存日志/XML。
+- [x] 新增契约测试：缺事实入口直接追问；普通报销单次expense委派；本人提交预检不交审批Skill；修订保留当前真实单据未改字段；小批历史5/长原文1、游标与截断边界。先运行`uv run pytest tests/finance/test_f15_skill_contract.py -q`取得实际RED并保存日志/XML。
 - [x] 最小实现对应Skill规则、保持自包含原文/首尾空格换行和不扩权，两份逐字一致；实际运行同一回归GREEN，必要Ruff/工程约束。
 - [x] 离线压力场景与真实RED分别记录；独立规格审查后质量审查，问题修复复审。
 

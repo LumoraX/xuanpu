@@ -10,7 +10,7 @@ macOS arm64，Python 3.12；本机内存平台、仅 loopback；租户 `acme` �
 uv run python scripts/acceptance/r4_real_model_acceptance.py --model-env <私有 .env> --out <输出目录>
 ```
 
-脚本：`scripts/acceptance/r4_real_model_acceptance.py`（平台装配、开通、沙盒选择）、`r4_knowledge_cases.py`（场景 A）、`r4_office_cases.py`（场景 B）；判定规则另有不调模型的单测 `packages/xuanpu-server/tests/r4_contract/test_r4_real_model_judges.py`。Docker 不可用时场景 B 的交办整体记 `not_executed`，评测与发布链路照跑。
+脚本：`scripts/acceptance/r4_real_model_acceptance.py`（平台装配、开通、沙盒选择）、`r4_knowledge_cases.py`（场景 A）、`r4_office_cases.py`（场景 B）；判定规则另有不调模型的单测 `tests/server/r4_contract/test_r4_real_model_judges.py`。Docker 不可用时场景 B 的交办整体记 `not_executed`，评测与发布链路照跑。
 
 原始证据（脱敏：临时目录替换为 `<临时目录>`，不含密钥、Cookie、网关地址）见 [evidence/r4-real-model-2026-11-19](evidence/r4-real-model-2026-11-19/)：`r4.json` 为最终脚本的完整运行；`r4-run1.json` 为前一次完整运行，其办公四组判定按最终脚本的判定规则对未改动的原始结果重新计算（见文件内 `judge_note`）。
 
@@ -57,7 +57,7 @@ uv run python scripts/acceptance/r4_real_model_acceptance.py --model-env <私有
 - **缺陷 1（输入路径）**：`documents.canonical_name` 把交办消息里的 `inputs/input_1.csv` 与 `input_1.csv` 规范成同一个固定输入名，仍拒绝 `../`、绝对路径、`outputs/` 等其他目录与嵌套目录；`inputs` 参数接受 JSON 数组、模型直接传数组时 `run_script` 逐个 `str()` 出来的 Python 列表表示，或单个名称，规范化后查重。业务错误只在 stderr 末行写「错误：…」并以 2 退出，不再让模型读调用栈。
 - **缺陷 2（入口自调用）**：`review` 的 `SKILL.md` 声明 `strict_tool_names: true`（内核 `SkillDefinition.visible_tool_names` 已有的开关，管家同样在用），模型只看到 `run_script`；说明写明「你就在 review 里，直接 run_script」及参数写法。
 - 同时发现：`scripts/` 下每个 `.py` 都被内核隐式登记为无参数脚本（`documents`、`rows` 也出现在可运行列表里），共享代码移到 `lib/`；首次复跑 `missing_group` 被模型按「名称」分组（说明里「任务目标或表头明确给出」给了它余地），改为「只有任务目标写明分组列才运行 summarize，否则回复真实表头请员工确认」。
-- 确定性用例（不调模型，修复前 9 个失败、修复后通过）：`packages/xuanpu-server/tests/r4_contract/test_office_review_package.py` 的路径等价（交办路径由 `TaskRunner._message` 生成，不手抄格式）、越界路径拒绝、参数形式、入口不可见 `call_skill`、说明与交办路径一致。
+- 确定性用例（不调模型，修复前 9 个失败、修复后通过）：`tests/server/r4_contract/test_office_review_package.py` 的路径等价（交办路径由 `TaskRunner._message` 生成，不手抄格式）、越界路径拒绝、参数形式、入口不可见 `call_skill`、说明与交办路径一致。
 - 验收脚本对出错的工具调用另记输出末尾 300 字（失败原因在末行）。
 
 同一命令加 `--only office --sandbox docker`。证据（脱敏）见 [evidence/r4-office-fix-2026-11-19](evidence/r4-office-fix-2026-11-19/)：`office-run1.json` 为改选列说明之前的归档（`sha256:a6c3ce27…`），`office-run2.json`、`office-run3.json` 为最终归档（`sha256:de662f09…`，与提交的 `delivery.json` 一致）。

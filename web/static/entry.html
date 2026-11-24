@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>玄圃</title>
+<link rel="stylesheet" href="entry.css?v=9fad1cd536ee4981">
+<link rel="stylesheet" href="courtyard.css?v=aaba3eb96407b60d">
+</head>
+<body class="unauthenticated">
+<section id="entry-auth-gate" class="auth-gate" aria-label="登录玄圃">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <span class="brand-seal" aria-hidden="true">玄</span>
+      <div>
+        <h1>玄圃</h1>
+        <p class="auth-subtitle">企业智能协作与数字匠人工作台</p>
+      </div>
+    </div>
+    <p id="entry-login-error" class="entry-error hidden" role="alert"></p>
+    <form id="entry-password-form" class="auth-form">
+      <label class="auth-field">
+        <span>用户名</span>
+        <input aria-label="用户名" id="entry-username" autocomplete="username" placeholder="请输入用户名" required maxlength="64">
+      </label>
+      <label class="auth-field">
+        <span>口令</span>
+        <input aria-label="口令" id="entry-password" type="password" autocomplete="current-password" placeholder="请输入口令" required maxlength="128">
+      </label>
+      <button type="submit" class="primary auth-submit">登录</button>
+    </form>
+    <div class="auth-divider"><span>其他方式</span></div>
+    <button id="entry-login" type="button" class="auth-sso hidden">用飞书登录</button>
+  </div>
+  <div class="auth-links"><a id="entry-password-login" class="hidden" href="index.html">进入完整控制台 / 管理后台</a></div>
+</section>
+<header class="entry-top app-shell">
+  <div class="entry-brand-wrap">
+    <span class="brand-seal sm" aria-hidden="true">玄</span>
+    <strong class="entry-brand">玄圃</strong>
+    <span class="entry-tag">智能工作台</span>
+  </div>
+  <nav class="entry-nav" aria-label="工作台操作">
+    <span id="entry-user" class="entry-user"></span>
+    <button id="entry-clear" type="button" class="nav-pill" title="开启干净的新对话上下文，不影响已保存的联系人与事项">清空对话</button>
+    <a id="entry-more" class="nav-pill" href="index.html?classic=1">更多</a>
+    <button id="entry-notifications" type="button" class="nav-pill">通知</button>
+    <button id="entry-logout" type="button" class="nav-pill">退出</button>
+  </nav>
+</header>
+<main id="entry-main" class="entry-main hidden">
+  <section id="stage" class="stage" aria-label="小院"></section>
+  <section id="overview" class="overview" aria-label="概览" aria-live="polite"></section>
+  <section id="transcript" class="transcript" aria-label="对话" aria-live="polite"></section>
+  <section id="tips" class="tips" aria-label="提示"></section>
+  <form id="composer" class="composer">
+    <label class="sr-only" for="message">告诉我你想办什么</label>
+    <textarea id="message" rows="2" placeholder="告诉我你想办什么，Enter 发送"></textarea>
+    <div class="composer-side">
+      <button id="entry-location" type="button" class="loc-btn" title="允许浏览器获取当前位置，便于路线与天气查询">定位</button>
+      <button id="send" type="submit" class="primary">发送</button>
+    </div>
+  </form>
+</main>
+<div id="entry-status" class="sr-only" role="status" aria-live="polite"></div>
+<script src="entry.js?v=b0523981d8750c3b"></script>
+<script src="cards.js?v=d4cfa913c68020b8"></script>
+<script src="module-cards.js?v=7282668ce36bcc5d"></script>
+<script src="collab-cards.js?v=5595dd061d6b6522"></script>
+<script src="courtyard-art.js?v=8b63d8a2f8987db4"></script>
+<script src="courtyard-model.js?v=291509730d4454ef"></script>
+<script src="courtyard-scene.js?v=07b7d3bbb87a2f2f"></script>
+<script src="courtyard-card.js?v=443c13bd92833552"></script>
+<script src="courtyard-stage.js?v=220d1d5924477001"></script>
+<script src="progress-card.js?v=1c2ab42304f33338"></script>
+<script src="dashboard.js?v=da8bd42baa66322c"></script>
+<script src="tips.js?v=7dc2ec3cf51ba655"></script>
+<script src="entry-boot.js?v=ed95ecbbf94fc971"></script>
+</body>
+</html>

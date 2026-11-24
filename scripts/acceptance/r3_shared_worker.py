@@ -10,17 +10,17 @@ from typing import Any
 
 import asyncpg
 from taifeng_stores import SqlNamespace
-from xuanpu_server.controlplane.postgres import PostgresControlPlane
-from xuanpu_server.coordination.postgres import PostgresCoordinationStore
-from xuanpu_server.identity.postgres import PostgresIdentityStore
-from xuanpu_server.objectstore import LocalObjectStore
-from xuanpu_server.organization.service import OrganizationService
-from xuanpu_server.shared_matters.context_guard import SharedContexts
-from xuanpu_server.shared_matters.materials import SharedMaterials
-from xuanpu_server.shared_matters.models import SharedMatterConfig
-from xuanpu_server.shared_matters.service import SharedMatterService
-from xuanpu_server.tenancy import Principal
-from xuanpu_server.workspace.postgres import PostgresWorkspaceStore
+from server.core.controlplane.postgres import PostgresControlPlane
+from server.core.coordination.postgres import PostgresCoordinationStore
+from server.domains.identity.postgres import PostgresIdentityStore
+from server.core.objectstore import LocalObjectStore
+from server.domains.organization.service import OrganizationService
+from server.domains.shared_matters.context_guard import SharedContexts
+from server.domains.shared_matters.materials import SharedMaterials
+from server.domains.shared_matters.models import SharedMatterConfig
+from server.domains.shared_matters.service import SharedMatterService
+from server.core.tenancy import Principal
+from server.domains.workspace.postgres import PostgresWorkspaceStore
 
 
 def config_file(path: Path) -> dict[str, Any]:
@@ -65,7 +65,7 @@ async def run(config: dict[str, Any]) -> None:
             await materials.upload(who, config['shared_id'], request_id='sigkill-copy', expected=config['version'],
                 name='故障验收.txt', mime='text/plain', data=b'isolated-durable-copy-proof')
         else:
-            from xuanpu_server.errors import PlatformError
+            from server.core.errors import PlatformError
             try:
                 await SharedContexts(materials).read(who, config['context_id'])
             except PlatformError as exc:

@@ -39,7 +39,7 @@ ActionPreview(action="execute_payment", target_type="expense_claim", target_id="
 - [x] GREEN：外部动作精确参数矩阵；PayableDraft遵守原契约；SettlementPolicy、BusinessSnapshot、PayeeAccount版本化配置；受控provider descriptor，缺能力拒绝。
 - [x] 新表及legacy document_kind/simulation、持久service mode marker；旧数据默认非模拟、旧报销API过滤expense，F0/F1迁移两次不丢收件/异常/历史。
 - [x] 配置引用实际公司/人员角色，付款与记账执行集合分开，版本及generation不可覆盖/复活；保留旧配置供在途查单。
-- [x] 验证 `uv run pytest packages/xuanpu-finance/tests/test_f2_models.py -q`；真实PG由既有安全fixture保证数据库名。
+- [x] 验证 `uv run pytest tests/finance/test_f2_models.py -q`；真实PG由既有安全fixture保证数据库名。
 
 ## 3 原生应付、目录与状态读取
 
@@ -83,7 +83,7 @@ assert not plan["executable"]
 - [x] 原route preview/execute扩ActionPreview，不放宽origin=human；F2取消只接受human；draining不收新外部操作，read_only/disabled仍接供应商callback，worker只允许query。
 - [x] FinanceConfig增加execution_simulation、settlement_policies/business_documents/payee_accounts/settlement_providers默认空，production禁止simulation，模拟库名finance_test且对象独立。相对token/callback路径固定解析，不接受员工路径。
 - [x] runtime配置store后构造ProviderRegistry/SettlementWorker；_lifespan分别停止两个后台、pool/http资源可靠关闭；lock丢失暂停新dispatch但保留在途核对能力。
-- [x] 执行 `uv run pytest packages/xuanpu-finance/tests/test_f2_api.py packages/xuanpu-finance/tests/test_f2_config.py -q`；具体用例真实记录body/signature拒绝非human不冒充DB测试。
+- [x] 执行 `uv run pytest tests/finance/test_f2_api.py tests/finance/test_f2_config.py -q`；具体用例真实记录body/signature拒绝非human不冒充DB测试。
 
 ## 8 Skill、声明包和无模型辅助页
 

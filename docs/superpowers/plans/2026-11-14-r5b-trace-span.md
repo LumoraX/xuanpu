@@ -17,7 +17,7 @@
 - [x] 先写反例：跨租户、跨员工读取；重复事件不重复记用量；迟到与跳号标 `incomplete`；超过 span 上限停止新增；取消请求不直接变 cancelled。
 - [x] 实现 span 模型与两套存储；状态转换写成纯函数并单测；不存正文字段，测试断言参数与输出进不了存储。
 - [x] 保留期清理按租户分批，不动审计（`S/tracing/retention.py`，平台启动时开启，每小时一轮）。
-- [x] Run：`uv run pytest packages/xuanpu-server/tests/tracing -q`；提交 `feat: 增加按租户持久的执行 span 存储`。（随 `fab795b` 一并提交）
+- [x] Run：`uv run pytest tests/server/tracing -q`；提交 `feat: 增加按租户持久的执行 span 存储`。（随 `fab795b` 一并提交）
 
 ### B0 进度（2026-11-14，分支 `feat/r5-butler-artisan`，未提交）
 
@@ -36,7 +36,7 @@
   - 2026-11-14 完成：序号改为按写入方分段（`TraceRecord.sources`，`apply_batch(source=...)`），见下方「B1 补完」。
   - 2026-11-14（R5-C2 核对）：仍未做。派工记录已保存 `trace_id`、`parent_span_id` 与 `host_ref`，可在读取时关联；但让匠人会话的采集器写进管家的同一条 trace，需要两个采集器并发写一条 trace，而现行存储按采集器自编的事实序号去重、跳号即标不完整，会互相误判。须先把序号改为存储侧分配（或按采集器分段），属于 R5-B 层改动，另行实施。
 - [x] 采集失败只记错误并标不完整，不影响对话；用独立进程真实终止后重启，断言树可读且缺口有标记。
-- [x] Run：`uv run pytest packages/xuanpu-server/tests/tracing -q`；提交 `feat: 采集执行事实并关联跨引擎父子`。
+- [x] Run：`uv run pytest tests/server/tracing -q`；提交 `feat: 采集执行事实并关联跨引擎父子`。
 
 ### B1 进度（2026-11-14，分支 `feat/r5-butler-artisan`）
 
@@ -51,7 +51,7 @@
 - 采集器：每条本地 trace 以本地标识为写入方；从头开始的根 trace 第一次写出前经 `TraceWiring.binder` 查持久绑定（`S/tracing/binding.py`），查到则写进绑定的 trace、根 span 挂到绑定父 span 下。
 - 派工侧（`S/butler/trace_link.py`）：`TracedDispatchStore` 每次建与改后写派工 span（序号 = 派工版本）；`DispatchTraceBinder` 会话承载按 `host_ref`、任务承载按 `butler:<dispatch_id>` 请求标识查绑定；派工器改为先写 `host_ref` 再发任务说明。
 - 测试：`T/tracing/test_cross_engine_parent.py`（管家根 → 派工 → 匠人根同一条 trace、记录完整；直接开的会话单独成 trace）、`T/butler/test_trace_link.py`（版本序列、写入失败留缺口、任务承载绑定）；重启缺口测试 `T/butler/test_wakeup_restart.py` 仍通过。
-- `.venv/bin/pytest packages/xuanpu-server/tests/tracing packages/xuanpu-server/tests/butler -q`：164 passed, 2 skipped；ruff All checks passed!；mypy no issues in 533 source files。
+- `.venv/bin/pytest tests/server/tracing tests/server/butler -q`：164 passed, 2 skipped；ruff All checks passed!；mypy no issues in 533 source files。
 - 延后：任务承载挂接的端到端（本机无法运行办公容器，只有单元测试）。
 
 ## B2：接口、瀑布、OTel

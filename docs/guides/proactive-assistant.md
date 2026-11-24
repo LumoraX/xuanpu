@@ -15,7 +15,7 @@
 本次实际运行过的验证入口：
 
 ```bash
-uv run pytest -q packages/xuanpu-server/tests/proactive packages/xuanpu-server/tests/identity/test_proactive_flow.py
+uv run pytest -q tests/server/proactive tests/server/identity/test_proactive_flow.py
 ```
 
 浏览器场景使用脚本模型和模拟身份源验证界面操作；真实模型验收必须另行使用当前模型配置，并记录调用、证据、通知、完成停止与持久化回执，不能以浏览器脚本代替真实模型结果。

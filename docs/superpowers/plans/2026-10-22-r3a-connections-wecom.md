@@ -12,13 +12,13 @@
 
 ## A0：冻结供应商契约及公共测试基础
 
-Files：Create `docs/superpowers/specs/2026-10-22-r3a-wecom-contract.md`、`packages/xuanpu-server/tests/r3_contract/conftest.py`、`test_provider_contract.py`、`data/wecom_fixture_server.py`；Review `identity/feishu.py`、`identity/login.py`、`runtime/http_api.py`及`secrets.py`。
+Files：Create `docs/superpowers/specs/2026-10-22-r3a-wecom-contract.md`、`tests/server/r3_contract/conftest.py`、`test_provider_contract.py`、`data/wecom_fixture_server.py`；Review `identity/feishu.py`、`identity/login.py`、`runtime/http_api.py`及`secrets.py`。
 
 - [x] 列出当前企业微信自建应用的官方文档、核对日期、应用类型、可信域名/IP、CorpID/AgentID、实际授权模式、允许endpoint/字段、错误码、token有效期和范围证据。secret仅给私有文件路径。未能读现行官方资料或真实后台时状态为unverified，不以历史SDK代替现行权限。
 - [x] 冻结第一批operation：`self_profile.read`、`directory_preview.read`。候选接口为gettoken、code身份、成员读取和部门/成员分页；只有核对通过的接口才进入allowlist。不能顺手接入消息、审批修改、会话存档或完整文档读取。
 - [x] 定义[公共fixture](2026-10-22-r3-delivery.md#4-公共测试脚手架a0定义后续按包扩展seed)，两企业、三员工、两个同名员工、只对一名员工可见的应用。测试HTTP返回可控，但真实集成栏保持not_checked。
 - [x] 写契约反例：应用凭据不是个人refresh_token、外企业code不可绑定、provider缺字段不补造；文档核定后为每项provider能力生成`available/unsupported/unverified`能力表。
-- [x] 跑`uv run pytest packages/xuanpu-server/tests/r3_contract/test_provider_contract.py -q`，记录先红后绿；提交`test: 固定企业微信只读契约与R3测试基座`。
+- [x] 跑`uv run pytest tests/server/r3_contract/test_provider_contract.py -q`，记录先红后绿；提交`test: 固定企业微信只读契约与R3测试基座`。
 
 补充：公共fixture覆盖双后端、双企业相同usr/同名员工隔离、三个员工、机器/act-as及可控供应商；真实范围外成员的供应商限制仍在A5核定。本机真实TCP端点在test_managed_runtime.py中提供，不另建尚未使用的服务器文件。阶段代码统一在全部门禁通过后提交，不以分步提交替代整体验证。
 
@@ -54,7 +54,7 @@ Files：Create `identity/{wecom,wecom_login,wecom_config}.py`、`connections/acc
 - [x] 在ExternalIdentity中支持wecom；原TenantIdentityConfig仍只服务Feishu，WeCom使用独立配置并引用installation。稳定映射为tenant/provider/外部企业/外部成员→usr，复用现有唯一索引语义，不产生第二套玄圃身份。
 - [x] 增加`/v1/auth/wecom/start|callback`及本人连接绑定入口。state随机、300秒有效、一次消费并绑定发起浏览器和固定站内返回路径；只有供应商实际支持时才配置PKCE，不能无条件宣称PKCE已验。
 - [x] 默认不JIT授管理员。管理员预先明确映射已有usr；若允许新员工首次登录创建普通成员，必须通过租户的受支持corp/app范围策略。账户链接要求当前平台身份或明确管理员确认；不按名称/邮箱猜测；缺少真实姓名时保留缺字段事实，若创建账户必须有显示名则使用显式本地别名而不冒充企业姓名。
-- [x] 跑`uv run pytest packages/xuanpu-server/tests/identity packages/xuanpu-server/tests/r3_contract/test_external_binding.py -q`，确认Feishu、Cookie、act-as、最后管理员保护回归；提交`feat: 接入企业微信身份并保留稳定员工映射`。
+- [x] 跑`uv run pytest tests/server/identity tests/server/r3_contract/test_external_binding.py -q`，确认Feishu、Cookie、act-as、最后管理员保护回归；提交`feat: 接入企业微信身份并保留稳定员工映射`。
 
 退出标准：真实企业OAuth尚未执行前只称代码通过；扫码/客户端授权与合成Cookie分别留证。
 
@@ -68,17 +68,17 @@ Files：Create `connections/{broker,tokens,call_guard,providers/wecom,projection
 - [x] 应用token按installation+credential revision单次更新合并：短事务取得refresh lease→事务外请求→CAS存密文。读取接口遇已核定的失效码，最多取新token并重试一次；网络/5xx只做有界退避，不能忙循环或重试写操作。
 - [x] 查询参数注入须在server侧，日志/trace移除access_token、corpsecret、code及user_ticket。固定HTTPS目的端、不跟随重定向、不允许普通参数覆盖认证字段。检查HTTP与供应商业务errcode，200但非成功errcode仍失败；只返回A0批准的字段白名单、读时刻、来源与缺字段说明，不透传响应正文或异常URL。
 - [x] 撤销以epoch提交为线性化点：之后不准新派发；已在途请求尽力取消，返回时再校验、丢弃内容并记元数据。不能声称已发出的只读请求从未到达供应商。
-- [x] 跑`uv run pytest packages/xuanpu-server/tests/r3_contract/test_broker.py packages/xuanpu-server/tests/r3_contract/test_token_races.py packages/xuanpu-server/tests/r3_contract/test_wecom_reads.py packages/xuanpu-server/tests/test_http_connector.py -q`；提交`feat: 按员工委托校验企业微信只读调用`。
+- [x] 跑`uv run pytest tests/server/r3_contract/test_broker.py tests/server/r3_contract/test_token_races.py tests/server/r3_contract/test_wecom_reads.py tests/server/test_http_connector.py -q`；提交`feat: 按员工委托校验企业微信只读调用`。
 
 ## A4：R2后台、失效传播与原生入口
 
-Files：Create `connections/task_bindings.py`、`packages/xuanpu-console/src/xuanpu_console/static/connections.js`、`packages/xuanpu-sdk-py/src/xuanpu_sdk/connections.py`、`packages/xuanpu-cli/src/xuanpu_cli/connection_commands.py`；Modify `work_tasks/{models,execution_models,service,capability_runner,views}.py`、`assistant.py`、`bootstrap.py`和各包导出；Test `test_connection_recovery.py`、`packages/xuanpu-console/tests/connection_behavior.cjs`及SDK/CLI测试。
+Files：Create `connections/task_bindings.py`、`web/static/connections.js`、`sdk/connections.py`、`cli/connection_commands.py`；Modify `work_tasks/{models,execution_models,service,capability_runner,views}.py`、`assistant.py`、`bootstrap.py`和各包导出；Test `test_connection_recovery.py`、`tests/web/connection_behavior.cjs`及SDK/CLI测试。
 
 - [x] 写旧R2记录无connection字段仍可读、新任务固定installation/consent引用、撤销后冷恢复拒绝、重新同意不复用旧批准、模型不可用直接撤销、身份切换不显示迟到结果等反例。
 - [x] WorkTask/ExecutionGrant新增默认空`connection_refs`，只保存引用及epoch，不保存token。恢复和发起工具调用都复核；授权不足显示`connection_reauthorization_required`，新同意需本人显式继续，沿用预算/attempt上限。
 - [x] 控制台显示“企业应用已配置”和“本人已同意”两种状态；只读本人资料有直接按钮，对话可以引导同意但模型不能自行提交consent。管理员只读目录预览单独入口，不向普通员工泄露成员资料。
 - [x] SDK/CLI查询/读取/撤销只操作当前本人；创建/扩大委托只给出浏览器确认入口，不自动批准。private credentials文件供CLI读取；无命令行tenant/user覆盖，不在输出显示token。撤销后停止后台新读取，停用监听幂等，源端撤权导致明确失效状态。
-- [x] 跑`uv run pytest packages/xuanpu-server/tests/r3_contract/test_connection_recovery.py packages/xuanpu-console/tests packages/xuanpu-sdk-py/tests packages/xuanpu-cli/tests -q`；提交`feat: 从员工入口使用并撤销只读连接`。
+- [x] 跑`uv run pytest tests/server/r3_contract/test_connection_recovery.py tests/web tests/sdk tests/cli -q`；提交`feat: 从员工入口使用并撤销只读连接`。
 
 ## A5：独立真实验收和兼容试点
 

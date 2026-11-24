@@ -10,7 +10,7 @@
 
 ## 文件与职责
 
-- `packages/xuanpu-server/src/xuanpu_server/reminders/{models,store,memory,postgres,service,worker}.py`：提醒输入/记录、存储协议、两后端、员工操作/后台状态转换。
+- `server/reminders/{models,store,memory,postgres,service,worker}.py`：提醒输入/记录、存储协议、两后端、员工操作/后台状态转换。
 - `controlplane/migrations/0006_reminders.sql`：随现有迁移部署；旧迁移不变。
 - `controlplane/{store,memory,postgres}.py`：公开 reminder_store 同后端子存储。
 - `api/reminders.py`：提醒CRUD、通知列表/标读、SSE。
@@ -48,7 +48,7 @@ class ReminderInput(BaseModel):
 # start() / await close() / await run_once()
 ```
 
-验证：`uv run pytest -q packages/xuanpu-server/tests/reminders`。必须包括真实Postgres，缺少数据库不能声称持久化验收。
+验证：`uv run pytest -q tests/server/reminders`。必须包括真实Postgres，缺少数据库不能声称持久化验收。
 
 ## Task 2：自然语言、UI与渠道集成（根）
 

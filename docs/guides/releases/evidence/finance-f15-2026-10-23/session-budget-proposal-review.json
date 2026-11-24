@@ -60,11 +60,11 @@
       "finding": "实际发布业务包spec.model.budget.maxSessionTokens=200000、maxIterations=40；这是另一处有效限制。"
     },
     {
-      "path": "packages/xuanpu-server/src/xuanpu_server/runtime/assembler.py",
+      "path": "server/runtime/assembler.py",
       "finding": "实际有效session cap为min(包budget.max_session_tokens, RuntimeDefaults.max_session_tokens)，因此只改harness default为600000仍不能解除包200000限制。"
     },
     {
-      "path": "packages/xuanpu-server/src/xuanpu_server/config.py",
+      "path": "server/config.py",
       "finding": "LimitsConfig源码默认max_session_tokens=2000000、max_iterations=60；RuntimeDefaults源码同2M。未查看生产私有配置，不能声称生产实际限制已核实。"
     },
     {

@@ -27,12 +27,12 @@ tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/p
                           ^^^^^^^^^^^^^^^
 E               IndexError: list index out of range
 
-packages/xuanpu-finance/tests/test_f2_http_e2e.py:140: IndexError
+tests/finance/test_f2_http_e2e.py:140: IndexError
 ------------------------------ Captured log call -------------------------------
 ERROR    asyncio:base_events.py:1833 Unhandled exception in client_connected_cb
 transport: <_SelectorSocketTransport closed fd=18>
 Traceback (most recent call last):
-  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance/tests/test_f2_http_e2e.py", line 48, in handle
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/tests/finance/test_f2_http_e2e.py", line 48, in handle
     assert headers["authorization"] == "Bearer isolated-token"
 AssertionError: assert 'bearer isolated-token' == 'Bearer isolated-token'
 
@@ -65,7 +65,7 @@ tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/p
 >               assert json.loads(raw)["amount"] == "999.00"
                        ^^^^^^^^^^^^^^^
 
-packages/xuanpu-finance/tests/test_f2_http_e2e.py:184:
+tests/finance/test_f2_http_e2e.py:184:
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 s = None, cls = None, object_hook = None, parse_float = None, parse_int = None
@@ -120,7 +120,7 @@ E               TypeError: the JSON object must be str, bytes or bytearray, not 
 ERROR    asyncio:base_events.py:1833 Unhandled exception in client_connected_cb
 transport: <_SelectorSocketTransport closed fd=18>
 Traceback (most recent call last):
-  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance/tests/test_f2_http_e2e.py", line 48, in handle
+  File "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/tests/finance/test_f2_http_e2e.py", line 48, in handle
     assert headers["authorization"] == "Bearer isolated-token"
 AssertionError: assert 'bearer isolated-token' == 'Bearer isolated-token'
 
@@ -129,6 +129,6 @@ AssertionError: assert 'bearer isolated-token' == 'Bearer isolated-token'
   + bearer isolated-token
   ? ^
 =========================== short test summary info ============================
-FAILED packages/xuanpu-finance/tests/test_f2_http_e2e.py::test_signed_hitl_payment_posting_reversal_over_real_http
-FAILED packages/xuanpu-finance/tests/test_f2_http_e2e.py::test_invalid_result_is_unknown_and_rebuilt_worker_only_queries
+FAILED tests/finance/test_f2_http_e2e.py::test_signed_hitl_payment_posting_reversal_over_real_http
+FAILED tests/finance/test_f2_http_e2e.py::test_invalid_result_is_unknown_and_rebuilt_worker_only_queries
 2 failed in 1.50s

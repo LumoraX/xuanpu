@@ -12,7 +12,7 @@
 
 ## 结构与数据契约
 
-新增目录`packages/xuanpu-server/src/xuanpu_server/task_triggers/`：
+新增目录`server/task_triggers/`：
 
 | 文件 | 责任 |
 | --- | --- |
@@ -34,11 +34,11 @@ DomainEvent字段：event_id、tenant/user、event_type、subject_id、subject_v
 ## Task B0：执行安排、持久授权和版本化管理
 
 Files:
-- Create: `packages/xuanpu-server/src/xuanpu_server/task_triggers/__init__.py`、`models.py`、`service.py`、`store.py`、`postgres.py`
-- Create: `packages/xuanpu-server/src/xuanpu_server/controlplane/migrations/0013_task_triggers.sql`
-- Create: `packages/xuanpu-server/src/xuanpu_server/api/task_definitions.py`
-- Modify: `packages/xuanpu-server/src/xuanpu_server/api/app.py`、`platform.py`、`identity/listeners.py`
-- Test: `packages/xuanpu-server/tests/task_triggers/conftest.py`、`test_definitions.py`、`test_authorization.py`
+- Create: `server/task_triggers/__init__.py`、`models.py`、`service.py`、`store.py`、`postgres.py`
+- Create: `server/controlplane/migrations/0013_task_triggers.sql`
+- Create: `server/api/task_definitions.py`
+- Modify: `server/api/app.py`、`platform.py`、`identity/listeners.py`
+- Test: `tests/server/task_triggers/conftest.py`、`test_definitions.py`、`test_authorization.py`
 
 - [x] 创建严格模型及definition/occurrence/domain_event/delivery表；全部FK包含tenant/user，禁止跨人task、输入及grant关联。
 - [x] 新接口前缀`/v1/task-definitions`：POST确认创建，GET本人列表与详情，PUT按version修改，POST `/{id}/pause`、`/{id}/resume`、`/{id}/cancel`，GET `/{id}/occurrences`分页。写请求均带request_id及expected_version（新建无expected_version）；同请求同内容回放，改内容409。
@@ -60,7 +60,7 @@ async def test_definition_change_cannot_run_old_version(trigger_world):
     assert (await trigger_world.counts())['model_calls'] == 0
 ```
 
-Run: `uv run pytest packages/xuanpu-server/tests/task_triggers/test_definitions.py packages/xuanpu-server/tests/task_triggers/test_recovery_authorization.py packages/xuanpu-server/tests/test_controlplane_migrations.py -q`。
+Run: `uv run pytest tests/server/task_triggers/test_definitions.py tests/server/task_triggers/test_recovery_authorization.py tests/server/test_controlplane_migrations.py -q`。
 Expected: memory/PG一致、跨人404、未确认不受理、版本冲突不产生旧版执行。
 
 Commit: `feat: 保存本人确认的后台执行安排`。
@@ -68,9 +68,9 @@ Commit: `feat: 保存本人确认的后台执行安排`。
 ## Task B1：日历、错过与单次持久受理
 
 Files:
-- Create: `packages/xuanpu-server/src/xuanpu_server/task_triggers/calendar.py`、`worker.py`
-- Modify: `packages/xuanpu-server/src/xuanpu_server/reminders/schedule.py`（仅在确需抽取共用纯函数时）、`task_triggers/store.py`、`postgres.py`、`work_tasks/service.py`
-- Test: `packages/xuanpu-server/tests/task_triggers/test_calendar.py`、`test_time_occurrences.py`、`test_misfires.py`
+- Create: `server/task_triggers/calendar.py`、`worker.py`
+- Modify: `server/reminders/schedule.py`（仅在确需抽取共用纯函数时）、`task_triggers/store.py`、`postgres.py`、`work_tasks/service.py`
+- Test: `tests/server/task_triggers/test_calendar.py`、`test_time_occurrences.py`、`test_misfires.py`
 
 - [x] once/daily/weekly调用经过测试的共用日历函数，不引入自制cron。每个候选先按IANA本地时间计算，再以UTC瞬间形成唯一键。
 - [x] 一次性输入必须含明确偏移并核对指定时区；重复规则的gap跳过、fold较早一次，禁止一天执行两次。覆盖上海、纽约春季/秋季DST、跨月年、时钟倒退和重启。
@@ -106,7 +106,7 @@ async def test_crash_does_not_advance_time_without_a_task(trigger_world):
 
 本Task为harness增加事务故障点，fail_commit_after只在真实事务内抛异常，clear_commit_fault移除故障；tick_time驱动同一真实扫描服务。
 
-Run: `uv run pytest packages/xuanpu-server/tests/task_triggers/test_calendar.py packages/xuanpu-server/tests/task_triggers/test_time_occurrences.py packages/xuanpu-server/tests/task_triggers/test_recovery_authorization.py packages/xuanpu-server/tests/reminders -q`。
+Run: `uv run pytest tests/server/task_triggers/test_calendar.py tests/server/task_triggers/test_time_occurrences.py tests/server/task_triggers/test_recovery_authorization.py tests/server/reminders -q`。
 Expected: 所有时区实例唯一、无丢单、无无限补跑；原提醒到时/改期/取消语义不变。
 
 Commit: `feat: 按确定日历产生唯一后台任务实例`。
@@ -114,10 +114,10 @@ Commit: `feat: 按确定日历产生唯一后台任务实例`。
 ## Task B2：可信业务事件及事务outbox
 
 Files:
-- Create: `packages/xuanpu-server/src/xuanpu_server/task_triggers/events.py`、`outbox.py`
-- Modify: `packages/xuanpu-server/src/xuanpu_server/task_triggers/postgres.py`、`worker.py`
-- Modify: `packages/xuanpu-server/src/xuanpu_server/workspace/models.py`、`memory.py`、`postgres.py`、`service.py`、`creation.py`、`work_tasks/store.py`
-- Test: `packages/xuanpu-server/tests/task_triggers/test_outbox_order.py`、`test_event_occurrences.py`、`test_event_privacy.py`
+- Create: `server/task_triggers/events.py`、`outbox.py`
+- Modify: `server/task_triggers/postgres.py`、`worker.py`
+- Modify: `server/workspace/models.py`、`memory.py`、`postgres.py`、`service.py`、`creation.py`、`work_tasks/store.py`
+- Test: `tests/server/task_triggers/test_outbox_order.py`、`test_event_occurrences.py`、`test_event_privacy.py`
 
 - [x] 只注册file_revision_committed、todo_completed、work_task.succeeded；事件在相应领域写入的同一个数据库事务中产生，回滚不留下事件。模型/客户端无“发布可信事件”公共入口。
 - [x] 已结算outbox/delivery只可压缩诊断字段；事件ID、definition/version、关联task及去重墓碑保留，压缩不能使重放再次受理。未结算/未知记录不做TTL清理，并暴露积压/最老未结算时间供C3观察。
@@ -142,7 +142,7 @@ async def test_late_commit_with_lower_sequence_is_not_lost(trigger_world):
 
 本Task的harness事件方法必须使用不同PG连接和不同员工锁以形成真实提交乱序；先建立分别授权到两名合成员工的定义。不能在同一事务伪造event_id后假称数据库通过。
 
-Run: `uv run pytest packages/xuanpu-server/tests/task_triggers/test_outbox_order.py packages/xuanpu-server/tests/task_triggers/test_event_occurrences.py packages/xuanpu-server/tests/task_triggers/test_api.py -q`。
+Run: `uv run pytest tests/server/task_triggers/test_outbox_order.py tests/server/task_triggers/test_event_occurrences.py tests/server/task_triggers/test_api.py -q`。
 Expected: 源事务回滚无事件；两次投递一任务；乱序提交不丢失；外部材料伪造event_type/origin不会触发。
 
 Commit: `feat: 从可信领域事务投递后台任务触发`。
@@ -150,9 +150,9 @@ Commit: `feat: 从可信领域事务投递后台任务触发`。
 ## Task B3：环路控制、主动业务衔接和后台生命周期
 
 Files:
-- Modify: `packages/xuanpu-server/src/xuanpu_server/task_triggers/events.py`、`service.py`、`worker.py`、`platform.py`、`config.py`
-- Modify: `packages/xuanpu-server/src/xuanpu_server/proactive/service.py`、`proactive/models.py`（只在增加明确“执行安排草稿”引用时）
-- Test: `packages/xuanpu-server/tests/task_triggers/test_cycles.py`、`test_worker_lifecycle.py`、`test_proactive_bridge.py`
+- Modify: `server/task_triggers/events.py`、`service.py`、`worker.py`、`platform.py`、`config.py`
+- Modify: `server/proactive/service.py`、`proactive/models.py`（只在增加明确“执行安排草稿”引用时）
+- Test: `tests/server/task_triggers/test_cycles.py`、`test_worker_lifecycle.py`、`test_proactive_bridge.py`
 - Docs: `docs/architecture/work-tasks.md`、`docs/architecture/proactive-business.md`、`docs/guides/proactive-assistant.md`
 
 - [x] 触发链来源只能来自服务端task/definition关联。忽略同定义自身派生的文件/任务事件；深度>3、单定义每小时>20次则暂停并产生一条有意义通知，计数持久化不因重启清零。
@@ -175,7 +175,7 @@ async def test_generated_output_cannot_retrigger_same_chain(trigger_world):
 
 harness方法调用A的真实任务完成事务并写出带服务器provenance的文件，不直接构造事件来替代集成链路。
 
-Run: `uv run pytest packages/xuanpu-server/tests/task_triggers packages/xuanpu-server/tests/proactive packages/xuanpu-server/tests/reminders -q`，随后完整仓库门禁。
+Run: `uv run pytest tests/server/task_triggers tests/server/proactive tests/server/reminders -q`，随后完整仓库门禁。
 Expected: 提醒与执行授权分离、乱序与重复不丢不重、环路有界、停用后不执行。
 
 Commit: `feat: 衔接主动业务并限制触发循环`。

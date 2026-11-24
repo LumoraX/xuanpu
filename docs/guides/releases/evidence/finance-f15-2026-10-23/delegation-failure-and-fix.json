@@ -71,7 +71,7 @@
   "source_sha256": {
     "examples/finance/skills/finance-assistant/SKILL.md": "b1529e5deefde27cc2309dfcb859bdb043370b4ba4ccd0781d30cad4ef5c268a",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "b1529e5deefde27cc2309dfcb859bdb043370b4ba4ccd0781d30cad4ef5c268a",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "50f60d2b1c3a16270a64b8925d38efaafc819e41ae464581f48d278626af0811"
+    "tests/finance/test_f15_skill_contract.py": "50f60d2b1c3a16270a64b8925d38efaafc819e41ae464581f48d278626af0811"
   },
   "raw_evidence_sha256": {
     "final4/model-075.json": "b7d3e7307bd41a7fd8d0837798e5a48c45c22273cbd8d0ccde6834901299cd94",

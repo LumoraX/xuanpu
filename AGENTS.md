@@ -37,16 +37,16 @@ taifeng 是内核，xuanpu 是建在内核上的发行版；两者的分界见 `
 - 文件 ≤ 800 行（警戒 500），函数 ≤ 80 行，圈复杂度 ≤ 10
 - 所有 module / class / function 必须有中文 docstring，关键逻辑块写中文注释
 - 禁止 silent fallback（`except: pass`、带默认值吞掉异常数据）
-- 新组件加在 `packages/<包名>/`，各自 `pyproject.toml`、各自版本
+- 平台已合并为单一工程（`server/`、`web/`、`cli/`、`spec/`、`sdk/`、`finance/`、`desktop/`、`tests/`）；业务领域新增于 `server/domains/<领域>/`
 
 ## 常用命令
 
 ```bash
-git submodule update --init                            # external/ 下的 taifeng 内核与适配包（ADR 0018）
-uv sync --all-packages
-uv run pytest                                          # 全量测试
-uv run ruff check --select F,S108,I,TC packages        # 门禁 lint
-uv run mypy packages/*/src                             # 门禁类型检查（strict）
+git submodule update --init                                        # external/ 下的 taifeng 内核与适配包（ADR 0018）
+uv sync --all-extras
+uv run pytest                                                      # 全量测试
+uv run ruff check --select F,S108,I,TC server web cli spec sdk finance tests  # 门禁 lint
+uv run mypy server web cli spec sdk finance                        # 门禁类型检查（strict）
 ```
 
 ## 完成定义

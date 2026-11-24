@@ -28,7 +28,7 @@ async def test_shared_acl_does_not_open_private_workspace(r3_http, r3_ids):
 - [ ] 实现`/v1/shared-matters` CRUD、`/{id}/members`及原生转交owner；服务器解析unit当前成员和职责，client提供unit_id不等于获授权。owner转移显式确认，不自动给予新的tenant角色。
 - [ ] 领域、成员、历史、请求回执及事件在同一个协调事务；不调用两名员工各自WorkspaceStore.transaction来假装原子。必要的旧文件元数据只在同一DB连接读取，不能在已持有员工锁时嵌套另一连接。
 - [ ] 列表/计数/搜索/分页先过滤ACL，默认50上限100；禁止先取全量再在浏览器隐藏。无权对象404，没有员工403。
-- [ ] 跑`uv run pytest packages/xuanpu-server/tests/r3_contract/test_shared_store.py packages/xuanpu-server/tests/r3_contract/test_shared_acl.py packages/xuanpu-server/tests/workspace -q`；提交`feat: 增加共享事项和显式成员权限`。
+- [ ] 跑`uv run pytest tests/server/r3_contract/test_shared_store.py tests/server/r3_contract/test_shared_acl.py tests/server/workspace -q`；提交`feat: 增加共享事项和显式成员权限`。
 
 ## C1：固定版本材料发布与撤回
 
@@ -41,7 +41,7 @@ API：`POST /v1/shared-matters/{id}/materials`发布本人source_item_id/source_
 - [ ] 材料可来自明确个人版本、直接上传或经原生确认的共享文本草稿；受控生成结果保存source_refs并检查其当前权限/撤回状态。承办人的publish_result scope仅允许给本交接新建成果，不允许编辑原材料或取得全事项editor权；不借私有中间文件绕过来源约束。
 - [ ] 下载每次查当前ACL、ready及revision，禁用公共永久URL；首版平台代理有界流式传输。撤回后新下载和续传请求拒绝，已开始流尽力取消，不宣称已传字节可追回。
 - [ ] 原件删除和共享撤回分别操作；界面先说明共享副本独立保留。旧revision、SHA及已签收证据不可被新文件内容覆盖，历史正文仍按当前权限访问。
-- [ ] 跑`uv run pytest packages/xuanpu-server/tests/r3_contract/test_shared_materials.py packages/xuanpu-server/tests/r3_contract/test_publication_faults.py -q`，实际PG/SIGKILL及真实对象读写验证；提交`feat: 固定共享材料版本并支持撤回`。
+- [ ] 跑`uv run pytest tests/server/r3_contract/test_shared_materials.py tests/server/r3_contract/test_publication_faults.py -q`，实际PG/SIGKILL及真实对象读写验证；提交`feat: 固定共享材料版本并支持撤回`。
 
 ## C2：受保护的来源依赖和上下文失效
 
@@ -53,17 +53,17 @@ SourceDependency：tenant/user/session或workspace_message、shared_id/material_
 - [ ] 主对话在有明确shared_matter/handoff上下文时由服务端提供有界当前可见投影，未选目标先澄清；共享受控read工具在返回内容前持久记录source dependency并重查epoch；历史助手消息保留sources引用，不能把共享正文复制到无来源的普通个人消息或永久私有文件。
 - [ ] 每次模型请求前通过公开ModelClient.session/stream(ApiRequest)包装检查会话sources；scope/SubmissionIndex取真实身份。current ACL失效则阻塞 affected session，返回`shared_access_revoked`并引导新会话，禁止把旧上下文送往模型。失效关闭可复用引擎/缓存但保留有权限审计，读不到权限存储时fail-closed。guard先于prompt capture/审计快照和实际发送，结果保存/发布前再查；在途stream尽力取消，不宣称已送出字节可回收。已有R2预算包装继续工作。
 - [ ] 正文补读、SSE、assistant history、主动扫描/摘要和冷恢复共用同一guard；修正proactive直接读store.messages的路径，不能只保护HTTP入口；R2接受shared_id或未授权shared input应400，不能悄悄复制成私有输入。共享内容进入通用后台沙盒及派生物治理不在本包交付范围。
-- [ ] 跑`uv run pytest packages/xuanpu-server/tests/r3_contract/test_shared_context.py packages/xuanpu-server/tests/r3_contract/test_shared_context_recovery.py packages/xuanpu-server/tests/test_content_access.py packages/xuanpu-server/tests/test_employee_execution_isolation.py -q`；提交`feat: 阻断撤权共享内容的上下文重用`。
+- [ ] 跑`uv run pytest tests/server/r3_contract/test_shared_context.py tests/server/r3_contract/test_shared_context_recovery.py tests/server/test_content_access.py tests/server/test_employee_execution_isolation.py -q`；提交`feat: 阻断撤权共享内容的上下文重用`。
 
 ## C3：共享事件、通知与原生员工入口
 
-Files：Create `shared_matters/{events,notifications}.py`、console `static/shared-matters.js`、SDK `shared_matters.py`、CLI `shared_commands.py`；Modify `reminders/postgres_notifications.py`、`workspace/notifications.py`、console导航和助手建议处理；Test `test_shared_notifications.py`、`packages/xuanpu-console/tests/shared_matter_behavior.cjs`及客户端测试。
+Files：Create `shared_matters/{events,notifications}.py`、console `static/shared-matters.js`、SDK `shared_matters.py`、CLI `shared_commands.py`；Modify `reminders/postgres_notifications.py`、`workspace/notifications.py`、console导航和助手建议处理；Test `test_shared_notifications.py`、`tests/web/shared_matter_behavior.cjs`及客户端测试。
 
 - [ ] 测撤销成员后旧通知/SSE/导航缓存泄露、晚提交事件丢失、重复事件刷屏、身份切换迟到响应、网络重试重复发布。
 - [ ] 通知使用无私有标题的来源引用与稳定semantic key，补读再查当前ACL；启用C0在0017预先建立的通知source约束，不修改已发布SQL。数量也按可见来源统计，不给第三方收件人自动发外部消息。
 - [ ] 对话仅产生创建/成员变更/发布草稿，原生确认才生效；独立共享事项入口可直接管理成员、版本和撤回。显示谁可读、固定版本及“共享副本”边界，默认个人主对话不变。
 - [ ] SDK/CLI支持当前身份的共享CRUD、材料版本、撤回；窄屏、键盘、无模型直接操作、重试同request_id和409刷新测试用实际DOM/请求验证。
-- [ ] 跑`uv run pytest packages/xuanpu-server/tests/r3_contract/test_shared_notifications.py packages/xuanpu-console/tests packages/xuanpu-sdk-py/tests packages/xuanpu-cli/tests -q`；提交`feat: 从员工入口管理共享事项与材料`。
+- [ ] 跑`uv run pytest tests/server/r3_contract/test_shared_notifications.py tests/web tests/sdk tests/cli -q`；提交`feat: 从员工入口管理共享事项与材料`。
 
 ## C4：独立故障、隐私与兼容验收
 

@@ -10,7 +10,7 @@ from typing import Any
 from urllib.parse import quote, urlsplit
 
 import httpx
-from xuanpu_server.connections.providers.wecom import WeComClient, WeComError
+from server.domains.connections.providers.wecom import WeComClient, WeComError
 
 
 def private_config(path: Path) -> dict[str,Any]:

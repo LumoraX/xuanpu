@@ -11,8 +11,8 @@ import socket
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit, urlunsplit
 
-from xuanpu_server.secrets import generate_master_key
-from xuanpu_server.tenancy import generate_root_key
+from server.core.secrets import generate_master_key
+from server.core.tenancy import generate_root_key
 
 if TYPE_CHECKING:
     from pathlib import Path

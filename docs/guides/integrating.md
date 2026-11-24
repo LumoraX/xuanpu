@@ -20,7 +20,7 @@
 ## 安装客户端
 
 ```bash
-uv add xuanpu-sdk-py        # 发布到 PyPI 之前，从本仓库的 packages/xuanpu-sdk-py 安装
+uv add xuanpu-sdk-py        # 发布到 PyPI 之前，从本仓库的 sdk 安装
 ```
 
 ```python
@@ -308,5 +308,5 @@ except XuanpuError as exc:
 ## 目前做不到的
 
 - [停止生成](#停止生成)只停在途的那一轮：挂起等审批的那一轮要靠拒绝审批来放弃，已经执行的调用不会撤回。
-- 没有 JavaScript 客户端；浏览器端请直接用 `fetch` 读事件流（控制台的 [`app.js`](../../packages/xuanpu-console/src/xuanpu_console/static/app.js) 是一个可以参照的实现）。
+- 没有 JavaScript 客户端；浏览器端请直接用 `fetch` 读事件流（控制台的 [`app.js`](../../web/static/app.js) 是一个可以参照的实现）。
 - 消息只支持文本，不支持图片与文件。

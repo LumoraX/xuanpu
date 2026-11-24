@@ -1,6 +1,6 @@
 # 桌面客户端
 
-`packages/xuanpu-desktop` 使用 Tauri 2 和 macOS 系统 WebView 提供原生窗口、菜单与下载。复用成熟桌面容器，避免自行维护浏览器内核。第一份交付面向 Apple Silicon Mac，连接用户填写的已部署玄圃服务。
+`desktop` 使用 Tauri 2 和 macOS 系统 WebView 提供原生窗口、菜单与下载。复用成熟桌面容器，避免自行维护浏览器内核。第一份交付面向 Apple Silicon Mac，连接用户填写的已部署玄圃服务。
 
 ## 业务与数据归属
 

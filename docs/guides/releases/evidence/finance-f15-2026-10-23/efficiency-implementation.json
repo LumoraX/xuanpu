@@ -12,7 +12,7 @@
     "docs/superpowers/specs/finance-v1/pack/skills/expense-reimbursement/SKILL.md": "745fa7ee05718c29cd0ea84c5093ed9e78f566b56c200a82e1ffc08fb9f233d1",
     "docs/superpowers/specs/finance-v1/pack/skills/invoice-intake/SKILL.md": "8934cc660d6b2d5fff055af995073b2b732591a38692699ea35200f64b2456c5",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-review/SKILL.md": "83713dbc79e3c148e4c5c092c150dcb472124401ff1cc82f478b810ffdb9f715",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "93b580c7556836322d605ffebcea5ce3c8dba8708f7a8f089c0d9f37c8adb5e8"
+    "tests/finance/test_f15_skill_contract.py": "93b580c7556836322d605ffebcea5ce3c8dba8708f7a8f089c0d9f37c8adb5e8"
   },
   "frozen_candidate4_files": 740,
   "only_changed_frozen_files": 9,
@@ -61,7 +61,7 @@
       "xml_sha256": "2ceec3220a7785c681c32fab0c30de5854c18b1bbe0b88ca91023eefc57b9e34"
     },
     "ruff": {
-      "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 tests/finance/test_f15_skill_contract.py",
       "returncode": 0,
       "log": "efficiency-ruff.log",
       "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
@@ -355,7 +355,7 @@
           "xml_sha256": "2ceec3220a7785c681c32fab0c30de5854c18b1bbe0b88ca91023eefc57b9e34"
         },
         "ruff": {
-          "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+          "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 tests/finance/test_f15_skill_contract.py",
           "returncode": 0,
           "log": "efficiency-ruff.log",
           "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
@@ -396,7 +396,7 @@
         "docs/superpowers/specs/finance-v1/pack/skills/expense-reimbursement/SKILL.md": "1e51c5839d3ad45a287834f1287258aa7c753b1dc85556e52210d55cfcb6ae0f",
         "docs/superpowers/specs/finance-v1/pack/skills/invoice-intake/SKILL.md": "8d4faf48065fdfa7f776ef169882db28c3fd2209e9b149087db4aac04e5a8ec2",
         "docs/superpowers/specs/finance-v1/pack/skills/finance-review/SKILL.md": "02b2f9370e2c9c11fb0e7a6fc79ce00207e811a2899d85d4260527cd8950fd92",
-        "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "eff84717005de5953b0e6c7c2fc161ddfa43438cd23fe28f6dc2874aa5d981c3"
+        "tests/finance/test_f15_skill_contract.py": "eff84717005de5953b0e6c7c2fc161ddfa43438cd23fe28f6dc2874aa5d981c3"
       }
     }
   ],

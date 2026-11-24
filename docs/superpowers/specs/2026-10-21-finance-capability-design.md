@@ -43,7 +43,7 @@ flowchart TD
   I --> H
 ```
 
-新增运行组件拟为 `packages/xuanpu-finance`，独立 FastAPI 进程与版本；不被 xuanpu-server 导入。
+新增运行组件拟为 `finance`，独立 FastAPI 进程与版本；不被 xuanpu-server 导入。
 财务服务不依赖 taifeng，不把财务模型放入 xuanpu-spec；平台只增加通用可信调用上下文，遵守 ADR 0002／0008。
 服务使用 PostgreSQL 事务、约束和有界工作队列，S3 兼容对象存储，受控 XML 解析与标准版本映射。
 使用成熟的 FastAPI、Pydantic、asyncpg、cryptography、defusedxml 和对象锁能力；

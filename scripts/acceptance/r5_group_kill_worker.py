@@ -17,19 +17,19 @@ from typing import Any
 
 import asyncpg
 from taifeng_stores import SqlNamespace
-from xuanpu_server.butler.config import ButlerConfig
-from xuanpu_server.butler.groups.runner import GroupRunner
-from xuanpu_server.butler.groups.trace import TracedGroupStore
-from xuanpu_server.butler.pending import PendingService
-from xuanpu_server.butler.trace_link import TracedDispatchStore
-from xuanpu_server.butler.wake_apply import WakeEffects
-from xuanpu_server.butler.wakeup import Wakeup
-from xuanpu_server.controlplane.postgres import PostgresControlPlane
-from xuanpu_server.identity.postgres import PostgresIdentityStore
-from xuanpu_server.objectstore import LocalObjectStore
-from xuanpu_server.tracing.config import ExecutionTraceConfig
-from xuanpu_server.tracing.models import TraceOwner
-from xuanpu_server.workspace.service import WorkspaceService
+from server.engine.butler.config import ButlerConfig
+from server.engine.butler.groups.runner import GroupRunner
+from server.engine.butler.groups.trace import TracedGroupStore
+from server.engine.butler.pending import PendingService
+from server.engine.butler.trace_link import TracedDispatchStore
+from server.engine.butler.wake_apply import WakeEffects
+from server.engine.butler.wakeup import Wakeup
+from server.core.controlplane.postgres import PostgresControlPlane
+from server.domains.identity.postgres import PostgresIdentityStore
+from server.core.objectstore import LocalObjectStore
+from server.engine.tracing.config import ExecutionTraceConfig
+from server.engine.tracing.models import TraceOwner
+from server.domains.workspace.service import WorkspaceService
 
 
 async def _no_turns(_tenant: str) -> int:

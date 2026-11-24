@@ -259,3 +259,7 @@ approvals:
 #   privateKeySecret: platform-signing-key
 #   allowedAudiences:
 #     https://finance.example: [xuanpu-finance]
+
+# 能力市场（匠人市场 + 通用技能库市场）：配置官方/企业能力包目录或归档目录，控制台支持按分类浏览与一键依赖安装。
+# marketplace:
+#   catalog_dirs: []               # 含 xuanpu.yaml 包目录或 .zip 归档的目录列表

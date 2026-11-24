@@ -13,17 +13,17 @@
     "worktree_sha256": "ec1eec09bdf0a4903cf1ba33e9f648e2ed049d087a33e85fad27357a885828bf"
   },
   "modules": [
-    "packages/xuanpu-finance/tests/test_worker.py",
-    "packages/xuanpu-finance/tests/test_expense_domain.py",
-    "packages/xuanpu-finance/tests/test_f2_http_e2e.py",
-    "packages/xuanpu-finance/tests/test_f3_http_e2e.py",
-    "packages/xuanpu-finance/tests/test_f5_http_e2e.py",
-    "packages/xuanpu-finance/tests/test_f5_archive_restore.py",
-    "packages/xuanpu-finance/tests/test_f2_lifecycle_api.py",
-    "packages/xuanpu-finance/tests/test_f4_lifecycle.py",
-    "packages/xuanpu-finance/tests/test_f6_credential_isolation.py",
-    "packages/xuanpu-finance/tests/test_f6_readiness.py",
-    "packages/xuanpu-server/tests/identity/test_finance_f5_gateway_e2e.py"
+    "tests/finance/test_worker.py",
+    "tests/finance/test_expense_domain.py",
+    "tests/finance/test_f2_http_e2e.py",
+    "tests/finance/test_f3_http_e2e.py",
+    "tests/finance/test_f5_http_e2e.py",
+    "tests/finance/test_f5_archive_restore.py",
+    "tests/finance/test_f2_lifecycle_api.py",
+    "tests/finance/test_f4_lifecycle.py",
+    "tests/finance/test_f6_credential_isolation.py",
+    "tests/finance/test_f6_readiness.py",
+    "tests/server/identity/test_finance_f5_gateway_e2e.py"
   ],
   "started_at": "2026-10-22T04:54:55.958130+00:00",
   "finished_at": "2026-10-22T04:55:53.377969+00:00",

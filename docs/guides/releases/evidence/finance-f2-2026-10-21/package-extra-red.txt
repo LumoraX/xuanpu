@@ -12,9 +12,9 @@ store = <xuanpu_finance.storage.store.FinanceStore object at 0x10c7a3530>
         _, payer, accountant, approver, doc = await approved_payable(store)
 >       validate_schema("IntegrationList", await store.list_integrations(payer, "e"))
 
-packages/xuanpu-finance/tests/test_package.py:279:
+tests/finance/test_package.py:279:
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-packages/xuanpu-finance/tests/test_package.py:55: in validate_schema
+tests/finance/test_package.py:55: in validate_schema
     ).validate(value)
       ^^^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
@@ -60,5 +60,5 @@ E                'simulation': True}
 
 .venv/lib/python3.12/site-packages/jsonschema/validators.py:450: ValidationError
 =========================== short test summary info ============================
-FAILED packages/xuanpu-finance/tests/test_package.py::test_configured_integrations_and_unsent_deferred_records_match_contract
+FAILED tests/finance/test_package.py::test_configured_integrations_and_unsent_deferred_records_match_contract
 1 failed, 17 deselected in 0.76s

@@ -26,21 +26,21 @@
   },
   "checks": [
     {
-      "command": "uv run pytest packages/xuanpu-server/tests/identity/test_nested_resume.py -q",
+      "command": "uv run pytest tests/server/identity/test_nested_resume.py -q",
       "returncode": 0,
       "passed": 13,
       "log": "task2-spec-nested.log",
       "sha256": "e0799deaca8a0d9661fa3bd045032af45830b5f7d43844179f3bb68ef9613c00"
     },
     {
-      "command": "uv run pytest packages/xuanpu-server/tests/test_pending_and_replay.py -q",
+      "command": "uv run pytest tests/server/test_pending_and_replay.py -q",
       "returncode": 0,
       "passed": 7,
       "log": "task2-spec-pending.log",
       "sha256": "e5664d64303f9216a471e687c89839fa803af82540b1f6dbd048a2c928921264"
     },
     {
-      "command": "uv run pytest packages/xuanpu-sdk-py/tests/test_sdk.py packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q",
+      "command": "uv run pytest tests/sdk/test_sdk.py tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py -q",
       "returncode": 0,
       "passed": 73,
       "log": "task2-spec-observer-sdk.log",
@@ -55,26 +55,26 @@
     "xuanpu-console": "2026.10.23.1"
   },
   "source_sha256": {
-    "packages/xuanpu-server/src/xuanpu_server/runtime/events.py": "89652a0fcae6b23d3b564bc8b4e9c66210b7c02ec41666fd7f17ed85387a9626",
-    "packages/xuanpu-server/src/xuanpu_server/runtime/session_history.py": "928d510eb92bc10dab988579cd020b198d2f5899deeb78be89c8289e2cee4176",
-    "packages/xuanpu-server/src/xuanpu_server/runtime/sessions.py": "cb5f2ab60915f6738cc95c5c575c300f2a2295ed38fe6e2d67c06ad00f7ebbac",
-    "packages/xuanpu-server/src/xuanpu_server/api/sse.py": "d16ed638e5905258c6fe4e800b1173f1c5ad6d6d526d14987419b761c7547dee",
-    "packages/xuanpu-sdk-py/src/xuanpu_sdk/client.py": "08f6c92ef77281a87eea41c6a06d431c0713acfe52870ef094329a5a8f626504",
-    "packages/xuanpu-sdk-py/src/xuanpu_sdk/models.py": "eea638eb8ba5b220bc5a57e2e30a6ff4374126177fee784c3e63f8e59ec6ccb2",
-    "packages/xuanpu-server/tests/identity/test_nested_resume.py": "9de4f94b30a6c632687d88d161e350123401a8b7f82b74d1d9994c907d66c2c6",
-    "packages/xuanpu-sdk-py/tests/test_sdk.py": "df1f34302fa3a369dc2158c2d661ded731e48c9cbfd32d77dd9f618b9129256b",
+    "server/runtime/events.py": "89652a0fcae6b23d3b564bc8b4e9c66210b7c02ec41666fd7f17ed85387a9626",
+    "server/runtime/session_history.py": "928d510eb92bc10dab988579cd020b198d2f5899deeb78be89c8289e2cee4176",
+    "server/runtime/sessions.py": "cb5f2ab60915f6738cc95c5c575c300f2a2295ed38fe6e2d67c06ad00f7ebbac",
+    "server/api/sse.py": "d16ed638e5905258c6fe4e800b1173f1c5ad6d6d526d14987419b761c7547dee",
+    "sdk/client.py": "08f6c92ef77281a87eea41c6a06d431c0713acfe52870ef094329a5a8f626504",
+    "sdk/models.py": "eea638eb8ba5b220bc5a57e2e30a6ff4374126177fee784c3e63f8e59ec6ccb2",
+    "tests/server/identity/test_nested_resume.py": "9de4f94b30a6c632687d88d161e350123401a8b7f82b74d1d9994c907d66c2c6",
+    "tests/sdk/test_sdk.py": "df1f34302fa3a369dc2158c2d661ded731e48c9cbfd32d77dd9f618b9129256b",
     "scripts/acceptance/finance_model_checks.py": "d80cede18208544d03bfe8ef241559448d1b22a8734e746137d6e2a195a5ebf7",
-    "packages/xuanpu-finance/tests/test_f15_model_harness.py": "2fef1cc144d123f0a1f62d214ee58e6d2e3acf4acfce37ee435bcb29420f54c7",
-    "packages/xuanpu-server/tests/test_pending_and_replay.py": "ca64f6b643eab0fc1b493874fa721d62face6ee3f3294b0737b13c276cf94eb2",
+    "tests/finance/test_f15_model_harness.py": "2fef1cc144d123f0a1f62d214ee58e6d2e3acf4acfce37ee435bcb29420f54c7",
+    "tests/server/test_pending_and_replay.py": "ca64f6b643eab0fc1b493874fa721d62face6ee3f3294b0737b13c276cf94eb2",
     "scripts/acceptance/finance_model.py": "3a61fc4e54fe6898f4a3707133192880d085e632bb3625e6dd35b637adfc7da3",
     "scripts/acceptance/finance_model_runtime.py": "f0a6e8172bae8fe6e5432a581dc3d9cf5f95db2a2e9f08078975b5203ce52a92",
     "scripts/acceptance/finance_model_journey.py": "8e44e0e886533854175f969b070ae2c470e8ae2ddcec1003753f8dc06e341f92",
     "scripts/acceptance/finance_runner.py": "91d6507086b558a4ee9f55bca8c8624221d368cb74ce2cf465ec107db0f794b0",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "d84c5ec0975a661b24510bcfe621a26c38f78077cde370ddf28fca1b377ee756",
-    "packages/xuanpu-server/pyproject.toml": "c803051fa4d841db556abf9ee1a9dd2e2bb4db98281c34a07ecc40ebc73026b9",
-    "packages/xuanpu-sdk-py/pyproject.toml": "dd578893743e4c1052f9c82c05d28169fdafa69d5a083e6e3e0ca44af7e96b03",
-    "packages/xuanpu-server/README.md": "ad384e72ecadb62365b0665162a4d6ed2377fd77bc979e096b41f89c4c39acf5",
-    "packages/xuanpu-sdk-py/README.md": "e24c109828f368aba59b517972478827e42cc02ac5710a212b57a05e9b911421",
+    "tests/finance/test_f15_skill_contract.py": "d84c5ec0975a661b24510bcfe621a26c38f78077cde370ddf28fca1b377ee756",
+    "server/pyproject.toml": "c803051fa4d841db556abf9ee1a9dd2e2bb4db98281c34a07ecc40ebc73026b9",
+    "sdk/pyproject.toml": "dd578893743e4c1052f9c82c05d28169fdafa69d5a083e6e3e0ca44af7e96b03",
+    "server/README.md": "ad384e72ecadb62365b0665162a4d6ed2377fd77bc979e096b41f89c4c39acf5",
+    "sdk/README.md": "e24c109828f368aba59b517972478827e42cc02ac5710a212b57a05e9b911421",
     "uv.lock": "ce5bee6a7889af7334963af536403480c7ecaab59b10de5e46b30d7e4b2032da",
     "docs/architecture/http-api.md": "d9c6dd0fdc86e9cf6bc864af21245a1b14af9ae0c98bfa39f9fa40ab389fbe93",
     "docs/guides/integrating.md": "6ffd48ec56a88088563e90a9865f3f3d36816ff187f5c3a5f8e1f3800e0f2ba3",
@@ -115,29 +115,29 @@
       ],
       "checks": [
         {
-          "command": "uv run pytest packages/xuanpu-server/tests/identity/test_nested_resume.py -q",
+          "command": "uv run pytest tests/server/identity/test_nested_resume.py -q",
           "returncode": 0,
           "passed": 11,
           "seconds": 3.68
         },
         {
-          "command": "uv run pytest packages/xuanpu-sdk-py/tests/test_sdk.py packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q",
+          "command": "uv run pytest tests/sdk/test_sdk.py tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py -q",
           "returncode": 0,
           "passed": 73,
           "seconds": 2.93
         }
       ],
       "source_sha256": {
-        "packages/xuanpu-server/src/xuanpu_server/runtime/events.py": "89652a0fcae6b23d3b564bc8b4e9c66210b7c02ec41666fd7f17ed85387a9626",
-        "packages/xuanpu-server/src/xuanpu_server/runtime/session_history.py": "928d510eb92bc10dab988579cd020b198d2f5899deeb78be89c8289e2cee4176",
-        "packages/xuanpu-server/src/xuanpu_server/runtime/sessions.py": "cb5f2ab60915f6738cc95c5c575c300f2a2295ed38fe6e2d67c06ad00f7ebbac",
-        "packages/xuanpu-server/src/xuanpu_server/api/sse.py": "d16ed638e5905258c6fe4e800b1173f1c5ad6d6d526d14987419b761c7547dee",
-        "packages/xuanpu-sdk-py/src/xuanpu_sdk/client.py": "08f6c92ef77281a87eea41c6a06d431c0713acfe52870ef094329a5a8f626504",
-        "packages/xuanpu-sdk-py/src/xuanpu_sdk/models.py": "eea638eb8ba5b220bc5a57e2e30a6ff4374126177fee784c3e63f8e59ec6ccb2",
-        "packages/xuanpu-server/tests/identity/test_nested_resume.py": "0241b59a582cd5e6090664da848caa6f2c1b3e5fffd5f66052eb4d8ec58ebff9",
-        "packages/xuanpu-sdk-py/tests/test_sdk.py": "df1f34302fa3a369dc2158c2d661ded731e48c9cbfd32d77dd9f618b9129256b",
+        "server/runtime/events.py": "89652a0fcae6b23d3b564bc8b4e9c66210b7c02ec41666fd7f17ed85387a9626",
+        "server/runtime/session_history.py": "928d510eb92bc10dab988579cd020b198d2f5899deeb78be89c8289e2cee4176",
+        "server/runtime/sessions.py": "cb5f2ab60915f6738cc95c5c575c300f2a2295ed38fe6e2d67c06ad00f7ebbac",
+        "server/api/sse.py": "d16ed638e5905258c6fe4e800b1173f1c5ad6d6d526d14987419b761c7547dee",
+        "sdk/client.py": "08f6c92ef77281a87eea41c6a06d431c0713acfe52870ef094329a5a8f626504",
+        "sdk/models.py": "eea638eb8ba5b220bc5a57e2e30a6ff4374126177fee784c3e63f8e59ec6ccb2",
+        "tests/server/identity/test_nested_resume.py": "0241b59a582cd5e6090664da848caa6f2c1b3e5fffd5f66052eb4d8ec58ebff9",
+        "tests/sdk/test_sdk.py": "df1f34302fa3a369dc2158c2d661ded731e48c9cbfd32d77dd9f618b9129256b",
         "scripts/acceptance/finance_model_checks.py": "d80cede18208544d03bfe8ef241559448d1b22a8734e746137d6e2a195a5ebf7",
-        "packages/xuanpu-finance/tests/test_f15_model_harness.py": "2fef1cc144d123f0a1f62d214ee58e6d2e3acf4acfce37ee435bcb29420f54c7"
+        "tests/finance/test_f15_model_harness.py": "2fef1cc144d123f0a1f62d214ee58e6d2e3acf4acfce37ee435bcb29420f54c7"
       },
       "limitations": [
         "No real model, PG, private model config or production data accessed",

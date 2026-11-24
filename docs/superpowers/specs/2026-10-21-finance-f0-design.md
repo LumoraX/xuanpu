@@ -13,7 +13,7 @@ getInvoiceEvidence、listExceptions、listLegalEntities、listIntegrations 十�
 
 ## 2 运行与文件边界
 
-新增包 `packages/xuanpu-finance`；命名空间 `xuanpu_finance`；独立进程监听内部端口，不能从平台进程导入业务服务。
+新增包 `finance`；命名空间 `xuanpu_finance`；独立进程监听内部端口，不能从平台进程导入业务服务。
 F0 即使用独立 PostgreSQL 实例／数据库／账号及独立对象存储资源／桶／凭据，不能先把财务表塞进平台库再延后拆分。
 数据库与原件各自具备备份、恢复和迁移配置，平台侧只通过 API 接入。已成功收件的原件必须在财务存储有受校验副本，
 不依赖平台文件的后续保留；财务服务不持有平台数据库或对象存储凭据。
@@ -32,21 +32,21 @@ XML 解析在隔离 worker 执行，禁用网络、DTD 与外部实体；一次�
 
 | 路径 | 单一职责 |
 | --- | --- |
-| packages/xuanpu-finance/pyproject.toml | 独立版本与运行依赖；加入 uv workspace source 映射 |
-| packages/xuanpu-finance/src/xuanpu_finance/config.py | 注入数据库、对象存储、信任密钥及限额 |
-| packages/xuanpu-finance/src/xuanpu_finance/auth.py | 验证服务身份与平台签名上下文，构造不可由请求 body 覆盖的 principal |
-| packages/xuanpu-finance/src/xuanpu_finance/models.py | 收件、票据、明细、标准映射和错误类型 |
-| packages/xuanpu-finance/src/xuanpu_finance/invoices/identity.py | 按票种版本化身份算法 |
-| packages/xuanpu-finance/src/xuanpu_finance/invoices/ingest.py | 逐项收件、解析、判重和异常 |
-| packages/xuanpu-finance/src/xuanpu_finance/invoices/parsers.py | 成熟 XML 解析器边界和受控格式映射注册 |
-| packages/xuanpu-finance/src/xuanpu_finance/invoices/provenance.py | 字节哈希、字段路径、映射版本和证据关联 |
-| packages/xuanpu-finance/src/xuanpu_finance/storage/postgres.py | 有界事务、公司隔离和原子幂等；达到文件警戒长度按聚合拆分 |
-| packages/xuanpu-finance/src/xuanpu_finance/storage/migrations/0001_finance.sql | F0 表、索引、约束、事件及导入工作队列 |
-| packages/xuanpu-finance/src/xuanpu_finance/operations.py | 导入任务、逐项结果、重启核对与取消边界 |
-| packages/xuanpu-finance/src/xuanpu_finance/api.py | F0 严格请求／响应、身份与错误映射 |
-| packages/xuanpu-finance/tests/ | 模型、真实 PG、对象存储、身份、API、worker 故障测试 |
-| packages/xuanpu-server/src/xuanpu_server/runtime/call_context.py | 通用签名上下文，固定 trusted session／principal；不 import 财务 |
-| packages/xuanpu-server/src/xuanpu_server/api/file_bridge.py | 通用受权文件版本读取，不解释发票字段 |
+| finance/pyproject.toml | 独立版本与运行依赖；加入 uv workspace source 映射 |
+| finance/config.py | 注入数据库、对象存储、信任密钥及限额 |
+| finance/auth.py | 验证服务身份与平台签名上下文，构造不可由请求 body 覆盖的 principal |
+| finance/models.py | 收件、票据、明细、标准映射和错误类型 |
+| finance/invoices/identity.py | 按票种版本化身份算法 |
+| finance/invoices/ingest.py | 逐项收件、解析、判重和异常 |
+| finance/invoices/parsers.py | 成熟 XML 解析器边界和受控格式映射注册 |
+| finance/invoices/provenance.py | 字节哈希、字段路径、映射版本和证据关联 |
+| finance/storage/postgres.py | 有界事务、公司隔离和原子幂等；达到文件警戒长度按聚合拆分 |
+| finance/storage/migrations/0001_finance.sql | F0 表、索引、约束、事件及导入工作队列 |
+| finance/operations.py | 导入任务、逐项结果、重启核对与取消边界 |
+| finance/api.py | F0 严格请求／响应、身份与错误映射 |
+| tests/finance/ | 模型、真实 PG、对象存储、身份、API、worker 故障测试 |
+| server/runtime/call_context.py | 通用签名上下文，固定 trusted session／principal；不 import 财务 |
+| server/api/file_bridge.py | 通用受权文件版本读取，不解释发票字段 |
 | examples/finance/ | 验收后才新增的 F0 可执行包；只注册已实现操作 |
 
 通用上下文接线涉及现有 `runtime/http_api.py`、`runtime/assembler.py` 与会话主体传递；

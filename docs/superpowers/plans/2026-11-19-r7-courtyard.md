@@ -32,13 +32,13 @@
 ### Task 1: 旁白采集（`say`）
 
 **Files:**
-- Create: `packages/xuanpu-server/src/xuanpu_server/tracing/narration.py`
-- Modify: `packages/xuanpu-server/src/xuanpu_server/tracing/models.py`（`SpanFact.say`、`SpanRecord.say`）
-- Modify: `packages/xuanpu-server/src/xuanpu_server/tracing/rules.py`（`new_span`/`apply_fact` 带上 `say`，首值为准）
-- Modify: `packages/xuanpu-server/src/xuanpu_server/tracing/events.py`（`Draft.say`）
-- Modify: `packages/xuanpu-server/src/xuanpu_server/tracing/collector.py`（每执行缓冲）
-- Modify: `packages/xuanpu-server/src/xuanpu_server/tracing/views.py`（输出 `say`）
-- Test: `packages/xuanpu-server/tests/tracing/test_narration.py`
+- Create: `server/tracing/narration.py`
+- Modify: `server/tracing/models.py`（`SpanFact.say`、`SpanRecord.say`）
+- Modify: `server/tracing/rules.py`（`new_span`/`apply_fact` 带上 `say`，首值为准）
+- Modify: `server/tracing/events.py`（`Draft.say`）
+- Modify: `server/tracing/collector.py`（每执行缓冲）
+- Modify: `server/tracing/views.py`（输出 `say`）
+- Test: `tests/server/tracing/test_narration.py`
 
 **Interfaces:**
 - Produces: `narration(text: str) -> str | None`；`SAY_MAX = 160`；`SpanRecord.say: str | None`；`span_view(...)["say"]`
@@ -50,16 +50,16 @@
   - 采集器：同一执行 `assistant_text` ×2 → `tool_call_started`(c1) → `tool_call_started`(c2)：`tl.c1.say` 为合并句，`tl.c2.say is None`
   - `assistant_reasoning` 不进入任何 `say`；`turn_completed` 后再来的工具 `say is None`
   - `apply_fact`：已有 `say` 时新事实带不同 `say` 不覆盖、不标 incomplete
-- [ ] Step 2: `uv run pytest packages/xuanpu-server/tests/tracing/test_narration.py` → FAIL
+- [ ] Step 2: `uv run pytest tests/server/tracing/test_narration.py` → FAIL
 - [ ] Step 3: 实现。缓冲 `dict[execution_id, str]`，上限 2000 字丢头部；`drafts()` 保持纯函数，采集器在得到工具 started 草稿后用 `dataclasses.replace(draft, say=...)` 挂上。
-- [ ] Step 4: 跑 `packages/xuanpu-server/tests/tracing` 全部 → PASS（含两套存储契约）
+- [ ] Step 4: 跑 `tests/server/tracing` 全部 → PASS（含两套存储契约）
 - [ ] Step 5: Commit `feat: trace 工具 span 带上匠人旁白（R7-1）`
 
 ### Task 2: 投递时追加说话约定
 
 **Files:**
-- Modify: `packages/xuanpu-server/src/xuanpu_server/butler/dispatcher.py`（`NARRATE_HINT`，`_start_task`/`_start_session` 投递 `instruction + "\n\n" + NARRATE_HINT`）
-- Test: `packages/xuanpu-server/tests/butler/test_single_dispatch.py`
+- Modify: `server/butler/dispatcher.py`（`NARRATE_HINT`，`_start_task`/`_start_session` 投递 `instruction + "\n\n" + NARRATE_HINT`）
+- Test: `tests/server/butler/test_single_dispatch.py`
 
 **Interfaces:**
 - Produces: `NARRATE_HINT = "（每次动手前，先用一句话告诉员工你要做什么。）"`
@@ -71,10 +71,10 @@
 ### Task 3: 派工细节接口
 
 **Files:**
-- Modify: `packages/xuanpu-server/src/xuanpu_server/butler/wake_store.py`、`wake_postgres.py`（`events_for_dispatch`）
-- Create: `packages/xuanpu-server/src/xuanpu_server/api/dispatches.py`（`dispatch_detail(...)`、`dispatches_router(platform)`）
+- Modify: `server/butler/wake_store.py`、`wake_postgres.py`（`events_for_dispatch`）
+- Create: `server/api/dispatches.py`（`dispatch_detail(...)`、`dispatches_router(platform)`）
 - Modify: 路由注册处（与 `groups_router` 同处）
-- Test: `packages/xuanpu-server/tests/butler/test_dispatch_detail.py`；`tests/butler/test_wake_store.py` 补 `events_for_dispatch`
+- Test: `tests/server/butler/test_dispatch_detail.py`；`tests/butler/test_wake_store.py` 补 `events_for_dispatch`
 
 **Interfaces:**
 - Produces: `WakeStore.events_for_dispatch(owner: TraceOwner, dispatch_id: str) -> tuple[ButlerEvent, ...]`；`GET /v1/assistant/dispatches/{dispatch_id}` 返回设计文档里的字段
@@ -86,9 +86,9 @@
 ### Task 4: 前端纯模型与画法
 
 **Files:**
-- Create: `packages/xuanpu-console/src/xuanpu_console/static/courtyard-art.js`
-- Create: `packages/xuanpu-console/src/xuanpu_console/static/courtyard-model.js`
-- Create: `packages/xuanpu-console/tests/courtyard_behavior.cjs`、`tests/test_courtyard_behavior.py`
+- Create: `web/static/courtyard-art.js`
+- Create: `web/static/courtyard-model.js`
+- Create: `tests/web/courtyard_behavior.cjs`、`tests/test_courtyard_behavior.py`
 
 **Interfaces:**
 - Produces（全局，挂在 `Courtyard` 命名空间）：
@@ -105,7 +105,7 @@
 ### Task 5: 场景与进展卡接入
 
 **Files:**
-- Create: `packages/xuanpu-console/src/xuanpu_console/static/courtyard-scene.js`、`courtyard-card.js`、`courtyard.css`
+- Create: `web/static/courtyard-scene.js`、`courtyard-card.js`、`courtyard.css`
 - Modify: `progress-card.js`（有 `Courtyard.card` 且支持 SVG 时由它渲染；执行树与瀑布放进「执行树」页签）
 - Modify: `entry.html`、`scripts/refresh_console_assets.py`（也刷新 `entry.html`）、`tests/test_entry_behavior.py`（脚本清单、允许 `/v1/assistant/dispatches`、`/v1/assistant/groups`）
 - Test: `tests/courtyard_behavior.cjs` 增卡片用例；`tests/entry_behavior.cjs` 原用例不改仍过
@@ -115,7 +115,7 @@
 - Produces: `Courtyard.card.mount(progress, container)`、`Courtyard.card.update(progress, {snapshot: bool})`
 
 - [ ] Step 1: 测试：快照（trace 已结束）→ 不排动画，经过列出全部条目；派工细节 404 → 经过无信纸条目、小院仍渲染；无 `createElementNS` → 退回执行树。
-- [ ] Step 2: 运行 → FAIL；Step 3: 实现（场景从原型搬，导演改为消费 `diff` 节拍）；Step 4: `uv run pytest packages/xuanpu-console` → PASS
+- [ ] Step 2: 运行 → FAIL；Step 3: 实现（场景从原型搬，导演改为消费 `diff` 节拍）；Step 4: `uv run pytest web` → PASS
 - [ ] Step 5: 用无头 Chrome 打开入口页（假后端或原型自检）截图核对 375px 与 980px
 - [ ] Step 6: Commit `feat: 进展卡换成小院（R7-5）`
 

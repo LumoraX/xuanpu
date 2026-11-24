@@ -30,7 +30,7 @@
 - [ ] 先写范围、格式、SHA改变、空间上限、中文检索、字面通配符、空结果、无权计数反例；memory/PG同契约，源SHA不一致标stale而不是重新取最新版。
 - [ ] 构建持久意图/租约，在事务外提取，事务内验证来源epoch和空间预留后提交；进程故障重新领取同意图，不形成双chunk；清理失败不提前释放已占容量。
 - [ ] 注册来源并不复制分享权；源新版本只标“有更新”，用户明确refresh产生新source修订并使原contexts失效，不改旧引用。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_knowledge_sources.py packages/xuanpu-server/tests/r4_contract/test_knowledge_builds.py packages/xuanpu-server/tests/r4_contract/test_knowledge_search.py -q`；提交`feat: 增加有权固定来源检索`。
+- [ ] Run：`uv run pytest tests/server/r4_contract/test_knowledge_sources.py tests/server/r4_contract/test_knowledge_builds.py tests/server/r4_contract/test_knowledge_search.py -q`；提交`feat: 增加有权固定来源检索`。
 
 ```python
 async def test_search_does_not_reveal_other_users_source(r4_http, r4_ids):
@@ -50,7 +50,7 @@ async def test_search_does_not_reveal_other_users_source(r4_http, r4_ids):
 - [ ] 每次模型发送前/流块外发/历史读取/引用下载复核来源；来源撤销或仓储故障拒绝，不让复用引擎、历史摘要和缓存回填旧正文。已发送到设备/模型的数据不宣称追回。
 - [ ] 删除先增加来源epoch、阻塞检索和旧context；清理worker删除chunk、提取文本及回答缓存，保留不含正文的删除回执。`cleanup_pending`重启续做，不能按清理失败自动重新授权。
 - [ ] 测试对象读到一半撤权、模型stream中撤权、搜索响应迟到、删除后冷解释器恢复、结果被发布成新材料时仍带来源依赖；禁止通过转存取消原权限。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_knowledge_context.py packages/xuanpu-server/tests/r4_contract/test_knowledge_revocation.py packages/xuanpu-server/tests/r4_contract/test_knowledge_faults.py -q`；实际SIGKILL分支单列，不能以memory状态模拟PG恢复。
+- [ ] Run：`uv run pytest tests/server/r4_contract/test_knowledge_context.py tests/server/r4_contract/test_knowledge_revocation.py tests/server/r4_contract/test_knowledge_faults.py -q`；实际SIGKILL分支单列，不能以memory状态模拟PG恢复。
 - [ ] 提交`feat: 保护知识问答来源与删除传播`。
 
 ## D2：本人工作记忆与原生入口
@@ -62,7 +62,7 @@ async def test_search_does_not_reveal_other_users_source(r4_http, r4_ids):
 - [ ] 不自动把私人记忆共享给同事/岗位，不以记忆授予能力或审批权。受保护记忆只进入受保护只读回答，不能在普通助理路由提示中混入全文。
 - [ ] 默认对话可请求查找材料或提出记忆候选；确认卡和「功能 → 知识与记忆」使用同一服务。无模型仍可检索、看来源、确认/拒绝、更正、删除及查看清理状态。
 - [ ] 执行浏览器双身份、390px、Tab、撤权首帧清屏；实际模型测试只读引用、材料内注入指令、无依据拒答，原始协议与独立判定分列。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_work_memory.py packages/xuanpu-server/tests/r4_contract/test_knowledge_views.py -q`和全门禁；实施时新增`docs/architecture/knowledge-governance.md`、`docs/guides/knowledge-memory.md`；提交`feat: 提供本人知识和工作记忆治理`。
+- [ ] Run：`uv run pytest tests/server/r4_contract/test_work_memory.py tests/server/r4_contract/test_knowledge_views.py -q`和全门禁；实施时新增`docs/architecture/knowledge-governance.md`、`docs/guides/knowledge-memory.md`；提交`feat: 提供本人知识和工作记忆治理`。
 
 本段不接入员工聊天全历史、不复制财务原件、不启用长期记忆自动学习；真材料和真人检索验收继续暂缓，不能将合成来源正确引用写成企业知识全面可用。
 

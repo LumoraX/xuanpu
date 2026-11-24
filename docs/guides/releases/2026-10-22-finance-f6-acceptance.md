@@ -34,7 +34,7 @@ uv run python scripts/finance_acceptance.py --dsn-file /tmp/finance-f6-dsn --out
 uv run ruff check --select F,S108,I,TC packages scripts/finance_acceptance.py scripts/acceptance/finance_runner.py
 uv run mypy packages/*/src
 MYPYPATH=scripts uv run mypy scripts/finance_acceptance.py
-uv run ruff check --select C901 --config 'lint.mccabe.max-complexity=10' packages/xuanpu-finance/src scripts/finance_acceptance.py scripts/acceptance/finance_runner.py
+uv run ruff check --select C901 --config 'lint.mccabe.max-complexity=10' finance/src scripts/finance_acceptance.py scripts/acceptance/finance_runner.py
 uv lock --check
 uv run xuanpu validate examples/finance
 ```

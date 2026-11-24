@@ -1,6 +1,6 @@
 # 业务包规范（活文档）
 
-> 规范版本 `xuanpu/v1`。权威定义在 `packages/xuanpu-spec/src/xuanpu_spec/manifest.py`；
+> 规范版本 `xuanpu/v1`。权威定义在 `spec/manifest.py`；
 > `xuanpu schema` 可以导出 JSON Schema。
 >
 > 本文是字段与规则的参考。怎么一步步写出一个业务包见[编写业务包](../guides/writing-packages.md)，
@@ -94,8 +94,11 @@ spec:
 
 | 字段 | 默认 | 说明 |
 | --- | --- | --- |
-| `dir` | `skills` | skill 目录在包内的相对路径 |
-| `entries` | 必填，至少一个，不能重复 | 可以作为会话入口的 skill。第一个是建会话时的默认入口 |
+| `dir` | `skills` | skill 目录在包内的相对路径。支持平铺（`skills/<id>/SKILL.md`）或按分类嵌套（`skills/<分类>/<id>/SKILL.md`）；命中 `SKILL.md` 后不再向下扫描其内部 `references/`、`scripts/` |
+| `entries` | 空 | 可以作为会话入口的 skill。第一个是建会话时的默认入口；与 `exports` 不能同时为空 |
+| `exports` | 空 | 导出给同租户其他业务包复用的通用 skill 标识。只声明 `exports`、不声明 `entries` 的包是纯共享技能库，不会作为独立匠人出现在管家列表里 |
+| `uses` | 空 | 引用同租户的共享技能库列表。每项 `{package, version?, categories?, skills?}`：按分类或 skill 标识引入对方 `exports` 中的通用技能及其配套连接器 |
+| `recall` | `{threshold: 50, defaultTopK: 5, maxTopK: 20}` | 子 skill 渐进披露与 `search_skills` 召回边界。入口 skill 在 frontmatter 声明 `exposure: {child_recall: deferred}` 或可见子 skill 数超过 `threshold` 时，不将全部子 skill 平铺进提示词，而是经 `search_skills` 按分类、标签（`category` / `tags`）与描述按需检索，再以 `read_skill` / `call_skill` 渐进加载正文与 `references/` |
 
 ### `spec.model`
 

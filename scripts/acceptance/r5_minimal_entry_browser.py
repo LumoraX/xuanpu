@@ -39,18 +39,18 @@ ALICE_ONLY = "验收-Alice的提醒"
 async def assemble(directory: Path, origin: str, resources: AsyncExitStack) -> tuple[Any, dict[str, str]]:
     """内存平台：acme 开启追踪、管家与极简入口；模型一律拒绝；两名员工与登录 cookie。"""
     from scripts.acceptance.finance_browser import ModelBlocker
-    from xuanpu_server.butler.config import ButlerConfig
-    from xuanpu_server.controlplane import InMemoryControlPlane
-    from xuanpu_server.dashboard.config import MinimalEntryConfig
-    from xuanpu_server.identity import InMemoryIdentityStore
-    from xuanpu_server.identity.config import IdentityConfig
-    from xuanpu_server.identity.service import IdentitySettings
-    from xuanpu_server.objectstore import LocalObjectStore
-    from xuanpu_server.platform import ROOT_PRINCIPAL, Platform
-    from xuanpu_server.runtime import LocalSandboxProvider, RuntimeDefaults
-    from xuanpu_server.secrets import EncryptedVault, generate_master_key
-    from xuanpu_server.tenancy import generate_root_key
-    from xuanpu_server.tracing.config import ExecutionTraceConfig
+    from server.engine.butler.config import ButlerConfig
+    from server.core.controlplane import InMemoryControlPlane
+    from server.domains.dashboard.config import MinimalEntryConfig
+    from server.domains.identity import InMemoryIdentityStore
+    from server.domains.identity.config import IdentityConfig
+    from server.domains.identity.service import IdentitySettings
+    from server.core.objectstore import LocalObjectStore
+    from server.platform import ROOT_PRINCIPAL, Platform
+    from server.engine.runtime import LocalSandboxProvider, RuntimeDefaults
+    from server.core.secrets import EncryptedVault, generate_master_key
+    from server.core.tenancy import generate_root_key
+    from server.engine.tracing.config import ExecutionTraceConfig
 
     store, blocker = InMemoryControlPlane(), ModelBlocker()
     _, root_hash = generate_root_key()
@@ -83,8 +83,8 @@ async def assemble(directory: Path, origin: str, resources: AsyncExitStack) -> t
 
 async def seed(platform: Any, user_id: str) -> None:
     """Alice：一条稍后到期的提醒与一条已送达未读的通知。"""
-    from xuanpu_server.reminders.models import ReminderInput
-    from xuanpu_server.tenancy import Principal
+    from server.domains.reminders.models import ReminderInput
+    from server.core.tenancy import Principal
 
     who = Principal(role="tenant_member", tenant_id="acme", user_id=user_id, key_id=None)
     soon = time.time() + 120
@@ -121,7 +121,7 @@ def chrome(binary: str, url: str, profile: Path, *extra: str) -> str:
 
 def page_weight() -> dict[str, Any]:
     """默认页（entry.html）加载的脚本数与体积（字节，未压缩）。"""
-    from xuanpu_console import static_dir
+    from web import static_dir
 
     directory = static_dir()
     html = (directory / "entry.html").read_text(encoding="utf-8")
@@ -147,8 +147,8 @@ def check_dom(dom: str, *, own: bool) -> dict[str, Any]:
 async def run(binary: str, out: Path) -> dict[str, Any]:
     """起服务、跑浏览器、汇总证据。"""
     from scripts.acceptance.finance_browser import free_port, listen
-    from xuanpu_console import static_dir
-    from xuanpu_server.api.app import create_app
+    from web import static_dir
+    from server.api.app import create_app
 
     out.mkdir(parents=True, exist_ok=True)
     port = free_port()

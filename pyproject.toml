@@ -1,23 +1,67 @@
-# 工作区根：只承载开发依赖与统一的 lint / 测试 / 类型检查配置，本身不发布。
-# 每个组件是 packages/ 下的独立包，各自版本、各自发布（ADR 0001 决策 4）。
+# 玄圃（xuanpu）—— 统一企业级 Agent 平台工程（不再拆多 PyPI 子包，整体构建与运行）。
+# 内核 taifeng 与两个适配包仍以 git submodule 放在 external/ 下（editable 联调）。
 
-[tool.uv.workspace]
-members = ["packages/*"]
+[project]
+name = "xuanpu"
+version = "2026.11.22.0"
+description = "玄圃（xuanpu）—— 基于 taifeng 内核的企业级服务端 Agent 平台"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [
+    { name = "Xuanpu Contributors" },
+]
+dependencies = [
+    # 内核与适配包（通过 external/ 子模块 editable 接入）
+    "taifeng>=2026.11.14.1",
+    "taifeng-sandbox>=2026.10.21.1",
+    "taifeng-stores",
+    # 规范、服务端、CLI、SDK 与财务子系统统一依赖
+    "anyio>=4",
+    "argon2-cffi>=23.1",
+    "asyncpg>=0.29",
+    "cryptography>=42",
+    "defusedxml>=0.7.1",
+    "fastapi>=0.110",
+    "httpx>=0.27",
+    "jsonschema>=4.23",
+    "pillow>=12",
+    "prometheus_client>=0.20",
+    "pydantic>=2.6",
+    "PyJWT[crypto]>=2.10",
+    "pypdf>=6",
+    "pyyaml>=6.0",
+    "uvicorn>=0.29",
+]
 
-# 内核 taifeng 与两个适配包以 git submodule 形式放在 external/ 下，开发期从子模块取源码
-# （editable），可在本仓库内联调，也可进入子模块目录独立开发、提交、推送各自仓库。
-# 发布产物仍由 xuanpu-server 的版本下限约束；子模块指针即本仓库验证过的组合。
-# 不列入 workspace members：三者各有自己的 pyproject、锁文件与门禁。
+[project.optional-dependencies]
+postgres = [
+    "asyncpg>=0.29",
+    "taifeng-stores[postgres]",
+]
+otel = [
+    "taifeng[telemetry-otel]>=2026.11.14.1",
+]
+s3 = [
+    "boto3>=1.34",
+]
+
+[project.scripts]
+xuanpu = "cli.main:main"
+xuanpu-finance = "finance.__main__:main"
+xuanpu-finance-maintenance = "finance.maintenance_cli:main"
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["server", "web", "cli", "spec", "sdk", "finance"]
+
 [tool.uv.sources]
 taifeng = { path = "external/taifeng", editable = true }
 taifeng-sandbox = { path = "external/taifeng-sandbox", editable = true }
 taifeng-stores = { path = "external/taifeng-stores", editable = true }
-xuanpu-spec = { workspace = true }
-xuanpu-server = { workspace = true }
-xuanpu-cli = { workspace = true }
-xuanpu-sdk-py = { workspace = true }
-xuanpu-console = { workspace = true }
-xuanpu-finance = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -28,14 +72,9 @@ dev = [
     "ruff>=0.5",
     "mypy>=1.10",
     "httpx>=0.27",
-    # 平台服务的测试用 SDK 走一遍接口（服务本身不依赖 SDK）
-    "xuanpu-sdk-py",
-    "xuanpu-finance",
     "asyncpg-stubs>=0.29",
     "types-pyyaml>=6.0",
-    # 对象存储的 S3 实现及其测试（moto 起本机 S3 服务）
     "boto3>=1.34",
-    # 可选 OTel 导出的测试用内存导出器
     "taifeng[telemetry-otel]",
     "moto[server]>=5.0",
     "boto3-stubs[s3]",
@@ -44,33 +83,25 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-# 子模块各有自己的 lint 配置与门禁，不归本仓库检查
-extend-exclude = ["external"]
+extend-exclude = ["external", "desktop"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "ASYNC", "S", "B", "C4", "RET", "SIM", "TC"]
-# S101(裸 assert)放行：沿用 taifeng 口径——assert 只用于 mypy strict 要求的类型收窄
-# (断内部不变量)；外部输入校验一律抛异常，不用 assert。
 ignore = ["S101"]
 
 [tool.ruff.lint.per-file-ignores]
-# S608(拼接 SQL)：拼进 SQL 的只有表名，来自 SqlNamespace——其字符集在构造时校验为
-# [a-z0-9_]；所有取值一律走参数绑定
-"packages/xuanpu-server/src/xuanpu_server/controlplane/postgres.py" = ["S608"]
-"packages/xuanpu-server/src/xuanpu_server/controlplane/postgres_audit.py" = ["S608"]
-"packages/xuanpu-server/src/xuanpu_server/controlplane/schema.py" = ["S608"]
-# 身份存储与控制面共用命名空间，同一理由；另有 SET 子句片段，只来自模块内写死的字面量
-"packages/xuanpu-server/src/xuanpu_server/identity/postgres.py" = ["S608"]
-"packages/xuanpu-server/src/xuanpu_server/identity/postgres_users.py" = ["S608"]
-# 执行追踪与控制面共用命名空间，同一理由
-"packages/xuanpu-server/src/xuanpu_server/tracing/postgres.py" = ["S608"]
-# S108(硬编码 /tmp)：tests/ 里只允许作占位字符串，真落盘必须用 tmp_path fixture
-"packages/*/tests/**" = ["S108"]
+"server/core/controlplane/postgres.py" = ["S608"]
+"server/core/controlplane/postgres_audit.py" = ["S608"]
+"server/core/controlplane/schema.py" = ["S608"]
+"server/domains/identity/postgres.py" = ["S608"]
+"server/domains/identity/postgres_users.py" = ["S608"]
+"server/engine/tracing/postgres.py" = ["S608"]
+"tests/**" = ["S108"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["packages"]
-# 各包 tests/ 下会有同名测试文件，importlib 模式避免模块名冲突
+testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "--import-mode=importlib"
 
 [tool.mypy]

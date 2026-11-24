@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>玄圃 · 个人工作站</title>
+<link rel="stylesheet" href="style.css?v=8a18def31f2f3c33">
+<link rel="stylesheet" href="workspace.css?v=4ddbccecd3565ccc">
+</head>
+<body class="unauthenticated">
+<section id="auth-gate" class="auth-gate" aria-label="登录玄圃">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <span class="brand-seal" aria-hidden="true">玄</span>
+      <div>
+        <div class="auth-title-row">
+          <h1>玄圃</h1>
+          <span id="auth-mode-badge" class="auth-badge hidden">管理后台</span>
+        </div>
+        <p class="auth-subtitle">企业智能协作与数字匠人工作台</p>
+      </div>
+    </div>
+    <p id="login-error" class="login-error hidden" role="alert"></p>
+    <form id="password-login" class="auth-form password-login">
+      <label class="auth-field">
+        <span>用户名</span>
+        <input aria-label="用户名" id="login-username" autocomplete="username" placeholder="请输入用户名" required maxlength="64">
+      </label>
+      <label class="auth-field">
+        <span>口令</span>
+        <input aria-label="口令" id="login-password" type="password" autocomplete="current-password" placeholder="请输入口令" required maxlength="128">
+      </label>
+      <button type="submit" class="auth-submit">登录</button>
+    </form>
+    <div class="auth-divider"><span>其他方式</span></div>
+    <button id="feishu-login" type="button" class="ghost auth-sso">用飞书登录</button>
+    <details id="admin-connection" class="admin-connection hidden">
+      <summary>使用管理员 API Key 连接</summary>
+      <form id="connect" class="connect">
+        <input aria-label="平台地址" id="base-url" type="url" placeholder="当前站点（默认，无需填写）" autocomplete="off">
+        <input aria-label="管理员 API key" id="api-key" type="password" placeholder="管理员 API key" autocomplete="off" required>
+        <button type="submit">连接</button>
+      </form>
+    </details>
+  </div>
+  <div class="auth-links"><a href="?admin=1">管理员入口</a> · <a href="?">员工入口</a></div>
+</section>
+<header class="topbar app-shell">
+  <div class="brand"><span class="brand-seal sm" aria-hidden="true">玄</span>玄圃 <span class="sub">个人工作站</span></div>
+  <div class="topbar-right">
+    <span id="conn-status" class="status">请先登录</span>
+    <div id="current-user" class="row hidden"><button id="notification-toggle" type="button" class="ghost hidden" aria-haspopup="dialog" aria-expanded="false" aria-controls="notifications-panel">通知</button><img id="user-avatar" class="avatar hidden" alt=""><span id="user-name"></span><button id="change-password-toggle" type="button" class="ghost hidden">改口令</button><button id="logout" type="button" class="ghost">退出</button></div>
+  </div>
+</header>
+<section id="password-setup" class="password-panel hidden" aria-labelledby="password-setup-title">
+  <h2 id="password-setup-title">设置口令</h2>
+  <p id="password-setup-who" class="meta"></p>
+  <form id="password-setup-form" class="row">
+    <input aria-label="新口令" id="setup-password" type="password" autocomplete="new-password" placeholder="新口令（至少 10 个字符）" required minlength="10" maxlength="128">
+    <input aria-label="再输一次新口令" id="setup-confirm" type="password" autocomplete="new-password" placeholder="再输一次" required maxlength="128">
+    <button type="submit">设置并登录</button>
+  </form>
+  <p id="password-setup-notice" role="status"></p>
+</section>
+<section id="change-password" class="password-panel hidden" aria-labelledby="change-password-title">
+  <h2 id="change-password-title">改口令</h2>
+  <form id="change-password-form" class="row">
+    <input aria-label="当前口令" id="current-password" type="password" autocomplete="current-password" placeholder="当前口令" required maxlength="128">
+    <input aria-label="新口令" id="new-password" type="password" autocomplete="new-password" placeholder="新口令（至少 10 个字符）" required minlength="10" maxlength="128">
+    <button type="submit">保存</button>
+  </form>
+  <p id="change-password-notice" role="status"></p>
+</section>
+<section id="notifications-panel" class="notification-panel hidden" role="dialog" aria-modal="false" aria-labelledby="notification-title" tabindex="-1">
+  <div class="notification-panel-heading"><strong id="notification-title">通知</strong><button id="close-notifications" type="button" class="ghost" aria-label="关闭通知" title="关闭通知">×</button></div>
+  <p id="notification-status" class="meta"></p>
+  <div id="shared-notification-list"></div>
+  <div id="collaboration-notification-list"></div>
+  <ul id="notification-list" class="reminder-items" aria-live="polite"></ul>
+</section>
+
+<nav class="tabs app-shell" id="tabs">
+  <button data-tab="sessions" class="active">会话</button>
+  <button id="functions-tab" data-tab="functions" class="hidden">功能</button>
+  <button data-admin data-tab="marketplace" class="hidden">能力市场</button>
+  <button data-admin data-tab="packages" class="hidden">业务包</button>
+  <button data-admin data-tab="secrets" class="hidden">密钥</button>
+  <button data-admin data-tab="capabilities" class="hidden">能力配置</button>
+  <button data-admin data-tab="audit" class="hidden">审计</button>
+  <button data-admin data-tab="usage" class="hidden">用量</button>
+  <button data-admin data-tab="users" class="hidden">用户</button>
+</nav>
+
+<main class="app-shell">
+  <!-- 会话 -->
+  <section id="tab-sessions" class="tab active">
+    <aside class="list-pane">
+      <div class="assistant-identity"><span class="assistant-mark">玄</span><div><strong id="assistant-name">玄圃助手</strong><p class="status">你的个人工作站</p></div></div>
+      <nav id="workspace-nav" class="workspace-nav hidden" aria-label="我的工作">
+        <button type="button" data-workspace="task">交办工作</button>
+        <button type="button" data-workspace="definition">执行安排</button>
+        <button type="button" data-workspace="file">文件 <span data-count="file"></span></button>
+        <button type="button" data-workspace="matter">事项 <span data-count="matter"></span></button>
+        <button type="button" data-workspace="todo">待办 <span data-count="todo"></span></button>
+        <button type="button" data-workspace="event">日程 <span data-count="event"></span></button>
+        <button type="button" data-workspace="skill">个人能力 <span data-count="skill"></span></button>
+        <button type="button" data-workspace="settings">助手设置</button>
+      </nav>
+      <form id="new-session" class="row">
+        <select id="new-package" class="hidden" aria-label="已启用能力" disabled><option value="">登录后自动加载</option></select>
+        <input id="new-entry" type="hidden">
+        <button type="submit" id="new-session-btn" disabled>回到主对话</button>
+      </form>
+      <details class="session-history"><summary>业务对话记录</summary><div class="row">
+        <label><input type="checkbox" id="show-closed"> 显示已关闭</label>
+        <button id="refresh-sessions" type="button" class="ghost">刷新</button>
+      </div>
+      <p id="business-hint" class="status">登录后直接说出需求，助手会找到对应流程。</p>
+      <ul id="session-list" class="items"></ul></details>
+    </aside>
+    <div class="chat-pane">
+      <section id="welcome" class="welcome">
+        <h1>从一句话，开始你的工作</h1>
+        <p>查询业务信息、执行工作流程，需要修改数据时先由你批准。</p>
+        <p>整理文件、安排日程、记录待办，或发起企业业务。直接告诉助手你的需求，也可以随时打开左侧模块查看和操作。</p>
+        <p class="status">账号和业务由企业管理员准备，你无需配置服务或模型。</p>
+      </section>
+      <div id="chat-head" class="chat-head">直接告诉我，你想办什么？</div>
+      <div id="pending" class="pending hidden"></div>
+      <div id="transcript" class="transcript"></div>
+      <div id="suggestions" class="suggestions hidden" aria-label="试试这样问">
+        <span>试试这样问</span>
+        <button type="button" class="ghost" data-prompt="明天上午9点提醒我准备周报。">安排提醒</button>
+        <button type="button" class="ghost" data-prompt="帮我记一件待办：整理本周工作进展。">记录待办</button>
+        <button type="button" class="ghost" data-prompt="打开我的文件。">查看文件</button>
+      </div>
+      <div id="reminder-chat-host">
+        <div id="reminder-workspace">
+          <section id="reminders-panel" class="reminder-preview hidden" aria-label="你的提醒">
+            <div class="row"><strong>你的提醒</strong><button id="close-reminders" type="button" class="ghost">收起</button></div>
+            <div class="row">
+              <button id="new-reminder" type="button" class="hidden">新建提醒</button>
+              <label>查看 <select id="reminder-status"><option value="active">等待提醒</option><option value="completed">已提醒</option><option value="cancelled">已取消</option></select></label>
+              <button id="refresh-reminders" type="button" class="ghost">刷新提醒</button>
+            </div>
+            <p id="reminder-feedback" role="status" class="meta"></p>
+            <ul id="reminder-list" class="reminder-items"></ul>
+          </section>
+          <section id="reminder-preview" class="reminder-preview hidden" aria-live="polite"></section>
+        </div>
+      </div>
+      <div id="proactive-draft" class="reminder-preview hidden" aria-live="polite"></div>
+      <div id="workspace-draft" class="reminder-preview hidden" aria-live="polite"></div>
+      <form id="send" class="send">
+        <div id="attachment-chips" class="attachment-chips" aria-label="待发送附件"></div>
+        <textarea id="message" rows="2" placeholder="告诉我你想办什么，Enter 发送" disabled></textarea>
+        <div class="composer-toolbar">
+          <div class="composer-tools">
+            <button id="attach-file" class="ghost" type="button" title="添加附件" aria-label="添加附件" aria-haspopup="menu" aria-controls="attachment-menu" aria-expanded="false" disabled>
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 4v16M4 12h16"/></svg>
+            </button>
+            <div id="attachment-menu" class="attachment-menu hidden" role="menu" aria-label="添加附件">
+              <p class="attachment-menu-title" role="presentation">添加附件</p>
+              <button id="attachment-upload" type="button" role="menuitem" tabindex="-1">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m8 12 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l8-8a2 2 0 0 1 3 3l-8 8"/></svg><span>上传本机文件</span>
+              </button>
+              <button id="attachment-pick" type="button" role="menuitem" tabindex="-1">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h5l3 3h6a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path d="M3 9h18"/></svg><span>从我的文件选择</span>
+              </button>
+            </div>
+            <input id="attachment-input" type="file" multiple class="hidden" aria-label="上传附件">
+          </div>
+          <div class="composer-actions">
+            <button type="submit" id="send-btn" disabled>发送</button>
+            <button type="button" id="stop-btn" class="danger hidden">停止</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <aside id="workspace-window" class="workspace-window hidden" aria-labelledby="workspace-title">
+    <header class="workspace-header"><h2 id="workspace-title">我的文件</h2><button id="workspace-close" type="button" class="ghost" aria-label="关闭工作窗口">收起</button></header>
+    <div id="workspace-toolbar" class="workspace-toolbar"></div>
+    <p id="workspace-feedback" role="status" class="status"></p>
+    <div id="workspace-content" class="workspace-content"></div>
+  </aside>
+  <!-- 辅助功能入口：员工可直接操作，不依赖对话识别。 -->
+  <section id="tab-functions" class="tab">
+    <div class="functions-intro"><h1>功能</h1><p class="status">平时直接在对话里说出需求，也可以在这里查看记录、自己操作。</p></div>
+    <div class="function-cards">
+      <article class="function-card"><h2>执行安排</h2><p>确认何时替你处理工作，查看、修改或停止本人安排。</p><button data-workspace="definition" type="button">查看执行安排</button></article>
+      <article class="function-card"><h2>交办工作</h2><p>查看材料处理进展，确认行动项并下载成果。关闭页面后仍会继续处理。</p><button data-workspace="task" type="button">查看我的工作</button></article>
+      <article class="function-card"><h2>企业连接</h2><p>绑定本人的企业微信，查看只读范围，确认或撤销个人授权。</p><button id="open-connections" type="button">管理我的连接</button></article>
+      <article class="function-card"><h2>工作交接与审批</h2><p>直接交给具体员工，核对成果、审批并独立签收。无需先建部门。</p><button id="open-collaboration" type="button">查看我的协作</button></article>
+      <article class="function-card"><h2>共享协作</h2><p>直接邀请具体员工，共同核对资料。部门与岗位可选。</p><button id="open-shared" type="button">查看共享事项</button></article>
+      <article class="function-card"><h2>组织与职责</h2><p>查看本人的部门与职责。获授权的同事可配置部门、岗位和业务职责。</p><button id="open-organization" type="button">查看组织与职责</button></article>
+      <article class="function-card"><h2>知识与记忆</h2><p>把本人文件登记为来源，按原文检索、依据选定片段提问，确认或删除工作记忆。</p><button id="open-knowledge" type="button">打开知识与记忆</button></article>
+      <article class="function-card"><h2>人物与关系</h2><p>纯个人空间的名片、头像、出生信息、人际关系与事项关联，支持随手记与多跳查。</p><button id="open-people" type="button">打开人物与关系</button></article>
+      <article class="function-card"><h2>我的能力</h2><p>查看企业已分配的可运行能力。能力分配与资料读取授权分别核对。</p><button id="open-capabilities" type="button">查看我的能力</button></article>
+      <article class="function-card"><h2>发票报销记录与审批</h2><p>记录发票和报销内容、选择附件、查看流转进展并处理本人审批。</p><button data-workspace="finance" type="button">打开财务辅助页</button></article>
+      <article class="function-card"><h2>我的文件</h2><p>文件夹、附件、版本和回收站，始终属于你的个人空间。</p><button data-workspace="file" type="button">打开文件</button></article>
+      <article class="function-card"><h2>事项与待办</h2><p>查看进展、关联资料，记录下一步工作。</p><button data-workspace="matter" type="button">打开事项</button> <button data-workspace="todo" type="button" class="ghost">查看待办</button></article>
+      <article class="function-card"><h2>日程</h2><p>安排自己的时间，查看日程和到期提醒。</p><button data-workspace="event" type="button">打开日程</button></article>
+      <article class="function-card"><h2>个人能力与设置</h2><p>沉淀工作方法，设置助手的称呼、风格和时区。</p><button data-workspace="skill" type="button">个人能力</button> <button data-workspace="settings" type="button" class="ghost">助手设置</button></article>
+      <article class="function-card"><h2>提醒</h2><p>新建提醒、调整时间，查看已提醒或已取消的记录。</p><button id="open-reminder-module" type="button">管理提醒</button></article>
+      <article class="function-card"><h2>业务跟进</h2><p>查看需要核实、安排或继续处理的工作，在对话中确认决定。</p><button id="open-proactive-module" type="button">查看业务跟进</button></article>
+      <article class="function-card"><h2>通知</h2><p>查看到期提醒和送达情况，离线期间的通知也会保留。</p><button id="open-notification-module" type="button" class="ghost">查看通知</button></article>
+    </div>
+    <div id="reminder-module-host"></div>
+    <section id="knowledge-panel" class="reminder-preview hidden" aria-label="知识与记忆"><div class="row"><h2>知识与记忆</h2><button id="close-knowledge" type="button">收起</button></div><p id="knowledge-feedback" role="status"></p><div id="knowledge-sources"></div><div class="row"><label>检索 <input id="knowledge-query" type="search" maxlength="500"></label><button id="knowledge-search" type="button">检索</button></div><div id="knowledge-hits"></div><div class="row"><label>依据所选片段提问 <input id="knowledge-question" type="text" maxlength="500"></label><button id="knowledge-ask" type="button">提问</button></div><div id="knowledge-answer" aria-live="polite"></div><div id="knowledge-memories"></div><div class="row"><label>记一条（标为本人陈述） <input id="knowledge-assertion" type="text" maxlength="1000"></label><button id="knowledge-remember" type="button">记下</button></div></section>
+    <section id="people-panel" class="reminder-preview hidden" aria-label="人物与关系"><div class="row"><h2>人物与关系</h2><button id="people-new" type="button">新建人物</button><button id="people-toggle-trash" type="button" class="ghost">回收站</button><button id="close-people" type="button" class="ghost">收起</button></div><p id="people-feedback" role="status"></p><div class="row"><label>搜索 <input id="people-query" type="search" placeholder="姓名、别名、公司、标签…" maxlength="200"></label><label>生日月份 <select id="people-birth-month"><option value="">全部</option><option value="1">1月</option><option value="2">2月</option><option value="3">3月</option><option value="4">4月</option><option value="5">5月</option><option value="6">6月</option><option value="7">7月</option><option value="8">8月</option><option value="9">9月</option><option value="10">10月</option><option value="11">11月</option><option value="12">12月</option></select></label><button id="people-search" type="button">筛选</button></div><div id="people-list"></div><div id="people-detail"></div></section>
+    <div id="capability-employee-host"><section id="capability-panel" class="reminder-preview hidden" aria-label="我的能力与配置"><div class="row"><h2>我的能力与配置</h2><button id="close-capabilities" type="button">收起</button></div><p id="capability-feedback" role="status"></p><div id="capability-list"></div></section></div>
+  </section>
+
+  <section id="collaboration-panel" class="reminder-preview hidden" aria-label="工作交接与组织审批"><div class="row"><h2>我的协作</h2><button id="close-collaboration" type="button">收起</button></div><p id="collaboration-feedback" role="status"></p><div id="collaboration-list"></div></section>
+  <section id="shared-panel" class="reminder-preview hidden" aria-label="共享事项与资料"><div class="row"><h2>共享协作</h2><button id="close-shared" type="button">收起</button></div><p id="shared-feedback" role="status"></p><div id="shared-list"></div></section>
+  <section id="organization-panel" class="reminder-preview hidden" aria-label="组织与职责"><div class="row"><h2>组织与职责</h2><button id="close-organization" type="button">收起</button></div><p id="organization-feedback" role="status"></p><div id="organization-list"></div></section>
+  <section id="connections-panel" class="reminder-preview hidden" aria-label="本人的企业连接"><div class="row"><h2>本人的企业连接</h2><button id="close-connections" type="button">收起</button></div><p id="connections-feedback" role="status"></p><div id="connections-list"></div></section>
+
+  <!-- 能力市场（匠人市场 + Skill 市场，仅管理员） -->
+  <section id="tab-marketplace" class="tab">
+    <div class="market-head">
+      <h2>能力市场</h2>
+      <p class="status">浏览匠人市场与通用技能库（Skills），一键安装时自动拉取并启用所依赖的技能库，并引导补齐所需密钥。</p>
+    </div>
+    <div class="market-toolbar">
+      <div id="marketplace-kinds" class="market-kinds" role="group" aria-label="市场分类">
+        <button type="button" data-market-kind="all" aria-pressed="true">全部</button>
+        <button type="button" data-market-kind="artisan" aria-pressed="false">匠人市场</button>
+        <button type="button" data-market-kind="skill_library" aria-pressed="false">Skill 市场</button>
+      </div>
+      <form id="marketplace-filter" class="row">
+        <select id="marketplace-category" aria-label="按技能分类筛选"><option value="">全部分类</option></select>
+        <input id="marketplace-query" type="search" placeholder="搜索匠人、技能或分类…" maxlength="120">
+        <button type="submit">筛选</button>
+        <button type="button" id="refresh-marketplace" class="ghost">刷新</button>
+      </form>
+    </div>
+    <p id="marketplace-notice" role="status" class="status"></p>
+    <div id="marketplace-grid" class="function-cards market-grid"></div>
+  </section>
+
+  <!-- 业务包 -->
+  <section id="tab-capabilities" class="tab"><h2>业务能力配置</h2><p>登记和保存配置不会分配人员或执行工作。</p><div id="capability-admin-host"></div></section>
+  <section id="tab-packages" class="tab">
+    <form id="publish" class="row">
+      <input id="archive" type="file" accept=".zip" required>
+      <label><input type="checkbox" id="publish-activate" checked> 发布后设为生效</label>
+      <button type="submit">发布</button>
+      <span id="publish-status" class="status"></span>
+    </form>
+    <table id="package-table" class="table">
+      <thead><tr><th>包名</th><th>版本</th><th>状态</th><th>发布时间</th><th>发布者</th><th>指纹</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <pre id="eval-report" class="report hidden"></pre>
+  </section>
+
+  <!-- 租户密钥（仅管理员） -->
+  <section id="tab-secrets" class="tab">
+    <h2>租户密钥</h2>
+    <p class="status">选择业务包所需的密钥并填入取值即可；密钥按租户加密保存，写入后不可再读出明文，仅在连接器调用出口自动注入。</p>
+    <form id="secret-save" class="row">
+      <select aria-label="选择密钥名" id="secret-select"></select>
+      <input aria-label="自定义密钥名" id="secret-name" class="hidden" placeholder="自定义密钥名（如 amap-key）" autocomplete="off" maxlength="63" pattern="[a-z][a-z0-9-]{0,62}">
+      <input aria-label="密钥值" id="secret-value" type="password" placeholder="粘贴密钥值（保存后不回显）" autocomplete="new-password" required>
+      <button type="submit">保存密钥</button>
+      <button type="button" id="refresh-secrets" class="ghost">刷新</button>
+    </form>
+    <p id="secret-notice" role="status" class="status"></p>
+    <table id="secret-table" class="table">
+      <thead><tr><th>密钥名</th><th>使用方</th><th>状态</th><th>操作</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- 审计 -->
+  <section id="tab-audit" class="tab">
+    <form id="audit-filter" class="row">
+      <input id="audit-session" placeholder="会话标识">
+      <input id="audit-kind" placeholder="事件类型，如 connector_call">
+      <select id="audit-source">
+        <option value="">全部来源</option>
+        <option value="engine">engine</option>
+        <option value="gate">gate</option>
+        <option value="control">control</option>
+      </select>
+      <button type="submit">查询</button>
+      <button type="button" id="audit-more" class="ghost" disabled>下一页</button>
+    </form>
+    <table id="audit-table" class="table">
+      <thead><tr><th>#</th><th>时间</th><th>来源</th><th>类型</th><th>触发者</th><th>会话</th><th>员工</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- 用量 -->
+  <section id="tab-usage" class="tab">
+    <form id="usage-filter" class="row">
+      <input id="usage-since" type="date" required>
+      <input id="usage-until" type="date" required>
+      <button type="submit">查询</button>
+    </form>
+    <table id="usage-table" class="table">
+      <thead><tr><th>日期</th><th>轮数</th><th>输入 token</th><th>输出 token</th><th>合计</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+  <section id="tab-users" class="tab">
+    <form id="users-filter" class="row">
+      <label>状态 <select id="users-status"><option value="">全部</option><option value="active">启用</option><option value="disabled">停用</option></select></label>
+      <label>角色 <select id="users-role"><option value="">全部</option><option value="tenant_admin">管理员</option><option value="tenant_member">成员</option></select></label>
+      <label>飞书对账 <select id="users-unverified"><option value="">全部</option><option value="true">查不到</option><option value="false">未标记</option></select></label>
+      <button type="submit">查询</button><button id="users-more" type="button" class="ghost" disabled>下一页</button>
+    </form>
+    <form id="account-create" class="row">
+      <input aria-label="用户名" id="account-username" placeholder="用户名（英文字母、数字、. _ -）" required maxlength="64">
+      <input aria-label="显示名" id="account-display-name" placeholder="显示名" required maxlength="200">
+      <label>角色 <select id="account-role"><option value="tenant_member">成员</option><option value="tenant_admin">管理员</option></select></label>
+      <button type="submit">开通账号</button>
+    </form>
+    <p id="users-notice" role="status"></p>
+    <p id="account-link" class="meta mono hidden"></p>
+    <div class="table-scroll"><table id="users-table" class="table">
+      <thead><tr><th>姓名</th><th>角色</th><th>状态</th><th>最近登录</th><th>飞书对账</th><th>操作</th></tr></thead><tbody></tbody>
+    </table></div>
+  </section>
+</main>
+
+<footer class="entry-footer app-shell"><a href="?admin=1">管理员入口</a> · <a href="?">员工入口</a></footer>
+<div id="toast" class="toast hidden"></div>
+<div id="notification-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+<aside id="notification-alerts" class="notification-alerts hidden" aria-label="新通知提示">
+  <div id="notification-alert-list"></div>
+  <button id="notification-alert-more" type="button" class="notification-alert-more hidden">更多通知，请到通知中心查看</button>
+</aside>
+<script src="app.js?v=624b0ab58921db2b"></script>
+<script src="notification-alerts.js?v=792c67bfd3af9709"></script>
+<script src="notification-center.js?v=d05ed649a76b8947"></script>
+<script src="reminders.js?v=4c73365fc2baf257"></script>
+<script src="workspace.js?v=455930aea1c302e1"></script>
+<script src="workspace-forms.js?v=9d69974b0e24955b"></script>
+<script src="workspace-files.js?v=c831d2284229bd2d"></script>
+<script src="workspace-chat.js?v=97ec05c4f485913c"></script>
+<script src="work-tasks.js?v=ffff7d71d6d0343a"></script>
+<script src="task-definitions.js?v=0bd3fb8e2ad1f7dd"></script>
+<script src="proactive.js?v=309c9879b190024a"></script>
+<script src="connections.js?v=123abc4542d2d122"></script>
+<script src="capabilities.js?v=6877ce67969068a2"></script>
+<script src="capability-operations.js?v=b372ed429790c7ed"></script>
+<script src="capability-release.js?v=35f3548cd693cbf7"></script>
+<script src="knowledge.js?v=af07aadecbbfb1d5"></script>
+<script src="people.js?v=9d6055872bab008b"></script>
+<script src="organization-forms.js?v=9dc49322557870a3"></script>
+<script src="organization.js?v=627d9b5ce73be6cc"></script>
+<script src="shared-matters.js?v=f1e21f19a2b914d3"></script>
+<script src="shared-materials.js?v=67c898a1edf4ec54"></script>
+<script src="shared-conversation.js?v=895518d982b4eca4"></script>
+<script src="shared-notifications.js?v=c9ecefeb4ae941bc"></script>
+<script src="collaboration-core.js?v=e3b8b54b96244544"></script>
+<script src="handoffs.js?v=916a4c22b753d153"></script>
+<script src="handoff-results.js?v=6047171d1525ad0c"></script>
+<script src="organizational-approvals.js?v=ab3d145d4d7d52da"></script>
+<script src="collaboration-notifications.js?v=b01d4131bcb6422e"></script>
+<script src="finance.js?v=7c54da9ce5715054"></script>
+<script src="finance_settlement.js?v=3d308d141a6399b6"></script>
+<script src="finance_funding.js?v=528330addc6e822a"></script>
+<script src="finance_records.js?v=aea2647444527e3a"></script>
+<script src="finance_materials.js?v=be00f569e75318ef"></script>
+<script src="finance_compliance.js?v=7b77ed4645f3abe4"></script>
+<script src="finance_operations.js?v=f6cbdc373230e97e"></script>
+<script src="identity.js?v=f32e0581c33e604a"></script>
+<script src="accounts.js?v=96487108f0ce3ca5"></script>
+<script src="secrets.js?v=1f400ca3bf2187a4"></script>
+<script src="marketplace.js?v=8dbacd008e9b94e5"></script>
+</body>
+</html>

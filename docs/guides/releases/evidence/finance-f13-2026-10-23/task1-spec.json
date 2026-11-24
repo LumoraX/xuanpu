@@ -8,7 +8,7 @@
     {
       "priority": "P2",
       "category": "test_reliability",
-      "file": "packages/xuanpu-finance/tests/test_f13_objects.py",
+      "file": "tests/finance/test_f13_objects.py",
       "lines": [
         395,
         404
@@ -66,7 +66,7 @@
     "review_fix": "objects-review-red.*保留旧方案定向碰撞红测；objects-review-target.*目标绿测1 passed；objects-review-module.*完整模块43 passed；objects-review-ruff.log检查通过。"
   },
   "independent_validation": {
-    "command": "uv run pytest -q packages/xuanpu-finance/tests/test_f13_objects.py -k 'not material_worker'",
+    "command": "uv run pytest -q tests/finance/test_f13_objects.py -k 'not material_worker'",
     "result": "42 passed, 1 deselected in 2.28s",
     "pg_tests_run": false,
     "product_files_changed": false

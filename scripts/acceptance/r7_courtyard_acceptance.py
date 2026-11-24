@@ -217,8 +217,8 @@ async def consult(run: Run, timeout: float) -> dict[str, Any]:
 async def run(args: argparse.Namespace) -> dict[str, Any]:
     """起平台与工单替身，开通环境，依次跑选定场景。"""
     import httpx
-    from xuanpu_sdk import XuanpuClient
-    from xuanpu_server.api.app import create_app
+    from sdk import XuanpuClient
+    from server.api.app import create_app
 
     from scripts.acceptance import r5_real_model_harness as harness
     from scripts.acceptance.finance_browser import free_port, listen

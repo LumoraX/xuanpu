@@ -12,7 +12,7 @@ tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/p
 >           config = await bind_provider(store, origin, tmp_path)
                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-packages/xuanpu-finance/tests/test_f2_http_e2e.py:126:
+tests/finance/test_f2_http_e2e.py:126:
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 store = <xuanpu_finance.storage.store.FinanceStore object at 0x10aa282f0>
@@ -39,7 +39,7 @@ E       enabled
 E         Field required [type=missing, input_value={'version': 2, 'ledger_id...nfiguration_version': 2}, input_type=dict]
 E           For further information visit https://errors.pydantic.dev/2.13/v/missing
 
-packages/xuanpu-finance/tests/test_f2_http_e2e.py:97: ValidationError
+tests/finance/test_f2_http_e2e.py:97: ValidationError
 ________ test_invalid_result_is_unknown_and_rebuilt_worker_only_queries ________
 
 store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ac0b950>
@@ -53,7 +53,7 @@ tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/p
 >           config = await bind_provider(store, origin, tmp_path)
                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-packages/xuanpu-finance/tests/test_f2_http_e2e.py:172:
+tests/finance/test_f2_http_e2e.py:172:
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 store = <xuanpu_finance.storage.store.FinanceStore object at 0x10ac0b950>
@@ -80,8 +80,8 @@ E       enabled
 E         Field required [type=missing, input_value={'version': 2, 'ledger_id...nfiguration_version': 2}, input_type=dict]
 E           For further information visit https://errors.pydantic.dev/2.13/v/missing
 
-packages/xuanpu-finance/tests/test_f2_http_e2e.py:97: ValidationError
+tests/finance/test_f2_http_e2e.py:97: ValidationError
 =========================== short test summary info ============================
-FAILED packages/xuanpu-finance/tests/test_f2_http_e2e.py::test_signed_hitl_payment_posting_reversal_over_real_http
-FAILED packages/xuanpu-finance/tests/test_f2_http_e2e.py::test_invalid_result_is_unknown_and_rebuilt_worker_only_queries
+FAILED tests/finance/test_f2_http_e2e.py::test_signed_hitl_payment_posting_reversal_over_real_http
+FAILED tests/finance/test_f2_http_e2e.py::test_invalid_result_is_unknown_and_rebuilt_worker_only_queries
 2 failed in 1.16s

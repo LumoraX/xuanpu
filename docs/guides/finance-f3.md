@@ -62,9 +62,9 @@ manifest包含内容清册、完整业务快照和预检测，不能含自身has
 
 ```text
 uv run xuanpu validate examples/finance
-uv run pytest packages/xuanpu-finance/tests/test_f3_http_e2e.py -q
-uv run pytest packages/xuanpu-server/tests/identity/test_finance_f3_gateway_e2e.py -q
-uv run pytest packages/xuanpu-console/tests/test_finance_behavior.py -q
+uv run pytest tests/finance/test_f3_http_e2e.py -q
+uv run pytest tests/server/identity/test_finance_f3_gateway_e2e.py -q
+uv run pytest tests/web/test_finance_behavior.py -q
 ```
 
 PG用例须显式FINANCE_TEST_DSN指向独立finance_test库。实际HTTP闭环覆盖所有20个新增API响应契约；平台cookie/CSRF链在模型不可用时验证实际专用审批。部署/全量门禁及正式未验收边界见[F3验收记录](releases/2026-10-21-finance-f3-acceptance.md)。

@@ -30,7 +30,7 @@
 - [x] 每个用例固定身份/输入，隔离任务/对象命名空间；默认并发1、每run总token100000、最长10分钟、最多50用例。创建前显式预算，超限返回blocked/cancelled，不截断成通过。
 - [ ] worker使用现有PG持久租约与执行服务，关闭等待在途清理。进程中断的评测标interrupted；不自动重放可能有外部效应的用例。可用新操作号显式重跑，保留原失败轮次。
 - [x] 写回case状态、原始模型输出对象引用与独立判定；列表不包含测试正文、工具参数、密钥或非授权员工资料。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_evaluation_isolation.py packages/xuanpu-server/tests/r4_contract/test_evaluation_contract.py packages/xuanpu-server/tests/r4_contract/test_evaluation_binding.py -q`；至少验证试图访问生产目标被拒、配置替换不符和空套件不得pass。
+- [ ] Run：`uv run pytest tests/server/r4_contract/test_evaluation_isolation.py tests/server/r4_contract/test_evaluation_contract.py tests/server/r4_contract/test_evaluation_binding.py -q`；至少验证试图访问生产目标被拒、配置替换不符和空套件不得pass。
 - [ ] 提交`feat: 保存隔离能力评测与配置证据`。
 
 ## C1：灰度、升级、权限差异与回退
@@ -43,7 +43,7 @@
 - [x] 同时为不同员工发布不同版本可行；同员工同能力若匹配两个有效release，拒绝409而不是选择最高版本。全量只是逐个明确扩展固定员工清单，不把空名单解释为全企业。
 - [x] 回退作为新发布动作引用旧的已验证能力/安装快照，仍需当前前提和证据；旧任务继续原包/原配置。不能修改旧任务、旧批准、effect、任务预算、原input版本或财务领域状态。
 - [x] 安全revoke递增epoch，后续模型与工具出口拒绝；普通retire/draining按B矩阵保留旧任务合法继续。策略/存储故障时关新受理，不直接启动旧R3 reader。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_release_gates.py packages/xuanpu-server/tests/r4_contract/test_release_cas.py packages/xuanpu-server/tests/r4_contract/test_release_rollback.py packages/xuanpu-server/tests/r4_contract/test_release_scopes.py -q`；先用下方反例证明门禁生效。
+- [ ] Run：`uv run pytest tests/server/r4_contract/test_release_gates.py tests/server/r4_contract/test_release_cas.py tests/server/r4_contract/test_release_rollback.py tests/server/r4_contract/test_release_scopes.py -q`；先用下方反例证明门禁生效。
 - [ ] 提交`feat: 增加证据绑定的员工灰度与版本回退`。
 
 ```python
@@ -67,7 +67,7 @@ async def test_release_requires_matching_evaluation(r4_http, r4_ids):
 - [ ] 模型不可用仍能查报告、配置、停止新受理、取消和回退到满足当前证据的旧版；需真实模型的新版本保持blocked。
 - [ ] PG进程故障覆盖发布提交前/后、评测制品写完未登记、数据库成功响应丢失；重放一个发布事实，不删除被其他记录引用的制品。
 - [ ] 并发批准旧任务/发布新版/撤权，按冻结绑定与当前资格判定；有未核实外部操作不产生新发送。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_release_faults.py -q`，全量门禁和桌面/390px原生复核；提交`feat: 提供评测发布回退原生管理`。
+- [ ] Run：`uv run pytest tests/server/r4_contract/test_release_faults.py -q`，全量门禁和桌面/390px原生复核；提交`feat: 提供评测发布回退原生管理`。
 
 本段只能说明指定能力及配置在对应层通过；不表示所有业务包、所有远端实现或真实员工已经通过。
 

@@ -76,7 +76,7 @@
   "source_sha256": {
     "examples/finance/skills/finance-assistant/SKILL.md": "685bab88a4a5dbedd3c050e07566ebc4b75043ca80fed52dc82f4811ddf75f18",
     "examples/finance/xuanpu.yaml": "223e69f25953f8fff447b66a93a7ec9ceeede56fb5ac5947787a75c573bb3f71",
-    "packages/xuanpu-server/src/xuanpu_server/runtime/approval.py": "e3a6bd0298e8dc5a6ccade3fa893d64dfbfc267d13b4831b9fc9f5384fa4bf5d"
+    "server/runtime/approval.py": "e3a6bd0298e8dc5a6ccade3fa893d64dfbfc267d13b4831b9fc9f5384fa4bf5d"
   },
   "limitation": "Permission protocol is not a complete finance HTTP user journey; signed origin/authentication are separate regression evidence."
 }

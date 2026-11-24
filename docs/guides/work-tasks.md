@@ -25,7 +25,7 @@ CSV/XLSX的自由文本会防止被识别成公式；不支持的金额明确指
 应用接入使用`POST /v1/work-tasks`受理并得到202与task_id，之后GET补读；相同request_id与内容返回同一任务，
 改内容返回409。任务列表及事件每页最多100条。停止和决定分别使用`/{task_id}/cancel`、`/{task_id}/decisions`，
 决定携带request_id及state_version。网络结果未知时保留原请求内容及标识重试；不要为同一次决定另造标识。
-具体字段见[HTTP接口](../architecture/http-api.md)及[Python SDK](../../packages/xuanpu-sdk-py/README.md)。
+具体字段见[HTTP接口](../architecture/http-api.md)及[Python SDK](../../sdk/README.md)。
 
 部署者使用独立办公执行镜像：`docker/office-sandbox.Dockerfile`和带hash的`docker/office-requirements.lock`。
 办公依赖仅装进执行镜像，平台不import业务包。当前本机local开发沙盒拒绝办公执行；生产必须选择Docker，

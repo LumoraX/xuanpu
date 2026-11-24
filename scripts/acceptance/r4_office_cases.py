@@ -69,7 +69,7 @@ async def _poll(fetch: Any, done: Any, wait_seconds: float, what: str) -> Any:
 
 async def install(admin: Any) -> dict[str, Any]:
     """上传归档、登记、预检、安装；返回各步原始响应与能力/安装标识。"""
-    from xuanpu_spec import pack_package
+    from spec import pack_package
 
     status, published = await _call(
         admin, "POST", "/v1/packages", content=pack_package(SAMPLE / "package")
@@ -217,7 +217,7 @@ async def _approve(employee: Any, task: dict[str, Any], approvals: list[dict[str
 
 async def _transcript(platform: Any, who: Any, task_id: str) -> dict[str, Any]:
     """任务会话里模型说的话、调用过的工具名与出错工具的输出开头（会话审计，同 /history 口径）。"""
-    from xuanpu_server.controlplane.models import AuditQuery
+    from server.core.controlplane.models import AuditQuery
 
     record = await platform.work_tasks.store.get(who, task_id)
     if record.session_id is None:

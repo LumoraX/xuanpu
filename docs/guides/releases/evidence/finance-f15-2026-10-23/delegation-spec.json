@@ -29,7 +29,7 @@
   },
   "checks": [
     {
-      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_skill_contract.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/delegation-spec-tests.xml",
+      "command": "uv run pytest tests/finance/test_f15_skill_contract.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/delegation-spec-tests.xml",
       "returncode": 0,
       "passed": 7,
       "failed": 0,
@@ -56,13 +56,13 @@
   "source_sha256": {
     "examples/finance/skills/finance-assistant/SKILL.md": "b1529e5deefde27cc2309dfcb859bdb043370b4ba4ccd0781d30cad4ef5c268a",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "b1529e5deefde27cc2309dfcb859bdb043370b4ba4ccd0781d30cad4ef5c268a",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "50f60d2b1c3a16270a64b8925d38efaafc819e41ae464581f48d278626af0811"
+    "tests/finance/test_f15_skill_contract.py": "50f60d2b1c3a16270a64b8925d38efaafc819e41ae464581f48d278626af0811"
   },
   "reference_freeze_sha256": "7121ae02eca37bb15285426010f5aa14c2c86862db7b4105266bc1d88194f90b",
   "changed_reference_frozen_files": [
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
     "examples/finance/skills/finance-assistant/SKILL.md",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+    "tests/finance/test_f15_skill_contract.py"
   ],
   "raw_evidence_sha256": {
     "final4/model-075.json": "b7d3e7307bd41a7fd8d0837798e5a48c45c22273cbd8d0ccde6834901299cd94",

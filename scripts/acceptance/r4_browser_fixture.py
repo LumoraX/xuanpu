@@ -12,20 +12,20 @@ from pathlib import Path
 
 import uvicorn
 from fastapi.responses import HTMLResponse, RedirectResponse
-from xuanpu_console import static_dir
-from xuanpu_server.api.app import create_app
-from xuanpu_server.capabilities.config import CapabilityDeliveryConfig
-from xuanpu_server.controlplane import InMemoryControlPlane
-from xuanpu_server.identity.config import IdentityConfig
-from xuanpu_server.identity.cookies import login_token_hash
-from xuanpu_server.identity.models import LoginSession, UserRecord
-from xuanpu_server.identity.service import IdentitySettings
+from web import static_dir
+from server.api.app import create_app
+from server.domains.capabilities.config import CapabilityDeliveryConfig
+from server.core.controlplane import InMemoryControlPlane
+from server.domains.identity.config import IdentityConfig
+from server.domains.identity.cookies import login_token_hash
+from server.domains.identity.models import LoginSession, UserRecord
+from server.domains.identity.service import IdentitySettings
 
 
 async def serve(directory: Path, port: int) -> None:
     """使用真实应用与当前静态资源，合成会话仅绑定回环地址。"""
     root = Path(__file__).resolve().parents[2]
-    spec = importlib.util.spec_from_file_location('r4_browser_test_support', root / 'packages/xuanpu-server/tests/conftest.py')
+    spec = importlib.util.spec_from_file_location('r4_browser_test_support', root / 'tests/server/conftest.py')
     assert spec is not None and spec.loader is not None
     support = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = support
@@ -37,7 +37,7 @@ async def serve(directory: Path, port: int) -> None:
         sandboxes=support.local_sandboxes(), identity_settings=settings)
     platform = world.platform
     platform.capabilities.config = CapabilityDeliveryConfig(enabled=True, tenants=('acme',))
-    seed_spec = importlib.util.spec_from_file_location('r4_browser_seed', root / 'packages/xuanpu-server/tests/r4_contract/seed.py')
+    seed_spec = importlib.util.spec_from_file_location('r4_browser_seed', root / 'tests/server/r4_contract/seed.py')
     assert seed_spec is not None and seed_spec.loader is not None
     seed = importlib.util.module_from_spec(seed_spec)
     seed_spec.loader.exec_module(seed)

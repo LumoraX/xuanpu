@@ -8,7 +8,7 @@ ________________ test_f1_config_keeps_external_execution_closed ________________
 >       assert config.execution_simulation is False
                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-packages/xuanpu-finance/tests/test_f2_config.py:14:
+tests/finance/test_f2_config.py:14:
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 self = FinanceConfig(database_dsn_file=PosixPath('secrets/finance-dsn'), service_token_file=PosixPath('secrets/service-token'...grants=[], expense_policies=[], mode='enabled', environment='production', synthetic=False, host='127.0.0.1', port=8443)
@@ -56,7 +56,7 @@ E       execution_simulation
 E         Extra inputs are not permitted [type=extra_forbidden, input_value=True, input_type=bool]
 E           For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
 
-packages/xuanpu-finance/tests/test_f2_config.py:28: ValidationError
+tests/finance/test_f2_config.py:28: ValidationError
 ___________________ test_payable_route_accepts_strict_draft ____________________
 
     async def test_payable_route_accepts_strict_draft() -> None:
@@ -69,7 +69,7 @@ E       AssertionError: {"detail":"Not Found"}
 E       assert 404 == 201
 E        +  where 404 = <Response [404 Not Found]>.status_code
 
-packages/xuanpu-finance/tests/test_f2_api.py:51: AssertionError
+tests/finance/test_f2_api.py:51: AssertionError
 _________ test_payable_route_rejects_identity_state_and_float[extra0] __________
 
 extra = {'owner_id': 'other'}
@@ -84,7 +84,7 @@ E       AssertionError: {"detail":"Not Found"}
 E       assert 404 == 422
 E        +  where 404 = <Response [404 Not Found]>.status_code
 
-packages/xuanpu-finance/tests/test_f2_api.py:60: AssertionError
+tests/finance/test_f2_api.py:60: AssertionError
 _________ test_payable_route_rejects_identity_state_and_float[extra1] __________
 
 extra = {'status': 'paid'}
@@ -99,7 +99,7 @@ E       AssertionError: {"detail":"Not Found"}
 E       assert 404 == 422
 E        +  where 404 = <Response [404 Not Found]>.status_code
 
-packages/xuanpu-finance/tests/test_f2_api.py:60: AssertionError
+tests/finance/test_f2_api.py:60: AssertionError
 _________ test_payable_route_rejects_identity_state_and_float[extra2] __________
 
 extra = {'amount': 10.0}
@@ -114,7 +114,7 @@ E       AssertionError: {"detail":"Not Found"}
 E       assert 404 == 422
 E        +  where 404 = <Response [404 Not Found]>.status_code
 
-packages/xuanpu-finance/tests/test_f2_api.py:60: AssertionError
+tests/finance/test_f2_api.py:60: AssertionError
 ____________________ test_payment_list_keeps_filtered_total ____________________
 
     async def test_payment_list_keeps_filtered_total() -> None:
@@ -126,7 +126,7 @@ ____________________ test_payment_list_keeps_filtered_total ____________________
 E       assert (404 == 200)
 E        +  where 404 = <Response [404 Not Found]>.status_code
 
-packages/xuanpu-finance/tests/test_f2_api.py:68: AssertionError
+tests/finance/test_f2_api.py:68: AssertionError
 ________ test_reconcile_requires_human_without_success_override[human] _________
 
 origin = 'human'
@@ -142,7 +142,7 @@ E       AssertionError: {"detail":"Not Found"}
 E       assert 404 == 202
 E        +  where 404 = <Response [404 Not Found]>.status_code
 
-packages/xuanpu-finance/tests/test_f2_api.py:78: AssertionError
+tests/finance/test_f2_api.py:78: AssertionError
 ________ test_reconcile_requires_human_without_success_override[agent] _________
 
 origin = 'agent'
@@ -158,15 +158,15 @@ E       AssertionError: {"detail":"Not Found"}
 E       assert 404 == 403
 E        +  where 404 = <Response [404 Not Found]>.status_code
 
-packages/xuanpu-finance/tests/test_f2_api.py:78: AssertionError
+tests/finance/test_f2_api.py:78: AssertionError
 =========================== short test summary info ============================
-FAILED packages/xuanpu-finance/tests/test_f2_config.py::test_f1_config_keeps_external_execution_closed
-FAILED packages/xuanpu-finance/tests/test_f2_config.py::test_test_environment_can_explicitly_select_simulation
-FAILED packages/xuanpu-finance/tests/test_f2_api.py::test_payable_route_accepts_strict_draft
-FAILED packages/xuanpu-finance/tests/test_f2_api.py::test_payable_route_rejects_identity_state_and_float[extra0]
-FAILED packages/xuanpu-finance/tests/test_f2_api.py::test_payable_route_rejects_identity_state_and_float[extra1]
-FAILED packages/xuanpu-finance/tests/test_f2_api.py::test_payable_route_rejects_identity_state_and_float[extra2]
-FAILED packages/xuanpu-finance/tests/test_f2_api.py::test_payment_list_keeps_filtered_total
-FAILED packages/xuanpu-finance/tests/test_f2_api.py::test_reconcile_requires_human_without_success_override[human]
-FAILED packages/xuanpu-finance/tests/test_f2_api.py::test_reconcile_requires_human_without_success_override[agent]
+FAILED tests/finance/test_f2_config.py::test_f1_config_keeps_external_execution_closed
+FAILED tests/finance/test_f2_config.py::test_test_environment_can_explicitly_select_simulation
+FAILED tests/finance/test_f2_api.py::test_payable_route_accepts_strict_draft
+FAILED tests/finance/test_f2_api.py::test_payable_route_rejects_identity_state_and_float[extra0]
+FAILED tests/finance/test_f2_api.py::test_payable_route_rejects_identity_state_and_float[extra1]
+FAILED tests/finance/test_f2_api.py::test_payable_route_rejects_identity_state_and_float[extra2]
+FAILED tests/finance/test_f2_api.py::test_payment_list_keeps_filtered_total
+FAILED tests/finance/test_f2_api.py::test_reconcile_requires_human_without_success_override[human]
+FAILED tests/finance/test_f2_api.py::test_reconcile_requires_human_without_success_override[agent]
 9 failed, 1 passed in 0.22s

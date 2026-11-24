@@ -13,12 +13,12 @@
     },
     "failure_assessment_sha256": "e061b2db00dd8f04c37695a50c92271176a4ea222628e82664d2d35fc9a5d469",
     "review_time_red_test": {
-      "path": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "path": "tests/finance/test_f15_skill_contract.py",
       "sha256": "3ebe447d0ef1fb12fa1703ed6d33f9778c10d85a8aac2c12dd73a495e40056f7",
       "stage": "实施者本次新RED测试，审查读取时状态；不是final7冻结baseline。"
     },
     "final7_frozen_test": {
-      "path": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "path": "tests/finance/test_f15_skill_contract.py",
       "sha256": "c1bf092059c1261b5e2821451172b3f1966fea9fdd42cc634eb64c1fce1a19bb",
       "hash_source": "/tmp/xuanpu-finance-f15-build/frozen-source.json files映射，已只读核对；对应root报告frozen-candidate5历史。"
     }

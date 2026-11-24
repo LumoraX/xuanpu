@@ -32,7 +32,7 @@ tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/p
 >               callback = await client.post("/v1/provider-callbacks/test/2", content=event, headers=headers)
                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-packages/xuanpu-finance/tests/test_f2_http_e2e.py:146:
+tests/finance/test_f2_http_e2e.py:146:
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 .venv/lib/python3.12/site-packages/httpx/_client.py:1859: in post
     return await self.request(
@@ -61,7 +61,7 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
     await self.app(scope, receive, _send)
 .venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py:151: in __call__
     await self.app(scope, receive, send)
-packages/xuanpu-finance/src/xuanpu_finance/limits.py:59: in __call__
+finance/limits.py:59: in __call__
     await self.app(scope, replay, send)
 .venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:63: in __call__
     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
@@ -128,9 +128,9 @@ configuration_version = 2
         )
 E       AttributeError: 'FinanceStore' object has no attribute 'accept_provider_event'
 
-packages/xuanpu-finance/src/xuanpu_finance/routes_callback.py:36: AttributeError
+finance/routes_callback.py:36: AttributeError
 ------------------------------ Captured log call -------------------------------
 ERROR    xuanpu_finance.api:api.py:62 财务请求未处理异常：AttributeError
 =========================== short test summary info ============================
-FAILED packages/xuanpu-finance/tests/test_f2_http_e2e.py::test_signed_hitl_payment_posting_reversal_over_real_http
+FAILED tests/finance/test_f2_http_e2e.py::test_signed_hitl_payment_posting_reversal_over_real_http
 1 failed, 1 passed in 1.42s

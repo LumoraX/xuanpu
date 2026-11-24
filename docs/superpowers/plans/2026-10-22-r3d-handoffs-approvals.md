@@ -48,7 +48,7 @@ returned/cancelled/signed_off为终态；returned后重做新handoff引用原单
 - [ ] 写每个合法/非法状态转移、无资格动作、同请求重放和不同payload冲突测试；通过参数矩阵覆盖表中全部边。
 - [ ] 冻结所有动作的角色、前置version、材料变更及取消规则，确定组织批准与发起人签收分别返回的receipt形状。
 - [ ] r3_ids增加handoff、approval、material及两个unit_operator；r3_http新增operator_two客户端；状态fixture必须通过服务创建，不直接改record假装集成。
-- [ ] 跑`uv run pytest packages/xuanpu-server/tests/r3_contract/test_handoff_contract.py packages/xuanpu-server/tests/r3_contract/test_approval_contract.py -q`；提交`test: 固定部门交接和组织审批契约`。
+- [ ] 跑`uv run pytest tests/server/r3_contract/test_handoff_contract.py tests/server/r3_contract/test_approval_contract.py -q`；提交`test: 固定部门交接和组织审批契约`。
 
 ## D1：交接存储、唯一认领和材料绑定
 
@@ -72,7 +72,7 @@ async def test_exactly_one_department_operator_claims(r3_http, r3_ids):
 - [ ] submit原生预览包含范围差异：目标部门有权值守人只见packet摘要；accept同事务给当前承办人精确packet材料的内容权限。复用C的SharedAccessGrant，不给全部门成员整个事项的权限，也不开放同事项未选材料。
 - [ ] 目标队列只展示明确授予的事项摘要，缺材料时不能偷读发起人私有文件；重复accept同key返回同assignee，不创建另一R2工作任务。
 - [ ] 转交/补充使目标fingerprint变动时，未决审批标superseded，未来决定不能按旧输入执行；已发生的决定留历史。
-- [ ] 跑`uv run pytest packages/xuanpu-server/tests/r3_contract/test_handoff_claim.py packages/xuanpu-server/tests/r3_contract/test_handoff_atomicity.py -q`；提交`feat: 按部门职责受理并唯一认领交接`。
+- [ ] 跑`uv run pytest tests/server/r3_contract/test_handoff_claim.py tests/server/r3_contract/test_handoff_atomicity.py -q`；提交`feat: 按部门职责受理并唯一认领交接`。
 
 ## D2：一到三步组织审批
 
@@ -93,7 +93,7 @@ async def test_new_material_cannot_use_old_approval(r3_http, r3_ids):
 - [ ] 每步明确选一个有权人；岗位解析不唯一则要求有权管理员修正规则/指定允许的人后创建新请求，禁止模型或申请人猜一个人。默认申请人不能自批，不能因无审批人自动通过。
 - [ ] 决定与当前人员资格、target版本、材料摘要、policy revision、请求version同事务校验；回执与通知同提交。未决审批职责失效进入blocked；已合法完成的历史决定不因日后离职被改写，但不能授权新目标/过期目标。
 - [ ] 工具确认、组织批准和成果签收用不同API/receipt，不生成外部写授权、不调用企微审批写接口；0019一次创建审批通知source约束。
-- [ ] 跑`uv run pytest packages/xuanpu-server/tests/r3_contract/test_approval_policy.py packages/xuanpu-server/tests/r3_contract/test_approval_decision.py packages/xuanpu-server/tests/r3_contract/test_approval_races.py -q`；提交`feat: 按固定材料执行顺序组织审批`。
+- [ ] 跑`uv run pytest tests/server/r3_contract/test_approval_policy.py tests/server/r3_contract/test_approval_decision.py tests/server/r3_contract/test_approval_races.py -q`；提交`feat: 按固定材料执行顺序组织审批`。
 
 ## D3：成果交付、签收与争议重办
 
@@ -106,7 +106,7 @@ API：`POST /v1/handoffs/{id}/deliver|sign-off|dispute|reopen`。deliver引用�
 - [ ] 同事务冻结delivery及成果revision、检查审批资格与target digest、写双方receipt；上传/复制在C的publication流程完成，deliver事务不进行大对象I/O。
 - [ ] 发起人能查看固定成果后原生签收；dispute保留原交付、不删除历史。reopen明确记录重办责任和新结果，不沿用变更目标的旧审批。
 - [ ] R2 task成功只能作为可引用的结果证据，不能直接驱动signed_off；部门模型输出也不能完成交付/签收。关闭handoffs新受理时旧结果仍可查看/签收/提出争议。
-- [ ] 跑`uv run pytest packages/xuanpu-server/tests/r3_contract/test_delivery_signoff.py packages/xuanpu-server/tests/r3_contract/test_handoff_revisions.py -q`；提交`feat: 核对固定成果后完成交付签收`。
+- [ ] 跑`uv run pytest tests/server/r3_contract/test_delivery_signoff.py tests/server/r3_contract/test_handoff_revisions.py -q`；提交`feat: 核对固定成果后完成交付签收`。
 
 ## D4：部门助理视图、动态、期限与失效传播
 
@@ -116,7 +116,7 @@ Files：Create `handoffs/{assistant,events,deadlines,lifecycle}.py`、`approvals
 - [ ] 部门助理在当前登录的有权真人上下文读取共享事实、起草回应；没有独立部门登录cookie、用户token或冒充usr。建议只在本人原生确认后提交；普通员工仍以对话为默认入口，部门队列为直接兜底。
 - [ ] 期限只产生确定性站内动态，不自动批准/认领/交付；复用现有有界扫描和协调outbox，单批100、无变化不通知，不为部门另开模型worker。
 - [ ] B治理事件触发待重新安排、pending approval blocked、受影响上下文失效；接口始终即时验证当前角色/ACL。部门经理显式处理转交，无人有资格时保留blocked及原历史。
-- [ ] 跑`uv run pytest packages/xuanpu-server/tests/r3_contract/test_department_assistant.py packages/xuanpu-server/tests/r3_contract/test_handoff_notifications.py packages/xuanpu-server/tests/r3_contract/test_handoff_lifecycle.py -q`；提交`feat: 提供部门受理助理与可靠工作动态`。
+- [ ] 跑`uv run pytest tests/server/r3_contract/test_department_assistant.py tests/server/r3_contract/test_handoff_notifications.py tests/server/r3_contract/test_handoff_lifecycle.py -q`；提交`feat: 提供部门受理助理与可靠工作动态`。
 
 ## D5：原生多员工闭环、客户端与故障验收
 

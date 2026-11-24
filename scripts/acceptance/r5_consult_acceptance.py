@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from xuanpu_sdk import XuanpuClient
+from sdk import XuanpuClient
 
 # 管家一轮在服务端最长 90 秒（butler.engine.TURN_SECONDS）；客户端须等得比它久，
 # 否则真实模型下安排编组这类慢的一轮会被 SDK 默认的 60 秒先掐断。

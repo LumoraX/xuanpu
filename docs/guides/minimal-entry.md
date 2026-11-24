@@ -37,4 +37,4 @@ minimal_entry:
 
 ## 本节的验证状态
 
-上述行为由 `packages/xuanpu-console/tests/entry_behavior.cjs`（Node 行为测试）与 `packages/xuanpu-server/tests/dashboard` 覆盖。真实浏览器验收脚本是 `scripts/acceptance/r5_minimal_entry_browser.py`，本环境未执行，见 R5-E 计划。
+上述行为由 `tests/web/entry_behavior.cjs`（Node 行为测试）与 `tests/server/dashboard` 覆盖。真实浏览器验收脚本是 `scripts/acceptance/r5_minimal_entry_browser.py`，本环境未执行，见 R5-E 计划。

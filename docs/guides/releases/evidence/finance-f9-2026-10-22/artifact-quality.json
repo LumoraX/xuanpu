@@ -365,55 +365,55 @@
     "python_source_constraints": {
       "files": [
         {
-          "path": "packages/xuanpu-finance/src/xuanpu_finance/__main__.py",
+          "path": "finance/__main__.py",
           "lines": 58
         },
         {
-          "path": "packages/xuanpu-finance/src/xuanpu_finance/api.py",
+          "path": "finance/api.py",
           "lines": 222
         },
         {
-          "path": "packages/xuanpu-finance/src/xuanpu_finance/config.py",
+          "path": "finance/config.py",
           "lines": 224
         },
         {
-          "path": "packages/xuanpu-finance/src/xuanpu_finance/internal_profile.py",
+          "path": "finance/internal_profile.py",
           "lines": 95
         },
         {
-          "path": "packages/xuanpu-finance/src/xuanpu_finance/readiness/internal.py",
+          "path": "finance/readiness/internal.py",
           "lines": 37
         },
         {
-          "path": "packages/xuanpu-finance/src/xuanpu_finance/readiness/offline.py",
+          "path": "finance/readiness/offline.py",
           "lines": 184
         },
         {
-          "path": "packages/xuanpu-finance/src/xuanpu_finance/routes_f1.py",
+          "path": "finance/routes_f1.py",
           "lines": 187
         },
         {
-          "path": "packages/xuanpu-finance/src/xuanpu_finance/routes_f9.py",
+          "path": "finance/routes_f9.py",
           "lines": 34
         },
         {
-          "path": "packages/xuanpu-finance/src/xuanpu_finance/runtime.py",
+          "path": "finance/runtime.py",
           "lines": 219
         },
         {
-          "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f9_compatibility.py",
+          "path": "finance/storage/f9_compatibility.py",
           "lines": 86
         },
         {
-          "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f9_schema_inventory.py",
+          "path": "finance/storage/f9_schema_inventory.py",
           "lines": 392
         },
         {
-          "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/f9_summaries.py",
+          "path": "finance/storage/f9_summaries.py",
           "lines": 69
         },
         {
-          "path": "packages/xuanpu-finance/src/xuanpu_finance/storage/store.py",
+          "path": "finance/storage/store.py",
           "lines": 156
         }
       ],

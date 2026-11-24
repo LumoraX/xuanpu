@@ -23,12 +23,12 @@
         "uv",
         "run",
         "mypy",
-        "packages/xuanpu-cli/src",
-        "packages/xuanpu-console/src",
-        "packages/xuanpu-finance/src",
-        "packages/xuanpu-sdk-py/src",
-        "packages/xuanpu-server/src",
-        "packages/xuanpu-spec/src"
+        "cli/src",
+        "web/src",
+        "finance/src",
+        "sdk/src",
+        "server/src",
+        "spec/src"
       ],
       "returncode": 0,
       "log": "static-mypy.log",

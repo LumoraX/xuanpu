@@ -55,8 +55,8 @@ def docker_status(binary: str | None) -> tuple[bool, str]:
 
 def sandboxes(choice: str, image: str) -> tuple[Any, bool, str]:
     """按 ``--sandbox`` 选沙盒：docker 须守护进程可用；auto 不可用时退回本机沙盒并说明。"""
-    from xuanpu_server.runtime import LocalSandboxProvider
-    from xuanpu_server.runtime.sandbox import DockerSandboxProvider
+    from server.engine.runtime import LocalSandboxProvider
+    from server.engine.runtime.sandbox import DockerSandboxProvider
 
     binary = shutil.which("docker")
     available, reason = (
@@ -83,17 +83,17 @@ async def assemble(
     directory: Path, env: dict[str, str], resources: AsyncExitStack, provider: Any
 ) -> tuple[Any, str]:
     """内存平台：acme 开启知识、能力交付与持久执行，接真实模型；返回平台与根凭据。"""
-    from xuanpu_server.capabilities.config import CapabilityDeliveryConfig
-    from xuanpu_server.controlplane import InMemoryControlPlane
-    from xuanpu_server.identity import InMemoryIdentityStore
-    from xuanpu_server.identity.config import IdentityConfig
-    from xuanpu_server.identity.service import IdentitySettings
-    from xuanpu_server.knowledge.service import KnowledgeConfig
-    from xuanpu_server.objectstore import LocalObjectStore
-    from xuanpu_server.platform import Platform
-    from xuanpu_server.secrets import EncryptedVault, generate_master_key
-    from xuanpu_server.tenancy import generate_root_key
-    from xuanpu_server.work_tasks.config import DurableExecutionConfig
+    from server.domains.capabilities.config import CapabilityDeliveryConfig
+    from server.core.controlplane import InMemoryControlPlane
+    from server.domains.identity import InMemoryIdentityStore
+    from server.domains.identity.config import IdentityConfig
+    from server.domains.identity.service import IdentitySettings
+    from server.domains.knowledge.service import KnowledgeConfig
+    from server.core.objectstore import LocalObjectStore
+    from server.platform import Platform
+    from server.core.secrets import EncryptedVault, generate_master_key
+    from server.core.tenancy import generate_root_key
+    from server.domains.work_tasks.config import DurableExecutionConfig
 
     from scripts.acceptance.r5_real_model_harness import gateway
 
@@ -125,7 +125,7 @@ async def assemble(
 
 async def provision(platform: Any, base_url: str, root_key: str) -> tuple[str, dict[str, str]]:
     """经正式接口开通合成租户、签发代调用 key；建管理员与两名成员员工。"""
-    from xuanpu_sdk import XuanpuClient
+    from sdk import XuanpuClient
 
     from scripts.acceptance.r5_real_model_harness import new_employee
 
@@ -146,7 +146,7 @@ async def admin_employee(platform: Any, name: str) -> str:
     """建一名启用的管理员员工（能力登记、安装与发布须以员工身份操作）。"""
     import time
 
-    from xuanpu_server.identity import UserRecord, new_user_id
+    from server.domains.identity import UserRecord, new_user_id
 
     user = UserRecord(
         tenant_id="acme",
@@ -161,7 +161,7 @@ async def admin_employee(platform: Any, name: str) -> str:
 
 def principal(user_id: str) -> Any:
     """验收成员员工的身份。"""
-    from xuanpu_server.tenancy import Principal
+    from server.core.tenancy import Principal
 
     return Principal(role="tenant_member", tenant_id="acme", key_id=None, user_id=user_id)
 
@@ -228,7 +228,7 @@ async def scenarios(
 
 async def run(args: argparse.Namespace) -> dict[str, Any]:
     """读私有模型配置、选沙盒、起平台并开通，跑场景。"""
-    from xuanpu_server.api.app import create_app
+    from server.api.app import create_app
 
     from scripts.acceptance.finance_browser import free_port, listen
     from scripts.acceptance.r5_real_model_harness import load_model_env

@@ -13,10 +13,10 @@
 ## Task C0：本人状态视图、通知、SDK与CLI
 
 Files:
-- Create: `packages/xuanpu-server/src/xuanpu_server/work_tasks/views.py`、`activity.py`
-- Modify: `packages/xuanpu-server/src/xuanpu_server/api/work_tasks.py`、`api/task_definitions.py`、`work_tasks/store.py`、`workspace/notifications.py`、`reminders/service.py`
-- Modify: `packages/xuanpu-sdk-py/src/xuanpu_sdk/client.py`、`models.py`、`packages/xuanpu-cli/src/xuanpu_cli/main.py`
-- Test: `packages/xuanpu-server/tests/work_tasks/test_activity.py`、`test_execution_views.py`、`packages/xuanpu-sdk-py/tests/test_sdk.py`、`packages/xuanpu-cli/tests/test_cli.py`
+- Create: `server/work_tasks/views.py`、`activity.py`
+- Modify: `server/api/work_tasks.py`、`api/task_definitions.py`、`work_tasks/store.py`、`workspace/notifications.py`、`reminders/service.py`
+- Modify: `sdk/client.py`、`models.py`、`cli/main.py`
+- Test: `tests/server/work_tasks/test_activity.py`、`test_execution_views.py`、`tests/sdk/test_sdk.py`、`tests/cli/test_cli.py`
 
 - [x] WorkTask展示新增execution_stage、attempt_no、next_run_at、block_reason、recovering、source_occurrence引用；原八status不改含义。集中序列化排除process_owner、epoch、宿主路径、暂存对象key、原始工具参数和凭据。
 - [x] 扩展原`GET /v1/work-tasks/{id}/events`呈现阶段、恢复和结果，按本人持久游标分页；恢复时不能重置游标或丢原R1事件。不建重复聊天历史。
@@ -41,7 +41,7 @@ async def test_repeated_recovery_creates_one_meaningful_notification(recovery_wo
 
 harness本Task新增notifications（读真实本人通知队列）、reconcile_again（驱动同一worker补读），不通过手工覆盖通知列表伪造幂等。
 
-Run: `uv run pytest packages/xuanpu-server/tests/work_tasks/test_activity.py packages/xuanpu-server/tests/work_tasks/test_execution_views.py packages/xuanpu-sdk-py/tests packages/xuanpu-cli/tests/test_cli.py -q`。
+Run: `uv run pytest tests/server/work_tasks/test_activity.py tests/server/work_tasks/test_execution_views.py tests/sdk tests/cli/test_cli.py -q`。
 Expected: 本人字段完整、跨人不可见、无重复通知、SDK原R1六接口回归通过。
 
 Commit: `feat: 展示后台任务动态并开放统一客户端接口`。
@@ -49,11 +49,11 @@ Commit: `feat: 展示后台任务动态并开放统一客户端接口`。
 ## Task C1：对话确认、直接入口与工作卡
 
 Files:
-- Create: `packages/xuanpu-server/src/xuanpu_server/assistant_task_definitions.py`
-- Create: `packages/xuanpu-console/src/xuanpu_console/static/task-definitions.js`
-- Modify: `packages/xuanpu-server/src/xuanpu_server/assistant.py`、`assistant_workspace.py`
-- Modify: `packages/xuanpu-console/src/xuanpu_console/static/work-tasks.js`、`workspace.js`、`workspace-chat.js`、`index.html`、`style.css`
-- Test: `packages/xuanpu-server/tests/task_triggers/test_assistant_definitions.py`、`packages/xuanpu-console/tests/task_definition_behavior.cjs`、`test_task_definition_behavior.py`、`work_task_behavior.cjs`
+- Create: `server/assistant_task_definitions.py`
+- Create: `web/static/task-definitions.js`
+- Modify: `server/assistant.py`、`assistant_workspace.py`
+- Modify: `web/static/work-tasks.js`、`workspace.js`、`workspace-chat.js`、`index.html`、`style.css`
+- Test: `tests/server/task_triggers/test_assistant_definitions.py`、`tests/web/task_definition_behavior.cjs`、`test_task_definition_behavior.py`、`work_task_behavior.cjs`
 
 - [x] 对话意图分清“到时提醒我”与“到时替我执行”；缺材料、时间、能力或授权时只澄清。模型只能产草稿，服务端重新解析真实目录、时区和输入，确认按钮才创建definition。
 - [x] 确认卡展示目标、首次/重复时间、时区、明确文件范围/版本策略、错过与重叠行为、最大次数与预算、失效条件；普通员工看自然名称，不展示内部package、epoch或幂等键。
@@ -74,7 +74,7 @@ assert.equal(hasUnsafeRetryButton(), false);
 
 在新task_definition_behavior.cjs中定义clickConfirmSchedule、displayedTaskState、hasUnsafeRetryButton为真实DOM查询和点击包装，不用字符串包含代替行为。assert和apiCalls沿用现有Node行为测试注入方式。
 
-Run: `uv run pytest packages/xuanpu-console/tests packages/xuanpu-server/tests/task_triggers/test_assistant_definitions.py packages/xuanpu-server/tests/identity/test_reminder_routing.py -q`。
+Run: `uv run pytest tests/web tests/server/task_triggers/test_assistant_definitions.py tests/server/identity/test_reminder_routing.py -q`。
 Expected: 未点击确认无副作用，提醒意图不变执行授权，断网重试不重复，旧主对话与通知行为通过。
 
 Commit: `feat: 从对话确认后台执行并展示恢复进展`。
@@ -82,8 +82,8 @@ Commit: `feat: 从对话确认后台执行并展示恢复进展`。
 ## Task C2：跨层故障矩阵与验收工具
 
 Files:
-- Create: `packages/xuanpu-server/tests/work_tasks/test_r2_fault_matrix.py`
-- Create: `packages/xuanpu-server/tests/task_triggers/test_r2_trigger_faults.py`
+- Create: `tests/server/work_tasks/test_r2_fault_matrix.py`
+- Create: `tests/server/task_triggers/test_r2_trigger_faults.py`
 - Create: `scripts/acceptance/r2_durable.py`、`scripts/acceptance/r2_effect_server.py`
 - Modify: `scripts/acceptance/r1_office.py`（只抽取可复用输入和独立下载核验，不覆盖原证据格式）
 - Create: `docs/guides/releases/2026-10-21-r2-acceptance.md`（实施时写真实结果；未跑项保留not_checked）
@@ -116,7 +116,7 @@ Files:
 验收脚本计划用法：
 ```bash
 uv run python scripts/acceptance/r2_durable.py --help
-uv run pytest packages/xuanpu-server/tests/work_tasks/test_r2_fault_matrix.py packages/xuanpu-server/tests/task_triggers/test_r2_trigger_faults.py -q
+uv run pytest tests/server/work_tasks/test_r2_fault_matrix.py tests/server/task_triggers/test_r2_trigger_faults.py -q
 ```
 
 真实脚本参数使用操作者私有路径传入；命令行不得出现API key和企业材料正文。先运行staging，production模式只允许显式隔离验收租户，脚本不得自动改全局模型或暂停正式租户。
@@ -126,7 +126,7 @@ Commit: `test: 覆盖持久执行和触发的真实故障窗口`。
 ## Task C3：构建、灰度、回退与生产验收
 
 Files:
-- Modify: `packages/xuanpu-server/pyproject.toml`、`packages/xuanpu-console/pyproject.toml`、`packages/xuanpu-sdk-py/pyproject.toml`、`packages/xuanpu-cli/pyproject.toml`、`uv.lock`（按实际变化升各包版本）
+- Modify: `server/pyproject.toml`、`web/pyproject.toml`、`sdk/pyproject.toml`、`cli/pyproject.toml`、`uv.lock`（按实际变化升各包版本）
 - Modify: `docker/compose.office.yml`、`docker/office_probe.py`（只在新能力确需部署探针时；不放宽隔离）
 - Docs: `docs/architecture/work-tasks.md`、`docs/architecture/http-api.md`、`docs/architecture/deployment.md`、`docs/guides/work-tasks.md`、`docs/guides/docker-deployment.md`、`docs/guides/operations.md`、`docs/guides/releases/2026-10-21-r2-acceptance.md`
 

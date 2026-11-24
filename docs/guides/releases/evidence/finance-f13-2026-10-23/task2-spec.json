@@ -7,14 +7,14 @@
   "reviewed_sources": [
     "docs/superpowers/specs/2026-10-23-finance-f13-design.md",
     "docs/superpowers/plans/2026-10-23-finance-f13.md:任务二",
-    "packages/xuanpu-finance/tests/test_f13_process.py",
-    "packages/xuanpu-finance/tests/f13_process_helpers.py",
-    "packages/xuanpu-finance/tests/f11_process_helpers.py",
-    "packages/xuanpu-finance/tests/f12_process_helpers.py",
-    "packages/xuanpu-finance/tests/f11_verify_helpers.py",
-    "packages/xuanpu-finance/tests/test_f4_maintenance.py",
-    "packages/xuanpu-finance/tests/test_f7_process.py",
-    "packages/xuanpu-finance/tests/test_f0_e2e.py"
+    "tests/finance/test_f13_process.py",
+    "tests/finance/f13_process_helpers.py",
+    "tests/finance/f11_process_helpers.py",
+    "tests/finance/f12_process_helpers.py",
+    "tests/finance/f11_verify_helpers.py",
+    "tests/finance/test_f4_maintenance.py",
+    "tests/finance/test_f7_process.py",
+    "tests/finance/test_f0_e2e.py"
   ],
   "verified_requirements": [
     {

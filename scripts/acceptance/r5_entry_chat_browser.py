@@ -52,8 +52,8 @@ STEPS: list[dict[str, Any]] = [
 
 async def login_cookie(platform: Any, user_id: str) -> tuple[str, str]:
     """给员工建一个登录会话，返回 (cookie 名, 令牌)。"""
-    from xuanpu_server.identity import LoginSession
-    from xuanpu_server.identity.cookies import login_cookie_name, new_login_token
+    from server.domains.identity import LoginSession
+    from server.domains.identity.cookies import login_cookie_name, new_login_token
 
     token, token_hash = new_login_token()
     now = time.time()
@@ -124,8 +124,8 @@ def judge(steps: list[dict[str, Any]], saved: dict[str, bool]) -> dict[str, Any]
 
 async def run(args: argparse.Namespace) -> dict[str, Any]:
     """起平台与浏览器，逐步执行并核对。"""
-    from xuanpu_console import static_dir
-    from xuanpu_server.api.app import create_app
+    from web import static_dir
+    from server.api.app import create_app
 
     from scripts.acceptance import r5_real_model_harness as harness
     from scripts.acceptance.finance_browser import free_port, listen

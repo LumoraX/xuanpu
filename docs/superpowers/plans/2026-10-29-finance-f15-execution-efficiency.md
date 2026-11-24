@@ -10,7 +10,7 @@
 
 ## 1. RED与最小改动
 
-- [x] 新建`packages/xuanpu-finance/tests/test_f15_execution.py`。用实际driver和离线HTTP事件验证04/06共享经理session，08/09共享本人session，08独立于起草session、07/10各用自己身份；工具与人工决定门槛不删。
+- [x] 新建`tests/finance/test_f15_execution.py`。用实际driver和离线HTTP事件验证04/06共享经理session，08/09共享本人session，08独立于起草session、07/10各用自己身份；工具与人工决定门槛不删。
 - [x] 对Budget增加`max_streams=120`收紧参数写RED：12后派发前停止、重开同名不能改大、非法值不创建账本、global240不变。
 - [x] 修改`finance_model_journey.py`两处会话生命周期，Budget添加持久的单旅程上限；默认full行为门槛和自然提示保持。
 

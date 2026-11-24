@@ -23,8 +23,8 @@
         "uv",
         "run",
         "pytest",
-        "packages/xuanpu-finance/tests/test_f15_model_harness.py",
-        "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+        "tests/finance/test_f15_model_harness.py",
+        "tests/finance/test_f15_skill_contract.py",
         "-q",
         "--junitxml=/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/releases/evidence/finance-f15-2026-10-23/reason-revision-spec-tests.xml"
       ],
@@ -51,7 +51,7 @@
         "F,S108,I,TC,C901",
         "--config",
         "lint.mccabe.max-complexity=10",
-        "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+        "tests/finance/test_f15_skill_contract.py"
       ],
       "returncode": 0,
       "log": "reason-revision-spec-ruff.log",
@@ -73,13 +73,13 @@
   "source_sha256": {
     "examples/finance/skills/finance-assistant/SKILL.md": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "a5242549807c99b49fc14da5c00fa04f61a86af09f88b919691c6bcca4407c37"
+    "tests/finance/test_f15_skill_contract.py": "a5242549807c99b49fc14da5c00fa04f61a86af09f88b919691c6bcca4407c37"
   },
   "baseline_frozen_sha256": "28196d6b483d898c98b889622ef5da84fc180501a28de6c6824c98f457b85091",
   "only_changed_frozen_files": [
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
     "examples/finance/skills/finance-assistant/SKILL.md",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+    "tests/finance/test_f15_skill_contract.py"
   ],
   "approved_design_review_sha256": "b35cdd70bd19e69d58123ec3aa6e3892d1379045633b98d05ac2a058d44ca4a3",
   "implementation_report_sha256": "febcf3b15562b72b518f5cd0aa2c4cc35d43b45e2d608166a673b0024e9fbc1a",

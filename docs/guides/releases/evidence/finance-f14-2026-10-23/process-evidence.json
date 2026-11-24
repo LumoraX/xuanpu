@@ -1,8 +1,8 @@
 {
   "task": 2,
   "new_files": [
-    "packages/xuanpu-finance/tests/test_f14_process.py",
-    "packages/xuanpu-finance/tests/f14_process_helpers.py"
+    "tests/finance/test_f14_process.py",
+    "tests/finance/f14_process_helpers.py"
   ],
   "product_changes_by_task2": false,
   "baseline": "da624a9",

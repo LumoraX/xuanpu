@@ -11,15 +11,15 @@ tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/p
             with pytest.raises(ProviderResponseError) as error:
 >               await registry(configuration(tmp_path), client).query(request_body())
 
-packages/xuanpu-finance/tests/provider/test_provider_http.py:401:
+tests/finance/provider/test_provider_http.py:401:
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-packages/xuanpu-finance/src/xuanpu_finance/settlement/provider.py:114: in query
+finance/settlement/provider.py:114: in query
     return await self._exchange(request, submit=False)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-packages/xuanpu-finance/src/xuanpu_finance/settlement/provider.py:155: in _exchange
+finance/settlement/provider.py:155: in _exchange
     return self._validated_result(request, content), content
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-packages/xuanpu-finance/src/xuanpu_finance/settlement/provider.py:161: in _validated_result
+finance/settlement/provider.py:161: in _validated_result
     json.loads(raw, object_pairs_hook=_unique_object)
 /Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/json/__init__.py:359: in loads
     return cls(**kw).decode(s)
@@ -66,12 +66,12 @@ tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/p
         with pytest.raises(FinanceError):
 >           registry(configuration(tmp_path), client).authenticate_callback("test-bank",1,headers,raw)
 
-packages/xuanpu-finance/tests/provider/test_provider_http.py:417:
+tests/finance/provider/test_provider_http.py:417:
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-packages/xuanpu-finance/src/xuanpu_finance/settlement/provider.py:202: in authenticate_callback
+finance/settlement/provider.py:202: in authenticate_callback
     return event, self._callback_body(config, raw)
                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-packages/xuanpu-finance/src/xuanpu_finance/settlement/provider.py:207: in _callback_body
+finance/settlement/provider.py:207: in _callback_body
     body: Any = json.loads(raw, object_pairs_hook=_unique_object)
                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 /Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/json/__init__.py:359: in loads
@@ -102,6 +102,6 @@ E           RecursionError: maximum recursion depth exceeded while decoding a JS
 
 /Users/krasuschen/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/lib/python3.12/json/decoder.py:354: RecursionError
 =========================== short test summary info ============================
-FAILED packages/xuanpu-finance/tests/provider/test_provider_http.py::test_deeply_nested_response_keeps_raw_and_becomes_invalid
-FAILED packages/xuanpu-finance/tests/provider/test_provider_http.py::test_deeply_nested_signed_callback_is_controlled_error
+FAILED tests/finance/provider/test_provider_http.py::test_deeply_nested_response_keeps_raw_and_becomes_invalid
+FAILED tests/finance/provider/test_provider_http.py::test_deeply_nested_signed_callback_is_controlled_error
 2 failed, 28 deselected in 0.45s

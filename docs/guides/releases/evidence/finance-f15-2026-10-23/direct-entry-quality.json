@@ -5,7 +5,7 @@
   "scope": [
     "examples/finance/skills/finance-assistant/SKILL.md",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+    "tests/finance/test_f15_skill_contract.py"
   ],
   "design": "docs/superpowers/specs/2026-10-24-finance-f15-direct-entry-design.md",
   "design_sha256": "cc8276ed45f2d29d33414c2ad0e5f5e78b5cf2be96adebeffce30d8f5a1c72d9",
@@ -54,19 +54,19 @@
       "assessment": "仍明确聊天/工具许可不能把agent升级为human；付款、ERP、税务和正式档案各自独立。确需专业委派保留self-contained原请求/原文和单次JSON序列化例子，明确不是普通internal默认流程或真实业务。"
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "file": "tests/finance/test_f15_skill_contract.py",
       "assessment": "使用实际FilesystemSkillRegistry与validate_package核精确root13及子集，不仅检查文字。新增/更新静态契约覆盖已有记录意图、票据附注、独立只读批量、当前版本、human边界及异常恢复出口。改写阶段1委派断言与批准的新架构一致，没有放宽独立harness业务断言。"
     }
   ],
   "verification": [
     {
-      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q",
+      "command": "uv run pytest tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py -q",
       "exit_code": 0,
       "result": "126 passed in 2.42s",
       "boundary": "包含实际包注册及既有null-query loopback HTTP；无PG、外部API、真实模型或私有配置访问。"
     },
     {
-      "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 tests/finance/test_f15_skill_contract.py",
       "exit_code": 0,
       "result": "All checks passed!"
     },
@@ -93,7 +93,7 @@
   "source_sha256": {
     "examples/finance/skills/finance-assistant/SKILL.md": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "c1bf092059c1261b5e2821451172b3f1966fea9fdd42cc634eb64c1fce1a19bb"
+    "tests/finance/test_f15_skill_contract.py": "c1bf092059c1261b5e2821451172b3f1966fea9fdd42cc634eb64c1fce1a19bb"
   },
   "limitations": [
     "本报告批准Task1b三文件窄质量，阶段1另有独立批准；不是整个F15业务验收或交付完成。",

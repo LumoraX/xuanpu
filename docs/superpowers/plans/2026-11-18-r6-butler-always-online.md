@@ -6,7 +6,7 @@
 
 **Architecture:** 见 [ADR 0020](../../decisions/0020-butler-always-online.md)。在 R5 管家之上改三处：请求只等短窗口、一轮在平台后台继续；一轮的时限可由管家延长；每次请求的预算可由管家提高。派工、唤醒、交付不变。
 
-约定：`S` = `packages/xuanpu-server/src/xuanpu_server`，`T` = `packages/xuanpu-server/tests`。
+约定：`S` = `server`，`T` = `tests/server`。
 
 ---
 

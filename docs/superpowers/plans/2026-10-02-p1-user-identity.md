@@ -15,7 +15,7 @@
 - 仓库 `xuanpu`，分支 `feat/p1-identity`（从合入 P0 后的 `main` 分出）。同级仓 taifeng-sandbox、taifeng-stores 不改。
 - 工程约定以 `AGENTS.md` 为准：中文 docstring 与注释；禁止 silent fallback；业务代码不读环境变量；文件 ≤ 800 行（警戒 500）、函数 ≤ 80 行；只 import `taifeng.__all__`。
 - **大文件不再变大**：`runtime/sessions.py`（603 行）、`controlplane/postgres.py`（591 行）、`api/app.py` 已超警戒线。本计划的新逻辑放进新模块，这几个文件只加调用；Task 1 先把 `controlplane/postgres.py` 拆开。
-- 每个任务结束前门禁全绿：`uv run pytest -q`、`uv run ruff check --select F,S108,I,TC packages`、`uv run mypy packages/*/src`、`uv lock --check`。文档覆盖测试（`packages/xuanpu-cli/tests/test_examples_and_docs.py`）会要求新路由、错误码、配置键、审计类型都写进文档——每个任务把自己新增的这些写进对应文档（http-api.md、operations.md、audit-and-usage.md、examples/xuanpu.yaml），其余文档留给 Task 9。
+- 每个任务结束前门禁全绿：`uv run pytest -q`、`uv run ruff check --select F,S108,I,TC packages`、`uv run mypy packages/*/src`、`uv lock --check`。文档覆盖测试（`tests/cli/test_examples_and_docs.py`）会要求新路由、错误码、配置键、审计类型都写进文档——每个任务把自己新增的这些写进对应文档（http-api.md、operations.md、audit-and-usage.md、examples/xuanpu.yaml），其余文档留给 Task 9。
 - commit message 中文，结尾带：
 
   ```

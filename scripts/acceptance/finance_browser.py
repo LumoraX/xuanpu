@@ -23,9 +23,9 @@ if TYPE_CHECKING:
 
     from fastapi import FastAPI
     from taifeng import CancellationToken
-    from xuanpu_finance.config import FinanceConfig
-    from xuanpu_server.platform import Platform
-    from xuanpu_server.tenancy import Principal
+    from finance.config import FinanceConfig
+    from server.platform import Platform
+    from server.core.tenancy import Principal
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -143,15 +143,15 @@ async def ensure_empty_database(dsn: str) -> None:
 async def open_browser_platform(directory: Path, origin: str, resources: AsyncExitStack,
                                 models: ModelBlocker) -> tuple[Platform, Principal]:
     """仅测试装配：在Platform启动前注入严格拒绝模型工厂，不实例化脚本模型。"""
-    from xuanpu_server.controlplane import InMemoryControlPlane
-    from xuanpu_server.identity import InMemoryIdentityStore
-    from xuanpu_server.identity.config import IdentityConfig
-    from xuanpu_server.identity.service import IdentitySettings
-    from xuanpu_server.objectstore import LocalObjectStore
-    from xuanpu_server.platform import ROOT_PRINCIPAL, Platform
-    from xuanpu_server.runtime import LocalSandboxProvider
-    from xuanpu_server.secrets import EncryptedVault, generate_master_key
-    from xuanpu_server.tenancy import generate_root_key
+    from server.core.controlplane import InMemoryControlPlane
+    from server.domains.identity import InMemoryIdentityStore
+    from server.domains.identity.config import IdentityConfig
+    from server.domains.identity.service import IdentitySettings
+    from server.core.objectstore import LocalObjectStore
+    from server.platform import ROOT_PRINCIPAL, Platform
+    from server.engine.runtime import LocalSandboxProvider
+    from server.core.secrets import EncryptedVault, generate_master_key
+    from server.core.tenancy import generate_root_key
 
     store = InMemoryControlPlane()
     _, root_hash = generate_root_key()
@@ -197,8 +197,8 @@ async def configure_finance(
     ident: Any, people: dict[str, Any],
 ) -> FinanceConfig:
     """使用现有test-only进程夹具构造财务配置，不连接外部供应商。"""
-    from xuanpu_finance.config import FinanceConfig, GrantConfig
-    from xuanpu_finance.expenses.models import ApprovalStep, ExpenseCategory, ExpensePolicy
+    from finance.config import FinanceConfig, GrantConfig
+    from finance.expenses.models import ApprovalStep, ExpenseCategory, ExpensePolicy
 
     process = importlib.import_module('packages.xuanpu-finance.tests.test_process')
     config: FinanceConfig
@@ -239,10 +239,10 @@ async def configure_gateway(platform: Any, admin: Any, directory: Path, finance_
     """发布本次隔离业务包，并沿用平台签名出口访问真实财务HTTP。"""
     import yaml
     from cryptography.hazmat.primitives import serialization
-    from xuanpu_server.config import CallContextConfig
-    from xuanpu_server.manual_connectors import ManualConnectorService
-    from xuanpu_server.runtime.call_context import HumanContextSigner
-    from xuanpu_spec import pack_package
+    from server.core.config import CallContextConfig
+    from server.engine.manual_connectors import ManualConnectorService
+    from server.engine.runtime.call_context import HumanContextSigner
+    from spec import pack_package
 
     await platform.vault.put('acme', 'finance-service-token', 'test-service', actor='acceptance')
     await platform.vault.put('acme', 'context-key', key.private_bytes(
@@ -343,9 +343,9 @@ async def announce_ready(ready_file: Path, payload: dict[str, Any],
 async def assemble(directory: Path, dsn: str, ready_file: Path, resources: AsyncExitStack) -> None:
     """隔离开发夹具只装配测试身份，业务流量仍经过真实TCP与签名认证。"""
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-    from xuanpu_finance.readiness.offline import preflight
-    from xuanpu_finance.runtime import open_runtime
-    from xuanpu_server.api import create_app
+    from finance.readiness.offline import preflight
+    from finance.runtime import open_runtime
+    from server.api import create_app
 
     await ensure_empty_database(dsn)
     platform_port, finance_port = free_port(), free_port()
@@ -360,7 +360,7 @@ async def assemble(directory: Path, dsn: str, ready_file: Path, resources: Async
         raise RuntimeError('BROWSER_ACCEPTANCE_PREFLIGHT_BLOCKED')
     await configure_gateway(world.platform, world.admin, directory, finance_url, key)
     app = create_app(world.platform, console_dir=(
-        ROOT / 'packages/xuanpu-console/src/xuanpu_console/static'
+        ROOT / 'web/static'
     ))
     finance = await resources.enter_async_context(open_runtime(config))
     add_test_routes(app, ident, cookies, world, finance, people, blocker)

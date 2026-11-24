@@ -55,9 +55,9 @@ xuanpu-finance-maintenance restore --database-dsn-file /run/finance/restore-dsn 
 
 ```text
 uv run xuanpu validate examples/finance
-uv run pytest packages/xuanpu-finance/tests/test_f4_notices.py packages/xuanpu-finance/tests/test_f4_pagination.py -q
-uv run pytest packages/xuanpu-finance/tests/test_f4_maintenance.py packages/xuanpu-finance/tests/test_f4_overview.py -q
-uv run pytest packages/xuanpu-server/tests/identity/test_finance_f4_gateway_e2e.py -q
+uv run pytest tests/finance/test_f4_notices.py tests/finance/test_f4_pagination.py -q
+uv run pytest tests/finance/test_f4_maintenance.py tests/finance/test_f4_overview.py -q
+uv run pytest tests/server/identity/test_finance_f4_gateway_e2e.py -q
 ```
 
 PG用例须显式FINANCE_TEST_DSN指向独立finance_test库；维护演练还需可用PG工具（本轮专用容器xuanpu-finance-f4-test-pg）。[缺口台账](finance-gap-register.md)逐项区分既有本地已验、F5专用业务及外部未验收；[F4验收记录](releases/2026-10-21-finance-f4-acceptance.md)记录最终门禁、镜像、浏览器和清理证据。

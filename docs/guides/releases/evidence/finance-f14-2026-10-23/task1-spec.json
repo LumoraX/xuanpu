@@ -18,35 +18,35 @@
       "sha256": "c7994c387e09bfccc9782c479f876289569769a1168074a2d65e4326a0e5d3a7"
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+      "file": "finance/maintenance.py",
       "sha256": "be3e4a95d8d8d150e83a3fb9e8e3ffe232dd182f9019741f1f12902b1bcc2746"
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py",
+      "file": "finance/maintenance_cli.py",
       "sha256": "f298f26bc57455862c204a4b153218b3e53d3101eeb32a7748490362815b1224"
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/readiness/credentials.py",
+      "file": "finance/readiness/credentials.py",
       "sha256": "2a907d373190da02c648b9f85e2a5db018110c7dd5b80b1c39fd2fb1515a1890"
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py",
+      "file": "finance/maintenance_types.py",
       "sha256": "2b72ae5c2e7cc2f170318945b554e84e308ddad782dcace3331c3083202b7434"
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_verify.py",
+      "file": "finance/maintenance_verify.py",
       "sha256": "0fe7b7a5246ba4f5a237f428c598afcc35f027b0aa24b9c8681d6e2a15c0c6a3"
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f14_credentials.py",
+      "file": "tests/finance/test_f14_credentials.py",
       "sha256": "bc0610bfa001bc7b610d0b6a0bf5cbb68ab5a6327a0ccf157acb3e16ead74b5e"
     },
     {
-      "file": "packages/xuanpu-finance/tests/f14_credentials_helpers.py",
+      "file": "tests/finance/f14_credentials_helpers.py",
       "sha256": "bf62961edea129933c464327304e6a2feee62f982861a5b89695142f8da8ec4a"
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f4_maintenance.py",
+      "file": "tests/finance/test_f4_maintenance.py",
       "sha256": "318194501332c41304cf62920d188c7da68c3d17e985ead24357de1ef3d4773f"
     },
     {
@@ -219,9 +219,9 @@
     }
   ],
   "unchanged_against_baseline": [
-    "packages/xuanpu-finance/src/xuanpu_finance/readiness/credentials.py",
-    "packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py",
-    "packages/xuanpu-finance/src/xuanpu_finance/maintenance_verify.py"
+    "finance/readiness/credentials.py",
+    "finance/maintenance_types.py",
+    "finance/maintenance_verify.py"
   ],
   "accepted_existing_results": {
     "credentials_final": {

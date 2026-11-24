@@ -13,7 +13,7 @@ from pathlib import Path
 from taifeng import CommandSpec
 from taifeng_sandbox import export_files
 from taifeng_sandbox.docker import DockerEnvironment, DockerSandboxConfig, Mount
-from xuanpu_server.config import load_config
+from server.core.config import load_config
 
 PROGRAM = '''from pathlib import Path
 import errno,json,socket

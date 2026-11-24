@@ -35,7 +35,7 @@
 - [x] 同一能力允许多项有效分配，但一次绑定固定一个明确有效依据；重复同发布合并展示，命中不同发布时409要求管理员整理，不按最近版本或模型偏好选。
 - [x] 撤销先在事务增加epoch并拒绝下一次调用，再由既有维护循环回收引擎。UI收到权限摘要先清理说明/材料/草稿，再读取当前权限；不要等异步清理完成才拒绝。
 - [x] 实现分配操作幂等与目标epoch CAS；权限仓储断开时返回503/明确阻塞，不使用旧缓存放行。
-- [x] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_assignments.py packages/xuanpu-server/tests/r4_contract/test_assignment_epochs.py packages/xuanpu-server/tests/r4_contract/test_capability_decisions.py -q`；先看到目标失败，再实现并转绿。
+- [x] Run：`uv run pytest tests/server/r4_contract/test_assignments.py tests/server/r4_contract/test_assignment_epochs.py tests/server/r4_contract/test_capability_decisions.py -q`；先看到目标失败，再实现并转绿。
 - [x] 提交`feat: 增加到人能力分配与当前资格解析`。
 
 ## B1：全入口统一鉴权和版本固定
@@ -49,7 +49,7 @@
 - [ ] 入库受理与InvocationBinding在同一协调事务；事务外对象读取后再次复核。重启从绑定重建，不按新active指针取包；旧任务若无绑定，仅已明确未纳管的兼容任务可继续，禁止为纳管旧任务猜分配。
 - [ ] 运行期用公开model client/permission policy包装复核，覆盖实际模型发送、工具闸门和批准后的实际出口；不能仅在HTTP受理检查。取消、计量、effect未知账本仍沿用R2。
 - [x] 原生“运行能力”与对话同服务，命令/API直调也不能给自己指定higher role、assignment或安装配置。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_capability_entrypoints.py packages/xuanpu-server/tests/r4_contract/test_runtime_revocation.py packages/xuanpu-server/tests/r4_contract/test_legacy_bypass.py -q`；再跑R2/R3回归。
+- [ ] Run：`uv run pytest tests/server/r4_contract/test_capability_entrypoints.py tests/server/r4_contract/test_runtime_revocation.py tests/server/r4_contract/test_legacy_bypass.py -q`；再跑R2/R3回归。
 - [x] 提交`feat: 统一能力调用与恢复出口授权`。
 
 HTTP最小绕过反例（`r4_ids`在B0 seed只给Alice分配review）：
@@ -78,7 +78,7 @@ async def test_managed_package_cannot_use_legacy_activation(r4_http, r4_ids):
 - [x] 复用现有runner的只读输入、任务专用会话、outputs/manifest.json、四角色成果校验和预算账本，不能凭HTTP读取回执判定文件成果。profile输入只允许CSV，故不进入硬编码meeting-minutes提取脚本路径。
 - [x] 现有table_summary四类`summary_csv/summary_xlsx/report/evidence`必须齐全；缺任一失败，不弱化旧artifact_rules。原office-assistant受理及只读企微能力回执保持原语义。
 - [ ] 测试原生能力手动运行与R2时间/事件发生实例走同一profile，冷恢复保持原profile/包/entry；客户端伪造profile字段422，无分配404，根轮完成但缺文件失败，正确四成果无需HTTP读取工具也成功。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_file_capability_tasks.py packages/xuanpu-server/tests/work_tasks/test_capability_tasks.py -q`；提交`feat: 接入受控文件型能力完成契约`。
+- [ ] Run：`uv run pytest tests/server/r4_contract/test_file_capability_tasks.py tests/server/work_tasks/test_capability_tasks.py -q`；提交`feat: 接入受控文件型能力完成契约`。
 
 ## B3：原生分配、状态与冷恢复反例
 
@@ -88,7 +88,7 @@ async def test_managed_package_cannot_use_legacy_activation(r4_http, r4_ids):
 - [ ] 实际PG子进程在受理提交前/后SIGKILL：至多一个task/session及对应binding；撤权后冷恢复拒绝，不重置预算、不迁到新grant。
 - [ ] 挂起等待工具决定时升级或正常回退，旧目标仍固定；改变权限后旧工具决定不授权扩大操作。关新受理后取消/只读核实仍可完成。
 - [ ] 原生两用户、不同发布及390px测试；复核身份切换、迟到响应清理和反复点击，留本机合成证据。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_binding_faults.py packages/xuanpu-server/tests/r4_contract/test_binding_views.py -q`及总门禁；提交`feat: 提供能力分配与绑定恢复记录`。
+- [ ] Run：`uv run pytest tests/server/r4_contract/test_binding_faults.py tests/server/r4_contract/test_binding_views.py -q`及总门禁；提交`feat: 提供能力分配与绑定恢复记录`。
 
 本段不将任何真实员工升级为管理员，不代替真人批准/签收；历史任务可查不等于允许重跑。
 

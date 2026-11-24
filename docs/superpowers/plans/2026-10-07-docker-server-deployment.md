@@ -14,7 +14,7 @@
 - [x] 新建 `docker/deploy.sh`：严格失败退出，发布成功之后原子写入 VERSION，发布失败保留原版本；准备运行 wheel 和锁定 requirements，使用独立临时上下文。
 - [x] 新建 `docker/Dockerfile`：运行依赖与 bubblewrap，非 root 用户 10001，CLI 默认启动；业务配置挂载到 /run/xuanpu。
 - [x] 新建 `docker/compose.yml`：仅平台连代理网络；PG 无宿主端口，密码从私有文件读；迁移为一次性服务；平台及会话/文件持久存储。
-- [x] 新建 `packages/xuanpu-cli/tests/test_docker_release.py`：模拟外部构建器验证 push 失败时保留版本、成功时版本落盘，并检查构建上下文只含构建输入。
+- [x] 新建 `tests/cli/test_docker_release.py`：模拟外部构建器验证 push 失败时保留版本、成功时版本落盘，并检查构建上下文只含构建输入。
 - [x] 执行 `bash -n docker/deploy.sh` 与 Compose 校验；构建及 push amd64 镜像。
 
 ### 2. 数据迁移与上线

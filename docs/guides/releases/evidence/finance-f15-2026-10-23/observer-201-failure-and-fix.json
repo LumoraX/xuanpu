@@ -164,7 +164,7 @@
   "source_sha256": {
     "scripts/acceptance/finance_model_checks.py": "1983f9b4750a7fa28275d88a6e2bf8e94c8f051c87c4063a4743cfbee4784da1",
     "scripts/acceptance/finance_model_journey.py": "6521428ce6e3d589b608a97edea86085c743745cb18ead43a4e0ec98c0eed7c0",
-    "packages/xuanpu-finance/tests/test_f15_model_harness.py": "8947016ec2416ad942937096e483b09f3ea63b53e02a9e5ffbac7aae12f39fa4"
+    "tests/finance/test_f15_model_harness.py": "8947016ec2416ad942937096e483b09f3ea63b53e02a9e5ffbac7aae12f39fa4"
   },
   "raw_evidence_sha256": {
     "final5/model-095.json": "0715d4bf791dd7d94faf3d322092a8b16438c0ffb2d0642e4c21d820819c355f",

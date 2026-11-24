@@ -16,7 +16,7 @@
       "result": "仅本会话自己真实创建且唯一的实际ID省摘要重定位，仍必须当前GET/RLS/latest version；ID不作为授权/状态缓存。歧义、无真实ID、换身份公司、拒绝或刷新保持最小真实来源；fresh查询门槛没有删除。"
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "file": "tests/finance/test_f15_skill_contract.py",
       "lines": [
         163,
         253
@@ -29,13 +29,13 @@
   ],
   "checks": [
     {
-      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q",
+      "command": "uv run pytest tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py -q",
       "exit_code": 0,
       "result": "133 passed in 3.18s",
       "boundary": "实际含既有loopback HTTP测试；无外部API/PG/真实模型/私有配置访问。"
     },
     {
-      "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 tests/finance/test_f15_skill_contract.py",
       "exit_code": 0,
       "result": "All checks passed!"
     },
@@ -59,7 +59,7 @@
   "source_sha256": {
     "examples/finance/skills/finance-assistant/SKILL.md": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "a5242549807c99b49fc14da5c00fa04f61a86af09f88b919691c6bcca4407c37"
+    "tests/finance/test_f15_skill_contract.py": "a5242549807c99b49fc14da5c00fa04f61a86af09f88b919691c6bcca4407c37"
   },
   "prior_root_sha256": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
   "prior_test_sha256": "c1bf092059c1261b5e2821451172b3f1966fea9fdd42cc634eb64c1fce1a19bb",

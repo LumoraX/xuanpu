@@ -14,72 +14,72 @@
       "documented_definitions": 1
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/__main__.py",
+      "file": "finance/__main__.py",
       "lines": 68,
       "documented_definitions": 2
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/api.py",
+      "file": "finance/api.py",
       "lines": 223,
       "documented_definitions": 12
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+      "file": "finance/maintenance.py",
       "lines": 171,
       "documented_definitions": 6
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py",
+      "file": "finance/maintenance_cli.py",
       "lines": 53,
       "documented_definitions": 1
     },
     {
-      "file": "packages/xuanpu-finance/tests/f14_credentials_helpers.py",
+      "file": "tests/finance/f14_credentials_helpers.py",
       "lines": 128,
       "documented_definitions": 13
     },
     {
-      "file": "packages/xuanpu-finance/tests/f14_process_helpers.py",
+      "file": "tests/finance/f14_process_helpers.py",
       "lines": 220,
       "documented_definitions": 10
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f14_credentials.py",
+      "file": "tests/finance/test_f14_credentials.py",
       "lines": 319,
       "documented_definitions": 23
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f14_process.py",
+      "file": "tests/finance/test_f14_process.py",
       "lines": 73,
       "documented_definitions": 1
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f4_maintenance.py",
+      "file": "tests/finance/test_f4_maintenance.py",
       "lines": 292,
       "documented_definitions": 13
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f7_api.py",
+      "file": "tests/finance/test_f7_api.py",
       "lines": 71,
       "documented_definitions": 3
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f7_contract.py",
+      "file": "tests/finance/test_f7_contract.py",
       "lines": 52,
       "documented_definitions": 2
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f8_api.py",
+      "file": "tests/finance/test_f8_api.py",
       "lines": 57,
       "documented_definitions": 1
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f8_contract.py",
+      "file": "tests/finance/test_f8_contract.py",
       "lines": 40,
       "documented_definitions": 2
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_package.py",
+      "file": "tests/finance/test_package.py",
       "lines": 315,
       "documented_definitions": 12
     },

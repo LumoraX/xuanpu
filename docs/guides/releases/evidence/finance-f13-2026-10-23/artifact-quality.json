@@ -22,11 +22,11 @@
     "set_and_bytes_equal": true,
     "manifest_sha256": "dee9a3f66cc82e82731abbc0903c425323406d193eb8e88407ae51b231a79710",
     "added_files": [
-      "packages/xuanpu-finance/src/xuanpu_finance/local_objects.py",
-      "packages/xuanpu-finance/tests/f13_objects_helpers.py",
-      "packages/xuanpu-finance/tests/f13_process_helpers.py",
-      "packages/xuanpu-finance/tests/test_f13_objects.py",
-      "packages/xuanpu-finance/tests/test_f13_process.py"
+      "finance/local_objects.py",
+      "tests/finance/f13_objects_helpers.py",
+      "tests/finance/f13_process_helpers.py",
+      "tests/finance/test_f13_objects.py",
+      "tests/finance/test_f13_process.py"
     ]
   },
   "packages": {

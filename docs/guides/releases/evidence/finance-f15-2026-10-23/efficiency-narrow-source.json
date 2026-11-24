@@ -8,7 +8,7 @@
     "examples/finance/skills/finance-assistant/SKILL.md": "3eeeccc25dd2dc09e9358f354188f45e6132cf4b389f970c73f30be62752c412",
     "examples/finance/skills/finance-review/SKILL.md": "83713dbc79e3c148e4c5c092c150dcb472124401ff1cc82f478b810ffdb9f715",
     "examples/finance/skills/invoice-intake/SKILL.md": "8934cc660d6b2d5fff055af995073b2b732591a38692699ea35200f64b2456c5",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "93b580c7556836322d605ffebcea5ce3c8dba8708f7a8f089c0d9f37c8adb5e8"
+    "tests/finance/test_f15_skill_contract.py": "93b580c7556836322d605ffebcea5ce3c8dba8708f7a8f089c0d9f37c8adb5e8"
   },
   "scope": "phase1 before authorized direct-entry redistribution; no real model run"
 }

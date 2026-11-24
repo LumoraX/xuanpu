@@ -25,7 +25,7 @@
   },
   "checks": [
     {
-      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/efficiency-narrow-spec-tests-final.xml",
+      "command": "uv run pytest tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/efficiency-narrow-spec-tests-final.xml",
       "returncode": 0,
       "passed": 119,
       "failed": 0,
@@ -54,7 +54,7 @@
         "examples/finance/skills/finance-assistant/SKILL.md",
         "examples/finance/skills/finance-review/SKILL.md",
         "examples/finance/skills/invoice-intake/SKILL.md",
-        "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+        "tests/finance/test_f15_skill_contract.py"
       ],
       "status": "passed"
     }
@@ -248,7 +248,7 @@
     "docs/superpowers/specs/finance-v1/pack/skills/expense-reimbursement/SKILL.md": "745fa7ee05718c29cd0ea84c5093ed9e78f566b56c200a82e1ffc08fb9f233d1",
     "docs/superpowers/specs/finance-v1/pack/skills/invoice-intake/SKILL.md": "8934cc660d6b2d5fff055af995073b2b732591a38692699ea35200f64b2456c5",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-review/SKILL.md": "83713dbc79e3c148e4c5c092c150dcb472124401ff1cc82f478b810ffdb9f715",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "93b580c7556836322d605ffebcea5ce3c8dba8708f7a8f089c0d9f37c8adb5e8"
+    "tests/finance/test_f15_skill_contract.py": "93b580c7556836322d605ffebcea5ce3c8dba8708f7a8f089c0d9f37c8adb5e8"
   },
   "frontmatter_snapshot": {
     "finance-assistant": {
@@ -397,7 +397,7 @@
       ],
       "checks": [
         {
-          "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/efficiency-narrow-spec-tests.xml",
+          "command": "uv run pytest tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/efficiency-narrow-spec-tests.xml",
           "returncode": 0,
           "passed": 115,
           "log": "efficiency-narrow-spec-tests.log",
@@ -594,7 +594,7 @@
         "docs/superpowers/specs/finance-v1/pack/skills/expense-reimbursement/SKILL.md": "745fa7ee05718c29cd0ea84c5093ed9e78f566b56c200a82e1ffc08fb9f233d1",
         "docs/superpowers/specs/finance-v1/pack/skills/invoice-intake/SKILL.md": "8934cc660d6b2d5fff055af995073b2b732591a38692699ea35200f64b2456c5",
         "docs/superpowers/specs/finance-v1/pack/skills/finance-review/SKILL.md": "83713dbc79e3c148e4c5c092c150dcb472124401ff1cc82f478b810ffdb9f715",
-        "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "93b580c7556836322d605ffebcea5ce3c8dba8708f7a8f089c0d9f37c8adb5e8"
+        "tests/finance/test_f15_skill_contract.py": "93b580c7556836322d605ffebcea5ce3c8dba8708f7a8f089c0d9f37c8adb5e8"
       },
       "limitations": [
         "No PG/private model configuration/private ledger/model API accessed.",

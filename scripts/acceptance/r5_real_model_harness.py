@@ -42,7 +42,7 @@ def load_model_env(path: Path) -> dict[str, str]:
 
 def gateway(env: dict[str, str], vault: Any) -> Any:
     """按私有配置建真实模型网关；三档都用同一个模型。"""
-    from xuanpu_server.runtime.models import GatewayConfig, GatewayModelClientFactory, ModelProfile
+    from server.engine.runtime.models import GatewayConfig, GatewayModelClientFactory, ModelProfile
 
     profile = ModelProfile(env["LLM_BOOTSTRAP_MODEL"], timeout_seconds=300)
     config = GatewayConfig(
@@ -62,19 +62,19 @@ async def assemble(directory: Path, env: dict[str, str], resources: AsyncExitSta
     ``connections`` 为真时 acme 开启企业连接（R3），对话里才能打开本人连接页。
     ``default_tenant`` 给了时登录页不带 ``?tenant=`` 也登录到这个租户（本机试用服务用）。
     """
-    from xuanpu_server.butler.config import ButlerConfig
-    from xuanpu_server.connections.models import ConnectionConfig
-    from xuanpu_server.controlplane import InMemoryControlPlane
-    from xuanpu_server.dashboard.config import MinimalEntryConfig
-    from xuanpu_server.identity import InMemoryIdentityStore
-    from xuanpu_server.identity.config import IdentityConfig
-    from xuanpu_server.identity.service import IdentitySettings
-    from xuanpu_server.objectstore import LocalObjectStore
-    from xuanpu_server.platform import Platform
-    from xuanpu_server.runtime import LocalSandboxProvider, RuntimeDefaults
-    from xuanpu_server.secrets import EncryptedVault, generate_master_key
-    from xuanpu_server.tenancy import generate_root_key
-    from xuanpu_server.tracing.config import ExecutionTraceConfig
+    from server.engine.butler.config import ButlerConfig
+    from server.domains.connections.models import ConnectionConfig
+    from server.core.controlplane import InMemoryControlPlane
+    from server.domains.dashboard.config import MinimalEntryConfig
+    from server.domains.identity import InMemoryIdentityStore
+    from server.domains.identity.config import IdentityConfig
+    from server.domains.identity.service import IdentitySettings
+    from server.core.objectstore import LocalObjectStore
+    from server.platform import Platform
+    from server.engine.runtime import LocalSandboxProvider, RuntimeDefaults
+    from server.core.secrets import EncryptedVault, generate_master_key
+    from server.core.tenancy import generate_root_key
+    from server.engine.tracing.config import ExecutionTraceConfig
 
     store = InMemoryControlPlane()
     root_key, root_hash = generate_root_key()
@@ -99,8 +99,8 @@ async def assemble(directory: Path, env: dict[str, str], resources: AsyncExitSta
 
 async def provision(platform: Any, base_url: str, root_key: str) -> tuple[str, str]:
     """经正式接口开通租户、签发代调用 key、存密钥并发布样例包；建一名员工。返回 key 与员工标识。"""
-    from xuanpu_sdk import XuanpuClient
-    from xuanpu_spec.archive import pack_package
+    from sdk import XuanpuClient
+    from spec.archive import pack_package
 
     async with XuanpuClient(base_url, root_key) as root:
         await root.admin.create_tenant("acme", "R5真实模型验收租户")
@@ -114,7 +114,7 @@ async def provision(platform: Any, base_url: str, root_key: str) -> tuple[str, s
 
 async def new_employee(platform: Any, name: str) -> str:
     """建一名启用的成员员工（员工只由飞书登录产生，验收环境直接经身份存储建）。"""
-    from xuanpu_server.identity import UserRecord, new_user_id
+    from server.domains.identity import UserRecord, new_user_id
 
     user = UserRecord(tenant_id="acme", user_id=new_user_id(), display_name=name,
                       created_at=time.time(), role="tenant_member")
@@ -127,10 +127,12 @@ TICKETS_URL = "http://127.0.0.1:8431"
 TICKETS_TOKEN = "demo-token"  # noqa: S105 —— 样例替身的公开演示凭据
 CONSULT_TEXT = ("请安排三位匠人会诊：工单 T-1001 该不该升级处理？请一线客服、二线技术和质检各自独立给出结论，"
                 "全部给完后再比对，不要只交给一位。")
-# 会诊需要三位不同的匠人：样例包的两个副本，只改包名与说明，连接器与权限完全相同。
+# 会诊需要三位不同的匠人：样例包的两个副本，只改包名、显示名与说明，连接器与权限完全相同。
 CONSULT_VARIANTS = (
-    ("support-tier2", "二线技术支持：从技术角度评估工单的影响面与是否需要升级"),
-    ("support-qa", "工单质检：从服务质量与时限角度评估工单处理是否到位、是否需要升级"),
+    ("support-tier2", "二线技术", "Tier-2 Support",
+     "二线技术支持：从技术角度评估工单的影响面与是否需要升级"),
+    ("support-qa", "工单质检", "Support QA",
+     "工单质检：从服务质量与时限角度评估工单处理是否到位、是否需要升级"),
 )
 
 
@@ -138,19 +140,21 @@ async def publish_variants(base_url: str, key: str, workdir: Path) -> list[str]:
     """会诊前再发布两位工单匠人（样例包副本）；回归集只针对 support-desk，故放在回归之后。"""
     import shutil
 
-    from xuanpu_sdk import XuanpuClient
-    from xuanpu_spec.archive import pack_package
+    from sdk import XuanpuClient
+    from spec.archive import pack_package
 
     names = []
     async with XuanpuClient(base_url, key) as admin:
-        for name, description in CONSULT_VARIANTS:
+        for name, zh_name, en_name, description in CONSULT_VARIANTS:
             target = workdir / name
             shutil.copytree(ROOT / "examples" / "support-desk", target)
             manifest = target / "xuanpu.yaml"
             text = manifest.read_text()
             for old, new in (("name: support-desk", f"name: {name}"),
                              ("description: 客服工单助手：查工单、给出处理时限、改派优先级",
-                              f"description: {description}")):
+                              f"description: {description}"),
+                             ("    zh-CN: 工单助手\n    en-US: Support Desk",
+                              f"    zh-CN: {zh_name}\n    en-US: {en_name}")):
                 if old not in text:
                     raise SystemExit(f"样例包清单已变，找不到：{old}")
                 text = text.replace(old, new, 1)
@@ -170,7 +174,7 @@ def run_script(name: str, base_url: str, key_file: Path, user_id: str, out: Path
 
 async def run(args: argparse.Namespace) -> dict[str, Any]:
     """起平台与工单替身，开通环境，依次跑选定的验收脚本。"""
-    from xuanpu_server.api.app import create_app
+    from server.api.app import create_app
 
     from scripts.acceptance.finance_browser import free_port, listen
 

@@ -17,7 +17,7 @@ F5支持材料经同一固定版本收件和责任索引保全，以supporting_m
 ```sh
 uv sync --all-packages --all-extras --python 3.12
 uv run xuanpu validate examples/finance
-uv run pytest packages/xuanpu-finance/tests/test_package.py --noconftest -q
+uv run pytest tests/finance/test_package.py --noconftest -q
 ```
 
 校验输出 `finance 0.2.0-f1.1：校验通过`；内核加载finance-assistant及invoice-intake/expense-reimbursement/finance-review，并用真实 read_skill 工具读取 references/execution-rules.md。该项不代表真实模型已正确使用这些工具。
@@ -25,7 +25,7 @@ uv run pytest packages/xuanpu-finance/tests/test_package.py --noconftest -q
 财务数据库测试需要明确设置 FINANCE_TEST_DSN，连接后核对真实数据库名必须以 finance_test 开头；每个用例使用随机 schema，结束后清理。该地址必须指向独立测试 PG，不能指向平台或生产库。没有此变量会显式 skip，不能据 skip 声称数据库验证通过。
 
 ```sh
-uv run pytest packages/xuanpu-finance/tests -q
+uv run pytest tests/finance -q
 ```
 
 ## 独立配置

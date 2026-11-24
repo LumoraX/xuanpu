@@ -41,17 +41,17 @@ def model_config(path: Path) -> dict[str, Any]:
 async def platform_for(directory: Path, origin: str, finance_url: str, model: dict[str, Any],
                        budget: Budget, evidence: Evidence, resources: AsyncExitStack) -> Any:
     """构造生产平台并在首次运行时组装前注入真实模型和agent签名。"""
-    from xuanpu_server.config import CallContextConfig
-    from xuanpu_server.controlplane import InMemoryControlPlane
-    from xuanpu_server.identity import InMemoryIdentityStore
-    from xuanpu_server.identity.config import IdentityConfig
-    from xuanpu_server.identity.service import IdentitySettings
-    from xuanpu_server.objectstore import LocalObjectStore
-    from xuanpu_server.platform import ROOT_PRINCIPAL, Platform
-    from xuanpu_server.runtime import LocalSandboxProvider, RuntimeDefaults
-    from xuanpu_server.runtime.models import GatewayConfig, GatewayModelClientFactory, ModelProfile
-    from xuanpu_server.secrets import EncryptedVault, generate_master_key
-    from xuanpu_server.tenancy import QuotaLimits, generate_root_key
+    from server.core.config import CallContextConfig
+    from server.core.controlplane import InMemoryControlPlane
+    from server.domains.identity import InMemoryIdentityStore
+    from server.domains.identity.config import IdentityConfig
+    from server.domains.identity.service import IdentitySettings
+    from server.core.objectstore import LocalObjectStore
+    from server.platform import ROOT_PRINCIPAL, Platform
+    from server.engine.runtime import LocalSandboxProvider, RuntimeDefaults
+    from server.engine.runtime.models import GatewayConfig, GatewayModelClientFactory, ModelProfile
+    from server.core.secrets import EncryptedVault, generate_master_key
+    from server.core.tenancy import QuotaLimits, generate_root_key
 
     store = InMemoryControlPlane()
     vault = EncryptedVault(store, keys={'k1': generate_master_key()}, primary='k1')
@@ -127,8 +127,8 @@ async def assemble(directory: Path, dsn: str, model: dict[str, Any], budget: Bud
     """真实TCP财务、独立PG/密文和实际平台Skill连接器装配。"""
     import httpx
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-    from xuanpu_finance.runtime import open_runtime
-    from xuanpu_server.api import create_app
+    from finance.runtime import open_runtime
+    from server.api import create_app
 
     from scripts.acceptance.finance_browser import (
         configure_finance,

@@ -1,0 +1,43 @@
+# 单机持久化开发配置：保留租户密钥、已安装能力包与历史会话，重启不丢失。
+# 适用于本机开发或小团队内网试用（先准备本地 PostgreSQL，并跑一次 `uv run xuanpu migrate --config examples/xuanpu.local.yaml`）。
+
+data_dir: /tmp/xuanpu-local-data
+root_key_hash: ${XUANPU_ROOT_KEY_HASH}
+master_keys:
+  k1: ${XUANPU_MASTER_KEY}
+primary_master_key: k1
+
+listen:
+  host: 127.0.0.1
+  port: 8420
+
+control_plane:
+  backend: postgres
+  postgres:
+    dsn: ${XUANPU_PG_DSN}
+
+state:
+  backend: local
+
+object_store:
+  backend: local
+
+sandbox:
+  backend: local
+
+models:
+  protocol: chat
+  base_url: ${MODEL_GATEWAY_URL}
+  api_key: ${MODEL_GATEWAY_KEY}
+  tiers:
+    fast:
+      model: "${MODEL_NAME}"
+    balanced:
+      model: "${MODEL_NAME}"
+    deep:
+      model: "${MODEL_NAME}"
+
+# 挂载独立官方能力生态目录（可根据实际路径调整，支持多目录与 .zip 归档目录）
+marketplace:
+  catalog_dirs:
+    - ../lumorax-catalog

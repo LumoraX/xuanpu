@@ -13,7 +13,7 @@
 - 原财务源742份文件与此前通过的3185项全量源码哈希一致，原报告0失败/错误、3项既有非财务skip；先核对证据再提交现有实现，未重复该旧组合全量。
 - 合并后专项147 passed，覆盖console、SDK、配置、调用签名、嵌套恢复及待办重放，见[专项](evidence/finance-main-merge-2026-10-29/targeted.xml)。
 - 对合并后的1117份冻结源码，只运行一轮完整`python -m pytest packages -q -ra`：4000项，3979 passed、21 skipped、0 failures、0 errors、无缺失模块。入口为`FINANCE_TEST_PG_CONTAINER=xuanpu-finance-merge-20261029 uv run python scripts/finance_acceptance.py --dsn-file /tmp/xuanpu-finance-merge-20261029/dsn --output docs/guides/releases/evidence/finance-main-merge-2026-10-29/full --suite full --timeout 1800`，见[全量报告](evidence/finance-main-merge-2026-10-29/full/report.json)。报告因既有skip如实为partial，production_status仍not_verified。
-- `uv run ruff check --select F,S108,I,TC packages scripts`通过；`uv run mypy packages/*/src`为489 source files无问题。合并后文档链接另用`uv run pytest packages/xuanpu-cli/tests/test_examples_and_docs.py -q`核对，283 passed，结果归档到本次证据目录。
+- `uv run ruff check --select F,S108,I,TC packages scripts`通过；`uv run mypy packages/*/src`为489 source files无问题。合并后文档链接另用`uv run pytest tests/cli/test_examples_and_docs.py -q`核对，283 passed，结果归档到本次证据目录。
 - [只读合并审查](evidence/finance-main-merge-2026-10-29/merge-review.json)Approved，无阻塞项。记录一项非阻塞P3：持久任务的usage局部缓存保留至hub释放，不影响计费或本次财务功能，后续单独处理。
 
 源码尺寸复核发现自动合并后的sessions.py为807行；仅精简模块说明至800行，保留全部租约与恢复限制，执行部分AST完全一致。该说明性差异另留前后SHA，未改可执行代码，也未为此重复全量测试。

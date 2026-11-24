@@ -31,48 +31,48 @@
       "sha256": "e9f35d741805b437ff98297a6edae1014893d2ef4b2cb024bd7f8fa0682730f1"
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f14_process.py",
+      "file": "tests/finance/test_f14_process.py",
       "bytes": 4322,
       "sha256": "a99348f382382e0159235967e31e2270b55e36ca0df2fb25009f7d7b0b5d3651"
     },
     {
-      "file": "packages/xuanpu-finance/tests/f14_process_helpers.py",
+      "file": "tests/finance/f14_process_helpers.py",
       "bytes": 11591,
       "sha256": "df7e42f52ca2f5cf2c2241f728657de0760234db3d32efc749e5f8491dc538dc"
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f4_maintenance.py",
+      "file": "tests/finance/test_f4_maintenance.py",
       "bytes": 15791,
       "sha256": "318194501332c41304cf62920d188c7da68c3d17e985ead24357de1ef3d4773f"
     },
     {
-      "file": "packages/xuanpu-finance/tests/f13_process_helpers.py",
+      "file": "tests/finance/f13_process_helpers.py",
       "bytes": 11128,
       "sha256": "704ada7dc100aab2ffdbeabc10ec6f6f63f5ea3edfa538964abfbdc956ef50e5"
     },
     {
-      "file": "packages/xuanpu-finance/tests/f12_process_helpers.py",
+      "file": "tests/finance/f12_process_helpers.py",
       "bytes": 25821,
       "sha256": "5597956d2e236ddf12b99a0469b4dfe7cd9b51466cd461c83f2c6e146903936d"
     },
     {
-      "file": "packages/xuanpu-finance/tests/f11_process_helpers.py",
+      "file": "tests/finance/f11_process_helpers.py",
       "bytes": 5242,
       "sha256": "069d95015b8686060059194e7b250fec36677d4236d836a4f44653a77391beea"
     },
     {
-      "file": "packages/xuanpu-finance/tests/f11_verify_helpers.py",
+      "file": "tests/finance/f11_verify_helpers.py",
       "bytes": 3211,
       "sha256": "5acef3f23d4889e319852efa9fab2bb367dda4865303d36e4da942b5da82512d"
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+      "file": "finance/maintenance.py",
       "bytes": 8740,
       "sha256": "be3e4a95d8d8d150e83a3fb9e8e3ffe232dd182f9019741f1f12902b1bcc2746"
     }
   ],
   "actual_test": {
-    "command": "uv run pytest -q packages/xuanpu-finance/tests/test_f14_process.py --junitxml=docs/guides/releases/evidence/finance-f14-2026-10-23/task2-quality.xml",
+    "command": "uv run pytest -q tests/finance/test_f14_process.py --junitxml=docs/guides/releases/evidence/finance-f14-2026-10-23/task2-quality.xml",
     "environment": "Python从私有DSN文件设置FINANCE_TEST_DSN；FINANCE_TEST_PG_CONTAINER=xuanpu-finance-f14-pg；NO_PROXY/no_proxy=127.0.0.1,localhost,::1",
     "exit": 0,
     "junit_counts": {

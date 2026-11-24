@@ -60,16 +60,39 @@ taifeng
 
 `taifeng`、`taifeng-sandbox`、`taifeng-stores` 以 git submodule 放在 `external/` 下，经 `tool.uv.sources` 以 editable 方式装入工作区，版本以子模块指针为准（[ADR 0018](../decisions/0018-kernel-as-git-submodules.md)）。它们不是 workspace 成员，各自独立开发与发布。
 
+## 平台目录骨架（统一产品结构）
+
+玄圃已合并为单一平台工程（不再按 PyPI 拆多子包），顶层直接按产品模块平铺；后端 `server/` 内部按四层归拢（各业务领域内部保持 `models / rules / service / store` 高内聚）：
+
+```text
+xuanpu/
+├── pyproject.toml               # 单一平台工程配置（name = "xuanpu"）
+├── server/                      # 后端主服务
+│   ├── bootstrap.py · platform.py   # 平台配置装配与聚合根
+│   ├── core/                        # 平台基础设施：config / tenancy / secrets / quota / audit / metrics / redaction / errors / ids / controlplane / coordination / objectstore
+│   ├── engine/                      # Agent 运行与编排：runtime / butler / assistant / tracing / packages / package_cache / evals / manual_connectors
+│   ├── domains/                     # 企业业务领域：identity / organization / marketplace / capabilities / connections / workspace / knowledge / reminders / work_tasks / task_triggers / proactive / handoffs / approvals / shared_matters / collaboration / dashboard / outcomes
+│   └── api/                         # 统一 HTTP / SSE 路由与鉴权接入层
+├── web/                         # 前端控制台（static/）
+├── desktop/                     # macOS 桌面客户端（Tauri）
+├── cli/                         # 命令行工具
+├── spec/                        # 业务包规范契约（零平台与内核依赖）
+├── sdk/                         # Python 客户端
+├── finance/                     # 财务子系统
+├── tests/                       # 统一测试（server / web / cli / spec / sdk / finance / e2e）
+└── external/                    # 内核子模块（taifeng / taifeng-sandbox / taifeng-stores）
+```
+
 ## 四个平面
 
-按 [ADR 0004](../decisions/0004-planes-and-effect-gates.md)，平台分四个平面。下表是各平面在代码里的落点（`runtime/` 下各模块的分工见[运行时的模块](#运行时的模块)）：
+按 [ADR 0004](../decisions/0004-planes-and-effect-gates.md)，平台分四个平面。下表是各平面在代码里的落点（`engine/runtime/` 下各模块的分工见[运行时的模块](#运行时的模块)）：
 
 | 平面 | 职责 | 模块 |
 | --- | --- | --- |
-| 计算面 | 组装并承载内核引擎、会话租约、事件分发、停止生成 | `runtime/assembler.py`、`runtime/sessions.py`、`runtime/leases.py`、`runtime/events.py`、`runtime/cancellation.py`、`runtime/resolutions.py` |
-| 效应面 | 副作用的出口：脚本沙盒与连接器沙盒、连接器（stdio MCP、远端 MCP、HTTP）、模型 | `runtime/sandbox.py`、`runtime/connectors.py`、`runtime/mcp_connectors.py`、`runtime/remote_mcp.py`、`runtime/connector_process.py`、`runtime/http_api.py`、`runtime/gate_audit.py`、`runtime/models.py`、`runtime/approval.py` |
-| 状态面 | 会话主存与线程目录、业务包归档、本地缓存、长期记忆 | `bootstrap.py` 里的 `PostgresStateBackends`（实现来自 taifeng-stores）、`objectstore/`、`package_cache.py`。长期记忆的槽位在（`StateBackends.memory_store`），但配置文件尚未接入 |
-| 治理面 | 租户、凭据、业务包版本、密钥、配额、审计、用量、评测、指标 | `platform.py`、`tenancy.py`、`packages.py`、`secrets.py`、`quota.py`、`audit.py`、`evals.py`、`metrics.py`、`controlplane/` |
+| 计算面 | 组装并承载内核引擎、会话租约、事件分发、停止生成 | `engine/runtime/assembler.py`、`engine/runtime/sessions.py`、`engine/runtime/leases.py`、`engine/runtime/events.py`、`engine/runtime/cancellation.py`、`engine/runtime/resolutions.py` |
+| 效应面 | 副作用的出口：脚本沙盒与连接器沙盒、连接器（stdio MCP、远端 MCP、HTTP）、模型 | `engine/runtime/sandbox.py`、`engine/runtime/connectors.py`、`engine/runtime/mcp_connectors.py`、`engine/runtime/remote_mcp.py`、`engine/runtime/connector_process.py`、`engine/runtime/http_api.py`、`engine/runtime/gate_audit.py`、`engine/runtime/models.py`、`engine/runtime/approval.py` |
+| 状态面 | 会话主存与线程目录、业务包归档、本地缓存、长期记忆 | `bootstrap.py` 里的 `PostgresStateBackends`（实现来自 taifeng-stores）、`core/objectstore/`、`engine/package_cache.py`。长期记忆的槽位在（`StateBackends.memory_store`），但配置文件尚未接入 |
+| 治理面 | 租户、凭据、业务包版本、密钥、配额、审计、用量、评测、指标 | `platform.py`、`core/tenancy.py`、`engine/packages.py`、`core/secrets.py`、`core/quota.py`、`core/audit.py`、`engine/evals.py`、`core/metrics.py`、`core/controlplane/` |
 
 所有外部依赖（控制面存储、密钥保管库、模型客户端工厂、沙盒供给方、状态面后端、对象存储）都经 `Platform` 的构造参数注入；平台代码不读环境变量，环境变量只在命令行入口读取。
 
@@ -288,7 +311,7 @@ taifeng 不知道租户。隔离体现在平台组装运行时注入的每一样
 - 管理审计仅固定元数据，默认不提供其他员工正文；R0 未开放调查取证通道。
 
 - R1已按员工与任务隔离执行，普通办公包可使用同一沙盒的文件/命令工具；输入只读与成果冻结见[工作任务](work-tasks.md)。本机local后端当前拒绝办公任务，既有生产Compose不会仅因升级镜像就自动启用办公执行。
-- 长期记忆没有接进配置文件：taifeng-stores 提供了向量记忆后端，但平台还没有嵌入服务的配置项。以库的方式装配平台时可以自己注入（见 `packages/xuanpu-server/README.md`）。
+- 长期记忆没有接进配置文件：taifeng-stores 提供了向量记忆后端，但平台还没有嵌入服务的配置项。以库的方式装配平台时可以自己注入（见 `server/README.md`）。
 - 没有删除租户的接口。
 - 主密钥轮换后没有批量重新加密的工具，要逐条重写密钥。
 - 审计表没有内置的清理与归档。

@@ -17,7 +17,7 @@ mode = 'enabled'
                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 E           TypeError: create_app() got an unexpected keyword argument 'settlement_providers'
 
-packages/xuanpu-finance/tests/test_f2_lifecycle_api.py:42: TypeError
+tests/finance/test_f2_lifecycle_api.py:42: TypeError
 ___________ test_signed_callback_queues_query_in_all_modes[draining] ___________
 
 mode = 'draining'
@@ -35,7 +35,7 @@ mode = 'draining'
                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 E           TypeError: create_app() got an unexpected keyword argument 'settlement_providers'
 
-packages/xuanpu-finance/tests/test_f2_lifecycle_api.py:42: TypeError
+tests/finance/test_f2_lifecycle_api.py:42: TypeError
 __________ test_signed_callback_queues_query_in_all_modes[read_only] ___________
 
 mode = 'read_only'
@@ -53,7 +53,7 @@ mode = 'read_only'
                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 E           TypeError: create_app() got an unexpected keyword argument 'settlement_providers'
 
-packages/xuanpu-finance/tests/test_f2_lifecycle_api.py:42: TypeError
+tests/finance/test_f2_lifecycle_api.py:42: TypeError
 ___________ test_signed_callback_queues_query_in_all_modes[disabled] ___________
 
 mode = 'disabled'
@@ -71,7 +71,7 @@ mode = 'disabled'
                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 E           TypeError: create_app() got an unexpected keyword argument 'settlement_providers'
 
-packages/xuanpu-finance/tests/test_f2_lifecycle_api.py:42: TypeError
+tests/finance/test_f2_lifecycle_api.py:42: TypeError
 ____________ test_background_query_survives_disabled_modes[enabled] ____________
 
 mode = 'enabled'
@@ -84,7 +84,7 @@ mode = 'enabled'
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 E       TypeError: create_app() got an unexpected keyword argument 'settlement_worker'
 
-packages/xuanpu-finance/tests/test_f2_lifecycle_api.py:69: TypeError
+tests/finance/test_f2_lifecycle_api.py:69: TypeError
 ___________ test_background_query_survives_disabled_modes[draining] ____________
 
 mode = 'draining'
@@ -97,7 +97,7 @@ mode = 'draining'
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 E       TypeError: create_app() got an unexpected keyword argument 'settlement_worker'
 
-packages/xuanpu-finance/tests/test_f2_lifecycle_api.py:69: TypeError
+tests/finance/test_f2_lifecycle_api.py:69: TypeError
 ___________ test_background_query_survives_disabled_modes[read_only] ___________
 
 mode = 'read_only'
@@ -110,7 +110,7 @@ mode = 'read_only'
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 E       TypeError: create_app() got an unexpected keyword argument 'settlement_worker'
 
-packages/xuanpu-finance/tests/test_f2_lifecycle_api.py:69: TypeError
+tests/finance/test_f2_lifecycle_api.py:69: TypeError
 ___________ test_background_query_survives_disabled_modes[disabled] ____________
 
 mode = 'disabled'
@@ -123,14 +123,14 @@ mode = 'disabled'
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 E       TypeError: create_app() got an unexpected keyword argument 'settlement_worker'
 
-packages/xuanpu-finance/tests/test_f2_lifecycle_api.py:69: TypeError
+tests/finance/test_f2_lifecycle_api.py:69: TypeError
 =========================== short test summary info ============================
-FAILED packages/xuanpu-finance/tests/test_f2_lifecycle_api.py::test_signed_callback_queues_query_in_all_modes[enabled]
-FAILED packages/xuanpu-finance/tests/test_f2_lifecycle_api.py::test_signed_callback_queues_query_in_all_modes[draining]
-FAILED packages/xuanpu-finance/tests/test_f2_lifecycle_api.py::test_signed_callback_queues_query_in_all_modes[read_only]
-FAILED packages/xuanpu-finance/tests/test_f2_lifecycle_api.py::test_signed_callback_queues_query_in_all_modes[disabled]
-FAILED packages/xuanpu-finance/tests/test_f2_lifecycle_api.py::test_background_query_survives_disabled_modes[enabled]
-FAILED packages/xuanpu-finance/tests/test_f2_lifecycle_api.py::test_background_query_survives_disabled_modes[draining]
-FAILED packages/xuanpu-finance/tests/test_f2_lifecycle_api.py::test_background_query_survives_disabled_modes[read_only]
-FAILED packages/xuanpu-finance/tests/test_f2_lifecycle_api.py::test_background_query_survives_disabled_modes[disabled]
+FAILED tests/finance/test_f2_lifecycle_api.py::test_signed_callback_queues_query_in_all_modes[enabled]
+FAILED tests/finance/test_f2_lifecycle_api.py::test_signed_callback_queues_query_in_all_modes[draining]
+FAILED tests/finance/test_f2_lifecycle_api.py::test_signed_callback_queues_query_in_all_modes[read_only]
+FAILED tests/finance/test_f2_lifecycle_api.py::test_signed_callback_queues_query_in_all_modes[disabled]
+FAILED tests/finance/test_f2_lifecycle_api.py::test_background_query_survives_disabled_modes[enabled]
+FAILED tests/finance/test_f2_lifecycle_api.py::test_background_query_survives_disabled_modes[draining]
+FAILED tests/finance/test_f2_lifecycle_api.py::test_background_query_survives_disabled_modes[read_only]
+FAILED tests/finance/test_f2_lifecycle_api.py::test_background_query_survives_disabled_modes[disabled]
 8 failed in 0.27s

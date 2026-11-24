@@ -39,7 +39,7 @@
       "production_status": "not_verified"
     },
     "pytest_final": {
-      "command": "uv run pytest -q packages/xuanpu-finance/tests/test_package.py packages/xuanpu-finance/tests/test_f7_contract.py::test_internal_records_tools_and_declared_text_contract packages/xuanpu-finance/tests/test_f8_contract.py::test_materials_contract_and_skill_read_tools packages/xuanpu-finance/tests/test_f10_contract.py packages/xuanpu-finance/tests/test_f6_acceptance_runner.py -k \"not test_f2_actual_persisted_results_match_published_contract and not test_configured_integrations_and_unsent_deferred_records_match_contract\"",
+      "command": "uv run pytest -q tests/finance/test_package.py tests/finance/test_f7_contract.py::test_internal_records_tools_and_declared_text_contract tests/finance/test_f8_contract.py::test_materials_contract_and_skill_read_tools tests/finance/test_f10_contract.py tests/finance/test_f6_acceptance_runner.py -k \"not test_f2_actual_persisted_results_match_published_contract and not test_configured_integrations_and_unsent_deferred_records_match_contract\"",
       "exit": 0,
       "counts": {
         "tests": 35,
@@ -63,8 +63,8 @@
       "old_modules": 44,
       "old_order_preserved": true,
       "new_first_two": [
-        "packages/xuanpu-finance/tests/test_f14_credentials.py",
-        "packages/xuanpu-finance/tests/test_f14_process.py"
+        "tests/finance/test_f14_credentials.py",
+        "tests/finance/test_f14_process.py"
       ]
     },
     "skill_readonly_after_update": "skill-scenario-after-update.json",
@@ -109,7 +109,7 @@
     "正式部署"
   ],
   "source_files_sha256": {
-    "packages/xuanpu-finance/README.md": "7c95392088b90c0f2b0ae83e26285c8e2c552fa038458895c191bb5c00db48b4",
+    "finance/README.md": "7c95392088b90c0f2b0ae83e26285c8e2c552fa038458895c191bb5c00db48b4",
     "uv.lock": "f9b81663997018ef8ca631ec2ad0055e380b537c82e9205ac34db236881623e2",
     "scripts/acceptance/finance_runner.py": "8677b5bb203a5824d48c809eca11997eac74718104455754708e1f2eb233deca"
   }

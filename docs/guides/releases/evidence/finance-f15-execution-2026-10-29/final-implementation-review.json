@@ -4,7 +4,7 @@
   "reviewed_at": "2026-10-29T04:40:25.721894+00:00",
   "source_sha256": {
     "scripts/acceptance/finance_model_checks.py": "90c8199cf148476adf6978ff2038dfecd15f76c76cdd36ab4ed0cd72f609432c",
-    "packages/xuanpu-finance/tests/test_f15_model_harness.py": "12336329b7975322527b2806c30582368ccad344215809a020f887bed4149d2d"
+    "tests/finance/test_f15_model_harness.py": "12336329b7975322527b2806c30582368ccad344215809a020f887bed4149d2d"
   },
   "source_sha_unchanged_before_after_tests": true,
   "findings": [],
@@ -26,7 +26,7 @@
     }
   ],
   "verification": {
-    "independent_pytest_command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py -q --junitxml=docs/guides/releases/evidence/finance-f15-execution-2026-10-29/final-review-offline.xml",
+    "independent_pytest_command": "uv run pytest tests/finance/test_f15_model_harness.py -q --junitxml=docs/guides/releases/evidence/finance-f15-execution-2026-10-29/final-review-offline.xml",
     "independent_pytest_passed": 192,
     "skipped": 0,
     "log": "final-review-offline.log",

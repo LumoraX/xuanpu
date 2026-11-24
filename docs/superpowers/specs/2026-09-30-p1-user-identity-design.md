@@ -368,7 +368,7 @@ P1 提供一个「员工停用」通知点，P3（冻结空间）、P6（撤销�
 | `docs/guides/operations.md` | 新配置项；对账；停用流水线 |
 | `docs/guides/audit-and-usage.md` | 新审计类型；按用户的用量 |
 | `docs/guides/integrating.md` | 代员工调用 |
-| `packages/xuanpu-console/README.md` | 飞书登录与用户页 |
+| `web/README.md` | 飞书登录与用户页 |
 
 ## 16. 建议的实现顺序
 

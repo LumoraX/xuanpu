@@ -108,6 +108,6 @@ uv lock --check --offline
 
 [清理前凭据扫描](evidence/finance-f12-2026-10-23/secret-scan.json)覆盖当时所有变更及证据的实际DSN/密码、临时CLI根凭据、私钥、JWT和原始PDF流，无命中；之后仅收尾无凭据的报告/审查元数据。原始pytest日志和三份失败JUnit保留原有异常空白；[空白检查清册](evidence/finance-f12-2026-10-23/log-whitespace.json)精确列明例外，源代码、文档、JSON及其它JUnit必须检查0。临时根凭据替换与前后摘要单列，未因格式要求修剪原始异常。
 
-目录`/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0`，分支`feat/finance-f12`，基线`af96bb4`；本轮中文本地提交可在该分支git log查询。最终整轮规格与质量均独立Approved，见审查清册与[独立制品质量记录](evidence/finance-f12-2026-10-23/artifact-quality.json)。文档检查`uv run pytest -q packages/xuanpu-cli/tests/test_examples_and_docs.py`实际206 passed；最后收尾仅更新审计元数据和计划状态，不改冻结源码。真实公司/人员/制度、SSO/IAM/网络、真实模型、正式部署与异机灾备继续not_verified。
+目录`/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0`，分支`feat/finance-f12`，基线`af96bb4`；本轮中文本地提交可在该分支git log查询。最终整轮规格与质量均独立Approved，见审查清册与[独立制品质量记录](evidence/finance-f12-2026-10-23/artifact-quality.json)。文档检查`uv run pytest -q tests/cli/test_examples_and_docs.py`实际206 passed；最后收尾仅更新审计元数据和计划状态，不改冻结源码。真实公司/人员/制度、SSO/IAM/网络、真实模型、正式部署与异机灾备继续not_verified。
 
 CLI夹具另经质量审查独立复跑完整模块10 passed/1.16秒；最终full/quick的质量结论为独立重算证据而非另起PG复测，两者已明确区分。

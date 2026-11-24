@@ -18,47 +18,47 @@
       "sha256": "9cb5946e7dd8841010535aeb4ccd90f05c7acea23cca240339789e4902a4d907"
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f14_process.py",
+      "file": "tests/finance/test_f14_process.py",
       "sha256": "a99348f382382e0159235967e31e2270b55e36ca0df2fb25009f7d7b0b5d3651"
     },
     {
-      "file": "packages/xuanpu-finance/tests/f14_process_helpers.py",
+      "file": "tests/finance/f14_process_helpers.py",
       "sha256": "df7e42f52ca2f5cf2c2241f728657de0760234db3d32efc749e5f8491dc538dc"
     },
     {
-      "file": "packages/xuanpu-finance/tests/f13_process_helpers.py",
+      "file": "tests/finance/f13_process_helpers.py",
       "sha256": "704ada7dc100aab2ffdbeabc10ec6f6f63f5ea3edfa538964abfbdc956ef50e5"
     },
     {
-      "file": "packages/xuanpu-finance/tests/f12_process_helpers.py",
+      "file": "tests/finance/f12_process_helpers.py",
       "sha256": "5597956d2e236ddf12b99a0469b4dfe7cd9b51466cd461c83f2c6e146903936d"
     },
     {
-      "file": "packages/xuanpu-finance/tests/f11_process_helpers.py",
+      "file": "tests/finance/f11_process_helpers.py",
       "sha256": "069d95015b8686060059194e7b250fec36677d4236d836a4f44653a77391beea"
     },
     {
-      "file": "packages/xuanpu-finance/tests/f11_verify_helpers.py",
+      "file": "tests/finance/f11_verify_helpers.py",
       "sha256": "5acef3f23d4889e319852efa9fab2bb367dda4865303d36e4da942b5da82512d"
     },
     {
-      "file": "packages/xuanpu-finance/tests/f10_recovery_helpers.py",
+      "file": "tests/finance/f10_recovery_helpers.py",
       "sha256": "3f384c89744dcb348c9681a4e880a42a7dec7326c47ab85b16a52c2a134658af"
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f4_maintenance.py",
+      "file": "tests/finance/test_f4_maintenance.py",
       "sha256": "318194501332c41304cf62920d188c7da68c3d17e985ead24357de1ef3d4773f"
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f7_process.py",
+      "file": "tests/finance/test_f7_process.py",
       "sha256": "b6d8d04562de58378408be39c1564146ca56ed955167f2e1a4d9c90519f93be2"
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f0_e2e.py",
+      "file": "tests/finance/test_f0_e2e.py",
       "sha256": "4369c2cc8acf718a1fb64d5269abda9fa70b013a973c4d62a92b004e2ca81468"
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+      "file": "finance/maintenance.py",
       "sha256": "be3e4a95d8d8d150e83a3fb9e8e3ffe232dd182f9019741f1f12902b1bcc2746"
     },
     {
@@ -125,7 +125,7 @@
     {
       "id": "F14-T2-SPEC-01",
       "priority": "P2",
-      "file": "packages/xuanpu-finance/tests/f14_process_helpers.py",
+      "file": "tests/finance/f14_process_helpers.py",
       "line": 117,
       "title": "恢复暂存目录断言检查了错误父目录",
       "detail": "四组restore拒绝检查directory/maintenance下的.finance-restore-*，而产品mkdtemp的dir为options.object_root.parent，位于本例tmp_path根；temporary_stage_absent=true因此没有实际检查目标所在父目录。",

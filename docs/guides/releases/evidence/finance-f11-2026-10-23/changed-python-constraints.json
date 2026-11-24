@@ -8,139 +8,139 @@
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/__main__.py",
+      "file": "finance/__main__.py",
       "lines": 68,
       "max_function_lines": 35,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/api.py",
+      "file": "finance/api.py",
       "lines": 223,
       "max_function_lines": 56,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/config.py",
+      "file": "finance/config.py",
       "lines": 232,
       "max_function_lines": 43,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/errors.py",
+      "file": "finance/errors.py",
       "lines": 23,
       "max_function_lines": 6,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+      "file": "finance/maintenance.py",
       "lines": 157,
       "max_function_lines": 36,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py",
+      "file": "finance/maintenance_cli.py",
       "lines": 54,
       "max_function_lines": 38,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_verify.py",
+      "file": "finance/maintenance_verify.py",
       "lines": 92,
       "max_function_lines": 20,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/readiness/credentials.py",
+      "file": "finance/readiness/credentials.py",
       "lines": 135,
       "max_function_lines": 23,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/readiness/offline.py",
+      "file": "finance/readiness/offline.py",
       "lines": 102,
       "max_function_lines": 32,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/runtime.py",
+      "file": "finance/runtime.py",
       "lines": 230,
       "max_function_lines": 65,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/startup.py",
+      "file": "finance/startup.py",
       "lines": 42,
       "max_function_lines": 19,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/tests/f11_process_helpers.py",
+      "file": "tests/finance/f11_process_helpers.py",
       "lines": 109,
       "max_function_lines": 27,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/tests/f11_startup_helpers.py",
+      "file": "tests/finance/f11_startup_helpers.py",
       "lines": 95,
       "max_function_lines": 11,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/tests/f11_verify_helpers.py",
+      "file": "tests/finance/f11_verify_helpers.py",
       "lines": 66,
       "max_function_lines": 9,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f11_process.py",
+      "file": "tests/finance/test_f11_process.py",
       "lines": 134,
       "max_function_lines": 74,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f11_startup.py",
+      "file": "tests/finance/test_f11_startup.py",
       "lines": 280,
       "max_function_lines": 30,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f11_verify.py",
+      "file": "tests/finance/test_f11_verify.py",
       "lines": 233,
       "max_function_lines": 26,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f11_verify_cli.py",
+      "file": "tests/finance/test_f11_verify_cli.py",
       "lines": 108,
       "max_function_lines": 16,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f7_api.py",
+      "file": "tests/finance/test_f7_api.py",
       "lines": 71,
       "max_function_lines": 35,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f7_contract.py",
+      "file": "tests/finance/test_f7_contract.py",
       "lines": 52,
       "max_function_lines": 22,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f8_api.py",
+      "file": "tests/finance/test_f8_api.py",
       "lines": 57,
       "max_function_lines": 37,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f8_contract.py",
+      "file": "tests/finance/test_f8_contract.py",
       "lines": 40,
       "max_function_lines": 15,
       "issues": []
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_package.py",
+      "file": "tests/finance/test_package.py",
       "lines": 315,
       "max_function_lines": 35,
       "issues": []

@@ -39,7 +39,7 @@
 
 同源首次全量曾出现1项F3补件构造失败，发生在被测worker守卫之前；[原始失败](evidence/finance-f15-execution-2026-10-29/full-first-f3-failure/report.json)不覆盖。该模块22项独立运行和第二次全量均通过，未修改F3代码、fixture或断言。根因仍未定位，不推断为环境时钟问题，也不将复测通过称为该问题已修复，见[调查记录](evidence/finance-f15-execution-2026-10-29/f3-failure-investigation.json)。
 
-`uv run ruff check --select F,S108,I,TC packages scripts`及模型验收相关C901通过；`uv run mypy packages/*/src`为311 source files无问题；`uv lock --check --offline`通过。21份改动Python文件的中文文档、future annotations、文件/函数行数符合约束，742份冻结源码无漂移，见[静态与源码核对](evidence/finance-f15-execution-2026-10-29/static-and-source-audit.json)。最后文档检查使用`uv run pytest packages/xuanpu-cli/tests/test_examples_and_docs.py -q`，225 passed，输出单独保留为`docs-final.log/xml`；这些工程测试均不调用真实模型。
+`uv run ruff check --select F,S108,I,TC packages scripts`及模型验收相关C901通过；`uv run mypy packages/*/src`为311 source files无问题；`uv lock --check --offline`通过。21份改动Python文件的中文文档、future annotations、文件/函数行数符合约束，742份冻结源码无漂移，见[静态与源码核对](evidence/finance-f15-execution-2026-10-29/static-and-source-audit.json)。最后文档检查使用`uv run pytest tests/cli/test_examples_and_docs.py -q`，225 passed，输出单独保留为`docs-final.log/xml`；这些工程测试均不调用真实模型。
 
 已重建并逐字节核对财务wheel、sdist和业务ZIP三份[制品](evidence/finance-f15-execution-2026-10-29/artifacts.json)，持久保存在仓库外`finance-execution-artifacts-20261029`目录；本轮没有新构建镜像或部署。实际网关、三份临时DSN、测试令牌和AES密钥的[秘密扫描](evidence/finance-f15-execution-2026-10-29/secret-scan.json)无命中。只清理本轮标签/ID及卷均匹配的测试PG、三份DSN和两份状态目录；清理前无遗留客户端或咨询锁，模型配置未改、原xuanpu检出干净，见[清理报告](evidence/finance-f15-execution-2026-10-29/cleanup.json)。证据、累计账本和三份持久制品保留。
 

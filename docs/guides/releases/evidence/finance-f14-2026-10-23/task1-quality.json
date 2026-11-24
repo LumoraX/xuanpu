@@ -6,7 +6,7 @@
   "reviewed_at_utc": "2026-10-23T08:29:45.916481+00:00",
   "scope": "只审Task1维护凭据安全捕获、CLI有限错误、测试真实性和工程约束；未改产品或测试，未提交。",
   "test_run": {
-    "command": "uv run pytest -q packages/xuanpu-finance/tests/test_f14_credentials.py --junitxml=docs/guides/releases/evidence/finance-f14-2026-10-23/task1-quality.xml",
+    "command": "uv run pytest -q tests/finance/test_f14_credentials.py --junitxml=docs/guides/releases/evidence/finance-f14-2026-10-23/task1-quality.xml",
     "exit_code": 0,
     "counts": {
       "tests": 67,
@@ -20,13 +20,13 @@
   },
   "static_runs": [
     {
-      "command": "uv run ruff check --select F,S108,I,TC,C901 packages/xuanpu-finance/src/xuanpu_finance/maintenance.py packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py packages/xuanpu-finance/tests/test_f14_credentials.py packages/xuanpu-finance/tests/f14_credentials_helpers.py",
+      "command": "uv run ruff check --select F,S108,I,TC,C901 finance/maintenance.py finance/maintenance_cli.py tests/finance/test_f14_credentials.py tests/finance/f14_credentials_helpers.py",
       "exit_code": 0,
       "summary": "All checks passed!",
       "complexity_limit": 10
     },
     {
-      "command": "uv run mypy packages/xuanpu-finance/src/xuanpu_finance/maintenance.py packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py",
+      "command": "uv run mypy finance/maintenance.py finance/maintenance_cli.py",
       "exit_code": 0,
       "summary": "Success: no issues found in 2 source files"
     }
@@ -85,25 +85,25 @@
   ],
   "findings": [],
   "structure": {
-    "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py": {
+    "finance/maintenance.py": {
       "lines": 171,
       "max_function_lines": 36,
       "future_annotations": true,
       "chinese_docstrings": true
     },
-    "packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py": {
+    "finance/maintenance_cli.py": {
       "lines": 53,
       "max_function_lines": 37,
       "future_annotations": true,
       "chinese_docstrings": true
     },
-    "packages/xuanpu-finance/tests/test_f14_credentials.py": {
+    "tests/finance/test_f14_credentials.py": {
       "lines": 319,
       "max_function_lines": 56,
       "future_annotations": true,
       "chinese_docstrings": true
     },
-    "packages/xuanpu-finance/tests/f14_credentials_helpers.py": {
+    "tests/finance/f14_credentials_helpers.py": {
       "lines": 128,
       "max_function_lines": 24,
       "future_annotations": true,
@@ -127,42 +127,42 @@
       "bytes": 8795
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+      "file": "finance/maintenance.py",
       "sha256": "be3e4a95d8d8d150e83a3fb9e8e3ffe232dd182f9019741f1f12902b1bcc2746",
       "bytes": 8740
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py",
+      "file": "finance/maintenance_cli.py",
       "sha256": "f298f26bc57455862c204a4b153218b3e53d3101eeb32a7748490362815b1224",
       "bytes": 2839
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f14_credentials.py",
+      "file": "tests/finance/test_f14_credentials.py",
       "sha256": "bc0610bfa001bc7b610d0b6a0bf5cbb68ab5a6327a0ccf157acb3e16ead74b5e",
       "bytes": 14163
     },
     {
-      "file": "packages/xuanpu-finance/tests/f14_credentials_helpers.py",
+      "file": "tests/finance/f14_credentials_helpers.py",
       "sha256": "bf62961edea129933c464327304e6a2feee62f982861a5b89695142f8da8ec4a",
       "bytes": 4095
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f4_maintenance.py",
+      "file": "tests/finance/test_f4_maintenance.py",
       "sha256": "318194501332c41304cf62920d188c7da68c3d17e985ead24357de1ef3d4773f",
       "bytes": 15791
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/readiness/credentials.py",
+      "file": "finance/readiness/credentials.py",
       "sha256": "2a907d373190da02c648b9f85e2a5db018110c7dd5b80b1c39fd2fb1515a1890",
       "bytes": 5457
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py",
+      "file": "finance/maintenance_types.py",
       "sha256": "2b72ae5c2e7cc2f170318945b554e84e308ddad782dcace3331c3083202b7434",
       "bytes": 4125
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_verify.py",
+      "file": "finance/maintenance_verify.py",
       "sha256": "0fe7b7a5246ba4f5a237f428c598afcc35f027b0aa24b9c8681d6e2a15c0c6a3",
       "bytes": 4498
     }
@@ -184,42 +184,42 @@
       "bytes": 8795
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+      "file": "finance/maintenance.py",
       "sha256": "be3e4a95d8d8d150e83a3fb9e8e3ffe232dd182f9019741f1f12902b1bcc2746",
       "bytes": 8740
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py",
+      "file": "finance/maintenance_cli.py",
       "sha256": "f298f26bc57455862c204a4b153218b3e53d3101eeb32a7748490362815b1224",
       "bytes": 2839
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/readiness/credentials.py",
+      "file": "finance/readiness/credentials.py",
       "sha256": "2a907d373190da02c648b9f85e2a5db018110c7dd5b80b1c39fd2fb1515a1890",
       "bytes": 5457
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py",
+      "file": "finance/maintenance_types.py",
       "sha256": "2b72ae5c2e7cc2f170318945b554e84e308ddad782dcace3331c3083202b7434",
       "bytes": 4125
     },
     {
-      "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_verify.py",
+      "file": "finance/maintenance_verify.py",
       "sha256": "0fe7b7a5246ba4f5a237f428c598afcc35f027b0aa24b9c8681d6e2a15c0c6a3",
       "bytes": 4498
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f14_credentials.py",
+      "file": "tests/finance/test_f14_credentials.py",
       "sha256": "bc0610bfa001bc7b610d0b6a0bf5cbb68ab5a6327a0ccf157acb3e16ead74b5e",
       "bytes": 14163
     },
     {
-      "file": "packages/xuanpu-finance/tests/f14_credentials_helpers.py",
+      "file": "tests/finance/f14_credentials_helpers.py",
       "sha256": "bf62961edea129933c464327304e6a2feee62f982861a5b89695142f8da8ec4a",
       "bytes": 4095
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f4_maintenance.py",
+      "file": "tests/finance/test_f4_maintenance.py",
       "sha256": "318194501332c41304cf62920d188c7da68c3d17e985ead24357de1ef3d4773f",
       "bytes": 15791
     },
@@ -396,9 +396,9 @@
   ],
   "historical_results_provenance": "逐项重算14份历史日志/XML哈希、字节、JUnit计数；历史56红/67绿/105回归未复跑，不作为本次独立PG执行声明。",
   "unchanged_against_baseline": [
-    "packages/xuanpu-finance/src/xuanpu_finance/readiness/credentials.py",
-    "packages/xuanpu-finance/src/xuanpu_finance/maintenance_types.py",
-    "packages/xuanpu-finance/src/xuanpu_finance/maintenance_verify.py"
+    "finance/readiness/credentials.py",
+    "finance/maintenance_types.py",
+    "finance/maintenance_verify.py"
   ],
   "postgres": {
     "used_by_this_review": false,

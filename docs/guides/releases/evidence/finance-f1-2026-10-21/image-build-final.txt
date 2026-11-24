@@ -30,15 +30,15 @@
 #9 [5/7] COPY packages/ /build/packages/
 #9 DONE 0.0s
 
-#10 [6/7] RUN pip install --no-cache-dir --no-deps /build/packages/xuanpu-spec '/build/packages/xuanpu-finance[s3]'     && pip check && rm -rf /build
-#10 0.729 Processing /build/packages/xuanpu-spec
+#10 [6/7] RUN pip install --no-cache-dir --no-deps /build/spec '/build/finance[s3]'     && pip check && rm -rf /build
+#10 0.729 Processing /build/spec
 #10 0.730   Installing build dependencies: started
 #10 12.05   Installing build dependencies: finished with status 'done'
 #10 12.05   Getting requirements to build wheel: started
 #10 12.18   Getting requirements to build wheel: finished with status 'done'
 #10 12.18   Preparing metadata (pyproject.toml): started
 #10 12.38   Preparing metadata (pyproject.toml): finished with status 'done'
-#10 12.38 Processing /build/packages/xuanpu-finance
+#10 12.38 Processing /build/finance
 #10 12.38   Installing build dependencies: started
 #10 15.39   Installing build dependencies: finished with status 'done'
 #10 15.39   Getting requirements to build wheel: started

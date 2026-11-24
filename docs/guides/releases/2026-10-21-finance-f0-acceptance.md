@@ -50,7 +50,7 @@ F0 保全原件、导入判重、追溯字段、持久进度与补件；报销�
 
 最终镜像：`sha256:31e797c3662d379db41ae69c5f5007e0c04d0503c41730995fc9af41132eec29`（arm64）。最终Compose重新创建API后实测同一镜像ID、UID/GID `10001:10001`、内存 `536870912` 字节、pids_limit `64`，健康结果仍ok/read_only。独立烟测容器、卷、网络与临时密钥已清理，镜像保留。没有部署或修改生产。
 
-修复后的财务专项：`FINANCE_TEST_DSN=<独立测试库> uv run pytest packages/xuanpu-finance/tests -q -x --tb=short` → **96 passed in 18.25s**。
+修复后的财务专项：`FINANCE_TEST_DSN=<独立测试库> uv run pytest tests/finance -q -x --tb=short` → **96 passed in 18.25s**。
 第一轮整仓：**3 failed, 1967 passed, 3 skipped in 211.37s**，失败仅为上述三个总手册覆盖项；修正文档后专项 **131 passed in 0.39s**，并重新运行整仓门禁。
 
 
@@ -63,7 +63,7 @@ F0 保全原件、导入判重、追溯字段、持久进度与补件；报销�
 | `uv run mypy packages/*/src` | **Success: no issues found in 192 source files** |
 | `uv lock --check` | **Resolved 106 packages**，退出0 |
 | `git diff --check` | 退出0 |
-| `uv run ruff check --select C901 packages/xuanpu-finance/src` | **All checks passed!** |
+| `uv run ruff check --select C901 finance/src` | **All checks passed!** |
 
 新增财务源码/测试无超过800行文件或超过80行函数。跳过的三项分别为既有reminders真实PG行锁用例、workspace直接数据库约束及数据库身份行锁用例；不是本次财务测试跳过。最终独立复审当前范围无未关闭P1/P2。初轮/最终测试输出保存在[证据目录](evidence/finance-f0-2026-10-21/)。
 

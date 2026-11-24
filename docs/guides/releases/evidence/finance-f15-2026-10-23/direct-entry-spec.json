@@ -21,7 +21,7 @@
   },
   "checks": [
     {
-      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-spec-tests-final.xml",
+      "command": "uv run pytest tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-spec-tests-final.xml",
       "returncode": 0,
       "passed": 126,
       "failed": 0,
@@ -33,7 +33,7 @@
       "xml_sha256": "5ea2c9e9d13510be7b384aafb913e155587297370f3525e5b40de523c948455a"
     },
     {
-      "command": "uv run pytest packages/xuanpu-server/tests/test_call_context.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-spec-agent-context.xml",
+      "command": "uv run pytest tests/server/test_call_context.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-spec-agent-context.xml",
       "returncode": 0,
       "passed": 10,
       "failed": 0,
@@ -45,7 +45,7 @@
       "xml_sha256": "bf7dfb3fd5c796a211eeacda272e33311616c4f137cc3b0bb4b729f06a1844e5"
     },
     {
-      "command": "uv run pytest packages/xuanpu-server/tests/identity/test_manual_connectors.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-spec-human-context.xml",
+      "command": "uv run pytest tests/server/identity/test_manual_connectors.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-spec-human-context.xml",
       "returncode": 0,
       "passed": 19,
       "failed": 0,
@@ -57,7 +57,7 @@
       "xml_sha256": "cf46ae755227975eea76c0baceb8e1111d355a2e9bddc073d2f7825c842f642b"
     },
     {
-      "command": "uv run pytest packages/xuanpu-finance/tests/test_auth.py packages/xuanpu-finance/tests/test_f1_auth.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-spec-finance-auth.xml",
+      "command": "uv run pytest tests/finance/test_auth.py tests/finance/test_f1_auth.py -q --junitxml=docs/guides/releases/evidence/finance-f15-2026-10-23/direct-entry-spec-finance-auth.xml",
       "returncode": 0,
       "passed": 18,
       "failed": 0,
@@ -71,7 +71,7 @@
   ],
   "unique_passed_cases": 173,
   "lint": {
-    "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+    "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 tests/finance/test_f15_skill_contract.py",
     "returncode": 0,
     "log": "direct-entry-spec-ruff-final.log",
     "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
@@ -91,12 +91,12 @@
   "source_sha256": {
     "examples/finance/skills/finance-assistant/SKILL.md": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "c1bf092059c1261b5e2821451172b3f1966fea9fdd42cc634eb64c1fce1a19bb"
+    "tests/finance/test_f15_skill_contract.py": "c1bf092059c1261b5e2821451172b3f1966fea9fdd42cc634eb64c1fce1a19bb"
   },
   "only_changes_against_phase1_snapshot": [
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
     "examples/finance/skills/finance-assistant/SKILL.md",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+    "tests/finance/test_f15_skill_contract.py"
   ],
   "phase1_snapshot_sha256": "6d0aa59421d7a4bd428fc731f18985d4564a03769ea61dd0ebe685de6a348755",
   "implementation_report_sha256": "fcf0da43aa49607e076e9f6f2bfe0c5f1583020208e61e7be6b957cc5c730ec8",
@@ -164,7 +164,7 @@
       "source_sha256": {
         "examples/finance/skills/finance-assistant/SKILL.md": "685bab88a4a5dbedd3c050e07566ebc4b75043ca80fed52dc82f4811ddf75f18",
         "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "685bab88a4a5dbedd3c050e07566ebc4b75043ca80fed52dc82f4811ddf75f18",
-        "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "bfb69954851acd0590baf8fa0d7d9e13be2532ffe2f264fd6f4310e22e8b9ceb"
+        "tests/finance/test_f15_skill_contract.py": "bfb69954851acd0590baf8fa0d7d9e13be2532ffe2f264fd6f4310e22e8b9ceb"
       },
       "limitations": [
         "No PG, model API, private config or private ledger accessed.",

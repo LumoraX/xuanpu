@@ -164,82 +164,82 @@
           "max_function_lines": 17
         },
         {
-          "file": "packages/xuanpu-cli/tests/test_serve.py",
+          "file": "tests/cli/test_serve.py",
           "lines": 223,
           "max_function_lines": 65
         },
         {
-          "file": "packages/xuanpu-finance/src/xuanpu_finance/__main__.py",
+          "file": "finance/__main__.py",
           "lines": 68,
           "max_function_lines": 35
         },
         {
-          "file": "packages/xuanpu-finance/src/xuanpu_finance/api.py",
+          "file": "finance/api.py",
           "lines": 223,
           "max_function_lines": 56
         },
         {
-          "file": "packages/xuanpu-finance/src/xuanpu_finance/invoices/worker.py",
+          "file": "finance/invoices/worker.py",
           "lines": 286,
           "max_function_lines": 51
         },
         {
-          "file": "packages/xuanpu-finance/src/xuanpu_finance/storage/originals.py",
+          "file": "finance/storage/originals.py",
           "lines": 172,
           "max_function_lines": 78
         },
         {
-          "file": "packages/xuanpu-finance/tests/f12_process_helpers.py",
+          "file": "tests/finance/f12_process_helpers.py",
           "lines": 495,
           "max_function_lines": 33
         },
         {
-          "file": "packages/xuanpu-finance/tests/f12_worker_helpers.py",
+          "file": "tests/finance/f12_worker_helpers.py",
           "lines": 146,
           "max_function_lines": 47
         },
         {
-          "file": "packages/xuanpu-finance/tests/test_f12_crash.py",
+          "file": "tests/finance/test_f12_crash.py",
           "lines": 79,
           "max_function_lines": 47
         },
         {
-          "file": "packages/xuanpu-finance/tests/test_f12_hitl.py",
+          "file": "tests/finance/test_f12_hitl.py",
           "lines": 187,
           "max_function_lines": 54
         },
         {
-          "file": "packages/xuanpu-finance/tests/test_f12_worker.py",
+          "file": "tests/finance/test_f12_worker.py",
           "lines": 243,
           "max_function_lines": 65
         },
         {
-          "file": "packages/xuanpu-finance/tests/test_f5_materials.py",
+          "file": "tests/finance/test_f5_materials.py",
           "lines": 130,
           "max_function_lines": 30
         },
         {
-          "file": "packages/xuanpu-finance/tests/test_f7_api.py",
+          "file": "tests/finance/test_f7_api.py",
           "lines": 71,
           "max_function_lines": 35
         },
         {
-          "file": "packages/xuanpu-finance/tests/test_f7_contract.py",
+          "file": "tests/finance/test_f7_contract.py",
           "lines": 52,
           "max_function_lines": 22
         },
         {
-          "file": "packages/xuanpu-finance/tests/test_f8_api.py",
+          "file": "tests/finance/test_f8_api.py",
           "lines": 57,
           "max_function_lines": 37
         },
         {
-          "file": "packages/xuanpu-finance/tests/test_f8_contract.py",
+          "file": "tests/finance/test_f8_contract.py",
           "lines": 40,
           "max_function_lines": 15
         },
         {
-          "file": "packages/xuanpu-finance/tests/test_package.py",
+          "file": "tests/finance/test_package.py",
           "lines": 315,
           "max_function_lines": 35
         },

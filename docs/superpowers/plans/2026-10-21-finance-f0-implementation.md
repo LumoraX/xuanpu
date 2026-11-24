@@ -22,7 +22,7 @@ HITL 补件复用 importInvoices：增加可选 source_exception_id 与 expected
 
 ## 工作包 1 通用可信身份与文件桥
 
-**Files:** Create `packages/xuanpu-spec/src/xuanpu_spec/call_context.py`, `packages/xuanpu-spec/tests/test_call_context.py`, `packages/xuanpu-server/src/xuanpu_server/runtime/call_context.py`, `packages/xuanpu-server/src/xuanpu_server/api/file_bridge.py`, `packages/xuanpu-server/tests/test_call_context.py`, `packages/xuanpu-server/tests/workspace/test_api.py`; Modify `runtime/{connectors,http_api,assembler}.py`, `config.py`, `bootstrap.py`, `api/app.py`, `xuanpu_spec/manifest.py` and package metadata as needed.
+**Files:** Create `spec/call_context.py`, `tests/spec/test_call_context.py`, `server/runtime/call_context.py`, `server/api/file_bridge.py`, `tests/server/test_call_context.py`, `tests/server/workspace/test_api.py`; Modify `runtime/{connectors,http_api,assembler}.py`, `config.py`, `bootstrap.py`, `api/app.py`, `xuanpu_spec/manifest.py` and package metadata as needed.
 
 - [x] 增加请求规范化的失败测试：body 键顺序相同摘要一致；修改 Idempotency-Key、方法、路径、query 或 body 摘要必须变化；拒绝非有限数值。公开 `request_fingerprint(method,path,query,body,idempotency_key,content_type)`，query 为键值对列表，JSON 排序且禁用 NaN。
 
@@ -33,16 +33,16 @@ def test_idempotency_key_is_signed() -> None:
     assert first != second
 ```
 
-- [x] 运行 `uv run pytest packages/xuanpu-spec/tests/test_call_context.py -q` 确认失败；实现纯标准库规范化函数，不向规范包引入平台或财务依赖。
+- [x] 运行 `uv run pytest tests/spec/test_call_context.py -q` 确认失败；实现纯标准库规范化函数，不向规范包引入平台或财务依赖。
 - [x] 用真实 Ed25519 密钥测试平台 signer 输出：iss、aud、kid、sub、tenant_id、session_id、call_id、iat、exp、jti、request_sha256；使用 PyJWT EdDSA，有效期60秒、容差5秒。签名主体来自持久会话对照，不来自模型参数。
 - [x] 连接器显式声明 `contextAudience`，平台配置按目标 origin 绑定允许的 audience 与租户签名密钥名。没有配置时拒绝请求该能力的包，不影响旧连接器；保留头 X-Xuanpu-Context 永远不允许模型或 OpenAPI 覆盖。
 - [x] 在审批通过后的实际 HTTP 出口注入签名，绑定真实请求（含幂等键），凭据不进入模型／日志。测试恶意头、无员工会话、跨租户上下文、同一包不同员工及普通连接器兼容性。
 - [x] 增加通用 `/v1/integration-gateway/identity` 与 `/v1/integration-gateway/files/{id}`：沿用 Caller/API key act-as 与内容权限；文件要求 revision、sha256，下载后再次核对并限量返回，禁止 URL／对象键。财务仅持有获准的平台服务 API key，不持有平台数据库或对象凭据。
-- [x] 运行 `uv run pytest packages/xuanpu-server/tests/test_call_context.py packages/xuanpu-server/tests/workspace/test_api.py packages/xuanpu-server/tests/test_http_api.py packages/xuanpu-server/tests/test_http_connector.py -q`；实际检验停用员工与他人文件拒绝。
+- [x] 运行 `uv run pytest tests/server/test_call_context.py tests/server/workspace/test_api.py tests/server/test_http_api.py tests/server/test_http_connector.py -q`；实际检验停用员工与他人文件拒绝。
 
 ## 工作包 2 独立财务领域、存储与受控解析
 
-**Files:** Create `packages/xuanpu-finance/{pyproject.toml,README.md}`, `src/xuanpu_finance/{__init__,models,errors,objects,operations}.py`, `src/xuanpu_finance/invoices/{__init__,parser,worker}.py`, `src/xuanpu_finance/storage/{__init__,store,imports,queries,worker,originals,common,schema}.py`, `tests/{conftest,test_parser,test_storage,test_worker}.py`。以下短路径均在此新包。
+**Files:** Create `finance/{pyproject.toml,README.md}`, `src/xuanpu_finance/{__init__,models,errors,objects,operations}.py`, `src/xuanpu_finance/invoices/{__init__,parser,worker}.py`, `src/xuanpu_finance/storage/{__init__,store,imports,queries,worker,originals,common,schema}.py`, `tests/{conftest,test_parser,test_storage,test_worker}.py`。以下短路径均在此新包。
 
 - [x] 先用 parser 测试固定预期：合法 synthetic XML 保留原值／路径／行金额；DTD、XXE、超深、超大、未知 namespace 拒绝；多税率按行处理；金额必须有限、合法且关系一致。
 
@@ -58,7 +58,7 @@ def test_external_entities_never_parse() -> None:
 - [x] 对象适配器只接受财务独立根／桶及凭据，异步限量读写，原件加密保存并核对摘要；普通对象保存不冒充 WORM。存储写入和数据库责任索引先行，故障保留可追溯对象并恢复。
 - [x] 实现 `FinanceWorker(store,objects,gateway,synthetic=False)`，gateway 接口为 async active(who)->bool、download(who,file)->(bytes,mime,name)；worker.run_once 持久认领一个批次，每项独立 checkpoint，处理结果明确 partial。已提交项不重放；第二 worker 实例通过独占数据库持有锁拒绝。
 - [x] PDF／OFD／图片创建 awaiting_original 及持久异常；源异常补件只能由有权原提交者或财务角色处理，需版本和新原件，解析成功同事务关联关闭，失败保留待办。模拟重启后重新读出待办并继续补件。
-- [x] 运行 `uv run pytest packages/xuanpu-finance/tests/test_parser.py packages/xuanpu-finance/tests/test_storage.py packages/xuanpu-finance/tests/test_worker.py -q`。对数据库用真实连接，不以 mock SQL 或内存锁代替。
+- [x] 运行 `uv run pytest tests/finance/test_parser.py tests/finance/test_storage.py tests/finance/test_worker.py -q`。对数据库用真实连接，不以 mock SQL 或内存锁代替。
 
 ## 工作包 3 独立服务身份、API 与生命周期
 
@@ -70,7 +70,7 @@ def test_external_entities_never_parse() -> None:
 - [x] POST imports 先持久写 accepted 再返回202，后台任务由服务持有，关闭HTTP不取消；GET操作和补件状态均读库。cancel带版本和幂等键；取消保留已完成项。
 - [x] 配置文件显式注入财务 DSN、财务对象根或 S3、加密密钥文件、公钥、服务凭据、平台网关地址与授权 API key、公司与角色初始化。禁止从业务模块 os.getenv；生产拒绝 synthetic。模块 enabled/draining/read_only/disabled 按许可阻断新写，不删除历史。
 - [x] 启动获得财务数据库独占锁，初始schema迁移幂等，worker持有强引用；停机停止认领并结算／保留在途。读取原件副本不再回平台取原字节；测试平台源文件删除不影响财务副本。
-- [x] 运行 `uv run pytest packages/xuanpu-finance/tests/test_auth.py packages/xuanpu-finance/tests/test_api.py packages/xuanpu-finance/tests/test_lifecycle.py -q`；使用ASGI真实请求和实际PG/对象适配器。
+- [x] 运行 `uv run pytest tests/finance/test_auth.py tests/finance/test_api.py tests/finance/test_lifecycle.py -q`；使用ASGI真实请求和实际PG/对象适配器。
 
 ## 工作包 4 F0 业务包、独立部署与操作说明
 

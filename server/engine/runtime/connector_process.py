@@ -1,0 +1,227 @@
+"""stdio 连接器进程的排障线索，以及内核 MCP 日志的卫生处理。
+
+- ``ObservingExecutor``：每个 stdio 连接器起进程时包一层，记下进程本身与它 stderr 的末尾。
+  内核照常读走 stderr（不读的话进程写满管道会卡死），读过的末尾在这里留一份。启动失败时
+  内核已经把客户端关掉了，拿不到 ``stderr_tail``，退出码与 stderr 只能从这里取。
+- ``install_kernel_mcp_log_guard``：内核 MCP 客户端会把外部输出原样写进日志——stdio 客户端
+  写连接器 stdout 上的非 JSON 行（``mcp: invalid JSON: %r``，字节串、不限长度），远端 MCP 用的
+  HTTP 客户端写解析不了的 SSE 数据（截到 200 字符的字符串）、远端给的请求 id 与内容类型。
+  这些都是外部可控的内容，可能带着注入出去的凭据；而内核的日志记录里不知道是哪个连接器、
+  该用哪些密钥脱敏，按值脱敏做不到。所以给内核 MCP 的几个 logger 挂过滤器：参数里只有
+  None、布尔与数字原样记下；字节串只记长度，字符串只记长度，其他对象只记类型，内容一律
+  不记；附带的异常只记类型，堆栈与异常文本不记。代价是这些日志里看不到工具名、方法名之类，
+  要排障看平台自己按值脱敏后记的那几条。
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from typing import TYPE_CHECKING, Any
+
+import taifeng
+
+from server.engine.runtime.sandbox import KILL_WAIT_SECONDS
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+# 每个连接器进程的 stderr 在这里留多少字节（脱敏之后再截到要记的长度）
+_STDERR_KEEP_BYTES = 8 * 1024
+
+_KERNEL_MCP_LOGGERS = (
+    "taifeng.mcp.stdio_client",
+    "taifeng.mcp.http_client",
+    "taifeng.mcp.server_messages",
+    "taifeng.mcp.bridge",
+    "taifeng.mcp.cancellation",
+    # taifeng 2026.11 起坏帧解析与清理失败分别从这两个模块记日志（内核 ADR 0124、0128）
+    "taifeng.mcp.message_decode",
+    "taifeng.mcp.cleanup",
+)
+
+logger = logging.getLogger(__name__)
+
+
+class _StderrRecorder:
+    """包住进程的 stderr 读取端：读到的内容原样交给读的一方，末尾在这里留一段。"""
+
+    def __init__(self, stream: taifeng.CommandOutput) -> None:
+        """包住 ``stream``。"""
+        self._stream = stream
+        self._kept = bytearray()
+        self._dropped = False
+
+    async def read(self, n: int = -1) -> bytes:
+        """读至多 ``n`` 字节。"""
+        return self._keep(await self._stream.read(n))
+
+    async def readline(self) -> bytes:
+        """读一行。"""
+        return self._keep(await self._stream.readline())
+
+    def _keep(self, chunk: bytes) -> bytes:
+        """留下读到的内容，超出上限就丢掉最早的部分。"""
+        self._kept += chunk
+        overflow = len(self._kept) - _STDERR_KEEP_BYTES
+        if overflow > 0:
+            del self._kept[:overflow]
+            self._dropped = True
+        return chunk
+
+    def text(self) -> str:
+        """留下的内容（按 UTF-8 解码，坏字节替换）。
+
+        丢掉过前面的内容时，第一行是从中间截断的，连同它一起去掉：截断处可能正好切开一个
+        密钥，剩下的半截没法按值脱敏。
+        """
+        text = self._kept.decode("utf-8", errors="replace")
+        if self._dropped:
+            _, _, text = text.partition("\n")
+        return text
+
+
+class ObservedProcess:
+    """连接器进程的代理：stderr 经记录器读出，其余原样转给真正的进程。
+
+    满足内核的 ``StreamingCommandProcess`` 协议。
+    """
+
+    def __init__(self, process: taifeng.StreamingCommandProcess) -> None:
+        """包住 ``process``。"""
+        self._process = process
+        self._stderr = None if process.stderr is None else _StderrRecorder(process.stderr)
+
+    @property
+    def stdin(self) -> taifeng.CommandInput | None:
+        """标准输入的写入端。"""
+        return self._process.stdin
+
+    @property
+    def stdout(self) -> taifeng.CommandOutput | None:
+        """标准输出的读取端。"""
+        return self._process.stdout
+
+    @property
+    def stderr(self) -> taifeng.CommandOutput | None:
+        """标准错误的读取端（经记录器）。"""
+        return self._stderr
+
+    @property
+    def returncode(self) -> int | None:
+        """退出码；未结束为 None。"""
+        return self._process.returncode
+
+    async def communicate(self) -> tuple[bytes, bytes]:
+        """读完 stdout / stderr 并等待退出。"""
+        return await self._process.communicate()
+
+    def kill(self) -> None:
+        """强制终止（连同它派生的进程）。"""
+        self._process.kill()
+
+    async def wait(self) -> int:
+        """等待退出，返回退出码。"""
+        return await self._process.wait()
+
+    def stderr_text(self) -> str:
+        """读过的 stderr 末尾（未脱敏）。"""
+        return "" if self._stderr is None else self._stderr.text()
+
+
+class ObservingExecutor:
+    """一个 stdio 连接器专用的执行器：经真正的执行器起进程，并记下这个进程。
+
+    Attributes:
+        process: 起来的进程；还没起时为 None。
+    """
+
+    def __init__(self, inner: taifeng.CommandExecutor) -> None:
+        """包住 ``inner``。"""
+        self._inner = inner
+        self.process: ObservedProcess | None = None
+
+    async def start(self, spec: taifeng.CommandSpec) -> taifeng.CommandProcess:
+        """起进程。不是流式进程的原样交回，由内核报错并收拾。"""
+        process = await self._inner.start(spec)
+        if not isinstance(process, taifeng.StreamingCommandProcess):
+            return process
+        self.process = ObservedProcess(process)
+        return self.process
+
+    async def kill(self) -> None:
+        """强杀起过的进程并等它退出；没起过进程时什么都不做。"""
+        if self.process is None:
+            return
+        self.process.kill()
+        try:
+            await asyncio.wait_for(self.process.wait(), timeout=KILL_WAIT_SECONDS)
+        except TimeoutError:
+            logger.error("连接器进程强杀后 %s 秒仍未退出", KILL_WAIT_SECONDS)
+
+
+class _Clipped:
+    """日志参数的替身：``%s`` 与 ``%r`` 都输出给定的文本。"""
+
+    def __init__(self, text: str) -> None:
+        """记下要输出的文本。"""
+        self._text = text
+
+    def __str__(self) -> str:
+        """``%s`` 输出的文本。"""
+        return self._text
+
+    def __repr__(self) -> str:
+        """``%r`` 输出的文本（与 ``%s`` 相同，不加引号）。"""
+        return self._text
+
+
+def _scrub(value: Any) -> Any:
+    """一个日志参数：None、布尔与数字原样；其余只记长度或类型，内容不记。"""
+    if value is None or isinstance(value, bool | int | float):
+        return value
+    if isinstance(value, bytes | bytearray):
+        return _Clipped(f"<连接器输出 {len(value)} 字节，内容不记>")
+    if isinstance(value, str):
+        return _Clipped(f"<文本 {len(value)} 字符，内容不记>")
+    return _Clipped(f"<{type(value).__name__}，内容不记>")
+
+
+class KernelMcpLogGuard(logging.Filter):
+    """内核 MCP 日志的过滤器：见模块说明。只改写参数与附带的异常，记录照常放行。"""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """改写这条记录的参数；附带的异常只留类型。"""
+        args = record.args
+        if isinstance(args, tuple):
+            record.args = tuple(_scrub(item) for item in args)
+        elif args:
+            mapping: Mapping[str, Any] = args
+            record.args = {key: _scrub(item) for key, item in mapping.items()}
+        if record.exc_info:
+            # 堆栈里的异常文本同样是外部可控的内容：只留异常类型
+            kind = record.exc_info[0]
+            record.msg = f"{record.msg}（附带异常 {getattr(kind, '__name__', kind)}，堆栈不记）"
+            record.exc_info = None
+            record.exc_text = None
+        return True
+
+
+def install_kernel_mcp_log_guard() -> None:
+    """给内核 MCP 的几个 logger 挂上过滤器。重复调用只挂一次。
+
+    logger 上的过滤器只作用于直接发到这个 logger 的记录，所以逐个挂在内核实际打日志的
+    模块 logger 上；内核以后新增的 MCP 模块要在 ``_KERNEL_MCP_LOGGERS`` 里补上。
+    """
+    for name in _KERNEL_MCP_LOGGERS:
+        target = logging.getLogger(name)
+        if not any(isinstance(item, KernelMcpLogGuard) for item in target.filters):
+            target.addFilter(KernelMcpLogGuard())
+
+
+__all__ = [
+    "KernelMcpLogGuard",
+    "ObservedProcess",
+    "ObservingExecutor",
+    "install_kernel_mcp_log_guard",
+]

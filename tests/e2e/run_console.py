@@ -18,9 +18,10 @@ import time
 from pathlib import Path
 
 import httpx
-from xuanpu_server.secrets import generate_master_key
-from xuanpu_server.tenancy import generate_root_key
-from xuanpu_spec import pack_package
+
+from server.core.secrets import generate_master_key
+from server.core.tenancy import generate_root_key
+from spec import pack_package
 
 ROOT = Path(__file__).resolve().parents[2]
 

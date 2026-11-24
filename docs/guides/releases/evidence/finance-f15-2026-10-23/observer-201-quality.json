@@ -5,7 +5,7 @@
   "scope": [
     "scripts/acceptance/finance_model_checks.py",
     "scripts/acceptance/finance_model_journey.py",
-    "packages/xuanpu-finance/tests/test_f15_model_harness.py"
+    "tests/finance/test_f15_model_harness.py"
   ],
   "review_type": "独立观察器窄修质量复审与有限确定性回归",
   "spec_prerequisite": "observer-201-spec.json当前Approved；历史O201-S01已关闭，本审查另行实读实现/测试与实际归档。",
@@ -45,7 +45,7 @@
       "assessment": "require_tools由本label-session.json实际actor角色映射user_id，并读取本turn session绑定phase/reader/session；六处业务场景调用及自然用户语句未变，不引入手工补创建、补预检或权限升级。"
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f15_model_harness.py",
+      "file": "tests/finance/test_f15_model_harness.py",
       "lines": [
         169,
         361
@@ -58,13 +58,13 @@
   ],
   "verification": [
     {
-      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q",
+      "command": "uv run pytest tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py -q",
       "result": "109 passed in 2.27s",
       "exit_code": 0,
       "boundary": "包含既有null-query loopback HTTP测试，实际执行；其余为离线确定性回归。未访问外部API、PG、真实模型或私有配置。"
     },
     {
-      "command": "uv run ruff check --select F,S108,I,TC scripts/acceptance/finance_model_checks.py scripts/acceptance/finance_model_journey.py packages/xuanpu-finance/tests/test_f15_model_harness.py",
+      "command": "uv run ruff check --select F,S108,I,TC scripts/acceptance/finance_model_checks.py scripts/acceptance/finance_model_journey.py tests/finance/test_f15_model_harness.py",
       "result": "All checks passed!",
       "exit_code": 0
     },
@@ -76,7 +76,7 @@
       "check": "前冻结740项重新SHA256比较",
       "reference_sha256": "47b3e2ad34fceade57876d8120a79d60cd9923cb497df26c1f1f8b7ea27d12ec",
       "changed": [
-        "packages/xuanpu-finance/tests/test_f15_model_harness.py",
+        "tests/finance/test_f15_model_harness.py",
         "scripts/acceptance/finance_model_checks.py",
         "scripts/acceptance/finance_model_journey.py"
       ],
@@ -119,7 +119,7 @@
   "source_sha256": {
     "scripts/acceptance/finance_model_checks.py": "1983f9b4750a7fa28275d88a6e2bf8e94c8f051c87c4063a4743cfbee4784da1",
     "scripts/acceptance/finance_model_journey.py": "6521428ce6e3d589b608a97edea86085c743745cb18ead43a4e0ec98c0eed7c0",
-    "packages/xuanpu-finance/tests/test_f15_model_harness.py": "8947016ec2416ad942937096e483b09f3ea63b53e02a9e5ffbac7aae12f39fa4"
+    "tests/finance/test_f15_model_harness.py": "8947016ec2416ad942937096e483b09f3ea63b53e02a9e5ffbac7aae12f39fa4"
   },
   "limitations": [
     "只批准这三文件观察层窄修，不是最终全局或业务验收批准。",

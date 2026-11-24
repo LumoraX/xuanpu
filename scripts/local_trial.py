@@ -23,7 +23,7 @@ from local_trial_support import (
     validate_input,
     write_private,
 )
-from xuanpu_spec import pack_package
+from spec import pack_package
 
 ROOT = Path(__file__).resolve().parents[1]
 LABEL = 'cn.xuanpu.local-owner'

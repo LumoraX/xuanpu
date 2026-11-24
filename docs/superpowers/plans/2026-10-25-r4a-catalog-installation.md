@@ -62,7 +62,7 @@ async def test_registration_does_not_grant_execution(r4_http, r4_ids):
     assert view.json()['capabilities'] == []
 ```
 
-Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_delivery_contract.py -q`。预期目标反例转绿；不允许通过删除403或自动创建分配实现。
+Run：`uv run pytest tests/server/r4_contract/test_delivery_contract.py -q`。预期目标反例转绿；不允许通过删除403或自动创建分配实现。
 
 ## A1：不可变登记、安装预检与事务
 
@@ -73,8 +73,8 @@ Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_delivery_cont
 - [x] 同名secret覆盖也必须失效旧安装依据：记录SecretRecord密文SHA作为内部变化指纹，不对秘密明文做哈希或公开密文指纹。新增vault `get_bound(tenant_id,name,expected_record_digest)`在一次读取后比对并解密同一记录，使用既有AESGCM实现；不能“先核版本再另读新值”。覆盖/删除/重新加密后旧运行时拒绝并重新预检，回收持有旧凭据的缓存。
 - [x] 事务只做版本/epoch/幂等/审计提交；包解压、对象读和远端清单采集在事务外，提交前重查所有前提版本。预检超时或并发改变配置/工具清单时409重新预检。
 - [x] memory在异常时完整回滚；PG记录带租户外键，测试跨租户preview/installation都404。核对新表编号未被并行分支占用后才新增SQL。
-- [x] 写失败/重放/权限差异测试，运行`uv run pytest packages/xuanpu-server/tests/r4_contract/test_installation.py packages/xuanpu-server/tests/r4_contract/test_install_races.py packages/xuanpu-server/tests/r4_contract/test_tool_inventory.py -q`。期望一个安装事实、一次审计，没有秘密回显。
-- [x] 另运行`uv run pytest packages/xuanpu-server/tests/r4_contract/test_credential_revision.py -q`：同引用换值、同秒两次写入、删除重建、出站取值窗口轮换均不能沿用旧安装；无凭据的办公样板不依赖此secret分支。
+- [x] 写失败/重放/权限差异测试，运行`uv run pytest tests/server/r4_contract/test_installation.py tests/server/r4_contract/test_install_races.py tests/server/r4_contract/test_tool_inventory.py -q`。期望一个安装事实、一次审计，没有秘密回显。
+- [x] 另运行`uv run pytest tests/server/r4_contract/test_credential_revision.py -q`：同引用换值、同秒两次写入、删除重建、出站取值窗口轮换均不能沿用旧安装；无凭据的办公样板不依赖此secret分支。
 - [x] 安装预检与修订回执随A0–A2完整实现检查点提交。
 
 ## A2：原生管理与兼容边界
@@ -85,7 +85,7 @@ Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_delivery_cont
 - [x] 安装确认展示出网、工具、连接、数据范围和确认等级差异；秘密只显示配置状态。导出delivery不含tenant/employee、Secret、源材料或机器路径。
 - [x] 断连重试沿用request_id，身份切换清空缓存，409重新核对。使用真实API响应做浏览器测试，不让前端默认把缺失计数或状态补成成功。
 - [x] 拟新增命令`xuanpu capabilities list/register/install-preview/install`，SDK映射相同API；命令输出、文档仅在实现并实际运行后成为使用手册。
-- [x] 运行`uv run pytest packages/xuanpu-server/tests/r4_contract/test_catalog_views.py -q`及总门禁；刷新内容指纹脚本，原生桌面和390px复核入口与Tab焦点。
+- [x] 运行`uv run pytest tests/server/r4_contract/test_catalog_views.py -q`及总门禁；刷新内容指纹脚本，原生桌面和390px复核入口与Tab焦点。
 - [x] 实施时新增`docs/architecture/capability-delivery.md`与`docs/guides/capability-delivery.md`，原生入口与使用手册随A0–A2完整实现检查点提交。
 
 ## 本段交付边界

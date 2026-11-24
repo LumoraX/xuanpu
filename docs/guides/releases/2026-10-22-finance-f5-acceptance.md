@@ -39,7 +39,7 @@ F3资金归档包含原件、父子单、原授权与撤销决定、修订历史
 FINANCE_TEST_DSN=<本轮专属finance_test地址> uv run pytest -q -ra
 uv run ruff check --select F,S108,I,TC packages
 uv run mypy packages/*/src
-uv run ruff check --select C901 --config 'lint.mccabe.max-complexity=10' packages/xuanpu-finance/src
+uv run ruff check --select C901 --config 'lint.mccabe.max-complexity=10' finance/src
 uv run xuanpu validate examples/finance
 uv lock --check
 ```

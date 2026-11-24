@@ -20,7 +20,7 @@
   "verification": [
     {
       "kind": "pure_offline_selected_tests",
-      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
+      "command": "uv run pytest tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
       "result": "24 passed, 1 deselected in 0.63s",
       "boundary": "明确排除loopback HTTP测试；未运行的1项不是通过。未调用模型、PG或私有配置。"
     },
@@ -31,13 +31,13 @@
     },
     {
       "kind": "pure_offline_followup_tests",
-      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
+      "command": "uv run pytest tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
       "result": "33 passed, 1 deselected in 1.34s",
       "boundary": "排除loopback HTTP；未PG/真实模型/私有配置。"
     },
     {
       "kind": "selected_lint",
-      "command": "uv run ruff check --select F,S108,I,TC scripts/acceptance/finance_model.py scripts/acceptance/finance_model_runtime.py scripts/acceptance/finance_model_journey.py scripts/acceptance/finance_model_checks.py packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "command": "uv run ruff check --select F,S108,I,TC scripts/acceptance/finance_model.py scripts/acceptance/finance_model_runtime.py scripts/acceptance/finance_model_journey.py scripts/acceptance/finance_model_checks.py tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py",
       "result": "All checks passed!"
     },
     {
@@ -52,13 +52,13 @@
     },
     {
       "kind": "pure_offline_final_spec_recheck",
-      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
+      "command": "uv run pytest tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
       "result": "46 passed, 1 deselected in 0.68s",
       "boundary": "明确排除loopback HTTP，未运行项不是通过；未PG/模型/私有配置。"
     },
     {
       "kind": "selected_lint_final_spec_recheck",
-      "command": "uv run ruff check --select F,S108,I,TC scripts/acceptance/finance_model.py scripts/acceptance/finance_model_runtime.py scripts/acceptance/finance_model_journey.py scripts/acceptance/finance_model_checks.py packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "command": "uv run ruff check --select F,S108,I,TC scripts/acceptance/finance_model.py scripts/acceptance/finance_model_runtime.py scripts/acceptance/finance_model_journey.py scripts/acceptance/finance_model_checks.py tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py",
       "result": "All checks passed!"
     }
   ],
@@ -87,7 +87,7 @@
       "verification": [
         {
           "kind": "pure_offline_selected_tests",
-          "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
+          "command": "uv run pytest tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
           "result": "24 passed, 1 deselected in 0.63s",
           "boundary": "明确排除loopback HTTP测试；未运行的1项不是通过。未调用模型、PG或私有配置。"
         },
@@ -98,13 +98,13 @@
         },
         {
           "kind": "pure_offline_followup_tests",
-          "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
+          "command": "uv run pytest tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
           "result": "33 passed, 1 deselected in 1.34s",
           "boundary": "排除loopback HTTP；未PG/真实模型/私有配置。"
         },
         {
           "kind": "selected_lint",
-          "command": "uv run ruff check --select F,S108,I,TC scripts/acceptance/finance_model.py scripts/acceptance/finance_model_runtime.py scripts/acceptance/finance_model_journey.py scripts/acceptance/finance_model_checks.py packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+          "command": "uv run ruff check --select F,S108,I,TC scripts/acceptance/finance_model.py scripts/acceptance/finance_model_runtime.py scripts/acceptance/finance_model_journey.py scripts/acceptance/finance_model_checks.py tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py",
           "result": "All checks passed!"
         }
       ]
@@ -199,7 +199,7 @@
     "scripts/acceptance/finance_model_runtime.py": "f0a6e8172bae8fe6e5432a581dc3d9cf5f95db2a2e9f08078975b5203ce52a92",
     "scripts/acceptance/finance_model_journey.py": "3e8201dc7985b2a4dcbf403aeedf1eb96e4f922565f21d7ce6dc276ba11139ff",
     "scripts/acceptance/finance_model_checks.py": "8de3c6a30363a06ca6c9e8adf889b94b5f127036c8f7f7cf2d976853d93d43dd",
-    "packages/xuanpu-finance/tests/test_f15_model_harness.py": "0f9fa435d1b1601ad5f6228e97eda72e14cafbd2a9f00a9363f51b025518f669",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "d84c5ec0975a661b24510bcfe621a26c38f78077cde370ddf28fca1b377ee756"
+    "tests/finance/test_f15_model_harness.py": "0f9fa435d1b1601ad5f6228e97eda72e14cafbd2a9f00a9363f51b025518f669",
+    "tests/finance/test_f15_skill_contract.py": "d84c5ec0975a661b24510bcfe621a26c38f78077cde370ddf28fca1b377ee756"
   }
 }

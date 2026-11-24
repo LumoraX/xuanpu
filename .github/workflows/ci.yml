@@ -35,21 +35,21 @@ jobs:
         # 改分片时只改这里；各片耗时占比见 README「CI 门禁」。
         shard:
           - name: r3_contract
-            args: packages/xuanpu-server/tests/r3_contract
+            args: tests/server/r3_contract
           - name: r4_contract+work_tasks+butler
             args: >-
-              packages/xuanpu-server/tests/r4_contract
-              packages/xuanpu-server/tests/work_tasks
-              packages/xuanpu-server/tests/butler
+              tests/server/r4_contract
+              tests/server/work_tasks
+              tests/server/butler
           - name: server 其余
             args: >-
-              packages/xuanpu-server
-              --ignore=packages/xuanpu-server/tests/r3_contract
-              --ignore=packages/xuanpu-server/tests/r4_contract
-              --ignore=packages/xuanpu-server/tests/work_tasks
-              --ignore=packages/xuanpu-server/tests/butler
+              tests/server
+              --ignore=tests/server/r3_contract
+              --ignore=tests/server/r4_contract
+              --ignore=tests/server/work_tasks
+              --ignore=tests/server/butler
           - name: 其他包
-            args: packages --ignore=packages/xuanpu-server
+            args: tests --ignore=tests/server
     # 控制面与状态面的用例对真实数据库执行
     services:
       postgres:
@@ -106,20 +106,20 @@ jobs:
 
       - name: Linux 沙盒预检
         run: >-
-          uv run --frozen --python ${{ matrix.python-version }} --all-packages --all-extras pytest -q
-          packages/xuanpu-server/tests/test_docker_identity_config.py
-          packages/xuanpu-server/tests/test_ci_runtime_roots.py
-          packages/xuanpu-server/tests/test_connector_sandbox.py
-          packages/xuanpu-server/tests/test_sandbox_isolation.py
-          packages/xuanpu-server/tests/identity/test_sdk_identity.py
-          packages/xuanpu-server/tests/work_tasks/test_tools.py
-          packages/xuanpu-server/tests/work_tasks/test_table_summary.py
+          uv run --frozen --python ${{ matrix.python-version }} --all-extras pytest -q
+          tests/server/test_docker_identity_config.py
+          tests/server/test_ci_runtime_roots.py
+          tests/server/test_connector_sandbox.py
+          tests/server/test_sandbox_isolation.py
+          tests/server/identity/test_sdk_identity.py
+          tests/server/work_tasks/test_tools.py
+          tests/server/work_tasks/test_table_summary.py
 
       - name: 全量测试（本分片）
         env:
           FINANCE_TEST_PG_CONTAINER: ${{ job.services.finance_postgres.id }}
         run: >-
-          uv run --frozen --python ${{ matrix.python-version }} --all-packages --all-extras pytest -q
+          uv run --frozen --python ${{ matrix.python-version }} --all-extras pytest -q
           --durations=20 -o faulthandler_timeout=120
           ${{ matrix.shard.args }}
 
@@ -144,11 +144,11 @@ jobs:
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
 
       - name: ruff F + S108 + I + TC 必须零错
-        run: uv run --frozen --all-packages --all-extras ruff check --select F,S108,I,TC packages
+        run: uv run --frozen --all-extras ruff check --select F,S108,I,TC server web cli spec sdk finance tests
 
       - name: mypy strict 必须零错
-        run: uv run --frozen --all-packages --all-extras mypy packages/*/src
+        run: uv run --frozen --all-extras mypy server web cli spec sdk finance
 
       - name: 全量测试分片覆盖核对
         # 各分片收集到的用例并集必须等于全量、两两不相交；只做收集不跑用例，几十秒内出结果
-        run: uv run --frozen --all-packages --all-extras pytest -q packages/xuanpu-server/tests/test_ci_shards.py
+        run: uv run --frozen --all-extras pytest -q tests/server/test_ci_shards.py

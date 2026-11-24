@@ -6,7 +6,9 @@ metadata:
   name: support-desk
   version: 1.0.0
   description: 客服工单助手：查工单、给出处理时限、改派优先级
-  displayName: 工单助手
+  displayName:
+    zh-CN: 工单助手
+    en-US: Support Desk
 spec:
   skills:
     entries: [triage]

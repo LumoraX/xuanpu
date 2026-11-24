@@ -8,7 +8,7 @@ from pathlib import Path
 
 def main() -> None:
     """只按资源实际字节重写本地入口，重复执行不改变内容。"""
-    directory = Path(__file__).resolve().parents[1] / 'packages/xuanpu-console/src/xuanpu_console/static'
+    directory = Path(__file__).resolve().parents[1] / 'web/static'
 
     def fingerprint(match: re.Match[str]) -> str:
         """保留文件名并替换旧查询指纹，不修改导航链接。"""

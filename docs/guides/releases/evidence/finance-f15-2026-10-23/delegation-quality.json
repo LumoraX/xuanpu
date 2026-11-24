@@ -6,7 +6,7 @@
   "scope": [
     "examples/finance/skills/finance-assistant/SKILL.md",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+    "tests/finance/test_f15_skill_contract.py"
   ],
   "spec_prerequisite": "delegation-spec.json当前Approved，另行实读两份Skill、测试、真实归档、设计审查与RED/GREEN证据",
   "findings": [],
@@ -29,7 +29,7 @@
       "assessment": "JSON示例符合实际model-075暴露的call_skill input_schema；args是子Skill任意参数对象而非财务API body。独立解码后原文与request内引用相等，首尾各2空格、2个真实换行，单次JSON往返保持字符。例子明确标注非待执行业务；申报附注仍不构成审批/支付授权。"
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "file": "tests/finance/test_f15_skill_contract.py",
       "lines": [
         31,
         46
@@ -54,13 +54,13 @@
   },
   "verification": [
     {
-      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_skill_contract.py -q",
+      "command": "uv run pytest tests/finance/test_f15_skill_contract.py -q",
       "exit_code": 0,
       "result": "7 passed in 0.99s",
       "boundary": "包括既有null-query真实loopback HTTP测试，实际运行。没有外部API、PG、真实模型或私有配置访问。"
     },
     {
-      "command": "uv run ruff check --select F,S108,I,TC packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "command": "uv run ruff check --select F,S108,I,TC tests/finance/test_f15_skill_contract.py",
       "exit_code": 0,
       "result": "All checks passed!"
     },
@@ -85,7 +85,7 @@
   "source_sha256": {
     "examples/finance/skills/finance-assistant/SKILL.md": "b1529e5deefde27cc2309dfcb859bdb043370b4ba4ccd0781d30cad4ef5c268a",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "b1529e5deefde27cc2309dfcb859bdb043370b4ba4ccd0781d30cad4ef5c268a",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "50f60d2b1c3a16270a64b8925d38efaafc819e41ae464581f48d278626af0811"
+    "tests/finance/test_f15_skill_contract.py": "50f60d2b1c3a16270a64b8925d38efaafc819e41ae464581f48d278626af0811"
   },
   "limitations": [
     "本次只批准3文件窄修质量与可执行静态契约；不能证明实际模型将遵守委派条款。",

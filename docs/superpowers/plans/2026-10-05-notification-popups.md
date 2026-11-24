@@ -6,7 +6,7 @@
 
 **Tech Stack:** 原生JavaScript/CSS、Node脚本、Playwright、pytest。
 
-- [x] 先扩展`packages/xuanpu-console/tests/reminder_behavior.cjs`验证新通知弹卡、关闭/标读语义、去重、注销和请求乱序；运行控制台专项确认缺少提示的失败。
+- [x] 先扩展`tests/web/reminder_behavior.cjs`验证新通知弹卡、关闭/标读语义、去重、注销和请求乱序；运行控制台专项确认缺少提示的失败。
 - [x] 新增`static/notification-alerts.js`，提供`resetNotificationAlerts()`和`observeNotificationAlerts(items,{snapshot})`。在`index.html`加入固定位置区域及脚本，在`style.css`实现卡片、暗色、窄屏与减少动画偏好。
 - [x] `reminders.js`接入SSE即时弹卡、初次快照汇总、补查、标读刷新及注销清理；快照请求序号防旧结果覆盖已读。
 - [x] 浏览器验证真实定时生成的站内通知弹卡、不抢焦点、按钮操作、历史汇总、窄屏暗色；现有无模型手动兜底保持可用。
@@ -29,6 +29,6 @@
 ## 本地部署
 
 - 实现提交`a975011`已fast-forward合并本地主线；`uv sync --all-packages --all-extras`安装console 2026.10.5.8。
-- 8420实际返回的六个静态资源（含新增notification-alerts.js）均与主线文件哈希一致；路径指向主线`xuanpu/packages/xuanpu-console/src/xuanpu_console/static`。
+- 8420实际返回的六个静态资源（含新增notification-alerts.js）均与主线文件哈希一致；路径指向主线`xuanpu/web/static`。
 - 主线控制台专项6 passed；platform和tickets均运行中；既有会话`ses_c004382ccd2a3c51ec2292eb`的14条历史保留。
 - 静态资源更新，无需重启后台；未修改用户私有JSON、未创建真实员工测试通知、未推送远端或发布云端。已打开网页刷新后生效。

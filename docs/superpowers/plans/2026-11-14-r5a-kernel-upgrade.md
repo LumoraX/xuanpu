@@ -20,7 +20,7 @@
 
 ## A1：平台升级
 
-**Files**：Modify `packages/xuanpu-server/pyproject.toml`（版本下限）、`uv.lock`、`docker/` 下构建三个包 wheel 的脚本；Create `T/kernel_contract/test_event_compat.py`；按需 Modify `S/runtime/{events,assembler,sessions}.py` 的适配点。
+**Files**：Modify `server/pyproject.toml`（版本下限）、`uv.lock`、`docker/` 下构建三个包 wheel 的脚本；Create `T/kernel_contract/test_event_compat.py`；按需 Modify `S/runtime/{events,assembler,sessions}.py` 的适配点。
 
 - [x] 读内核两版之间的变更记录，列出稳定层不兼容项与弃用项，写进本文件末尾的「实际差异」一节。
 - [x] 先写契约测试：既有事件消费者对新增字段不报错；`execution` 缺省为空的旧事件仍可回放。先看到失败或确认无关，再改。（`T/tracing/test_event_compat.py`，2 passed；放在 tracing 下而非计划写的 `T/kernel_contract/`，消费者就是采集器）

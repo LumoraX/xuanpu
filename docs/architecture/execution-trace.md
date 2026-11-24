@@ -46,7 +46,7 @@ trace 边界：根执行开始一轮时打开；同一根执行挂起后续跑�
 
 ## 读取
 
-`GET /v1/traces`、`/v1/traces/{id}`、`/v1/traces/{id}/waterfall`、`/v1/traces/{id}/events`（见 [HTTP 接口](http-api.md#执行追踪r5-b)），只给本人：需要当前启用的员工身份，他人的与不存在的一律 404，机器身份 403。瀑布由持久 span 计算：偏移、时长、深度；运行中的行没有时长；缺父或成环的 span 记为深度 0 的孤儿，不递归挂死。
+`GET /v1/traces`、`/v1/traces/{id}`、`/v1/traces/{id}/waterfall`、`/v1/traces/{id}/events`、`/v1/traces/{id}/spans/{span_id}/audit`（见 [HTTP 接口](http-api.md#执行追踪r5-b)），只给本人：需要当前启用的员工身份，他人的与不存在的一律 404，机器身份 403。瀑布由持久 span 计算：偏移、时长、深度；运行中的行没有时长；缺父或成环的 span 记为深度 0 的孤儿，不递归挂死。其中 `spans/{span_id}/audit` 不改变 trace 存储只留元数据的边界，而是校验归属后按工具节点 `tl.<call_id>` 与时间窗口懒查本人审计日志（`tool_call_started` / `tool_call_completed`），返回格式化展示用的 `arguments`、截断 `output`（上限 4000 字）、`is_error` 与 `duration_ms`。
 
 增量流（`api/trace_events.py`）每秒重读持久记录：首帧 `snapshot`，之后 `spans` 只带有变化的 span，trace 不再活跃时发 `end` 并关闭。事件 `id` 是整条 trace 已应用事实的总数（`last_seq`，单调递增）；`Last-Event-ID` 与当前序号相同时不重发快照，落后时重发一次完整快照（存储不按 span 记序号，快照是唯一可靠的补齐方式）。每轮按原请求凭据重新认证并重查员工状态，登出、停用或换人即结束流。
 

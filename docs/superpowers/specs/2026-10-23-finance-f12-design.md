@@ -41,4 +41,4 @@ worker仅将明确COMPANY_FORBIDDEN视为当前项预期失败：在prepare/rece
 
 ## 验收中发现的CLI日志夹具修正
 
-完整回归第二轮仅平台CLI进程测试超时，原F5兼容与F12测试均通过。显式本机直连仍复现，代理不是充分原因。实际同配置/同HTTP请求A/B：未消费PIPE输出时，累计469字节后keys请求10秒超时；系统采样栈阻塞在TextIOWrapper.flush→FileIO.write→系统write；只读取日志后health立即响应，原请求实际201。受控文件输出时完整接口及审计链通过。因此修正范围只限`packages/xuanpu-cli/tests/test_serve.py`的served夹具：以标准库TemporaryFile承接子进程stdout/stderr，保留启动失败日志、10秒HTTP限制、20秒终止等待、真实退出和清理完成断言，不改产品、路由、权限或业务逻辑，不跳过或延长超时。保存原失败、A/B及脱敏说明，专项/独立规格质量后再次冻结并最终回归。临时根凭据仅值脱敏并保存前后摘要，日志其它字节保留；这与尾空格原样保存分别说明。
+完整回归第二轮仅平台CLI进程测试超时，原F5兼容与F12测试均通过。显式本机直连仍复现，代理不是充分原因。实际同配置/同HTTP请求A/B：未消费PIPE输出时，累计469字节后keys请求10秒超时；系统采样栈阻塞在TextIOWrapper.flush→FileIO.write→系统write；只读取日志后health立即响应，原请求实际201。受控文件输出时完整接口及审计链通过。因此修正范围只限`tests/cli/test_serve.py`的served夹具：以标准库TemporaryFile承接子进程stdout/stderr，保留启动失败日志、10秒HTTP限制、20秒终止等待、真实退出和清理完成断言，不改产品、路由、权限或业务逻辑，不跳过或延长超时。保存原失败、A/B及脱敏说明，专项/独立规格质量后再次冻结并最终回归。临时根凭据仅值脱敏并保存前后摘要，日志其它字节保留；这与尾空格原样保存分别说明。

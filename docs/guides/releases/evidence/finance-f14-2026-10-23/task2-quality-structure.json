@@ -8,13 +8,13 @@
     "F,S108,I,TC,C901",
     "--config",
     "lint.mccabe.max-complexity=10",
-    "packages/xuanpu-finance/tests/test_f14_process.py",
-    "packages/xuanpu-finance/tests/f14_process_helpers.py"
+    "tests/finance/test_f14_process.py",
+    "tests/finance/f14_process_helpers.py"
   ],
   "ruff_exit": 0,
   "files": [
     {
-      "file": "packages/xuanpu-finance/tests/test_f14_process.py",
+      "file": "tests/finance/test_f14_process.py",
       "lines": 73,
       "future_annotations": true,
       "chinese_module_docstring": true,
@@ -30,7 +30,7 @@
       "sha256": "a99348f382382e0159235967e31e2270b55e36ca0df2fb25009f7d7b0b5d3651"
     },
     {
-      "file": "packages/xuanpu-finance/tests/f14_process_helpers.py",
+      "file": "tests/finance/f14_process_helpers.py",
       "lines": 220,
       "future_annotations": true,
       "chinese_module_docstring": true,
@@ -112,12 +112,12 @@
   "resolved_product_modules": [
     {
       "module": "xuanpu_finance.maintenance",
-      "file": "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+      "file": "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/finance/maintenance.py",
       "sha256": "be3e4a95d8d8d150e83a3fb9e8e3ffe232dd182f9019741f1f12902b1bcc2746"
     },
     {
       "module": "xuanpu_finance.maintenance_cli",
-      "file": "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py",
+      "file": "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/finance/maintenance_cli.py",
       "sha256": "f298f26bc57455862c204a4b153218b3e53d3101eeb32a7748490362815b1224"
     }
   ],

@@ -11,12 +11,12 @@
   "source_sha256_before": {
     "examples/finance/skills/finance-assistant/SKILL.md": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "5927be1ccc071598edd695fe7aaf40b7e058e9df129bc63501fec1a34dc8ed6f"
+    "tests/finance/test_f15_skill_contract.py": "5927be1ccc071598edd695fe7aaf40b7e058e9df129bc63501fec1a34dc8ed6f"
   },
   "source_sha256_after": {
     "examples/finance/skills/finance-assistant/SKILL.md": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "5927be1ccc071598edd695fe7aaf40b7e058e9df129bc63501fec1a34dc8ed6f"
+    "tests/finance/test_f15_skill_contract.py": "5927be1ccc071598edd695fe7aaf40b7e058e9df129bc63501fec1a34dc8ed6f"
   },
   "source_stable_across_independent_tests": true,
   "source_scope": {
@@ -26,7 +26,7 @@
     "only_changed_files": [
       "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
       "examples/finance/skills/finance-assistant/SKILL.md",
-      "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+      "tests/finance/test_f15_skill_contract.py"
     ],
     "two_root_skill_copies_byte_identical": true,
     "six_professional_skills_and_harness_natural_prompts_checker_budget_runtime_unchanged": true
@@ -46,8 +46,8 @@
         "uv",
         "run",
         "pytest",
-        "packages/xuanpu-finance/tests/test_f15_model_harness.py",
-        "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+        "tests/finance/test_f15_model_harness.py",
+        "tests/finance/test_f15_skill_contract.py",
         "-q",
         "--junitxml=/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0/docs/guides/releases/evidence/finance-f15-2026-10-23/history-reply-spec-tests.xml"
       ],
@@ -61,12 +61,12 @@
       "input_snapshot": "history-reply-spec-test-input.json"
     },
     "declared_test_lint_gate": {
-      "command": "uv run ruff check --select F,S108,I,TC,C901 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "command": "uv run ruff check --select F,S108,I,TC,C901 tests/finance/test_f15_skill_contract.py",
       "returncode": 0,
       "log": "history-reply-spec-ruff.log"
     },
     "additional_lint_probe": {
-      "command": "uv run ruff check packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "command": "uv run ruff check tests/finance/test_f15_skill_contract.py",
       "returncode": 1,
       "log": "history-reply-spec-default-ruff.log",
       "scope": "broader default test-style probe, outside declared selected test gate; 9 E501 and 1 ASYNC240 findings, no edits made. ALL-rule exploratory invocation also failed with unrelated style/security-test rules and is not represented as passing."

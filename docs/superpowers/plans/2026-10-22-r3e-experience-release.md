@@ -16,13 +16,13 @@
 
 ## E0：统一入口、可理解状态及无模型路径
 
-Files：Modify `packages/xuanpu-console/src/xuanpu_console/static/{index.html,workspace.js,workspace-chat.js,notification-alerts.js,style.css}`和A–D控制台模块；Modify对应SDK/CLI、server `assistant.py`；Create `tests/r3_contract/test_collaboration_views.py`及console `r3_journey_behavior.cjs`。
+Files：Modify `web/static/{index.html,workspace.js,workspace-chat.js,notification-alerts.js,style.css}`和A–D控制台模块；Modify对应SDK/CLI、server `assistant.py`；Create `tests/r3_contract/test_collaboration_views.py`及console `r3_journey_behavior.cjs`。
 
 - [ ] 写完整DOM行为反例：模型草稿不能提交、无权按钮不可用但server仍拒绝、总数不随分页变化、旧身份迟到响应不覆盖、断网重试不重复提交/认领/批准/签收。
 - [ ] 主对话可发起明确事项与交接候选；统一卡解释“等待部门认领/等待补充/等待第N步审批/结果待签收/权限失效/已签收”。员工不必选择内部package、工具名或密钥。
 - [ ] 保留“连接、共享事项、部门队列、待审批”按职责直接入口；审批和签收显示不同动作、材料版本、谁有权决定及结果证据。不能把“审批通过”渲染成“交接已完成”。
 - [ ] 模型断网时直接入口能完成全部状态转换，窄屏390px及键盘焦点实测；通知有意义变化才推送，补读按当前ACL过滤，外部渠道默认关闭。
-- [ ] 跑`uv run pytest packages/xuanpu-console/tests packages/xuanpu-server/tests/r3_contract/test_collaboration_views.py packages/xuanpu-sdk-py/tests packages/xuanpu-cli/tests -q`；提交`feat: 整合企业连接和协同员工入口`。
+- [ ] 跑`uv run pytest tests/web tests/server/r3_contract/test_collaboration_views.py tests/sdk tests/cli -q`；提交`feat: 整合企业连接和协同员工入口`。
 
 ## E1：冻结真实试点和跨层证据
 

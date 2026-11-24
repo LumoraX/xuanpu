@@ -47,5 +47,5 @@ R2-C员工入口、统一动态、生产故障与部署验收未执行；本轮�
 `uv run ruff check --select F,S108,I,TC packages`（All checks passed!）、
 `uv run mypy packages/*/src`（198 source files无错误）。
 7项常规跳过包含A/B各2项需私有配置的真实模型用例及3项memory不适用的PG约束/行锁用例；本轮另行启用并通过B的2项真实模型验收。
-专项`uv run pytest packages/xuanpu-server/tests/task_triggers -q`为80 passed、2 skipped（75.51秒）；
+专项`uv run pytest tests/server/task_triggers -q`为80 passed、2 skipped（75.51秒）；
 文档/配置检查129 passed，新增修改/取消竞态8 passed。

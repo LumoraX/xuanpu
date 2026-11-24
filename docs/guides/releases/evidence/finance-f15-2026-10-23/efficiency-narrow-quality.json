@@ -11,7 +11,7 @@
     "docs/superpowers/specs/finance-v1/pack/skills/expense-reimbursement/SKILL.md",
     "docs/superpowers/specs/finance-v1/pack/skills/invoice-intake/SKILL.md",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-review/SKILL.md",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+    "tests/finance/test_f15_skill_contract.py"
   ],
   "scope_exclusion": "不涵盖尚未实施的root 1→13 direct工具重分配设计；本报告只批准阶段1九文件。",
   "spec_prerequisite": "efficiency-narrow-spec.json当前Approved；EFF-S01/S02关闭，另行实读四Skill全文、现测试、implementation与2026-10-24效率设计。",
@@ -51,7 +51,7 @@
       "assessment": "收件单独目标仍保留；普通已收件报销不再强制invoice→expense重复元数据读取。本Skill实际调用仍能力/权限检查，未成功取得元数据不能以父参数替代，真实原件和收件执行仍由人工入口。"
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "file": "tests/finance/test_f15_skill_contract.py",
       "assessment": "新增静态契约回归对分流、当前GET/非可信args、最小刷新、只读依赖并行和真实历史分页边界有针对性；保留逐字JSON示例与分页/schema回归。此类测试只证明所交付规则，不把文本断言当模型效率或实际授权验证。"
     },
     {
@@ -60,13 +60,13 @@
   ],
   "verification": [
     {
-      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q",
+      "command": "uv run pytest tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py -q",
       "exit_code": 0,
       "result": "119 passed in 2.31s",
       "boundary": "实际含既有null-query loopback HTTP测试；没有外部API、PG、真实模型或私有配置访问。"
     },
     {
-      "command": "uv run ruff check --select F,S108,I,TC packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "command": "uv run ruff check --select F,S108,I,TC tests/finance/test_f15_skill_contract.py",
       "exit_code": 0,
       "result": "All checks passed!"
     },
@@ -99,7 +99,7 @@
     "docs/superpowers/specs/finance-v1/pack/skills/expense-reimbursement/SKILL.md": "745fa7ee05718c29cd0ea84c5093ed9e78f566b56c200a82e1ffc08fb9f233d1",
     "docs/superpowers/specs/finance-v1/pack/skills/invoice-intake/SKILL.md": "8934cc660d6b2d5fff055af995073b2b732591a38692699ea35200f64b2456c5",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-review/SKILL.md": "83713dbc79e3c148e4c5c092c150dcb472124401ff1cc82f478b810ffdb9f715",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "93b580c7556836322d605ffebcea5ce3c8dba8708f7a8f089c0d9f37c8adb5e8"
+    "tests/finance/test_f15_skill_contract.py": "93b580c7556836322d605ffebcea5ce3c8dba8708f7a8f089c0d9f37c8adb5e8"
   },
   "limitations": [
     "只批准阶段1既有工具能力下的Skill指令优化，不能外推后续root direct方案。",

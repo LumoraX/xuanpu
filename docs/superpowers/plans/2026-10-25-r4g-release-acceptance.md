@@ -32,7 +32,7 @@
 - [ ] 真PG故障窗口至少覆盖：任务binding提交前后、发布提交前后、索引写完未标ready、来源撤权后清理前、聚合水位前后。各窗口用独立进程与实际终止，保留第一次失败证据。
 - [ ] 用独立地址、命名空间、合成租户跑两次同delivery安装和完整样板，真实模型另有预算上限。脚本默认拒绝生产域名；明确操作者、数据种类和外部写次数。
 - [ ] 实际原生双身份/移动宽度/模型停用验证，截图标synthetic。完整制品和原始协议进入私有证据目录，仓库只留脱敏结果，扫查秘密、Cookie和企业材料。
-- [ ] 运行：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_r4_acceptance_matrix.py packages/xuanpu-server/tests/r4_contract/test_r4_shutdown.py packages/xuanpu-server/tests/r4_contract/test_r4_compatibility.py -q`及总门禁；提交`test: 冻结R4候选与分层验收门禁`。
+- [ ] 运行：`uv run pytest tests/server/r4_contract/test_r4_acceptance_matrix.py tests/server/r4_contract/test_r4_shutdown.py tests/server/r4_contract/test_r4_compatibility.py -q`及总门禁；提交`test: 冻结R4候选与分层验收门禁`。
 
 ## G1：迁移与逐层部署
 

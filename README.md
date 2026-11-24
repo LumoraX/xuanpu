@@ -104,7 +104,7 @@ uv run xuanpu pack examples/support-desk -o support-desk.zip
 | 部署、配置、多实例、密钥轮换、备份、安全须知 | [部署与运维](docs/guides/operations.md) |
 | 在本机持续试用，或用 Docker 部署到服务器 | [本机开箱](docs/guides/local-trial.md) · [Docker 部署](docs/guides/docker-deployment.md) · [桌面客户端](docs/guides/desktop-client.md) |
 | 了解审计里有什么、怎么查、用量怎么算 | [审计与用量](docs/guides/audit-and-usage.md) |
-| 查字段与接口 | [业务包规范](docs/architecture/package-spec.md) · [HTTP 接口](docs/architecture/http-api.md) · [命令行](packages/xuanpu-cli/README.md) · [Python 客户端](packages/xuanpu-sdk-py/README.md) |
+| 查字段与接口 | [业务包规范](docs/architecture/package-spec.md) · [HTTP 接口](docs/architecture/http-api.md) · [命令行](cli/README.md) · [Python 客户端](sdk/README.md) |
 | 了解设计 | [架构总览](docs/architecture/README.md)：四个平面、一轮对话的路径、租户隔离、已知限制 |
 | 了解为什么这么定 | [决策记录](docs/decisions/README.md)，管家—匠人见 [ADR 0017](docs/decisions/0017-butler-artisan-orchestration.md) |
 | 给 taifeng 内核提需求 | [内核对接口缺口清单](docs/architecture/kernel-seam-backlog.md) |
@@ -131,19 +131,19 @@ uv run mypy packages/*/src
 
 `.github/workflows/ci.yml` 在每次推送 main 与每个 PR 上跑两类任务：
 
-- **静态检查**：上面的 ruff、mypy，另跑 `packages/xuanpu-server/tests/test_ci_shards.py` 核对全量分片的覆盖。
+- **静态检查**：上面的 ruff、mypy，另跑 `tests/server/test_ci_shards.py` 核对全量分片的覆盖。
 - **全量测试**：Python 3.12、3.13 各按目录切成 4 个分片，共 8 个任务并行，每个任务有自己的 runner 与 Postgres 服务。分片用 pytest 自带的路径参数和 `--ignore` 表达，`--durations=20`、`-o faulthandler_timeout=120` 每片都带：
 
   | 分片 | 范围 | 3.12 串行时的实测占比 |
   | --- | --- | --- |
-  | `r3_contract` | `packages/xuanpu-server/tests/r3_contract` | 约 34% |
+  | `r3_contract` | `tests/server/r3_contract` | 约 34% |
   | `r4_contract+work_tasks+butler` | 平台服务下这三个目录 | 约 23% |
-  | `server 其余` | `packages/xuanpu-server` 减去上面四个目录 | 约 22% |
-  | `其他包` | `packages` 减去 `packages/xuanpu-server` | 约 20% |
+  | `server 其余` | `server` 减去上面四个目录 | 约 22% |
+  | `其他包` | `packages` 减去 `server` | 约 20% |
 
   后两片用「整体减去已列目录」的写法，新增测试目录或新包自动进兜底分片。`test_ci_shards.py` 对全量和每个分片各做一次 `--collect-only`，所有分片的并集必须等于全量、两两不相交，并检查运行命令仍带上述两个参数；改分片只改 `ci.yml` 的 matrix。
 
-  本机想复现某一片，把 matrix 里该片的 `args` 接在 `uv run pytest` 后面即可，例如 `uv run pytest packages/xuanpu-server/tests/r3_contract`。
+  本机想复现某一片，把 matrix 里该片的 `args` 接在 `uv run pytest` 后面即可，例如 `uv run pytest tests/server/r3_contract`。
 
 ## 许可
 

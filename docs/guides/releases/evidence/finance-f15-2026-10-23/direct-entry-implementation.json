@@ -12,12 +12,12 @@
   "source_sha256": {
     "examples/finance/skills/finance-assistant/SKILL.md": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "c1bf092059c1261b5e2821451172b3f1966fea9fdd42cc634eb64c1fce1a19bb"
+    "tests/finance/test_f15_skill_contract.py": "c1bf092059c1261b5e2821451172b3f1966fea9fdd42cc634eb64c1fce1a19bb"
   },
   "only_changes_against_phase1_snapshot": [
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
     "examples/finance/skills/finance-assistant/SKILL.md",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+    "tests/finance/test_f15_skill_contract.py"
   ],
   "other_frozen_source_files_unchanged": true,
   "tool_distribution": {
@@ -146,7 +146,7 @@
     }
   },
   "lint": {
-    "command": "uv run ruff check --select F,S108,I,TC,C901 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+    "command": "uv run ruff check --select F,S108,I,TC,C901 tests/finance/test_f15_skill_contract.py",
     "returncode": 0,
     "log": "direct-entry-ruff.log",
     "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
@@ -159,7 +159,7 @@
       "--",
       "examples/finance/skills/finance-assistant/SKILL.md",
       "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
-      "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+      "tests/finance/test_f15_skill_contract.py"
     ],
     "returncode": 0
   },

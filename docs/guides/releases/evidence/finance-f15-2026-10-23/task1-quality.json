@@ -46,7 +46,7 @@
       "assessment": "最终状态、三次真实人工理由及actor/origin、全部版本、正式财务表零写入、独立原件保全和挑战前后保护状态均有独立检查点。越权泄漏检查包含模型输入中的工具结果、原始事件、SSE与HTTP历史；证据明确区分回收站删除和本轮精确对象删除。"
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f15_model_harness.py",
+      "file": "tests/finance/test_f15_model_harness.py",
       "lines": [18, 289],
       "assessment": "离线测试覆盖跨运行预算、缺usage、资源拒绝前不派发、原始事件保存、失败不能变成功、禁止执行/支付/原件确认、旧计划与无关call_id拒绝、工具失败不算实际读取、子Skill不能遮盖根答复、输入工具结果泄漏和历史内容篡改等实质边界。"
     }
@@ -54,14 +54,14 @@
   "verification": [
     {
       "kind": "pure_offline_selected_tests",
-      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
+      "command": "uv run pytest tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py -q -k 'not null_cursor_is_omitted_on_real_loopback_http'",
       "result": "46 passed, 1 deselected in 0.65s",
       "exit_code": 0,
       "boundary": "明确排除真实loopback HTTP测试；本审查未运行loopback，该1项不计通过。未连接PG、真实模型或私有配置。"
     },
     {
       "kind": "selected_lint",
-      "command": "uv run ruff check --select F,S108,I,TC scripts/acceptance/finance_model.py scripts/acceptance/finance_model_runtime.py scripts/acceptance/finance_model_journey.py scripts/acceptance/finance_model_checks.py packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "command": "uv run ruff check --select F,S108,I,TC scripts/acceptance/finance_model.py scripts/acceptance/finance_model_runtime.py scripts/acceptance/finance_model_journey.py scripts/acceptance/finance_model_checks.py tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py",
       "result": "All checks passed!",
       "exit_code": 0
     },
@@ -89,7 +89,7 @@
     "scripts/acceptance/finance_model_runtime.py": "f0a6e8172bae8fe6e5432a581dc3d9cf5f95db2a2e9f08078975b5203ce52a92",
     "scripts/acceptance/finance_model_journey.py": "3e8201dc7985b2a4dcbf403aeedf1eb96e4f922565f21d7ce6dc276ba11139ff",
     "scripts/acceptance/finance_model_checks.py": "8de3c6a30363a06ca6c9e8adf889b94b5f127036c8f7f7cf2d976853d93d43dd",
-    "packages/xuanpu-finance/tests/test_f15_model_harness.py": "0f9fa435d1b1601ad5f6228e97eda72e14cafbd2a9f00a9363f51b025518f669",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "d84c5ec0975a661b24510bcfe621a26c38f78077cde370ddf28fca1b377ee756"
+    "tests/finance/test_f15_model_harness.py": "0f9fa435d1b1601ad5f6228e97eda72e14cafbd2a9f00a9363f51b025518f669",
+    "tests/finance/test_f15_skill_contract.py": "d84c5ec0975a661b24510bcfe621a26c38f78077cde370ddf28fca1b377ee756"
   }
 }

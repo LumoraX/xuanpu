@@ -16,11 +16,11 @@
 
 R1 交付两个内置办公能力；它们作为普通版本化业务包发布并按当前权限使用，不内嵌垂直企业业务规则。首期在该包内组合多个 skill、文件处理和原生建议；完整组织岗位、多包融合、外部授权由后续阶段承接。
 
-路径规则：源码短路径以 `packages/xuanpu-server/src/xuanpu_server/` 为根，`tests/` 以 `packages/xuanpu-server/` 为根；`examples/`、`scripts/`、`docs/`、`docker/` 以仓库根为根。
+路径规则：源码短路径以 `server/` 为根，`tests/` 以 `server/` 为根；`examples/`、`scripts/`、`docs/`、`docker/` 以仓库根为根。
 
 ## Task 1 定义任务模型和不可变输入
 
-**Files:** Create `packages/xuanpu-server/src/xuanpu_server/work_tasks/{__init__,models,rules}.py`, `packages/xuanpu-server/tests/work_tasks/{test_models,test_rules}.py`, `docs/architecture/work-tasks.md`。
+**Files:** Create `server/work_tasks/{__init__,models,rules}.py`, `tests/server/work_tasks/{test_models,test_rules}.py`, `docs/architecture/work-tasks.md`。
 
 - [x] **Step 1:** 新增以下完整模型测试，再增加 request_id 内容冲突、额外授权字段、非有限数值、空白文本、超长内容与输入版本缺失测试。
 
@@ -45,7 +45,7 @@ def test_task_input_pins_file_revision() -> None:
     assert request.input_files[0].revision == 2
 ```
 
-- [x] **Step 2:** 跑 `uv run pytest packages/xuanpu-server/tests/work_tasks/test_models.py -q` 确认模型缺失，再实现完整的请求模型：
+- [x] **Step 2:** 跑 `uv run pytest tests/server/work_tasks/test_models.py -q` 确认模型缺失，再实现完整的请求模型：
 
 ```python
 from pydantic import BaseModel, ConfigDict, Field
@@ -71,7 +71,7 @@ class WorkTaskInput(BaseModel):
 
 ## Task 2 持久任务存储与受理 API
 
-**Files:** Create `work_tasks/{store,memory,postgres,service}.py`, `api/work_tasks.py`, `controlplane/migrations/0010_work_tasks.sql`, `tests/work_tasks/{test_store,test_api}.py` under `packages/xuanpu-server`; Modify `api/app.py`, `platform.py`, `bootstrap.py`。源码根为 `packages/xuanpu-server/src/xuanpu_server/`，测试根为 `packages/xuanpu-server/`。
+**Files:** Create `work_tasks/{store,memory,postgres,service}.py`, `api/work_tasks.py`, `controlplane/migrations/0010_work_tasks.sql`, `tests/work_tasks/{test_store,test_api}.py` under `server`; Modify `api/app.py`, `platform.py`, `bootstrap.py`。源码根为 `server/`，测试根为 `server/`。
 
 - [x] **Step 1:** 双后端同一测试集覆盖本人可见、同租户他人 404、管理员只见元数据、跨租户 404、并发同请求只创建一次、同 request_id 改文本或版本 409、员工停用 403、事务异常回滚。数据库用例执行真实 PostgreSQL，不以 mock SQL 替代。
 - [x] **Step 2:** 迁移按现有命名空间规则创建以下逻辑表，引用员工与事项时必须带相同租户/用户维度；跨现有 JSON 工作区的事项关系由同员工事务校验，不伪造不存在的关系表外键。
@@ -114,7 +114,7 @@ CREATE TABLE work_task_event (
 - [x] **Step 3:** `WorkTaskStore.create_or_replay` 在短事务中原子写入 accepted 和首条事件；同指纹返回同记录，不重新计算随机 ID。`transition` 按 tenant/user/task/state_version CAS，并在同事务写事件；冲突返回 409。`list/get/events` 一律按本人范围过滤，分页稳定、有上限。内存后端提供相同接口和锁语义，仅供测试试用。
 - [x] **Step 4:** `WorkTaskService.accept` 在事务外读取文件字节并计算校验，在提交前以同员工锁复核身份、文件状态/版本、事项和权限；将包版本及输入指纹固定后提交受理。持久快照 pin 注册也在此提交，生产写入不可直接发起者凭用户名访问存储。
 - [x] **Step 5:** 新增 HTTP 契约：`POST /v1/work-tasks` 受理返回 202 与 task_id/status；`GET /v1/work-tasks` 返回本人列表；`GET /v1/work-tasks/{id}` 返回本人状态及成果；`GET /v1/work-tasks/{id}/events?after_id=N` 有界补读；`POST /v1/work-tasks/{id}/cancel` 返回取消受理，不冒称停止。新增 `POST /v1/work-tasks/{id}/decisions` 接收 tool_approval 或 office_actions 的严格类型化本人决定，分别复用 R0 或 Task 8 回执。写入口沿用 CSRF 与身份验证。服务端不能先启动执行再返回一个尚未持久化的 task_id。
-- [x] **Step 6:** 对每个接口增加 HTTP 权限、幂等和错误响应测试，运行 `uv run pytest packages/xuanpu-server/tests/work_tasks/test_store.py packages/xuanpu-server/tests/work_tasks/test_api.py -q`，提交 `feat: 持久化工作任务并提供受理查询接口`。
+- [x] **Step 6:** 对每个接口增加 HTTP 权限、幂等和错误响应测试，运行 `uv run pytest tests/server/work_tasks/test_store.py tests/server/work_tasks/test_api.py -q`，提交 `feat: 持久化工作任务并提供受理查询接口`。
 
 ## Task 3 将运行时和执行空间隔离到员工与任务
 
@@ -155,7 +155,7 @@ class ExecutionScope:
 - [x] **Step 3:** RuntimeAssembler 的缓存键扩展为 `(tenant, package, version, scope.storage_key())`；`_scoped` 的末级加入 scope 摘要，锁、空闲回收和关闭同步修改。`SessionManager._start_engine` 由持久会话构造 scope：员工 owner_id 用 user_id，系统会话用 `service:` 加不可变 created_by；execution_id 使用 task_id，非任务会话使用 session_id。二者都有固定前缀，不能碰撞。
 - [x] **Step 4:** 旧脚本沙盒的租户/包/版本工作区不得直接挂入员工环境。旧会话内容可继续恢复，旧工作目录只作为隔离的只读运维存量，个人导入必须明确授权。stdio 连接器也随本轮 runtime 隔离；R1 暂不共享持有员工凭据的进程。
 - [x] **Step 5:** `SandboxHandle` 增加 `filesystem: taifeng.WorkspaceFS`。Docker 使用同一个 DockerEnvironment.workspace()，命令用它的 executor；开发 local 使用 taifeng.LocalWorkspaceFS(workspace)。所有生产进程经 ProcessTrackingExecutor 记录；导出前先终止并等待这些进程、冻结工具调用，但保持 daemon 可用。活跃 task 持有 runtime 引用，不能被空闲清理。失败关闭已创建资源，禁止 Docker 文件工具退回宿主文件系统。
-- [x] **Step 6:** 测试路径穿越、恶意 ID、符号链接、不同员工/任务的同名文件、其他会话不被清理、空闲回收、连接器环境不泄露。运行 `uv run pytest packages/xuanpu-server/tests/test_execution_scope.py packages/xuanpu-server/tests/test_employee_execution_isolation.py packages/xuanpu-server/tests/test_sandbox_isolation.py packages/xuanpu-server/tests/test_connector_sandbox.py -q`，更新架构，提交 `feat: 按员工与任务隔离执行运行时`。
+- [x] **Step 6:** 测试路径穿越、恶意 ID、符号链接、不同员工/任务的同名文件、其他会话不被清理、空闲回收、连接器环境不泄露。运行 `uv run pytest tests/server/test_execution_scope.py tests/server/test_employee_execution_isolation.py tests/server/test_sandbox_isolation.py tests/server/test_connector_sandbox.py -q`，更新架构，提交 `feat: 按员工与任务隔离执行运行时`。
 
 ## Task 4 固定输入快照并接通受控文件和命令工具
 
@@ -186,7 +186,7 @@ def office_tools(
 
 - [x] **Step 5:** 文件 target 使用沙盒实际路径；build_policy 对未知工具保持 ask。task/session 保存服务端设置、只增不减的 contains_external_input；该 scope 的连接器 write/external 强制 ask，不因 relaxed 策略降低，也不接受模型提供的副作用分类。输入材料不能授予新权限。
 - [x] **Step 6:** 两种隔离后端测试“命令写出结果→file_read 读到相同内容”；只读输入修改、越界输出、环境泄漏、超时和取消子进程均有实际执行证据。平台路由与内核工具都不能存在不经该执行器的 shell 旁路。单任务活动执行和租户并发采用现有配额较小值。
-- [x] **Step 7:** 跑 `uv run pytest packages/xuanpu-server/tests/work_tasks/test_inputs.py packages/xuanpu-server/tests/work_tasks/test_tools.py -q`，如改适配包另跑其全量门禁，提交输入和工具接线。
+- [x] **Step 7:** 跑 `uv run pytest tests/server/work_tasks/test_inputs.py tests/server/work_tasks/test_tools.py -q`，如改适配包另跑其全量门禁，提交输入和工具接线。
 
 ## Task 5 托管任务执行与断开后的状态补读
 
@@ -214,7 +214,7 @@ def office_tools(
 
 ## Task 7 版本化办公能力包与执行镜像
 
-**Files:** Create `examples/office-assistant/xuanpu.yaml`, `examples/office-assistant/skills/{office,meeting-minutes,table-summary}/SKILL.md`, `examples/office-assistant/skills/table-summary/scripts/summarize.py`, `docker/office-sandbox.Dockerfile`, `docker/office-requirements.in`, `docker/office-requirements.lock`, `tests/work_tasks/{test_office_package,test_table_summary}.py` under `packages/xuanpu-server` for tests only。
+**Files:** Create `examples/office-assistant/xuanpu.yaml`, `examples/office-assistant/skills/{office,meeting-minutes,table-summary}/SKILL.md`, `examples/office-assistant/skills/table-summary/scripts/summarize.py`, `docker/office-sandbox.Dockerfile`, `docker/office-requirements.in`, `docker/office-requirements.lock`, `tests/work_tasks/{test_office_package,test_table_summary}.py` under `server` for tests only。
 
 - [x] **Step 1:** 参照实际 `examples/support-desk/xuanpu.yaml` 与 `skills/triage/SKILL.md` 写合法包，不发明 frontmatter 字段。root office 的可用子 skill 仅列本包能力；脚本通过已有 `run_script` 契约，禁止平台进程 import 包内 Python。
 - [x] **Step 2:** 两条能力的 I/O 固定：meeting-minutes 读指定文本/DOCX/PDF，输出纪要文件和待确认行动项 JSON；table-summary 读 CSV/XLSX，输出汇总 CSV/XLSX、Markdown 周报及包含工作表/行号的证据 JSON。PDF 超出解析能力或扫描件需要 OCR 时明确返回不支持，不能生成假内容。
@@ -237,7 +237,7 @@ def office_tools(
 
 ## Task 9 对话任务卡、直接入口与 SDK
 
-**Files:** Create `packages/xuanpu-console/src/xuanpu_console/static/work-tasks.js`; Modify `workspace-chat.js`, `workspace-files.js`, `workspace.js`, `index.html`, `workspace.css` in the same static directory; Modify `packages/xuanpu-sdk-py/src/xuanpu_sdk/{client,models}.py`; Create `packages/xuanpu-server/tests/work_tasks/test_sdk.py`。
+**Files:** Create `web/static/work-tasks.js`; Modify `workspace-chat.js`, `workspace-files.js`, `workspace.js`, `index.html`, `workspace.css` in the same static directory; Modify `sdk/{client,models}.py`; Create `tests/server/work_tasks/test_sdk.py`。
 
 - [x] **Step 1:** 后端任务接口完成后再接 UI。对话遇到已安装办公能力与附件时提出或受理相应任务，展示 task_id 对应任务卡；前端不能仅靠路由字符串宣称创建成功。未安装能力时准确说明，保留原文与附件。
 - [x] **Step 2:** 卡片显示任务目标、真实状态、简明进展、取消、需本人确认的内容及成果下载。内部工具名、目录和重试栈不作为普通员工的默认内容。功能入口增加本人任务列表，复用同一数据与卡片；文件与待办保留原有直接操作。

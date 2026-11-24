@@ -54,7 +54,7 @@ async def conversation(platform: Any, who: Any) -> list[dict[str, Any]]:
 
 async def scenario_concurrent(platform: Any, client: Any, who: Any) -> dict[str, Any]:
     """连续三句：各自按自己的进度回到主对话，快的不等慢的；派工确实发出，匠人结果主动回报。"""
-    from xuanpu_server.tracing.models import TraceOwner
+    from server.engine.tracing.models import TraceOwner
 
     start = time.monotonic()
     receipts = {}
@@ -94,7 +94,7 @@ async def scenario_concurrent(platform: Any, client: Any, who: Any) -> dict[str,
 
 async def scenario_budget(platform: Any, client: Any, who: Any) -> dict[str, Any]:
     """起始只允许 1 位匠人：三位匠人会诊须先提高预算。"""
-    from xuanpu_server.controlplane.models import AuditQuery
+    from server.core.controlplane.models import AuditQuery
 
     receipt = await client.send_to_butler(CONSULT, request_id="r6-budget")
 
@@ -115,7 +115,7 @@ async def scenario_budget(platform: Any, client: Any, who: Any) -> dict[str, Any
 
 async def scenario_deadline(platform: Any, client: Any, who: Any) -> dict[str, Any]:
     """一轮 10 秒：须正常收尾，不得 503。"""
-    from xuanpu_server.controlplane.models import AuditQuery
+    from server.core.controlplane.models import AuditQuery
 
     receipt = await client.send_to_butler(LONG, request_id="r6-long")
 
@@ -135,8 +135,8 @@ async def scenario_deadline(platform: Any, client: Any, who: Any) -> dict[str, A
 
 async def run(args: argparse.Namespace) -> dict[str, Any]:
     """起平台（回复窗口 3 秒）与工单替身，依次跑三个场景。"""
-    from xuanpu_sdk import XuanpuClient
-    from xuanpu_server.api.app import create_app
+    from sdk import XuanpuClient
+    from server.api.app import create_app
 
     from scripts.acceptance import r5_real_model_harness as harness
     from scripts.acceptance.finance_browser import free_port, listen
@@ -181,7 +181,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
 
 def harness_principal(user_id: str) -> Any:
     """验收员工的身份（成员）。"""
-    from xuanpu_server.tenancy import Principal
+    from server.core.tenancy import Principal
 
     return Principal(role="tenant_member", tenant_id="acme", key_id=None, user_id=user_id)
 

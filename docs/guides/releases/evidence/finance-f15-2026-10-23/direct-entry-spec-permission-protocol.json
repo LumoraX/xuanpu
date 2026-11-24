@@ -74,7 +74,7 @@
   "source_sha256": {
     "examples/finance/skills/finance-assistant/SKILL.md": "2f3eced3d629f73e83c5d79f3a86bda06a84c9a9c7e356191ca18c65de735b22",
     "examples/finance/xuanpu.yaml": "223e69f25953f8fff447b66a93a7ec9ceeede56fb5ac5947787a75c573bb3f71",
-    "packages/xuanpu-server/src/xuanpu_server/runtime/approval.py": "e3a6bd0298e8dc5a6ccade3fa893d64dfbfc267d13b4831b9fc9f5384fa4bf5d"
+    "server/runtime/approval.py": "e3a6bd0298e8dc5a6ccade3fa893d64dfbfc267d13b4831b9fc9f5384fa4bf5d"
   },
   "limitation": "Permission protocol only; separate signed-context/auth tests do not replace complete finance HTTP/model acceptance."
 }

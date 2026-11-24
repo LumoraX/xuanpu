@@ -72,7 +72,7 @@
       "output": "All checks passed!"
     },
     {
-      "command": ".venv/bin/ruff check --no-cache --select C901 --config lint.mccabe.max-complexity=10 packages/xuanpu-finance/src/xuanpu_finance/maintenance.py packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py packages/xuanpu-finance/tests/f14_credentials_helpers.py packages/xuanpu-finance/tests/f14_process_helpers.py packages/xuanpu-finance/tests/test_f14_credentials.py packages/xuanpu-finance/tests/test_f14_process.py",
+      "command": ".venv/bin/ruff check --no-cache --select C901 --config lint.mccabe.max-complexity=10 finance/maintenance.py finance/maintenance_cli.py tests/finance/f14_credentials_helpers.py tests/finance/f14_process_helpers.py tests/finance/test_f14_credentials.py tests/finance/test_f14_process.py",
       "returncode": 0,
       "output": "All checks passed!"
     },
@@ -307,98 +307,98 @@
         "future": true
       },
       {
-        "file": "packages/xuanpu-finance/src/xuanpu_finance/__main__.py",
+        "file": "finance/__main__.py",
         "lines": 68,
         "max_function_lines": 35,
         "chinese_docs": true,
         "future": true
       },
       {
-        "file": "packages/xuanpu-finance/src/xuanpu_finance/api.py",
+        "file": "finance/api.py",
         "lines": 223,
         "max_function_lines": 56,
         "chinese_docs": true,
         "future": true
       },
       {
-        "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance.py",
+        "file": "finance/maintenance.py",
         "lines": 171,
         "max_function_lines": 36,
         "chinese_docs": true,
         "future": true
       },
       {
-        "file": "packages/xuanpu-finance/src/xuanpu_finance/maintenance_cli.py",
+        "file": "finance/maintenance_cli.py",
         "lines": 53,
         "max_function_lines": 37,
         "chinese_docs": true,
         "future": true
       },
       {
-        "file": "packages/xuanpu-finance/tests/f14_credentials_helpers.py",
+        "file": "tests/finance/f14_credentials_helpers.py",
         "lines": 128,
         "max_function_lines": 24,
         "chinese_docs": true,
         "future": true
       },
       {
-        "file": "packages/xuanpu-finance/tests/f14_process_helpers.py",
+        "file": "tests/finance/f14_process_helpers.py",
         "lines": 220,
         "max_function_lines": 39,
         "chinese_docs": true,
         "future": true
       },
       {
-        "file": "packages/xuanpu-finance/tests/test_f14_credentials.py",
+        "file": "tests/finance/test_f14_credentials.py",
         "lines": 319,
         "max_function_lines": 56,
         "chinese_docs": true,
         "future": true
       },
       {
-        "file": "packages/xuanpu-finance/tests/test_f14_process.py",
+        "file": "tests/finance/test_f14_process.py",
         "lines": 73,
         "max_function_lines": 48,
         "chinese_docs": true,
         "future": true
       },
       {
-        "file": "packages/xuanpu-finance/tests/test_f4_maintenance.py",
+        "file": "tests/finance/test_f4_maintenance.py",
         "lines": 292,
         "max_function_lines": 39,
         "chinese_docs": true,
         "future": true
       },
       {
-        "file": "packages/xuanpu-finance/tests/test_f7_api.py",
+        "file": "tests/finance/test_f7_api.py",
         "lines": 71,
         "max_function_lines": 35,
         "chinese_docs": true,
         "future": true
       },
       {
-        "file": "packages/xuanpu-finance/tests/test_f7_contract.py",
+        "file": "tests/finance/test_f7_contract.py",
         "lines": 52,
         "max_function_lines": 22,
         "chinese_docs": true,
         "future": true
       },
       {
-        "file": "packages/xuanpu-finance/tests/test_f8_api.py",
+        "file": "tests/finance/test_f8_api.py",
         "lines": 57,
         "max_function_lines": 37,
         "chinese_docs": true,
         "future": true
       },
       {
-        "file": "packages/xuanpu-finance/tests/test_f8_contract.py",
+        "file": "tests/finance/test_f8_contract.py",
         "lines": 40,
         "max_function_lines": 15,
         "chinese_docs": true,
         "future": true
       },
       {
-        "file": "packages/xuanpu-finance/tests/test_package.py",
+        "file": "tests/finance/test_package.py",
         "lines": 315,
         "max_function_lines": 35,
         "chinese_docs": true,

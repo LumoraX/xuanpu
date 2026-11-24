@@ -9,7 +9,7 @@
 
 ## 文件与接口锁定
 
-财务领域工作包独占：`packages/xuanpu-finance/src/xuanpu_finance/expenses/**`、`storage/business*.py`、`storage/f1_schema.py`、`storage/{store,common,queries,imports}.py`、`tests/test_expense*.py`、`tests/test_expense*.py`。
+财务领域工作包独占：`finance/expenses/**`、`storage/business*.py`、`storage/f1_schema.py`、`storage/{store,common,queries,imports}.py`、`tests/test_expense*.py`、`tests/test_expense*.py`。
 平台工作包独占：`xuanpu-server`的签名/通用手动连接器服务/API/接线/测试、`xuanpu-console`静态页面和对应测试。不得import财务运行代码。
 集成者独占：财务 `models.py/auth.py/config.py/runtime.py/api.py/routes_f1.py`、root/各包版本和lock、examples/finance、文档、HTTP/进程/浏览器联调测试。除明确分配不交叉编辑。
 
@@ -57,7 +57,7 @@ with pytest.raises(ValidationError):
 同样验证额外身份/状态、负数/指数/日期别名、合计溢出、未配置分类/归属、同策略版本改内容与空审批链拒绝。
 - [x] GREEN：模型继承strict BaseModel；Money正则为 `^(0|[1-9][0-9]{0,15})\.[0-9]{2}$`，以Decimal求和并校验界限；日期正则+date.fromisoformat。ExpenseDraft增加可选evidence_ids实际同公司receipt，ExpensePolicy增加record_mode=invoice_backed/internal_record；内部记录须显式不要求查验，可无分配提交，但任何已有分配仍严格Σ==total。ExpensePolicy显式公司/版本/启用、分类、归属及授权用户、固定不同人员的审批步骤/门槛、reviewer异常负责人、查验/归属开关、最大总额；缺省不启用。
 - [x] 在同一财务库迁移新增表；升级grant CHECK允许approver，保持collector/reviewer语义。F0迁移与导入数据不删除。策略不可变revision+current指针；每命令查当前权限与策略，变化撤销旧ExecutionGrant，历史待审阻断后由owner撤回重提。
-- [x] 运行 `uv run pytest packages/xuanpu-finance/tests/test_expense_models.py packages/xuanpu-finance/tests/test_expense_domain.py -q`，真实PG初始化及F0兼容。
+- [x] 运行 `uv run pytest tests/finance/test_expense_models.py tests/finance/test_expense_domain.py -q`，真实PG初始化及F0兼容。
 
 ## 3 草稿与分配、原子额度
 
@@ -107,7 +107,7 @@ with pytest.raises(FinanceError, match="HUMAN_REQUIRED"):
 - [x] RED：实际Ed25519 JWT的agent无法approve/submit；缺origin仅兼容为agent，未知origin401；签发human+真实角色及有效计划才能决定。
 - [x] GREEN：FinancePrincipal增加origin默认agent，Auth严格取签名字段、防重放主体含origin；body不能指定。配置增加expense_policies默认空，审批人/异常负责人/公司grant交叉验证。启动configure_expenses并保留F0功能开关。
 - [x] 14个新路由：严格body、Idempotency-Key、CAS，amount只字符串。分别挂finance/catalog组，GET目录/操作可只读，写操作仍受enabled/draining/read_only/disabled约束。draining允许已有审批决定与清理，禁新业务；政策使能与平台包开关不删除数据。
-- [x] 运行 `FINANCE_TEST_DSN=<独立库> uv run pytest packages/xuanpu-finance/tests/test_f1_api.py packages/xuanpu-finance/tests/test_f1_contract.py packages/xuanpu-server/tests/identity/test_finance_gateway_e2e.py -q`。
+- [x] 运行 `FINANCE_TEST_DSN=<独立库> uv run pytest tests/finance/test_f1_api.py tests/finance/test_f1_contract.py tests/server/identity/test_finance_gateway_e2e.py -q`。
 
 ## 7 Skill、声明式入口与人工页面
 

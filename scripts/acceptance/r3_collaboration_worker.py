@@ -11,29 +11,29 @@ from typing import TYPE_CHECKING, Any
 import asyncpg
 from r3_shared_worker import config_file
 from taifeng_stores import SqlNamespace
-from xuanpu_server.approvals.decisions import decide
-from xuanpu_server.approvals.schemas import ApprovalDecisionInput
-from xuanpu_server.approvals.service import ApprovalService
-from xuanpu_server.collaboration.models import CollaborationConfig
-from xuanpu_server.controlplane.postgres import PostgresControlPlane
-from xuanpu_server.coordination.postgres import PostgresCoordinationStore
-from xuanpu_server.handoffs.actions import mutate
-from xuanpu_server.handoffs.schemas import DeliverHandoff, SignOffHandoff
-from xuanpu_server.handoffs.service import HandoffService
-from xuanpu_server.identity.postgres import PostgresIdentityStore
-from xuanpu_server.objectstore import LocalObjectStore
-from xuanpu_server.organization.service import OrganizationService
-from xuanpu_server.shared_matters.materials import SharedMaterials
-from xuanpu_server.shared_matters.models import SharedMatterConfig
-from xuanpu_server.shared_matters.schemas import SharedChange
-from xuanpu_server.shared_matters.service import SharedMatterService
-from xuanpu_server.tenancy import Principal
-from xuanpu_server.workspace.postgres import PostgresWorkspaceStore
+from server.domains.approvals.decisions import decide
+from server.domains.approvals.schemas import ApprovalDecisionInput
+from server.domains.approvals.service import ApprovalService
+from server.domains.collaboration.models import CollaborationConfig
+from server.core.controlplane.postgres import PostgresControlPlane
+from server.core.coordination.postgres import PostgresCoordinationStore
+from server.domains.handoffs.actions import mutate
+from server.domains.handoffs.schemas import DeliverHandoff, SignOffHandoff
+from server.domains.handoffs.service import HandoffService
+from server.domains.identity.postgres import PostgresIdentityStore
+from server.core.objectstore import LocalObjectStore
+from server.domains.organization.service import OrganizationService
+from server.domains.shared_matters.materials import SharedMaterials
+from server.domains.shared_matters.models import SharedMatterConfig
+from server.domains.shared_matters.schemas import SharedChange
+from server.domains.shared_matters.service import SharedMatterService
+from server.core.tenancy import Principal
+from server.domains.workspace.postgres import PostgresWorkspaceStore
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-    from xuanpu_server.coordination.models import CoordinationTransaction
+    from server.core.coordination.models import CoordinationTransaction
 
 
 class PausedCoordination(PostgresCoordinationStore):

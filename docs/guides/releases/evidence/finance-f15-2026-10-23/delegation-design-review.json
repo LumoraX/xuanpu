@@ -16,7 +16,7 @@
       "sha256": "b1529e5deefde27cc2309dfcb859bdb043370b4ba4ccd0781d30cad4ef5c268a"
     },
     "contract_test": {
-      "path": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "path": "tests/finance/test_f15_skill_contract.py",
       "sha256": "50f60d2b1c3a16270a64b8925d38efaafc819e41ae464581f48d278626af0811"
     },
     "trace": {

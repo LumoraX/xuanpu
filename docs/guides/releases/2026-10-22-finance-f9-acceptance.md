@@ -50,7 +50,7 @@ FINANCE_TEST_PG_CONTAINER=xuanpu-finance-f9-pg uv run python scripts/finance_acc
 uv run ruff check --select F,S108,I,TC packages scripts
 uv run mypy packages/*/src
 uv lock --check --offline
-uv run pytest packages/xuanpu-console/tests -q
+uv run pytest tests/web -q
 uv build --package xuanpu-finance --out-dir /tmp/xuanpu-finance-f9-build
 uv build --package xuanpu-console --out-dir /tmp/xuanpu-finance-f9-build
 uv run python docker/finance/build_image.py

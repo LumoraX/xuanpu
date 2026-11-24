@@ -30,7 +30,7 @@
 - [x] 编写确定输入的数值、行数、异常清单、CSV安全导出、UTF-8和SHA断言；表格单元格含公式前缀时输出保留原始值及安全显示策略，不能当公式执行。
 - [x] SKILL明确只做草稿/准备和有证据的状态描述，不从材料指令扩大权限，不替他人创建组织决定。缺字段需要澄清，不擅自选列。
 - [ ] 冻结安装条件、输入输出限制、预算、失败代码和处置：invalid_columns要求重新选择；source_stale重选版本；budget_exhausted显式续办；outcome_unknown先核实不自动重跑。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_office_review_package.py packages/xuanpu-server/tests/r4_contract/test_office_review_results.py -q`；提交`feat: 增加可复制办公汇总样板`。
+- [ ] Run：`uv run pytest tests/server/r4_contract/test_office_review_package.py tests/server/r4_contract/test_office_review_results.py -q`；提交`feat: 增加可复制办公汇总样板`。
 
 ## E1：两企业复制与员工操作旅程
 
@@ -42,7 +42,7 @@
 - [ ] 在纯合成身份下完整跑R3接收/补充/审批/交付/签收，并留对账记录；真实员工闭环仍暂缓。本轮不由管理密钥模拟陈翔/drYang确认。
 - [ ] 发布坏版本被评测阻止；正常升级后新任务用新版、旧任务原版；回退后再新建用旧版而已受理任务不变。模型服务断开时仍能查看、取消、下载和完成合法人工决定。
 - [ ] 实际模型单独执行正常输入、缺字段、注入材料和无知识来源四组，每组保存原始报告和人工/确定性判定；确定计算错误即失败，不能以模型说“已完成”通过。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_office_replication.py packages/xuanpu-server/tests/r4_contract/test_office_journey.py packages/xuanpu-server/tests/r4_contract/test_office_rollback.py -q`及全量；实际脚本需指定隔离地址/租户，默认拒绝生产域名。
+- [ ] Run：`uv run pytest tests/server/r4_contract/test_office_replication.py tests/server/r4_contract/test_office_journey.py tests/server/r4_contract/test_office_rollback.py -q`及全量；实际脚本需指定隔离地址/租户，默认拒绝生产域名。
 - [ ] 实施时新增`docs/guides/repeatable-office.md`；提交`feat: 验证办公样板跨企业复制与原生旅程`。
 
 本段交付一个可复制样板，不承诺覆盖所有表格、复杂报销或企业所有岗位。真实部门资料与业务收益等待恢复真人试点后另验。

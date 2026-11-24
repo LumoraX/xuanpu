@@ -38,7 +38,7 @@
 - [ ] 唯一约束避免重复事件/重试重复计数，跨天任务按受理队列归属；用实际observed_at呈现迟到状态。缺失binding的旧工作显示unattributed，不猜能力版本。
 - [ ] 原始账本重放可重建相同聚合，重建期间查询返回水位/版本和partial状态，不返回空0冒充已算完。累计token含重试，估算值独立字段。
 - [ ] 测试跨租户、两页列表总数、失败/取消/unknown、无价格、无部门、午夜队列、重复事件、观测纠正和权限撤销。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_outcome_attribution.py packages/xuanpu-server/tests/r4_contract/test_outcome_metrics.py packages/xuanpu-server/tests/r4_contract/test_outcome_privacy.py packages/xuanpu-server/tests/r4_contract/test_outcome_rebuild.py -q`；提交`feat: 增加能力成果归因与可重建统计`。
+- [ ] Run：`uv run pytest tests/server/r4_contract/test_outcome_attribution.py tests/server/r4_contract/test_outcome_metrics.py tests/server/r4_contract/test_outcome_privacy.py tests/server/r4_contract/test_outcome_rebuild.py -q`；提交`feat: 增加能力成果归因与可重建统计`。
 
 最小分页/未知合同测试，seed冻结101笔Alice工作，其中包含一笔unknown、无价格表：
 
@@ -63,7 +63,7 @@ async def test_totals_ignore_page_and_missing_price(r4_http, r4_ids):
 - [ ] 展示技术完成和业务核实两个独立结果；模型评语标辅助判断。价格不可用显示“尚无价格依据”，未抽检显示“尚未核实”，不画成0%正确率。
 - [ ] 导出经过与页面相同的ACL、分页水位和字段白名单，CSV防公式执行；不附个人消息、文件名、审批理由、秘密、原始模型协议或不必要员工信息。
 - [ ] 模型停用下统计与已有人工观察可用；撤权后首帧清空旧记录、迟到请求不回填；桌面/390px与键盘操作复核。
-- [ ] Run：`uv run pytest packages/xuanpu-server/tests/r4_contract/test_outcome_views.py -q`及总门禁；实施时新增`docs/architecture/business-outcomes.md`、`docs/guides/capability-operations.md`；提交`feat: 提供按证据解释的能力运营面板`。
+- [ ] Run：`uv run pytest tests/server/r4_contract/test_outcome_views.py -q`及总门禁；实施时新增`docs/architecture/business-outcomes.md`、`docs/guides/capability-operations.md`；提交`feat: 提供按证据解释的能力运营面板`。
 
 本段不预填真实节省工时、投资回报或部门成绩，不把合成样本的结果投放成生产企业效果。
 

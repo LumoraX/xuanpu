@@ -6,10 +6,10 @@
   "worktree": "/Volumes/Codes/lumorax/lumorax-platform/xuanpu-finance-f0",
   "product_files_changed": false,
   "scope": [
-    "packages/xuanpu-finance/src/xuanpu_finance/local_objects.py",
-    "packages/xuanpu-finance/src/xuanpu_finance/objects.py",
-    "packages/xuanpu-finance/tests/test_f13_objects.py",
-    "packages/xuanpu-finance/tests/f13_objects_helpers.py",
+    "finance/local_objects.py",
+    "finance/objects.py",
+    "tests/finance/test_f13_objects.py",
+    "tests/finance/f13_objects_helpers.py",
     "docs/guides/releases/evidence/finance-f13-2026-10-23/objects-*"
   ],
   "summary": "限定代码审查及一次完整独立验证通过，未发现阻塞任务一的质量问题。",
@@ -42,7 +42,7 @@
     }
   ],
   "independent_validation": {
-    "pytest_command": "uv run pytest -q packages/xuanpu-finance/tests/test_f13_objects.py --junitxml=docs/guides/releases/evidence/finance-f13-2026-10-23/objects-quality.xml",
+    "pytest_command": "uv run pytest -q tests/finance/test_f13_objects.py --junitxml=docs/guides/releases/evidence/finance-f13-2026-10-23/objects-quality.xml",
     "environment": "Python读取/tmp/xuanpu-finance-f13-dsn后仅传入子进程FINANCE_TEST_DSN；FINANCE_TEST_PG_CONTAINER=xuanpu-finance-f13-pg；NO_PROXY=127.0.0.1,localhost,::1；未打印凭据",
     "pytest_exit_code": 0,
     "result": "43 passed, 15 warnings in 1.50s",
@@ -82,12 +82,12 @@
     ],
     "static": [
       {
-        "command": "uv run ruff check --select F,S108,I,TC packages/xuanpu-finance/src/xuanpu_finance/local_objects.py packages/xuanpu-finance/src/xuanpu_finance/objects.py packages/xuanpu-finance/tests/test_f13_objects.py packages/xuanpu-finance/tests/f13_objects_helpers.py",
+        "command": "uv run ruff check --select F,S108,I,TC finance/local_objects.py finance/objects.py tests/finance/test_f13_objects.py tests/finance/f13_objects_helpers.py",
         "exit_code": 0,
         "output": "All checks passed!"
       },
       {
-        "command": "uv run mypy packages/xuanpu-finance/src/xuanpu_finance/local_objects.py packages/xuanpu-finance/src/xuanpu_finance/objects.py",
+        "command": "uv run mypy finance/local_objects.py finance/objects.py",
         "exit_code": 0,
         "output": "Success: no issues found in 2 source files"
       }
@@ -107,10 +107,10 @@
     "objects-review-red.xml": "先前规格问题的红证据保留；无须本次恢复产品再重跑"
   },
   "source_sha256": {
-    "packages/xuanpu-finance/src/xuanpu_finance/local_objects.py": "0122a6678d4f6dd2629cd097db8a704e6fe22c8cb10cc461af4fffa6b35877ad",
-    "packages/xuanpu-finance/src/xuanpu_finance/objects.py": "cc98c38e6c475d46c50398b2024ac88d86f4aaad36f886b48abc297bc7287094",
-    "packages/xuanpu-finance/tests/test_f13_objects.py": "c91addfa53e5c819824d6f7b8101d16008564d5f2cf8ad277cfeca0ed0f756aa",
-    "packages/xuanpu-finance/tests/f13_objects_helpers.py": "c27955996e87ba95d3ac1fcd05d87d7b6208b7a08e9bf45d588a7e14fc5b6e1e"
+    "finance/local_objects.py": "0122a6678d4f6dd2629cd097db8a704e6fe22c8cb10cc461af4fffa6b35877ad",
+    "finance/objects.py": "cc98c38e6c475d46c50398b2024ac88d86f4aaad36f886b48abc297bc7287094",
+    "tests/finance/test_f13_objects.py": "c91addfa53e5c819824d6f7b8101d16008564d5f2cf8ad277cfeca0ed0f756aa",
+    "tests/finance/f13_objects_helpers.py": "c27955996e87ba95d3ac1fcd05d87d7b6208b7a08e9bf45d588a7e14fc5b6e1e"
   },
   "limitations": [
     "仅本机macOS/POSIX文件系统质量验证，未扩展Linux环境、任务二/三或部署验证。",

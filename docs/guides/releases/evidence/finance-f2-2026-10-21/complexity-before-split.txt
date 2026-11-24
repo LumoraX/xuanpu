@@ -1,5 +1,5 @@
 C901 `_process` is too complex (12 > 10)
-   --> packages/xuanpu-finance/src/xuanpu_finance/settlement/worker.py:147:15
+   --> finance/settlement/worker.py:147:15
     |
 145 |         return True
 146 |

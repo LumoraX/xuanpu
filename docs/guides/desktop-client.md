@@ -37,7 +37,7 @@
 
 ## 应用内置配置
 
-`packages/xuanpu-desktop/src-tauri/desktop.json` 随应用包发布，只允许一个字段：
+`desktop/src-tauri/desktop.json` 随应用包发布，只允许一个字段：
 
 | 字段 | 说明 |
 | --- | --- |
@@ -59,7 +59,7 @@
 
 ## 构建
 
-准备 Rust、Node.js 和 Xcode。构建位置是 `packages/xuanpu-desktop`：
+准备 Rust、Node.js 和 Xcode。构建位置是 `desktop`：
 
 ```bash
 npm ci --ignore-scripts

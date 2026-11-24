@@ -56,7 +56,7 @@
     "real_model_startup": {
       "exact_file_matches": 177,
       "trailing_whitespace_only": [
-        "packages/xuanpu-console/src/xuanpu_console/static/work-tasks.js"
+        "web/static/work-tasks.js"
       ],
       "reconstructed_startup_sha256_verified": true
     },

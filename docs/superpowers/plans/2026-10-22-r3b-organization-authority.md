@@ -30,7 +30,7 @@ async def test_cyclic_org_change_rolls_back(r3_http, r3_ids):
 - [ ] organization的memory/PG仓储接收协调事务的工作单元；PG使用同一connection、memory使用同一待提交快照，不能另开事务或独立提交组织变更。
 - [ ] identity停用原事务先提交，再执行协调域收尾；不在旧WorkspaceStore事务中嵌套协调事务，不在DB锁内调用HTTP/模型。增加超时、反向并发与取消回滚测试，不能靠全局进程dict实现正确性。
 - [ ] 角色限定org_manager/unit_operator/unit_approver；组织管理与tenant_admin分离，管理员默认只有组织配置和数量，无个人正文。指定scope必须是当前用户被授权的组织范围。
-- [ ] 跑`uv run pytest packages/xuanpu-server/tests/r3_contract/test_coordination.py packages/xuanpu-server/tests/r3_contract/test_organization_store.py -q`；补ADR草案说明复用PG而不引入通用工作流引擎，提交`feat: 建立组织实体与跨员工协调事务`。
+- [ ] 跑`uv run pytest tests/server/r3_contract/test_coordination.py tests/server/r3_contract/test_organization_store.py -q`；补ADR草案说明复用PG而不引入通用工作流引擎，提交`feat: 建立组织实体与跨员工协调事务`。
 
 ## B1：组织API、职责与来源配置
 
@@ -42,7 +42,7 @@ API：管理员`/v1/admin/organization/units|positions|memberships|roles|authori
 - [ ] 实现local或指定installation的字段权威，不支持同字段无条件双向覆盖；切换来源要预览影响并显式CAS确认，保留旧映射与历史，不复用已停用部门ID。
 - [ ] 名称/组织成员与审批职责分开。部门目录只返回当前策略可见的最小资料，手机号/邮箱不随角色继承；组织统计独立分页且不含私有事项标题。
 - [ ] 岗位变更递增相关授权epoch并写治理事件，历史责任人保持真实记录；不得把未决业务自动指派给新部门负责人。
-- [ ] 跑`uv run pytest packages/xuanpu-server/tests/r3_contract/test_org_permissions.py packages/xuanpu-server/tests/r3_contract/test_field_authority.py packages/xuanpu-server/tests/identity -q`；提交`feat: 按组织职责管理字段权威与授权`。
+- [ ] 跑`uv run pytest tests/server/r3_contract/test_org_permissions.py tests/server/r3_contract/test_field_authority.py tests/server/identity -q`；提交`feat: 按组织职责管理字段权威与授权`。
 
 ## B2：企业微信只读目录预览与确认应用
 
@@ -63,7 +63,7 @@ async def test_partial_directory_cannot_disable_missing_users(r3_http, r3_ids):
 - [ ] 在事务外分页采集，记录provider scope/采集起止/各页摘要；source完整性为partial时只能提出明确实际观察到的增改，不得推导删除、停用或缩权。
 - [ ] apply先核source_revision、源摘要、本地version、字段权威，再在协调事务分批落地映射+数据+回执+事件；每批固定selected_changes，失败批重试不重复，已成功批不宣称全局回滚。
 - [ ] 显式权威停用接既有identity流水线；来源离职状态不明确时仅标unverified，由人工核定。此阶段不向企微修改成员/部门。
-- [ ] 跑`uv run pytest packages/xuanpu-server/tests/r3_contract/test_org_sync.py packages/xuanpu-server/tests/r3_contract/test_org_sync_faults.py -q`，真实目录只读采集/预览与本地应用分别验；提交`feat: 预览并确认企业微信组织差异`。
+- [ ] 跑`uv run pytest tests/server/r3_contract/test_org_sync.py tests/server/r3_contract/test_org_sync_faults.py -q`，真实目录只读采集/预览与本地应用分别验；提交`feat: 预览并确认企业微信组织差异`。
 
 ## B3：调岗、停用、职责失效与独立验收
 

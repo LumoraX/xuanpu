@@ -12,22 +12,22 @@ from pathlib import Path
 
 import uvicorn
 from fastapi.responses import HTMLResponse, RedirectResponse
-from xuanpu_console import static_dir
-from xuanpu_server.api.app import create_app
-from xuanpu_server.collaboration.models import CollaborationConfig
-from xuanpu_server.controlplane import InMemoryControlPlane
-from xuanpu_server.identity.config import IdentityConfig
-from xuanpu_server.identity.cookies import login_token_hash
-from xuanpu_server.identity.models import LoginSession, UserRecord
-from xuanpu_server.identity.service import IdentitySettings
-from xuanpu_server.organization.config import OrganizationConfig
-from xuanpu_server.shared_matters.models import SharedMatterConfig
+from web import static_dir
+from server.api.app import create_app
+from server.domains.collaboration.models import CollaborationConfig
+from server.core.controlplane import InMemoryControlPlane
+from server.domains.identity.config import IdentityConfig
+from server.domains.identity.cookies import login_token_hash
+from server.domains.identity.models import LoginSession, UserRecord
+from server.domains.identity.service import IdentitySettings
+from server.domains.organization.config import OrganizationConfig
+from server.domains.shared_matters.models import SharedMatterConfig
 
 
 async def serve(directory: Path, port: int) -> None:
     """使用真实应用与当前静态资源，合成会话仅绑定回环地址。"""
     root = Path(__file__).resolve().parents[2]
-    spec = importlib.util.spec_from_file_location('r3_browser_test_support', root / 'packages/xuanpu-server/tests/conftest.py')
+    spec = importlib.util.spec_from_file_location('r3_browser_test_support', root / 'tests/server/conftest.py')
     assert spec is not None and spec.loader is not None
     support = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = support

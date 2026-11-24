@@ -121,7 +121,7 @@ curl -fsS -X POST "$BASE/v1/identity/feishu/reconcile" \
 
 这是两个模拟在职员工的实际结果。手工触发忽略每日周期，仍需认领租约；冲突返回 409。自动对账与登录清理共用每五分钟维护循环，成功后按配置周期再运行；扫描失败释放租约，不推进完成时间，下个维护周期重试。已停用的保持停用，查不到的人由管理员确认。[运维说明](operations.md#通讯录对账运维)
 
-后台应用需要代表员工时，由管理员签发有 `act_as_users` 能力的 key，再附带 `X-Xuanpu-Act-As`。生效角色取 key 和员工中较低者；普通成员只看本人会话。Python SDK 用 `XuanpuClient(..., act_as_user=user_id)` 固定一个客户端的员工身份，不能因此提权。示例见[应用接入](integrating.md#代表员工调用)与 [SDK](../../packages/xuanpu-sdk-py/README.md)。
+后台应用需要代表员工时，由管理员签发有 `act_as_users` 能力的 key，再附带 `X-Xuanpu-Act-As`。生效角色取 key 和员工中较低者；普通成员只看本人会话。Python SDK 用 `XuanpuClient(..., act_as_user=user_id)` 固定一个客户端的员工身份，不能因此提权。示例见[应用接入](integrating.md#代表员工调用)与 [SDK](../../sdk/README.md)。
 
 ## 6. 本地验证边界与真实应用核对清单
 

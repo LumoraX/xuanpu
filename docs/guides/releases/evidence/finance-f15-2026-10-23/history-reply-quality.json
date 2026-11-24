@@ -17,7 +17,7 @@
       "result": "q限定当前单号/单据事由字面；类别或旧事由线索从授权mine无q定位，明确当前字面筛选仍按原值。0结果不静默扩大、多候选需确认，真实公司/游标/RLS及当前详情历史门槛保留。已只读核storage/f9_summaries.py实际q仅对id和当前content.reason做不区分大小写子串匹配。"
     },
     {
-      "file": "packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "file": "tests/finance/test_f15_skill_contract.py",
       "lines": [
         256,
         368
@@ -44,13 +44,13 @@
   },
   "checks": [
     {
-      "command": "uv run pytest packages/xuanpu-finance/tests/test_f15_model_harness.py packages/xuanpu-finance/tests/test_f15_skill_contract.py -q",
+      "command": "uv run pytest tests/finance/test_f15_model_harness.py tests/finance/test_f15_skill_contract.py -q",
       "exit_code": 0,
       "result": "145 passed in 3.54s",
       "boundary": "实际包含既有null-query loopback HTTP；无PG、真实模型/外部API或私有配置访问。"
     },
     {
-      "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+      "command": "uv run ruff check --select F,S108,I,TC,C901 --config lint.mccabe.max-complexity=10 tests/finance/test_f15_skill_contract.py",
       "exit_code": 0,
       "result": "All checks passed!",
       "scope": "仅声明的选定门禁，不能写成所有lint通过。"
@@ -76,7 +76,7 @@
   "source_sha256": {
     "examples/finance/skills/finance-assistant/SKILL.md": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "5927be1ccc071598edd695fe7aaf40b7e058e9df129bc63501fec1a34dc8ed6f"
+    "tests/finance/test_f15_skill_contract.py": "5927be1ccc071598edd695fe7aaf40b7e058e9df129bc63501fec1a34dc8ed6f"
   },
   "baseline_root_sha256": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
   "baseline_test_sha256": "a5242549807c99b49fc14da5c00fa04f61a86af09f88b919691c6bcca4407c37",

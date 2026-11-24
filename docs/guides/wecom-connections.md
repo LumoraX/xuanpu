@@ -34,4 +34,4 @@ R3-A支持企业内部自建应用、企业微信客户端网页授权、本人�
 
 R2任务保存安装版本、consent_id与epoch。撤销、到期、停用后冷恢复显示`connection_reauthorization_required`；新同意不会自动恢复原任务。本人确认新同意后，`POST /v1/work-tasks/{task_id}/connection-authorization`用expected_version/request_id显式继续；保留预算、attempt及原恢复窗口，原工具批准需按当前任务重新确认。安排生成的任务须在原安排重新确认，不能改写多次发生共用的执行授权。
 
-SDK提供list_connections/read_connection/revoke_connection_consent及connection_confirmation_url；CLI见[命令行说明](../../packages/xuanpu-cli/README.md)。真实企业身份和资料验收未完成时，不能将代码/模拟通过称为真实接入完成。
+SDK提供list_connections/read_connection/revoke_connection_consent及connection_confirmation_url；CLI见[命令行说明](../../cli/README.md)。真实企业身份和资料验收未完成时，不能将代码/模拟通过称为真实接入完成。

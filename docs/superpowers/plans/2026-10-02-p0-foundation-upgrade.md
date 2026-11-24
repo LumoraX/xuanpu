@@ -23,7 +23,7 @@
   Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
   ```
 - 只 import `taifeng.__all__` 里的名字。
-- 各仓有文档覆盖测试（`tests/test_docs.py` 或 `packages/xuanpu-cli/tests/test_examples_and_docs.py`）：新增公开名字、线协议方法、HTTP 接口时同步文档，否则测试会红。
+- 各仓有文档覆盖测试（`tests/test_docs.py` 或 `tests/cli/test_examples_and_docs.py`）：新增公开名字、线协议方法、HTTP 接口时同步文档，否则测试会红。
 
 ---
 
@@ -495,7 +495,7 @@
 
 **Files:**
 - Modify: `xuanpu/pyproject.toml`（`[tool.uv.sources]` 加 `taifeng = { path = "../taifeng", editable = true }`，注释同 A1）
-- Modify: `xuanpu/packages/xuanpu-server/pyproject.toml`（`taifeng>=2026.10.1.10`）
+- Modify: `xuanpu/server/pyproject.toml`（`taifeng>=2026.10.1.10`）
 
 - [ ] **Step 1：改依赖**，`uv lock && uv sync --all-packages`，确认内核版本。
 - [ ] **Step 2：跑全量测试。** 逐个查失败原因（升级说明里的破坏性变更：ADR 0073 `apply_patch` 权限、ADR 0108 本机执行器返回包装对象、ADR 0112 stdin 为 DEVNULL、ADR 0069 MCP 分页抛错、`experimental` 里移出的名字发 `DeprecationWarning`）。修平台代码，不改测试期望；确有期望过时的，在提交说明里写清楚为什么改。
@@ -504,9 +504,9 @@
 ### Task C2：对象存储抽象
 
 **Files:**
-- Create: `xuanpu/packages/xuanpu-server/src/xuanpu_server/objectstore/__init__.py`、`base.py`、`local.py`、`s3.py`
-- Modify: `xuanpu/packages/xuanpu-server/src/xuanpu_server/config.py`（`ObjectStoreConfig`）、`xuanpu/packages/xuanpu-server/pyproject.toml`（可选依赖 `s3 = ["boto3>=1.34"]`）、`xuanpu/pyproject.toml`（dev 组加 `boto3>=1.34`、`moto[server]>=5.0`、`boto3-stubs[s3]`）
-- Test: `xuanpu/packages/xuanpu-server/tests/test_objectstore.py`、`tests/test_config.py`
+- Create: `xuanpu/server/objectstore/__init__.py`、`base.py`、`local.py`、`s3.py`
+- Modify: `xuanpu/server/config.py`（`ObjectStoreConfig`）、`xuanpu/server/pyproject.toml`（可选依赖 `s3 = ["boto3>=1.34"]`）、`xuanpu/pyproject.toml`（dev 组加 `boto3>=1.34`、`moto[server]>=5.0`、`boto3-stubs[s3]`）
+- Test: `xuanpu/tests/server/test_objectstore.py`、`tests/test_config.py`
 
 - [ ] **Step 1：协议（`base.py`）。**
 
@@ -631,9 +631,9 @@
 ### Task C3：业务包归档进对象存储，用到时解到本地缓存
 
 **Files:**
-- Create: `xuanpu/packages/xuanpu-server/src/xuanpu_server/package_cache.py`
+- Create: `xuanpu/server/package_cache.py`
 - Modify: `packages.py`、`platform.py`（构造参数 `objects: ObjectStore | None = None`，None 用 `LocalObjectStore(data_dir / "objects")`）、`bootstrap.py`、`controlplane/models.py`（`location` 的 docstring 改为「归档在对象存储里的键」）、`runtime/assembler.py`、`evals.py`（若直接用 `record.location`）
-- Test: `xuanpu/packages/xuanpu-server/tests/test_package_storage.py`（新建）；`tests/conftest.py` 的 `World` 加 `objects` 字段
+- Test: `xuanpu/tests/server/test_package_storage.py`（新建）；`tests/conftest.py` 的 `World` 加 `objects` 字段
 
 - [ ] **Step 1：写失败的测试。**
 
@@ -718,7 +718,7 @@
 
 **Files:**
 - Modify: `runtime/assembler.py`（`StateBackends`、`_create_pool`）、`bootstrap.py`（`PostgresStateBackends`）
-- Test: `xuanpu/packages/xuanpu-server/tests/test_multi_instance.py`（新建）
+- Test: `xuanpu/tests/server/test_multi_instance.py`（新建）
 
 - [ ] **Step 1：写失败的测试（M0 验收）。** 需要 Postgres（用 conftest 的 `postgres_dsn` 夹具；没有就跳过）。两个 `Platform`：共享同一个 `PostgresControlPlane`、同一个 `PostgresStateBackends`（同一 schema）、同一个 `LocalObjectStore`，**数据目录不同**：
 
@@ -757,7 +757,7 @@
 
 **Files:**
 - Modify: `runtime/sessions.py`（`cancel`）、`api/app.py`、`api/schemas.py`（`CancelBody`）、`xuanpu-sdk-py/src/xuanpu_sdk/client.py`（`sessions.cancel`）、`xuanpu-console/src/xuanpu_console/static/app.js`（流式时显示「停止」）
-- Test: `xuanpu/packages/xuanpu-server/tests/test_cancel.py`（新建）、`xuanpu-sdk-py/tests/test_sdk.py`、`xuanpu-console/tests/test_static.py`
+- Test: `xuanpu/tests/server/test_cancel.py`（新建）、`xuanpu-sdk-py/tests/test_sdk.py`、`xuanpu-console/tests/test_static.py`
 
 - [ ] **Step 1：写失败的测试。** 用一个会卡住的模型步骤：`Step` 加可选字段 `wait: asyncio.Event | None = None`，`_ScriptedSession.stream` 在产出文本之后、`completed` 之前 `await step.wait.wait()`（只为测试；默认 None 不等）。
 
@@ -1020,7 +1020,7 @@
 **Files:**
 - Create: `xuanpu/docs/decisions/0013-connector-sandbox-and-remote-mcp.md`
 - Modify: `docs/decisions/README.md`、`docs/architecture/README.md`、`docs/architecture/http-api.md`、`docs/architecture/package-spec.md`、`docs/architecture/kernel-seam-backlog.md`、`docs/guides/operations.md`、`docs/guides/writing-packages.md`、`docs/guides/integrating.md`、`docs/guides/audit-and-usage.md`、`docs/guides/quickstart.md`（若涉及数据目录）、`examples/xuanpu.yaml`、`examples/xuanpu.trial.yaml`、`packages/*/README.md`、`README.md`
-- Test: `packages/xuanpu-cli/tests/test_examples_and_docs.py`
+- Test: `tests/cli/test_examples_and_docs.py`
 
 - [ ] **Step 1：ADR 0013**（Accepted，2026-10-02）：stdio 连接器进单独的连接器沙盒（只读业务包、只写工作目录、可出网；为什么与脚本沙盒分开：出网需求不同）；新增 `remote` 传输（为什么不等 MCP 网关：ADR 0006 继续暂缓，远端 server 直连即可；凭据每次请求现取）。
 - [ ] **Step 2：架构总览**：状态面（会话主存进库、对象存储、本地盘只剩缓存）；「已知限制」删掉已解决的六条（连接器不在沙盒、会话主存是本地文件、不能单独取消、配额不能改、没有指标、拒绝无过闸记录、`/openapi.json`），保留其余；加一条「业务包缓存不自动淘汰，可随时清空」。

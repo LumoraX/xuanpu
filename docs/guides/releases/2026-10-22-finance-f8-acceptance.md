@@ -46,8 +46,8 @@ FINANCE_TEST_PG_CONTAINER=xuanpu-finance-f8-pg uv run python scripts/finance_acc
 uv run ruff check --select F,S108,I,TC packages scripts
 uv run mypy packages/*/src
 uv lock --check --offline
-uv run pytest packages/xuanpu-console/tests -q
-uv run pytest packages/xuanpu-cli/tests/test_examples_and_docs.py packages/xuanpu-spec/tests -q
+uv run pytest tests/web -q
+uv run pytest tests/cli/test_examples_and_docs.py tests/spec -q
 ```
 
 ## 审查、失败与修复

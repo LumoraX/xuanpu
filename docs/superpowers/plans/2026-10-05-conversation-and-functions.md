@@ -10,9 +10,9 @@
 
 ## 任务1：回归覆盖
 
-- [x] `packages/xuanpu-console/tests/reminder_behavior.cjs`：新建表单无模型POST、失败重试同request_id、输入拒绝后可修正、切页后旧提交不干扰新表单。
+- [x] `tests/web/reminder_behavior.cjs`：新建表单无模型POST、失败重试同request_id、输入拒绝后可修正、切页后旧提交不干扰新表单。
 - [x] `tests/e2e/console.cjs`：会话默认无新建表单；功能入口手动CRUD，拦截assistant/route期间调用数为0；刷新及对话查看同记录；窄屏与退出清理。
-- [x] 先运行`uv run pytest packages/xuanpu-console/tests/test_reminder_behavior.py -q`确认新建表单缺失，再实现。
+- [x] 先运行`uv run pytest tests/web/test_reminder_behavior.py -q`确认新建表单缺失，再实现。
 
 ## 任务2：界面实现
 
@@ -40,7 +40,7 @@
 ## 本地部署
 
 - 实现提交`ebba410`已fast-forward合并本地main；`uv sync --all-packages --all-extras`将主线console更新至2026.10.5.7。未推送远端、未发布云端。
-- 8420实际返回的index.html、app.js、reminders.js、identity.js、style.css逐一匹配主线资源哈希；安装路径指向`<xuanpu 仓库>/packages/xuanpu-console/src/xuanpu_console/static`。
+- 8420实际返回的index.html、app.js、reminders.js、identity.js、style.css逐一匹配主线资源哈希；安装路径指向`<xuanpu 仓库>/web/static`。
 - 主线控制台专项测试6 passed；platform与tickets均运行中。静态资源即时读取，本次没有重启后台或更改私有配置。
 - 更新前后已有验收会话`ses_c004382ccd2a3c51ec2292eb`均保留14条历史。实际用户刷新控制台后使用新版；浏览器交互验收使用隔离模拟员工，未代替真实飞书登录重新授权。
 - 产品约定已写入AGENTS：对话为主入口，功能模块可选但必要兜底始终保留；当前已提供提醒与通知，不把未来报销、签收等领域称为已完成。

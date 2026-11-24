@@ -13,7 +13,7 @@ tmp_path = PosixPath('/private/var/folders/74/_l_9gd597vs6wjb3f2nrcdn40000gn/T/p
                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 E       TypeError: objects_from_config() got an unexpected keyword argument 'simulation'
 
-packages/xuanpu-finance/tests/test_f2_runtime.py:22: TypeError
+tests/finance/test_f2_runtime.py:22: TypeError
 ________ test_simulation_rejects_wrong_actual_database_before_mutation _________
 
     async def test_simulation_rejects_wrong_actual_database_before_mutation() -> None:
@@ -23,8 +23,8 @@ ________ test_simulation_rejects_wrong_actual_database_before_mutation _________
 E       AssertionError: 缺少运行时真实数据库隔离门禁
 E       assert None is not None
 
-packages/xuanpu-finance/tests/test_f2_runtime.py:39: AssertionError
+tests/finance/test_f2_runtime.py:39: AssertionError
 =========================== short test summary info ============================
-FAILED packages/xuanpu-finance/tests/test_f2_runtime.py::test_simulated_originals_use_distinct_object_prefix
-FAILED packages/xuanpu-finance/tests/test_f2_runtime.py::test_simulation_rejects_wrong_actual_database_before_mutation
+FAILED tests/finance/test_f2_runtime.py::test_simulated_originals_use_distinct_object_prefix
+FAILED tests/finance/test_f2_runtime.py::test_simulation_rejects_wrong_actual_database_before_mutation
 2 failed in 0.16s

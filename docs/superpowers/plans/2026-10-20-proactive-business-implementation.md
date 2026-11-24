@@ -10,7 +10,7 @@
 
 ## 任务 1：持久存储与统一通知
 
-- [x] 在 `packages/xuanpu-server/tests/workspace/test_proactive_store.py` 先增加内存/数据库契约测试：回滚、租户隔离、同一通知只写一次、分页及重启读取。
+- [x] 在 `tests/server/workspace/test_proactive_store.py` 先增加内存/数据库契约测试：回滚、租户隔离、同一通知只写一次、分页及重启读取。
 - [x] 在 `workspace/models.py` 增加主动设置与工作区事务中的 `checks`、`followups`、`scan_state`、`pending_notifications`；增加后台 owners 分页协议。
 - [x] 新增 `controlplane/migrations/0008_proactive.sql`（以实际当前末版本递增为准），在 `workspace/postgres.py`、`workspace/memory.py` 同事务保存检查、跟进、评估游标、动作审计与通知。
 - [x] 扩展 `reminders/models.py`、Postgres 列投影、发送器，保留原提醒兼容与通知序列；主动通知附来源、正文、关联 ID 与 `alert_after`。

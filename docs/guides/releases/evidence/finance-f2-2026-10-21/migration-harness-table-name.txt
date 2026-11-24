@@ -22,7 +22,7 @@ store = <xuanpu_finance.storage.store.FinanceStore object at 0x10a3733e0>
                 "INSERT INTO finance_claim_history(tenant_id,legal_entity_id,id,version,data) VALUES('old','old','legacy',4,'{\"reason\":\"旧记录\"}')"
             )
 
-packages/xuanpu-finance/tests/test_f2_migration.py:27:
+tests/finance/test_f2_migration.py:27:
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 .venv/lib/python3.12/site-packages/asyncpg/connection.py:354: in execute
     result = await self._protocol.query(query, timeout)
@@ -34,5 +34,5 @@ E   asyncpg.exceptions.UndefinedTableError: relation "finance_claim_history" doe
 
 asyncpg/protocol/protocol.pyx:369: UndefinedTableError
 =========================== short test summary info ============================
-FAILED packages/xuanpu-finance/tests/test_f2_migration.py::test_real_f1_rows_survive_repeated_f2_migration_without_execution_upgrade
+FAILED tests/finance/test_f2_migration.py::test_real_f1_rows_survive_repeated_f2_migration_without_execution_upgrade
 1 failed in 0.28s

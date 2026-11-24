@@ -11,10 +11,10 @@ import json
 import sys
 from pathlib import Path
 
-from xuanpu_server.capabilities.delivery import fingerprint
-from xuanpu_server.capabilities.models import EvaluationSuite
-from xuanpu_server.packages import archive_digest
-from xuanpu_spec import pack_package
+from server.domains.capabilities.delivery import fingerprint
+from server.domains.capabilities.models import EvaluationSuite
+from server.engine.packages import archive_digest
+from spec import pack_package
 
 ROOT = Path(__file__).resolve().parent
 

@@ -8,17 +8,17 @@
   "baseline_source_sha256": {
     "examples/finance/skills/finance-assistant/SKILL.md": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "7456a2fdbe1731e5e4b89060927e9d35f57eba48014f21dc76363bd1f694ab9b",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "a5242549807c99b49fc14da5c00fa04f61a86af09f88b919691c6bcca4407c37"
+    "tests/finance/test_f15_skill_contract.py": "a5242549807c99b49fc14da5c00fa04f61a86af09f88b919691c6bcca4407c37"
   },
   "source_sha256": {
     "examples/finance/skills/finance-assistant/SKILL.md": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md": "be26d24cf5c370ffeb5c3979bb4c314ec42f630ffb3d92afb7b258988c1d4b82",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py": "5927be1ccc071598edd695fe7aaf40b7e058e9df129bc63501fec1a34dc8ed6f"
+    "tests/finance/test_f15_skill_contract.py": "5927be1ccc071598edd695fe7aaf40b7e058e9df129bc63501fec1a34dc8ed6f"
   },
   "only_phase1_snapshot_changes": [
     "docs/superpowers/specs/finance-v1/pack/skills/finance-assistant/SKILL.md",
     "examples/finance/skills/finance-assistant/SKILL.md",
-    "packages/xuanpu-finance/tests/test_f15_skill_contract.py"
+    "tests/finance/test_f15_skill_contract.py"
   ],
   "root_changes": [
     "Final reply to original/historical approval opinion requests includes each requested actual human decision and reason across rejection/resubmission/later approvals; current workflow steps cannot replace history. Cancelled is not an actual human decision; approved does not erase already-read rejection reasons. Latest-only questions retain their scope; complete already-read history is consolidated without redundant reads.",
@@ -77,7 +77,7 @@
     ]
   },
   "lint": {
-    "command": "uv run ruff check --select F,S108,I,TC,C901 packages/xuanpu-finance/tests/test_f15_skill_contract.py",
+    "command": "uv run ruff check --select F,S108,I,TC,C901 tests/finance/test_f15_skill_contract.py",
     "returncode": 0,
     "log": "history-reply-ruff.log",
     "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"

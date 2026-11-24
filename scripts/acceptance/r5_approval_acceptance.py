@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from xuanpu_sdk import XuanpuClient
+from sdk import XuanpuClient
 
 # 管家一轮在服务端最长 90 秒；客户端须等得比它久
 CLIENT_TIMEOUT = 120.0

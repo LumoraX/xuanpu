@@ -23,11 +23,11 @@ R0 七项任务已实施并完成本地候选验收，详见[分层验收回执]
 
 R0 不加入岗位组织、外部员工授权、跨部门流程或通用后台执行。保留已有主动业务功能，并把它纳入回归范围。
 
-路径规则：源码短路径以 `packages/xuanpu-server/src/xuanpu_server/` 为根，`tests/` 以 `packages/xuanpu-server/` 为根；`scripts/`、`docs/`、`docker/` 以仓库根为根。
+路径规则：源码短路径以 `server/` 为根，`tests/` 以 `server/` 为根；`scripts/`、`docs/`、`docker/` 以仓库根为根。
 
 ## Task 1 记录真实运行依赖并建立契约清单
 
-**Files:** Create `scripts/runtime_inventory.py`, `packages/xuanpu-server/tests/test_runtime_inventory.py`, `docs/guides/releases/2026-10-21-r0-baseline.md`; inspect `uv.lock`, `packages/xuanpu-server/pyproject.toml`, `bootstrap.py`, `docker/compose.yml`。
+**Files:** Create `scripts/runtime_inventory.py`, `tests/server/test_runtime_inventory.py`, `docs/guides/releases/2026-10-21-r0-baseline.md`; inspect `uv.lock`, `server/pyproject.toml`, `bootstrap.py`, `docker/compose.yml`。
 
 - [x] **Step 1:** 用以下完整测试定义 inventory 的最低要求；`scripts/` 不进入包导入路径，使用 `runpy` 加载。
 
@@ -45,7 +45,7 @@ def test_inventory_exposes_versions_and_public_seams() -> None:
     assert "environment" not in inventory
 ```
 
-- [x] **Step 2:** 运行 `uv run pytest packages/xuanpu-server/tests/test_runtime_inventory.py -q`，确认因文件缺失失败。
+- [x] **Step 2:** 运行 `uv run pytest tests/server/test_runtime_inventory.py -q`，确认因文件缺失失败。
 - [x] **Step 3:** 实现以下完整的采集主体，脚本通过 `__main__` 将结果写到 stdout。调用方用重定向保存到私有验收目录，不扫描或输出环境变量、配置或凭据。
 
 ```python
@@ -81,9 +81,9 @@ if __name__ == "__main__":
 
 ## Task 2 将个人内容权限与会话管理权限拆开
 
-**Files:** Create `runtime/content_access.py`, `tests/test_content_access.py` under `packages/xuanpu-server`; Modify `runtime/ownership.py`, `runtime/sessions.py`, `api/history.py`, `tests/identity/test_session_ownership.py`, `tests/identity/test_session_history.py`。
+**Files:** Create `runtime/content_access.py`, `tests/test_content_access.py` under `server`; Modify `runtime/ownership.py`, `runtime/sessions.py`, `api/history.py`, `tests/identity/test_session_ownership.py`, `tests/identity/test_session_history.py`。
 
-以下路径以 `packages/xuanpu-server/src/xuanpu_server/` 为源码根；测试路径以 `packages/xuanpu-server/` 为根。
+以下路径以 `server/` 为源码根；测试路径以 `server/` 为根。
 
 - [x] **Step 1:** 新增以下完整策略测试，再补 HTTP 矩阵测试。HTTP 矩阵为普通员工本人、同租户其他员工、租户管理员、未代人的 API key、明确代员工的 key、跨租户 key；对每种调用者覆盖 history、replay、pending、send、resume。
 
@@ -107,7 +107,7 @@ def test_service_key_cannot_read_employee_content() -> None:
     assert not can_read_content(key, record)
 ```
 
-- [x] **Step 2:** 运行 `uv run pytest packages/xuanpu-server/tests/test_content_access.py -q`，确认新接口缺失导致失败。
+- [x] **Step 2:** 运行 `uv run pytest tests/server/test_content_access.py -q`，确认新接口缺失导致失败。
 - [x] **Step 3:** 新建策略主体如下。模块和函数补中文 docstring，类型导入按现有 strict 约束整理。
 
 ```python
@@ -131,7 +131,7 @@ def can_read_content(principal: Principal, record: SessionRecord) -> bool:
 
 ## Task 3 收紧审计导出与前端内容入口
 
-**Files:** Modify `api/schemas.py`, `api/audit_usage.py`, `packages/xuanpu-console/src/xuanpu_console/static/app.js`; Create `tests/test_audit_metadata.py`; Modify `tests/identity/test_user_audit.py`, `docs/guides/audit-and-usage.md`。
+**Files:** Modify `api/schemas.py`, `api/audit_usage.py`, `web/static/app.js`; Create `tests/test_audit_metadata.py`; Modify `tests/identity/test_user_audit.py`, `docs/guides/audit-and-usage.md`。
 
 - [x] **Step 1:** 新增含随机敏感文本的 `AuditRecord`，断言管理接口不能返回原始 `data`。完整的投影单元测试如下：
 
@@ -160,7 +160,7 @@ def audit_metadata_view(record: AuditRecord) -> dict[str, Any]:
 ```
 
 - [x] **Step 3:** 控制台管理页停止渲染任意事件 `data`；本人对话从受限接口读取。用量接口保留聚合数字。对未知事件种类也不回显 payload；分页游标继续按原始记录推进，不能因过滤丢页。
-- [x] **Step 4:** 运行 `uv run pytest packages/xuanpu-server/tests/test_audit_metadata.py packages/xuanpu-server/tests/identity/test_user_audit.py packages/xuanpu-server/tests/identity/test_session_history.py -q`；真实浏览器登录管理员确认看不到其他员工正文，本人历史仍可用。
+- [x] **Step 4:** 运行 `uv run pytest tests/server/test_audit_metadata.py tests/server/identity/test_user_audit.py tests/server/identity/test_session_history.py -q`；真实浏览器登录管理员确认看不到其他员工正文，本人历史仍可用。
 - [x] **Step 5:** 文档说明此次响应收紧及旧客户端兼容处理，独立提交 `fix: 管理审计默认仅返回元数据`。R0 不交付调查取证通道；没有取证授权就拒绝内容访问。
 
 ## Task 4 为审批增加持久操作回执并验证内核核销
@@ -168,7 +168,7 @@ def audit_metadata_view(record: AuditRecord) -> dict[str, Any]:
 **Files:** Create `controlplane/migrations/0009_operation_receipts.sql`, `runtime/operation_receipts.py`, `runtime/receipt_store.py`, `tests/test_operation_receipts.py`, `tests/test_resume_idempotency.py`; Modify `runtime/sessions.py`, `runtime/resolutions.py`, `runtime/gate_audit.py`, `controlplane/schema.py` 的迁移测试；按需修改 `../taifeng/src/taifeng/loop/engine_resume.py` 与对应 `tests/loop/test_engine_resume.py`。
 
 - [x] **Step 1:** 增加六类动作计数测试：相同批准重放、两请求并发批准、批准后拒绝、部分核销后重复送回、不同审批同一提交并发、进程在外部动作后回执落库前中断。测试连接器用自增计数提供权威副作用证据；最后一种必须显示结果未知且动作不会被自动重发。
-- [x] **Step 2:** 运行 `uv run pytest packages/xuanpu-server/tests/test_resume_idempotency.py -q`，捕获真实失败；同时跑现有 `test_gate_audit.py`。不把审计延迟读到的 pending 当作互斥机制。
+- [x] **Step 2:** 运行 `uv run pytest tests/server/test_resume_idempotency.py -q`，捕获真实失败；同时跑现有 `test_gate_audit.py`。不把审计延迟读到的 pending 当作互斥机制。
 - [x] **Step 3:** 新迁移为每项待办保存认领与回执。表名按现有 `SqlNamespace` 约定生成；下面是逻辑 DDL，字段完整，部署迁移脚本按既有占位形式渲染。
 
 ```sql
@@ -208,7 +208,7 @@ ON operation_receipt (tenant_id, operation_id);
 - [x] **Step 3:** `_submit` 前后的在途状态登记与取消请求共享每会话锁；准备引擎期间记录取消意图，在提交前复核主人、会话状态及取消标记。每个提交的 cancel 返回请求标识与受理状态，结束状态从原始提交事件或回执补读。轮询超时不允许返回“已停止”。
 - [x] **Step 4:** 对当前安装内核运行完整四项契约：若它只能静默丢弃尚未受理的 cancel，或会清掉挂起但不发终态，回内核按公开协议修复；平台保留“未确认停止”的可见状态，不能伪造终态。内核修复遵守 Task 4 的独立发布和真实台账门槛。
 - [x] **Step 5:** 原始事件 `turn_completed` 必须同时检查 `success`、`end_reason`；`turn_suspended` 是等待，`turn_failed` 是失败或取消。事件到达顺序不允许把已核实的外部成功覆盖成未执行。连接器无幂等保证时禁止自动重试结果未知的写操作。
-- [x] **Step 6:** 运行 `uv run pytest packages/xuanpu-server/tests/test_cancel.py packages/xuanpu-server/tests/test_cancel_races.py packages/xuanpu-server/tests/test_operation_status.py -q`，补 HTTP/SDK 兼容测试与文档，独立提交 `fix: 明确取消受理与业务结果未知状态`。
+- [x] **Step 6:** 运行 `uv run pytest tests/server/test_cancel.py tests/server/test_cancel_races.py tests/server/test_operation_status.py -q`，补 HTTP/SDK 兼容测试与文档，独立提交 `fix: 明确取消受理与业务结果未知状态`。
 
 ## Task 6 强制单实例基线并使关闭可控
 

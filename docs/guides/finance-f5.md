@@ -127,7 +127,7 @@ F4提醒保留真实`funding_case`目标。`funding_due`仅针对已确定付款
 
 ```text
 uv run xuanpu validate examples/finance
-uv run pytest packages/xuanpu-finance/tests/test_f5_contract.py packages/xuanpu-finance/tests/test_f5_config.py --collect-only -q
+uv run pytest tests/finance/test_f5_contract.py tests/finance/test_f5_config.py --collect-only -q
 ```
 
 独立PG的域、额度并发、撤权epoch、真实回环HTTP、真实cookie/CSRF人工入口、材料/档案、备份恢复及完整门禁结果由[F5验收记录](releases/2026-10-22-finance-f5-acceptance.md)逐层记录；收集到测试用例不代表已执行通过，未配置独立`FINANCE_TEST_DSN`的skip不能证明PG行为。

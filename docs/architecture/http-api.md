@@ -1,6 +1,6 @@
 # HTTP 接口（活文档）
 
-> 第一版接口，加上 P0 新增的停止生成、修改配额与指标端点，以及 P1 的调用者身份（浏览器登录 cookie、系统代员工调用、`GET /v1/me`）、飞书登录与租户的飞书配置、会话的归属与[可见范围](#可见范围)、审计与用量带上员工（`GET /v1/audit?user_id=`、`GET /v1/usage/users`）、[员工管理](#员工)、[通讯录对账](#飞书通讯录对账)与[飞书事件回调](#飞书事件回调)（离职停用）。实现在 `packages/xuanpu-server/src/xuanpu_server/api/`。
+> 第一版接口，加上 P0 新增的停止生成、修改配额与指标端点，以及 P1 的调用者身份（浏览器登录 cookie、系统代员工调用、`GET /v1/me`）、飞书登录与租户的飞书配置、会话的归属与[可见范围](#可见范围)、审计与用量带上员工（`GET /v1/audit?user_id=`、`GET /v1/usage/users`）、[员工管理](#员工)、[通讯录对账](#飞书通讯录对账)与[飞书事件回调](#飞书事件回调)（离职停用）。实现在 `server/api/`。
 > 用法与注意事项见[应用接入](../guides/integrating.md)；本文是逐个接口的参考。
 
 ## 约定
@@ -159,7 +159,9 @@ X-Xuanpu-Act-As: usr_5f0c1b2e7d9a4c3b8e6f1a20
 | `PUT /v1/admin/tenants/{id}/quota` | 平台管理员 | 整体替换租户的配额 |
 | `POST /v1/admin/tenants/{id}/keys` | 平台管理员 | 给租户签发 API key |
 | `POST /v1/keys` · `GET /v1/keys` · `DELETE /v1/keys/{id}` | 租户管理员 | 本租户的 API key |
-| `PUT /v1/secrets/{name}` · `GET /v1/secrets` · `DELETE /v1/secrets/{name}` | 租户管理员 | 密钥。取值写入后不可再读出 |
+| `PUT /v1/secrets/{name}` · `GET /v1/secrets` · `GET /v1/secrets/declared` · `DELETE /v1/secrets/{name}` | 租户管理员 | 密钥管理与已发布包声明密钥目录。取值写入后不可再读出 |
+| `GET /v1/marketplace/items` | 租户成员 | 浏览能力市场（匠人市场 + 通用技能市场），附带安装状态与待配密钥 |
+| `POST /v1/marketplace/install` | 租户管理员 | 一键安装市场中的匠人或技能库（自动拓扑安装依赖的技能库） |
 | `POST /v1/packages?activate=` | 租户管理员 | 发布业务包，请求体是 zip 归档 |
 | `GET /v1/packages?name=` | 租户成员 | 列出已发布版本 |
 | `POST /v1/packages/{name}/activate` | 租户管理员 | 切换生效版本（前进或回滚） |

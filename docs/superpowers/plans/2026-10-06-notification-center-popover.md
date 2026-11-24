@@ -22,7 +22,7 @@
 ## 验证记录
 
 - 修改前真实浏览器失败：打开通知使工作区纵坐标从113变为290；修改后同一回归通过。
-- `uv run pytest packages/xuanpu-console/tests -q`：6 passed；中心可见时新通知继续更新列表与水位、不叠卡、关闭后不补弹已有通知。
+- `uv run pytest tests/web -q`：6 passed；中心可见时新通知继续更新列表与水位、不叠卡、关闭后不补弹已有通知。
 - 完整真实浏览器控制台/个人工作站旅程通过；新增覆盖页面/滚动不变、开关、外部点击、Tab离开、Esc焦点返回、后台文件窗口保留、已滚动功能入口、长列表内部滚动、桌面与375px深色。证据 `/tmp/xuanpu-notification-center-browser.log` 及同名前缀目录截图。
 - 独立设计与实现审查无阻塞问题；`uv run ruff check --select F,S108,I,TC packages scripts tests/e2e`：All checks passed；`uv run mypy packages/*/src`：Success: no issues found in 116 source files。
 - `uv build --package xuanpu-console --out-dir /tmp/xuanpu-notification-center-dist` 成功生成2026.10.6.1源码包和wheel，核对wheel包含新脚本且内容与源码一致。

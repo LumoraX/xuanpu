@@ -29,9 +29,9 @@
 | --- | --- |
 | [业务包规范](../architecture/package-spec.md) | 清单 `xuanpu.yaml` 的全部字段与规则 |
 | [HTTP 接口](../architecture/http-api.md) | 全部接口、错误码、事件流格式 |
-| [命令行](../../packages/xuanpu-cli/README.md) | `xuanpu` 各子命令与退出码 |
-| [Python 客户端](../../packages/xuanpu-sdk-py/README.md) | `XuanpuClient` 的全部方法 |
-| [控制台](../../packages/xuanpu-console/README.md) | 网页界面能做什么 |
+| [命令行](../../cli/README.md) | `xuanpu` 各子命令与退出码 |
+| [Python 客户端](../../sdk/README.md) | `XuanpuClient` 的全部方法 |
+| [控制台](../../web/README.md) | 网页界面能做什么 |
 | [examples/](../../examples/) | 样例业务包 `support-desk`、样例工单接口、两份配置 |
 
 员工使用主动跟进见[主动业务助理](proactive-assistant.md)。
