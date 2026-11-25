@@ -124,8 +124,11 @@ def build_request(
             continue
         value = args[parameter.name]
         if parameter.location == "path":
+            raw = _scalar(value)
+            if raw in ("", ".", ".."):
+                raise ValueError(f"路径参数 {parameter.name!r} 不能为 {raw!r}")
             # 路径参数整体转义，斜杠也转：不允许借参数改写路径层级
-            path = path.replace("{" + parameter.name + "}", quote(_scalar(value), safe=""))
+            path = path.replace("{" + parameter.name + "}", quote(raw, safe=""))
         elif parameter.location == "query":
             items = value if isinstance(value, list) else [value]
             query.extend((parameter.name, _scalar(item)) for item in items)
@@ -133,10 +136,15 @@ def build_request(
             headers[parameter.name] = _scalar(value)
     if "{" in path:
         raise ValueError(f"路径里还有未填的参数：{path}")
+    url = base_url + path
+    base = urlsplit(base_url)
+    target = urlsplit(url)
+    if (target.scheme, target.netloc) != (base.scheme, base.netloc):
+        raise ValueError("请求地址偏离了连接器声明的 baseUrl")
     body = args.get("body")
     if body is None and operation.request_body_required:
         raise ValueError("缺少请求体 body")
-    return operation.method.upper(), base_url + path, query, headers, body
+    return operation.method.upper(), url, query, headers, body
 
 
 class HttpApiClient:
