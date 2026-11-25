@@ -12,6 +12,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from weakref import WeakValueDictionary
 
 import taifeng
 
@@ -270,8 +271,8 @@ class RuntimeAssembler:
         self._audit = audit
         self._defaults = defaults or RuntimeDefaults()
         self._runtimes: dict[RuntimeKey, TenantRuntime] = {}
-        self._locks: dict[RuntimeKey, asyncio.Lock] = {}
-        self._state_locks: dict[Path, asyncio.Lock] = {}
+        self._locks: WeakValueDictionary[RuntimeKey, asyncio.Lock] = WeakValueDictionary()
+        self._state_locks: WeakValueDictionary[Path, asyncio.Lock] = WeakValueDictionary()
         self._failed_closures: dict[RuntimeKey, list[tuple[str, Callable[[], Awaitable[None]]]]] = {}
 
     @property
@@ -284,6 +285,22 @@ class RuntimeAssembler:
         if self._runtimes or (self._source_contexts is not None and self._source_contexts is not contexts):
             raise RuntimeError('运行时来源检查已固定')
         self._source_contexts = contexts
+
+    def _lock_for(self, key: RuntimeKey) -> asyncio.Lock:
+        """按运行时键取锁；空闲后随弱引用自动回收。"""
+        lock = self._locks.get(key)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._locks[key] = lock
+        return lock
+
+    def _state_lock_for(self, storage: Path) -> asyncio.Lock:
+        """按本机状态目录取锁；不再使用时自动回收。"""
+        lock = self._state_locks.get(storage)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._state_locks[storage] = lock
+        return lock
 
     def live_runtimes(self) -> int:
         """当前组装着（还没回收）的运行时数。"""
@@ -321,7 +338,7 @@ class RuntimeAssembler:
         if existing is not None and existing.closing:
             raise RuntimeUnavailableError("执行空间尚未完成关闭，不能重复启动")
         if existing is None:
-            lock = self._locks.setdefault(key, asyncio.Lock())
+            lock = self._lock_for(key)
             async with lock:
                 if key in self._failed_closures:
                     raise RuntimeUnavailableError("执行空间上次装配尚未清理，不能重复启动")
@@ -557,7 +574,7 @@ class RuntimeAssembler:
                 # 多个scope共享既有消息位置；在第一次建索引时串行预热公开store接口。
                 storage = self._scoped("threads", package)
                 await asyncio.to_thread(storage.mkdir, parents=True, exist_ok=True)
-                async with self._state_locks.setdefault(storage, asyncio.Lock()):
+                async with self._state_lock_for(storage):
                     store = taifeng.JsonlMessageStore(storage)
                     await store.list_threads(limit=1)
             options = await self._state_options(package, states, store)
@@ -617,7 +634,7 @@ class RuntimeAssembler:
 
     async def release_scope(self, key: RuntimeKey) -> None:
         """任务持有者退出后关闭该独立执行空间，失败仍保留资源责任。"""
-        async with self._locks.setdefault(key, asyncio.Lock()):
+        async with self._lock_for(key):
             runtime = self._runtimes.get(key)
             if runtime is None:
                 return
@@ -630,17 +647,32 @@ class RuntimeAssembler:
         """回收没有会话在用、且空闲超过 ``runtime_idle_seconds`` 的运行时，返回回收了哪些。"""
         deadline = self._now() - self._defaults.runtime_idle_seconds
         evicted: list[RuntimeKey] = []
+        errors: list[BaseException] = []
         for key, runtime in list(self._runtimes.items()):
             if runtime.last_used <= deadline and runtime.live_sessions() == 0 and runtime.retainers == 0:
-                lock = self._locks.setdefault(key, asyncio.Lock())
+                lock = self._lock_for(key)
                 async with lock:
-                    # 拿到锁之后再核对一次：这期间可能刚有会话进来
+                    # 拿到锁之后再核对一次：这期间可能刚有会话进来，或 get() 刚刷新了 last_used
                     current = self._runtimes.get(key)
-                    if current is runtime and runtime.live_sessions() == 0 and runtime.retainers == 0:
+                    if (
+                        current is runtime
+                        and runtime.last_used <= deadline
+                        and runtime.live_sessions() == 0
+                        and runtime.retainers == 0
+                    ):
                         runtime.closing = True
-                        await runtime.close()
+                        try:
+                            await runtime.close()
+                        except Exception as exc:
+                            logger.exception("回收空闲运行时失败 key=%s", key)
+                            errors.append(exc)
+                            continue
                         del self._runtimes[key]
                         evicted.append(key)
+        if len(errors) == 1:
+            raise errors[0]
+        if errors:
+            raise BaseExceptionGroup("部分空闲运行时回收失败", errors)
         return evicted
 
     async def close(self) -> None:

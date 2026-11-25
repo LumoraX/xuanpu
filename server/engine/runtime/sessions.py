@@ -22,6 +22,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
+from weakref import WeakValueDictionary
 
 import taifeng
 
@@ -155,7 +156,7 @@ class SessionManager:
         )
         self._now = now
         self._live: dict[SessionKey, _LiveSession] = {}
-        self._locks: dict[SessionKey, asyncio.Lock] = {}
+        self._locks: WeakValueDictionary[SessionKey, asyncio.Lock] = WeakValueDictionary()
         self._heartbeat: asyncio.Task[None] | None = None
         self._draining = False
         self._routing: dict[str, int] = {}
@@ -332,27 +333,37 @@ class SessionManager:
         """取得会话的持有权并准备好引擎。同一个会话的并发请求只准备一次。"""
         key = (record.tenant_id, record.session_id)
         async with self._lock_for(key):
-            live = self._live.get(key)
-            if live is not None:
-                return live
-            held = await self._leases.hold(record)
-            try:
-                live = await self._start_engine(held)
-            except BaseException:
-                await self._let_go(held)
-                raise
-            try:
-                # 准备引擎期间没人续期，租约可能已经过期、被别人拿走：放进来之前再确认一次
-                live.record = await self._bind_thread(live, await self._leases.confirm(live.record))
-            except BaseException:
-                await self._retire(live)
-                raise
-            self._live[key] = live
+            return await self._open_locked(record)
+
+    async def _open_locked(self, record: SessionRecord) -> _LiveSession:
+        """在已持有会话锁的情况下返回或准备活跃引擎，并刷新最近使用时间。"""
+        key = (record.tenant_id, record.session_id)
+        live = self._live.get(key)
+        if live is not None:
+            live.last_used = self._now()
             return live
+        held = await self._leases.hold(record)
+        try:
+            live = await self._start_engine(held)
+        except BaseException:
+            await self._let_go(held)
+            raise
+        try:
+            # 准备引擎期间没人续期，租约可能已经过期、被别人拿走：放进来之前再确认一次
+            live.record = await self._bind_thread(live, await self._leases.confirm(live.record))
+        except BaseException:
+            await self._retire(live)
+            raise
+        self._live[key] = live
+        return live
 
     def _lock_for(self, key: SessionKey) -> asyncio.Lock:
         """一个会话的锁：准备引擎、放进或移出本实例，同一会话同一时刻只做一件。"""
-        return self._locks.setdefault(key, asyncio.Lock())
+        lock = self._locks.get(key)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._locks[key] = lock
+        return lock
 
     async def _bind_thread(self, live: _LiveSession, fresh: SessionRecord) -> SessionRecord:
         """确认持有之后，才把引擎的线程登记到会话上（避免拿过期租约改写别人的线程）。
@@ -558,8 +569,8 @@ class SessionManager:
         await self._capability_guard(record)
         intent = self._begin_preparation(record)
         try:
-            live = await self._open(record)
             async with self._lock_for((record.tenant_id, session_id)):
+                live = await self._open_locked(record)
                 await self._ownership.writable(principal, session_id)
                 self._check_preparation(intent)
                 turn = await self._submit(live, taifeng.UserMessage(text=text, attachments=attachments or []))
@@ -614,8 +625,8 @@ class SessionManager:
                 return ReplayedTurn(session_id, receipt.submission_id, events)
             await self._admit_turn(principal.require_tenant())
             rejected = await self._rejections.prepare(record.tenant_id, session_id, resolutions, user_id=record.user_id)
-            live = await self._open(record)
             async with self._lock_for((record.tenant_id, session_id)):
+                live = await self._open_locked(record)
                 await self._ownership.writable(principal, session_id)
                 self._check_preparation(intent)
                 target = await resume_thread_id(self._store, record.tenant_id, session_id,
@@ -768,9 +779,9 @@ class SessionManager:
         key = (record.tenant_id, session_id)
         async with self._lock_for(key):
             await self._detach(key, force=True)
-        closed = await self._store.update_session(
-            record.tenant_id, session_id, at=self._now(), status="closed"
-        )
+            closed = await self._store.update_session(
+                record.tenant_id, session_id, at=self._now(), status="closed"
+            )
         await self._audit.control(principal, record.tenant_id, "session_closed", session=closed)
         return closed
 

@@ -164,6 +164,8 @@ class TurnStream:
     async def events(self) -> AsyncIterator[taifeng.EventMsg]:
         """逐条取事件，直到这一轮对话结束。"""
         while True:
+            if self._closed and self._queue.empty():
+                return
             event = await self._queue.get()
             if event is None:
                 return
