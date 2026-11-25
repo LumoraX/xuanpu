@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
     from .context_store import AskInput, ContextChange, ContextStore, CreateContext
     from .service import KnowledgeService
-    from .store import Chunk
+    from .store import Chunk, KnowledgeSource
 
     Sampler = Callable[..., Awaitable[str]]
 
@@ -81,20 +81,35 @@ class KnowledgeContexts:
             raise NotFoundError('问答上下文不存在')
         return found
 
-    async def _valid(self, who: Principal, context: KnowledgeContext) -> bool:
+    async def _valid(
+        self,
+        who: Principal,
+        context: KnowledgeContext,
+        *,
+        owner: tuple[str, str] | None = None,
+        sources: dict[str, KnowledgeSource] | None = None,
+        readable_cache: dict[str, bool] | None = None,
+    ) -> bool:
         """只复核固定依据涉及的来源：仍是 ready、代次与 SHA 未变、原文件此刻按本人权限可读。
 
         在职与租户开关每次都核；仓储故障向上抛（不当作有效）。
         """
-        tenant, user = await self.knowledge._employee(who)
-        sources = {s.id: s for s in await self.knowledge.store.sources(tenant, user)}
+        tenant, user = owner if owner is not None else await self.knowledge._employee(who)
+        if sources is None:
+            sources = {s.id: s for s in await self.knowledge.store.sources(tenant, user)}
         for source_id in dict.fromkeys(p.source_id for p in context.pins):
             source = sources.get(source_id)
             pins = [p for p in context.pins if p.source_id == source_id]
             if source is None or source.status != 'ready' or any(
                     (p.source_epoch, p.sha256) != (source.epoch, source.sha256) for p in pins):
                 return False
-            if not (await self.knowledge._readable(who, source))[0]:
+            if readable_cache is not None and source_id in readable_cache:
+                is_readable = readable_cache[source_id]
+            else:
+                is_readable = (await self.knowledge._readable(who, source, owner=(tenant, user)))[0]
+                if readable_cache is not None:
+                    readable_cache[source_id] = is_readable
+            if not is_readable:
                 return False
         return True
 
@@ -206,9 +221,18 @@ class KnowledgeContexts:
     async def listing(self, who: Principal) -> dict[str, JsonValue]:
         """本人上下文元数据；顺带复核进行中的，失效的就地标记（不含正文）。"""
         tenant, user = await self.knowledge._employee(who)
+        contexts = await self.store.list(tenant, user)
+        sources = (
+            {s.id: s for s in await self.knowledge.store.sources(tenant, user)}
+            if any(c.status == 'active' for c in contexts)
+            else None
+        )
+        readable_cache: dict[str, bool] = {}
         items: list[JsonValue] = []
-        for context in await self.store.list(tenant, user):
-            if context.status == 'active' and not await self._valid(who, context):
+        for context in contexts:
+            if context.status == 'active' and not await self._valid(
+                who, context, owner=(tenant, user), sources=sources, readable_cache=readable_cache
+            ):
                 context = await self._block(context, 'source_unavailable')
             items.append(context_meta(context))
         return {'contexts': items, 'total': len(items)}

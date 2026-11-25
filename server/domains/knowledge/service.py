@@ -224,18 +224,30 @@ class KnowledgeService:
             return False
         return selected.sha256 == source.sha256
 
-    async def _readable(self, who: Principal, source: KnowledgeSource) -> tuple[bool, bool]:
+    async def _readable(
+        self,
+        who: Principal,
+        source: KnowledgeSource,
+        *,
+        owner: tuple[str, str] | None = None,
+    ) -> tuple[bool, bool]:
         """此刻是否仍可读（文件在、版本在、SHA 一致），以及是否有更新的版本（共享材料不提示更新）。"""
         if source.ref.kind == 'shared_material':
             return await self._shared_readable(who, source), False
         assert source.ref.item_id is not None
         try:
-            item = await self.workspace.get(who, source.ref.item_id)
-            versions = await self.workspace.versions(who, source.ref.item_id)
+            tenant, user = owner if owner is not None else await self._employee(who)
         except (NotFoundError, PermissionDeniedError):
             return False, False
-        version = next((v for v in versions if v['revision'] == source.ref.revision), None)
-        if item.get('trashed_at') is not None or version is None or version['sha256'] != source.sha256:
+        pair = await self.workspace.store.file_source(tenant, user, source.ref.item_id, source.ref.revision)
+        if pair is None:
+            return False, False
+        item, version = pair
+        if (
+            item.get('kind') != 'file'
+            or item.get('trashed_at') is not None
+            or version.get('sha256') != source.sha256
+        ):
             return False, False
         current = int(item['data'].get('current_revision', source.ref.revision))
         return True, current > source.ref.revision
@@ -247,7 +259,7 @@ class KnowledgeService:
         for source in await self.store.sources(tenant, user):
             if source.status != 'ready':
                 continue
-            readable, newer = await self._readable(who, source)
+            readable, newer = await self._readable(who, source, owner=(tenant, user))
             if not readable:
                 await self.store.update(source.model_copy(update={
                     'status': 'stale', 'version': source.version + 1, 'updated_at': self.now()}),

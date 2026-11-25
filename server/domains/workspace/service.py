@@ -337,6 +337,7 @@ class WorkspaceService:
     ) -> tuple[bytes, str, str]:
         """始终读取已有对象，任何链接都不由服务端抓取。"""
         from server.core.errors import NotFoundError
+        from server.core.objectstore.base import ObjectTooLargeError
 
         async with self._transaction(who) as state:
             item = get_item(state, item_id, kind="file")
@@ -346,13 +347,14 @@ class WorkspaceService:
             )
             if chosen is None:
                 raise NotFoundError("文件版本不存在，外部链接请前往原地址")
-            from server.core.objectstore.base import ObjectTooLargeError
-
-            try:
-                content = await self.objects.get_limited(chosen["object_key"], max_bytes=self.max_file_bytes)
-            except ObjectTooLargeError as exc:
-                raise InvalidRequestError("文件正本超过大小限制") from exc
-            return content, chosen["mime_type"], item["data"]["name"]
+            object_key = str(chosen["object_key"])
+            mime_type = str(chosen["mime_type"])
+            name = str(item["data"]["name"])
+        try:
+            content = await self.objects.get_limited(object_key, max_bytes=self.max_file_bytes)
+        except ObjectTooLargeError as exc:
+            raise InvalidRequestError("文件正本超过大小限制") from exc
+        return content, mime_type, name
 
     @staticmethod
     def _used_bytes(state: WorkspaceState) -> int:

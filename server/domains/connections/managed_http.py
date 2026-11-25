@@ -29,9 +29,8 @@ class ManagedHttpTools:
 
     async def lookup(self,tenant: str,digest: str,connector: str,operation: str) -> dict[str,Any] | None:
         """读取不可变绑定；缺失才沿用原有非托管HTTP协议。"""
-        async with self.broker.service.store.transaction(tenant) as state:
-            record=state.records.get(binding_key(digest,connector,operation))
-            return None if record is None else dict(record)
+        record=await self.broker.service.store.read_record(tenant,binding_key(digest,connector,operation))
+        return None if record is None else dict(record)
 
     @staticmethod
     def validate(binding: dict[str,Any],spec: ConnectorSpec,operation: Operation,base_url: str) -> None:
@@ -43,9 +42,11 @@ class ManagedHttpTools:
             raise PermissionDeniedError('业务包与核定只读绑定不一致；不得混用静态认证或额外参数')
 
     async def invoke(self,tenant: str,digest: str,spec: ConnectorSpec,operation: Operation,
-                     base_url: str,args: dict[str,Any],ctx: taifeng.ToolContext) -> tuple[str,bool]:
+                     base_url: str,args: dict[str,Any],ctx: taifeng.ToolContext,
+                     *,binding: dict[str,Any] | None = None) -> tuple[str,bool]:
         """每次从当前会话还原员工，后台必须使用原任务固定引用。"""
-        binding=await self.lookup(tenant,digest,spec.name,operation.operation_id)
+        if binding is None:
+            binding=await self.lookup(tenant,digest,spec.name,operation.operation_id)
         if binding is None:
             raise PermissionDeniedError('托管连接绑定不存在')
         self.validate(binding,spec,operation,base_url)
@@ -77,9 +78,13 @@ class ManagedHttpTools:
                 task_record=require_task(state,session.work_task_id)
                 grant=ExecutionGrant.model_validate_json(json.dumps(state.task_grants[task_record.grant_id or '']))
             who=await execution.store.authorize(grant,execution.now())
-            async with self.broker.service.store.transaction(tenant) as connection_state:
-                connection_ref=next((r for r in task_record.connection_refs if r.installation_id==binding['installation_id']
-                    and binding['operation'] in connection_state.records.get(r.consent_id,{}).get('operations',[])),None)
+            for candidate in task_record.connection_refs:
+                if candidate.installation_id!=binding['installation_id']:
+                    continue
+                consent=await self.broker.service.store.read_record(tenant,candidate.consent_id)
+                if consent is not None and binding['operation'] in consent.get('operations',[]):
+                    connection_ref=candidate
+                    break
             if connection_ref is None or connection_ref not in grant.connection_refs:
                 raise PermissionDeniedError('connection_reauthorization_required')
         result=await self.broker.read(who,binding['installation_id'],binding['operation'],args,ref=connection_ref)
