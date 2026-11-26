@@ -75,7 +75,8 @@ ACT_PERSONAL_DESCRIPTION = (
     "- create_reminder / cancel_reminder：设置或取消本人提醒（传 title/due_at/timezone/repeat 或 reminder_id）；\n"
     "- create_matter / update_matter：新建或更新本人项目事项（传 title/description/status 或 item_id）；\n"
     "- act_followup：处理本人主动感知跟进（传 followup_id、followup_action=complete|postpone|ignore_stage|set_reminder|progress 及可选 due_at）；\n"
-    "- save_note_file：把你整理好的会议纪要、项目全景简报、周报或方案保存为本人工作台 Markdown 文件（传 name/content，可选 matter_id/parent_id）。"
+    "- save_note_file：把你整理好的会议纪要、项目全景简报、周报或方案保存为本人工作台 Markdown 文件（传 name/content，可选 matter_id/parent_id）；\n"
+    "- patch_personal_file：对本人已有 UTF-8 文本/Markdown 文件做精准局部块替换（传 item_id、edits=[{target, replacement}] 及可选 expected_version，严格唯一锚定并返回 Unified Diff，支持一键撤回）。"
 )
 
 
@@ -154,6 +155,7 @@ class ButlerTools:
                             "update_matter",
                             "act_followup",
                             "save_note_file",
+                            "patch_personal_file",
                         ],
                     },
                     "bundle": {"type": ["object", "null"], "description": "capture_bundle 时的复合整理包（结构同 people_draft）"},
@@ -177,6 +179,19 @@ class ButlerTools:
                     "repeat": {"type": ["string", "null"], "enum": ["once", "daily", "weekly", None]},
                     "matter_id": {"type": ["string", "null"], "description": "关联的本人事项 ID"},
                     "parent_id": {"type": ["string", "null"], "description": "save_note_file 可选父目录 ID"},
+                    "edits": {
+                        "type": ["array", "null"],
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "target": {"type": "string"},
+                                "replacement": {"type": "string"},
+                            },
+                            "required": ["target", "replacement"],
+                        },
+                        "description": "patch_personal_file 的精确局部替换列表",
+                    },
+                    "expected_version": {"type": ["integer", "null"], "minimum": 1, "description": "patch_personal_file 可选 CAS 版本号"},
                 },
                 ["action"],
                 self._act_personal,

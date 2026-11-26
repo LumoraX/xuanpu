@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from server.domains.people.store import PeopleStore
     from server.domains.reminders.store import ReminderStore
     from server.domains.workspace.store import WorkspaceStore
+    from server.engine.artifacts.store import TraceArtifactStore
     from server.engine.butler.dispatch_store import DispatchStore
     from server.engine.butler.groups.messages import MessageStore
     from server.engine.butler.groups.store import GroupStore
@@ -136,6 +137,11 @@ class ControlPlaneStore(Protocol):
     @property
     def transcript_store(self) -> TranscriptIndexStore:
         """与控制面同后端的跨节点 Transcript 全局元数据索引（ADR 0026）。"""
+        ...
+
+    @property
+    def trace_artifact_store(self) -> TraceArtifactStore:
+        """与控制面同后端的过程产物元数据索引（ADR 0025）。"""
         ...
 
     # --- 租户与凭据 ---

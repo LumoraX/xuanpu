@@ -142,6 +142,9 @@ class PostgresControlPlane:
         from server.engine.transcripts.store import PostgresTranscriptIndexStore
 
         self.transcript_store = PostgresTranscriptIndexStore(pool, namespace=namespace)
+        from server.engine.artifacts.store import PostgresTraceArtifactStore
+
+        self.trace_artifact_store = PostgresTraceArtifactStore(pool, namespace=namespace)
         self.operation_receipts = PostgresReceiptStore(pool, namespace)
         self._pool = pool
         self._namespace = namespace

@@ -715,6 +715,54 @@ async def execute_personal_action(
         turn.executed_actions.append(entry)
         return {"ok": True, "action_id": action_id, "file": saved}
 
+    if action == "patch_personal_file":
+        from server.domains.workspace.patch import TextPatchEdit, apply_exact_edits
+
+        item_id = _require_text(args.get("item_id"), "item_id")
+        raw_edits = args.get("edits")
+        if not isinstance(raw_edits, list) or not raw_edits:
+            raise InvalidRequestError("patch_personal_file 需要非空 edits 列表")
+        edits = [TextPatchEdit.model_validate(e) for e in raw_edits]
+        item = await platform.workspace.get(who, item_id)
+        if item["kind"] != "file" or item.get("trashed_at") is not None:
+            raise NotFoundError("目标个人文件不存在或已回收")
+        expected_version = args.get("expected_version")
+        if expected_version is not None and int(expected_version) != int(item["version"]):
+            raise ConflictError("文件版本已变化，请先重新读取最新正文")
+        raw_bytes, mime, filename = await platform.workspace.download(who, item_id)
+        try:
+            original = raw_bytes.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise InvalidRequestError("patch_personal_file 仅支持 UTF-8 文本文件") from exc
+        patched = apply_exact_edits(original, edits, filename=filename)
+        if len(patched.new_text) > _MAX_NOTE_CHARS:
+            raise InvalidRequestError("编辑后文档正文超过上限")
+        prev_revision = int(item["data"]["current_revision"])
+        saved = await platform.workspace.replace_content(
+            who, item_id, patched.new_text.encode("utf-8"), mime, int(item["version"]), req_id,
+        )
+        entry = {
+            "action_id": action_id,
+            "action": action,
+            "title": "已局部编辑文档",
+            "summary": f"{filename}（{patched.applied_count} 处修改）",
+            "diff": patched.diff,
+            "undoable": True,
+            "undo": {
+                "kind": "workspace_restore_revision",
+                "item_id": item_id,
+                "revision": prev_revision,
+            },
+        }
+        turn.executed_actions.append(entry)
+        return {
+            "ok": True,
+            "action_id": action_id,
+            "file": saved,
+            "diff": patched.diff,
+            "applied_count": patched.applied_count,
+        }
+
     raise InvalidRequestError(f"不支持的私人办理动作：{action}")
 
 
@@ -767,6 +815,17 @@ async def undo_executed_action(
         if item.get("trashed_at") is not None:
             raise ConflictError("该记录已移入回收站，无法撤回修改")
         await platform.workspace.update(who, item_id, prev_data, item["version"])
+        undone += 1
+    elif kind == "workspace_restore_revision":
+        item_id = str(undo["item_id"])
+        prev_rev = int(undo["revision"])
+        item = await platform.workspace.get(who, item_id)
+        if item.get("trashed_at") is not None:
+            raise ConflictError("该文件已移入回收站，无法撤回编辑")
+        prev_bytes, mime, _name = await platform.workspace.download(who, item_id, revision=prev_rev)
+        await platform.workspace.replace_content(
+            who, item_id, prev_bytes, mime, int(item["version"]), new_id("undo"),
+        )
         undone += 1
     elif kind == "reminder_cancel":
         await _cancel_reminder(str(undo["reminder_id"]))

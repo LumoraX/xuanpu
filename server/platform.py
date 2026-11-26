@@ -417,6 +417,15 @@ class Platform:
         self.knowledge_contexts = KnowledgeContexts(self.knowledge, store.context_store, self.assistant.sample_protected)
         self.knowledge.removal_listeners.append(self.knowledge_contexts.source_removed)
         self.butler = ButlerService(self, models, data_dir=data_dir, now=now)
+        from server.engine.artifacts.service import TraceArtifactService
+
+        self.trace_artifacts = TraceArtifactService(
+            store=store.trace_artifact_store,
+            objects=self.objects,
+            workspace=self.workspace,
+            node_id=self.instance_id,
+            now=now,
+        )
         self.dashboard = DashboardService(self, now=now)
         self.proactive = ProactiveService(workspace=self.workspace, control=store,
             identity=identity_store, sample=self.assistant.sample_proactive, now=now,

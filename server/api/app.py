@@ -17,6 +17,7 @@ from prometheus_client import CONTENT_TYPE_PLAIN_0_0_4
 
 from server import __version__
 from server.api import schemas
+from server.api.artifacts import artifacts_router
 from server.api.assistant import assistant_router
 from server.api.assistant_actions import assistant_actions_router
 from server.api.audit_usage import audit_usage_router
@@ -204,6 +205,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.include_router(people_router(platform))
     app.include_router(traces_router(platform))
     app.include_router(transcripts_router(platform))
+    app.include_router(artifacts_router(platform))
     app.include_router(dashboard_router(platform))
     app.include_router(file_bridge_router(platform))
     app.include_router(work_tasks_router(platform))

@@ -84,6 +84,9 @@ class InMemoryControlPlane:
         from server.engine.transcripts.store import MemoryTranscriptIndexStore
 
         self.transcript_store = MemoryTranscriptIndexStore()
+        from server.engine.artifacts.store import MemoryTraceArtifactStore
+
+        self.trace_artifact_store = MemoryTraceArtifactStore()
         self.reminder_store = InMemoryReminderStore(
             lambda tenant_id: (
                 tenant_id in self._tenants and self._tenants[tenant_id].status == "active"
