@@ -61,11 +61,25 @@ if TYPE_CHECKING:
     from server.engine.runtime.sandbox import SandboxHandle, SandboxProvider
     from server.engine.tracing.binding import TraceBinder
     from server.engine.tracing.otel import OtelExport
-    from spec.manifest import Effect, SkillLibraryUse
+    from spec.manifest import Effect, SkillLibraryUse, WebSearchSpec
 
 logger = logging.getLogger(__name__)
 
 RuntimeKey = tuple[str, str, str, str]
+
+
+def _web_search_config(setting: bool | WebSearchSpec) -> taifeng.WebSearchConfig | None:
+    """把 ``xuanpu.yaml`` 的 ``spec.model.webSearch`` 转为内核 ``WebSearchConfig``。"""
+    if setting is False:
+        return None
+    if setting is True:
+        return taifeng.WebSearchConfig()
+    if not setting.enabled:
+        return None
+    return taifeng.WebSearchConfig(
+        search_context_size=setting.search_context_size,
+        allowed_domains=setting.allowed_domains,
+    )
 
 
 @dataclass(frozen=True)
@@ -588,10 +602,11 @@ class RuntimeAssembler:
                     verified_text_bound=binding.store.verified_text_bounds)
             protected = source is not None and source.protected
             if source is not None:
-                model_client = SourceModelClient(model_client, source.check)
+                model_client = SourceModelClient(model_client, source.check, protected=protected)
             if capability is not None:
                 model_client = CapabilityModelClient(model_client, capability)
             recall = spec.skills.recall
+            web_search = None if protected else _web_search_config(spec.model.web_search)
             return await taifeng.EnginePool.create(
                 skills_dir=assembled.staged_dir,
                 model_client=model_client,
@@ -614,6 +629,7 @@ class RuntimeAssembler:
                 enable_request_capture=defaults.capture_requests and not protected,
                 image_input_policy=taifeng.ImageInputPolicy(enabled=True, max_images=8, max_item_bytes=20*1024*1024, max_total_bytes=20*1024*1024),
                 file_input_policy=taifeng.FileInputPolicy(enabled=True, max_files=8, max_item_bytes=20*1024*1024, max_total_bytes=20*1024*1024),
+                web_search=web_search,
                 **options,
             )
         except BaseException as original:

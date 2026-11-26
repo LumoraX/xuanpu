@@ -44,7 +44,7 @@ async def _lookup_tool_audit(
     if call_id is not None:
         since = span.started_at.timestamp() - 5.0
         end_ts = span.ended_at.timestamp() if span.ended_at is not None else span.started_at.timestamp() + 300.0
-        for event_kind in ("tool_call_started", "tool_call_completed"):
+        for event_kind in ("tool_call_started", "tool_call_completed", "web_search_completed"):
             records = await platform.store.query_audit(
                 me.tenant_id,
                 AuditQuery(user_id=me.user_id, kind=event_kind, since=since, until=end_ts + 5.0, limit=200),
@@ -65,6 +65,20 @@ async def _lookup_tool_audit(
                         is_error = rec.data["is_error"]
                     if isinstance(rec.data.get("duration_ms"), int):
                         duration_ms = rec.data["duration_ms"]
+                elif event_kind == "web_search_completed":
+                    query = rec.data.get("query")
+                    if arguments is None and isinstance(query, str) and query:
+                        arguments = query
+                    if output is None and isinstance(rec.data.get("sources"), list):
+                        urls = [
+                            str(src.get("url"))
+                            for src in rec.data["sources"]
+                            if isinstance(src, dict) and src.get("url")
+                        ]
+                        if urls:
+                            output = "\n".join(urls)[:_AUDIT_OUTPUT_LIMIT]
+                    if is_error is None:
+                        is_error = rec.data.get("status") == "failed"
     return {
         "call_id": call_id,
         "arguments": arguments,

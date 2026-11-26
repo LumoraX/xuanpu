@@ -22,6 +22,8 @@ _FIELDS = {
     "turn_completed": (),
     "turn_failed": (),
     "tool_call_completed": ("name", "is_error", "duration_ms"),
+    "web_search_completed": ("call_id", "status", "query", "sources"),
+    "assistant_citations": ("citations",),
 }
 
 

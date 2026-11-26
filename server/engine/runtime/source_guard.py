@@ -77,23 +77,29 @@ class SourceContextEngine:
 
 class SourceModelClient:
     """每次实际模型stream再次检查，覆盖视图缓存、内部重试和子采样。"""
-    def __init__(self, inner: taifeng.ModelClient, check: Check) -> None:
+    def __init__(
+        self, inner: taifeng.ModelClient, check: Check, *, protected: bool = False
+    ) -> None:
         """保留原模型能力及R2预算包装，不改变模型路由。"""
-        self.inner, self.check = inner, check
+        self.inner, self.check, self.protected = inner, check, protected
         capabilities = getattr(inner, 'capabilities', None)
         if capabilities is not None:
             self.capabilities = capabilities
 
     def session(self, *, cancel: taifeng.CancellationToken, model: str | None = None) -> Any:
         """会话创建尚不发送正文，进入前和每次stream分别复核。"""
-        return _SourceSession(self.inner.session(cancel=cancel, model=model), self.check)
+        return _SourceSession(
+            self.inner.session(cancel=cancel, model=model),
+            self.check,
+            protected=self.protected,
+        )
 
 
 class _SourceSession:
     """来源失效时停止迭代，不能把旧正文或新输出继续交给下游。"""
-    def __init__(self, inner: Any, check: Check) -> None:
+    def __init__(self, inner: Any, check: Check, *, protected: bool = False) -> None:
         """仅持有公开会话协议，不保存输入正文副本。"""
-        self.inner, self.check = inner, check
+        self.inner, self.check, self.protected = inner, check, protected
         self.active = inner
 
     async def __aenter__(self) -> _SourceSession:
@@ -107,8 +113,10 @@ class _SourceSession:
         await self.inner.__aexit__(*exc)
 
     async def stream(self, request: taifeng.ApiRequest) -> AsyncIterator[Any]:
-        """发送前与每个返回块复核，失效后尽力取消在途流。"""
+        """发送前与每个返回块复核，失效后尽力取消在途流；受保护模式拒绝原生联网搜索。"""
         await self.check()
+        if self.protected and request.web_search is not None:
+            raise SharedAccessRevokedError("共享只读模式禁止原生联网搜索")
         stream = self.active.stream(request)
         try:
             async for event in stream:

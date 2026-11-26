@@ -46,6 +46,7 @@ EnvName = Annotated[str, StringConstraints(pattern=_ENV_PATTERN)]
 RelativePath = Annotated[str, StringConstraints(pattern=_PATH_PATTERN)]
 
 ModelTier = Literal["fast", "balanced", "deep"]
+SearchContextSize = Literal["low", "medium", "high"]
 ApprovalLevel = Literal["strict", "standard", "relaxed"]
 Effect = Literal["read", "write", "external"]
 
@@ -147,10 +148,40 @@ class SkillsSpec(_Strict):
         return self
 
 
+class WebSearchSpec(_Strict):
+    """Responses 协议原生服务端 ``web_search`` 配置。
+
+    Attributes:
+        enabled: 是否开启（默认 True；写对象形态时可省略）。
+        search_context_size: 搜索上下文档位（``low`` / ``medium`` / ``high``）。
+        allowed_domains: 可选允许检索的域名白名单（不含 ``http://`` 等 scheme）。
+    """
+
+    enabled: bool = True
+    search_context_size: SearchContextSize | None = Field(
+        default=None, alias="searchContextSize"
+    )
+    allowed_domains: tuple[str, ...] = Field(default=(), alias="allowedDomains")
+
+    @model_validator(mode="after")
+    def _validate_domains(self) -> WebSearchSpec:
+        """拒绝空串、空白或带 scheme 的域名配置。"""
+        for domain in self.allowed_domains:
+            stripped = domain.strip()
+            if not stripped or stripped != domain or any(ch.isspace() for ch in stripped):
+                raise ValueError(f"webSearch.allowedDomains 含非法域名：{domain!r}")
+            if "://" in stripped:
+                raise ValueError(f"webSearch.allowedDomains 不能带协议前缀：{domain!r}")
+        if len(set(self.allowed_domains)) != len(self.allowed_domains):
+            raise ValueError("webSearch.allowedDomains 里有重复的域名")
+        return self
+
+
 class ModelSpec(_Strict):
-    """模型档位。"""
+    """模型档位与 Responses 原生能力开关。"""
 
     tier: ModelTier = "balanced"
+    web_search: bool | WebSearchSpec = Field(default=False, alias="webSearch")
 
 
 class BudgetSpec(_Strict):

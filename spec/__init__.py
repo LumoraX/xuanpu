@@ -28,6 +28,7 @@ from spec.manifest import (
     PolicySpec,
     SkillLibraryUse,
     SkillRecallSpec,
+    WebSearchSpec,
     version_key,
 )
 from spec.openapi import ApiDocument, OpenApiError, Operation, load_openapi, parse_openapi
@@ -55,6 +56,7 @@ __all__ = [
     "SkillRecallSpec",
     "SpecError",
     "ValidationReport",
+    "WebSearchSpec",
     "__version__",
     "archive_digest",
     "connector_tool_name",

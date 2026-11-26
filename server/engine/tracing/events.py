@@ -91,6 +91,8 @@ def drafts(event: taifeng.EventMsg, *, root_kind: SpanKind, ref: str | None) -> 
                       usage=_usage(attempt, data))]
     if kind in ("tool_call_started", "tool_call_completed"):
         return _tool(kind, data, own, at)
+    if kind in ("web_search_started", "web_search_completed"):
+        return _web_search(kind, data, own, at)
     if kind in ("turn_suspended", "turn_completed", "turn_failed"):
         outcome = operation_outcome(kind, data)
         state = _ENDINGS.get(outcome, "failed")
@@ -115,6 +117,32 @@ def _tool(kind: str, data: dict[str, Any], owner: str, at: datetime) -> list[Dra
     done = Draft(span, at, state="failed" if failed else "completed",
                  end_reason="tool_error" if failed else None)
     return [done] + ([Draft(owner, at, state="running")] if waiting else [])
+
+
+def _web_search(kind: str, data: dict[str, Any], owner: str, at: datetime) -> list[Draft]:
+    """服务端原生 web_search span；挂在发起它的执行节点下。"""
+    call = data.get("call_id")
+    if not isinstance(call, str) or not call:
+        return []
+    span = span_key("tl", call)
+    if kind == "web_search_started":
+        return [
+            Draft(
+                span, at, kind="tool", name="web_search", parent_span_id=owner, state="running"
+            )
+        ]
+    failed = data.get("status") == "failed"
+    return [
+        Draft(
+            span,
+            at,
+            kind="tool",
+            name="web_search",
+            parent_span_id=owner,
+            state="failed" if failed else "completed",
+            end_reason="web_search_failed" if failed else None,
+        )
+    ]
 
 
 def _usage(attempt: str, data: dict[str, Any]) -> AttemptUsage | None:

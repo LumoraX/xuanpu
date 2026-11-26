@@ -13,7 +13,7 @@ authors = [
 ]
 dependencies = [
     # 内核与适配包（通过 external/ 子模块 editable 接入）
-    "taifeng>=2026.11.14.1",
+    "taifeng>=2026.11.26.0",
     "taifeng-sandbox>=2026.10.21.1",
     "taifeng-stores",
     # 规范、服务端、CLI、SDK 与财务子系统统一依赖
@@ -40,7 +40,7 @@ postgres = [
     "taifeng-stores[postgres]",
 ]
 otel = [
-    "taifeng[telemetry-otel]>=2026.11.14.1",
+    "taifeng[telemetry-otel]>=2026.11.26.0",
 ]
 s3 = [
     "boto3>=1.34",
