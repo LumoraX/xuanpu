@@ -145,6 +145,9 @@ class PostgresControlPlane:
         from server.engine.artifacts.store import PostgresTraceArtifactStore
 
         self.trace_artifact_store = PostgresTraceArtifactStore(pool, namespace=namespace)
+        from server.engine.forge.releases import PostgresReleaseNodeStore
+
+        self.release_store = PostgresReleaseNodeStore(pool, namespace=namespace)
         self.operation_receipts = PostgresReceiptStore(pool, namespace)
         self._pool = pool
         self._namespace = namespace

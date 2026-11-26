@@ -87,6 +87,9 @@ class InMemoryControlPlane:
         from server.engine.artifacts.store import MemoryTraceArtifactStore
 
         self.trace_artifact_store = MemoryTraceArtifactStore()
+        from server.engine.forge.releases import MemoryReleaseNodeStore
+
+        self.release_store = MemoryReleaseNodeStore()
         self.reminder_store = InMemoryReminderStore(
             lambda tenant_id: (
                 tenant_id in self._tenants and self._tenants[tenant_id].status == "active"

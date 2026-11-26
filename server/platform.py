@@ -426,6 +426,11 @@ class Platform:
             node_id=self.instance_id,
             now=now,
         )
+        from server.engine.forge.releases import ReleaseLedgerService
+        from server.engine.forge.service import ArtisanForgeService
+
+        self.releases = ReleaseLedgerService(store.release_store, now=now)
+        self.forge = ArtisanForgeService(self, self.releases, data_dir=data_dir, now=now)
         self.dashboard = DashboardService(self, now=now)
         self.proactive = ProactiveService(workspace=self.workspace, control=store,
             identity=identity_store, sample=self.assistant.sample_proactive, now=now,

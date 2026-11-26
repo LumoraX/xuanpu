@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from server.engine.butler.groups.store import GroupStore
     from server.engine.butler.task_board import TaskBoardStore
     from server.engine.butler.wake_store import WakeStore
+    from server.engine.forge.releases import ReleaseNodeStore
     from server.engine.runtime.receipt_store import ReceiptStore
     from server.engine.tracing.store import SpanStore
     from server.engine.transcripts.store import TranscriptIndexStore
@@ -142,6 +143,11 @@ class ControlPlaneStore(Protocol):
     @property
     def trace_artifact_store(self) -> TraceArtifactStore:
         """与控制面同后端的过程产物元数据索引（ADR 0025）。"""
+        ...
+
+    @property
+    def release_store(self) -> ReleaseNodeStore:
+        """与控制面同后端的三层不可变发布节点账本（ADR 0025）。"""
         ...
 
     # --- 租户与凭据 ---

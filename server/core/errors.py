@@ -184,12 +184,17 @@ class LeaseInterruptedError(RuntimeUnavailableError):
     """
 
 
+class ConfigError(ValueError):
+    """配置文件缺失、无法解析或取值不合法。"""
+
+
 class SchemaError(RuntimeError):
     """控制面表结构的迁移失败，或表结构落后于代码要求。"""
 
 
 __all__ = [
     "AuthenticationError",
+    "ConfigError",
     "ConflictError",
     "CsrfRejectedError",
     "InvalidRequestError",

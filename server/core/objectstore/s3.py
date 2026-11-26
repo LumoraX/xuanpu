@@ -6,7 +6,7 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
-from server.core.config import ConfigError
+from server.core.errors import ConfigError
 from server.core.objectstore.base import (
     ObjectNotFoundError,
     ObjectTooLargeError,

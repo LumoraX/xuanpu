@@ -30,6 +30,7 @@ from server.api.console import ConsoleStaticFiles
 from server.api.dashboard import dashboard_router
 from server.api.dispatches import dispatches_router
 from server.api.file_bridge import file_bridge_router
+from server.api.forge import forge_router
 from server.api.groups import groups_router
 from server.api.handoffs import handoffs_router
 from server.api.history import history_router
@@ -206,6 +207,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.include_router(traces_router(platform))
     app.include_router(transcripts_router(platform))
     app.include_router(artifacts_router(platform))
+    app.include_router(forge_router(platform))
     app.include_router(dashboard_router(platform))
     app.include_router(file_bridge_router(platform))
     app.include_router(work_tasks_router(platform))

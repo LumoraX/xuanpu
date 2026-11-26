@@ -22,6 +22,7 @@ from pydantic import (
     model_validator,
 )
 
+from server.core.errors import ConfigError
 from server.domains.capabilities.config import CapabilityDeliveryConfig
 from server.domains.collaboration.models import CollaborationConfig
 from server.domains.connections.models import ConnectionConfig
@@ -43,10 +44,6 @@ if TYPE_CHECKING:
 
 _VARIABLE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 _SHA256_HEX = r"^[0-9a-f]{64}$"
-
-
-class ConfigError(ValueError):
-    """配置文件缺失、无法解析或取值不合法。"""
 
 
 class _Section(BaseModel):

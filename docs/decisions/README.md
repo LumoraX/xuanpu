@@ -26,6 +26,6 @@
 | [0021](0021-desktop-browser-handoff-login.md) | 桌面客户端经浏览器接力完成飞书登录 —— 等待页轮询，不用深链、不开本地端口 | Accepted |
 | [0022](0022-display-names.md) | 匠人、skill 与工具各有给员工看的名字 | Accepted |
 | [0023](0023-execution-story.md) | 执行旁白与小院 —— 匠人动手前说的那句话进 trace，进展卡换成小院 | Accepted（修订 0017 决策 5「span 不含正文」一处） |
-| [0024](0024-event-driven-wakeup-and-task-board.md) | 事件驱动唤醒、跨轮任务板与同会话顺序执行 | Proposed（拟修订 0020 决策 1 的同会话并发语义，补充 0017 唤醒与跨轮状态机制） |
-| [0025](0025-artisan-forge-and-versioned-releases.md) | 管家造匠、三层修改边界与 L1/L2/L3 不可变发布节点 | Proposed（拟细化补充 0017 决策 4/9：沙盒造匠、控制面强类型代码 Tool、三层版本化发版与回退） |
-| [0026](0026-local-transcript-and-cross-node-diagnosis.md) | 本地双层 Transcript 完整保留与跨节点透明检索 | Proposed（拟补充 0017 决策 5 与 0023，提供脱敏本地现场留存、跨节点热读/冷归档与自排查底座） |
+| [0024](0024-event-driven-wakeup-and-task-board.md) | 事件驱动唤醒、跨轮任务板与同会话顺序执行 | Accepted（修订 0020 决策 1 的同会话并发语义，补充 0017 唤醒与跨轮状态机制；已实现） |
+| [0025](0025-artisan-forge-and-versioned-releases.md) | 管家造匠、三层修改边界与 L1/L2/L3 不可变发布节点 | Accepted（细化补充 0017 决策 4/9：沙盒造匠、控制面强类型代码 Tool、三层版本化发版与回退；已实现） |
+| [0026](0026-local-transcript-and-cross-node-diagnosis.md) | 本地双层 Transcript 完整保留与跨节点透明检索 | Accepted（补充 0017 决策 5 与 0023，提供脱敏本地现场留存、跨节点热读/冷归档与自排查底座；已实现） |

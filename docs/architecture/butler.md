@@ -131,6 +131,12 @@
 - 说话约定在任务承载时随任务的 `text` 保存，员工在「更多」的交办工作里会看到这一行，也计入任务请求的幂等指纹；若将来改动约定文字，已建任务按同一请求标识重新受理会冲突（目前没有重新受理的路径）。
 - 真实模型下的误派、漏派率尚未测量：回归集与脚本已就绪（`scripts/acceptance/r5_butler_regression.py`），本环境没有真实模型凭据，未执行。
 
+## 管家造匠与三层发布节点（`server/engine/forge/`，迁移 0038 / 0039，ADR 0025）
+
+- **三层修改边界**：L-Control 强类型确定性代码 Tool（`forge_add_entry` / `forge_remove_entry` / `forge_set_policy` / `forge_set_connector_tools` / `forge_upsert_eval` / `forge_bump_version`）负责修改 `xuanpu.yaml` 并强制不变量；L-Content 基于 `taifeng.make_apply_patch_tool` + `taifeng.HookRegistry`（`PreToolUseHook` 硬拒裸改 `xuanpu.yaml` 与越界路径，`PostToolUseHook` 自动运行语法与 Skill 扫描）仅编辑 `skills/` 与 `tests/`；L-Release 走 L1 静态校验 → L2 沙盒单测 → L3 评测核验 → 管家审核 → 不可变发版。
+- **三层不可变发布节点与回退**：`ReleaseLedgerService`（`release_node` 表，迁移 0039）为 `artisan`（L1）/ `forge`（L2）/ `kernel`（L3）维护只追加发布代次，支持活性核验回退（追加新代次指向旧制品）与 `retire` / `revoke` Clean Unmounting 钩子；每个造匠制品记录 `built_by: {forge_version, spec_version}` 血缘。
+- **过程产物分层与跨节点只读接力**：`TraceArtifactService`（`trace_artifact` 表，迁移 0038）将过程产物存入不可变 `ObjectStore`，支持 `/v1/traces/{trace_id}/artifacts` 列表、`/v1/artifacts/{id}/preview` 预览、`/v1/artifacts/{id}/promote` 一键转存正式个人空间，以及 `materialize_readonly_inputs` 跨节点 `0444` 只读接力挂载并传播 `contains_external_input` 污点。
+
 ## 匠人的名字（ADR 0022）
 
 `list_artisans` 给管家 `name`（业务包 `metadata.displayName`）与 `entry_name`（入口 skill 的 `display_name`），没有声明时等于包名、入口名；管家对员工用这些名字，派工参数仍是 `package`、`entry`。派工时显示名冻结进 `ArtisanRef.display_name`，回报（「某某已完成」「某某需要你回答」「某某有一项操作需要你确认」）用它，旧派工记录用包名。
