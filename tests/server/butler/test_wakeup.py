@@ -332,3 +332,88 @@ def test_excerpt_strips_raw_json_for_end_users() -> None:
     only_json = '{"resolved": false, "message": "请补充所在城市或具体出发地。"}'
     extracted = _excerpt(only_json)
     assert "{" not in extracted and extracted == "请补充所在城市或具体出发地。"
+
+
+async def test_wakeup_passed_allows_act_personal_backfill_and_undo(
+    butler: dict[str, Any], step: Any,
+) -> None:
+    """首轮可同轮落库+派工；唤醒验收通过后管家可自动回写个人空间，并支持交付消息一键撤回。"""
+    enable(butler["world"], wake_interval_seconds=300)
+    world = butler["world"]
+    world.models.script(
+        step(calls=[
+            ("a1", "act_personal", {
+                "action": "capture_bundle",
+                "bundle": {
+                    "record": {"kind": "note", "title": "赵玲线索", "raw_text": "何冠良的妈妈赵玲金融方向"},
+                    "people": [{"name": "何冠良"}, {"name": "赵玲", "notes": "可能从事金融方向"}],
+                    "relations": [{"from_person": "赵玲", "to_person": "何冠良", "relation": "母亲"}],
+                },
+            }),
+            _dispatch("INSTR-BACKFILL 联网调研赵玲公开金融背景（关联人：何冠良）"),
+        ]),
+        step(text="已记录赵玲与何冠良的关系，并已同步派匠人检索她的公开背景。"),
+    )
+    world.models.script_for(
+        "INSTR-BACKFILL",
+        step(text="公开资料显示赵玲任星澜资本管理合伙人，专注科技金融投资。"),
+    )
+    world.models.script_for(
+        WAKE,
+        step(calls=[("w_act", "act_personal", {
+            "action": "save_note_file",
+            "name": "赵玲公开背景调研.md",
+            "content": "# 赵玲公开背景\n\n星澜资本管理合伙人，专注科技金融投资。",
+        })]),
+        step(text="已核实公开背景，并同步保存调研简报到你的工作台文档。"),
+    )
+
+    response = await butler["http"].post(
+        "/v1/assistant/messages",
+        json={"request_id": "w_combo", "text": "何冠良的妈妈，赵玲好像是金融方向的但是我不知道她的具体身份。"},
+    )
+    assert response.status_code == 200, response.text
+    receipt = response.json()
+    assert len(receipt["dispatches"]) == 1
+
+    async def delivered() -> bool:
+        return (await _dispatch_record(butler, receipt["trace_id"])).state == "delivered"
+
+    await _until(butler, delivered)
+    [message] = await _messages(butler)
+    route = message["metadata"].get("route") or {}
+    actions = route.get("executed_actions") or []
+    assert len(actions) == 1
+    assert actions[0]["action"] == "save_note_file"
+
+    req_id = route["request_id"]
+    action_id = actions[0]["action_id"]
+    status_resp = await butler["http"].get(f"/v1/assistant/actions/{req_id}")
+    assert status_resp.status_code == 200
+    assert status_resp.json()["undone"] == []
+
+    undo_resp = await butler["http"].post(f"/v1/assistant/actions/{req_id}/{action_id}/undo")
+    assert undo_resp.status_code == 200
+    assert undo_resp.json()["state"] == "undone"
+
+
+async def test_wakeup_failed_refuses_act_personal(butler: dict[str, Any], step: Any) -> None:
+    """匠人验收未通过时，唤醒轮严禁调用 act_personal 自动写入个人空间。"""
+    enable(butler["world"], wake_interval_seconds=300)
+    world = butler["world"]
+    world.models.script_for("INSTR-FAIL-ACT", step(text=""))
+    world.models.script_for(
+        WAKE,
+        step(calls=[("w_bad", "act_personal", {"action": "create_todo", "title": "不应落库"})]),
+        step(text="匠人未给出结果，未写入个人空间。"),
+    )
+    receipt = await _send(butler, step, "w_fail_act", "帮我查一下资料", "INSTR-FAIL-ACT 查资料")
+
+    async def delivered() -> bool:
+        return (await _dispatch_record(butler, receipt["trace_id"])).state == "delivered"
+
+    await _until(butler, delivered)
+    todos = await world.platform.workspace.list(butler["alice"], kind="todo")
+    assert todos == []
+    [message] = await _messages(butler)
+    assert "route" not in message["metadata"]

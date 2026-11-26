@@ -104,6 +104,8 @@ def butler_router(platform: Platform) -> APIRouter:
     async def action_status(request_id: str, who: Caller) -> dict[str, Any]:
         """查询某轮自主办理动作的撤回状态（刷新后恢复按钮）。"""
         record = await platform.workspace.find_message(who, request_id + ":assistant")
+        if record is None:
+            record = await platform.workspace.find_message(who, request_id)
         actions = (record["metadata"].get("route", {}).get("executed_actions") or []) if record else []
         if not actions:
             raise NotFoundError("自主办理记录不存在")
@@ -118,6 +120,8 @@ def butler_router(platform: Platform) -> APIRouter:
     async def undo_action(request_id: str, action_id: str, who: Caller) -> dict[str, Any]:
         """一键撤回本轮管家自主办理的某一项个人操作（幂等、仅本人可用）。"""
         record = await platform.workspace.find_message(who, request_id + ":assistant")
+        if record is None:
+            record = await platform.workspace.find_message(who, request_id)
         actions = (record["metadata"].get("route", {}).get("executed_actions") or []) if record else []
         target = next((a for a in actions if a.get("action_id") == action_id), None)
         if target is None:

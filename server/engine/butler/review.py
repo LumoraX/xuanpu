@@ -51,18 +51,22 @@ class Reviewer:
             return base
         corpus = await self.corpus(who, dispatch)
         wake = WakeContext(dispatch=dispatch, artisan_text=base.artisan_text or "",
-                           can_answer=can_answer, corpus=corpus)
+                           can_answer=can_answer, passed=base.passed, corpus=corpus)
         settings = await self._platform.workspace.settings(who)
+        auto_personal = bool(settings.get("auto_execute_personal", True))
         turn = ButlerTurn(who=who, request_id=f"wake-{event.event_id}", trace_id=dispatch.trace_id,
                           timezone=str(settings["timezone"]), wake=wake)
         try:
-            reply = await self._engines.run(turn, self._payload(dispatch, base, wake, corpus))
+            reply = await self._engines.run(
+                turn, self._payload(dispatch, base, wake, corpus, auto_personal=auto_personal)
+            )
         except PlatformError as exc:
             logger.info("管家复核不可用（%s）", exc.code)
             return base
-        return self._decide(base, wake, reply)
+        return self._decide(base, wake, reply, executed_actions=turn.executed_actions)
 
-    def _decide(self, base: WakeDecision, wake: WakeContext, reply: str) -> WakeDecision:
+    def _decide(self, base: WakeDecision, wake: WakeContext, reply: str, *,
+                executed_actions: list[dict[str, object]] | None = None) -> WakeDecision:
         """把这一轮的登记折成决定；代答再核一次出处。"""
         review = reply.strip()[:REVIEW_MAX] or None
         if wake.answer is not None and wake.can_answer:
@@ -80,7 +84,10 @@ class Reviewer:
             # 匠人在提问、管家又不能代答：原样转问员工，不能当作结果交付
             return base.model_copy(update={"action": "ask_user", "review": review,
                                            "question": wake.artisan_text[:2000] or None})
-        return base.model_copy(update={"review": review})
+        updates: dict[str, object] = {"review": review}
+        if executed_actions:
+            updates["executed_actions"] = list(executed_actions)
+        return base.model_copy(update=updates)
 
     async def corpus(self, who: Principal, dispatch: DispatchRecord) -> dict[str, str]:
         """代答可用的出处原文：本人设置、本次请求原话与本人此前对这次派工的答复。"""
@@ -107,12 +114,13 @@ class Reviewer:
 
     @staticmethod
     def _payload(dispatch: DispatchRecord, base: WakeDecision, wake: WakeContext,
-                 corpus: dict[str, str]) -> str:
+                 corpus: dict[str, str], *, auto_personal: bool = True) -> str:
         """被唤醒的一轮的输入：全部是数据。"""
         return json.dumps({
             "purpose": "artisan_round_finished", "artisan": dispatch.artisan.package,
             "instruction": dispatch.instruction, "artisan_reply": wake.artisan_text[:4000],
             "checks": base.checks, "passed": base.passed, "can_answer": wake.can_answer,
+            "auto_execute_personal": auto_personal,
             "employee_said": corpus.get("conversation", "")[:4000],
         }, ensure_ascii=False)
 

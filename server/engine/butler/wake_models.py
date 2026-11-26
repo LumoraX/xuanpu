@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime  # noqa: TC003 —— pydantic 在运行时解析字段类型
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -70,6 +70,7 @@ class WakeDecision(BaseModel):
     artisan_text: str | None = Field(default=None, max_length=8000)
     final_state: Literal["completed", "failed", "cancelled"] | None = None
     end_reason: str | None = Field(default=None, max_length=64)
+    executed_actions: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class ButlerEvent(BaseModel):

@@ -85,6 +85,8 @@ def _refusal(name: str, turn: ButlerTurn) -> str | None:
         return None if name == "rate_divergence" else "会诊比对时只能登记分歧度"
     if name == "rate_divergence":
         return "这个工具只在会诊比对时使用"
+    if name == "act_personal" and turn.wake is not None:
+        return None if turn.wake.passed else "匠人验收未通过时不能自动写入个人空间"
     if (name in _WAKE_ONLY) != (turn.wake is not None) and name not in _ANY_TURN:
         return ("这个工具只在匠人结束后被唤醒时使用" if name in _WAKE_ONLY
                 else "被唤醒复核时不能新建草稿或派工")

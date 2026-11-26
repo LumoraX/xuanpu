@@ -88,9 +88,16 @@ class WakeEffects:
             await self._move(owner, dispatch.dispatch_id, final, end_reason=decision.end_reason)
             return
         await self._move(owner, dispatch.dispatch_id, final, end_reason=decision.end_reason)
+        route_meta: dict[str, Any] | None = None
+        if decision.executed_actions:
+            route_meta = {
+                "request_id": f"butler:{event.event_id}:deliver",
+                "executed_actions": list(decision.executed_actions),
+            }
         await self._message(who, event, "deliver", _delivery_text(dispatch, decision), dispatch,
                             {"passed": decision.passed, "checks": decision.checks,
-                             "review_label": REVIEW_LABEL if decision.review else None})
+                             "review_label": REVIEW_LABEL if decision.review else None},
+                            route=route_meta)
         await self._move(owner, dispatch.dispatch_id, "delivered")
 
     async def _forward(self, who: Principal, event: ButlerEvent, dispatch: DispatchRecord,
@@ -152,12 +159,18 @@ class WakeEffects:
                            at=self._at(), end_reason=end_reason)
 
     async def _message(self, who: Principal, event: ButlerEvent, purpose: str, text: str,
-                       dispatch: DispatchRecord, extra: dict[str, Any]) -> None:
+                       dispatch: DispatchRecord, extra: dict[str, Any], *,
+                       route: dict[str, Any] | None = None) -> None:
         """写进员工主对话；同一事件同一用途只写一次。"""
+        metadata: dict[str, Any] = {
+            "butler": {"trace_id": dispatch.trace_id, "dispatch_id": dispatch.dispatch_id,
+                       "event": purpose, **extra}
+        }
+        if route is not None:
+            metadata["route"] = route
         await self._platform.workspace.append_message(
             who, "assistant", text, f"butler:{event.event_id}:{purpose}",
-            metadata={"butler": {"trace_id": dispatch.trace_id, "dispatch_id": dispatch.dispatch_id,
-                                 "event": purpose, **extra}})
+            metadata=metadata)
 
 
 def _name(dispatch: DispatchRecord) -> str:

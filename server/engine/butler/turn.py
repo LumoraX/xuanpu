@@ -44,6 +44,7 @@ class WakeContext:
     dispatch: DispatchRecord
     artisan_text: str
     can_answer: bool
+    passed: bool = False
     corpus: dict[str, str] = field(default_factory=dict)
     answer: tuple[str, AnswerSource] | None = None
     question: str | None = None
