@@ -13,8 +13,9 @@ import asyncio
 import logging
 import secrets
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import taifeng
 
@@ -22,6 +23,8 @@ from server.core.errors import RuntimeUnavailableError
 from server.core.tenancy import tenant_directory
 from server.engine.runtime.events import EngineEventHub
 from server.engine.tracing.events import execution_span
+from server.engine.transcripts.models import TranscriptIndexRecord, TranscriptStatus
+from server.engine.transcripts.writer import LocalTranscriptWriter
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -98,6 +101,18 @@ class ButlerEngines:
         self._turns.bind(engine.thread_id, turn)
         hub: EngineEventHub | None = None
         timed_out = False
+        now_ts = self._platform._now()
+        writer = LocalTranscriptWriter(
+            self._data_dir,
+            tenant_id=tenant,
+            trace_id=turn.trace_id,
+            span_id=session_id,
+            parent_span_id=turn.root_span,
+            at=datetime.fromtimestamp(now_ts, UTC),
+        )
+        await writer.append(kind="user_input", payload={"text": payload}, ts=now_ts)
+        final_status: TranscriptStatus = "completed"
+        error_code: str | None = None
         try:
             hub = self._hub(engine, turn, session_id)
             await hub.start()
@@ -108,21 +123,85 @@ class ButlerEngines:
                 async with asyncio.timeout(seconds) as deadline:
                     turn.deadline = deadline
                     turn.started_at = asyncio.get_running_loop().time()
-                    return await _read_reply(stream.events(), turn)
+                    reply = await _read_reply(stream.events(), turn, writer=writer)
+                    await writer.append(kind="assistant_reply", payload={"text": reply}, ts=self._platform._now())
+                    return reply
             except TimeoutError:
                 # 只把「本轮时限到了」报成 TurnTimeout；别处冒出的 TimeoutError 照旧往上抛
                 if deadline.expired():
                     timed_out = True
+                    final_status = "cancelled"
+                    error_code = "turn_timeout"
+                    await writer.append(
+                        kind="error", status="cancelled",
+                        payload={"error_code": "turn_timeout"}, ts=self._platform._now(),
+                    )
                     raise TurnTimeout(asyncio.get_running_loop().time() - turn.started_at) from None
                 raise
+        except TurnTimeout:
+            raise
+        except Exception as exc:
+            final_status = "failed"
+            error_code = type(exc).__name__
+            await writer.append(
+                kind="error", status="failed",
+                payload={"error_type": type(exc).__name__, "message": str(exc)},
+                ts=self._platform._now(),
+            )
+            raise
         finally:
             self._turns.unbind(engine.thread_id)
             await pool.release(session_id, force=True)
+            await self._persist_transcript_index(turn, writer, session_id, final_status, error_code)
             if hub is not None:
                 if timed_out:
                     await hub.close(unfinished_state="cancelled", unfinished_reason="turn_timeout")
                 else:
                     await hub.close()
+
+    async def _persist_transcript_index(
+        self,
+        turn: ButlerTurn,
+        writer: LocalTranscriptWriter,
+        session_id: str,
+        status: TranscriptStatus,
+        error_code: str | None,
+    ) -> None:
+        """登记本地 Transcript 全局元数据索引并异步归档到对象存储；异常记日志不覆盖业务结果。"""
+        p = self._platform
+        tenant = turn.who.require_tenant()
+        compact_key: str | None = None
+        full_key: str | None = None
+        archived_at: datetime | None = None
+        try:
+            compact_key, full_key = await writer.archive(p.objects)
+            archived_at = datetime.fromtimestamp(p._now(), UTC)
+        except Exception:
+            logger.exception("归档管家 Transcript %s 失败（保留本地热盘）", session_id)
+        record = TranscriptIndexRecord(
+            tenant_id=tenant,
+            span_id=session_id,
+            trace_id=turn.trace_id,
+            parent_span_id=turn.root_span,
+            session_id=session_id,
+            user_id=turn.who.user_id,
+            kind="butler",
+            node_id=p.instance_id,
+            node_addr=p.node_addr,
+            local_relpath=writer.relpath,
+            compact_object_key=compact_key,
+            full_object_key=full_key,
+            byte_size=writer.byte_size,
+            line_count=writer.line_count,
+            status=status,
+            error_code=error_code,
+            created_at=writer.created_at,
+            archived_at=archived_at,
+        )
+        try:
+            await p.store.transcript_store.upsert(record)
+        except Exception:
+            logger.exception("写入管家 Transcript 索引 %s 失败", session_id)
 
     def _hub(self, engine: taifeng.AgentEngine, turn: ButlerTurn, session_id: str,
              ) -> EngineEventHub:
@@ -160,25 +239,42 @@ _TOOL_STEP_LABELS = {
 }
 
 
-async def _read_reply(events: AsyncIterator[taifeng.EventMsg], turn: ButlerTurn) -> str:
-    """读本轮事件：记下根执行 span，实时上报步骤与回复文本，按终态判定成败。"""
+async def _read_reply(
+    events: AsyncIterator[taifeng.EventMsg],
+    turn: ButlerTurn,
+    *,
+    writer: LocalTranscriptWriter | None = None,
+) -> str:
+    """读本轮事件：记下根执行 span，实时上报步骤、落盘双层 Transcript 与回复文本，按终态判定成败。"""
     text: list[str] = []
     async for event in events:
         identity = event.execution
         kind = event.msg.kind
+        ts = event.timestamp.timestamp()
         if kind == "turn_started" and identity is not None and identity.parent_execution_id is None:
             turn.note_root(execution_span(identity.execution_id))
             turn.note_step("正在理解你的请求…")
         elif kind == "tool_call_started":
             tool_name = str(event.msg.data.get("name", ""))
             turn.note_step(_TOOL_STEP_LABELS.get(tool_name, "正在调用内置工具处理…"))
+            if writer is not None:
+                await writer.append(kind="tool_call_started", payload=dict(event.msg.data), ts=ts)
         elif kind == "tool_call_completed":
             turn.note_step("处理完成，正在组织回复…")
+            if writer is not None:
+                data: dict[str, Any] = dict(event.msg.data)
+                await writer.append(
+                    kind="tool_call_completed",
+                    status="error" if data.get("is_error") else "ok",
+                    payload=data, ts=ts,
+                )
         elif kind == "assistant_text":
             delta = str(event.msg.data.get("delta", ""))
             text.append(delta)
             turn.heard(delta)
         elif kind == "turn_completed":
+            if writer is not None:
+                await writer.append(kind="turn_completed", payload=dict(event.msg.data), ts=ts)
             if event.msg.data.get("end_reason") == "doom_loop_circuit_open" and not turn.has_output():
                 raise RuntimeUnavailableError("管家连续重试同一操作未能完成，输入已保留，请稍后重试")
             reply = "".join(text).strip()
@@ -186,5 +282,7 @@ async def _read_reply(events: AsyncIterator[taifeng.EventMsg], turn: ButlerTurn)
                 raise RuntimeUnavailableError("管家没有给出答复，请稍后重试")
             return reply
         elif kind in ("turn_failed", "turn_suspended"):
+            if writer is not None:
+                await writer.append(kind=kind, status="failed", payload=dict(event.msg.data), ts=ts)
             raise RuntimeUnavailableError("管家暂时无法处理，输入已保留，请稍后重试")
     raise RuntimeUnavailableError("管家处理中断，输入已保留，请稍后重试")

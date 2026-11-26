@@ -139,6 +139,9 @@ class PostgresControlPlane:
         from server.engine.butler.task_board import PostgresTaskBoardStore
 
         self.task_board_store = PostgresTaskBoardStore(pool, namespace=namespace)
+        from server.engine.transcripts.store import PostgresTranscriptIndexStore
+
+        self.transcript_store = PostgresTranscriptIndexStore(pool, namespace=namespace)
         self.operation_receipts = PostgresReceiptStore(pool, namespace)
         self._pool = pool
         self._namespace = namespace

@@ -50,6 +50,7 @@ from server.api.shared_notifications import shared_notifications_router
 from server.api.sse import frame, stream_turn
 from server.api.task_definitions import task_definitions_router
 from server.api.traces import traces_router
+from server.api.transcripts import transcripts_router
 from server.api.wecom import wecom_router
 from server.api.work_tasks import work_tasks_router
 from server.api.workspace import workspace_router
@@ -202,6 +203,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.include_router(workspace_router(platform))
     app.include_router(people_router(platform))
     app.include_router(traces_router(platform))
+    app.include_router(transcripts_router(platform))
     app.include_router(dashboard_router(platform))
     app.include_router(file_bridge_router(platform))
     app.include_router(work_tasks_router(platform))

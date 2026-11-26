@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from server.engine.butler.wake_store import WakeStore
     from server.engine.runtime.receipt_store import ReceiptStore
     from server.engine.tracing.store import SpanStore
+    from server.engine.transcripts.store import TranscriptIndexStore
 
 
 @runtime_checkable
@@ -130,6 +131,11 @@ class ControlPlaneStore(Protocol):
     @property
     def task_board_store(self) -> TaskBoardStore:
         """与控制面同后端的管家跨轮持久任务板（ADR 0024）。"""
+        ...
+
+    @property
+    def transcript_store(self) -> TranscriptIndexStore:
+        """与控制面同后端的跨节点 Transcript 全局元数据索引（ADR 0026）。"""
         ...
 
     # --- 租户与凭据 ---

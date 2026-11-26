@@ -14,7 +14,7 @@
 - 每个租户一个内核 `EnginePool`，只装平台内置技能 `butler/skills/butler/SKILL.md` 与管家工具。不加载业务包代码（红线 1），只用 `taifeng.__all__`（红线 3）。
 - 没有沙盒、脚本执行器（`script_executors={}`）、连接器、文件、命令或网络工具。技能声明 `strict_tool_names`，模型可见的工具只有下表九个；内核默认的 `read_skill`、`call_skill`、`run_script` 留在注册表里但对模型不可见。
 - 模型档位 `balanced`；每轮最多 12 次迭代、会话 token 上限 20 万。一轮的时限默认 `butler.turn_seconds`（300 秒），管家可用 `extend_turn` 延长（见下文「常在线」）。
-- **每次输入一轮新引擎**：建引擎 → 接上与业务会话同一个事件枢纽（审计、按员工计量、执行追踪，根 span 类型 `butler`、trace 标识预先分配）→ 提交 → 读到本轮终态 → 释放引擎。员工的长期对话是主对话的持久记录（工作台消息），每轮把最近 6 条连同当前时间、时区、可选的客户端位置提示（`location`）、原话、材料清单作为 **JSON 数据** 交给管家，不依赖引擎线程跨进程续接。
+- **每次输入一轮新引擎**：建引擎 → 接上与业务会话同一个事件枢纽（审计、按员工计量、执行追踪，根 span 类型 `butler`、trace 标识预先分配）→ 提交 → 读到本轮终态 → 释放引擎。同时将脱敏后的双层本地 Transcript（`<data_dir>/transcripts/<租户>/<日期>/<trace_id>/<span_id>.{compact,full}.jsonl`，权限 `0700`/`0600`）写入本节点、登记全局 `transcript_index`（迁移 0037，ADR 0026）并异步压缩归档至共享 `ObjectStore`，集群内任意节点可按「本节点直读 → 远端签名热读 → 对象存储冷归档」三态透明切片查询（`GET /v1/traces/{trace_id}/transcripts/{span_id}`）。员工的长期对话是主对话的持久记录（工作台消息），每轮把最近 6 条连同活跃任务板、当前时间、时区、可选的客户端位置提示（`location`）、原话、材料清单作为 **JSON 数据** 交给管家，不依赖引擎线程跨进程续接。
 - 纯共享技能库业务包（只声明 `spec.skills.exports`、没有 `entries`）不进入 `list_artisans` 列表，仅被引用它的匠人包在运行时装配复用。
 - 工具处理函数只拿得到内核线程标识；平台按线程标识找回本轮上下文（`butler/turn.py`），身份一律取自本轮，不取自模型参数。
 

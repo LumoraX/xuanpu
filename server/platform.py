@@ -227,10 +227,25 @@ class Platform:
             objects if objects is not None else LocalObjectStore(data_dir / "objects")
         )
         self.instance_id = instance_id or new_id("inst")
+        self.node_addr: str | None = None
         self._root_key_hash = root_key_hash
         self._metrics_token_hash = metrics_token_hash
         self._drain_seconds = shutdown_drain_seconds
         self._now = now
+        import hashlib
+
+        from server.engine.transcripts.reader import NodeTicketSigner, TranscriptReader
+
+        # 节点间签名票据密钥派生自平台根哈希，同集群配置下多节点自动一致
+        ticket_secret = hashlib.sha256(f"xuanpu-node-ticket:{root_key_hash}".encode()).digest()
+        self.transcript_signer = NodeTicketSigner(ticket_secret, now=now)
+        self.transcripts = TranscriptReader(
+            data_dir=data_dir,
+            node_id=self.instance_id,
+            store=store.transcript_store,
+            objects=self.objects,
+            signer=self.transcript_signer,
+        )
         # 三个 gauge 的回调在抓取时才调用：会话管理与运行时组装器在下面才建好
         self.metrics = PlatformMetrics(
             sessions_live=lambda: self.sessions.held_sessions(),
