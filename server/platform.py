@@ -114,6 +114,8 @@ if TYPE_CHECKING:
     from server.domains.knowledge.service import KnowledgeConfig
     from server.domains.marketplace.config import MarketplaceConfig
     from server.domains.organization.config import OrganizationConfig
+    from server.domains.people.google_client import GoogleContactsClient
+    from server.domains.people.google_config import GoogleContactsConfig
     from server.domains.shared_matters.models import SharedMatterConfig
     from server.engine.butler.resolver import ArtisanResolver
     from server.engine.runtime.instance_guard import InstanceGuard
@@ -173,6 +175,8 @@ class Platform:
         approvals: CollaborationConfig | None = None,
         butler: ButlerConfig | None = None,
         minimal_entry: MinimalEntryConfig | None = None,
+        google_contacts: GoogleContactsConfig | None = None,
+        google_contacts_client: GoogleContactsClient | None = None,
         manual_http_transport: httpx.AsyncBaseTransport | None = None,
         proactive_interval: float = 1800.0,
         proactive_scan_seconds: float = 60.0,
@@ -340,7 +344,24 @@ class Platform:
         from server.domains.people.service import PeopleService
 
         self.people = PeopleService(
-            store=store.people_store, workspace=self.workspace, objects=self.objects, now=now
+            store=store.people_store,
+            workspace=self.workspace,
+            objects=self.objects,
+            reminders=self.reminders,
+            now=now,
+        )
+        from server.domains.people.google_config import GoogleContactsConfig as _GConfig
+        from server.domains.people.google_service import GoogleContactsService
+
+        self.google_contacts = GoogleContactsService(
+            config=google_contacts or _GConfig(),
+            store=store.google_contacts_store,
+            people=self.people,
+            workspace=self.workspace,
+            identity=self.identity,
+            vault=vault,
+            client=google_contacts_client,
+            now=now,
         )
         # 共享事项材料也可登记为知识来源，每次使用都按当前共享授权复核
         self.knowledge.shared = self.shared_materials
@@ -478,7 +499,8 @@ class Platform:
                        self.organization_lifecycle.close, self.trigger_worker.close, self.task_registry.close, self.proactive_worker.close, self.reminders.close,
                        self.notification_sender.close, self.assistant.close, self.butler.close, self.trace_retention.close,
                        self.identity.maintenance.close, self.identity.disabling.close,
-                       self._shutdown_sessions, self.runtimes.close, self.identity.close, self.wecom_provider.close)
+                       self._shutdown_sessions, self.runtimes.close, self.identity.close, self.wecom_provider.close,
+                       self.google_contacts.close)
             for action in actions:
                 try:
                     await action()

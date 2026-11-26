@@ -16,12 +16,24 @@ function card(title, className) {
 // 一条管家或分流回执里的全部卡片。
 function renderRouteCards(route, options = {}) {
   const proposalId = route.proposal_id;
+  if (Array.isArray(route.executed_actions) && route.executed_actions.length) {
+    appendCard(executedActionsCard(route.executed_actions, options.requestId || route.request_id || "", options));
+  }
   if (route.reminder_draft && proposalId) appendCard(confirmCard("reminder", route.reminder_draft, proposalId, options));
   if (route.workspace_draft && proposalId) appendCard(confirmCard("workspace", route.workspace_draft, proposalId, options));
   if (route.people_draft && proposalId) appendCard(peopleContactCard(route.people_draft, proposalId, options));
   if (route.open_reminders) appendCard(listCard("reminder"));
   if (route.open_workspace) appendCard(LIST_KINDS[route.open_workspace] ? listCard(route.open_workspace) : moreCard("workspace"));
-  if (route.open_people) appendCard(moreCard("workspace"));
+  if (route.open_people) {
+    if (typeof openContactsDrawer === "function") {
+      openContactsDrawer().catch(report);
+      const node = card("通讯录");
+      node.appendChild(button("打开通讯录", () => openContactsDrawer().catch(report), "primary"));
+      appendCard(node);
+    } else {
+      appendCard(moreCard("workspace"));
+    }
+  }
   if (route.work_task_id) appendCard(workTaskCard(route.work_task_id));
   // 其余五个模块的卡片见 module-cards.js 与 collab-cards.js
   if (route.proactive_draft || route.open_proactive) appendCard(proactiveCard(route.proactive_draft));
@@ -29,6 +41,78 @@ function renderRouteCards(route, options = {}) {
   if (route.open_connections) appendCard(connectionsCard());
   if (route.shared_draft || route.open_shared) appendCard(sharedCard(route.shared_draft, proposalId));
   if (route.handoff_draft || route.open_collaboration) appendCard(collaborationCard(route.handoff_draft, proposalId));
+}
+
+// 私人助理自主办理回执卡：展示已直接落库的动作清单，支持一键撤回并在刷新后恢复撤回态。
+function executedActionsCard(actions, requestId, options = {}) {
+  const reqId = String(requestId || "").replace(/:assistant$/, "");
+  const node = card("助理已办好", "auto-actions-card");
+  const list = el("ul", null, "auto-actions-list");
+  const controls = new Map();
+  for (const item of actions) {
+    const li = el("li", null, "auto-action-item");
+    const info = el("div", null, "auto-action-info");
+    info.append(el("span", item.title || "已办理", "auto-action-tag"));
+    if (item.summary) info.append(el("span", item.summary, "auto-action-summary"));
+    li.appendChild(info);
+    const status = el("span", "", "meta auto-action-state");
+    if (item.action === "capture_bundle" && typeof openContactsDrawer === "function") {
+      li.appendChild(button("查看通讯录", () => openContactsDrawer().catch(report), "auto-action-undo"));
+    }
+    if (item.undoable && reqId && item.action_id) {
+      const btn = button("撤回", async () => {
+        const epoch = entry.epoch;
+        btn.disabled = true;
+        status.textContent = "撤回中…";
+        try {
+          await entryApi(
+            "POST",
+            "/v1/assistant/actions/" + encodeURIComponent(reqId) + "/" + encodeURIComponent(item.action_id) + "/undo",
+            {}
+          );
+          if (isStale(epoch)) return;
+          btn.classList.add("hidden");
+          status.textContent = "已撤回";
+          refreshOverview().catch(report);
+        } catch (error) {
+          if (isStale(epoch)) return;
+          btn.disabled = false;
+          status.textContent = error.message || "撤回失败";
+        }
+      }, "auto-action-undo");
+      controls.set(item.action_id, { btn, status });
+      li.append(btn, status);
+    } else {
+      li.appendChild(status);
+    }
+    list.appendChild(li);
+  }
+  node.appendChild(list);
+  if (actions.some(item => item.action === "create_reminder") && typeof createBrowserNotificationBanner === "function") {
+    const banner = createBrowserNotificationBanner();
+    if (banner) node.appendChild(banner);
+  }
+  if (options.restore && reqId && controls.size) {
+    restoreUndoneActions(reqId, controls);
+  }
+  return node;
+}
+
+async function restoreUndoneActions(reqId, controls) {
+  const epoch = entry.epoch;
+  try {
+    const body = await entryApi("GET", "/v1/assistant/actions/" + encodeURIComponent(reqId));
+    if (isStale(epoch)) return;
+    for (const aid of body.undone || []) {
+      const ctrl = controls.get(aid);
+      if (ctrl) {
+        ctrl.btn.classList.add("hidden");
+        ctrl.status.textContent = "已撤回";
+      }
+    }
+  } catch (error) {
+    if (!isStale(epoch) && error.status !== 404) report(error);
+  }
 }
 
 // 需要本人原生选择或确认的动作：给一个明确按钮，由本人点击后在「更多」里完成。
@@ -56,230 +140,7 @@ function draftLines(kind, draft) {
   return [(LIST_KINDS[draft.kind] || draft.kind) + "：" + (data.title || data.name || "")];
 }
 
-function peopleContactField(labelText, inputEl, fullWidth = false) {
-  const wrap = el("label", null, "pcard-field" + (fullWidth ? " full" : ""));
-  wrap.append(el("span", labelText, "pcard-label"), inputEl);
-  return wrap;
-}
-
-function peopleInput(value, placeholder = "", type = "text") {
-  const inp = document.createElement("input");
-  inp.type = type;
-  inp.value = value == null ? "" : String(value);
-  if (placeholder) inp.placeholder = placeholder;
-  return inp;
-}
-
-// 联系人名片确认卡：可视化名片布局 + 字段就地可补全编辑 + 重名候选切换 + 确认后锁定展示。
-function peopleContactCard(draft, proposalId, options = {}) {
-  const node = el("section", null, "card people-contact-card");
-  const editors = [];
-  const genderLabel = { male: "男", female: "女", other: "其他", unknown: "" };
-
-  (draft.persons || []).forEach((item) => {
-    const p = item.profile || {};
-    const firstOf = (kind) => (p.contacts || []).find((c) => c.kind === kind)?.value || "";
-    const preservedContacts = (p.contacts || []).filter((c) => !["phone", "wechat", "email"].includes(c.kind));
-    const extraObj = { ...(p.extra || {}) };
-    const initialAddress = extraObj.address || extraObj["地址"] || "";
-    delete extraObj.address;
-    delete extraObj["地址"];
-
-    const block = el("div", null, "pcard-person");
-    const head = el("div", null, "pcard-head");
-    const avatar = el("div", (p.name || "人").slice(0, 1), "pcard-avatar");
-    const titleWrap = el("div", null, "pcard-title-wrap");
-    const titleRow = el("div", null, "pcard-title-row");
-    const nameTitle = el("strong", p.name || "未命名联系人", "pcard-name");
-    const genderPill = el("span", genderLabel[p.gender] || "", "pcard-pill" + (genderLabel[p.gender] ? "" : " hidden"));
-    const badge = el("span", item.action === "update" ? "更新联系人" : "新建联系人", "pcard-badge");
-    titleRow.append(nameTitle, genderPill, badge);
-    const sub = el("p", [p.organization, p.title, p.city].filter(Boolean).join(" · ") || "请核对或补全名片信息", "pcard-sub");
-    titleWrap.append(titleRow, sub);
-    head.append(avatar, titleWrap);
-    block.append(head);
-
-    let chosenCandidate = "";
-    const cands = item.similar_candidates || [];
-    if (item.action === "create" && cands.length) {
-      const sel = document.createElement("select");
-      sel.append(new Option("作为新联系人建档", ""));
-      for (const c of cands) {
-        sel.append(new Option("合并更新已有：" + c.name + (c.organization ? " · " + c.organization : ""), c.person_id));
-      }
-      sel.addEventListener("change", () => {
-        chosenCandidate = sel.value;
-        badge.textContent = chosenCandidate ? "合并更新已有" : "新建联系人";
-      });
-      block.append(peopleContactField("疑似重名联系人", sel, true));
-    }
-
-    const nameIn = peopleInput(p.name, "姓名");
-    const genderSel = document.createElement("select");
-    genderSel.append(new Option("未填", "unknown"), new Option("女", "female"), new Option("男", "male"), new Option("其他", "other"));
-    genderSel.value = p.gender || "unknown";
-    const orgIn = peopleInput(p.organization, "公司/机构全称（如 中国电信股份有限公司上海分公司）");
-    const deptTitleIn = peopleInput([p.department, p.title].filter(Boolean).join(" / "), "部门 / 职位（可选）");
-    const phoneIn = peopleInput(firstOf("phone"), "手机号");
-    const wechatIn = peopleInput(firstOf("wechat"), "微信号（可选）");
-    const emailIn = peopleInput(firstOf("email"), "邮箱（可选）", "email");
-    const cityIn = peopleInput(p.city, "城市（如 上海）");
-    const addrIn = peopleInput(initialAddress, "完整详细地址（省市区 + 园区/路号 + 楼栋楼层）");
-    const birthIn = peopleInput(
-      p.birth ? [p.birth.year, p.birth.month, p.birth.day].filter((x) => x != null).join("-") : "",
-      "出生年份或生日（如 1988 或 1988-05-12）"
-    );
-    const tagsIn = peopleInput((p.tags || []).join("，"), "标签（逗号分隔）");
-    const summaryIn = peopleInput(p.summary, "备注 / 认识背景");
-
-    nameIn.addEventListener("input", () => {
-      const v = nameIn.value.trim() || "人";
-      nameTitle.textContent = v;
-      avatar.textContent = v.slice(0, 1);
-    });
-    orgIn.addEventListener("input", () => {
-      sub.textContent = [orgIn.value.trim(), cityIn.value.trim()].filter(Boolean).join(" · ") || "请核对或补全名片信息";
-    });
-    genderSel.addEventListener("change", () => {
-      const txt = genderLabel[genderSel.value] || "";
-      genderPill.textContent = txt;
-      genderPill.classList.toggle("hidden", !txt);
-    });
-
-    const grid = el("div", null, "pcard-grid");
-    grid.append(
-      peopleContactField("姓名", nameIn),
-      peopleContactField("性别", genderSel),
-      peopleContactField("公司 / 机构", orgIn, true),
-      peopleContactField("部门 / 职位", deptTitleIn),
-      peopleContactField("手机", phoneIn),
-      peopleContactField("微信", wechatIn),
-      peopleContactField("城市", cityIn),
-      peopleContactField("完整地址", addrIn, true),
-      peopleContactField("邮箱", emailIn),
-      peopleContactField("出生年份 / 生日", birthIn),
-      peopleContactField("标签", tagsIn, true),
-      peopleContactField("备注", summaryIn, true)
-    );
-    block.append(grid);
-    node.append(block);
-
-    editors.push({
-      item,
-      preservedContacts,
-      extraObj,
-      inputs: [nameIn, genderSel, orgIn, deptTitleIn, phoneIn, wechatIn, emailIn, cityIn, addrIn, birthIn, tagsIn, summaryIn],
-      build() {
-        const { similar_candidates, ...rest } = item;
-        const contacts = [...preservedContacts];
-        if (phoneIn.value.trim()) contacts.push({ kind: "phone", value: phoneIn.value.trim(), label: "手机", primary: true });
-        if (wechatIn.value.trim()) contacts.push({ kind: "wechat", value: wechatIn.value.trim(), label: "微信", primary: false });
-        if (emailIn.value.trim()) contacts.push({ kind: "email", value: emailIn.value.trim(), label: "邮箱", primary: false });
-        const dt = deptTitleIn.value.trim().split(/[/／]/).map((s) => s.trim()).filter(Boolean);
-        const department = dt.length > 1 ? dt[0] : "";
-        const title = dt.length > 1 ? dt.slice(1).join(" / ") : (dt[0] || "");
-        const extra = { ...extraObj };
-        if (addrIn.value.trim()) extra.address = addrIn.value.trim();
-        let birth = p.birth || null;
-        const bText = birthIn.value.trim();
-        if (!bText) {
-          birth = null;
-        } else {
-          const nums = bText.split(/[-/.年 月日]+/).map((s) => Number(s)).filter((n) => Number.isInteger(n) && n > 0);
-          if (nums.length === 1 && nums[0] >= 1900) birth = { year: nums[0], month: null, day: null, calendar: "solar" };
-          else if (nums.length === 2 && nums[0] <= 12) birth = { year: null, month: nums[0], day: nums[1], calendar: "solar" };
-          else if (nums.length >= 3) birth = { year: nums[0], month: nums[1], day: nums[2], calendar: "solar" };
-        }
-        const tags = tagsIn.value.trim() ? tagsIn.value.trim().split(/[,，、]+/).map((s) => s.trim()).filter(Boolean) : [];
-        const profile = {
-          name: nameIn.value.trim() || p.name,
-          aliases: p.aliases || [],
-          gender: genderSel.value || "unknown",
-          birth,
-          organization: orgIn.value.trim(),
-          department,
-          title,
-          city: cityIn.value.trim(),
-          contacts,
-          tags,
-          summary: summaryIn.value.trim(),
-          attachment_file_ids: p.attachment_file_ids || [],
-          extra,
-        };
-        if (chosenCandidate) {
-          const matched = (similar_candidates || []).find((c) => c.person_id === chosenCandidate);
-          return { ...rest, action: "update", person_id: chosenCandidate, expected_version: matched?.version ?? null, profile };
-        }
-        return { ...rest, profile };
-      },
-    });
-  });
-
-  if ((draft.relations || []).length) {
-    const relList = el("div", null, "pcard-meta-row");
-    relList.append(el("span", "关联关系：" + draft.relations.map((r) => r.relation_type + (r.role ? "(" + r.role + ")" : "")).join(" · "), "meta"));
-    node.append(relList);
-  }
-  if (draft.note?.content) {
-    node.append(el("p", "原始记录：" + draft.note.content, "pcard-note"));
-  }
-
-  const row = el("div", null, "row pcard-actions"), status = el("p", "", "meta");
-  const path = "/v1/assistant/proposals/" + encodeURIComponent(proposalId);
-  const lockInputs = () => {
-    for (const ed of editors) for (const inp of ed.inputs) inp.disabled = true;
-    for (const sel of node.querySelectorAll("select")) sel.disabled = true;
-  };
-  const settle = (text, saved = false) => {
-    lockInputs();
-    row.replaceChildren();
-    status.textContent = text;
-    if (saved) {
-      const link = el("a", "在「人物与关系」中查看 →", "pcard-link");
-      link.href = "index.html?classic=1#functions";
-      row.append(link);
-    }
-  };
-  const act = (suffix, getBody, done, saved) => async () => {
-    const epoch = entry.epoch;
-    for (const item of row.children) item.disabled = true;
-    try {
-      const body = getBody ? getBody() : undefined;
-      await entryApi("POST", path + suffix, body === undefined ? {} : { json: body });
-      if (!isStale(epoch)) { settle(done, saved); refreshOverview().catch(report); }
-    } catch (error) {
-      if (isStale(epoch)) return;
-      for (const item of row.children) item.disabled = false;
-      status.textContent = error.message;
-    }
-  };
-  row.append(
-    button("确认保存名片", act("/confirm", () => ({
-      data: { persons: editors.map((e) => e.build()), relations: draft.relations || [], note: draft.note || null },
-    }), "已保存到个人人物库", true), "primary"),
-    button("取消", act("/cancel", null, "已取消", false))
-  );
-  node.append(row, status);
-  if (options.restore) restoreProposal(path, row, (t) => settle(t, t === "已保存"));
-  entry.cards.set("proposal:" + proposalId, node);
-  return node;
-}
-
-function cleanPeopleDraft(draft, picks = []) {
-  return {
-    persons: (draft.persons || []).map((item, idx) => {
-      const { similar_candidates, ...rest } = item;
-      const chosenId = picks[idx];
-      if (chosenId) {
-        const chosen = (similar_candidates || []).find((c) => c.person_id === chosenId);
-        return { ...rest, action: "update", person_id: chosenId, expected_version: chosen?.version ?? null };
-      }
-      return rest;
-    }),
-    relations: draft.relations || [],
-    note: draft.note || null,
-  };
-}
+// 个人知识图谱「原始记录拆解确认卡」位于 capture-card.js。
 
 // 草稿确认卡：确认或取消都走 /v1/assistant/proposals，以草稿标识为幂等键；刷新后按持久状态恢复。
 function confirmCard(kind, draft, proposalId, options = {}) {
@@ -308,6 +169,11 @@ function confirmCard(kind, draft, proposalId, options = {}) {
   const settle = (text) => { row.replaceChildren(); status.textContent = text; };
   const act = (suffix, getBody, done) => async () => {
     const epoch = entry.epoch;
+    if (kind === "reminder" && suffix === "/confirm" &&
+        typeof browserNotificationState === "function" && browserNotificationState() === "default" &&
+        typeof requestBrowserNotificationPermission === "function") {
+      requestBrowserNotificationPermission().catch(() => {});
+    }
     for (const item of row.children) item.disabled = true;
     try {
       const body = getBody ? getBody() : undefined;
@@ -346,7 +212,7 @@ async function restoreProposal(path, row, settle) {
 }
 
 const LIST_SOURCES = {
-  reminder: () => "/v1/reminders?status=active",
+  reminder: () => "/v1/reminders",
   todo: () => "/v1/workspace/items?kind=todo",
   event: () => "/v1/workspace/items?kind=event",
   matter: () => "/v1/workspace/items?kind=matter",
@@ -363,7 +229,13 @@ function listCard(kind) {
     try {
       const body = await entryApi("GET", LIST_SOURCES[kind]());
       if (isStale(epoch)) return;
-      const items = (body.items || []).slice(0, 20);
+      let items = body.items || [];
+      if (kind === "reminder") {
+        items = items
+          .filter(item => item && item.status !== "cancelled")
+          .sort((a, b) => (a.status === "active" ? 0 : 1) - (b.status === "active" ? 0 : 1));
+      }
+      items = items.slice(0, 20);
       list.replaceChildren(...items.map(item => listRow(kind, item, load)));
       status.textContent = items.length ? "" : "暂无记录";
     } catch (error) {
@@ -377,9 +249,13 @@ function listCard(kind) {
 function listRow(kind, item, reload) {
   const row = el("li");
   if (kind === "reminder") {
-    row.append(el("span", item.title + " · " + when(item.due_at) + " "),
-      button("取消提醒", mutate("DELETE", "/v1/reminders/" + encodeURIComponent(item.reminder_id) +
+    const isActive = !item.status || item.status === "active";
+    const stateLabel = isActive ? "等待提醒" : "已提醒";
+    row.append(el("span", item.title + " · " + when(item.due_at) + " · " + stateLabel + " "));
+    if (isActive) {
+      row.append(button("取消提醒", mutate("DELETE", "/v1/reminders/" + encodeURIComponent(item.reminder_id) +
         "?version=" + item.version, undefined, reload)));
+    }
     return row;
   }
   const data = item.data || {};
@@ -453,6 +329,10 @@ function answerCard(item) {
 // 通知卡：最近的通知，可逐条标为已读（原通知接口）。
 function notificationCard() {
   const node = card("通知"), list = el("ul"), status = el("p", "读取中…", "meta");
+  if (typeof createBrowserNotificationBanner === "function") {
+    const banner = createBrowserNotificationBanner();
+    if (banner) node.appendChild(banner);
+  }
   node.append(list, status);
   const load = async () => {
     const epoch = entry.epoch;
@@ -462,9 +342,19 @@ function notificationCard() {
       const items = (body.items || []).slice().reverse();
       list.replaceChildren(...items.map(item => {
         const row = el("li");
-        row.appendChild(el("span", item.title + " · " + when(item.created_at) + " "));
-        if (!item.read_at) row.appendChild(button("标为已读", mutate("POST",
-          "/v1/notifications/" + item.notification_id + "/read", undefined, load)));
+        const timeText = item.due_at != null ? "原定 " + when(item.due_at) : when(item.created_at);
+        row.appendChild(el("span", item.title + (timeText ? " · " + timeText : "") + " "));
+        if (item.body) row.appendChild(el("span", item.body + " ", "meta"));
+        if (!item.read_at) {
+          row.appendChild(button("标为已读", mutate("POST",
+            "/v1/notifications/" + item.notification_id + "/read", undefined, async () => {
+              if (typeof dismissEntryNotificationAlert === "function") dismissEntryNotificationAlert(item.notification_id);
+              await load();
+              if (typeof refreshEntryNotifications === "function") refreshEntryNotifications(epoch, { alertNew: false }).catch(() => {});
+            })));
+        } else {
+          row.appendChild(el("span", "已读", "meta"));
+        }
         return row;
       }));
       status.textContent = items.length ? "" : "暂无通知";

@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from server.core.errors import PermissionDeniedError
 
@@ -91,6 +91,7 @@ class ButlerTurn:
     wake: WakeContext | None = None
     answered: list[str] = field(default_factory=list)
     groups: list[str] = field(default_factory=list)
+    executed_actions: list[dict[str, Any]] = field(default_factory=list)
     compare: CompareContext | None = None
     deadline: asyncio.Timeout | None = None
     """本轮可改期的时限（R6-B）；``extend_turn`` 经它延长。"""
@@ -120,9 +121,10 @@ class ButlerTurn:
             logger.exception("管家过程步骤监听失败")
 
     def has_output(self) -> bool:
-        """本轮是否产出了回复之外的结果（草稿、派工、答复、代答或转问）。"""
+        """本轮是否产出了回复之外的结果（草稿、自主办理、派工、答复、代答或转问）。"""
         wake = self.wake
-        return (self.proposal is not None or bool(self.dispatches) or bool(self.answered)
+        return (self.proposal is not None or bool(self.executed_actions)
+                or bool(self.dispatches) or bool(self.answered)
                 or bool(self.groups)
                 or (self.compare is not None and self.compare.rating is not None)
                 or (wake is not None and (wake.answer is not None or wake.question is not None)))
@@ -144,6 +146,10 @@ class ButlerTurn:
     def dispatch_request_id(self) -> str:
         """本轮下一个派工的幂等标识：同一输入重试时按相同顺序得到相同标识，不会重复派工。"""
         return f"{self.request_id}:d{len(self.dispatches) + 1}"
+
+    def action_request_id(self) -> str:
+        """本轮下一个自主办理动作的幂等标识：同轮重试按顺序复用。"""
+        return f"{self.request_id}:a{len(self.executed_actions) + 1}"
 
 
 class TurnRegistry:

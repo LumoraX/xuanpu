@@ -18,6 +18,7 @@
   const BUTLER = { species: "fox", color: "apricot", acc: "bowtie", name: "管家" };
   const STORE_KEY = "xuanpu-courtyard-looks";
   let artisanNames = {};
+  let artisanMeta = {};
 
   function speciesMarkup(species, b, d) {
     if (species === "cat") return [`<path d="M-23,-40 L-20,-63 L-4,-50Z" fill="${b}" ${S}/><path d="M23,-40 L20,-63 L4,-50Z" fill="${b}" ${S}/><path d="M-18.5,-48 L-17.5,-57 L-10,-51Z" fill="#f7b5ae"/><path d="M18.5,-48 L17.5,-57 L10,-51Z" fill="#f7b5ae"/>`, ""];
@@ -70,6 +71,12 @@
     quill: `<g transform="translate(30,-24) rotate(20)"><path d="M0,10 L-1,-4 C-6,-12 2,-22 6,-22 C8,-14 5,-8 1,-4Z" fill="#fffaf0" ${S}/></g>`,
     book: `<g transform="translate(30,-22)"><rect x="-10" y="-8" width="20" height="15" rx="2" fill="#7fa99b" ${S}/><path d="M0,-8 v15" fill="none" ${S}/></g>`,
     paper: `<g transform="translate(32,-34)"><rect x="-11" y="-14" width="22" height="28" rx="2.5" fill="#fffaf0" ${S}/><path d="M-6,-8 h12 M-6,-3 h12 M-6,2 h6" stroke="#9aa0ad" stroke-width="1.6" stroke-linecap="round"/><circle cx="4" cy="8" r="4.4" fill="none" stroke="#d2432f" stroke-width="1.7" stroke-dasharray="2.2 2"/></g>`,
+    compass: `<g transform="translate(31,-25)"><circle r="9.5" fill="#fffaf0" ${S}/><path d="M0,-6.5 L3.2,0 L0,6.5 L-3.2,0 Z" fill="#d2432f" stroke="${INK}" stroke-width="1.2"/><circle r="1.6" fill="#fff"/></g>`,
+    wrench: `<g transform="translate(31,-24) rotate(-32)"><path d="M-2,-6 h4 v16 h-4 Z" fill="#9fb0bd" ${S}/><path d="M-6,-11 a6.5,6.5 0 1 0 12,0 l-3,4 h-6 Z" fill="#9fb0bd" ${S}/></g>`,
+    stamp: `<g transform="translate(30,-22)"><rect x="-9" y="-2" width="18" height="6" rx="2" fill="#d2432f" ${S}/><path d="M-4,-2 L-3,-11 a3,3 0 0 1 6,0 L4,-2 Z" fill="#b98a5e" ${S}/></g>`,
+    sticky: `<g transform="translate(30,-23) rotate(-6)"><rect x="-9" y="-9" width="18" height="18" rx="2" fill="#f6dc7a" ${S}/><path d="M-5,-3 h10 M-5,2 h7" stroke="${INK}" stroke-width="1.5" stroke-linecap="round"/><path d="M4,4 l2,2 l3,-4" fill="none" stroke="#2f6f5e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g>`,
+    clock: `<g transform="translate(30,-24)"><circle r="8.5" fill="#fffaf0" ${S}/><path d="M0,-4.5 V0 L3.5,2" fill="none" stroke="${INK}" stroke-width="1.7" stroke-linecap="round"/><path d="M-6,-7 l-3,-3 M6,-7 l3,-3" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/></g>`,
+    folder: `<g transform="translate(30,-22)"><path d="M-11,-7 h7 l2,3 h13 v13 h-22 Z" fill="#e8c56a" ${S}/><path d="M-7,0 h14" stroke="#8a6243" stroke-width="1.5" stroke-linecap="round"/></g>`,
   };
   // 飞行中的信与卷轴
   const FLY = {
@@ -101,13 +108,28 @@
   function saveLooks(looks) {
     try { globalThis.localStorage.setItem(STORE_KEY, JSON.stringify(looks)); } catch { /* 存储不可用：本次有效，不记住 */ }
   }
-  function setNames(items) {
-    artisanNames = Object.fromEntries((items || []).filter(item => item && item.package).map(item => [item.package,
-      typeof item.name === "string" && item.name ? item.name : item.package]));
+  function roleAccFor(info) {
+    if (!info) return null;
+    const text = [info.package, info.name, info.description, ...(info.connectors || [])].filter(Boolean).join(" ").toLowerCase();
+    if (/expense|finance|reimburse|invoice|报销|财务|会计|审核/.test(text)) return "monocle";
+    if (/order|support|ticket|desk|客服|工单|订单/.test(text)) return "headset";
+    if (/driver|travel|route|amap|trip|出行|差旅|派车|司机/.test(text)) return "hat";
+    if (/doc|knowledge|legal|policy|法务|文档|知识/.test(text)) return "glasses";
+    if (/ops|admin|hr|行政|后勤/.test(text)) return "apron";
+    return null;
   }
-  // 某个角色的最终形象：本设备上的设置覆盖默认，服务端提供本地化工匠名。
+  function setNames(items) {
+    const list = (items || []).filter(item => item && item.package);
+    artisanNames = Object.fromEntries(list.map(item => [item.package,
+      typeof item.name === "string" && item.name ? item.name : item.package]));
+    artisanMeta = Object.fromEntries(list.map(item => [item.package, item]));
+  }
+  // 某个角色的最终形象：本设备上的设置覆盖默认，服务端提供本地化工匠名与职能配饰。
   function resolveLook(looks, key) {
-    const base = key === "butler" ? BUTLER : { ...lookFor(key), name: artisanNames[key] || key }, own = looks[key] || {};
+    const rawBase = key === "butler" ? BUTLER : { ...lookFor(key), name: artisanNames[key] || key };
+    const roleAcc = key === "butler" ? null : roleAccFor(artisanMeta[key]);
+    const base = roleAcc ? { ...rawBase, acc: roleAcc } : rawBase;
+    const own = looks[key] || {};
     const look = {
       species: SPECIES[own.species] ? own.species : base.species,
       color: COLORS[own.color] ? own.color : base.color,

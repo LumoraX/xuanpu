@@ -6,12 +6,14 @@ const $ = (id) => document.getElementById(id);
 const entry = {
   epoch: 0, controller: new AbortController(), me: null, inflight: 0,
   cards: new Map(), cleanups: new Set(), seen: 0, shown: new Set(),
-  location: null, locationState: "unknown", replies: new Map(), latestReply: "",
+  location: null, locationState: "unknown", replies: new Map(), steps: new Map(), latestReply: "",
+  attachments: [], settings: null,
 };
 // 管家常在线（ADR 0020）：结果随时可能写进主对话（进行中的一轮结束、匠人回报），按游标补读
 const FOLLOW_MS = 5000;
 const LOCATION_TTL_MS = 120000;
 const LOCATION_HINT_RE = /位置|定位|出发|路线|导航|附近|周边|天气|酒店|怎么去|打车|地铁|公交|开车|驾车|步行|骑行|到.{1,12}去/;
+const REMINDER_HINT_RE = /提醒|闹钟|定时|叫我|remind/i;
 
 // 新代际：中止在途请求、关掉流、清空页面上的全部个人状态。
 function resetEntry() {
@@ -26,7 +28,14 @@ function resetEntry() {
   entry.seen = 0;
   entry.shown = new Set();
   entry.replies = new Map();
+  entry.steps = new Map();
   entry.latestReply = "";
+  entry.attachments = [];
+  entry.settings = null;
+  renderComposerFiles();
+  if (typeof closeContactsDrawer === "function") closeContactsDrawer(true);
+  if (typeof closeBoardDrawer === "function") closeBoardDrawer(true);
+  if (typeof resetEntryNotifications === "function") resetEntryNotifications();
   for (const id of ["overview", "stage", "transcript", "tips"]) if ($(id)) $(id).replaceChildren();
   $("message").value = "";
   $("entry-user").textContent = "";
@@ -298,6 +307,17 @@ function renderAssistantBubble(node, rawText) {
   return mainBody || cleaned;
 }
 
+function recordButlerStep(traceId, rawText) {
+  const text = String(rawText || "").trim();
+  if (traceId) {
+    if (text) entry.steps.set(traceId, text);
+    else entry.steps.delete(traceId);
+  }
+  if (globalThis.Courtyard && Courtyard.stage && typeof Courtyard.stage.setStep === "function") {
+    Courtyard.stage.setStep(traceId || null, text);
+  }
+}
+
 function recordButlerReply(traceId, rawText, options = {}) {
   const text = cleanUserText(rawText);
   if (!text) return;
@@ -377,9 +397,11 @@ async function connectEntry() {
     // 常驻小院（R7）：打开就在，说一句话后跟上这次请求；不支持 SVG 时没有这一块
     if (globalThis.Courtyard && Courtyard.stage) Courtyard.stage.mount($("stage"), { onSelect: (s, k) => Courtyard.card.select(s, k) });
     probeLocationPermission().catch(() => {});
+    loadAutonomySetting(epoch).catch(() => {});
     // 历史与概览各自失败只提示，不当作未登录
     await Promise.all([loadHistory(epoch).catch(report), refreshOverview().catch(report), refreshTips()]);
     followMessages(epoch);
+    if (typeof startEntryNotifications === "function") startEntryNotifications(epoch);
     return !isStale(epoch);
   } catch (error) {
     if (isStale(epoch) || error.name === "AbortError") return false;
@@ -436,12 +458,102 @@ function followMessages(epoch) {
   entry.cleanups.add(() => { if (timer !== null) clearTimeout(timer); });
 }
 
-// 一条助手消息带的卡片：草稿确认卡、列表卡、按钮卡、进展卡。
+// 一条助手消息带的卡片：自主办理回执卡、草稿确认卡、列表卡、按钮卡、进展卡。
 function renderMessageCards(metadata, requestId, options = {}) {
   const route = metadata.route || {};
-  if (typeof renderRouteCards === "function") renderRouteCards(route, options);
+  if (typeof renderRouteCards === "function") renderRouteCards(route, { ...options, requestId });
   const traceId = metadata.butler && metadata.butler.trace_id;
   if (traceId && typeof openProgressCard === "function") openProgressCard(traceId, { follow: !options.restore });
+}
+
+function syncAutonomyButton() {
+  const btn = $("entry-autonomy");
+  if (!btn || !btn.dataset || btn.dataset.autonomy !== "1") return;
+  const on = !entry.settings || entry.settings.auto_execute_personal !== false;
+  btn.textContent = on ? "自主办理：开" : "自主办理：关";
+  btn.setAttribute("aria-pressed", String(on));
+  btn.classList.toggle("active", on);
+}
+
+async function loadAutonomySetting(epoch) {
+  const btn = $("entry-autonomy");
+  if (!btn || !btn.dataset || btn.dataset.autonomy !== "1") return;
+  const data = await entryApi("GET", "/v1/workspace/settings");
+  if (isStale(epoch)) return;
+  entry.settings = data;
+  syncAutonomyButton();
+}
+
+async function toggleAutonomySetting() {
+  if (!entry.me) return;
+  const epoch = entry.epoch;
+  if (!entry.settings) await loadAutonomySetting(epoch);
+  if (isStale(epoch) || !entry.settings) return;
+  const next = entry.settings.auto_execute_personal === false;
+  const body = {
+    assistant_name: entry.settings.assistant_name || "玄圃助手",
+    user_title: entry.settings.user_title || "",
+    style: entry.settings.style || "简洁、清晰",
+    timezone: entry.settings.timezone || timezone(),
+    auto_execute_personal: next,
+    proactive_checks: entry.settings.proactive_checks,
+    proactive_channels: entry.settings.proactive_channels || ["inbox"],
+    version: entry.settings.version,
+  };
+  const updated = await entryApi("PUT", "/v1/workspace/settings", { json: body });
+  if (isStale(epoch)) return;
+  entry.settings = updated;
+  syncAutonomyButton();
+  announce(next ? "已开启私人事务自主办理（可一键撤回）" : "已切换为先确认草稿模式");
+}
+
+function renderComposerFiles() {
+  const box = $("composer-files");
+  if (!box) return;
+  if (!entry.attachments.length) {
+    box.replaceChildren();
+    box.classList.add("hidden");
+    return;
+  }
+  box.classList.remove("hidden");
+  box.replaceChildren(...entry.attachments.map((file, idx) => {
+    const chip = el("span", null, "composer-file-chip");
+    chip.append(
+      el("span", file.name),
+      button("×", () => { entry.attachments.splice(idx, 1); renderComposerFiles(); })
+    );
+    return chip;
+  }));
+}
+
+async function uploadAttachmentFiles(fileList) {
+  if (!entry.me || !fileList || !fileList.length) return;
+  const epoch = entry.epoch;
+  const files = [...fileList].slice(0, Math.max(0, 8 - entry.attachments.length));
+  for (const file of files) {
+    const reqId = requestId();
+    const params = new URLSearchParams({ name: file.name, request_id: reqId });
+    const response = await fetch("/v1/workspace/files?" + params, {
+      method: "POST",
+      credentials: "same-origin",
+      signal: entry.controller.signal,
+      headers: {
+        "X-Requested-By": "xuanpu",
+        "Accept-Language": preferredLanguages(),
+        "Content-Type": file.type || "text/plain",
+      },
+      body: file,
+    });
+    const saved = await readJson(response, epoch);
+    if (isStale(epoch)) return;
+    entry.attachments.push({
+      item_id: saved.id,
+      revision: (saved.data && saved.data.current_revision) || 1,
+      name: (saved.data && saved.data.name) || file.name,
+    });
+    renderComposerFiles();
+  }
+  announce("附件已上传，发送消息即可让助理自动整理");
 }
 
 function requestId() {
@@ -451,14 +563,26 @@ function requestId() {
 // 发送：先占位本人原话；不锁输入框，员工可以接着交代下一件事。回执以流到达（R7）：先拿到 trace 标识，
 // 常驻小院立刻跟上这件事；管家的回复逐段出现。服务不给流时照旧等 JSON 回执。失败时输入回到输入框。
 async function sendMessage(text) {
-  if (!entry.me || !text.trim()) return;
+  const attached = entry.attachments.slice();
+  const cleanText = String(text || "").trim() || (attached.length ? "请帮我读取并自动整理我上传的文档：" + attached.map(f => f.name).join("、") : "");
+  if (!entry.me || !cleanText) return;
   const epoch = entry.epoch, id = requestId(), live = { bubble: null, traceId: null };
   entry.inflight += 1;
   entry.shown.add(id + ":user");
-  append("user", text);
+  entry.attachments = [];
+  renderComposerFiles();
+  const display = attached.length ? cleanText + "\n[附件：" + attached.map(f => f.name).join("、") + "]" : cleanText;
+  append("user", display);
+  // 员工在对话里设置提醒时，趁当前发送手势顺便请求浏览器系统弹窗权限，避免到点时因未授权而无系统通知。
+  if (REMINDER_HINT_RE.test(cleanText) &&
+      typeof browserNotificationState === "function" && browserNotificationState() === "default" &&
+      typeof requestBrowserNotificationPermission === "function") {
+    requestBrowserNotificationPermission().catch(() => {});
+  }
   try {
-    const payload = { request_id: id, text, timezone: timezone() };
-    const loc = await currentLocation(text);
+    const payload = { request_id: id, text: cleanText, timezone: timezone() };
+    if (attached.length) payload.input_files = attached.map(f => ({ item_id: f.item_id, revision: f.revision }));
+    const loc = await currentLocation(cleanText);
     if (loc) payload.location = loc;
     const reply = await postMessage(payload, epoch, live);
     if (!isStale(epoch)) finishReply(id, reply, live);
@@ -467,6 +591,7 @@ async function sendMessage(text) {
     if (error.soft) { endBubble(live, error.message, "meta"); return; }
     if (live.bubble) live.bubble.remove();
     if (!$("message").value) $("message").value = text;
+    if (attached.length && !entry.attachments.length) { entry.attachments = attached; renderComposerFiles(); }
     if (typeof showSystemStatus === "function") showSystemStatus(error);
     report(error);
   } finally {
@@ -533,22 +658,28 @@ function onStep(data, live) {
   item.append(el("span", "▸"), el("span", label));
   live.stepsBox.append(item);
   live.steps.push(label);
+  recordButlerStep(live.traceId, label);
   recordButlerReply(live.traceId, label, { streaming: true });
   stickBottom(near);
 }
 
 function onDelta(data, live) {
   const near = nearBottom();
+  const chunk = data.text || "";
+  if (chunk.trim() && !live.streamingText) {
+    live.streamingText = true;
+    recordButlerStep(live.traceId, "正在回复…");
+  }
   if (live.textBox) {
     for (const prev of live.stepsBox.children) {
       prev.classList.remove("active");
       if (prev.firstChild) prev.firstChild.textContent = "✓";
     }
-    live.textBox.textContent += data.text || "";
+    live.textBox.textContent += chunk;
     if (live.textBox.textContent.trim()) recordButlerReply(live.traceId, live.textBox.textContent, { streaming: true });
   } else {
     if (!live.bubble) live.bubble = append("assistant", "", "streaming");
-    live.bubble.textContent += data.text || "";
+    live.bubble.textContent += chunk;
     if (live.bubble.textContent.trim()) recordButlerReply(live.traceId, live.bubble.textContent, { streaming: true });
   }
   stickBottom(near);
@@ -567,6 +698,7 @@ function finishReply(id, reply, live) {
   if (reply.state === "running") {
     const text = "收到，正在处理。好了我会在这里告诉你，你可以先说别的。";
     endBubble(live, text, "meta");
+    recordButlerStep(traceId, "正在处理…");
     recordButlerReply(traceId, text, { streaming: true });
     if (traceId && typeof openProgressCard === "function") openProgressCard(traceId, { follow: true, focus: true });
     return;
@@ -574,6 +706,7 @@ function finishReply(id, reply, live) {
   entry.shown.add(id + ":assistant");
   const finalText = reply.message || "已收到。";
   endBubble(live, finalText);
+  recordButlerStep(traceId, "");
   recordButlerReply(traceId, finalText, { streaming: false });
   renderMessageCards({ route: reply, butler: traceId ? { trace_id: traceId } : null }, id);
   refreshOverview().catch(report);

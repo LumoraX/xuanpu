@@ -56,12 +56,45 @@ function bootEntry() {
   if (locBtn && typeof currentLocation === "function") {
     locBtn.addEventListener("click", () => { currentLocation("", { forcePrompt: true }).catch(report); });
   }
+  const attachBtn = $("entry-attach");
+  const fileInput = $("entry-file-input");
+  if (attachBtn && fileInput && typeof uploadAttachmentFiles === "function") {
+    attachBtn.addEventListener("click", () => { if (typeof fileInput.click === "function") fileInput.click(); });
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files && fileInput.files.length) {
+        uploadAttachmentFiles(fileInput.files).catch(report).finally(() => { fileInput.value = ""; });
+      }
+    });
+  }
+  const contactsBtn = $("entry-contacts");
+  if (contactsBtn && typeof openContactsDrawer === "function") {
+    contactsBtn.addEventListener("click", () => { openContactsDrawer().catch(report); });
+  }
+  const boardBtn = $("entry-board");
+  if (boardBtn && typeof openBoardDrawer === "function") {
+    boardBtn.addEventListener("click", () => { openBoardDrawer().catch(report); });
+  }
+  const autonomyBtn = $("entry-autonomy");
+  if (autonomyBtn && typeof toggleAutonomySetting === "function") {
+    autonomyBtn.addEventListener("click", () => { toggleAutonomySetting().catch(report); });
+  }
   const clearBtn = $("entry-clear");
   if (clearBtn && typeof clearConversation === "function") {
     clearBtn.addEventListener("click", () => { clearConversation().catch(report); });
   }
   $("entry-logout").addEventListener("click", () => logoutEntry().catch(report));
-  $("entry-notifications").addEventListener("click", () => { if (entry.me) appendCard(notificationCard()); });
+  $("entry-notifications").addEventListener("click", () => {
+    if (!entry.me) return;
+    if (typeof openEntryNotificationView === "function") openEntryNotificationView();
+    else appendCard(notificationCard());
+  });
+  const notifMoreBtn = $("entry-notification-alert-more");
+  if (notifMoreBtn) {
+    notifMoreBtn.addEventListener("click", () => {
+      if (typeof openEntryNotificationView === "function") openEntryNotificationView();
+      else if (entry.me) appendCard(notificationCard());
+    });
+  }
   const loginError = new URLSearchParams(location.search).get("login_error");
   if (loginError) {
     $("entry-login-error").textContent = ENTRY_LOGIN_ERRORS[loginError] || "登录失败，请重新登录或联系管理员。";

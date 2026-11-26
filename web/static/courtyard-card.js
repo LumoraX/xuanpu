@@ -135,6 +135,15 @@
     reply: () => (globalThis.entry && entry.replies && state.progress && state.progress.traceId
       ? entry.replies.get(state.progress.traceId) || ""
       : ""),
+    step: () => {
+      const traceId = state.progress && state.progress.traceId;
+      if (!traceId) return "";
+      if (C().stage && typeof C().stage.stepOf === "function") {
+        const s = C().stage.stepOf(traceId);
+        if (s) return s;
+      }
+      return globalThis.entry && entry.steps ? entry.steps.get(traceId) || "" : "";
+    },
   });
 
   // 新出现或状态变了的派工、编组才去取细节；读不到记为 null，之后状态再变才重试。

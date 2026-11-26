@@ -544,6 +544,9 @@ async def open_world(
     identity_settings: IdentitySettings | None = None,
     durable_execution: Any = None,
     connections: Any = None,
+    google_contacts: Any = None,
+    google_contacts_client: Any = None,
+    now: Any = None,
 ) -> World:
     """在 ``tmp_path`` 下装配并启动一个平台，开通一个租户、两把凭据、一条密钥。
 
@@ -581,6 +584,9 @@ async def open_world(
         metrics_token_hash=metrics_token_hash,
         durable_execution=durable_execution,
         connections=connections,
+        google_contacts=google_contacts,
+        google_contacts_client=google_contacts_client,
+        **(({"now": now}) if now is not None else {}),
     )
     await platform.start()
     try:

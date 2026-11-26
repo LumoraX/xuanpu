@@ -127,6 +127,150 @@ async def test_propose_explains_entry_glued_into_package(butler: dict[str, Any],
     assert "企业业务请交给匠人" not in sent.split("package 不对", 1)[1][:200]
 
 
+async def test_propose_people_validation_error_exposes_field_and_reason(
+    butler: dict[str, Any], step: Any,
+) -> None:
+    """@people/record 草稿校验失败时，必须把具体字段位置与原因返回给模型，不能只返 ValueError。"""
+    world = butler["world"]
+    bad = {
+        "package": "@people",
+        "entry": "record",
+        "message": None,
+        "people_draft": {
+            "record": {"record_kind": "meeting", "content": "和袁新沟通项目"},
+            "orgs": [{"action": "link", "temp_ref": "o1", "profile": {"name": "上海理想"}}],
+        },
+    }
+    world.models.script(step(calls=[("c1", "propose", {"choice": bad})]), step(text="已收到错误，我来修正。"))
+    await _say(butler, "记录袁新")
+    outputs = re.findall(r"output='(invalid_arguments: [^']*)'", str(world.models.requests[-1]))
+    assert len(outputs) == 1
+    assert "orgs.0" in outputs[0] and "org_id" in outputs[0]
+    assert outputs[0] != "invalid_arguments: ValueError"
+
+
+async def test_propose_people_normalizes_hoisted_refs_and_blank_dates(
+    butler: dict[str, Any], step: Any,
+) -> None:
+    """顶层误放的 person_refs/org_refs/matter_refs 自动归入 record，空串日期自动转 None。"""
+    world = butler["world"]
+    draft_choice = {
+        "package": "@people",
+        "entry": "record",
+        "message": None,
+        "people_draft": {
+            "record": {"record_kind": "meeting", "title": "沟通项目", "content": "袁新沟通壁仞项目"},
+            "person_refs": ["p1"],
+            "org_refs": ["o1"],
+            "matter_refs": ["m1"],
+            "orgs": [{"action": "create", "temp_ref": "o1", "profile": {"name": "上海理想信息产业(集团)有限公司"}}],
+            "persons": [{"action": "create", "temp_ref": "p1", "profile": {"name": "袁新"}}],
+            "matters": [{"action": "create", "temp_ref": "m1", "title": "壁仞项目"}],
+            "relations": [{
+                "from_kind": "person", "from_ref": "p1",
+                "target_kind": "org", "target_ref": "o1",
+                "relation_type": "works_at", "valid_from": "", "valid_to": "",
+            }],
+        },
+    }
+    world.models.script(
+        step(calls=[("c1", "propose", {"choice": draft_choice})]),
+        step(text="已整理好草稿，请核对确认。"),
+    )
+    receipt = await _say(butler, "袁新在理想信息沟通壁仞项目")
+    draft = receipt["people_draft"]
+    assert draft["record"]["person_refs"] == ["p1"]
+    assert draft["record"]["org_refs"] == ["o1"]
+    assert draft["record"]["matter_refs"] == ["m1"]
+    assert draft["relations"][0]["valid_from"] is None
+    assert draft["relations"][0]["valid_to"] is None
+
+
+async def test_propose_value_error_exposes_reason_not_class_name(
+    butler: dict[str, Any], step: Any,
+) -> None:
+    """业务校验抛出的 ValueError 把可读原因返回给模型，不吞成裸 ValueError。"""
+    world = butler["world"]
+    bad = {"package": "@people", "entry": "record", "message": "夹带消息", "people_draft": None}
+    world.models.script(step(calls=[("c1", "propose", {"choice": bad})]), step(text="好的。"))
+    await _say(butler, "记个联系人")
+    outputs = re.findall(r"output='(invalid_arguments: [^']*)'", str(world.models.requests[-1]))
+    assert outputs == ["invalid_arguments: 人物建议不能夹带其他操作"]
+
+
+async def test_butler_requests_use_low_reasoning_effort(butler: dict[str, Any], step: Any) -> None:
+    """管家默认声明 low 推理强度，避免轻路由与整理被高深度思考拖成几十秒一轮。"""
+    world = butler["world"]
+    world.models.script(step(text="好的。"))
+    await _say(butler, "你好")
+    assert world.models.requests[-1].reasoning_effort == "low"
+
+
+async def test_butler_stops_early_on_consecutive_tool_errors(
+    butler: dict[str, Any], step: Any,
+) -> None:
+    """同一工具连续报错时，第 2 次注入中性提醒，第 4 次熔断停止，不空转耗尽整轮迭代。"""
+    world = butler["world"]
+    bad_calls = [
+        step(calls=[(f"e{i}", "propose", {
+            "choice": {"package": "@people", "entry": "record", "message": f"第{i}次错"}
+        })])
+        for i in range(8)
+    ]
+    world.models.script(*bad_calls)
+    response = await butler["http"].post(
+        "/v1/assistant/messages",
+        json={"request_id": "req-err-loop", "text": "记个联系人"},
+    )
+    assert response.status_code == 503
+    assert "连续重试同一操作" in response.text
+    # 最多跑 4 次模型采样就被熔断，而不是跑到 MAX_ITERATIONS=12
+    assert len(world.models.requests) == 4
+    assert "has returned an error 2 times in a row" in str(world.models.requests[2])
+
+
+async def test_incremental_person_update_without_name_succeeds(
+    butler: dict[str, Any], step: Any,
+) -> None:
+    """增量 update 已有人物/公司时未重复传 profile.name，也能自动补齐并保留原资料。"""
+    world = butler["world"]
+    who = butler["as"]["who"]
+    created = await world.platform.people.create_person(
+        who,
+        {
+            "name": "朱佳",
+            "organization": "上海电信",
+            "contacts": [{"kind": "phone", "value": "18901646624", "label": "手机", "primary": True}],
+        },
+        "seed-zhujia",
+    )
+    pid = created["id"]
+    draft_choice = {
+        "package": "@people",
+        "entry": "record",
+        "message": None,
+        "people_draft": {
+            "record": {"record_kind": "note", "content": "朱佳也在上海理想信息产业（集团）有限公司"},
+            "persons": [
+                {
+                    "action": "update",
+                    "person_id": pid,
+                    "profile": {"organization": "上海理想信息产业（集团）有限公司"},
+                }
+            ],
+        },
+    }
+    world.models.script(
+        step(calls=[("c1", "propose", {"choice": draft_choice})]),
+        step(text="已整理好更新草稿。"),
+    )
+    receipt = await _say(butler, "刚刚的朱佳也是理想信息的")
+    updated = receipt["people_draft"]["persons"][0]
+    assert updated["profile"]["name"] == "朱佳"
+    assert updated["profile"]["organization"] == "上海理想信息产业（集团）有限公司"
+    assert updated["profile"]["contacts"][0]["value"] == "18901646624"
+
+
 async def test_butler_tools_have_no_business_or_host_tools(butler: dict[str, Any]) -> None:
     """管家引擎只有管家工具与内核的技能工具；没有连接器、文件、命令或网络工具。"""
     pool = await butler["world"].platform.butler.engines.pool("acme")

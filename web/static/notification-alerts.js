@@ -103,6 +103,19 @@ function addNotificationAlert(item, unreadCount = null) {
     ()=>generation===reminderState.generation && notificationAlerts.cards.get(key)?.node===node,()=>dismissNotificationAlert(key));
   $("notification-alerts").classList.remove("hidden");
   $("notification-announcer").textContent=item ? `提醒时间到了：${item.title}。可在新通知提示中查看或标为已读。` : `你有未读通知。${summaryText}`;
+  // 浏览器原生桌面弹窗（已授权时触发；切到其他标签页也能及时看到）
+  if(item && typeof globalThis.Notification==="function" && globalThis.Notification.permission==="granted") {
+    try {
+      const headingText=item.source==="work_task"?"交办工作有新进展":["proactive_check","proactive_followup"].includes(item.source)?"有一项业务需要跟进":"提醒时间到了";
+      const lines=[item.title||"你有新的提醒"];
+      if(item.due_at!=null)lines.push(`原定 ${when(item.due_at)}`);
+      if(item.body)lines.push(item.body);
+      const opts={body:lines.join("\n")};
+      if(item.notification_id!=null)opts.tag=`xuanpu-notification-${item.notification_id}`;
+      const popup=new globalThis.Notification(headingText,opts);
+      popup.onclick=()=>{if(typeof globalThis.focus==="function")globalThis.focus();if(generation===reminderState.generation)openNotificationCenter();if(typeof popup.close==="function")popup.close();};
+    } catch {}
+  }
 }
 function observeNotificationAlerts(items, {snapshot = false} = {}) {
   if(!conn.me?.user_id) return;

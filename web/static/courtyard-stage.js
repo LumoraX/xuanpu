@@ -5,12 +5,33 @@
 
 (function () {
   const C = () => globalThis.Courtyard;
-  const stage = { scene: null, focus: null, played: new WeakMap(), roster: [], caption: null,
+  const stage = { scene: null, focus: null, played: new WeakMap(), roster: [], rosterLoaded: false, caption: null,
     drawer: null, toggle: null, action: null, themeButtons: [], openPendingId: null, expanded: false, looks: null, log: [],
-    replyBox: null, replyTitle: null, replyBody: null, replyExpand: null, replyExpanded: false, replies: new Map(), latestReply: "" };
+    replyBox: null, replyTitle: null, replyBody: null, replyExpand: null, replyExpanded: false, replies: new Map(), steps: new Map(), latestReply: "",
+    worldCounts: { openTodos: 0, activeReminders: 0 } };
   // 最近演了什么（排查用）：每帧一条，记焦点、帧类型、是对齐终态还是出节拍
   function note(entry) { stage.log.push({ at: Date.now(), ...entry }); if (stage.log.length > 80) stage.log.shift(); }
-  const IDLE = "管家在管家台待命，匠人们在垫子上歇着。说一句话，看他们怎么办。";
+  const IDLE = "管家在管家台待命。点击书架看资料、点击看板管待办，或直接说一句话。";
+
+  function renderIdleCaption() {
+    if (!stage.caption || stage.focus) return;
+    if (stage.roster.length > 0) {
+      stage.caption.textContent = "管家在管家台待命，" + stage.roster.length + " 位匠人在小院值守。点击书架看资料、点击看板管待办，或直接说一句话。";
+      return;
+    }
+    if (stage.rosterLoaded) {
+      stage.caption.replaceChildren(
+        el("span", "管家在管家台待命；当前暂未启用企业匠人，私人事务与资料整理可直接交代给管家。")
+      );
+      if (globalThis.entry && entry.me && entry.me.role === "tenant_admin") {
+        const link = el("a", "去能力市场添匠人", "cy-caption-link");
+        link.href = "index.html?classic=1#marketplace";
+        stage.caption.append(link);
+      }
+      return;
+    }
+    stage.caption.textContent = IDLE;
+  }
 
   function mounted() { return stage.scene !== null; }
 
@@ -91,6 +112,36 @@
     renderReplyCard(text, { streaming: false });
   }
 
+  function stepOf(traceId) {
+    return (traceId && stage.steps.get(traceId)) || "";
+  }
+
+  function setStep(traceId, text) {
+    const label = String(text || "").trim();
+    if (traceId) {
+      const prev = stage.steps.get(traceId) || "";
+      if (prev === label) return;
+      if (label) stage.steps.set(traceId, label);
+      else stage.steps.delete(traceId);
+    }
+    if (!mounted() || !stage.scene) return;
+    const focus = stage.focus;
+    const focusedTrace = focus && focus.progress ? focus.progress.traceId : null;
+    if (!focus || (focusedTrace && traceId && focusedTrace !== traceId)) return;
+    const model = C().model;
+    const spans = focus.prev || [];
+    if (!model || !spans.length || model.finished(spans) || spans.some(s => s.kind === "dispatch" && !model.TERMINAL.has(s.state))) return;
+    const token = stage.played.get(focus);
+    const apply = () => {
+      if (!mounted() || stage.focus !== focus || stage.played.get(focus) !== token) return;
+      const curSpans = focus.prev || [];
+      if (!curSpans.length || model.finished(curSpans) || curSpans.some(s => s.kind === "dispatch" && !model.TERMINAL.has(s.state))) return;
+      stage.scene.settle(model.poses(curSpans, focus.details()));
+    };
+    if (typeof stage.scene.idle === "function") stage.scene.idle().then(apply);
+    else apply();
+  }
+
   function setReply(traceId, text, options = {}) {
     const cleaned = typeof globalThis.cleanUserText === "function" ? globalThis.cleanUserText(text) : String(text || "").trim();
     if (!cleaned) return;
@@ -117,6 +168,17 @@
     const bar = el("div", null, "cy-stage-bar"), actions = el("div", null, "cy-stage-actions");
     stage.caption = el("p", IDLE, "cy-caption");
     buildThemeSwitcher(actions);
+    const openShelf = typeof openBookshelfDrawer === "function" ? openBookshelfDrawer : (typeof openContactsDrawer === "function" ? openContactsDrawer : null);
+    if (openShelf) {
+      const abBtn = button("书架", () => openShelf({ tab: "people" }).catch(report), "cy-stage-shortcut");
+      abBtn.title = "打开书架资料室（通讯录、公司、项目、记录与文件）";
+      actions.append(abBtn);
+    }
+    if (typeof openBoardDrawer === "function") {
+      const bdBtn = button("看板", () => openBoardDrawer({ tab: "todos" }).catch(report), "cy-stage-shortcut");
+      bdBtn.title = "打开看板（待办、日程与提醒）";
+      actions.append(bdBtn);
+    }
     stage.action = button("去处理", () => { if (stage.openPendingId && typeof openPending === "function") openPending(stage.openPendingId); }, "primary cy-stage-action hidden");
     stage.toggle = button("展开进展", () => setExpanded(!stage.expanded), "cy-stage-toggle hidden");
     stage.toggle.setAttribute("aria-expanded", "false");
@@ -145,21 +207,59 @@
         if (options.onSelect) options.onSelect(stage.focus, key);
         setExpanded(true);
       },
+      onStationClick: key => {
+        if (key === "books" && openShelf) {
+          openShelf({ tab: "people" }).catch(report);
+        } else if (key === "tv" && typeof openBoardDrawer === "function") {
+          const defaultTab = stage.worldCounts.openTodos === 0 && stage.worldCounts.activeReminders > 0 ? "reminders" : "todos";
+          openBoardDrawer({ tab: defaultTab }).catch(report);
+        } else if (key === "cabinet" && openShelf) {
+          openShelf({ tab: "matters" }).catch(report);
+        }
+      },
     });
     if (typeof stage.scene.theme === "function") syncThemeButtons(stage.scene.theme());
     stage.scene.cast([]);
     stage.scene.settle({});
     entry.cleanups.add(unmount);
     loadRoster();
+    refreshWorld().catch(() => {});
     return true;
   }
 
   function unmount() {
     if (stage.scene) stage.scene.destroy();
-    Object.assign(stage, { scene: null, focus: null, played: new WeakMap(), roster: [], caption: null,
+    Object.assign(stage, { scene: null, focus: null, played: new WeakMap(), roster: [], rosterLoaded: false, caption: null,
       drawer: null, toggle: null, action: null, themeButtons: [], openPendingId: null, expanded: false,
       replyBox: null, replyTitle: null, replyBody: null, replyExpand: null, replyExpanded: false,
-      replies: new Map(), latestReply: "" });
+      replies: new Map(), steps: new Map(), latestReply: "",
+      worldCounts: { openTodos: 0, activeReminders: 0 } });
+  }
+
+  async function refreshWorld() {
+    if (!stage.scene || typeof stage.scene.setWorld !== "function") return;
+    const epoch = entry.epoch;
+    const [todosRes, eventsRes, remRes, peopleRes, mattersRes] = await Promise.all([
+      entryApi("GET", "/v1/workspace/items?kind=todo").catch(() => ({ items: [] })),
+      entryApi("GET", "/v1/workspace/items?kind=event").catch(() => ({ items: [] })),
+      entryApi("GET", "/v1/reminders?status=active").catch(() => ({ items: [] })),
+      entryApi("GET", "/v1/people").catch(() => ({ items: [] })),
+      entryApi("GET", "/v1/workspace/items?kind=matter").catch(() => ({ items: [] })),
+    ]);
+    if (isStale(epoch) || !stage.scene || typeof stage.scene.setWorld !== "function") return;
+    const todos = (todosRes.items || []).filter(i => i && !i.trashed_at).map(i => {
+      const d = i.data || {};
+      const st = String(d.status || "").toLowerCase();
+      return { id: i.id, title: d.title || d.text || d.summary || "待办", done: st === "done" || st === "completed" || st === "closed" };
+    });
+    const events = (eventsRes.items || []).filter(i => i && !i.trashed_at).map(i => {
+      const d = i.data || {};
+      return { id: i.id, title: d.title || d.name || "日程" };
+    });
+    const reminders = (remRes.items || []).filter(r => r && r.status !== "cancelled").map(r => ({ id: r.reminder_id || r.id, title: r.title || "提醒" }));
+    const booksCount = (peopleRes.items || []).length + (mattersRes.items || []).filter(i => i && !i.trashed_at).length;
+    stage.worldCounts = { openTodos: todos.filter(t => !t.done).length, activeReminders: reminders.length };
+    stage.scene.setWorld({ todos, events, reminders, booksCount });
   }
 
   async function loadRoster() {
@@ -167,12 +267,20 @@
     try {
       const body = await entryApi("GET", "/v1/assistant/artisans");
       if (isStale(epoch) || !stage.scene) return;
-      C().art.setNames(body.items || []);
-      stage.roster = [...new Set((body.items || []).map(i => i.package))];
+      const items = body.items || [];
+      C().art.setNames(items);
+      stage.roster = [...new Set(items.map(i => i.package))];
+      stage.rosterLoaded = true;
       stage.scene.cast(stage.roster);
       stage.scene.restyle();
-      if (!stage.focus) stage.scene.settle({});
+      if (typeof stage.scene.setWorld === "function") stage.scene.setWorld({ artisans: items });
+      if (!stage.focus) {
+        stage.scene.settle({});
+        renderIdleCaption();
+      }
     } catch (error) {
+      stage.rosterLoaded = true;
+      if (!stage.focus) renderIdleCaption();
       if (error && error.name !== "AbortError" && error.status !== 403) console.error("小院读不到可用匠人", error);
     }
   }
@@ -219,6 +327,9 @@
       stage.scene.idle().then(() => { if (stage.played.get(state) === next) stage.scene.settle(model.poses(next, state.details())); });
     }
     stage.played.set(state, next);
+    if (model.finished(next) && (!before || !model.finished(before))) {
+      refreshWorld().catch(() => {});
+    }
     describe(state);
     handBack(state, next, details);
   }
@@ -267,7 +378,7 @@
   function isExpanded() { return stage.expanded; }
 
   globalThis.Courtyard = globalThis.Courtyard || {};
-  globalThis.Courtyard.stage = { mount, mounted, focus, update, select, restyle, setTheme, setReply, isFocus, hasFocus,
+  globalThis.Courtyard.stage = { mount, mounted, focus, update, select, restyle, setTheme, setReply, setStep, stepOf, refreshWorld, isFocus, hasFocus,
     setExpanded, isExpanded, recent: () => stage.log.slice(),
     // 测试用：交还焦点不等待
     immediate: on => { stage.immediate = Boolean(on); } };

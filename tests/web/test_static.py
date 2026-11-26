@@ -19,7 +19,7 @@ def test_static_files_present() -> None:
     referenced = {v.split('?')[0] if not v.startswith('?') else v for v in re.findall(r'(?:src|href)="([^"]+)"', html)}
     assert referenced == {
         "app.js", "identity.js", "reminders.js", "notification-alerts.js", "notification-center.js", "style.css",
-        "?admin=1", "?", "workspace.css", "workspace.js", "workspace-forms.js",
+        "?admin=1", "?", "entry.html", "workspace.css", "workspace.js", "workspace-forms.js",
         "collaboration-core.js", "handoffs.js", "handoff-results.js", "organizational-approvals.js", "collaboration-notifications.js",
         "shared-matters.js", "shared-materials.js", "shared-conversation.js", "shared-notifications.js",
         "connections.js", "organization.js", "organization-forms.js", "workspace-files.js", "workspace-chat.js", "proactive.js", "work-tasks.js", "task-definitions.js",

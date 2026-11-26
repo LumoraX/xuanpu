@@ -16,11 +16,11 @@ import contextlib
 import dataclasses
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime  # noqa: TC003 —— 数据类字段
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from server.core.ids import new_id
-from server.engine.tracing.events import drafts, event_time
+from server.engine.tracing.events import Draft, drafts, event_time
 from server.engine.tracing.models import SpanFact, TraceOwner
 from server.engine.tracing.narration import append, narration
 
@@ -32,8 +32,7 @@ if TYPE_CHECKING:
     from server.core.controlplane.store import ControlPlaneStore
     from server.engine.tracing.binding import TraceBinding
     from server.engine.tracing.config import ExecutionTraceConfig, TraceWiring
-    from server.engine.tracing.events import Draft
-    from server.engine.tracing.models import SpanKind, TraceOrigin
+    from server.engine.tracing.models import SpanKind, SpanState, TraceOrigin
     from server.engine.tracing.store import SpanStore
 
 logger = logging.getLogger(__name__)
@@ -64,6 +63,7 @@ class _Trace:
     dropped: bool = False
     bindable: bool = False
     parent_span: str | None = None
+    open_spans: set[str] = field(default_factory=set)
 
 
 class TraceCollector:
@@ -123,18 +123,37 @@ class TraceCollector:
                     del self._traces[key]
             self._finished = [t for t in self._finished if t in self._traces]
 
-    async def close(self) -> None:
-        """停后台任务并写完；仍未结束的 trace 标为不完整（引擎在执行中途被关闭）。"""
+    async def close(
+        self,
+        *,
+        unfinished_state: SpanState | None = None,
+        unfinished_reason: str | None = None,
+    ) -> None:
+        """停后台任务并写完；若指定终态则正常收尾未结束 span，否则仍未结束的 trace 标为不完整。"""
         if self._task is not None:
             self._task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._task
+        if unfinished_state is not None:
+            now = datetime.now(UTC)
+            finished = set(self._finished)
+            for trace in self._traces.values():
+                if trace.key in finished:
+                    continue
+                for span_id in sorted(trace.open_spans):
+                    trace.pending.append(Draft(
+                        span_id, now, state=unfinished_state, end_reason=unfinished_reason,
+                    ))
+                    self._pending_total += 1
+                trace.open_spans.clear()
+                self._finished.append(trace.key)
         await self.flush()
         for trace in self._traces.values():
             if trace.next_seq is not None:
                 with contextlib.suppress(Exception):
                     await self._store.mark_incomplete(self._owner, trace.trace_id)
         self._traces.clear()
+        self._by_execution.clear()
         self._said.clear()
 
     def _handle(self, event: taifeng.EventMsg) -> None:
@@ -157,6 +176,11 @@ class TraceCollector:
             return
         trace.pending.extend(found)
         self._pending_total += len(found)
+        for draft in found:
+            if draft.state in _TERMINAL:
+                trace.open_spans.discard(draft.span_id)
+            elif draft.state is not None:
+                trace.open_spans.add(draft.span_id)
         is_root = identity.parent_execution_id is None
         ended = event.msg.kind in ("turn_completed", "turn_failed") and any(
             d.state in _TERMINAL for d in found)

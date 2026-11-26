@@ -228,6 +228,38 @@ def build_merged_profile(source: dict[str, Any], target: dict[str, Any]) -> dict
     return merged
 
 
+def merge_profile_patch(existing: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any]:
+    """将提案中的增量人物更新安全合并到已有档案上，避免未填字段覆盖旧资料。"""
+    merged: dict[str, Any] = deepcopy(existing)
+    for field_name in ("name", "organization", "department", "title", "city"):
+        val = incoming.get(field_name)
+        if isinstance(val, str) and val.strip():
+            merged[field_name] = val.strip()
+    if incoming.get("gender") and incoming["gender"] != "unknown":
+        merged["gender"] = incoming["gender"]
+    if incoming.get("birth") is not None:
+        merged["birth"] = deepcopy(incoming["birth"])
+    in_summary = str(incoming.get("summary") or "").strip()
+    ex_summary = str(existing.get("summary") or "").strip()
+    if in_summary:
+        if not ex_summary or ex_summary in in_summary:
+            merged["summary"] = in_summary[:2000]
+        elif in_summary not in ex_summary:
+            merged["summary"] = f"{ex_summary}；{in_summary}"[:2000]
+    merged["aliases"] = _merge_unique_strings(existing.get("aliases", []), incoming.get("aliases", []), 20)
+    merged["contacts"] = _merge_contacts(incoming.get("contacts", []), existing.get("contacts", []))
+    merged["tags"] = _merge_unique_strings(existing.get("tags", []), incoming.get("tags", []), 30)
+    merged["attachment_file_ids"] = _merge_unique_strings(
+        existing.get("attachment_file_ids", []), incoming.get("attachment_file_ids", []), 10
+    )
+    extra = dict(existing.get("extra", {}))
+    for k, v in (incoming.get("extra") or {}).items():
+        if isinstance(v, str) and v.strip():
+            extra[k] = v.strip()
+    merged["extra"] = dict(list(extra.items())[:30])
+    return merged
+
+
 def _rewrite_relation_for_merge(
     state: PeopleState, rel: dict[str, Any], source_id: str, target_id: str, now: float
 ) -> dict[str, Any] | None:

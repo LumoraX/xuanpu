@@ -41,10 +41,29 @@ def _person_from_row(row: Any) -> dict[str, Any]:
     return rec
 
 
+def _org_from_row(row: Any) -> dict[str, Any]:
+    """将数据库行反序列化为领域公司/组织记录。"""
+    rec: dict[str, Any] = {
+        "id": row["org_id"],
+        "name": row["name"],
+        "profile": json.loads(row["profile"]),
+        "version": row["version"],
+        "merged_into_id": row["merged_into_id"],
+        "merge_snapshot": json.loads(row["merge_snapshot"]) if row["merge_snapshot"] is not None else None,
+        "trashed_at": row["trashed_at"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+    if row["trash_batch"] is not None:
+        rec["_trash_batch"] = row["trash_batch"]
+    return rec
+
+
 def _relation_from_row(row: Any) -> dict[str, Any]:
-    """将数据库行反序列化为领域关系记录。"""
+    """将数据库行反序列化为领域跨实体关系记录。"""
     rec: dict[str, Any] = {
         "id": row["relation_id"],
+        "from_kind": row["from_kind"],
         "from_person_id": row["from_person_id"],
         "target_kind": row["target_kind"],
         "target_id": row["target_id"],
@@ -66,13 +85,25 @@ def _relation_from_row(row: Any) -> dict[str, Any]:
 
 
 def _note_from_row(row: Any) -> dict[str, Any]:
-    """将数据库行反序列化为领域原始互动记录。"""
+    """将数据库行反序列化为领域通用原始记录。"""
     return {
         "id": row["note_id"],
+        "record_kind": row["record_kind"],
+        "title": row["title"],
+        "location": row["location"],
         "occurred_at": row["occurred_at"],
+        "end_at": row["end_at"],
         "content": row["content"],
+        "summary": row["summary"],
+        "decisions": json.loads(row["decisions"]),
+        "open_questions": json.loads(row["open_questions"]),
         "person_ids": json.loads(row["person_ids"]),
+        "org_ids": json.loads(row["org_ids"]),
         "matter_id": row["matter_id"],
+        "matter_ids": json.loads(row["matter_ids"]),
+        "todo_ids": json.loads(row["todo_ids"]),
+        "event_ids": json.loads(row["event_ids"]),
+        "reminder_ids": json.loads(row["reminder_ids"]),
         "attachment_file_ids": json.loads(row["attachment_file_ids"]),
         "source_message_id": row["source_message_id"],
         "version": row["version"],
@@ -83,7 +114,7 @@ def _note_from_row(row: Any) -> dict[str, Any]:
 
 
 class PostgresPeopleStore:
-    """租户共享锁、员工排他锁后原子提交人物、关系、笔记与脱敏审计。"""
+    """租户共享锁、员工排他锁后原子提交公司、人物、关系、原始记录与脱敏审计。"""
 
     def __init__(self, pool: asyncpg.Pool, *, namespace: SqlNamespace = DEFAULT_NAMESPACE) -> None:
         """表名来自已验证的 SqlNamespace，业务数据全部使用参数绑定。"""
@@ -94,6 +125,7 @@ class PostgresPeopleStore:
                 "tenant",
                 "user",
                 "audit",
+                "personal_org",
                 "personal_person",
                 "personal_relation",
                 "personal_note",
@@ -115,8 +147,17 @@ class PostgresPeopleStore:
             raise PermissionDeniedError("员工或租户不可用")
 
     async def _load(self, conn: Any, tenant: str, user: str) -> PeopleState:
-        """装载单员工完整的人物空间快照。"""
+        """装载单员工完整的个人知识图谱快照。"""
         state = PeopleState()
+        for row in await conn.fetch(
+            f"SELECT org_id,name,profile,version,merged_into_id,merge_snapshot,trashed_at,"
+            f"trash_batch,created_at,updated_at "
+            f"FROM {self._t['personal_org']} WHERE tenant_id=$1 AND user_id=$2",
+            tenant,
+            user,
+        ):
+            rec = _org_from_row(row)
+            state.orgs[rec["id"]] = rec
         for row in await conn.fetch(
             f"SELECT person_id,name,organization,birth_year,birth_month,birth_day,profile,avatar,"
             f"version,merged_into_id,merge_snapshot,trashed_at,trash_batch,created_at,updated_at "
@@ -127,9 +168,9 @@ class PostgresPeopleStore:
             rec = _person_from_row(row)
             state.persons[rec["id"]] = rec
         for row in await conn.fetch(
-            f"SELECT relation_id,from_person_id,target_kind,target_id,relation_type,is_symmetric,"
-            f"role,note,valid_from,valid_to,source_note_id,version,trashed_at,trash_batch,"
-            f"created_at,updated_at FROM {self._t['personal_relation']} "
+            f"SELECT relation_id,from_kind,from_person_id,target_kind,target_id,relation_type,"
+            f"is_symmetric,role,note,valid_from,valid_to,source_note_id,version,trashed_at,"
+            f"trash_batch,created_at,updated_at FROM {self._t['personal_relation']} "
             f"WHERE tenant_id=$1 AND user_id=$2",
             tenant,
             user,
@@ -137,9 +178,10 @@ class PostgresPeopleStore:
             rec = _relation_from_row(row)
             state.relations[rec["id"]] = rec
         for row in await conn.fetch(
-            f"SELECT note_id,occurred_at,content,person_ids,matter_id,attachment_file_ids,"
-            f"source_message_id,version,trashed_at,created_at,updated_at "
-            f"FROM {self._t['personal_note']} WHERE tenant_id=$1 AND user_id=$2",
+            f"SELECT note_id,record_kind,title,location,occurred_at,end_at,content,summary,"
+            f"decisions,open_questions,person_ids,org_ids,matter_id,matter_ids,todo_ids,"
+            f"event_ids,reminder_ids,attachment_file_ids,source_message_id,version,trashed_at,"
+            f"created_at,updated_at FROM {self._t['personal_note']} WHERE tenant_id=$1 AND user_id=$2",
             tenant,
             user,
         ):
@@ -161,6 +203,40 @@ class PostgresPeopleStore:
         """无写锁读取本人快照。"""
         async with self._pool.acquire() as conn:
             return await self._load(conn, tenant, user)
+
+    async def _save_orgs(
+        self, conn: Any, tenant: str, user: str, before: dict[str, dict[str, Any]], after: dict[str, dict[str, Any]]
+    ) -> None:
+        """先写主公司档案再写被合并公司，保证自引用外键顺序成立。"""
+        changed = [rec for oid, rec in after.items() if before.get(oid) != rec]
+        changed.sort(key=lambda r: 0 if r.get("merged_into_id") is None else 1)
+        sql = (
+            f"INSERT INTO {self._t['personal_org']} "
+            f"(tenant_id,user_id,org_id,name,profile,version,merged_into_id,merge_snapshot,"
+            f"trashed_at,trash_batch,created_at,updated_at) "
+            f"VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8::jsonb,$9,$10,$11,$12) "
+            f"ON CONFLICT (tenant_id,user_id,org_id) DO UPDATE SET "
+            f"name=EXCLUDED.name,profile=EXCLUDED.profile,version=EXCLUDED.version,"
+            f"merged_into_id=EXCLUDED.merged_into_id,merge_snapshot=EXCLUDED.merge_snapshot,"
+            f"trashed_at=EXCLUDED.trashed_at,trash_batch=EXCLUDED.trash_batch,"
+            f"updated_at=EXCLUDED.updated_at"
+        )
+        for rec in changed:
+            await conn.execute(
+                sql,
+                tenant,
+                user,
+                rec["id"],
+                rec["name"],
+                json.dumps(rec["profile"], ensure_ascii=False),
+                rec["version"],
+                rec["merged_into_id"],
+                json.dumps(rec["merge_snapshot"], ensure_ascii=False) if rec["merge_snapshot"] is not None else None,
+                rec["trashed_at"],
+                rec.get("_trash_batch"),
+                rec["created_at"],
+                rec["updated_at"],
+            )
 
     async def _save_persons(
         self, conn: Any, tenant: str, user: str, before: dict[str, dict[str, Any]], after: dict[str, dict[str, Any]]
@@ -206,21 +282,21 @@ class PostgresPeopleStore:
     async def _save_relations_and_notes(
         self, conn: Any, tenant: str, user: str, before: PeopleState, after: PeopleState
     ) -> None:
-        """持久化发生变更的关系边、原始笔记与幂等回执。"""
+        """持久化发生变更的关系边、原始记录与幂等回执。"""
         rel_sql = (
             f"INSERT INTO {self._t['personal_relation']} "
-            f"(tenant_id,user_id,relation_id,from_person_id,target_kind,target_id,relation_type,"
-            f"is_symmetric,role,note,valid_from,valid_to,source_note_id,version,trashed_at,"
-            f"trash_batch,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,"
-            f"$12,$13,$14,$15,$16,$17,$18) "
+            f"(tenant_id,user_id,relation_id,from_kind,from_person_id,target_kind,target_id,"
+            f"relation_type,is_symmetric,role,note,valid_from,valid_to,source_note_id,version,"
+            f"trashed_at,trash_batch,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,"
+            f"$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) "
             f"ON CONFLICT (tenant_id,user_id,relation_id) DO UPDATE SET "
-            f"from_person_id=EXCLUDED.from_person_id,target_kind=EXCLUDED.target_kind,"
-            f"target_id=EXCLUDED.target_id,relation_type=EXCLUDED.relation_type,"
-            f"is_symmetric=EXCLUDED.is_symmetric,role=EXCLUDED.role,note=EXCLUDED.note,"
-            f"valid_from=EXCLUDED.valid_from,valid_to=EXCLUDED.valid_to,"
-            f"source_note_id=EXCLUDED.source_note_id,version=EXCLUDED.version,"
-            f"trashed_at=EXCLUDED.trashed_at,trash_batch=EXCLUDED.trash_batch,"
-            f"updated_at=EXCLUDED.updated_at"
+            f"from_kind=EXCLUDED.from_kind,from_person_id=EXCLUDED.from_person_id,"
+            f"target_kind=EXCLUDED.target_kind,target_id=EXCLUDED.target_id,"
+            f"relation_type=EXCLUDED.relation_type,is_symmetric=EXCLUDED.is_symmetric,"
+            f"role=EXCLUDED.role,note=EXCLUDED.note,valid_from=EXCLUDED.valid_from,"
+            f"valid_to=EXCLUDED.valid_to,source_note_id=EXCLUDED.source_note_id,"
+            f"version=EXCLUDED.version,trashed_at=EXCLUDED.trashed_at,"
+            f"trash_batch=EXCLUDED.trash_batch,updated_at=EXCLUDED.updated_at"
         )
         for rid, rec in after.relations.items():
             if before.relations.get(rid) == rec:
@@ -230,6 +306,7 @@ class PostgresPeopleStore:
                 tenant,
                 user,
                 rec["id"],
+                rec.get("from_kind", "person"),
                 rec["from_person_id"],
                 rec["target_kind"],
                 rec["target_id"],
@@ -248,12 +325,20 @@ class PostgresPeopleStore:
             )
         note_sql = (
             f"INSERT INTO {self._t['personal_note']} "
-            f"(tenant_id,user_id,note_id,occurred_at,content,person_ids,matter_id,"
-            f"attachment_file_ids,source_message_id,version,trashed_at,created_at,updated_at) "
-            f"VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8::jsonb,$9,$10,$11,$12,$13) "
+            f"(tenant_id,user_id,note_id,record_kind,title,location,occurred_at,end_at,content,"
+            f"summary,decisions,open_questions,person_ids,org_ids,matter_id,matter_ids,todo_ids,"
+            f"event_ids,reminder_ids,attachment_file_ids,source_message_id,version,trashed_at,"
+            f"created_at,updated_at) "
+            f"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13::jsonb,$14::jsonb,"
+            f"$15,$16::jsonb,$17::jsonb,$18::jsonb,$19::jsonb,$20::jsonb,$21,$22,$23,$24,$25) "
             f"ON CONFLICT (tenant_id,user_id,note_id) DO UPDATE SET "
-            f"occurred_at=EXCLUDED.occurred_at,content=EXCLUDED.content,"
-            f"person_ids=EXCLUDED.person_ids,matter_id=EXCLUDED.matter_id,"
+            f"record_kind=EXCLUDED.record_kind,title=EXCLUDED.title,location=EXCLUDED.location,"
+            f"occurred_at=EXCLUDED.occurred_at,end_at=EXCLUDED.end_at,content=EXCLUDED.content,"
+            f"summary=EXCLUDED.summary,decisions=EXCLUDED.decisions,"
+            f"open_questions=EXCLUDED.open_questions,person_ids=EXCLUDED.person_ids,"
+            f"org_ids=EXCLUDED.org_ids,matter_id=EXCLUDED.matter_id,"
+            f"matter_ids=EXCLUDED.matter_ids,todo_ids=EXCLUDED.todo_ids,"
+            f"event_ids=EXCLUDED.event_ids,reminder_ids=EXCLUDED.reminder_ids,"
             f"attachment_file_ids=EXCLUDED.attachment_file_ids,version=EXCLUDED.version,"
             f"trashed_at=EXCLUDED.trashed_at,updated_at=EXCLUDED.updated_at"
         )
@@ -265,12 +350,24 @@ class PostgresPeopleStore:
                 tenant,
                 user,
                 rec["id"],
+                rec.get("record_kind", "note"),
+                rec.get("title", ""),
+                rec.get("location", ""),
                 rec["occurred_at"],
+                rec.get("end_at"),
                 rec["content"],
-                json.dumps(rec["person_ids"], ensure_ascii=False),
-                rec["matter_id"],
-                json.dumps(rec["attachment_file_ids"], ensure_ascii=False),
-                rec["source_message_id"],
+                rec.get("summary", ""),
+                json.dumps(rec.get("decisions", []), ensure_ascii=False),
+                json.dumps(rec.get("open_questions", []), ensure_ascii=False),
+                json.dumps(rec.get("person_ids", []), ensure_ascii=False),
+                json.dumps(rec.get("org_ids", []), ensure_ascii=False),
+                rec.get("matter_id"),
+                json.dumps(rec.get("matter_ids", []), ensure_ascii=False),
+                json.dumps(rec.get("todo_ids", []), ensure_ascii=False),
+                json.dumps(rec.get("event_ids", []), ensure_ascii=False),
+                json.dumps(rec.get("reminder_ids", []), ensure_ascii=False),
+                json.dumps(rec.get("attachment_file_ids", []), ensure_ascii=False),
+                rec.get("source_message_id"),
                 rec["version"],
                 rec["trashed_at"],
                 rec["created_at"],
@@ -307,6 +404,7 @@ class PostgresPeopleStore:
             before = await self._load(conn, tenant, user)
             working = deepcopy(before)
             yield working
+            await self._save_orgs(conn, tenant, user, before.orgs, working.orgs)
             await self._save_persons(conn, tenant, user, before.persons, working.persons)
             await self._save_relations_and_notes(conn, tenant, user, before, working)
             for entry in working.audit:

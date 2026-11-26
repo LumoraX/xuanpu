@@ -25,6 +25,7 @@ from server.engine.assistant.task_definitions import TASK_DEFINITION_PROMPT
 from server.engine.assistant.workspace import WORKSPACE_PROMPT
 from server.engine.butler.groups.tools import GROUP_PLAN_SCHEMA
 from server.engine.butler.limits import time_hint
+from server.engine.butler.personal_actions import execute_personal_action, read_extended_personal
 from spec.localization import display_name_for
 
 if TYPE_CHECKING:
@@ -39,7 +40,7 @@ if TYPE_CHECKING:
 
     Handler = Callable[[ButlerTurn, dict[str, Any], str], Awaitable[taifeng.ToolResult]]
 
-TOOL_NAMES = ("propose", "read_personal", "list_artisans", "dispatch_artisan", "check_dispatch",
+TOOL_NAMES = ("propose", "act_personal", "read_personal", "list_artisans", "dispatch_artisan", "check_dispatch",
               "cancel_dispatch", "answer_pending", "answer_artisan", "ask_user",
               "dispatch_group", "cancel_group", "check_group", "rate_divergence",
               "extend_turn", "raise_budget")
@@ -60,6 +61,21 @@ PROPOSE_DESCRIPTION = (
     # 企业连接在分流里是目录条目而非提示词，这里补一句同义约定
     + "\n本人企业只读连接（绑定企业微信、查看或撤销授权）选择@connections/manage，只打开本人连接页；"
     "企业未开通时平台会拒绝，如实说明即可。"
+)
+
+
+ACT_PERSONAL_DESCRIPTION = (
+    "（仅本人私域自主办理，受个人设置 auto_execute_personal 控制，办完可一键撤回）"
+    "直接代员工完成个人空间内的信息整理与办公操作，同一轮可连续调用多次，不限于单个草稿。"
+    "严禁用于对外发送、组织审批、交接、共享或企业外部业务。\n"
+    "支持 action：\n"
+    "- capture_bundle：把随手记、会议纪要、名片或上传的文档内容一次性自动拆解并落库为原始记录+公司+人物+事项+待办+日程+提醒+跨实体关系（传 bundle，结构与 people_draft 完全一致，时间支持 UNIX 秒或 ISO-8601）；\n"
+    "- create_todo / update_todo / complete_todo / reopen_todo：新建、编辑、勾选完成或重开本人待办（传 title/description/due_at/matter_id 或 item_id）；\n"
+    "- create_event / update_event：安排或修改本人日程（传 title/start_at/end_at/timezone/description/matter_id 或 item_id）；\n"
+    "- create_reminder / cancel_reminder：设置或取消本人提醒（传 title/due_at/timezone/repeat 或 reminder_id）；\n"
+    "- create_matter / update_matter：新建或更新本人项目事项（传 title/description/status 或 item_id）；\n"
+    "- act_followup：处理本人主动感知跟进（传 followup_id、followup_action=complete|postpone|ignore_stage|set_reminder|progress 及可选 due_at）；\n"
+    "- save_note_file：把你整理好的会议纪要、项目全景简报、周报或方案保存为本人工作台 Markdown 文件（传 name/content，可选 matter_id/parent_id）。"
 )
 
 
@@ -117,16 +133,85 @@ class ButlerTools:
                                    "package、entry（按工具说明里的约定）、message=null 及对应草稿字段"}},
                        ["choice"], self._propose),
             self._spec(
+                "act_personal",
+                ACT_PERSONAL_DESCRIPTION,
+                {
+                    "action": {
+                        "type": "string",
+                        "enum": [
+                            "capture_bundle",
+                            "create_todo",
+                            "update_todo",
+                            "complete_todo",
+                            "reopen_todo",
+                            "create_event",
+                            "update_event",
+                            "create_reminder",
+                            "cancel_reminder",
+                            "create_matter",
+                            "update_matter",
+                            "act_followup",
+                            "save_note_file",
+                        ],
+                    },
+                    "bundle": {"type": ["object", "null"], "description": "capture_bundle 时的复合整理包（结构同 people_draft）"},
+                    "item_id": {"type": ["string", "null"], "description": "待办/日程/事项的 ID（更新或完成时必填）"},
+                    "reminder_id": {"type": ["string", "null"], "description": "cancel_reminder 时的提醒 ID"},
+                    "followup_id": {"type": ["string", "null"], "description": "act_followup 时的跟进 ID"},
+                    "followup_action": {
+                        "type": ["string", "null"],
+                        "enum": ["complete", "postpone", "ignore_stage", "set_reminder", "progress", None],
+                        "description": "act_followup 的处理动作",
+                    },
+                    "title": {"type": ["string", "null"], "description": "标题"},
+                    "name": {"type": ["string", "null"], "description": "save_note_file 的文件名（如 2026-11-25-会议纪要.md）"},
+                    "content": {"type": ["string", "null"], "description": "save_note_file 的 UTF-8 文档正文"},
+                    "description": {"type": ["string", "null"], "description": "详细说明"},
+                    "status": {"type": ["string", "null"], "description": "待办状态 open/done 或事项状态 active/completed/archived"},
+                    "due_at": {"type": ["number", "string", "null"], "description": "截止或提醒时间（UNIX 秒或 ISO-8601）"},
+                    "start_at": {"type": ["number", "string", "null"], "description": "日程开始时间（UNIX 秒或 ISO-8601）"},
+                    "end_at": {"type": ["number", "string", "null"], "description": "日程结束时间（UNIX 秒或 ISO-8601）"},
+                    "timezone": {"type": ["string", "null"], "description": "IANA 时区，默认沿用员工当前时区"},
+                    "repeat": {"type": ["string", "null"], "enum": ["once", "daily", "weekly", None]},
+                    "matter_id": {"type": ["string", "null"], "description": "关联的本人事项 ID"},
+                    "parent_id": {"type": ["string", "null"], "description": "save_note_file 可选父目录 ID"},
+                },
+                ["action"],
+                self._act_personal,
+            ),
+            self._spec(
                 "read_personal",
-                "查本人的提醒、工作任务、个人人物档案（按最近更新时间倒序，不传条件即列最近联系人）、人物关系图或某事项的关联人物（只读）。",
+                "查本人的今日全景（today）、待办（todos）、日程（events）、提醒（reminders）、最近匠人派工（dispatches）、工作任务（work_tasks）、个人文件清单与文本正文（files/file_content）、个人知识库与记忆（knowledge）、主动业务跟进（followups）、以及个人知识图谱（orgs_search/people_search/matters/records_search/entity_graph/person_detail/matter_people）（全部只读）。",
                 {
                     "kind": {
                         "type": "string",
-                        "enum": ["reminders", "work_tasks", "people_search", "person_detail", "matter_people"],
+                        "enum": [
+                            "today",
+                            "todos",
+                            "events",
+                            "reminders",
+                            "dispatches",
+                            "files",
+                            "file_content",
+                            "knowledge",
+                            "followups",
+                            "work_tasks",
+                            "matters",
+                            "orgs_search",
+                            "records_search",
+                            "entity_graph",
+                            "people_search",
+                            "person_detail",
+                            "matter_people",
+                        ],
                     },
-                    "query": {"type": ["string", "null"], "description": "people_search 的姓名/别名/公司/标签关键词；查全部或最近联系人时留空或填 null"},
+                    "query": {"type": ["string", "null"], "description": "关键词（todos/events/files/knowledge/people_search/orgs_search/matters/records_search）；查全部或最近时留空或填 null"},
+                    "status": {"type": ["string", "null"], "description": "todos 状态过滤（open/done/all）"},
+                    "item_id": {"type": ["string", "null"], "description": "file_content 要读取的本人文件 ID"},
+                    "revision": {"type": ["integer", "null"], "minimum": 1, "description": "file_content 可选版本号"},
+                    "limit": {"type": ["integer", "null"], "minimum": 1, "maximum": 50, "description": "最多返回条数"},
                     "organization": {"type": ["string", "null"], "description": "people_search 的公司过滤；不筛选时留空或填 null"},
-                    "tag": {"type": ["string", "null"], "description": "people_search 的标签过滤；不筛选时留空或填 null"},
+                    "tag": {"type": ["string", "null"], "description": "people_search 或 orgs_search 的标签过滤；不筛选时留空或填 null"},
                     "birth_month": {
                         "type": ["integer", "null"],
                         "minimum": 0,
@@ -134,13 +219,19 @@ class ButlerTools:
                         "description": "按生日月份筛选（1–12）；不按生日月份筛选时必须填 0 或 null",
                     },
                     "person_id": {"type": ["string", "null"], "description": "person_detail 的人物标识"},
-                    "matter_id": {"type": ["string", "null"], "description": "matter_people 的本人事项标识"},
+                    "matter_id": {"type": ["string", "null"], "description": "todos/events/files/matter_people/records_search 的本人事项标识"},
+                    "org_id": {"type": ["string", "null"], "description": "records_search 的公司标识过滤"},
+                    "record_kind": {"type": ["string", "null"], "description": "records_search 的记录类型（note/meeting/card/call/other）；不限填 null"},
+                    "location": {"type": ["string", "null"], "description": "records_search 的地点关键词；不限填 null"},
+                    "entity_kind": {"type": ["string", "null"], "description": "entity_graph 的中心实体类型（person/org/matter/record）"},
+                    "entity_id": {"type": ["string", "null"], "description": "entity_graph 的中心实体标识"},
+                    "depth": {"type": ["integer", "null"], "minimum": 0, "maximum": 3, "description": "entity_graph 遍历跳数（1–3，0 或 null 表示默认 2 跳）"},
                 },
                 ["kind"],
                 self._read_personal,
                 parallel=True,
             ),
-            self._spec("list_artisans", "列出本人此刻可用的匠人（企业业务能力）及其说明。",
+            self._spec("list_artisans", "列出本人此刻可用的匠人（企业业务能力）及其说明、承载方式（是否支持附带文件材料）、连接器与沙盒能力。",
                        {}, [], self._list_artisans, parallel=True),
             self._spec("dispatch_artisan", "把任务交给一位匠人；立即返回，不等结果。",
                        {"package": {"type": "string"}, "entry": {"type": "string"},
@@ -150,7 +241,7 @@ class ButlerTools:
                                 "item_id": {"type": "string"}, "revision": {"type": "integer"}},
                             "required": ["item_id", "revision"]}}},
                        ["package", "entry", "instruction"], self._dispatch),
-            self._spec("check_dispatch", "查一次派工的当前状态。",
+            self._spec("check_dispatch", "查一次派工的当前状态、验收结果、交付成果摘录与待处理问题。",
                        {"dispatch_id": {"type": "string"}}, ["dispatch_id"],
                        self._check_dispatch, parallel=True),
             *self._c2_specs(),
@@ -243,7 +334,8 @@ class ButlerTools:
             except ValidationError as exc:
                 return taifeng.ToolResult.error(f"invalid_arguments: {_validation_summary(exc)}")
             except ValueError as exc:
-                return taifeng.ToolResult.error(f"invalid_arguments: {type(exc).__name__}")
+                detail = " ".join(str(exc).split())[:240]
+                return taifeng.ToolResult.error(f"invalid_arguments: {detail or type(exc).__name__}")
 
         schema = {"type": "object", "properties": properties, "required": required,
                   "additionalProperties": False}
@@ -275,13 +367,23 @@ class ButlerTools:
         return taifeng.ToolResult.ok(_json({"card": outcome.message,
                                             "needs_confirmation": has_draft(outcome)}))
 
+    async def _act_personal(self, turn: ButlerTurn, args: dict[str, Any], _call: str,
+                            ) -> taifeng.ToolResult:
+        """直接代员工办理本人私域的整理、待办、日程、提醒、事项或文档归档。"""
+        result = await execute_personal_action(self._platform, turn, args, now=self._now())
+        return taifeng.ToolResult.ok(_json(result))
+
     async def _read_personal(self, turn: ButlerTurn, args: dict[str, Any], _call: str,
                              ) -> taifeng.ToolResult:
-        """本人的提醒、工作与个人人物关系（只读）。"""
-        kind = args.get("kind")
+        """本人的今日全景、待办、日程、提醒、文件、知识库、工作与个人知识图谱（只读）。"""
+        kind = str(args.get("kind") or "")
+        extended = await read_extended_personal(self._platform, turn, kind, args, now=self._now())
+        if extended is not None:
+            return taifeng.ToolResult.ok(_json(extended))
         if kind == "reminders":
             records = await self._platform.reminders.list(turn.who, status="active")
-            items = [{"title": r.title, "due_at": r.due_at, "status": r.status}
+            items = [{"reminder_id": r.reminder_id, "version": r.version, "title": r.title,
+                      "due_at": r.due_at, "repeat": r.repeat, "status": r.status}
                      for r in records[:_LIST_MAX]]
             return taifeng.ToolResult.ok(_json({"items": items}))
         if kind == "work_tasks":
@@ -289,6 +391,58 @@ class ButlerTools:
             items = [{"task_id": t.task_id, "package": t.package, "status": t.status}
                      for t in tasks]
             return taifeng.ToolResult.ok(_json({"items": items}))
+        if kind == "matters":
+            q = args.get("query")
+            search = q.strip() if isinstance(q, str) and q.strip() else None
+            matters = await self._platform.workspace.list(turn.who, kind="matter", search=search)
+            items = [
+                {
+                    "id": m["id"],
+                    "version": m["version"],
+                    "title": m["data"].get("title", ""),
+                    "status": m["data"].get("status", "active"),
+                    "description": str(m["data"].get("description") or "")[:200],
+                }
+                for m in matters[:_LIST_MAX]
+            ]
+            return taifeng.ToolResult.ok(_json({"items": items}))
+        if kind == "orgs_search":
+            q = args.get("query")
+            tag = args.get("tag")
+            orgs = await self._platform.people.list_orgs(
+                turn.who,
+                q=q.strip() if isinstance(q, str) and q.strip() else None,
+                tag=tag.strip() if isinstance(tag, str) and tag.strip() else None,
+                limit=15,
+            )
+            return taifeng.ToolResult.ok(_json({"items": orgs}))
+        if kind == "records_search":
+            q = args.get("query")
+            rk = args.get("record_kind")
+            loc = args.get("location")
+            pid = args.get("person_id")
+            oid = args.get("org_id")
+            mid = args.get("matter_id")
+            recs = await self._platform.people.list_notes(
+                turn.who,
+                q=q.strip() if isinstance(q, str) and q.strip() else None,
+                record_kind=rk.strip() if isinstance(rk, str) and rk.strip() else None,
+                location=loc.strip() if isinstance(loc, str) and loc.strip() else None,
+                person_id=pid.strip() if isinstance(pid, str) and pid.strip() else None,
+                org_id=oid.strip() if isinstance(oid, str) and oid.strip() else None,
+                matter_id=mid.strip() if isinstance(mid, str) and mid.strip() else None,
+                limit=15,
+            )
+            return taifeng.ToolResult.ok(_json({"items": recs}))
+        if kind == "entity_graph":
+            ek = args.get("entity_kind")
+            eid = args.get("entity_id")
+            if not isinstance(ek, str) or not ek.strip() or not isinstance(eid, str) or not eid.strip():
+                return taifeng.ToolResult.error("entity_graph 需要提供 entity_kind 与 entity_id")
+            d = args.get("depth")
+            depth = d if type(d) is int and 1 <= d <= 3 else 2
+            graph = await self._platform.people.entity_graph(turn.who, ek.strip(), eid.strip(), depth=depth)
+            return taifeng.ToolResult.ok(_json(graph))
         if kind == "people_search":
             q = args.get("query")
             org = args.get("organization")
@@ -318,19 +472,24 @@ class ButlerTools:
             items = await self._platform.people.list_matter_people(turn.who, matter_id)
             return taifeng.ToolResult.ok(_json({"items": items}))
         return taifeng.ToolResult.error(
-            "kind 只能是 reminders、work_tasks、people_search、person_detail 或 matter_people"
+            "不支持的 read_personal kind：" + kind
         )
 
     async def _list_artisans(self, turn: ButlerTurn, _args: dict[str, Any], _call: str,
                              ) -> taifeng.ToolResult:
-        """本人可用的匠人；说明文字是数据。"""
+        """本人可用的匠人及能力画像（是否接收材料、连接器名与沙盒能力）；说明文字是数据。"""
         artisans = await self._platform.artisans.available(turn.who)
         return taifeng.ToolResult.ok(_json({"artisans": [
             {"package": a.ref.package, "entry": a.ref.entry,
              "name": display_name_for(a.display_name, "zh-CN") or a.ref.package,
              "entry_name": display_name_for(a.entry_display_name, "zh-CN") or a.ref.entry,
              "description": a.description,
-             "entry_description": a.entry_description} for a in artisans]}))
+             "entry_description": a.entry_description,
+             "host": a.host,
+             "accepts_materials": a.host == "task",
+             "connectors": list(a.connectors),
+             "capabilities": {"shell": a.sandbox_shell, "network": a.sandbox_network}}
+            for a in artisans]}))
 
     async def _dispatch(self, turn: ButlerTurn, args: dict[str, Any], _call: str,
                         ) -> taifeng.ToolResult:
@@ -359,9 +518,19 @@ class ButlerTools:
 
     async def _check_dispatch(self, turn: ButlerTurn, args: dict[str, Any], _call: str,
                               ) -> taifeng.ToolResult:
-        """本人派工的状态；他人的与不存在的一样不可见。"""
-        record = await self._platform.dispatches.get(turn.owner(),
-                                                               str(args["dispatch_id"]))
-        return taifeng.ToolResult.ok(_json({"dispatch_id": record.dispatch_id,
-                                            "state": record.state,
-                                            "artisan": record.artisan.package}))
+        """本人派工的状态、验收与交付成果摘录；他人的与不存在的一样不可见。"""
+        from server.api.dispatches import dispatch_detail
+
+        owner = turn.owner()
+        dispatch_id = str(args["dispatch_id"])
+        record = await self._platform.dispatches.get(owner, dispatch_id)
+        wake = self._platform.store.wake_store
+        events = await wake.events_for_dispatch(owner, dispatch_id)
+        items = await wake.list_pending(owner, open_only=False, dispatch_id=dispatch_id)
+        detail = dispatch_detail(record, events, items)
+        return taifeng.ToolResult.ok(_json({
+            **detail,
+            "artisan": record.artisan.package,
+            "entry": record.artisan.entry,
+            "materials": list(record.materials),
+        }))

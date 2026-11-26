@@ -48,7 +48,13 @@ function harness(routes) {
   const node = id => { if (!nodes.has(id)) nodes.set(id, element(id === "composer" ? "form" : "div")); return nodes.get(id); };
   const fetch = async (url, init = {}) => {
     const method = init.method || "GET";
-    const call = { method, url, body: init.body ? JSON.parse(init.body) : undefined, headers: init.headers || {} };
+    let parsedBody;
+    if (typeof init.body === "string") {
+      try { parsedBody = JSON.parse(init.body); } catch { parsedBody = init.body; }
+    } else if (init.body !== undefined) {
+      parsedBody = init.body;
+    }
+    const call = { method, url, body: parsedBody, headers: init.headers || {} };
     calls.push(call);
     const handler = routes[method + " " + url] || routes[method + " " + url.split("?")[0]];
     if (!handler) throw new Error("未预期的请求 " + method + " " + url);
@@ -66,7 +72,7 @@ function harness(routes) {
 }
 
 function load(h, dir) {
-  for (const name of ["entry.js", "cards.js", "module-cards.js", "collab-cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]) {
+  for (const name of ["entry.js", "entry-notifications.js", "capture-card.js", "contacts-drawer.js", "board-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]) {
     vm.runInContext(fs.readFileSync(path.join(dir, name), "utf8"), h.context, { filename: name });
   }
 }
@@ -81,11 +87,22 @@ const OVERVIEW = { json: { blocks: [
   { key: "unread", status: "ok", count: 0, items: [] },
 ], tips: [{ text: "试试：明天提醒我开会", prompt: "明天上午9点提醒我开会" }] } };
 
+function pendingStream(init) {
+  return new Promise((_, reject) => {
+    if (init && init.signal) {
+      if (init.signal.aborted) { reject(new DOMException("aborted", "AbortError")); return; }
+      init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    }
+  });
+}
+
 function base(extra = {}) {
   return {
     "GET /v1/me": () => ME,
     "GET /v1/workspace/messages": () => ({ json: { items: [] } }),
     "GET /v1/dashboard": () => OVERVIEW,
+    "GET /v1/notifications": () => ({ json: { items: [] } }),
+    "GET /v1/notifications/events": (_call, init) => pendingStream(init),
     ...extra,
   };
 }
@@ -447,6 +464,443 @@ async function friendlyFormatAndLocationPrompt(dir) {
   assert.ok(text.includes("管家 · 已完成"), "进展条应把内部 butler 显示为管家");
 }
 
+async function executedActionsCardAndUndo(dir) {
+  let undone = false;
+  const routes = base({
+    "POST /v1/assistant/messages": call => {
+      const reqId = call.body.request_id;
+      routes["POST /v1/assistant/actions/" + reqId + "/act_1/undo"] = () => {
+        undone = true;
+        return { json: { state: "undone", action_id: "act_1", result: { undone: 1, skipped: 0 } } };
+      };
+      return {
+        json: {
+          mode: "butler",
+          state: "done",
+          request_id: reqId,
+          message: "已帮你直接整理并建好待办。",
+          executed_actions: [
+            { action_id: "act_1", action: "create_todo", title: "已新建待办", summary: "明天提交壁仞方案", undoable: true },
+          ],
+        },
+      };
+    },
+  });
+  const h = harness(routes);
+  load(h, dir); await flush();
+  h.nodes("message").value = "记个待办明天提交壁仞方案";
+  h.nodes("composer").listeners.submit({ preventDefault() {} });
+  await flush();
+  const transcript = h.nodes("transcript");
+  assert.ok(transcript.textContent.includes("助理已办好"), "自主办理应展示回执卡");
+  assert.ok(transcript.textContent.includes("明天提交壁仞方案"));
+  const undoBtn = byText(transcript, "button", "撤回")[0];
+  assert.ok(undoBtn, "可撤回动作应显示撤回按钮");
+  undoBtn.listeners.click();
+  await flush();
+  assert.equal(undone, true, "点击撤回按钮应调用后端撤回接口");
+  assert.ok(transcript.textContent.includes("已撤回"));
+}
+
+async function contactsDrawerAddressBook(dir) {
+  const routes = base({
+    "GET /v1/people": () => ({
+      json: {
+        items: [
+          {
+            id: "per_1", name: "袁新", organization: "上海理想信息产业（集团）有限公司", version: 2, has_avatar: false,
+            profile: {
+              name: "袁新", aliases: [], gender: "male", organization: "上海理想信息产业（集团）有限公司",
+              contacts: [{ kind: "phone", label: "手机", value: "18017087533", primary: true }],
+              tags: [], summary: "何总的朋友", extra: {},
+            },
+          },
+          {
+            id: "per_2", name: "何冠良", organization: "", version: 1, has_avatar: false,
+            profile: { name: "何冠良", aliases: ["何总"], gender: "male", contacts: [], tags: [], summary: "", extra: { address: "半岛酒店201" } },
+          },
+        ],
+      },
+    }),
+    "GET /v1/people/orgs": () => ({
+      json: {
+        items: [
+          { id: "org_1", name: "上海理想信息产业（集团）有限公司", version: 1, profile: { name: "上海理想信息产业（集团）有限公司", aliases: ["理想信息"], city: "上海" } },
+        ],
+      },
+    }),
+    "GET /v1/workspace/items": call => {
+      if (call.url.includes("kind=file")) return { json: { items: [{ id: "ws_f1", kind: "file", data: { name: "壁仞报价单.pdf", size: 2048 }, trashed_at: null }] } };
+      return { json: { items: [{ id: "ws_m1", kind: "matter", data: { title: "壁仞项目", status: "active" }, trashed_at: null }] } };
+    },
+    "GET /v1/people/notes": () => ({
+      json: {
+        items: [
+          { id: "n_1", record_kind: "meeting", title: "11月22日项目沟通记录", location: "半岛酒店201", occurred_at: 1795276800, content: "沟通壁仞项目", summary: "沟通壁仞项目", links: [{ target_kind: "person", target_id: "per_1" }, { target_kind: "matter", target_id: "ws_m1" }] },
+        ],
+      },
+    }),
+    "GET /v1/me/knowledge/sources": () => ({ status: 404, json: {} }),
+    "GET /v1/me/work-memory": () => ({ status: 404, json: {} }),
+    "GET /v1/people/per_1": () => ({
+      json: {
+        person: {
+          id: "per_1", name: "袁新", organization: "上海理想信息产业（集团）有限公司", version: 2, has_avatar: false,
+          profile: {
+            name: "袁新", aliases: [], gender: "male", organization: "上海理想信息产业（集团）有限公司",
+            contacts: [{ kind: "phone", label: "手机", value: "18017087533", primary: true }],
+            tags: [], summary: "何总的朋友", extra: {},
+          },
+        },
+        relations: [
+          { id: "rel_1", from_kind: "person", from_person_id: "per_1", target_kind: "person", target_id: "per_2", relation_type: "friend", role: "" },
+          { id: "rel_2", from_kind: "person", from_person_id: "per_1", target_kind: "matter", target_id: "ws_m1", relation_type: "matter_role", role: "沟通参与者" },
+        ],
+        notes: [
+          { id: "n_1", record_kind: "meeting", title: "11月22日项目沟通记录", location: "半岛酒店201", occurred_at: 1795276800, content: "沟通壁仞项目", summary: "沟通壁仞项目" },
+        ],
+      },
+    }),
+    "GET /v1/people/orgs/org_1": () => ({
+      json: {
+        org: { id: "org_1", name: "上海理想信息产业（集团）有限公司", version: 1, profile: { name: "上海理想信息产业（集团）有限公司", aliases: ["理想信息"], city: "上海", summary: "上海电信下属公司" } },
+        relations: [{ id: "rel_w", from_kind: "person", from_person_id: "per_1", target_kind: "org", target_id: "org_1", relation_type: "works_at" }],
+        records: [],
+      },
+    }),
+  });
+  const h = harness(routes);
+  load(h, dir); await flush();
+  h.nodes("entry-contacts").listeners.click();
+  await flush();
+  const overlay = h.nodes("contacts-overlay");
+  assert.ok(!overlay.classList.contains("hidden"), "点击通讯录应打开抽屉");
+  assert.ok(overlay.textContent.includes("180 1708 7533"), "名片详情应展示格式化手机号");
+  assert.ok(overlay.textContent.includes("何冠良") && overlay.textContent.includes("壁仞项目"), "关系区应解析人名与项目标题");
+  assert.ok(overlay.textContent.includes("11月22日项目沟通记录"), "应展示往来记录");
+  // 切换到公司页签
+  const orgTab = byText(overlay, "button", "公司")[0];
+  assert.ok(orgTab);
+  orgTab.listeners.click();
+  await flush();
+  assert.ok(overlay.textContent.includes("上海电信下属公司"), "公司页签应展示公司详情");
+  // 切换到项目与记录页签
+  const matterTab = byText(overlay, "button", "项目")[0];
+  assert.ok(matterTab);
+  matterTab.listeners.click();
+  await flush();
+  assert.ok(overlay.textContent.includes("壁仞项目"), "项目页签应展示项目资料");
+  const noteTab = byText(overlay, "button", "记录")[0];
+  assert.ok(noteTab);
+  noteTab.listeners.click();
+  await flush();
+  assert.ok(overlay.textContent.includes("11月22日项目沟通记录"), "记录页签应展示往来记录");
+}
+
+async function contactsDrawerFileImport(dir) {
+  let people = [
+    {
+      id: "per_1", name: "老王", organization: "", version: 1, has_avatar: false,
+      profile: { name: "老王", aliases: [], gender: "unknown", contacts: [{ kind: "phone", label: "手机", value: "13800138000", primary: true }], tags: [], summary: "", extra: {} },
+    },
+  ];
+  let committedPayload = null;
+  const routes = base({
+    "GET /v1/people": () => ({ json: { items: people.slice() } }),
+    "GET /v1/people/orgs": () => ({ json: { items: [] } }),
+    "GET /v1/people/notes": () => ({ json: { items: [] } }),
+    "GET /v1/people/per_1": () => ({ json: { person: people[0], relations: [], notes: [] } }),
+    "GET /v1/people/per_2": () => ({ json: { person: people[1], relations: [], notes: [] } }),
+    "GET /v1/people/google/status": () => ({
+      json: { enabled: false, configured: false, linked: false, account_email: "", synced_count: 0 },
+    }),
+    "POST /v1/people/import/preview": () => ({
+      json: {
+        format: "vcf",
+        total_rows: 2,
+        valid_count: 2,
+        skipped_count: 0,
+        new_count: 1,
+        duplicate_count: 1,
+        remaining_quota: 4999,
+        warnings: [],
+        items: [
+          {
+            index: 0,
+            profile: { name: "王建国", organization: "星辰科技", contacts: [{ kind: "phone", value: "+86 13800138000", label: "手机", primary: true }] },
+            status: "duplicate",
+            duplicate_in_file: false,
+            candidates: [{ person_id: "per_1", name: "老王", organization: "", title: "", version: 1 }],
+            suggested_action: "merge",
+            warnings: [],
+          },
+          {
+            index: 1,
+            profile: { name: "陈琳", organization: "明镜资本", contacts: [{ kind: "phone", value: "13900139000", label: "手机", primary: true }] },
+            status: "new",
+            duplicate_in_file: false,
+            candidates: [],
+            suggested_action: "create",
+            warnings: [],
+          },
+        ],
+      },
+    }),
+    "POST /v1/people/import": call => {
+      committedPayload = call.body;
+      const createdPerson = { id: "per_2", name: "陈琳", organization: "明镜资本", version: 1, has_avatar: false, profile: call.body.items[1].profile };
+      people = [
+        { ...people[0], version: 2, organization: "星辰科技" },
+        createdPerson,
+      ];
+      return {
+        status: 201,
+        json: { created_count: 1, merged_count: 1, skipped_count: 0, created: [createdPerson], merged: [people[0]] },
+      };
+    },
+  });
+  const h = harness(routes);
+  load(h, dir); await flush();
+  h.nodes("entry-contacts").listeners.click();
+  await flush();
+  const overlay = h.nodes("contacts-overlay");
+  const importBtn = byText(overlay, "button", "导入 / 关联")[0];
+  assert.ok(importBtn, "通讯录抽屉顶栏应提供导入 / 关联按钮");
+  importBtn.listeners.click();
+  await flush();
+  assert.ok(overlay.textContent.includes("导入通讯录 / 外部账号关联"), "点击后应进入导入与关联视图");
+  assert.ok(overlay.textContent.includes("Google 通讯录关联") && overlay.textContent.includes("未配置"), "未配置时应展示 Google 关联未配置状态");
+  // 模拟选择 .vcf 文件触发预览
+  const fileInput = all(overlay, n => n.tag === "input" && n.type === "file")[0];
+  assert.ok(fileInput);
+  fileInput.files = [{ name: "google.vcf", type: "text/vcard" }];
+  fileInput.listeners.change();
+  await flush();
+  assert.ok(overlay.textContent.includes("疑似重复") && overlay.textContent.includes("陈琳"), "预览列表应展示新增与重复提示");
+  // 点击确认导入
+  const commitBtn = all(overlay, n => n.tag === "button" && n.id === "ab-import-commit")[0];
+  assert.ok(commitBtn && !commitBtn.disabled);
+  commitBtn.listeners.click();
+  await flush();
+  assert.ok(committedPayload && committedPayload.items.length === 2, "确认导入应提交全部条目决策");
+  assert.equal(committedPayload.items[0].action, "merge");
+  assert.equal(committedPayload.items[0].target_person_id, "per_1");
+  assert.equal(committedPayload.items[1].action, "create");
+  assert.ok(overlay.textContent.includes("导入完成：新建 1 人，合并更新 1 人"), "导入完成后应展示统计提示");
+}
+
+async function boardDrawerTodosAndQuickAdd(dir) {
+  const todos = [
+    { id: "ws_t1", kind: "todo", version: 1, data: { title: "把壁仞方案发给何总", status: "open", due: "明天 10:00" }, trashed_at: null },
+  ];
+  const routes = base({
+    "GET /v1/workspace/items": call => {
+      if (call.url.includes("kind=todo")) return { json: { items: todos.slice() } };
+      return { json: { items: [] } };
+    },
+    "PUT /v1/workspace/items/ws_t1": call => {
+      todos[0] = { ...todos[0], version: 2, data: call.body.data };
+      return { json: todos[0] };
+    },
+    "POST /v1/workspace/items": call => {
+      const added = { id: "ws_t2", kind: call.body.kind, version: 1, data: call.body.data, trashed_at: null };
+      todos.push(added);
+      return { json: added };
+    },
+    "GET /v1/reminders": () => ({ json: { items: [{ reminder_id: "rem_1", title: "回袁新电话", due_at: "2026-11-27T09:00:00+08:00", repeat: "once", status: "active", version: 1 }] } }),
+    "GET /v1/proactive": () => ({ status: 404, json: {} }),
+  });
+  const h = harness(routes);
+  load(h, dir); await flush();
+  h.nodes("entry-board").listeners.click();
+  await flush();
+  const overlay = h.nodes("board-overlay");
+  assert.ok(!overlay.classList.contains("hidden"), "点击看板应打开抽屉");
+  assert.ok(overlay.textContent.includes("把壁仞方案发给何总"), "看板应展示真实待办");
+  // 勾选完成第一条待办
+  const checkBtn = all(overlay, n => n.tag === "button" && String(n.className).includes("bd-check"))[0];
+  assert.ok(checkBtn);
+  checkBtn.listeners.click();
+  await flush();
+  const putCall = h.calls.find(c => c.method === "PUT" && c.url === "/v1/workspace/items/ws_t1");
+  assert.ok(putCall && putCall.body.data.status === "done" && putCall.body.version === 1, "勾选待办应带版本号写回 done");
+  // 快速新建待办
+  const addForm = all(overlay, n => n.tag === "form" && String(n.className).includes("bd-add-bar"))[0];
+  const titleInput = all(addForm, n => n.tag === "input")[0];
+  titleInput.value = "预约机场接送";
+  addForm.listeners.submit({ preventDefault() {} });
+  await flush();
+  assert.ok(overlay.textContent.includes("预约机场接送"), "新建待办应立刻显示在看板中");
+}
+
+async function liveNotificationsAndBrowserPopup(dir) {
+  let notifications = [];
+  let streamController = null;
+  const popups = [];
+  let focused = false;
+  let sseAborted = false;
+  const routes = base({
+    "GET /v1/notifications": () => ({ json: { items: notifications.slice() } }),
+    "GET /v1/notifications/events": (_call, init) => {
+      if (init && init.signal) init.signal.addEventListener("abort", () => { sseAborted = true; });
+      const chunks = [];
+      let waiter = null;
+      streamController = {
+        push(name, data) {
+          const buf = Buffer.from(`id: ${data.notification_id || 1}\nevent: ${name}\ndata: ${JSON.stringify(data)}\n\n`);
+          if (waiter) { const w = waiter; waiter = null; w({ value: buf, done: false }); }
+          else chunks.push(buf);
+        },
+        close() {
+          if (waiter) { const w = waiter; waiter = null; w({ done: true }); }
+        },
+      };
+      return {
+        stream: {
+          getReader: () => ({
+            read: () => {
+              if (chunks.length) return Promise.resolve({ value: chunks.shift(), done: false });
+              return new Promise((resolve, reject) => {
+                waiter = resolve;
+                if (init && init.signal) {
+                  init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+                }
+              });
+            },
+          }),
+        },
+      };
+    },
+    "POST /v1/notifications/42/read": () => {
+      notifications = notifications.map(n => n.notification_id === 42 ? { ...n, read_at: 1795600100 } : n);
+      return { json: notifications[0] || {} };
+    },
+    "POST /v1/auth/logout": () => ({ json: {} }),
+  });
+  const h = harness(routes);
+  function FakeNotification(title, opts) {
+    this.title = title;
+    this.opts = opts;
+    this.closed = false;
+    this.close = () => { this.closed = true; };
+    popups.push(this);
+  }
+  FakeNotification.permission = "granted";
+  FakeNotification.requestPermission = async () => "granted";
+  h.context.Notification = FakeNotification;
+  h.context.focus = () => { focused = true; };
+  load(h, dir); await flush();
+  assert.equal(h.nodes("entry-notifications").textContent, "通知");
+
+  const dashboardBefore = h.calls.filter(c => c.url.startsWith("/v1/dashboard")).length;
+  const fired = { notification_id: 42, title: "给何总回电话", due_at: 1795600000, created_at: 1795600000, read_at: null, source: "reminder", attention_active: true };
+  notifications = [fired];
+  streamController.push("notification", fired);
+  await flush();
+
+  assert.ok(!h.nodes("entry-notification-alerts").classList.contains("hidden"), "收到到点提醒应弹出网页内悬浮卡片");
+  assert.ok(h.nodes("entry-notification-alert-list").textContent.includes("给何总回电话"), "悬浮卡片应展示提醒内容");
+  assert.equal(popups.length, 1, "已授权浏览器通知时应触发 Chrome 桌面弹窗");
+  assert.equal(popups[0].title, "提醒时间到了");
+  assert.ok(popups[0].opts.body.includes("给何总回电话"));
+  assert.equal(h.nodes("entry-notifications").textContent, "通知 (1)", "顶部通知按钮应显示未读角标");
+  assert.ok(h.nodes("entry-notifications").classList.contains("has-unread"));
+  assert.ok(h.calls.filter(c => c.url.startsWith("/v1/dashboard")).length > dashboardBefore, "新通知应同步刷新概览");
+
+  // 点击悬浮卡上的「标为已读」
+  const readBtn = byText(h.nodes("entry-notification-alert-list"), "button", "标为已读")[0];
+  assert.ok(readBtn);
+  readBtn.listeners.click();
+  await flush();
+  assert.ok(h.nodes("entry-notification-alerts").classList.contains("hidden"), "标为已读后应关闭悬浮卡片");
+  assert.equal(h.nodes("entry-notifications").textContent, "通知", "全部已读后应清除未读角标");
+
+  // 点击浏览器桌面弹窗应聚焦窗口并打开通知卡（且提供「发送测试弹窗」按钮）
+  popups[0].onclick();
+  await flush();
+  assert.equal(focused, true, "点击桌面弹窗应聚焦标签页");
+  assert.ok(h.nodes("transcript").textContent.includes("给何总回电话"), "点击桌面弹窗应展开通知列表");
+  const testPopupBtn = byText(h.nodes("transcript"), "button", "发送测试弹窗")[0];
+  assert.ok(testPopupBtn, "已授权时通知卡应提供测试系统弹窗按钮");
+  testPopupBtn.listeners.click();
+  assert.equal(popups.length, 2, "点击测试按钮应立即触发一条浏览器系统通知");
+
+  // 退出登录应中止通知 SSE 流
+  h.nodes("entry-logout").listeners.click();
+  await flush();
+  assert.equal(sseAborted, true, "退出登录必须中止通知 SSE 连接");
+}
+
+async function chatReminderPromptRequestsDesktopPermission(dir) {
+  let requested = false;
+  const h = harness(base({
+    "POST /v1/assistant/messages": () => ({ json: { mode: "butler", state: "done", message: "已设置提醒" } }),
+  }));
+  function FakeNotification() {}
+  FakeNotification.permission = "default";
+  FakeNotification.requestPermission = async () => { requested = true; return "granted"; };
+  h.context.Notification = FakeNotification;
+  load(h, dir); await flush();
+  h.nodes("message").value = "1分钟后提醒我喝水";
+  h.nodes("composer").listeners.submit({ preventDefault() {} });
+  await flush();
+  assert.equal(requested, true, "在对话里直接发提醒消息时应趁用户提交手势请求 Chrome 桌面通知权限");
+}
+
+async function boardDrawerCompletedRemindersAndTimestamp(dir) {
+  let reminders = [
+    { reminder_id: "rem_done", title: "已到点的测试提醒", due_at: 1795600000, timezone: "Asia/Shanghai", repeat: "once", status: "completed", version: 2 },
+  ];
+  let createdReminderBody = null;
+  const routes = base({
+    "GET /v1/workspace/items": () => ({ json: { items: [] } }),
+    "GET /v1/reminders": () => ({ json: { items: reminders.slice() } }),
+    "POST /v1/reminders": call => {
+      createdReminderBody = call.body;
+      const added = { reminder_id: "rem_new", ...call.body, status: "active", version: 1 };
+      reminders = [added, ...reminders];
+      return { json: added };
+    },
+    "GET /v1/proactive": () => ({ status: 404, json: {} }),
+  });
+  const h = harness(routes);
+  let requestedPerm = false;
+  function FakeNotification() {}
+  FakeNotification.permission = "default";
+  FakeNotification.requestPermission = async () => { requestedPerm = true; FakeNotification.permission = "granted"; return "granted"; };
+  h.context.Notification = FakeNotification;
+  load(h, dir); await flush();
+
+  h.nodes("entry-board").listeners.click();
+  await flush();
+  const overlay = h.nodes("board-overlay");
+  const remTab = byText(overlay, "button", "提醒")[0];
+  assert.ok(remTab);
+  remTab.listeners.click();
+  await flush();
+  assert.ok(overlay.textContent.includes("已到点的测试提醒"), "无待触发提醒时应自动展开已提醒记录，避免点开后消失");
+  assert.ok(overlay.textContent.includes("开启桌面弹窗"), "未授权浏览器通知时应显示引导条");
+
+  // 看板内手动新建提醒：due_at 必须转为 Unix 秒级数字，且自动触发一次权限引导
+  const addForm = all(overlay, n => n.tag === "form" && String(n.className).includes("bd-add-bar"))[0];
+  const inputs = all(addForm, n => n.tag === "input");
+  inputs[0].value = "下午四点开评审会";
+  inputs[1].value = "2030-05-01T16:00";
+  addForm.listeners.submit({ preventDefault() {} });
+  await flush();
+  assert.ok(createdReminderBody, "看板内新建提醒应调用 POST /v1/reminders");
+  assert.equal(typeof createdReminderBody.due_at, "number", "due_at 必须是 Unix 秒级数值而非 ISO 字符串");
+  assert.deepEqual(createdReminderBody.channels, ["inbox"]);
+  assert.equal(requestedPerm, true, "手动新建提醒时应尝试申请浏览器桌面弹窗权限");
+  assert.ok(overlay.textContent.includes("下午四点开评审会"), "新建提醒应展示在活动提醒列表中");
+
+  // 概览点击提醒打开对话提醒列表卡，也应能看到已提醒记录
+  h.context.openSummary({ kind: "reminder", ref: "rem_done", title: "已到点的测试提醒" });
+  await flush();
+  assert.ok(h.nodes("transcript").textContent.includes("已到点的测试提醒"));
+  assert.ok(h.nodes("transcript").textContent.includes("已提醒"));
+}
+
 (async () => {
   const dir = process.argv[2];
   dir_ = dir;
@@ -467,5 +921,12 @@ async function friendlyFormatAndLocationPrompt(dir) {
   await handoffAndApprovalActions();
   await handoffDraftUsesProposalKey();
   await friendlyFormatAndLocationPrompt(dir);
+  await executedActionsCardAndUndo(dir);
+  await contactsDrawerAddressBook(dir);
+  await contactsDrawerFileImport(dir);
+  await boardDrawerTodosAndQuickAdd(dir);
+  await liveNotificationsAndBrowserPopup(dir);
+  await chatReminderPromptRequestsDesktopPermission(dir);
+  await boardDrawerCompletedRemindersAndTimestamp(dir);
   console.log("entry behavior passed");
 })().catch(error => { console.error(error); process.exit(1); });

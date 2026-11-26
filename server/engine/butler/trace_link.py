@@ -86,6 +86,10 @@ class TracedDispatchStore:
         """透传。"""
         return await self._inner.list_for_trace(owner, trace_id)
 
+    async def list_recent(self, owner: TraceOwner, *, limit: int = 20) -> tuple[DispatchRecord, ...]:
+        """透传本人最近派工查询。"""
+        return await self._inner.list_recent(owner, limit=limit)
+
     async def update(
         self, owner: TraceOwner, dispatch_id: str, *, expected_version: int,
         to: DispatchState, at: datetime, host_ref: str | None = None,

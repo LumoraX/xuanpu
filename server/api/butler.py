@@ -24,7 +24,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from server.api.auth import Caller  # noqa: TC001 —— FastAPI 运行时解析
 from server.api.localization import request_locale
+from server.core.errors import NotFoundError
 from server.engine.butler.pending import view
+from server.engine.butler.personal_actions import undo_executed_action
 from server.engine.butler.service import (
     ButlerMessageBody,  # noqa: TC001 —— FastAPI 运行时解析
 )
@@ -81,7 +83,11 @@ def butler_router(platform: Platform) -> APIRouter:
         return {"items": [{"package": a.ref.package, "entry": a.ref.entry,
                             "name": display_name_for(a.display_name, locale) or a.ref.package,
                             "entry_name": display_name_for(a.entry_display_name, locale) or a.ref.entry,
-                            "description": a.description, "host": a.host} for a in found]}
+                            "description": a.description, "host": a.host,
+                            "accepts_materials": a.host == "task",
+                            "connectors": list(a.connectors),
+                            "capabilities": {"shell": a.sandbox_shell, "network": a.sandbox_network}}
+                           for a in found]}
 
     @router.get("/v1/assistant/pending")
     async def pending(who: Caller) -> dict[str, Any]:
@@ -93,5 +99,46 @@ def butler_router(platform: Platform) -> APIRouter:
         """答复一个问题项；同一请求标识重试回原结果。"""
         item = await platform.butler.pending.answer(who, pending_id, body.text, body.request_id)
         return view(item)
+
+    @router.get("/v1/assistant/actions/{request_id}")
+    async def action_status(request_id: str, who: Caller) -> dict[str, Any]:
+        """查询某轮自主办理动作的撤回状态（刷新后恢复按钮）。"""
+        record = await platform.workspace.find_message(who, request_id + ":assistant")
+        actions = (record["metadata"].get("route", {}).get("executed_actions") or []) if record else []
+        if not actions:
+            raise NotFoundError("自主办理记录不存在")
+        undone_ids: list[str] = []
+        for item in actions:
+            aid = str(item.get("action_id") or "")
+            if aid and await platform.workspace.find_message(who, f"{request_id}:undo:{aid}"):
+                undone_ids.append(aid)
+        return {"request_id": request_id, "undone": undone_ids}
+
+    @router.post("/v1/assistant/actions/{request_id}/{action_id}/undo")
+    async def undo_action(request_id: str, action_id: str, who: Caller) -> dict[str, Any]:
+        """一键撤回本轮管家自主办理的某一项个人操作（幂等、仅本人可用）。"""
+        record = await platform.workspace.find_message(who, request_id + ":assistant")
+        actions = (record["metadata"].get("route", {}).get("executed_actions") or []) if record else []
+        target = next((a for a in actions if a.get("action_id") == action_id), None)
+        if target is None:
+            raise NotFoundError("自主办理记录不存在")
+        undo_key = f"{request_id}:undo:{action_id}"
+        prior = await platform.workspace.find_message(who, undo_key)
+        if prior is not None:
+            return {
+                "state": "undone",
+                "request_id": request_id,
+                "action_id": action_id,
+                "result": prior["metadata"].get("result"),
+            }
+        result = await undo_executed_action(platform, who, target)
+        label = str(target.get("title") or "操作")
+        summary = str(target.get("summary") or "")
+        note = f"已撤回：{label}（{summary}）" if summary else f"已撤回：{label}"
+        await platform.workspace.append_message(
+            who, "assistant", note, undo_key,
+            metadata={"undo_of": request_id, "action_id": action_id, "result": result},
+        )
+        return {"state": "undone", "request_id": request_id, "action_id": action_id, "result": result}
 
     return router

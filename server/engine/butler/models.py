@@ -71,7 +71,7 @@ class ArtisanRef(BaseModel):
 
 
 class Artisan(BaseModel):
-    """本人此刻可用的一个匠人：给管家看的说明加派工时冻结的引用。"""
+    """本人此刻可用的一个匠人：给管家看的说明、能力画像加派工时冻结的引用。"""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
     ref: ArtisanRef
@@ -80,6 +80,9 @@ class Artisan(BaseModel):
     entry_description: str = Field(max_length=2000)
     host: HostKind
     entry_display_name: DisplayNameValue | None = None
+    connectors: tuple[str, ...] = ()
+    sandbox_shell: bool = False
+    sandbox_network: bool = False
 
 
 class DispatchRecord(BaseModel):

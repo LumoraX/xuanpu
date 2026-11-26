@@ -91,6 +91,15 @@ class PostgresDispatchStore:
         )
         return tuple(DispatchRecord.model_validate_json(row["record"]) for row in rows)
 
+    async def list_recent(self, owner: TraceOwner, *, limit: int = 20) -> tuple[DispatchRecord, ...]:
+        """本人最近的派工记录，按创建时间倒序。"""
+        rows = await self._pool.fetch(
+            f"SELECT record FROM {self._table} WHERE tenant_id=$1 AND user_id=$2 "
+            "ORDER BY created_at DESC,dispatch_id DESC LIMIT $3",
+            owner.tenant_id, owner.user_id, limit,
+        )
+        return tuple(DispatchRecord.model_validate_json(row["record"]) for row in rows)
+
     async def update(
         self, owner: TraceOwner, dispatch_id: str, *, expected_version: int,
         to: DispatchState, at: datetime, host_ref: str | None = None,

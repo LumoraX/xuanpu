@@ -18,4 +18,6 @@ class ConsoleStaticFiles(StaticFiles):
         """返回静态文件；响应头覆盖 HTML、脚本及缓存验证响应。"""
         response = await super().get_response(path, scope)
         response.headers["X-Frame-Options"] = "DENY"
+        if path == "" or path.endswith("/") or path.endswith(".html"):
+            response.headers["Cache-Control"] = "no-cache"
         return response

@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from server.domains.knowledge.context_store import ContextStore
     from server.domains.knowledge.memory import MemoryStore
     from server.domains.knowledge.store import KnowledgeStore
+    from server.domains.people.google_store import GoogleContactsStore
     from server.domains.people.store import PeopleStore
     from server.domains.reminders.store import ReminderStore
     from server.domains.workspace.store import WorkspaceStore
@@ -93,6 +94,11 @@ class ControlPlaneStore(Protocol):
     @property
     def people_store(self) -> PeopleStore:
         """与控制面同后端的纯个人空间人物与关系仓储。"""
+        ...
+
+    @property
+    def google_contacts_store(self) -> GoogleContactsStore:
+        """与控制面同后端的纯个人空间 Google 通讯录关联仓储。"""
         ...
 
     @property

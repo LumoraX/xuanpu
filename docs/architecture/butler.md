@@ -23,7 +23,8 @@
 | 工具 | 作用 | 约束 |
 | --- | --- | --- |
 | `propose` | 内置能力（提醒、工作站、业务跟进、执行安排、交接、共享、连接）的待确认草稿或打开列表 | 与分流共用 `assistant_proposals.resolve_native_choice`，卡片同形；每轮最多一个；业务包选择被拒。工具说明直接带上分流共用的内置能力约定（包名与草稿字段，同一份文字，如 `REMINDER_PROMPT`；企业连接补一句 `@connections/manage`）。结果的 `needs_confirmation` 只在带草稿时为真，只打开列表为假；包名带 `@` 却不合法（如把入口拼进包名）时错误列出合法包名 |
-| `read_personal` | 本人进行中的提醒、本人工作任务 | 只读，最多 20 条，只给标题与状态 |
+| `act_personal` | 本人私域自主办理（`capture_bundle` 随手记/会议纪要拆解落库、新建/更新/完成待办、安排/改期日程、设置/取消提醒、新建/更新事项、`save_note_file` 存为 Markdown 文档） | 受本人设置 `auto_execute_personal`（默认开）控制，关闭时拒绝写入并退回 `propose`；同一轮可连续调用多次；仅操作本人私域权威领域服务，绝不触碰对外发送、组织审批、共享或交接；每项写入记入 `executed_actions`，可通过 `POST /v1/assistant/actions/{request_id}/{action_id}/undo` 一键撤回（仅本人、幂等） |
+| `read_personal` | 本人全域只读感知：今日全景（`today`）、待办（`todos`）、日程（`events`）、提醒（`reminders`）、个人文件与 UTF-8 文本正文（`files`/`file_content`）、知识库与工作记忆（`knowledge`）、主动跟进（`followups`）、工作任务（`work_tasks`）及个人知识图谱（`orgs_search`/`people_search`/`matters`/`records_search`/`entity_graph`/`person_detail`/`matter_people`） | 只读，按 `(tenant_id, user_id)` 强隔离；`file_content` 有界截断 12,000 字且拒绝二进制文件 |
 | `list_artisans` | 本人此刻可用的匠人 | 经 `ArtisanResolver`（现状：租户生效版本） |
 | `dispatch_artisan` | 派给一位匠人 | 见下节 |
 | `check_dispatch` | 查本人一次派工的状态 | 他人的与不存在的一样不可见 |

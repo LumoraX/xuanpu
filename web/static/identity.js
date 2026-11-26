@@ -49,6 +49,8 @@ function applyPermissions() {
   $("change-password-toggle").classList.toggle("hidden", !conn.me?.user_id || !!conn.apiKey);
   for (const node of document.querySelectorAll("[data-admin]")) node.classList.toggle("hidden", !isAdmin());
   $("current-user").classList.toggle("hidden", !conn.me);
+  const courtyardLink = $("switch-courtyard");
+  if (courtyardLink) courtyardLink.classList.toggle("hidden", !(conn.me?.entry === "minimal" && !conn.apiKey));
   $("user-name").textContent = conn.me ? (conn.me.display_name || "API key") + (isAdmin() ? " · 管理员" : " · 成员") : "";
   const avatar = $("user-avatar");
   avatar.removeAttribute("src");

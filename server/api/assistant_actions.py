@@ -72,8 +72,29 @@ def assistant_actions_router(platform: Platform) -> APIRouter:
         if route.get("people_draft"):
             await service.reserve_proposal(who, request_id, "confirm", body.data)
             result = await platform.people.apply_bundle(who, body.data, request_id + ":create")
-            names = [p["name"] for p in result["persons"]]
-            title = "、".join(names) if names else "人物与关系记录"
+            orgs = [o["name"] for o in result.get("orgs", [])]
+            names = [p["name"] for p in result.get("persons", [])]
+            matters = [m["data"].get("title", "") for m in result.get("matters", []) if m.get("data")]
+            todos = result.get("todos", [])
+            events = result.get("events", [])
+            reminders = result.get("reminders", [])
+            parts: list[str] = []
+            if orgs:
+                parts.append("公司：" + "、".join(orgs))
+            if names:
+                parts.append("人物：" + "、".join(names))
+            if matters:
+                parts.append("事项：" + "、".join(matters))
+            if todos:
+                parts.append(f"{len(todos)} 条待办")
+            if events:
+                parts.append(f"{len(events)} 条日程")
+            if reminders:
+                parts.append(f"{len(reminders)} 条提醒")
+            if not parts and result.get("record"):
+                rec = result["record"]
+                parts.append("原始记录：" + (rec.get("title") or rec["content"][:24]))
+            title = "；".join(parts) if parts else "个人知识图谱记录"
         elif route.get("workspace_draft"):
             kind = route["workspace_draft"]["kind"]
             checked = validate_data(kind, body.data)

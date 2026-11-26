@@ -310,6 +310,7 @@ async def open_platform(config: ServerConfig) -> AsyncIterator[Platform]:
             shared_matters=config.shared_matters,
             handoffs=config.handoffs, approvals=config.approvals, butler=config.butler,
             minimal_entry=config.minimal_entry,
+            google_contacts=config.google_contacts,
             instance_id=config.instance_id,
             lease_seconds=config.lease_seconds,
             shutdown_drain_seconds=config.shutdown_drain_seconds,

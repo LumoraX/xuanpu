@@ -20,7 +20,9 @@
   ];
   const SHORT = {
     list_artisans: "翻名册…", answer_artisan: "照你原话答", rate_divergence: "比对结论", propose: "拟草稿",
+    act_personal: "替你办好了",
     review: "复核结果", think: "我想想怎么办…", read_personal: "看看你的事", check_dispatch: "问问进展",
+    check_group: "问问编组进展", answer_pending: "转答匠人",
     cancel_dispatch: "请先停下", cancel_group: "请先停下", ask_user: "转问你", extend_turn: "多给点时间",
     raise_budget: "提高预算",
   };
@@ -276,7 +278,7 @@
     constructor(scene, key, x, y) {
       Object.assign(this, {
         scene, key, x, y, home: { x, y }, briefAt: { x: x - 62, y: y + 16 },
-        chain: Promise.resolve(), bw: 0, slot: null, seat: null, station: null, atTable: false,
+        chain: Promise.resolve(), bw: 0, slot: null, seat: null, station: null, atTable: false, heldItem: null,
       });
       this.g = make("g", { class: "actor", "data-face": "open", role: "button", tabindex: "0" }, scene.layers.actors);
       this.g._y = () => this.y;
@@ -348,6 +350,12 @@
     return scene.layout.stations[name];
   }
 
+  const STATION_TIPS = {
+    books: "点击打开书架资料室（通讯录、公司、项目、记录与文件）",
+    tv: "点击打开看板（待办、日程与提醒）",
+    cabinet: "点击打开档案柜（项目与协作记录）",
+  };
+
   function renderEnvironment(scene) {
     const theme = THEMES[scene.themeId] || THEMES.courtyard;
     const layout = scene.layout;
@@ -363,22 +371,43 @@
     // 重建家具节点（保留原有激活态，热切换小院/四合院/故宫时不打断正在进行的工作）
     for (const node of scene.furnitureNodes) node.remove();
     scene.furnitureNodes = [];
+    scene.stationNodes = {};
+    scene.boardLayer = null;
+    scene.booksBadgeLayer = null;
     for (const item of furniture(theme, layout)) {
       const g = make("g", { transform: `translate(${item.x},${item.y})` }, scene.layers.actors);
       g.classList.add("station");
       if ((scene.stationUse[item.key] || 0) > 0) g.classList.add("on");
       g.dataset.station = item.key;
       g._y = () => item.y;
-      g.innerHTML = item.scale && item.scale !== 1 ? `<g transform="scale(${item.scale})">${item.markup}</g>` : item.markup;
+      const inner = item.scale && item.scale !== 1 ? make("g", { transform: `scale(${item.scale})` }, g) : g;
+      inner.innerHTML = item.markup;
+      if (item.key === "tv") scene.boardLayer = make("g", { class: "board-live" }, inner);
+      if (item.key === "books") scene.booksBadgeLayer = make("g", { class: "books-badge" }, inner);
+      if (scene.onStationClick && STATION_TIPS[item.key]) {
+        const tipText = STATION_TIPS[item.key];
+        g.classList.add("clickable");
+        g.setAttribute("role", "button");
+        g.setAttribute("tabindex", "0");
+        g.setAttribute("aria-label", tipText);
+        const tip = make("title", {}, g);
+        tip.textContent = tipText;
+        g.addEventListener("click", () => scene.onStationClick(item.key));
+        g.addEventListener("keydown", e => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); scene.onStationClick(item.key); }
+        });
+      }
+      scene.stationNodes[item.key] = g;
       scene.furnitureNodes.push(g);
     }
     // 同步管家和所有匠人在新建筑布局中的位置与缩放
     const butler = scene.actors.get("butler");
     if (butler) {
       butler.applyScale(layout.actorScale);
-      const wasAtTable = butler.atTable;
       butler.home = { x: layout.desk.x, y: layout.desk.y };
-      const target = wasAtTable ? layout.table : butler.home;
+      const target = butler.station && layout.stations[butler.station]
+        ? layout.stations[butler.station]
+        : butler.atTable ? layout.table : butler.home;
       butler.jump(target.x, target.y);
     }
     let idx = 0;
@@ -400,7 +429,123 @@
       }
       idx += 1;
     }
+    renderWorld(scene);
+    syncTakenClasses(scene);
     sortActors(scene);
+  }
+
+  function renderWorld(scene) {
+    const world = scene.world || {};
+    // 1. 看板真实待办 / 日程 / 提醒渲染（纯 SVG 节点 + textContent，不拼 HTML）
+    if (scene.boardLayer) {
+      scene.boardLayer.replaceChildren();
+      const todos = (world.todos || []).filter(t => t && !t.done);
+      const reminders = world.reminders || [];
+      const events = world.events || [];
+      const entries = [];
+      for (const t of todos) entries.push({ kind: "todo", title: t.title || "待办", color: "#f6dc7a" });
+      for (const r of reminders) entries.push({ kind: "reminder", title: "提醒·" + (r.title || "提醒"), color: "#f4a9a3" });
+      for (const ev of events) entries.push({ kind: "event", title: ev.title || "日程", color: "#7cc48f" });
+      const total = entries.length;
+
+      // 顶部标题条与角标：按实际内容准确显示标题，避免提醒被误标成“待办”
+      const titleNode = make("text", { class: "board-hd", x: -41, y: -136, "font-size": "8.5", fill: "#d7e3ee" }, scene.boardLayer);
+      titleNode.textContent = !total ? "今日看板"
+        : (todos.length && !reminders.length && !events.length) ? "今日待办"
+        : (reminders.length && !todos.length && !events.length) ? "今日提醒"
+        : (events.length && !todos.length && !reminders.length) ? "今日日程"
+        : "今日看板";
+      make("rect", {
+        x: 24, y: -146, width: 20, height: 13, rx: 6.5,
+        fill: total > 0 ? "#e5a93c" : "#5e9c76",
+      }, scene.boardLayer);
+      const badge = make("text", {
+        class: "board-badge", x: 34, y: -136.5, "text-anchor": "middle",
+        "font-size": "8.5", "font-weight": "700", fill: "#1f2430",
+      }, scene.boardLayer);
+      badge.textContent = total > 0 ? (total > 9 ? "9+" : String(total)) : "✓";
+
+      if (!total) {
+        const empty = make("text", {
+          class: "board-empty", x: 0, y: -112, "text-anchor": "middle",
+          "font-size": "9.5", fill: "#a9d9b7",
+        }, scene.boardLayer);
+        empty.textContent = "今日已清空 ✓";
+      } else {
+        const shown = entries.slice(0, 3);
+        shown.forEach((item, i) => {
+          const y = -123 + i * 13;
+          make("rect", { x: -42, y: y - 6.5, width: 6.5, height: 6.5, rx: 1.5, fill: "none", stroke: item.color, "stroke-width": 1.3 }, scene.boardLayer);
+          const line = make("text", { class: "board-line", x: -32, y: y - 0.5, "font-size": "8.8", fill: "#f7f4ec" }, scene.boardLayer);
+          line.textContent = clip(item.title, 9);
+        });
+      }
+    }
+
+    // 2. 书架资料数微标
+    if (scene.booksBadgeLayer) {
+      scene.booksBadgeLayer.replaceChildren();
+      const count = Number(world.booksCount || 0);
+      if (count > 0) {
+        make("rect", { x: 25, y: -136, width: 24, height: 14, rx: 7, fill: "#2f6f5e", stroke: "#2b2f3a", "stroke-width": 1.4 }, scene.booksBadgeLayer);
+        const t = make("text", { x: 37, y: -126, "text-anchor": "middle", "font-size": "8.8", "font-weight": "700", fill: "#fffaf0" }, scene.booksBadgeLayer);
+        t.textContent = count > 99 ? "99+" : String(count);
+      }
+    }
+
+    // 3. 动态工具架能力高亮：依据当前启用匠人的连接器与能力点亮对应实体道具
+    const artisans = world.artisans || [];
+    const caps = {
+      compass: artisans.some(a => (a.connectors || []).some(c => /amap|map|geo|weather/i.test(String(c))) || /driver|travel|route|出行|派车/i.test(String((a.package || "") + " " + (a.name || "")))),
+      wrench: artisans.some(a => a.capabilities && a.capabilities.shell),
+      stamp: artisans.some(a => /expense|finance|reimburse|approval|报销|财务/i.test(String((a.package || "") + " " + (a.name || "")))),
+    };
+    if (scene.svg && typeof scene.svg.querySelectorAll === "function") {
+      for (const [key, active] of Object.entries(caps)) {
+        for (const node of scene.svg.querySelectorAll(`[data-tool-item="${key}"]`)) {
+          if (node.classList) node.classList.toggle("cap-ready", Boolean(active));
+        }
+      }
+    }
+  }
+
+  function setWorld(scene, patch) {
+    scene.world = { ...(scene.world || {}), ...(patch || {}) };
+    renderWorld(scene);
+  }
+
+  function syncTakenClasses(scene) {
+    if (!scene.svg || typeof scene.svg.querySelectorAll !== "function") return;
+    for (const node of scene.svg.querySelectorAll("[data-tool-item]")) {
+      const k = node.getAttribute ? node.getAttribute("data-tool-item") : null;
+      if (k && node.classList) node.classList.toggle("taken", (scene.itemTaken[k] || 0) > 0);
+    }
+  }
+
+  function setItemTaken(scene, itemKey, delta) {
+    if (!itemKey) return;
+    scene.itemTaken[itemKey] = Math.max(0, (scene.itemTaken[itemKey] || 0) + delta);
+    if (!scene.svg || typeof scene.svg.querySelectorAll !== "function") return;
+    for (const node of scene.svg.querySelectorAll(`[data-tool-item="${itemKey}"]`)) {
+      if (node.classList) node.classList.toggle("taken", scene.itemTaken[itemKey] > 0);
+    }
+  }
+
+  function takeTool(scene, actor, itemKey, prop) {
+    releaseTool(scene, actor);
+    if (itemKey) {
+      setItemTaken(scene, itemKey, 1);
+      actor.heldItem = itemKey;
+    }
+    actor.hold(prop || null);
+  }
+
+  function releaseTool(scene, actor) {
+    if (actor.heldItem) {
+      setItemTaken(scene, actor.heldItem, -1);
+      actor.heldItem = null;
+    }
+    actor.hold(null);
   }
 
   function create(host, options) {
@@ -412,8 +557,10 @@
     const layers = {};
     for (const name of ["back", "actors", "fx", "bubbles"]) layers[name] = make("g", {}, svg);
     const scene = {
-      host, svg, layers, actors: new Map(), furnitureNodes: [], clock: clock(), signals: new Map(),
-      onSelect: options.onSelect || (() => {}), stationUse: {},
+      host, svg, layers, actors: new Map(), furnitureNodes: [], stationNodes: {}, clock: clock(), signals: new Map(),
+      onSelect: options.onSelect || (() => {}), onStationClick: options.onStationClick || null,
+      stationUse: {}, itemTaken: {}, world: { todos: [], events: [], reminders: [], booksCount: 0, artisans: [] },
+      boardLayer: null, booksBadgeLayer: null,
       themeId: initialTheme, layout,
     };
     scene.clock.onFrame = () => sortActors(scene);
@@ -421,6 +568,7 @@
     scene.api = {
       cast: keys => cast(scene, keys, options.look),
       settle: poses => settle(scene, poses),
+      setWorld: patch => setWorld(scene, patch),
       play: beats => { for (const beat of beats) direct(scene, beat); },
       idle: async () => {
         for (;;) {
@@ -497,16 +645,21 @@
   // 终态：直接把每个角色放到该在的地方，不播动画（刷新、已结束、减少动效）。
   function settle(scene, poses) {
     for (const key of Object.keys(scene.stationUse)) { scene.stationUse[key] = 1; stationOn(scene, key, false); }
+    scene.itemTaken = {};
+    for (const actor of scene.actors.values()) actor.heldItem = null;
     for (const [key, actor] of scene.actors) {
       const p = poses[key] || (key === "butler" ? { at: "home", face: "open" } : { at: "home", pose: "sleeping", face: "closed" });
       const where = spot(scene, actor, p);
       actor.jump(where.x, where.y);
-      actor.pose(p.pose); actor.face(p.face); actor.hold(p.prop);
+      actor.pose(p.pose); actor.face(p.face);
+      if (p.itemKey) takeTool(scene, actor, p.itemKey, p.prop);
+      else actor.hold(p.prop);
       actor.bubble(p.bubble, p.red ? "red" : null);
-      if (p.at === "station") stationOn(scene, p.station, true);
+      if (p.at === "station" && p.station) stationOn(scene, p.station, true);
       actor.station = p.at === "station" ? p.station : null;
       actor.atTable = p.at === "table";
     }
+    syncTakenClasses(scene);
   }
 
   function signal(scene, name) {
@@ -526,6 +679,7 @@
   }
 
   function leave(scene, actor) {
+    releaseTool(scene, actor);
     if (actor.station) { stationOn(scene, actor.station, false); actor.station = null; }
     actor.atTable = false;
     actor.pose(null); actor.face("open"); actor.bubble(null);
@@ -573,11 +727,29 @@
   }
 
   const BEATS = {
-    butler_tool: c => c.butler.do(async b => { b.hold(c.beat.prop); await b.say(SHORT[c.beat.tool] || clip(c.beat.text, 8), 1300); b.hold(null); }),
+    butler_tool: c => c.butler.do(async b => {
+      const st = c.beat.station && stationPos(c.scene, c.beat.station);
+      if (st) {
+        leave(c.scene, b);
+        const n = c.scene.stationUse[c.beat.station] || 0, off = [0, -24, 24][n % 3];
+        await b.walk(st.x + off, st.y);
+        stationOn(c.scene, c.beat.station, true);
+        b.station = c.beat.station;
+        takeTool(c.scene, b, c.beat.itemKey, c.beat.prop);
+        b.pose("working");
+        await b.say(SHORT[c.beat.tool] || clip(c.beat.text, 10), 1300);
+        leave(c.scene, b);
+      } else {
+        takeTool(c.scene, b, c.beat.itemKey, c.beat.prop);
+        await b.say(SHORT[c.beat.tool] || clip(c.beat.text, 10), 1300);
+        releaseTool(c.scene, b);
+      }
+    }),
     brief: c => {
       c.butler.do(async b => {
-        b.face("open"); b.hold(null);
-        if (c.beat.how === "letter") await briefLetter(c, b); else await briefInPerson(c, b);
+        leave(c.scene, b);
+        if (c.beat.how === "letter") { await b.walk(c.scene.layout.desk.x, c.scene.layout.desk.y); await briefLetter(c, b); }
+        else await briefInPerson(c, b);
         fire(c.scene, "briefed:" + c.key);
         if (c.beat.how !== "letter") { b.atTable = false; await b.walk(c.scene.layout.desk.x, c.scene.layout.desk.y); }
         b.hold("tea"); b.face("happy");
@@ -598,7 +770,11 @@
       const s = stationPos(c.scene, c.beat.station), n = c.scene.stationUse[c.beat.station] || 0, off = [0, 28, -28][n % 3];
       await a.walk(s.x + off, s.y);
       stationOn(c.scene, c.beat.station, true); a.station = c.beat.station;
-      if (c.beat.station === "bed") { a.pose("sleeping"); a.face("closed"); } else { a.face("open"); a.pose("working"); }
+      if (c.beat.station === "bed") { a.pose("sleeping"); a.face("closed"); }
+      else {
+        a.face("open"); a.pose("working");
+        if (c.beat.prop || c.beat.itemKey) takeTool(c.scene, a, c.beat.itemKey, c.beat.prop);
+      }
       a.bubble(c.beat.label);
     }),
     done_tool: c => c.actor.do(async a => {
@@ -612,14 +788,14 @@
     }),
     seal: c => c.actor.do(async a => { a.pose("asking"); a.hold("paper"); a.bubble("等你盖章", "red"); }),
     return: c => c.actor.do(async a => {
-      leave(c.scene, a); a.hold(null);
+      leave(c.scene, a);
       await returnHome(c, a);
       fire(c.scene, "returned:" + c.key);
       if (c.beat.how !== "table") { await a.walk(a.home.x, a.home.y); if (c.beat.ok) { a.pose("sleeping"); a.face("closed"); } }
     }),
     check: c => c.butler.do(async b => {
       await waitFor(c.scene, "returned:" + c.key);
-      b.atTable = false;
+      leave(c.scene, b);
       await b.walk(c.scene.layout.desk.x, c.scene.layout.desk.y);
       const passed = c.beat.checks ? Object.values(c.beat.checks).filter(Boolean).length : 5;
       b.hold("magnifier"); b.face("open");
@@ -627,13 +803,13 @@
       else { b.bubble("验收 ✗", "bad"); await c.run(900); }
       await c.run(400); b.bubble(null); b.hold(null);
     }),
-    wait: c => c.butler.do(async b => { b.atTable = false; await b.walk(c.scene.layout.desk.x, c.scene.layout.desk.y); b.hold("tea"); b.face("happy"); }),
-    ruling: c => c.butler.do(async b => { b.hold(null); b.atTable = true; await b.walk(c.scene.layout.table.x, c.scene.layout.table.y); b.bubble("等你裁决", "red"); }),
+    wait: c => c.butler.do(async b => { leave(c.scene, b); await b.walk(c.scene.layout.desk.x, c.scene.layout.desk.y); b.hold("tea"); b.face("happy"); }),
+    ruling: c => c.butler.do(async b => { leave(c.scene, b); b.atTable = true; await b.walk(c.scene.layout.table.x, c.scene.layout.table.y); b.bubble("等你裁决", "red"); }),
     reply: c => c.butler.do(async b => {
-      b.bubble(null); b.face("happy"); b.hold("scroll"); await b.say("这就回话", 900); b.hold(null);
-      await fly(c.scene, c.F.scroll, { x: b.x + 20, y: b.y - 50 }, c.scene.layout.gate, 800, 50);
-      b.atTable = false;
+      leave(c.scene, b);
       await b.walk(c.scene.layout.desk.x, c.scene.layout.desk.y);
+      b.face("happy"); b.hold("scroll"); await b.say("这就回话", 900); b.hold(null);
+      await fly(c.scene, c.F.scroll, { x: b.x + 20, y: b.y - 50 }, c.scene.layout.gate, 800, 50);
       b.bubble("已回话，看下方");
     }),
   };
@@ -647,8 +823,13 @@
       m += `<rect x="-43" y="${y}" width="86" height="34" rx="2" fill="#5e3e29"/>`;
       let x = -40;
       while (x < 33) {
-        const w = 6 + ((k * 5) % 4) * 1.5, h = 21 + ((k * 7) % 4) * 3, pick = r === 0 && k === 4 ? ' class="pick"' : "";
-        m += `<rect${pick} x="${x}" y="${y + 34 - h}" width="${w}" height="${h}" rx="1.5" fill="${cols[k % cols.length]}" stroke="${ink}" stroke-width="1.4"/>`;
+        const w = 6 + ((k * 5) % 4) * 1.5, h = 21 + ((k * 7) % 4) * 3;
+        const pick = r === 0 && k === 4 ? " pick" : "";
+        const itemAttr = r === 0 && k === 2 ? ' data-tool-item="contacts"'
+          : r === 0 && k === 4 ? ' data-tool-item="roster"'
+          : r === 1 && k === 11 ? ' data-tool-item="knowledge"'
+          : "";
+        m += `<rect class="tool-prop${pick}"${itemAttr} x="${x}" y="${y + 34 - h}" width="${w}" height="${h}" rx="1.5" fill="${cols[k % cols.length]}" stroke="${ink}" stroke-width="1.4"/>`;
         x += w + 1.5; k++;
       }
     }
@@ -854,15 +1035,15 @@
     const tableY = layout.table.y - Math.round(41 * s);
     const benchY = isSingle ? layout.bench.y + 33 : isSiheyuan ? layout.southTop + 98 : layout.southTop + 108;
     return [
-      { key: "cabinet", x: st.cabinet.x, y: cabY, scale: s, markup: `<rect class="ik" x="-37" y="-120" width="74" height="120" rx="7" fill="${theme.cabinetFill}"/>${drawer(-112)}${drawer(-75, true)}${drawer(-38)}` },
+      { key: "cabinet", x: st.cabinet.x, y: cabY, scale: s, markup: `<rect class="ik" x="-37" y="-120" width="74" height="120" rx="7" fill="${theme.cabinetFill}"/>${drawer(-112)}${drawer(-75, true)}${drawer(-38)}<g class="tool-prop" data-tool-item="folder" transform="translate(-18,-126)"><path d="M-10,-4 h6 l2,2.5 h11 v9.5 h-19 Z" fill="#e8c56a" stroke="${ink}" stroke-width="1.5"/></g><g class="tool-prop" data-tool-item="stamp" transform="translate(18,-124)"><rect x="-7" y="0" width="14" height="4.5" rx="1.5" fill="#d2432f" stroke="${ink}" stroke-width="1.4"/><path d="M-3,0 L-2.2,-7 a2.2,2.2 0 0 1 4.4,0 L3,0 Z" fill="${theme.woodDark}" stroke="${ink}" stroke-width="1.4"/></g>` },
       { key: "books", x: st.books.x, y: booksY, scale: s, markup: shelfMarkup(theme) },
-      { key: "computer", x: st.computer.x, y: compY, scale: s, markup: `<rect class="ik" x="-37" y="-118" width="74" height="52" rx="6" fill="${ink}"/><rect class="scr" x="-31" y="-112" width="62" height="40" rx="3" fill="#9fb8ae"/><g><rect class="ln" x="-25" y="-106" width="30" height="4" rx="2" fill="#2f6f5e"/><rect class="ln" x="-25" y="-98" width="46" height="4" rx="2" fill="#2f6f5e"/><rect class="ln" x="-25" y="-90" width="22" height="4" rx="2" fill="#2f6f5e"/><rect class="ln" x="-25" y="-82" width="38" height="4" rx="2" fill="#2f6f5e"/></g><path class="ik" d="M-7,-66 h14 l3,8 h-20Z" fill="#5a6072"/><rect class="ik" x="-61" y="-58" width="122" height="11" rx="4" fill="${theme.woodLight}"/><rect class="ik" x="-55" y="-47" width="9" height="47" fill="${theme.woodDark}"/><rect class="ik" x="46" y="-47" width="9" height="47" fill="${theme.woodDark}"/><rect class="ik" x="-21" y="-65" width="42" height="7" rx="2" fill="#fffaf0"/>` },
-      { key: "tv", x: st.tv.x, y: tvY, scale: s, markup: `<rect class="ik" x="-53" y="-154" width="106" height="68" rx="7" fill="${ink}"/><rect class="scr" x="-47" y="-148" width="94" height="56" rx="3" fill="#56607a"/><g>${[16, 28, 20, 36, 24].map((h, i) => `<rect class="tvbar" x="${-38 + i * 16}" y="${-98 - h}" width="10" height="${h}" rx="2" fill="${i % 2 ? "#7cc48f" : "#f2c14e"}"/>`).join("")}</g><rect class="ik" x="-47" y="-42" width="94" height="42" rx="5" fill="${theme.woodLight}"/><path class="ik" d="M0,-42 V0" fill="none"/><circle cx="-7" cy="-21" r="2.4" fill="${ink}"/><circle cx="7" cy="-21" r="2.4" fill="${ink}"/>` },
+      { key: "computer", x: st.computer.x, y: compY, scale: s, markup: `<rect class="ik" x="-37" y="-118" width="74" height="52" rx="6" fill="${ink}"/><rect class="scr" x="-31" y="-112" width="62" height="40" rx="3" fill="#9fb8ae"/><g><rect class="ln" x="-25" y="-106" width="30" height="4" rx="2" fill="#2f6f5e"/><rect class="ln" x="-25" y="-98" width="46" height="4" rx="2" fill="#2f6f5e"/><rect class="ln" x="-25" y="-90" width="22" height="4" rx="2" fill="#2f6f5e"/><rect class="ln" x="-25" y="-82" width="38" height="4" rx="2" fill="#2f6f5e"/></g><path class="ik" d="M-7,-66 h14 l3,8 h-20Z" fill="#5a6072"/><rect class="ik" x="-61" y="-58" width="122" height="11" rx="4" fill="${theme.woodLight}"/><rect class="ik" x="-55" y="-47" width="9" height="47" fill="${theme.woodDark}"/><rect class="ik" x="46" y="-47" width="9" height="47" fill="${theme.woodDark}"/><rect class="tool-prop" data-tool-item="terminal" x="-21" y="-65" width="42" height="7" rx="2" fill="#fffaf0" stroke="${ink}" stroke-width="1.4"/><g class="tool-prop" data-tool-item="compass" transform="translate(46,-67)"><circle r="8" fill="#fffaf0" stroke="${ink}" stroke-width="1.6"/><path d="M0,-5 L2.4,0 L0,5 L-2.4,0 Z" fill="#d2432f"/></g>` },
+      { key: "tv", x: st.tv.x, y: tvY, scale: s, markup: `<rect class="ik" x="-55" y="-156" width="110" height="72" rx="7" fill="${ink}"/><rect class="scr" x="-49" y="-150" width="98" height="60" rx="3.5" fill="#32414e"/><rect class="ik" x="-47" y="-42" width="94" height="42" rx="5" fill="${theme.woodLight}"/><path class="ik" d="M0,-42 V0" fill="none"/><circle cx="-7" cy="-21" r="2.4" fill="${ink}"/><circle cx="7" cy="-21" r="2.4" fill="${ink}"/><g class="tool-prop" data-tool-item="sticky" transform="translate(32,-52) rotate(-5)"><rect x="-8" y="-8" width="16" height="16" rx="2" fill="#f6dc7a" stroke="${ink}" stroke-width="1.5"/><path d="M-4,-2 h8 M-4,2.5 h5" stroke="${ink}" stroke-width="1.3" stroke-linecap="round"/></g>` },
       { key: "bed", x: st.bed.x, y: bedY, scale: s, markup: `<rect class="ik" x="-49" y="-82" width="98" height="66" rx="13" fill="${theme.woodDark}"/><rect class="ik" x="-45" y="-32" width="90" height="72" rx="8" fill="#fffaf0"/><ellipse class="ik" cx="0" cy="-22" rx="29" ry="10.5" fill="#ffffff"/>` },
       { key: "blanket", x: st.bed.x, y: bedY + Math.round(47 * s), scale: s, markup: `<g transform="translate(0,-47)"><rect class="ik" x="-47" y="-8" width="94" height="52" rx="9" fill="${theme.cushionFill}"/><path d="M-47,5 h94" stroke="#fff" stroke-width="3" opacity=".7"/><rect class="ik" x="-50" y="38" width="100" height="12" rx="5" fill="${theme.woodDark}"/></g>` },
       { key: "desk", x: layout.desk.x, y: deskY, scale: s, markup: `<rect class="ik" x="-80" y="-36" width="160" height="36" rx="5" fill="${theme.woodDark}"/><rect class="ik" x="-87" y="-48" width="174" height="13" rx="5" fill="${theme.woodLight}"/><g transform="translate(-60,-48)"><g class="deskphone"><rect class="ik" x="-14" y="-11" width="28" height="11" rx="3.5" fill="${ink}"/><path d="M-16,-17 q16,-10 32,0" fill="none" stroke="${ink}" stroke-width="6" stroke-linecap="round"/><circle cx="0" cy="-5.5" r="2.6" fill="#f2c14e"/></g></g><g transform="translate(62,-48)"><path class="ik" d="M-10,0 a10,10 0 0 1 20,0Z" fill="#f2c14e"/><rect x="-12" y="-1.5" width="24" height="3.5" rx="1.7" fill="${ink}"/></g><text x="0" y="-13" text-anchor="middle" font-size="12.5" fill="${theme.plaqueText}">${theme.deskLabel}</text>` },
       { key: "table", x: layout.table.x, y: tableY, scale: s, markup: `<path class="ik" d="M-8,-12 h16 v10 h12 v5 h-40 v-5 h12Z" fill="${theme.woodDark}"/><ellipse class="ik" cx="0" cy="-30" rx="64" ry="20" fill="${theme.woodLight}"/><g transform="translate(0,-38)"><ellipse class="ik" rx="12" ry="8.5" fill="${theme.cabinetFill}"/><circle class="ik" cx="0" cy="-9" r="2.6" fill="${theme.cabinetFill}"/></g>${name(theme.tableLabel)}` },
-      { key: "bench", x: layout.bench.x, y: benchY, scale: s, markup: `<rect class="ik" x="-62" y="-30" width="10" height="30" fill="${theme.woodDark}"/><rect class="ik" x="52" y="-30" width="10" height="30" fill="${theme.woodDark}"/><rect class="ik" x="-70" y="-42" width="140" height="13" rx="4" fill="${theme.woodLight}"/><rect class="ik" x="-54" y="-57" width="20" height="15" rx="2" fill="#5a6072"/><g class="gear"><circle class="ik" cx="0" cy="-53" r="10" fill="#f2c14e" stroke-dasharray="5 3.4"/><circle cx="0" cy="-53" r="3.4" fill="${ink}"/></g><rect class="ik" x="30" y="-59" width="24" height="17" rx="2" fill="${theme.cabinetFill}"/>${name(theme.benchLabel)}` },
+      { key: "bench", x: layout.bench.x, y: benchY, scale: s, markup: `<rect class="ik" x="-62" y="-30" width="10" height="30" fill="${theme.woodDark}"/><rect class="ik" x="52" y="-30" width="10" height="30" fill="${theme.woodDark}"/><rect class="ik" x="-70" y="-42" width="140" height="13" rx="4" fill="${theme.woodLight}"/><rect class="ik" x="-54" y="-57" width="20" height="15" rx="2" fill="#5a6072"/><g class="gear"><circle class="ik" cx="0" cy="-53" r="10" fill="#f2c14e" stroke-dasharray="5 3.4"/><circle cx="0" cy="-53" r="3.4" fill="${ink}"/></g><g class="tool-prop" data-tool-item="wrench" transform="translate(-26,-52) rotate(-25)"><path d="M-2,-5 h4 v14 h-4 Z" fill="#b4c4d0" stroke="${ink}" stroke-width="1.4"/><circle cx="0" cy="-7" r="4.5" fill="#b4c4d0" stroke="${ink}" stroke-width="1.4"/></g><rect class="ik" x="30" y="-59" width="24" height="17" rx="2" fill="${theme.cabinetFill}"/>${name(theme.benchLabel)}` },
     ];
   }
 

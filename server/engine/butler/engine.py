@@ -75,6 +75,10 @@ class ButlerEngines:
                 model_client=await self._models.create(tenant, MODEL_TIER),
                 extra_tools=self._tools.specs(), script_executors={},
                 max_iterations=MAX_ITERATIONS, max_session_tokens=MAX_SESSION_TOKENS,
+                doom_loop_config=taifeng.DoomLoopConfig(
+                    max_consecutive_repeats=3,
+                    max_consecutive_errors=2,
+                ),
                 enable_request_capture=self._platform.runtimes.defaults.capture_requests,
             )
             self._pools[tenant] = pool
@@ -93,6 +97,7 @@ class ButlerEngines:
         engine = await pool.get_or_create(session_id=session_id, entry_skill_id=SKILL_ID)
         self._turns.bind(engine.thread_id, turn)
         hub: EngineEventHub | None = None
+        timed_out = False
         try:
             hub = self._hub(engine, turn, session_id)
             await hub.start()
@@ -107,13 +112,17 @@ class ButlerEngines:
             except TimeoutError:
                 # 只把「本轮时限到了」报成 TurnTimeout；别处冒出的 TimeoutError 照旧往上抛
                 if deadline.expired():
+                    timed_out = True
                     raise TurnTimeout(asyncio.get_running_loop().time() - turn.started_at) from None
                 raise
         finally:
             self._turns.unbind(engine.thread_id)
             await pool.release(session_id, force=True)
             if hub is not None:
-                await hub.close()
+                if timed_out:
+                    await hub.close(unfinished_state="cancelled", unfinished_reason="turn_timeout")
+                else:
+                    await hub.close()
 
     def _hub(self, engine: taifeng.AgentEngine, turn: ButlerTurn, session_id: str,
              ) -> EngineEventHub:
@@ -139,7 +148,8 @@ class ButlerEngines:
 
 
 _TOOL_STEP_LABELS = {
-    "read_personal": "正在查询个人档案与历史记录…",
+    "read_personal": "正在查询个人档案与工作台记录…",
+    "act_personal": "正在为你整理并办理私人事务…",
     "propose": "正在整理待确认卡片…",
     "list_artisans": "正在查看可用匠人…",
     "dispatch_artisan": "正在派发任务给匠人…",
@@ -169,6 +179,8 @@ async def _read_reply(events: AsyncIterator[taifeng.EventMsg], turn: ButlerTurn)
             text.append(delta)
             turn.heard(delta)
         elif kind == "turn_completed":
+            if event.msg.data.get("end_reason") == "doom_loop_circuit_open" and not turn.has_output():
+                raise RuntimeUnavailableError("管家连续重试同一操作未能完成，输入已保留，请稍后重试")
             reply = "".join(text).strip()
             if not reply and not turn.has_output():
                 raise RuntimeUnavailableError("管家没有给出答复，请稍后重试")

@@ -188,6 +188,52 @@ function briefSaysTheTask(C) {
   assert.equal(pose.bubble, "收到，开始办…");
 }
 
+// 真实使用发现：管家已调用并完成工具后（如多次 read_personal），正在组织回复时气泡不应停留在「我想想怎么办…」。
+function butlerBubbleTracksRunningPhaseAndStep(C) {
+  const root = span("ex.b", "butler", "管家", null, "running", 0);
+  // 1. 刚开始还没调任何工具：仍是「我想想怎么办…」
+  assert.equal(C.model.poses([root], none).butler.bubble, "我想想怎么办…");
+  assert.equal(C.model.poses([root], { ...none, step: () => "正在理解你的请求…" }).butler.bubble, "我想想怎么办…");
+
+  // 2. 实时步骤已推进到查档案（即使 span 还没落库）：气泡同步最新步骤
+  assert.equal(
+    C.model.poses([root], { ...none, step: () => "正在查询个人档案与历史记录…" }).butler.bubble,
+    "正在查询个人档案与历史记录…"
+  );
+
+  // 3. 管家工具正在执行（刷新后无流式 step 时也能准确显示工具状态与道具）
+  const readRunning = span("tl.b1", "tool", "read_personal", "ex.b", "running", 1);
+  assert.equal(C.model.poses([root, readRunning], none).butler.bubble, "正在查询个人档案与工作台记录…");
+  const actRunning = span("tl.b1b", "tool", "act_personal", "ex.b", "running", 1);
+  const actPose = C.model.poses([root, actRunning], none).butler;
+  assert.equal(actPose.bubble, "正在为你整理并办理私人事务…");
+  assert.equal(actPose.prop, "quill");
+  const proposeRunning = span("tl.b2", "tool", "propose", "ex.b", "running", 2);
+  const proposePose = C.model.poses([root, { ...readRunning, state: "completed", ended_at: T(2) }, proposeRunning], none).butler;
+  assert.equal(proposePose.bubble, "正在整理待确认卡片…");
+  assert.equal(proposePose.prop, "quill");
+
+  // 4. 多次工具均已完成、根 span 仍在运行（组织回复阶段）：即使没有流式 step 也不再回退成「我想想怎么办…」
+  const readDone1 = { ...readRunning, state: "completed", ended_at: T(2) };
+  const readDone2 = span("tl.b3", "tool", "read_personal", "ex.b", "completed", 2, { ended_at: T(3) });
+  const afterTools = [root, readDone1, readDone2];
+  assert.equal(C.model.poses(afterTools, none).butler.bubble, "处理完成，正在组织回复…");
+  assert.equal(C.model.poses(afterTools, { ...none, step: () => "处理完成，正在组织回复…" }).butler.bubble, "处理完成，正在组织回复…");
+  assert.equal(C.model.poses(afterTools, { ...none, step: () => "正在回复…" }).butler.bubble, "正在回复…");
+
+  // 5. 同一帧并发多次相同管家工具只播一次节拍，避免反复刷屏阻塞后续状态对齐
+  const beats = C.model.diff([root], afterTools, none);
+  assert.equal(beats.filter(b => b.type === "butler_tool" && b.tool === "read_personal").length, 1);
+
+  // 6. 被唤醒的第二轮复核正在运行时，展示复核状态而非第一轮的已完成态
+  const t = soloTimeline();
+  const reviewRunning = span("ex.r", "butler", "管家", null, "running", 12);
+  const reviewing = [{ ...t.root, state: "completed", ended_at: T(3) }, { ...t.dp, state: "completed", ended_at: T(10) }, reviewRunning];
+  const reviewPose = C.model.poses(reviewing, none).butler;
+  assert.equal(reviewPose.prop, "magnifier");
+  assert.equal(reviewPose.bubble, "复核完成，正在组织回复…");
+}
+
 function orphanSpansDoNotCrash(C) {
   const lost = [span("tl.x", "tool", "query", "ex.missing", "running", 1), span("a", "artisan", "x", "b", "running", 0), span("b", "artisan", "y", "a", "running", 0)];
   same(C.model.diff([], lost, none), []);
@@ -387,6 +433,25 @@ async function stagedCourtyardFollowsFocus(dir) {
   C.card.update(reply, "spans");
   await reply.court.chain;
   assert.ok(C.stage.isFocus(progress.court), "答复办完后回到还在办的那件事");
+  // 实时步骤推送（如「处理完成，正在组织回复…」）会立刻刷新当前焦点小院里的管家气泡
+  const liveStepTrace = { traceId: "trc_live", spans: new Map(), header: {}, wantsFocus: true };
+  C.card.mount(liveStepTrace, element());
+  liveStepTrace.spans.set("ex.l", span("ex.l", "butler", "管家", null, "running", 30));
+  C.card.update(liveStepTrace, "snapshot");
+  await liveStepTrace.court.chain;
+  assert.equal(scene.filter(x => x[0] === "settle").slice(-1)[0][1].butler.bubble, "我想想怎么办…");
+  C.stage.setStep("trc_live", "处理完成，正在组织回复…");
+  await Promise.resolve();
+  assert.equal(scene.filter(x => x[0] === "settle").slice(-1)[0][1].butler.bubble, "处理完成，正在组织回复…");
+  // 已有在跑的匠人派工时，setStep 不应打断匠人动画
+  liveStepTrace.spans.set("dp.live", span("dp.live", "dispatch", "finance/check", "ex.l", "running", 31, { ref: "dsp_1" }));
+  C.card.update(liveStepTrace, "spans");
+  await liveStepTrace.court.chain;
+  await Promise.resolve();
+  const settlesWithDispatch = scene.filter(x => x[0] === "settle").length;
+  C.stage.setStep("trc_live", "正在回复…");
+  await Promise.resolve();
+  assert.equal(scene.filter(x => x[0] === "settle").length, settlesWithDispatch, "有运行中派工时不强行 settle 打断动画");
 }
 
 function unsupportedFallsBack(dir) {
@@ -408,6 +473,7 @@ resultDropsRepeatedNarration(C);
 rulingKeepsWaitingAndStaysShort(C);
 artisanStaysAtLastStationWhileThinking(C);
 briefSaysTheTask(C);
+butlerBubbleTracksRunningPhaseAndStep(C);
 orphanSpansDoNotCrash(C);
 looks(C);
 function makeSceneDom() {
@@ -512,6 +578,65 @@ async function stageThemeSwitcherControlsRealScene(dir) {
   assert.ok(replyCard.textContent.includes("建议 13:45 出发"), "视图上应看到管家最后说的内容");
 }
 
+async function toolPickupAndLiveBoard(dir) {
+  // 1. 管家与匠人工具均映射到实体工位与可拿起道具
+  const C = load(dir, ["courtyard-art.js", "courtyard-model.js"]);
+  same(C.model.toolTarget("read_personal", { owner: "butler", hint: "查看今日待办" }), { station: "tv", prop: "sticky", itemKey: "sticky" });
+  same(C.model.toolTarget("read_personal", { owner: "butler", hint: "查询通讯录" }), { station: "books", prop: "book", itemKey: "contacts" });
+  same(C.model.toolTarget("amap.route_plan"), { station: "computer", prop: "compass", itemKey: "compass" });
+  same(C.model.toolTarget("run_script"), { station: "bench", prop: "wrench", itemKey: "wrench" });
+  same(C.model.toolTarget("query_reimbursements"), { station: "cabinet", prop: "stamp", itemKey: "stamp" });
+
+  // 2. diff 节拍携带 station/prop/itemKey，驱动角色走去拿起道具
+  const root = span("ex.b", "butler", "管家", null, "running", 0);
+  const readTodo = span("tl.b1", "tool", "read_personal", "ex.b", "running", 1, { say: "看看今日待办" });
+  const beats = C.model.diff([root], [root, readTodo], none);
+  const bt = beats.find(b => b.type === "butler_tool");
+  assert.equal(bt.station, "tv");
+  assert.equal(bt.prop, "sticky");
+  assert.equal(bt.itemKey, "sticky");
+
+  // 3. 真实待办直接画在 SVG 看板上，且切换四合院时保留
+  const { makeEl, document, localStorage } = makeSceneDom();
+  const S = load(dir, ["courtyard-art.js", "courtyard-scene.js"], {
+    document, localStorage, requestAnimationFrame: () => 0, DOMException,
+  });
+  const host = makeEl("div");
+  const scene = S.scene.create(host, { look: key => S.art.resolveLook(S.art.loadLooks(), key) });
+  scene.setWorld({
+    todos: [{ id: "t1", title: "把壁仞方案发给何总", done: false }, { id: "t2", title: "已完成项", done: true }],
+    reminders: [{ id: "r1", title: "回袁新电话" }],
+    events: [],
+    booksCount: 8,
+    artisans: [],
+  });
+  const svg = find(host, n => n.tag === "svg")[0];
+  const board = find(svg, n => n.getAttribute("class") === "board-live")[0];
+  assert.ok(board && board.textContent.includes("把壁仞方案发给何"), "看板应显示真实未完成待办");
+  assert.ok(!board.textContent.includes("已完成项"), "已完成待办不占看板待办行");
+  assert.ok(board.textContent.includes("2"), "看板角标应显示 2 项未完成事项");
+  scene.setTheme("siheyuan");
+  const boardAfter = find(svg, n => n.getAttribute("class") === "board-live")[0];
+  assert.ok(boardAfter && boardAfter.textContent.includes("把壁仞方案发给何"), "切换四合院后看板仍显示真实待办");
+  scene.destroy();
+
+  // 4. 0 匠人时准确提示未启用企业匠人，管理员看到能力市场入口
+  const { makeEl: mk2, document: doc2, localStorage: ls2 } = makeSceneDom();
+  const el = (tag, text, cls) => { const n = mk2(tag); if (text !== undefined && text !== null) n.textContent = text; if (cls) n.className = cls; return n; };
+  const button = (label, onClick, cls) => { const b = el("button", label, cls); b.addEventListener("click", onClick); return b; };
+  const ST = load(dir, ["courtyard-art.js", "courtyard-model.js", "courtyard-scene.js", "courtyard-stage.js"], {
+    document: doc2, localStorage: ls2, el, button, requestAnimationFrame: () => 0, DOMException,
+    entryApi: async () => ({ items: [] }),
+    entry: { cleanups: new Set(), epoch: 0, me: { role: "tenant_admin" } }, isStale: () => false,
+  });
+  const box = mk2("div");
+  ST.stage.mount(box, {});
+  await new Promise(resolve => setImmediate(resolve));
+  const cap = find(box, n => String(n.className).includes("cy-caption"))[0];
+  assert.ok(cap.textContent.includes("暂未启用企业匠人"), "0 匠人时不应误报匠人在垫子上歇着");
+  assert.ok(cap.textContent.includes("去能力市场添匠人"), "管理员应看到去能力市场添匠人快捷入口");
+}
+
 (async () => {
   await finishedSnapshotSettles(dir);
   await missingDetailStillRenders(dir);
@@ -520,6 +645,7 @@ async function stageThemeSwitcherControlsRealScene(dir) {
   await stagedCourtyardFollowsFocus(dir);
   await multiRowExpansionAndThemes(dir);
   await stageThemeSwitcherControlsRealScene(dir);
+  await toolPickupAndLiveBoard(dir);
   unsupportedFallsBack(dir);
   console.log("courtyard model passed");
 })().catch(error => { console.error(error); process.exit(1); });

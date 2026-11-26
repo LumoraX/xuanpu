@@ -2,7 +2,7 @@
 // 不依赖模型也能直接增删改查；所有异步响应核对 conn.epoch 与代际，登出或切身份立即清空。
 "use strict";
 
-const peopleState = { generation: 0, selectedId: null, items: [], trashed: false, lastMerge: null };
+const peopleState = { generation: 0, selectedId: null, items: [], trashed: false, lastMerge: null, view: "people" };
 
 function peopleLive(epoch, generation) {
   return epoch === conn.epoch && generation === peopleState.generation;
@@ -52,6 +52,7 @@ async function openPeople(focusPersonId = null) {
   if (fnTab && !fnTab.classList.contains("active")) fnTab.click();
   const epoch = conn.epoch, generation = ++peopleState.generation;
   $("people-panel").classList.remove("hidden");
+  ensurePeopleViewTabs();
   $("people-panel").scrollIntoView?.({ block: "start" });
   await loadPeopleList(epoch, generation);
   if (focusPersonId && peopleLive(epoch, generation)) {
@@ -59,7 +60,27 @@ async function openPeople(focusPersonId = null) {
   }
 }
 
+function ensurePeopleViewTabs() {
+  const panel = $("people-panel");
+  if (!panel || panel.querySelector(".kg-view-tabs")) return;
+  const bar = peopleEl("div", null, "row kg-view-tabs");
+  const views = [["people", "人物"], ["orgs", "公司 / 组织"], ["records", "原始记录 / 会议"]];
+  for (const [key, label] of views) {
+    const btn = peopleBtn(label, () => {
+      peopleState.view = key;
+      for (const b of bar.querySelectorAll("button")) b.classList.toggle("ghost", b.dataset.kgView !== key);
+      loadPeopleList(conn.epoch, peopleState.generation);
+    }, key === peopleState.view ? "" : "ghost");
+    btn.dataset.kgView = key;
+    bar.append(btn);
+  }
+  const listNode = $("people-list");
+  if (listNode && listNode.parentNode) listNode.parentNode.insertBefore(bar, listNode);
+}
+
 async function loadPeopleList(epoch, generation) {
+  if (peopleState.view === "orgs") return loadOrgList(epoch, generation);
+  if (peopleState.view === "records") return loadRecordList(epoch, generation);
   const q = $("people-query").value.trim();
   const month = $("people-birth-month").value;
   const params = new URLSearchParams();
@@ -589,21 +610,30 @@ function showPeopleDraft(draft, proposalId) {
       const epoch = conn.epoch;
       try {
         const persons = (draft.persons || []).map((item, i) => {
-          const { similar_candidates, ...clean } = item;
+          const { similar_candidates, previous_organization, ...clean } = item;
           if (picks[i]) {
             const chosen = (similar_candidates || []).find((c) => c.person_id === picks[i]);
             return { ...clean, action: "update", person_id: picks[i], expected_version: chosen?.version ?? null };
           }
           return clean;
         });
-        const body = { persons, relations: draft.relations || [], note: draft.note || null };
+        const body = {
+          record: draft.record || draft.note || null,
+          orgs: (draft.orgs || []).map(({ similar_orgs, ...rest }) => rest),
+          persons,
+          matters: (draft.matters || []).map(({ similar_matters, ...rest }) => rest),
+          todos: draft.todos || [],
+          events: draft.events || [],
+          reminders: draft.reminders || [],
+          relations: draft.relations || [],
+        };
         const res = await api("POST", "/v1/assistant/proposals/" + encodeURIComponent(proposalId) + "/confirm", {
           json: { data: body },
         });
         if (epoch !== conn.epoch) return;
         host.classList.add("hidden");
-        const names = (res.result?.persons || []).map((x) => x.name).join("、") || "人物记录";
-        append("assistant", "已保存人物与关系：" + names);
+        const names = (res.result?.persons || []).map((x) => x.name).join("、") || "个人知识图谱记录";
+        append("assistant", "已保存：" + names);
       } catch (error) { if (epoch === conn.epoch) status.textContent = error.message; }
     }),
     peopleBtn("取消", async () => {
@@ -612,7 +642,7 @@ function showPeopleDraft(draft, proposalId) {
         await api("POST", "/v1/assistant/proposals/" + encodeURIComponent(proposalId) + "/cancel", {});
         if (epoch !== conn.epoch) return;
         host.classList.add("hidden");
-        append("assistant", "已取消这项人物记录草稿。");
+        append("assistant", "已取消这项草稿。");
       } catch (error) { if (epoch === conn.epoch) status.textContent = error.message; }
     }, "ghost")
   );
@@ -620,11 +650,340 @@ function showPeopleDraft(draft, proposalId) {
   host.classList.remove("hidden");
 }
 
+async function loadOrgList(epoch, generation) {
+  const q = $("people-query").value.trim();
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (peopleState.trashed) params.set("trashed", "true");
+  peopleNotice("正在读取本人公司/组织档案…");
+  try {
+    const body = await api("GET", "/v1/people/orgs" + (params.toString() ? "?" + params : ""));
+    if (!peopleLive(epoch, generation)) return;
+    const list = $("people-list");
+    list.replaceChildren();
+    const items = Array.isArray(body.items) ? body.items : [];
+    for (const org of items) {
+      const card = peopleEl("div", null, "card");
+      const p = org.profile || {};
+      card.append(
+        peopleEl("strong", org.name),
+        peopleEl("p", [p.org_type, p.industry, p.city, p.address].filter(Boolean).join(" · ") || "暂无补充信息", "meta"),
+        peopleBtn("查看图谱与关联", () => loadOrgGraphDetail(org.id, epoch, generation), "ghost")
+      );
+      list.append(card);
+    }
+    peopleNotice("仅本人可见；共 " + items.length + " 家公司/组织。");
+  } catch (error) { if (peopleLive(epoch, generation)) peopleNotice(error.message); }
+}
+
+async function loadOrgGraphDetail(orgId, epoch, generation) {
+  const host = $("people-detail");
+  host.replaceChildren(peopleEl("p", "正在穿透查询公司关系图谱…", "meta"));
+  try {
+    const [detail, graph] = await Promise.all([
+      api("GET", "/v1/people/orgs/" + encodeURIComponent(orgId)),
+      api("GET", "/v1/people/graph/org/" + encodeURIComponent(orgId) + "?depth=2"),
+    ]);
+    if (!peopleLive(epoch, generation)) return;
+    const org = detail.org, p = org.profile || {};
+    host.replaceChildren(
+      peopleEl("h3", org.name),
+      peopleEl("p", [p.aliases?.length ? "简称：" + p.aliases.join("、") : "", p.city, p.address].filter(Boolean).join(" · "), "meta"),
+      p.summary ? peopleEl("p", p.summary) : peopleEl("span", "")
+    );
+    const nodes = (graph.nodes || []).filter((n) => !(n.kind === "org" && n.id === orgId));
+    if (nodes.length) {
+      host.append(peopleEl("h4", "2 跳关联节点（" + nodes.length + "）"));
+      const ul = peopleEl("ul");
+      for (const n of nodes) ul.append(peopleEl("li", `[${n.kind}] ${n.name}${n.subtitle ? " · " + n.subtitle : ""}`));
+      host.append(ul);
+    }
+    const recs = graph.records || [];
+    if (recs.length) {
+      host.append(peopleEl("h4", "溯源原始记录（" + recs.length + "）"));
+      for (const r of recs) {
+        const dt = new Date(r.occurred_at * 1000).toLocaleDateString("zh-CN");
+        host.append(peopleEl("p", `${dt}${r.location ? " · " + r.location : ""}：${r.content.slice(0, 180)}`, "meta"));
+      }
+    }
+  } catch (error) { if (peopleLive(epoch, generation)) host.replaceChildren(peopleEl("p", error.message, "warn")); }
+}
+
+async function loadRecordList(epoch, generation) {
+  const q = $("people-query").value.trim();
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  peopleNotice("正在读取本人原始记录与会议纪要…");
+  try {
+    const body = await api("GET", "/v1/people/records" + (params.toString() ? "?" + params : ""));
+    if (!peopleLive(epoch, generation)) return;
+    const list = $("people-list");
+    list.replaceChildren();
+    const items = Array.isArray(body.items) ? body.items : [];
+    for (const r of items) {
+      const card = peopleEl("div", null, "card");
+      const dt = new Date(r.occurred_at * 1000).toLocaleDateString("zh-CN");
+      const kindLabel = r.record_kind === "meeting" ? "会议记录" : "原始记录";
+      card.append(
+        peopleEl("strong", `[${kindLabel}] ${r.title || dt}`),
+        peopleEl("p", [dt, r.location].filter(Boolean).join(" · "), "meta"),
+        peopleEl("p", (r.summary || r.content || "").slice(0, 140)),
+        peopleBtn("查看拆解分支", () => loadRecordDetail(r.id, epoch, generation), "ghost")
+      );
+      list.append(card);
+    }
+    peopleNotice("仅本人可见；共 " + items.length + " 条原始记录。");
+  } catch (error) { if (peopleLive(epoch, generation)) peopleNotice(error.message); }
+}
+
+async function loadRecordDetail(recordId, epoch, generation) {
+  const host = $("people-detail");
+  host.replaceChildren(peopleEl("p", "正在加载原始记录拆解分支…", "meta"));
+  try {
+    const g = await api("GET", "/v1/people/graph/record/" + encodeURIComponent(recordId));
+    if (!peopleLive(epoch, generation)) return;
+    const r = g.record;
+    const dt = new Date(r.occurred_at * 1000).toLocaleString("zh-CN", { hour12: false });
+    host.replaceChildren(
+      peopleEl("h3", r.title || "原始记录"),
+      peopleEl("p", [r.record_kind === "meeting" ? "会议记录" : "随手记", dt, r.location].filter(Boolean).join(" · "), "meta"),
+      peopleEl("p", r.content)
+    );
+    if (r.summary) host.append(peopleEl("p", "纪要摘要：" + r.summary));
+    if ((r.decisions || []).length) host.append(peopleEl("p", "关键结论：" + r.decisions.join("；"), "meta"));
+    if ((g.orgs || []).length) host.append(peopleEl("p", "涉及公司：" + g.orgs.map((o) => o.name).join("、"), "meta"));
+    if ((g.persons || []).length) host.append(peopleEl("p", "涉及人物：" + g.persons.map((p) => p.name).join("、"), "meta"));
+    if ((g.matters || []).length) host.append(peopleEl("p", "涉及事项：" + g.matters.map((m) => m.data?.title || m.id).join("、"), "meta"));
+    if ((g.relations || []).length) host.append(peopleEl("p", "衍生关系边：" + g.relations.length + " 条", "meta"));
+  } catch (error) { if (peopleLive(epoch, generation)) host.replaceChildren(peopleEl("p", error.message, "warn")); }
+}
+
+function showPeopleImportPanel(epoch, generation) {
+  const host = $("people-detail");
+  if (!host) return;
+  const st = { filename: "", preview: null, decisions: [], requestId: "", busy: false, google: { loading: true, data: null } };
+
+  const loadGoogle = async () => {
+    try {
+      const data = await api("GET", "/v1/people/google/status");
+      if (!peopleLive(epoch, generation)) return;
+      st.google = { loading: false, data };
+      render();
+    } catch {
+      if (!peopleLive(epoch, generation)) return;
+      st.google = { loading: false, data: { configured: false, linked: false } };
+      render();
+    }
+  };
+
+  const initDecisions = (pv) => (pv.items || []).map((item) => {
+    const first = (item.candidates || [])[0];
+    if (item.suggested_action === "merge" && first) {
+      return { action: "merge", target_person_id: first.person_id, target_version: first.version };
+    }
+    if (item.suggested_action === "skip") {
+      return { action: "skip", target_person_id: null, target_version: null };
+    }
+    return { action: "create", target_person_id: null, target_version: null };
+  });
+
+  const render = () => {
+    host.replaceChildren();
+    const box = peopleEl("div", null, "function-card");
+    box.append(
+      peopleEl("h3", "导入通讯录 / Google 关联"),
+      peopleEl("p", "支持 Google Contacts、Apple iCloud、Outlook 等导出的 vCard（.vcf）或 CSV 文件（最大 5 MiB，单次最多 1,000 人）。", "meta")
+    );
+    const gData = st.google.data;
+    const gRow = peopleEl("div", null, "row");
+    if (st.google.loading) {
+      gRow.append(peopleEl("span", "Google 通讯录关联：检查中…", "meta"));
+    } else if (!gData || !gData.configured) {
+      gRow.append(peopleEl("span", "Google 通讯录关联：未配置（管理员启用 google_contacts 并配置 OAuth 凭据后可用）", "meta"));
+    } else if (!gData.linked) {
+      const linkBtn = peopleBtn("关联 Google 账号", async () => {
+        st.busy = true;
+        render();
+        try {
+          const res = await api("POST", "/v1/people/google/connect/start", { json: { return_to: "/console/index.html" } });
+          if (res && res.authorization_url) location.assign(res.authorization_url);
+        } catch (error) {
+          st.busy = false;
+          peopleNotice(error.message || "无法发起 Google 账号关联");
+          render();
+        }
+      });
+      linkBtn.disabled = st.busy;
+      gRow.append(peopleEl("span", "Google 通讯录关联：未关联", "meta"), linkBtn);
+    } else {
+      const syncBtn = peopleBtn("一键增量同步 Google", async () => {
+        st.busy = true;
+        render();
+        try {
+          const res = await api("POST", "/v1/people/google/sync", { json: { mode: "auto", request_id: peopleReqId("gsync") } });
+          if (!peopleLive(epoch, generation)) return;
+          st.busy = false;
+          peopleNotice(`Google 同步完成：新建 ${res.created_count || 0} 人，合并更新 ${res.merged_count || 0} 人。`);
+          await loadPeopleList(epoch, generation);
+          await loadGoogle();
+        } catch (error) {
+          st.busy = false;
+          peopleNotice(error.message || "Google 同步失败");
+          render();
+        }
+      });
+      syncBtn.disabled = st.busy;
+      const unlinkBtn = peopleBtn("解除关联", async () => {
+        st.busy = true;
+        render();
+        try {
+          await api("POST", "/v1/people/google/unlink", { json: {} });
+          if (!peopleLive(epoch, generation)) return;
+          st.busy = false;
+          peopleNotice("已解除 Google 账号关联。");
+          await loadGoogle();
+        } catch (error) {
+          st.busy = false;
+          peopleNotice(error.message || "解除关联失败");
+          render();
+        }
+      }, "ghost");
+      unlinkBtn.disabled = st.busy;
+      gRow.append(peopleEl("span", "已关联 Google：" + (gData.account_email || gData.account_name || "已连接"), "meta"), syncBtn, unlinkBtn);
+    }
+    box.append(gRow);
+    const fileIn = document.createElement("input");
+    fileIn.type = "file";
+    fileIn.accept = ".vcf,.vcard,.csv,text/vcard,text/x-vcard,text/csv";
+    fileIn.className = "hidden";
+    fileIn.addEventListener("change", async () => {
+      const file = fileIn.files?.[0];
+      fileIn.value = "";
+      if (!file) return;
+      st.filename = file.name || "contacts";
+      st.busy = true;
+      st.preview = null;
+      peopleNotice("正在解析并查重「" + st.filename + "」…");
+      render();
+      try {
+        const params = new URLSearchParams({ filename: st.filename, format: "auto" });
+        const pv = await api("POST", "/v1/people/import/preview?" + params, {
+          body: file,
+          headers: { "Content-Type": file.type || "text/plain" },
+        });
+        if (!peopleLive(epoch, generation)) return;
+        st.busy = false;
+        st.preview = pv;
+        st.decisions = initDecisions(pv);
+        st.requestId = peopleReqId("imp");
+        peopleNotice(`解析完成：共 ${pv.valid_count || 0} 人（新增 ${pv.new_count || 0}，疑似重复 ${pv.duplicate_count || 0}）。`);
+        render();
+      } catch (error) {
+        if (!peopleLive(epoch, generation)) return;
+        st.busy = false;
+        peopleNotice(error.message || "文件解析失败");
+        render();
+      }
+    });
+    const pickBtn = peopleBtn(st.preview ? "重新选择文件" : "选择 .vcf / .csv 文件", () => fileIn.click());
+    pickBtn.disabled = st.busy;
+    const bar = peopleEl("div", null, "row");
+    bar.append(fileIn, pickBtn);
+    if (st.filename) bar.append(peopleEl("span", st.filename, "meta"));
+    box.append(bar);
+
+    if (st.preview) {
+      const pv = st.preview;
+      const rows = pv.items || [];
+      let createCnt = 0;
+      let mergeCnt = 0;
+      for (const dec of st.decisions) {
+        if (dec.action === "create") createCnt += 1;
+        else if (dec.action === "merge") mergeCnt += 1;
+      }
+      box.append(peopleEl(
+        "p",
+        `格式 ${(pv.format || "").toUpperCase()} · 有效 ${pv.valid_count || 0} 人（新增 ${pv.new_count || 0} · 重复 ${pv.duplicate_count || 0} · 跳过无效 ${pv.skipped_count || 0}）· 剩余配额 ${pv.remaining_quota ?? "-"}`,
+        "meta"
+      ));
+      if ((pv.warnings || []).length) {
+        box.append(peopleEl("p", "提示：" + pv.warnings.slice(0, 3).join("；"), "meta"));
+      }
+      for (let i = 0; i < rows.length; i += 1) {
+        const row = rows[i];
+        const prof = row.profile || {};
+        const dec = st.decisions[i] || { action: "skip" };
+        const line = peopleEl("div", null, "row");
+        const meta = [prof.organization, prof.title, ...((prof.contacts || []).slice(0, 2).map((c) => c.value))].filter(Boolean).join(" · ");
+        line.append(peopleEl("span", `${prof.name || "未命名"}${meta ? "（" + meta + "）" : ""}`));
+        const sel = document.createElement("select");
+        for (const cand of row.candidates || []) {
+          sel.append(new Option(`合并到：${cand.name}${cand.organization ? " · " + cand.organization : ""}`, `merge:${cand.person_id}:${cand.version}`));
+        }
+        sel.append(new Option((row.candidates || []).length ? "仍新建" : "新建联系人", "create"));
+        sel.append(new Option("跳过", "skip"));
+        sel.value = dec.action === "merge" ? `merge:${dec.target_person_id}:${dec.target_version}` : dec.action;
+        sel.disabled = st.busy;
+        sel.addEventListener("change", () => {
+          if (sel.value.startsWith("merge:")) {
+            const [, pid, ver] = sel.value.split(":");
+            st.decisions[i] = { action: "merge", target_person_id: pid, target_version: Number(ver) };
+          } else {
+            st.decisions[i] = { action: sel.value, target_person_id: null, target_version: null };
+          }
+          render();
+        });
+        line.append(sel);
+        box.append(line);
+      }
+      const actions = peopleEl("div", null, "row");
+      const commitBtn = peopleBtn(st.busy ? "正在导入…" : `确认导入（新建 ${createCnt} · 合并 ${mergeCnt}）`, async () => {
+        const payloadItems = rows.map((row, idx) => {
+          const dec = st.decisions[idx] || { action: "skip" };
+          const out = { action: dec.action, profile: row.profile };
+          if (dec.action === "merge") {
+            out.target_person_id = dec.target_person_id;
+            out.target_version = dec.target_version;
+          }
+          return out;
+        });
+        st.busy = true;
+        render();
+        try {
+          const res = await api("POST", "/v1/people/import", {
+            json: { request_id: st.requestId, items: payloadItems },
+          });
+          if (!peopleLive(epoch, generation)) return;
+          peopleNotice(`导入完成：新建 ${res.created_count || 0} 人，合并更新 ${res.merged_count || 0} 人。`);
+          host.replaceChildren();
+          await loadPeopleList(epoch, generation);
+        } catch (error) {
+          if (!peopleLive(epoch, generation)) return;
+          st.busy = false;
+          peopleNotice(error.message || "导入失败");
+          render();
+        }
+      });
+      commitBtn.disabled = st.busy || (createCnt + mergeCnt === 0);
+      actions.append(commitBtn, peopleBtn("取消", () => host.replaceChildren(), "ghost"));
+      box.append(actions);
+    } else {
+      box.append(peopleBtn("取消", () => host.replaceChildren(), "ghost"));
+    }
+    host.append(box);
+  };
+  render();
+  loadGoogle();
+}
+
 if (typeof $ === "function" && $("open-people")) {
   $("open-people").addEventListener("click", () => openPeople());
   $("close-people").addEventListener("click", () => resetPeople());
   $("people-search").addEventListener("click", () => loadPeopleList(conn.epoch, peopleState.generation));
   $("people-new").addEventListener("click", () => showPersonForm(null, conn.epoch, peopleState.generation));
+  if ($("people-import")) {
+    $("people-import").addEventListener("click", () => showPeopleImportPanel(conn.epoch, peopleState.generation));
+  }
   $("people-toggle-trash").addEventListener("click", () => {
     peopleState.trashed = !peopleState.trashed;
     $("people-toggle-trash").textContent = peopleState.trashed ? "返回活动列表" : "回收站";

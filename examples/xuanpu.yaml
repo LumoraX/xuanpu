@@ -263,3 +263,11 @@ approvals:
 # 能力市场（匠人市场 + 通用技能库市场）：配置官方/企业能力包目录或归档目录，控制台支持按分类浏览与一键依赖安装。
 # marketplace:
 #   catalog_dirs: []               # 含 xuanpu.yaml 包目录或 .zip 归档的目录列表
+
+# 可选个人 Google 通讯录只读关联（默认关闭，不配置不发任何外网请求）。
+# 需在 Google Cloud Console 注册 OAuth 2.0 Web 客户端，启用 People API，
+# 并将回调地址配置为 <public_url>/v1/people/google/callback。
+# google_contacts:
+#   enabled: false
+#   client_id: ${GOOGLE_CONTACTS_CLIENT_ID}
+#   client_secret: ${GOOGLE_CONTACTS_CLIENT_SECRET}

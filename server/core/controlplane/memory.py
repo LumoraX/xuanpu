@@ -60,6 +60,9 @@ class InMemoryControlPlane:
         from server.domains.people.memory import MemoryPeopleStore
 
         self.people_store = MemoryPeopleStore(self._append_workspace_audit)
+        from server.domains.people.google_store import MemoryGoogleContactsStore
+
+        self.google_contacts_store = MemoryGoogleContactsStore(self._append_workspace_audit)
         from server.domains.knowledge.memory import MemoryMemoryStore
 
         self.memory_store = MemoryMemoryStore()

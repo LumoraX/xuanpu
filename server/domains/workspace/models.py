@@ -171,6 +171,7 @@ class SettingsData(StrictModel):
     user_title: str = Field(default="", max_length=80)
     style: str = Field(default="简洁、清晰", min_length=1, max_length=1000, pattern=r"\S")
     timezone: str = "Asia/Shanghai"
+    auto_execute_personal: bool = True
     proactive_checks: ProactiveChecksSettings = Field(default_factory=ProactiveChecksSettings)
     proactive_channels: list[Literal["inbox", "feishu"]] = Field(default_factory=default_channels)
 

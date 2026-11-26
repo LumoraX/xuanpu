@@ -346,7 +346,25 @@ async function closedStartupSummaryStaysClosed() {
   assert(findChild(h.node('notification-alert-list'),node=>node.textContent==='真正的新通知'));
 }
 
+async function desktopNotificationFiresWhenGranted() {
+  const h = harness();
+  const popups = [];
+  function FakeNotification(title, opts) {
+    this.title = title;
+    this.opts = opts;
+    popups.push(this);
+  }
+  FakeNotification.permission = 'granted';
+  h.context.Notification = FakeNotification;
+  h.run('observeNotificationAlerts([], {snapshot: true})');
+  h.run('observeNotificationAlerts([{notification_id: 9, title: "核对报销单", due_at: 2000000000, read_at: null}])');
+  assert.equal(popups.length, 1, '已授权浏览器通知时应弹出系统提醒');
+  assert.equal(popups[0].title, '提醒时间到了');
+  assert(popups[0].opts.body.includes('核对报销单'));
+}
+
 (async () => {
+  await desktopNotificationFiresWhenGranted();
   await closedStartupSummaryStaysClosed();
   await earlyStreamHistoryIsSummarized();
   await visibleNotificationsHaveSafeActions();

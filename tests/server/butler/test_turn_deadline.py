@@ -47,11 +47,20 @@ def test_ceiling_cannot_be_below_default() -> None:
 
 
 async def test_turn_that_runs_out_of_time_ends_normally(butler: dict[str, Any], step: Any) -> None:
-    """到时限：不报 503，回复说明这一轮先停下。"""
+    """到时限：不报 503，回复说明这一轮先停下，且执行追踪根 span 正常收尾而不标不完整。"""
     _limits(butler, turn_seconds=0.3, max_turn_seconds=1.0, reply_window_seconds=5.0)
     butler["world"].models.script(step(text="", wait=asyncio.Event()))
     receipt = await _say(butler, "把十年的账都核一遍", "t1")
     assert receipt["state"] == "done" and "已到时限先停下" in receipt["message"]
+    trace_resp = await butler["http"].get(f"/v1/traces/{receipt['trace_id']}")
+    assert trace_resp.status_code == 200, trace_resp.text
+    body = trace_resp.json()
+    assert body["incomplete"] is False
+    assert body["active"] is False
+    roots = [s for s in body["spans"] if s["kind"] == "butler"]
+    assert len(roots) == 1
+    assert roots[0]["state"] == "cancelled"
+    assert roots[0]["end_reason"] == "turn_timeout"
 
 
 async def test_butler_extends_its_own_deadline_with_a_reason(

@@ -319,8 +319,10 @@ class ButlerService:
             p.sessions.release_routing(tenant)
         outcome = self._outcome(turn, reply)
         saved = outcome.saved()
+        if turn.executed_actions:
+            saved["executed_actions"] = list(turn.executed_actions)
         await p.workspace.append_message(
-            who, "assistant", outcome.message or "请确认操作。", body.request_id + ":assistant",
+            who, "assistant", outcome.message or "已办妥。", body.request_id + ":assistant",
             metadata={"route": saved, "butler": {"trace_id": turn.trace_id}})
         return {"mode": "butler", "state": "done", "request_id": body.request_id,
                 "trace_id": turn.trace_id,
@@ -345,9 +347,26 @@ class ButlerService:
                    if m["request_id"] != body.request_id + ":user"][-HISTORY_MESSAGES:]
         questions = [{"pending_id": i.pending_id, "question": i.question}
                      for i in await self.pending.list(who) if i.kind == "question"]
+        settings = await self._platform.workspace.settings(who)
+        raw_skills = await self._platform.workspace.list(who, kind="skill")
+        skills = [
+            {
+                "title": str(s["data"].get("title") or ""),
+                "instructions": str(s["data"].get("instructions") or "")[:1000],
+            }
+            for s in raw_skills
+            if s["data"].get("enabled", True)
+        ][:8]
         payload: dict[str, Any] = {
             "now": datetime.fromtimestamp(self._now(), ZoneInfo(body.timezone)).isoformat(),
             "timezone": body.timezone, "turn_seconds": self._platform.butler_config.turn_seconds,
+            "personal": {
+                "assistant_name": str(settings.get("assistant_name") or "玄圃助手"),
+                "user_title": str(settings.get("user_title") or ""),
+                "style": str(settings.get("style") or "简洁、清晰"),
+                "auto_execute_personal": bool(settings.get("auto_execute_personal", True)),
+                "skills": skills,
+            },
             "history": history, "pending_questions": questions,
             "materials": [f.model_dump() for f in body.input_files], "text": body.text,
         }

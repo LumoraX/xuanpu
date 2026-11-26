@@ -32,6 +32,7 @@ from server.domains.knowledge.service import (
 )
 from server.domains.marketplace.config import MarketplaceConfig
 from server.domains.organization.config import OrganizationConfig
+from server.domains.people.google_config import GoogleContactsConfig
 from server.domains.shared_matters.models import SharedMatterConfig
 from server.engine.butler.config import ButlerConfig
 from server.engine.tracing.config import ExecutionTraceConfig
@@ -365,6 +366,7 @@ class ServerConfig(_Section):
     metrics: MetricsConfig = MetricsConfig()
     public_url: str | None = None
     identity: IdentityConfig = IdentityConfig()
+    google_contacts: GoogleContactsConfig = GoogleContactsConfig()
     call_context: CallContextConfig | None = None
     lease_seconds: float = Field(default=60.0, ge=5)
     shutdown_drain_seconds: float = Field(default=30.0, ge=0)

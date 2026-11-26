@@ -12,6 +12,9 @@ async function refreshOverview() {
   if (isStale(epoch) || generation !== overviewGeneration) return body;
   $("overview").replaceChildren(...(body.blocks || []).map(blockNode));
   if (typeof renderTips === "function") renderTips(body);
+  if (globalThis.Courtyard && Courtyard.stage && typeof Courtyard.stage.refreshWorld === "function") {
+    Courtyard.stage.refreshWorld().catch(() => {});
+  }
   return body;
 }
 

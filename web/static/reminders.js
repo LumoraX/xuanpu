@@ -187,6 +187,9 @@ function showReminderDraft(draft,proposalId=null) {
   const confirm = reminderNode("button", "确认创建提醒"); confirm.id="confirm-reminder"; confirm.type="button";
   confirm.addEventListener("click", async () => {
     const current = reminderState.draft; if (!current) return;
+    if (typeof globalThis.Notification === "function" && globalThis.Notification.permission === "default") {
+      try { globalThis.Notification.requestPermission(); } catch {}
+    }
     const generation = reminderState.generation, context = reminderState.context; confirm.disabled=true;
     try {
       // 首次点击即冻结正文与幂等ID；失败重试不能悄悄改变同一请求的内容。
@@ -229,6 +232,9 @@ function editReminder(item = null) {
   const requestId=crypto.randomUUID();
   form.addEventListener("submit",async event=>{
     event.preventDefault();if(submit.disabled) return; submit.disabled=true;
+    if (typeof globalThis.Notification === "function" && globalThis.Notification.permission === "default") {
+      try { globalThis.Notification.requestPermission(); } catch {}
+    }
     const generation=reminderState.generation, context=reminderState.context;
     try {
       if(!submitted) submitted={title:title.value.trim(),due_at:item && due.value===originalWall ? item.due_at : reminderTimestamp(due.value,zone),timezone:zone,repeat:repeat.value,channels:feishu.checked ? ["inbox","feishu"] : ["inbox"],...(item ? {version:item.version} : {request_id:requestId})};

@@ -483,3 +483,316 @@ async def test_butler_proposal_resolution_and_confirm_bundle(env) -> None:
     assert (
         await client.get(f"/v1/traces/trc_audit_test/spans/tl.{call_id}/audit", headers=env.users["usr_b"])
     ).status_code == 404
+
+
+async def test_multi_entity_bundle_with_matters_and_safe_person_update(env) -> None:
+    """单次复合提案同时新建多人、增量更新旧联系人（保留原资料）、新建多事项并建立全部关系。"""
+    client = env.client
+    platform = env.world.platform
+    who = env.principals["usr_a"]
+
+    # 先建已有联系人朱佳（带手机、性别、地址与旧公司名）
+    zhujia = await platform.people.create_person(
+        who,
+        {
+            "name": "朱佳",
+            "gender": "female",
+            "organization": "上海电信",
+            "city": "上海",
+            "contacts": [{"kind": "phone", "value": "18901646624", "label": "手机", "primary": True}],
+            "extra": {"address": "上海电信信息园B4栋3楼"},
+        },
+        "seed-zhujia",
+    )
+
+    # 管家提交多实体草稿：新建袁新与何冠良 + 更新朱佳公司 + 新建 3 个项目事项 + 全部人际与项目关系
+    raw_draft = {
+        "persons": [
+            {
+                "action": "create",
+                "temp_ref": "p1",
+                "profile": {
+                    "name": "袁新",
+                    "organization": "上海理想信息产业（集团）有限公司",
+                    "city": "上海",
+                    "contacts": [{"kind": "phone", "value": "18017087533", "label": "手机", "primary": True}],
+                },
+            },
+            {
+                "action": "update",
+                "temp_ref": "p2",
+                "person_id": zhujia["id"],
+                "profile": {
+                    "name": "朱佳",
+                    "organization": "上海理想信息产业（集团）有限公司",
+                },
+            },
+            {
+                "action": "create",
+                "temp_ref": "p3",
+                "profile": {
+                    "name": "何冠良",
+                    "aliases": ["何总"],
+                    "city": "上海",
+                    "extra": {"address": "上海市半岛酒店201"},
+                },
+            },
+        ],
+        "matters": [
+            {"action": "create", "temp_ref": "m1", "title": "壁仞项目", "description": "11月22日会面沟通"},
+            {"action": "create", "temp_ref": "m2", "title": "tokenlink平台项目", "description": "11月22日会面沟通"},
+            {"action": "create", "temp_ref": "m3", "title": "教委项目", "description": "11月22日会面沟通"},
+        ],
+        "relations": [
+            {"from_ref": "p1", "target_kind": "person", "target_ref": "p3", "relation_type": "friend", "symmetric": True},
+            {"from_ref": "p1", "target_kind": "person", "target_ref": "p2", "relation_type": "colleague", "symmetric": True},
+            {"from_ref": "p1", "target_kind": "matter", "target_ref": "m1", "relation_type": "matter_role", "role": "沟通对接"},
+            {"from_ref": "p1", "target_kind": "matter", "target_ref": "m2", "relation_type": "matter_role", "role": "沟通对接"},
+            {"from_ref": "p1", "target_kind": "matter", "target_ref": "m3", "relation_type": "matter_role", "role": "沟通对接"},
+        ],
+        "note": {
+            "content": "11月22日在何总家（半岛酒店201）沟通壁仞、tokenlink、教委三个项目。",
+            "person_refs": ["p1", "p2", "p3"],
+        },
+    }
+    outcome = await resolve_native_choice(
+        platform,
+        who,
+        Choice(package="@people", entry="record", message=None, people_draft=raw_draft),
+        now=time.time(),
+    )
+    assert outcome is not None and outcome.people_draft is not None
+    # 校验朱佳增量更新已安全合并保留原手机、性别与地址
+    p2_preview = outcome.people_draft["persons"][1]
+    assert p2_preview["previous_organization"] == "上海电信"
+    assert p2_preview["expected_version"] == 1
+    assert p2_preview["profile"]["organization"] == "上海理想信息产业（集团）有限公司"
+    assert p2_preview["profile"]["gender"] == "female"
+    assert p2_preview["profile"]["contacts"][0]["value"] == "18901646624"
+    assert p2_preview["profile"]["extra"]["address"] == "上海电信信息园B4栋3楼"
+
+    # 经 /v1/assistant/proposals/{id}/confirm 提交并清理预览字段
+    req_id = "prop-multi-entity-1"
+    await platform.workspace.append_message(
+        who, "assistant", "请核对多实体草稿", req_id + ":assistant", metadata={"route": outcome.saved()}
+    )
+    submit_data = {
+        "persons": [
+            {k: v for k, v in p.items() if k not in ("similar_candidates", "previous_organization")}
+            for p in outcome.people_draft["persons"]
+        ],
+        "matters": [
+            {k: v for k, v in m.items() if k != "similar_matters"}
+            for m in outcome.people_draft["matters"]
+        ],
+        "relations": outcome.people_draft["relations"],
+        "note": outcome.people_draft["note"],
+    }
+    res = await client.post(
+        f"/v1/assistant/proposals/{req_id}/confirm", headers=hdr(env), json={"data": submit_data}
+    )
+    assert res.status_code == 200, res.text
+    result = res.json()["result"]
+    assert len(result["persons"]) == 3
+    assert len(result["matters"]) == 3
+    assert len(result["relations"]) == 5
+
+    # 验证朱佳资料更新且原联系方式与地址完好
+    updated_zj = (await platform.people.get_person(who, zhujia["id"]))["person"]
+    assert updated_zj["organization"] == "上海理想信息产业（集团）有限公司"
+    assert updated_zj["profile"]["contacts"][0]["value"] == "18901646624"
+    assert updated_zj["profile"]["extra"]["address"] == "上海电信信息园B4栋3楼"
+
+    # 验证管家只读工具 read_personal(kind="matters") 可查到新建的 3 个项目
+    from server.engine.butler.turn import ButlerTurn
+
+    turn = ButlerTurn(
+        who=who, request_id="read-m-1", trace_id="tr_m1", timezone="Asia/Shanghai", user_text="查项目"
+    )
+    m_res = await platform.butler.tools._read_personal(turn, {"kind": "matters", "query": "壁仞"}, "cm1")
+    assert not m_res.is_error and "壁仞项目" in m_res.output
+
+
+async def test_knowledge_graph_meeting_capture_orgs_traversal_and_raw_only(env) -> None:
+    """个人知识图谱完整闭环：会议记录拆解（公司+人物+项目+待办/日程/提醒+跨实体关系）、多跳穿透、项目全景与仅存原始记录。"""
+    client = env.client
+    platform = env.world.platform
+    who = env.principals["usr_a"]
+    now_ts = time.time()
+
+    # 1. 仅存原始记录（无任何人物/公司实体也可独立保存）
+    raw_only_res = await client.post(
+        "/v1/people/bundle",
+        headers=hdr(env),
+        json={
+            "request_id": "raw-only-meeting-1",
+            "bundle": {
+                "record": {
+                    "record_kind": "meeting",
+                    "title": "内部周会速记",
+                    "location": "会议室 B",
+                    "occurred_at": now_ts - 3600,
+                    "content": "今天只同步进度，暂不建档联系人。",
+                    "summary": "整体节奏正常",
+                    "decisions": ["下周继续按原计划推进"],
+                }
+            },
+        },
+    )
+    assert raw_only_res.status_code == 201, raw_only_res.text
+    assert raw_only_res.json()["record"]["record_kind"] == "meeting"
+    assert raw_only_res.json()["persons"] == []
+
+    # 2. 完整会议记录多分支拆解：2 公司（含母子公司关系）+ 2 人物 + 1 项目 + 1 待办 + 1 日程 + 1 提醒 + 跨实体关系
+    meeting_draft = {
+        "record": {
+            "record_kind": "meeting",
+            "title": "11月22日半岛酒店项目沟通会",
+            "location": "何总家（半岛酒店 201）",
+            "occurred_at": now_ts - 7200,
+            "content": "袁新（上海理想，上海电信下属公司）与何冠良何总在半岛酒店201沟通壁仞项目，下周三前袁新发技术方案。",
+            "summary": "明确壁仞项目技术对接节奏",
+            "decisions": ["袁新负责壁仞项目技术对接方案"],
+            "open_questions": ["壁仞算力资源报价口径待确认"],
+            "person_refs": ["p1", "p2"],
+            "org_refs": ["o1", "o2"],
+            "matter_refs": ["m1"],
+        },
+        "orgs": [
+            {
+                "action": "create",
+                "temp_ref": "o1",
+                "profile": {
+                    "name": "中国电信股份有限公司上海分公司",
+                    "aliases": ["上海电信"],
+                    "city": "上海",
+                },
+            },
+            {
+                "action": "create",
+                "temp_ref": "o2",
+                "profile": {
+                    "name": "上海理想信息产业（集团）有限公司",
+                    "aliases": ["上海理想"],
+                    "city": "上海",
+                    "summary": "上海电信下属公司",
+                },
+            },
+        ],
+        "persons": [
+            {
+                "action": "create",
+                "temp_ref": "p1",
+                "profile": {
+                    "name": "袁新",
+                    "organization": "上海理想信息产业（集团）有限公司",
+                    "contacts": [{"kind": "phone", "value": "18017087533", "label": "手机", "primary": True}],
+                },
+            },
+            {
+                "action": "create",
+                "temp_ref": "p2",
+                "profile": {
+                    "name": "何冠良",
+                    "aliases": ["何总"],
+                    "extra": {"address": "上海市半岛酒店201"},
+                },
+            },
+        ],
+        "matters": [
+            {"action": "create", "temp_ref": "m1", "title": "壁仞项目", "description": "算力与技术合作"},
+        ],
+        "todos": [
+            {"title": "跟进袁新发送壁仞技术对接方案", "due_at": now_ts + 86400 * 3, "matter_ref": "m1"},
+        ],
+        "events": [
+            {
+                "title": "壁仞三方技术复核会",
+                "start_at": now_ts + 86400 * 4,
+                "end_at": now_ts + 86400 * 4 + 3600,
+                "matter_ref": "m1",
+            }
+        ],
+        "reminders": [
+            {"title": "催袁新发壁仞方案", "body": "来自 11月22日半岛酒店沟通会", "due_at": now_ts + 86400 * 2},
+        ],
+        "relations": [
+            {"from_kind": "org", "from_ref": "o2", "target_kind": "org", "target_ref": "o1", "relation_type": "subsidiary_of"},
+            {"from_kind": "person", "from_ref": "p1", "target_kind": "org", "target_ref": "o2", "relation_type": "works_at"},
+            {"from_kind": "person", "from_ref": "p1", "target_kind": "person", "target_ref": "p2", "relation_type": "friend", "symmetric": True},
+            {"from_kind": "person", "from_ref": "p1", "target_kind": "matter", "target_ref": "m1", "relation_type": "matter_role", "role": "技术对接"},
+            {"from_kind": "org", "from_ref": "o2", "target_kind": "matter", "target_ref": "m1", "relation_type": "org_matter_role", "role": "合作方"},
+        ],
+    }
+    outcome = await resolve_native_choice(
+        platform,
+        who,
+        Choice(package="@people", entry="record", message=None, people_draft=meeting_draft),
+        now=now_ts,
+    )
+    assert outcome is not None and outcome.people_draft is not None
+    req_id = "prop-meeting-kg-1"
+    await platform.workspace.append_message(
+        who, "assistant", "请核对会议记录拆解草稿", req_id + ":assistant", metadata={"route": outcome.saved()}
+    )
+    submit = {
+        "record": outcome.people_draft["record"],
+        "orgs": [{k: v for k, v in o.items() if k != "similar_orgs"} for o in outcome.people_draft["orgs"]],
+        "persons": [
+            {k: v for k, v in p.items() if k not in ("similar_candidates", "previous_organization")}
+            for p in outcome.people_draft["persons"]
+        ],
+        "matters": [{k: v for k, v in m.items() if k != "similar_matters"} for m in outcome.people_draft["matters"]],
+        "todos": outcome.people_draft["todos"],
+        "events": outcome.people_draft["events"],
+        "reminders": outcome.people_draft["reminders"],
+        "relations": outcome.people_draft["relations"],
+    }
+    conf = await client.post(
+        f"/v1/assistant/proposals/{req_id}/confirm", headers=hdr(env), json={"data": submit}
+    )
+    assert conf.status_code == 200, conf.text
+    res = conf.json()["result"]
+    assert len(res["orgs"]) == 2
+    assert len(res["persons"]) == 2
+    assert len(res["matters"]) == 1
+    assert len(res["todos"]) == 1
+    assert len(res["events"]) == 1
+    assert len(res["reminders"]) == 1
+    assert len(res["relations"]) == 5
+
+    telecom_id = res["orgs"][0]["id"]
+    biren_id = res["matters"][0]["id"]
+    record_id = res["record"]["id"]
+
+    # 3. 沿着上海电信做 2 跳图谱穿透：应穿透上海理想找到袁新、壁仞项目与 11月22日会议记录
+    g_org = await client.get(f"/v1/people/graph/org/{telecom_id}?depth=2", headers=env.users["usr_a"])
+    assert g_org.status_code == 200, g_org.text
+    node_names = {n["name"] for n in g_org.json()["nodes"]}
+    assert {"中国电信股份有限公司上海分公司", "上海理想信息产业（集团）有限公司", "袁新", "壁仞项目"} <= node_names
+    assert any(r["id"] == record_id for r in g_org.json()["records"])
+
+    # 4. 项目全景查询：包含关联公司、人物、原始记录、待办、日程与提醒
+    g_mat = await client.get(f"/v1/people/graph/matter/{biren_id}?depth=2", headers=env.users["usr_a"])
+    assert g_mat.status_code == 200, g_mat.text
+    mat_body = g_mat.json()
+    assert len(mat_body["todos"]) == 1
+    assert len(mat_body["events"]) == 1
+    assert len(mat_body["reminders"]) == 1
+    assert any(r["id"] == record_id for r in mat_body["records"])
+
+    # 5. 管家只读工具覆盖 orgs_search / records_search / entity_graph
+    from server.engine.butler.turn import ButlerTurn
+
+    turn = ButlerTurn(who=who, request_id="kg-q", trace_id="tr_kg", timezone="Asia/Shanghai", user_text="查上海电信")
+    tools = platform.butler.tools
+    r_orgs = await tools._read_personal(turn, {"kind": "orgs_search", "query": "上海电信"}, "c1")
+    assert not r_orgs.is_error and "中国电信股份有限公司上海分公司" in r_orgs.output
+    r_recs = await tools._read_personal(turn, {"kind": "records_search", "record_kind": "meeting", "location": "半岛酒店"}, "c2")
+    assert not r_recs.is_error and "11月22日半岛酒店项目沟通会" in r_recs.output
+    r_graph = await tools._read_personal(turn, {"kind": "entity_graph", "entity_kind": "org", "entity_id": telecom_id, "depth": 2}, "c3")
+    assert not r_graph.is_error and "袁新" in r_graph.output and "壁仞项目" in r_graph.output
+
+    # 6. 跨用户严格隔离
+    assert (await client.get(f"/v1/people/orgs/{telecom_id}", headers=env.users["usr_b"])).status_code == 404
+    assert (await client.get(f"/v1/people/graph/org/{telecom_id}", headers=env.users["usr_b"])).status_code == 404

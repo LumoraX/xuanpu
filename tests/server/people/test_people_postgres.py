@@ -62,8 +62,8 @@ async def pg_people(
 async def test_postgres_people_full_lifecycle(
     pg_people: tuple[PostgresControlPlane, WorkspaceService, PeopleService, Principal, Principal],
 ) -> None:
-    """真实 PostgreSQL 上验证 0033 建表、CRUD、头像、关系、2跳图、合并/撤销、隔离与脱敏审计。"""
-    assert latest_version() == 33
+    """真实 PostgreSQL 上验证 0033/0034 建表、公司实体、会议记录、跨实体多跳图谱、头像、合并/撤销、隔离与脱敏审计。"""
+    assert latest_version() == 34
     control, workspace, people, alice, bob = pg_people
 
     # 新建两个人物与一个事项
@@ -135,6 +135,55 @@ async def test_postgres_people_full_lifecycle(
     assert [item["person"]["id"] for item in linked] == [p1["id"]]
     graph = await people.graph(alice, p2["id"], depth=2)
     assert {n["id"] for n in graph["nodes"]} >= {p1["id"], p2["id"], matter["id"]}
+
+    # 0034：真实 PG 上验证公司一等实体、org→org 与 person→org 关系、会议记录与跨实体多跳穿透
+    parent_org = await people.create_org(
+        alice, {"name": "中国电信股份有限公司上海分公司", "aliases": ["上海电信"], "city": "上海"}, "pg-org-1"
+    )
+    sub_org = await people.create_org(
+        alice, {"name": "上海理想信息产业（集团）有限公司", "aliases": ["上海理想"], "city": "上海"}, "pg-org-2"
+    )
+    await people.create_relation(
+        alice,
+        {
+            "from_kind": "org",
+            "from_id": sub_org["id"],
+            "target_kind": "org",
+            "target_id": parent_org["id"],
+            "relation_type": "subsidiary_of",
+        },
+        "pg-org-rel-1",
+    )
+    await people.create_relation(
+        alice,
+        {
+            "from_kind": "person",
+            "from_id": p1["id"],
+            "target_kind": "org",
+            "target_id": sub_org["id"],
+            "relation_type": "works_at",
+        },
+        "pg-org-rel-2",
+    )
+    meeting = await people.create_note(
+        alice,
+        {
+            "record_kind": "meeting",
+            "title": "PG 会议纪要",
+            "location": "半岛酒店 201",
+            "content": "与王建国讨论供应链升级。",
+            "summary": "明确方案时间表",
+            "decisions": ["下周三交付方案"],
+            "org_ids": [parent_org["id"], sub_org["id"]],
+            "person_ids": [p1["id"]],
+            "matter_ids": [matter["id"]],
+        },
+        "pg-meeting-1",
+    )
+    assert meeting["record_kind"] == "meeting" and meeting["decisions"] == ["下周三交付方案"]
+    org_graph = await people.entity_graph(alice, "org", parent_org["id"], depth=2)
+    assert {n["id"] for n in org_graph["nodes"]} >= {parent_org["id"], sub_org["id"], p1["id"]}
+    assert any(r["id"] == meeting["id"] for r in org_graph["records"])
 
     # 软合并与撤销合并（验证自引用外键顺序在 PG 上完全通过）
     merged = await people.merge_people(

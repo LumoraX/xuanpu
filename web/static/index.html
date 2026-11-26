@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>玄圃 · 个人工作站</title>
-<link rel="stylesheet" href="style.css?v=8a18def31f2f3c33">
+<link rel="stylesheet" href="style.css?v=7517076d6cc2d179">
 <link rel="stylesheet" href="workspace.css?v=4ddbccecd3565ccc">
 </head>
 <body class="unauthenticated">
@@ -49,7 +49,7 @@
   <div class="brand"><span class="brand-seal sm" aria-hidden="true">玄</span>玄圃 <span class="sub">个人工作站</span></div>
   <div class="topbar-right">
     <span id="conn-status" class="status">请先登录</span>
-    <div id="current-user" class="row hidden"><button id="notification-toggle" type="button" class="ghost hidden" aria-haspopup="dialog" aria-expanded="false" aria-controls="notifications-panel">通知</button><img id="user-avatar" class="avatar hidden" alt=""><span id="user-name"></span><button id="change-password-toggle" type="button" class="ghost hidden">改口令</button><button id="logout" type="button" class="ghost">退出</button></div>
+    <div id="current-user" class="row hidden"><a id="switch-courtyard" class="nav-switch hidden" href="entry.html" title="切换到玄圃小院工作台">切换到小院</a><button id="notification-toggle" type="button" class="ghost hidden" aria-haspopup="dialog" aria-expanded="false" aria-controls="notifications-panel">通知</button><img id="user-avatar" class="avatar hidden" alt=""><span id="user-name"></span><button id="change-password-toggle" type="button" class="ghost hidden">改口令</button><button id="logout" type="button" class="ghost">退出</button></div>
   </div>
 </header>
 <section id="password-setup" class="password-panel hidden" aria-labelledby="password-setup-title">
@@ -209,7 +209,7 @@
     </div>
     <div id="reminder-module-host"></div>
     <section id="knowledge-panel" class="reminder-preview hidden" aria-label="知识与记忆"><div class="row"><h2>知识与记忆</h2><button id="close-knowledge" type="button">收起</button></div><p id="knowledge-feedback" role="status"></p><div id="knowledge-sources"></div><div class="row"><label>检索 <input id="knowledge-query" type="search" maxlength="500"></label><button id="knowledge-search" type="button">检索</button></div><div id="knowledge-hits"></div><div class="row"><label>依据所选片段提问 <input id="knowledge-question" type="text" maxlength="500"></label><button id="knowledge-ask" type="button">提问</button></div><div id="knowledge-answer" aria-live="polite"></div><div id="knowledge-memories"></div><div class="row"><label>记一条（标为本人陈述） <input id="knowledge-assertion" type="text" maxlength="1000"></label><button id="knowledge-remember" type="button">记下</button></div></section>
-    <section id="people-panel" class="reminder-preview hidden" aria-label="人物与关系"><div class="row"><h2>人物与关系</h2><button id="people-new" type="button">新建人物</button><button id="people-toggle-trash" type="button" class="ghost">回收站</button><button id="close-people" type="button" class="ghost">收起</button></div><p id="people-feedback" role="status"></p><div class="row"><label>搜索 <input id="people-query" type="search" placeholder="姓名、别名、公司、标签…" maxlength="200"></label><label>生日月份 <select id="people-birth-month"><option value="">全部</option><option value="1">1月</option><option value="2">2月</option><option value="3">3月</option><option value="4">4月</option><option value="5">5月</option><option value="6">6月</option><option value="7">7月</option><option value="8">8月</option><option value="9">9月</option><option value="10">10月</option><option value="11">11月</option><option value="12">12月</option></select></label><button id="people-search" type="button">筛选</button></div><div id="people-list"></div><div id="people-detail"></div></section>
+    <section id="people-panel" class="reminder-preview hidden" aria-label="人物与关系"><div class="row"><h2>人物与关系</h2><button id="people-new" type="button">新建人物</button><button id="people-import" type="button" class="ghost">导入 .vcf / .csv</button><button id="people-toggle-trash" type="button" class="ghost">回收站</button><button id="close-people" type="button" class="ghost">收起</button></div><p id="people-feedback" role="status"></p><div class="row"><label>搜索 <input id="people-query" type="search" placeholder="姓名、别名、公司、标签…" maxlength="200"></label><label>生日月份 <select id="people-birth-month"><option value="">全部</option><option value="1">1月</option><option value="2">2月</option><option value="3">3月</option><option value="4">4月</option><option value="5">5月</option><option value="6">6月</option><option value="7">7月</option><option value="8">8月</option><option value="9">9月</option><option value="10">10月</option><option value="11">11月</option><option value="12">12月</option></select></label><button id="people-search" type="button">筛选</button></div><div id="people-list"></div><div id="people-detail"></div></section>
     <div id="capability-employee-host"><section id="capability-panel" class="reminder-preview hidden" aria-label="我的能力与配置"><div class="row"><h2>我的能力与配置</h2><button id="close-capabilities" type="button">收起</button></div><p id="capability-feedback" role="status"></p><div id="capability-list"></div></section></div>
   </section>
 
@@ -336,9 +336,9 @@
   <button id="notification-alert-more" type="button" class="notification-alert-more hidden">更多通知，请到通知中心查看</button>
 </aside>
 <script src="app.js?v=624b0ab58921db2b"></script>
-<script src="notification-alerts.js?v=792c67bfd3af9709"></script>
+<script src="notification-alerts.js?v=2d6ce46dc83c6537"></script>
 <script src="notification-center.js?v=d05ed649a76b8947"></script>
-<script src="reminders.js?v=4c73365fc2baf257"></script>
+<script src="reminders.js?v=2c4f522e621b56e1"></script>
 <script src="workspace.js?v=455930aea1c302e1"></script>
 <script src="workspace-forms.js?v=9d69974b0e24955b"></script>
 <script src="workspace-files.js?v=c831d2284229bd2d"></script>
@@ -351,7 +351,7 @@
 <script src="capability-operations.js?v=b372ed429790c7ed"></script>
 <script src="capability-release.js?v=35f3548cd693cbf7"></script>
 <script src="knowledge.js?v=af07aadecbbfb1d5"></script>
-<script src="people.js?v=9d6055872bab008b"></script>
+<script src="people.js?v=0ba59c89c3ab0e10"></script>
 <script src="organization-forms.js?v=9dc49322557870a3"></script>
 <script src="organization.js?v=627d9b5ce73be6cc"></script>
 <script src="shared-matters.js?v=f1e21f19a2b914d3"></script>
@@ -370,7 +370,7 @@
 <script src="finance_materials.js?v=be00f569e75318ef"></script>
 <script src="finance_compliance.js?v=7b77ed4645f3abe4"></script>
 <script src="finance_operations.js?v=f6cbdc373230e97e"></script>
-<script src="identity.js?v=f32e0581c33e604a"></script>
+<script src="identity.js?v=56a5379fe0c87738"></script>
 <script src="accounts.js?v=96487108f0ce3ca5"></script>
 <script src="secrets.js?v=1f400ca3bf2187a4"></script>
 <script src="marketplace.js?v=8dbacd008e9b94e5"></script>

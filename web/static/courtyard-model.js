@@ -10,11 +10,82 @@
   const BUTLER_SAYS = {
     list_artisans: "我翻了名册，看看谁能办。", answer_artisan: "匠人问的事你说过，我照你的原话答了。",
     rate_divergence: "我比对了几位匠人的结论。", propose: "我拟了一份草稿，等你确认。",
+    act_personal: "我直接替你把这件事整理并办好了。",
     read_personal: "我看了看你手上的事。", check_dispatch: "我去问了问进展。",
+    check_group: "我去问了问编组进展。", answer_pending: "我把你的答复转给匠人了。",
     cancel_dispatch: "我请匠人先停下。", cancel_group: "我请大家先停下。", ask_user: "匠人的问题我转给你了。",
     extend_turn: "这事要多花点时间，我把时限放宽了。", raise_budget: "这事比较大，我提高了这次的预算。",
   };
-  const BUTLER_PROPS = { list_artisans: "book", answer_artisan: "phone", rate_divergence: "magnifier", propose: "quill" };
+  const BUTLER_TOOL_BUBBLES = {
+    read_personal: "正在查询个人档案与工作台记录…",
+    act_personal: "正在为你整理并办理私人事务…",
+    propose: "正在整理待确认卡片…",
+    list_artisans: "正在查看可用匠人…",
+    dispatch_artisan: "正在派发任务给匠人…",
+    dispatch_group: "正在编排多位匠人协作…",
+    check_dispatch: "正在查看匠人进展…",
+    check_group: "正在查看编组进展…",
+    answer_pending: "正在把你的答复转给匠人…",
+    answer_artisan: "照你原话答复匠人…",
+    rate_divergence: "正在比对匠人结论…",
+    cancel_dispatch: "正在请匠人停下…",
+    cancel_group: "正在请大家停下…",
+    ask_user: "正在把问题转给你…",
+    extend_turn: "正在放宽处理时限…",
+    raise_budget: "正在调整本次预算…",
+  };
+  const THINKING_STEP = "正在理解你的请求…";
+  const BUTLER_PROPS = { list_artisans: "book", answer_artisan: "phone", rate_divergence: "magnifier", propose: "quill", act_personal: "quill", read_personal: "book", check_dispatch: "folder", check_group: "folder" };
+  const BOARD_HINT_RE = /待办|日程|提醒|看板|todo|event|reminder|schedule/i;
+  const ARCHIVE_HINT_RE = /派工|编组|审批|交接|报销|财务|dispatch|group|approval/i;
+
+  // 实体工具映射：无论是管家还是匠人调用工具，都对应到「去哪个工位 + 从架上拿起什么实体道具」。
+  function butlerToolTarget(name, hint = "") {
+    const n = String(name || "");
+    const h = String(hint || "");
+    if (n === "read_personal") {
+      if (BOARD_HINT_RE.test(h)) return { station: "tv", prop: "sticky", itemKey: "sticky" };
+      if (ARCHIVE_HINT_RE.test(h)) return { station: "cabinet", prop: "folder", itemKey: "folder" };
+      return { station: "books", prop: "book", itemKey: "contacts" };
+    }
+    if (n === "act_personal") {
+      if (BOARD_HINT_RE.test(h)) return { station: "tv", prop: "sticky", itemKey: "sticky" };
+      return { station: "books", prop: "quill", itemKey: "contacts" };
+    }
+    if (n === "propose") {
+      if (BOARD_HINT_RE.test(h)) return { station: "tv", prop: "quill", itemKey: "sticky" };
+      return { station: "books", prop: "quill", itemKey: "contacts" };
+    }
+    if (n === "list_artisans") return { station: "books", prop: "book", itemKey: "roster" };
+    if (n === "check_dispatch" || n === "check_group") return { station: "cabinet", prop: "folder", itemKey: "folder" };
+    if (n === "rate_divergence") return { station: "cabinet", prop: "magnifier", itemKey: "folder" };
+    if (n === "answer_artisan" || n === "answer_pending") return { station: null, prop: "phone", itemKey: null };
+    return { station: null, prop: BUTLER_PROPS[n] || null, itemKey: null };
+  }
+
+  function artisanToolTarget(name, station) {
+    const n = String(name || "").toLowerCase();
+    const st = station || stationFor(n);
+    if (st === "bed") return { station: "bed", prop: null, itemKey: null };
+    if (/amap|map|route|weather|geo|transit|drive|nav/.test(n)) return { station: st, prop: "compass", itemKey: "compass" };
+    if (st === "bench" || /script|exec|shell|code|python/.test(n)) return { station: st, prop: "wrench", itemKey: "wrench" };
+    if (/reimburse|payment|expense|claim|invoice|approval|finance|audit|stamp/.test(n)) return { station: st, prop: "stamp", itemKey: "stamp" };
+    if (st === "books") return { station: st, prop: "book", itemKey: "knowledge" };
+    if (st === "tv" || BOARD_HINT_RE.test(n)) return { station: st, prop: "sticky", itemKey: "sticky" };
+    if (st === "computer") {
+      if (/feishu|mail|msg|message|notify|chat/.test(n)) return { station: st, prop: "letter", itemKey: "terminal" };
+      return { station: st, prop: "magnifier", itemKey: "terminal" };
+    }
+    return { station: st, prop: "folder", itemKey: "folder" };
+  }
+
+  function toolTarget(name, options = {}) {
+    if (options.owner === "butler" || BUTLER_SAYS[name]) {
+      return butlerToolTarget(name, options.hint || "");
+    }
+    const st = options.kind === "wait" ? "bed" : stationFor(name);
+    return artisanToolTarget(name, st);
+  }
   const REASONS = {
     start_failed: "没能开工。", check_terminal: "还没办完就停下了。", check_succeeded: "这次没办成。",
     check_outputs: "办完了，但没交出成果。", check_no_pending: "还有没确认的事。", check_no_unknown: "有一步的结果不明。",
@@ -113,22 +184,60 @@
 
   const openItem = (detail, kinds) => (detail && detail.items || []).find(i => kinds.includes(i.kind) && (i.state === "open" || i.state === "forwarding"));
 
+  // 管家运行中的气泡与道具：区分初始思考、工具执行、以及工具完成后组织回复。
+  function butlerRunningPose(map, spans, root, activeRoot, details) {
+    const step = details && typeof details.step === "function" ? String(details.step() || "").trim() : "";
+    const tools = spans.filter(s => (s.kind === "tool" || s.kind === "wait") && ownerOf(map, s) === "butler").sort(byStart);
+    const runningTool = tools.filter(s => !TERMINAL.has(s.state)).pop();
+    const isReview = activeRoot !== root;
+    if (runningTool) {
+      const bubble = step && step !== THINKING_STEP
+        ? step
+        : (BUTLER_TOOL_BUBBLES[runningTool.name] || "正在处理…");
+      const target = butlerToolTarget(runningTool.name, step || runningTool.say || "");
+      return {
+        at: target.station ? "station" : "home",
+        station: target.station || null,
+        pose: target.station ? "working" : null,
+        prop: target.prop,
+        itemKey: target.itemKey,
+        bubble,
+      };
+    }
+    if (step && step !== THINKING_STEP) {
+      return isReview ? { prop: "magnifier", bubble: step } : { bubble: step };
+    }
+    if (tools.length > 0 || spans.some(s => s.kind === "dispatch")) {
+      return isReview ? { prop: "magnifier", bubble: "复核完成，正在组织回复…" } : { bubble: "处理完成，正在组织回复…" };
+    }
+    if (isReview) return { prop: "magnifier", bubble: "复核结果…" };
+    return { bubble: "我想想怎么办…" };
+  }
+
   // 角色此刻的样子：在哪儿、什么姿势、拿什么、头顶说什么。快照（刷新、已结束的 trace）直接画这个。
   function poses(spans, details) {
     const map = index(spans), result = {}, root = rootOf(spans);
+    const allRoots = roots(spans);
+    const activeRoot = allRoots.find(s => !TERMINAL.has(s.state)) || (root && !TERMINAL.has(root.state) ? root : null);
+    const latestRoot = allRoots[allRoots.length - 1] || root;
     const butler = { at: "home", pose: null, face: "open", prop: null, bubble: null, red: false };
     const ruling = openItems(spans, details).some(i => i.kind === "ruling");
     if (root) {
-      if (root.state === "waiting_input" || ruling) Object.assign(butler, { at: "table", bubble: "等你裁决", red: true, prop: null });
-      else if (root.state === "waiting_children" || busy(spans)) Object.assign(butler, { prop: "tea", face: "happy" });
-      // 管家还在想怎么办（还没派出任何人）
-      else if (root.state === "running" && !spans.some(s => s.kind === "dispatch")) Object.assign(butler, { bubble: "我想想怎么办…" });
-      else if (root.state === "completed") {
+      if ((activeRoot && activeRoot.state === "waiting_input") || root.state === "waiting_input" || ruling) {
+        Object.assign(butler, { at: "table", bubble: "等你裁决", red: true, prop: null });
+      } else if ((activeRoot && activeRoot.state === "waiting_children") || root.state === "waiting_children" || busy(spans)) {
+        Object.assign(butler, { prop: "tea", face: "happy" });
+      } else if (activeRoot && activeRoot.state === "running") {
+        Object.assign(butler, butlerRunningPose(map, spans, root, activeRoot, details));
+      } else if (latestRoot && latestRoot.state === "failed") {
+        butler.face = "dizzy";
+      } else if (root.state === "completed") {
         butler.face = "happy";
         const reply = details && typeof details.reply === "function" ? details.reply() : "";
         if (reply) butler.bubble = briefLine(reply);
+      } else if (root.state === "failed") {
+        butler.face = "dizzy";
       }
-      else if (root.state === "failed") butler.face = "dizzy";
     }
     result.butler = butler;
     for (const pkg of artisans(spans)) {
@@ -159,8 +268,16 @@
     }
     if (tool) {
       const station = tool.kind === "wait" ? "bed" : stationFor(tool.name);
-      return Object.assign(pose, { at: "station", station, pose: station === "bed" ? "sleeping" : "working",
-        face: station === "bed" ? "closed" : "open", bubble: tool.say || PLACE[station] });
+      const target = artisanToolTarget(tool.name, station);
+      return Object.assign(pose, {
+        at: "station",
+        station,
+        pose: station === "bed" ? "sleeping" : "working",
+        face: station === "bed" ? "closed" : "open",
+        prop: target.prop,
+        itemKey: target.itemKey,
+        bubble: tool.say || PLACE[station],
+      });
     }
     if (lastStep) {
       const station = lastStep.kind === "wait" ? "bed" : stationFor(lastStep.name);
@@ -205,10 +322,24 @@
         }
       } else if ((span.kind === "tool" || span.kind === "wait") && who) {
         if (who === "butler") {
-          if (fresh && BUTLER_SAYS[span.name]) beats.push({ type: "butler_tool", actor: "butler", tool: span.name, prop: BUTLER_PROPS[span.name] || null, text: BUTLER_SAYS[span.name] });
+          const prevBeat = beats[beats.length - 1];
+          const sameAsPrev = prevBeat && prevBeat.type === "butler_tool" && prevBeat.tool === span.name;
+          if (fresh && BUTLER_SAYS[span.name] && !sameAsPrev) {
+            const stepHint = details && typeof details.step === "function" ? String(details.step() || "") : "";
+            const target = butlerToolTarget(span.name, span.say || stepHint);
+            beats.push({
+              type: "butler_tool", actor: "butler", tool: span.name,
+              station: target.station, prop: target.prop, itemKey: target.itemKey,
+              text: BUTLER_SAYS[span.name],
+            });
+          }
         } else if (fresh) {
           const station = span.kind === "wait" ? "bed" : stationFor(span.name);
-          beats.push({ type: "work", actor: who, station, label: span.say || PLACE[station], span: span.span_id });
+          const target = artisanToolTarget(span.name, station);
+          beats.push({
+            type: "work", actor: who, station, prop: target.prop, itemKey: target.itemKey,
+            label: span.say || PLACE[station], span: span.span_id,
+          });
           if (TERMINAL.has(span.state)) beats.push({ type: "done_tool", actor: who, ok: span.state === "completed", span: span.span_id });
         } else if (TERMINAL.has(span.state)) {
           beats.push({ type: "done_tool", actor: who, ok: span.state === "completed", span: span.span_id });
@@ -294,5 +425,5 @@
   }
 
   globalThis.Courtyard = globalThis.Courtyard || {};
-  globalThis.Courtyard.model = { PLACE, TERMINAL, finished, openItems, briefLine, resultText, stationFor, reasonText, ownerOf, artisans, poses, diff, story, summary, howFor, index };
+  globalThis.Courtyard.model = { PLACE, TERMINAL, finished, openItems, briefLine, resultText, stationFor, toolTarget, reasonText, ownerOf, artisans, poses, diff, story, summary, howFor, index };
 })();

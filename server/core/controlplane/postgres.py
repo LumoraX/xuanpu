@@ -118,6 +118,9 @@ class PostgresControlPlane:
         from server.domains.people.postgres import PostgresPeopleStore
 
         self.people_store = PostgresPeopleStore(pool, namespace=namespace)
+        from server.domains.people.google_store import PostgresGoogleContactsStore
+
+        self.google_contacts_store = PostgresGoogleContactsStore(pool, namespace=namespace)
         from server.domains.knowledge.memory import PostgresMemoryStore
 
         self.memory_store = PostgresMemoryStore(pool, namespace=namespace)

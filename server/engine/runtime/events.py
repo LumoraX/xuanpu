@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from server.domains.identity.store import IdentityStore
     from server.engine.runtime.resolutions import ResolutionWatch
     from server.engine.tracing.config import TraceWiring
+    from server.engine.tracing.models import SpanState
 
 logger = logging.getLogger(__name__)
 
@@ -473,7 +474,12 @@ class EngineEventHub:
             await asyncio.sleep(_FLUSH_INTERVAL_SECONDS)
             await self._flush()
 
-    async def close(self) -> None:
+    async def close(
+        self,
+        *,
+        unfinished_state: SpanState | None = None,
+        unfinished_reason: str | None = None,
+    ) -> None:
         """停止分发并写完缓冲。引擎关闭后调用。"""
         if self._flusher is not None:
             self._flusher.cancel()
@@ -486,7 +492,9 @@ class EngineEventHub:
                 await self._task
         await self._flush()
         if self._tracer is not None:
-            await self._tracer.close()
+            await self._tracer.close(
+                unfinished_state=unfinished_state, unfinished_reason=unfinished_reason,
+            )
 
 
 __all__ = [

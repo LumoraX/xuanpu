@@ -121,6 +121,8 @@ class CatalogArtisanResolver:
         scanned = {s.skill_id: s for s in await asyncio.to_thread(scan_skills, package.skills_dir)}
         record = package.record
         host = self._host(tenant, package)
+        connectors = tuple(c.name for c in package.manifest.spec.connectors)
+        sandbox = package.manifest.spec.policy.sandbox
         found = []
         for entry in entries:
             skill = scanned.get(entry)
@@ -137,6 +139,9 @@ class CatalogArtisanResolver:
                 description=package.manifest.metadata.description[:2000],
                 entry_description=skill.description[:2000], host=host,
                 entry_display_name=skill.display_name,
+                connectors=connectors,
+                sandbox_shell=bool(sandbox.shell),
+                sandbox_network=bool(sandbox.network),
             ))
         return found
 

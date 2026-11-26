@@ -60,6 +60,13 @@ class MemoryDispatchStore:
                  if (r.tenant_id, r.user_id, r.trace_id) == (owner.tenant_id, owner.user_id, trace_id)]
         return tuple(sorted(found, key=lambda r: (r.created_at, r.dispatch_id)))
 
+    async def list_recent(self, owner: TraceOwner, *, limit: int = 20) -> tuple[DispatchRecord, ...]:
+        """本人最近的派工记录，按创建时间倒序。"""
+        found = [r for r in self._records.values()
+                 if (r.tenant_id, r.user_id) == (owner.tenant_id, owner.user_id)]
+        ordered = sorted(found, key=lambda r: (r.created_at, r.dispatch_id), reverse=True)
+        return tuple(ordered[:limit])
+
     async def update(
         self, owner: TraceOwner, dispatch_id: str, *, expected_version: int,
         to: DispatchState, at: datetime, host_ref: str | None = None,
