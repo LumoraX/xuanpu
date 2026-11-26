@@ -232,6 +232,10 @@ approvals:
 #   max_turn_seconds: 86400            # 60–604800；管家用 extend_turn 最多延到多久
 #   max_active_traces_per_tenant: 50   # 1–10000；企业同时进行中的派工请求数
 #   wake_interval_seconds: 2.0         # 0.2–300；多久对账一次匠人是否结束或提问（R5-C2 唤醒）
+#   reconcile_interval_seconds: 30.0   # 可选；事件驱动唤醒开启时的低频对账兜底周期（ADR 0024）
+#   serialize_user_turns: true         # 同员工输入默认按会话串行 FIFO 排队（ADR 0024）
+#   max_interrupt_merges: 3            # 0–10；单轮内三阶段强制插入合并上限
+#   max_parallel_tool_calls: 8         # 1–32；只读工具并行上限（默认按 CPU 核数在 4–16 间自动取整）
 #   max_group_members: 4               # 1–8；编组每一步最多几位匠人（R5-D）
 #   max_group_steps: 3                 # 1–5；编组计划最多几步（R5-D）
 #   max_consult_rounds: 2              # 0–5；会诊里 @ 追问最多几轮，超过由管家收口（R5-D2）

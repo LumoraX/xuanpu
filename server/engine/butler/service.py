@@ -502,7 +502,10 @@ class ButlerService:
         return json.dumps(payload, ensure_ascii=False)
 
     def start(self) -> None:
-        """启动唤醒循环。"""
+        """仅在存在启用管家的租户时启动唤醒循环（避免空占 PG LISTEN 连接）。"""
+        cfg = self._platform.butler_config
+        if not (cfg.enabled and cfg.tenants):
+            return
         self.wakeup.start()
 
     async def close(self) -> None:
@@ -546,9 +549,10 @@ def _final(task: asyncio.Task[dict[str, Any]]) -> tuple[str, dict[str, Any]]:
 
 
 def _build_wake_bus(platform: Platform) -> WakeBus:
-    """PostgreSQL 控制面复用连接池走 LISTEN/NOTIFY，其余模式用进程内合并总线。"""
+    """管家已启用且使用 PostgreSQL 控制面时走 LISTEN/NOTIFY，其余模式用进程内合并总线。"""
+    cfg = platform.butler_config
     pool = getattr(platform.store, "_pool", None)
-    if pool is not None:
+    if cfg.enabled and cfg.tenants and pool is not None:
         return PostgresWakeBus(pool)
     return MemoryWakeBus()
 

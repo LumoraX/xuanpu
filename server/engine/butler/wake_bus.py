@@ -221,17 +221,20 @@ class PostgresWakeBus:
             self._local.push_nowait(signal)
 
     async def _listen_loop(self) -> None:
-        """独占一条连接监听通道；断线后退避重连。"""
-        while not self._stopping:
+        """监听通道；检测到连接池开始关闭或停止信号时立即归还连接，避免阻塞 pool.close()。"""
+        poll = min(0.25, self._reconnect)
+        while not self._stopping and not _pool_closing(self._pool):
             conn: Any = None
             try:
                 conn = await self._pool.acquire()
                 await conn.add_listener(self._channel, self._on_notify)
-                while not self._stopping and not conn.is_closed():
-                    await asyncio.sleep(self._reconnect)
+                while not self._stopping and not conn.is_closed() and not _pool_closing(self._pool):
+                    await asyncio.sleep(poll)
             except asyncio.CancelledError:
                 raise
             except Exception:
+                if self._stopping or _pool_closing(self._pool):
+                    break
                 logger.exception("PG LISTEN 唤醒监听断开，%.1f 秒后重连", self._reconnect)
                 await asyncio.sleep(self._reconnect)
             finally:
@@ -240,6 +243,11 @@ class PostgresWakeBus:
                         await conn.remove_listener(self._channel, self._on_notify)
                     with contextlib.suppress(Exception):
                         await self._pool.release(conn)
+
+
+def _pool_closing(pool: Any) -> bool:
+    """判断 asyncpg 连接池是否已进入关闭阶段，及时释放监听连接。"""
+    return bool(getattr(pool, "_closing", False) or getattr(pool, "_closed", False))
 
 
 @dataclass

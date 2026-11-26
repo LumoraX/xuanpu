@@ -1130,6 +1130,46 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | GET /v1/assistant/groups/{group_id} | 无 | 本人编组的进展：group_id、trace_id、title、state、step、summarized、cancel_requested、version、steps（mode、members 匠人名）、members（step、member 从 1 起、dispatch_id、outcome、end_reason）、followups（step、member、asked_by、round、dispatch_id、outcome）、verdicts（step、level、reasons、rated_level、pending_id、ruled）；不含匠人正文。他人的与不存在的 404，机器身份 403 |
 | GET /v1/assistant/groups/{group_id}/messages | 无 | items：会诊消息区，按序号（seq、step、author=member/butler、member 从 1 起、round、mentions 从 1 起、text、created_at）；只追加。权限同上 |
 | GET /v1/assistant/dispatches/{dispatch_id} | 无 | 本人一次派工的细节（R7）：dispatch_id、trace_id、group_id、artisan（package、entry）、host=task/session、state、end_reason、instruction、created_at、updated_at、checks（terminal、succeeded、outputs、no_pending、no_unknown；还没验收为 null）、result（匠人回复摘录，最多 600 字；没有为 null）、items（pending_id、kind=question/approval/ruling/proxied、question、state、answer、source_quote、created_at）；不含匠人内部过程。权限同上 |
+| GET /v1/assistant/task-boards | active_only=true/false、limit=1–50 | 本人跨轮持久任务板列表（`title`、`focus`、`status`、`steps` 及 `blocked_by` DAG、版本与时间），见 ADR 0024 |
+| GET /v1/assistant/actions/{request_id} | 无 | 查询某轮自主办理动作的已撤回清单（`undone`） |
+| POST /v1/assistant/actions/{request_id}/{action_id}/undo | 无 | 一键幂等撤回本轮管家自主办理的某项个人操作（支持待办/日程/提醒/文件局部编辑/回收恢复），仅本人可用 |
+
+### 过程产物与跨节点只读接力（ADR 0025）
+
+| 方法与路径 | 请求 | 返回 |
+| --- | --- | --- |
+| GET /v1/traces/{trace_id}/artifacts | 无 | 列出某条 trace 下本人全部不可变过程产物元数据（含 `sha256`、`contains_external_input` 污点标记与 `promoted_item_id`） |
+| GET /v1/artifacts/{artifact_id}/preview | 无 | UTF-8 文本安全预览（限长截断并校验 SHA-256），仅本人可读 |
+| POST /v1/artifacts/{artifact_id}/promote | `request_id`、可选 `name` / `parent_id` / `matter_id` | 将过程产物正式转存进本人个人工作台并记录 `promoted_item_id` |
+
+### 管家造匠（Artisan Forge）与三层不可变发布节点（ADR 0025）
+
+仅租户管理员可用；`xuanpu.yaml` 修改严格走强类型 L-Control 代码 Tool，L-Content 受控 `apply_patch` 与 Hook 硬拒裸改清单。
+
+| 方法与路径 | 请求 | 返回 |
+| --- | --- | --- |
+| POST /v1/forge/drafts | `name`、`description`、`entry`、`version` 等 | 在隔离草稿区创建新匠人包骨架，返回 `draft_id` 与初始清单 |
+| POST /v1/forge/drafts/checkout | `package_name`、`version` | 从已发布不可变包检出基线创建迭代草稿（附 `built_by` 血缘） |
+| POST /v1/forge/drafts/{draft_id}/control | `op`（`add_entry`/`remove_entry`/`set_policy`/`set_connector_tools`/`upsert_eval`/`bump_version`）及强类型参数 | 经确定性代码 Tool 原子更新草稿 `xuanpu.yaml` 并校验不变量 |
+| POST /v1/forge/drafts/{draft_id}/content | `path`、`edits` / `content` | 经 `taifeng.make_apply_patch_tool` + `PreToolUseHook`/`PostToolUseHook` 安全编辑 `skills/` 或 `tests/` 并返回 Unified Diff 与静态告警 |
+| GET /v1/forge/drafts/{draft_id}/diff | 无 | 查看草稿相对基线的 Unified Diff 与清单权限变更摘要 |
+| POST /v1/forge/drafts/{draft_id}/gates | 无 | 依次执行 L1 静态校验、L2 沙盒单测与 L3 评测检查，返回门禁报告 |
+| POST /v1/forge/drafts/{draft_id}/review | `approved`、`notes` | 管家审核登记（要求 L1/L2/L3 全绿方可批准） |
+| POST /v1/forge/drafts/{draft_id}/publish | `activate` | 冻结不可变包并发布至租户注册表，同时追加一条不可变 L1 发布节点 |
+| GET /v1/releases/{layer}/{target_name} | 无 | 查询指定层级（`artisan`/`forge`/`kernel`）与目标的追加式发布节点历史 |
+| POST /v1/releases/artisan/{package_name}/rollback | `target_generation`、`reason` | 回退前执行活性核验并追加新发布节点指回已验证的历史代次 |
+| POST /v1/releases/{layer}/{target_name}/disable | `mode`（`retire`/`revoke`）、`reason` | 优雅排空或紧急熔断目标发布节点并触发 Clean Unmounting 钩子 |
+
+### 本地完整 Transcript 与跨节点透明诊断（ADR 0026）
+
+仅本人或租户管理员可读（绝不跨租户越权）；按「本节点直读 → 跨节点签名热读 → 对象存储冷归档」三态透明读取。
+
+| 方法与路径 | 查询 | 返回 |
+| --- | --- | --- |
+| GET /v1/traces/{trace_id}/transcripts | 无 | 列出该 trace 下全部 span 的本地/跨节点脱敏 Transcript 元数据索引 |
+| GET /v1/traces/{trace_id}/transcripts/{span_id} | `mode=compact\|full`、`start_line`、`end_line` | 按行号切片返回紧凑版或完整脱敏 Transcript 行与来源标记（`local`/`remote_node`/`object_store`） |
+| GET /v1/diagnostics/failed-transcripts | `limit`、`status` | 检索近期失败/超时/取消的 Transcript 索引供排障与自诊断使用 |
+| GET /internal/nodes/local/transcripts/{span_id} | `mode`、`start_line`、`end_line`（需 `X-Xuanpu-Node-Ticket` 短期 HMAC 签名票据） | 集群节点间内部只读热代理接口，读取尚未归档的本机热盘 Transcript |
 
 匠人结束或提问后，管家的交付、转问、代答说明写进员工主对话（助手消息，`request_id` 为 `butler:<事件>:<deliver|ask|proxy|approval>`，元数据 `butler` 含 `trace_id`、`dispatch_id`、`event`，交付另含 `passed`、`checks`、`review_label`）。
 
