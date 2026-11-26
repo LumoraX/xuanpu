@@ -25,8 +25,74 @@ from spec import pack_package
 EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
 CATALOG = Path(__file__).resolve().parents[3] / "lumorax-catalog"
 COMMON_SKILLS = CATALOG / "skills" / "common-skills"
+WEB_SKILLS = CATALOG / "skills" / "web-skills"
 TRAVEL_PLANNER = CATALOG / "artisans" / "travel-planner"
 DRIVER_DISPATCH = CATALOG / "artisans" / "driver-dispatch"
+WEB_RESEARCH = CATALOG / "artisans" / "web-research"
+
+
+def _pack_web_skills_for(base_url: str, tmp_path: Path) -> bytes:
+    """复制 web-skills 并将 web 连接器指向本地测试搜索服务后打包。"""
+    target = tmp_path / "web-skills-local"
+    shutil.copytree(WEB_SKILLS, target)
+    manifest_path = target / "xuanpu.yaml"
+    data = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+    data["spec"]["connectors"][0]["baseUrl"] = base_url
+    manifest_path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    return pack_package(target)
+
+
+def _start_demo_web_server(expected_token: str) -> tuple[ThreadingHTTPServer, str, list[tuple[str, dict[str, Any]]]]:
+    """起一个本机 DeepSeek Search & Fetch 兼容测试服务，校验 Bearer 鉴权与请求体。"""
+    from http.server import BaseHTTPRequestHandler
+
+    received: list[tuple[str, dict[str, Any]]] = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, format: str, *args: Any) -> None:
+            return
+
+        def do_POST(self) -> None:  # noqa: N802
+            if self.headers.get("Authorization") != f"Bearer {expected_token}":
+                self.send_response(401)
+                self.end_headers()
+                self.wfile.write(b'{"error":"unauthorized"}')
+                return
+            length = int(self.headers.get("Content-Length", "0"))
+            body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            received.append((self.path, body))
+            if self.path == "/v1/tools/search":
+                payload = {
+                    "results": [
+                        {
+                            "rerank_score": 2.4,
+                            "title": f"{body.get('query', '')} 官方介绍",
+                            "url": "https://example.com/company-profile",
+                            "snippet": "公开资料摘要",
+                            "summary": "星澜科技成立于 2022 年，专注企业智能体平台研发，总部位于上海。",
+                            "content": "",
+                        }
+                    ]
+                }
+            elif self.path == "/v1/tools/fetch":
+                payload = {
+                    "url": body.get("url", ""),
+                    "markdown": "# 星澜科技官网\n\n核心产品为玄圃企业智能体平台，2026 年开放联网调研生态。",
+                }
+            else:
+                self.send_response(404)
+                self.end_headers()
+                return
+            raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server, f"http://127.0.0.1:{server.server_address[1]}", received
 
 
 def _start_demo_map_server() -> tuple[ThreadingHTTPServer, str, str]:
@@ -92,13 +158,15 @@ async def test_shared_skills_progressive_disclosure_and_multi_artisan_reuse(
         p = world.platform
         # 1. 写入租户密钥并发布共享技能库 + 两位复用它的匠人
         await p.put_secret(world.admin, "amap-key", api_key)
+        await p.put_secret(world.admin, "deepseek-api-key", "sk-test-unused")
         await p.packages.publish(
             world.admin, _pack_common_skills_for(base_url, tmp_path), activate=True
         )
+        await p.packages.publish(world.admin, pack_package(WEB_SKILLS), activate=True)
         await p.packages.publish(world.admin, pack_package(TRAVEL_PLANNER), activate=True)
         await p.packages.publish(world.admin, pack_package(DRIVER_DISPATCH), activate=True)
 
-        # 2. 校验：纯技能库 common-skills 不出现在可用匠人列表中，两位匠人均可见
+        # 2. 校验：纯技能库不出现在可用匠人列表中，两位匠人均可见
         await p.identity.store.create_user(
             UserRecord(tenant_id="acme", user_id="usr_travel", display_name="林行", created_at=1.0)
         )
@@ -106,6 +174,7 @@ async def test_shared_skills_progressive_disclosure_and_multi_artisan_reuse(
         artisans = await p.artisans.available(who)
         artisan_pkgs = {a.ref.package for a in artisans}
         assert "common-skills" not in artisan_pkgs
+        assert "web-skills" not in artisan_pkgs
         assert {"travel-planner", "driver-dispatch"} <= artisan_pkgs
 
         # 3. 运行 travel-planner 会话：验证 deferred 渐进披露（search_skills → read_skill → call_skill → 真实地图接口 + 真实沙盒脚本）
@@ -244,3 +313,68 @@ async def test_declared_secrets_lists_package_connectors_and_config_state(world:
         assert "amap-key" in after["names"]
         amap_after = next(item for item in after["declared"] if item["name"] == "amap-key")
         assert amap_after["configured"] is True
+
+
+async def test_web_research_artisan_runs_search_and_fetch_with_sandbox_network_disabled(
+    world: Any, step: Any, tmp_path: Path
+) -> None:
+    """端到端：联网调研匠人复用 web-skills，通过 Bearer HTTP 连接器完成先搜后抓，且脚本沙盒保持断网。"""
+    demo_key = "sk-demo-deepseek-key"
+    web_server, web_base_url, received = _start_demo_web_server(demo_key)
+    try:
+        p = world.platform
+        await p.put_secret(world.admin, "deepseek-api-key", demo_key)
+        await p.packages.publish(
+            world.admin, _pack_web_skills_for(web_base_url, tmp_path), activate=True
+        )
+        await p.packages.publish(world.admin, pack_package(WEB_RESEARCH), activate=True)
+
+        await p.identity.store.create_user(
+            UserRecord(tenant_id="acme", user_id="usr_research", display_name="陈研", created_at=1.0)
+        )
+        who = Principal(role="tenant_member", tenant_id="acme", user_id="usr_research", key_id=None)
+        artisans = await p.artisans.available(who)
+        assert all(a.ref.package != "web-skills" for a in artisans)
+        research = next(a for a in artisans if a.ref.package == "web-research")
+        assert research.sandbox_network is False
+
+        world.models.script(
+            step(calls=[("r1", "search_skills", {"query": "web 联网 搜索 抓取"})]),
+            step(calls=[
+                ("r2", "call_skill", {"skill_id": "web-search", "args": {"query": "星澜科技"}, "reason": "检索目标公司公开背景"}),
+            ]),
+            step(calls=[
+                ("r3", "api__web__searchWeb", {"body": {"query": "星澜科技", "count": 5, "need_content": False}}),
+            ]),
+            step(text="已检索到星澜科技官网（https://example.com/company-profile），总部位于上海。"),
+            step(calls=[
+                ("r4", "call_skill", {"skill_id": "web-fetch", "args": {"url": "https://example.com/company-profile"}, "reason": "精读官网正文确认核心产品"}),
+            ]),
+            step(calls=[
+                ("r5", "api__web__fetchWebpage", {"body": {"url": "https://example.com/company-profile"}}),
+            ]),
+            step(text="官网正文显示其核心产品为玄圃企业智能体平台，2026 年开放联网调研生态。"),
+            step(text="调研完成：星澜科技成立于 2022 年，总部上海，核心产品为玄圃企业智能体平台。来源：https://example.com/company-profile"),
+        )
+
+        session = await p.sessions.create(who, package="web-research", entry="deep-research")
+        turn = await p.sessions.send_message(
+            who, session.session_id, "帮我联网调研一下星澜科技的公开背景和核心产品"
+        )
+        events = [event async for event in turn.stream.events()]
+        reply = "".join(
+            str(e.msg.data.get("delta", "")) for e in events if e.msg.kind == "assistant_text"
+        )
+        assert "星澜科技" in reply and "https://example.com/company-profile" in reply
+
+        all_outputs = json.dumps(
+            [r.model_dump() for r in world.models.requests], ensure_ascii=False, default=str
+        )
+        assert "玄圃企业智能体平台" in all_outputs
+        assert "[web]" in all_outputs
+        assert received == [
+            ("/v1/tools/search", {"query": "星澜科技", "count": 5, "need_content": False}),
+            ("/v1/tools/fetch", {"url": "https://example.com/company-profile"}),
+        ]
+    finally:
+        web_server.shutdown()

@@ -23,15 +23,21 @@ from spec.skills import scan_skills
 EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
 CATALOG = Path(__file__).resolve().parents[3] / "lumorax-catalog"
 COMMON = CATALOG / "skills" / "common-skills"
+WEB = CATALOG / "skills" / "web-skills"
 TRAVEL = CATALOG / "artisans" / "travel-planner"
 DRIVER = CATALOG / "artisans" / "driver-dispatch"
+RESEARCH = CATALOG / "artisans" / "web-research"
 
 
 def test_common_skills_and_artisans_validate_cleanly() -> None:
-    """共享技能库及复用它的两位匠人均通过规范校验，且无多余告警。"""
+    """共享技能库及复用它们的匠人均通过规范校验，且无多余告警。"""
     lib_report = validate_package(COMMON)
     assert lib_report.ok and lib_report.warnings == (), (lib_report.errors, lib_report.warnings)
     assert lib_report.manifest is not None and lib_report.manifest.is_library
+
+    web_report = validate_package(WEB)
+    assert web_report.ok and web_report.warnings == (), (web_report.errors, web_report.warnings)
+    assert web_report.manifest is not None and web_report.manifest.is_library
 
     # 验证分类组织（不平铺）
     categories = {s.skill_id: s.category for s in scan_skills(COMMON / "skills")}
@@ -41,6 +47,11 @@ def test_common_skills_and_artisans_validate_cleanly() -> None:
         "map-route": "geo",
         "weather": "environment",
         "departure-window": "planning",
+    }
+    web_categories = {s.skill_id: s.category for s in scan_skills(WEB / "skills")}
+    assert web_categories == {
+        "web-search": "web",
+        "web-fetch": "web",
     }
 
     # 验证高德 OpenAPI 全部 operation 为只读
@@ -52,10 +63,27 @@ def test_common_skills_and_artisans_validate_cleanly() -> None:
     assert set(api.operations) == expected_ops
     assert all(op.read_only for op in api.operations.values())
 
-    for pkg in (TRAVEL, DRIVER):
-        report = validate_package(pkg, libraries={"common-skills": COMMON})
-        assert report.ok and report.warnings == (), (pkg.name, report.errors, report.warnings)
-        assert cli_main(["validate", str(pkg), "--library", str(COMMON)]) == EXIT_OK
+    # 验证 DeepSeek Search & Fetch OpenAPI 与连接器只读声明
+    web_api = load_openapi(WEB / "apis" / "deepseek_web.yaml")
+    assert set(web_api.operations) == {"searchWeb", "fetchWebpage"}
+    assert web_api.operations["searchWeb"].method == "post"
+    assert web_api.operations["fetchWebpage"].method == "post"
+    web_conn = web_report.manifest.spec.connectors[0]
+    assert web_conn.name == "web"
+    assert web_conn.effect_of("searchWeb") == "read"
+    assert web_conn.effect_of("fetchWebpage") == "read"
+
+    travel_report = validate_package(TRAVEL, libraries={"common-skills": COMMON, "web-skills": WEB})
+    assert travel_report.ok and travel_report.warnings == (), (travel_report.errors, travel_report.warnings)
+    assert cli_main(["validate", str(TRAVEL), "--library", str(COMMON), "--library", str(WEB)]) == EXIT_OK
+
+    driver_report = validate_package(DRIVER, libraries={"common-skills": COMMON})
+    assert driver_report.ok and driver_report.warnings == (), (driver_report.errors, driver_report.warnings)
+    assert cli_main(["validate", str(DRIVER), "--library", str(COMMON)]) == EXIT_OK
+
+    research_report = validate_package(RESEARCH, libraries={"web-skills": WEB})
+    assert research_report.ok and research_report.warnings == (), (research_report.errors, research_report.warnings)
+    assert cli_main(["validate", str(RESEARCH), "--library", str(WEB)]) == EXIT_OK
 
 
 def test_departure_window_script_calculates_exact_buffers() -> None:
