@@ -36,6 +36,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 SKILLS_DIR = Path(__file__).parent / "skills"
+SOUL_PATH = SKILLS_DIR / "butler" / "SOUL.md"
 SKILL_ID = "butler"
 MODEL_TIER = "balanced"
 MAX_ITERATIONS = 12
@@ -73,10 +74,22 @@ class ButlerEngines:
                 return existing
             threads = self._data_dir / "butler" / tenant_directory(tenant) / "threads"
             await asyncio.to_thread(threads.mkdir, parents=True, exist_ok=True)
+            layers: list[taifeng.InstructionLayer] = []
+            if SOUL_PATH.is_file():
+                soul_text = await asyncio.to_thread(SOUL_PATH.read_text, encoding="utf-8")
+                layers.append(taifeng.InstructionLayer(
+                    name="butler-soul",
+                    source=soul_text,
+                    scope="engine",
+                    priority=10,
+                    cache_volatile=False,
+                ))
             pool = await taifeng.EnginePool.create(
                 skills_dir=SKILLS_DIR, threads_dir=threads,
                 model_client=await self._models.create(tenant, MODEL_TIER),
                 extra_tools=self._tools.specs(), script_executors={},
+                instruction_layers=layers or None,
+                max_parallel_tool_calls=self._platform.butler_config.max_parallel_tool_calls,
                 max_iterations=MAX_ITERATIONS, max_session_tokens=MAX_SESSION_TOKENS,
                 doom_loop_config=taifeng.DoomLoopConfig(
                     max_consecutive_repeats=3,
@@ -245,8 +258,9 @@ async def _read_reply(
     *,
     writer: LocalTranscriptWriter | None = None,
 ) -> str:
-    """读本轮事件：记下根执行 span，实时上报步骤、落盘双层 Transcript 与回复文本，按终态判定成败。"""
+    """读本轮事件：分离工具前规划预告（event: plan）与末轮最终回复，并落盘双层 Transcript。"""
     text: list[str] = []
+    last_plan = ""
     async for event in events:
         identity = event.execution
         kind = event.msg.kind
@@ -255,6 +269,15 @@ async def _read_reply(
             turn.note_root(execution_span(identity.execution_id))
             turn.note_step("正在理解你的请求…")
         elif kind == "tool_call_started":
+            # 工具调用前已输出的文本视为开场规划，推给独立 plan 流而不混入最终落盘回复
+            if text:
+                planned = "".join(text).strip()
+                if planned:
+                    last_plan = planned
+                    turn.note_plan(planned)
+                    if writer is not None:
+                        await writer.append(kind="plan", payload={"text": planned}, ts=ts)
+                text.clear()
             tool_name = str(event.msg.data.get("name", ""))
             turn.note_step(_TOOL_STEP_LABELS.get(tool_name, "正在调用内置工具处理…"))
             if writer is not None:
@@ -277,7 +300,7 @@ async def _read_reply(
                 await writer.append(kind="turn_completed", payload=dict(event.msg.data), ts=ts)
             if event.msg.data.get("end_reason") == "doom_loop_circuit_open" and not turn.has_output():
                 raise RuntimeUnavailableError("管家连续重试同一操作未能完成，输入已保留，请稍后重试")
-            reply = "".join(text).strip()
+            reply = "".join(text).strip() or last_plan
             if not reply and not turn.has_output():
                 raise RuntimeUnavailableError("管家没有给出答复，请稍后重试")
             return reply

@@ -70,8 +70,8 @@ ACT_PERSONAL_DESCRIPTION = (
     "严禁用于对外发送、组织审批、交接、共享或企业外部业务。\n"
     "支持 action：\n"
     "- capture_bundle：把随手记、会议纪要、名片或上传的文档内容一次性自动拆解并落库为原始记录+公司+人物+事项+待办+日程+提醒+跨实体关系（传 bundle，结构与 people_draft 完全一致，时间支持 UNIX 秒或 ISO-8601）；\n"
-    "- create_todo / update_todo / complete_todo / reopen_todo：新建、编辑、勾选完成或重开本人待办（传 title/description/due_at/matter_id 或 item_id）；\n"
-    "- create_event / update_event：安排或修改本人日程（传 title/start_at/end_at/timezone/description/matter_id 或 item_id）；\n"
+    "- create_todo / update_todo / complete_todo / reopen_todo / delete_todo：新建、编辑、勾选完成、重开或软删除本人待办（传 title/description/due_at/matter_id 或 item_id，均支持一键撤回）；\n"
+    "- create_event / update_event / cancel_event：安排、修改或取消本人日程（传 title/start_at/end_at/timezone/description/matter_id 或 item_id，自动返回冲突与 60 分钟内紧邻日程，取消可一键恢复）；\n"
     "- create_reminder / cancel_reminder：设置或取消本人提醒（传 title/due_at/timezone/repeat 或 reminder_id）；\n"
     "- create_matter / update_matter：新建或更新本人项目事项（传 title/description/status 或 item_id）；\n"
     "- act_followup：处理本人主动感知跟进（传 followup_id、followup_action=complete|postpone|ignore_stage|set_reminder|progress 及可选 due_at）；\n"
@@ -147,8 +147,10 @@ class ButlerTools:
                             "update_todo",
                             "complete_todo",
                             "reopen_todo",
+                            "delete_todo",
                             "create_event",
                             "update_event",
+                            "cancel_event",
                             "create_reminder",
                             "cancel_reminder",
                             "create_matter",

@@ -125,8 +125,13 @@
 - 跨引擎父子已挂接：派工 span 挂在管家根 span 下，匠人根执行挂在派工 span 下，同一条 trace（见[执行追踪](execution-trace.md#跨引擎关联tracingbindingpybutlertrace_linkpy)）。会话承载时派工器先写 `host_ref` 再发任务说明。任务承载的挂接只有单元测试覆盖（本机无法运行办公容器）。
 - 答复转给匠人后、会话审计写入前进程被终止时，重启后可能再发一次同一答复（带同一编号）。
 - 多实例同时处理同一事件时，复核可能各跑一轮管家，决定以先写者为准，副作用不重复。
-- 唤醒是轮询，延迟约为对账间隔加匠人一轮的审计落盘时间。
-- 管家每轮新建引擎，内核 `todo_write` 清单不跨轮；跨轮记忆只有主对话最近 6 条。
+- 唤醒已升级为事件驱动优先（`WakeBus` 内存快速通道 + PostgreSQL `LISTEN/NOTIFY butler_wake`）+ 低频 Reconciler 兜底（默认 30s）与条件定时器（`ConditionalTimerRegistry`），见 ADR 0024。
+- 跨轮任务状态由 `ButlerTaskBoard`（`butler_task_board` 表，迁移 0036）与 `update_task_board` 工具持久维护，并在后续轮次作为 `working_context` 自动注入。
+- **SOUL 静态注入、流式分离与私域护栏**：
+  - `server/engine/butler/skills/butler/SOUL.md` 作为静态 `InstructionLayer(priority=10, cache_volatile=False)` 注入管家引擎池；只读并行工具默认并发受 `max_parallel_tool_calls = max(4, min(cpu_count, 16))` 限制。
+  - 工具调用前的开场规划文本通过独立 SSE `event: plan` 推送并单独落盘，不再混入最终落盘回复正文。
+  - 被唤醒复核轮（`turn.wake != None`）下 `act_personal` 收窄为纯追加安全白名单，阻断二阶提示注入；`create_event` / `update_event` 由代码确定性检测时间冲突（`conflicts`）与 60 分钟内紧邻日程（`adjacent_events`）；`cancel_event` / `delete_todo` 走软回收站支持 `/undo` 一键恢复。
+  - `server/engine/butler/grant_converger.py` 提供试运行 `TraceView` → 最小权限 `ConvergedGrantProposal`（实测 Token × 1.5、严禁通配符）收敛引擎。
 - 持久任务承载的派工路径只有单元级覆盖（本机测试环境无法运行办公容器）；会话承载有端到端测试。
 - 说话约定在任务承载时随任务的 `text` 保存，员工在「更多」的交办工作里会看到这一行，也计入任务请求的幂等指纹；若将来改动约定文字，已建任务按同一请求标识重新受理会冲突（目前没有重新受理的路径）。
 - 真实模型下的误派、漏派率尚未测量：回归集与脚本已就绪（`scripts/acceptance/r5_butler_regression.py`），本环境没有真实模型凭据，未执行。

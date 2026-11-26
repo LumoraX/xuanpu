@@ -24,6 +24,11 @@ from server.domains.people.routing import hydrate_bundle_updates
 from server.domains.people.rules import merge_profile_patch
 from server.domains.proactive.models import ActionInput
 from server.domains.reminders.models import ReminderInput
+from server.engine.butler.personal_guardrails import (
+    assert_wake_personal_action_allowed,
+    detect_event_conflicts,
+    trash_personal_item,
+)
 
 if TYPE_CHECKING:
     from server.core.tenancy import Principal
@@ -348,6 +353,7 @@ async def execute_personal_action(
             "员工当前关闭了「私人事务自主办理」，请改用 propose 生成待确认草稿交由员工确认"
         )
     action = str(args.get("action") or "").strip()
+    assert_wake_personal_action_allowed(turn, action)
     req_id = turn.action_request_id()
     action_id = new_id("act")
     tz = str(args.get("timezone") or turn.timezone or "Asia/Shanghai")
@@ -506,6 +512,9 @@ async def execute_personal_action(
             "matter_id": _opt_text(args.get("matter_id")),
         }
         saved = await platform.workspace.create(who, "event", data, req_id)
+        schedule_check = await detect_event_conflicts(
+            platform, who, start_at=start_at, end_at=end_at, exclude_id=saved["id"],
+        )
         entry = {
             "action_id": action_id,
             "action": action,
@@ -515,7 +524,7 @@ async def execute_personal_action(
             "undo": {"kind": "workspace_trash", "item_id": saved["id"]},
         }
         turn.executed_actions.append(entry)
-        return {"ok": True, "action_id": action_id, "item": saved}
+        return {"ok": True, "action_id": action_id, "item": saved, **schedule_check}
 
     if action == "update_event":
         item_id = _require_text(args.get("item_id"), "item_id")
@@ -539,6 +548,13 @@ async def execute_personal_action(
         if not patch:
             raise InvalidRequestError("未提供要更新的日程字段")
         updated = await platform.workspace.update(who, item_id, patch, current["version"])
+        schedule_check = await detect_event_conflicts(
+            platform,
+            who,
+            start_at=float(updated["data"]["start_at"]),
+            end_at=float(updated["data"]["end_at"]),
+            exclude_id=item_id,
+        )
         entry = {
             "action_id": action_id,
             "action": action,
@@ -548,7 +564,23 @@ async def execute_personal_action(
             "undo": {"kind": "workspace_restore_data", "item_id": item_id, "prev_data": prev_data},
         }
         turn.executed_actions.append(entry)
-        return {"ok": True, "action_id": action_id, "item": updated}
+        return {"ok": True, "action_id": action_id, "item": updated, **schedule_check}
+
+    if action == "cancel_event":
+        item_id = _require_text(args.get("item_id"), "item_id")
+        return await trash_personal_item(
+            platform, turn, action=action, action_id=action_id,
+            expected_kind="event", item_id=item_id,
+            not_found_msg="日程不存在或已回收", title_label="已取消日程",
+        )
+
+    if action == "delete_todo":
+        item_id = _require_text(args.get("item_id"), "item_id")
+        return await trash_personal_item(
+            platform, turn, action=action, action_id=action_id,
+            expected_kind="todo", item_id=item_id,
+            not_found_msg="待办不存在或已回收", title_label="已移出待办",
+        )
 
     if action == "create_reminder":
         title = _require_text(args.get("title"), "title")
@@ -806,6 +838,17 @@ async def undo_executed_action(
 
     if kind == "workspace_trash":
         await _trash_workspace(str(undo["item_id"]))
+    elif kind == "workspace_restore_trash":
+        item_id = str(undo["item_id"])
+        try:
+            item = await platform.workspace.get(who, item_id)
+            if item.get("trashed_at") is not None:
+                await platform.workspace.restore(who, item_id, int(item["version"]))
+                undone += 1
+            else:
+                skipped += 1
+        except (NotFoundError, ConflictError):
+            skipped += 1
     elif kind == "workspace_restore_data":
         item_id = str(undo["item_id"])
         prev_data = undo.get("prev_data")

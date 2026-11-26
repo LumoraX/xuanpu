@@ -104,6 +104,8 @@ class ButlerTurn:
     """过程步骤的监听（工具开始/完成等实时进度）；监听出错不影响本轮。"""
     on_focus: Callable[[dict[str, Any]], None] | None = None
     """任务板焦点更新监听（ADR 0024）；推送实时 focus 与步骤快照给纯 Web SSE。"""
+    on_plan: Callable[[str], None] | None = None
+    """工具前开场规划预告监听（与末轮最终交付物理分离，走独立 SSE ``event: plan``）。"""
     merged_request_ids: tuple[str, ...] = ()
     """若本轮由强制插入合并产生，记录被合并的全部请求标识。"""
     prior_in_flight: dict[str, Any] | None = None
@@ -117,6 +119,15 @@ class ButlerTurn:
             self.on_focus(board_snapshot)
         except Exception:
             logger.exception("管家任务板焦点监听失败")
+
+    def note_plan(self, plan_text: str) -> None:
+        """把工具前的一句话规划推送给流式订阅者，不混入最终回复落盘。"""
+        if self.on_plan is None or not plan_text.strip():
+            return
+        try:
+            self.on_plan(plan_text.strip())
+        except Exception:
+            logger.exception("管家规划预告监听失败")
 
     def heard(self, delta: str) -> None:
         """把一段回复文本交给监听者；监听者自己的错误只记日志。"""

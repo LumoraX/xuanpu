@@ -219,6 +219,7 @@ class ButlerService:
         sent = 0
         sent_steps = 0
         sent_focus = 0
+        sent_plans = 0
         try:
             while True:
                 waiter = asyncio.ensure_future(running.changed.wait())
@@ -227,6 +228,9 @@ class ButlerService:
                 finally:
                     waiter.cancel()
                 running.changed.clear()
+                while sent_plans < len(running.plans):
+                    yield "plan", {"text": running.plans[sent_plans]}
+                    sent_plans += 1
                 while sent_steps < len(running.steps):
                     yield "step", {"text": running.steps[sent_steps]}
                     sent_steps += 1
@@ -345,7 +349,7 @@ class ButlerService:
             try:
                 receipt = await self._handle(
                     who, body, running.trace_id, running.hear, running.push_step,
-                    on_focus=running.push_focus, merge=merge,
+                    on_focus=running.push_focus, on_plan=running.push_plan, merge=merge,
                 )
                 await p.workspace.complete_route(who, "butler:" + body.request_id,
                                                  claim["token"], receipt)
@@ -390,6 +394,7 @@ class ButlerService:
                       on_text: Callable[[str], None] | None = None,
                       on_step: Callable[[str], None] | None = None, *,
                       on_focus: Callable[[dict[str, Any]], None] | None = None,
+                      on_plan: Callable[[str], None] | None = None,
                       merge: MergePayload | None = None) -> dict[str, Any]:
         """跑一轮管家并写助手消息；失败统一成可重试的错误，输入已保留。"""
         p, tenant = self._platform, who.require_tenant()
@@ -399,7 +404,7 @@ class ButlerService:
             who=who, request_id=body.request_id, trace_id=trace_id,
             timezone=body.timezone, materials=tuple(body.input_files),
             user_text=effective_text, on_text=on_text, on_step=on_step,
-            on_focus=on_focus,
+            on_focus=on_focus, on_plan=on_plan,
             merged_request_ids=merge.merged_request_ids if merge is not None else (),
             prior_in_flight=merge.prior_in_flight if merge is not None else None,
         )
@@ -569,6 +574,7 @@ class _RunningTurn:
     # 管家回复的文本增量与过程步骤（R7 流式回执）：按到达顺序累积，多个订阅者各自记读到哪里
     deltas: list[str] = field(default_factory=list)
     steps: list[str] = field(default_factory=list)
+    plans: list[str] = field(default_factory=list)
     focus_updates: list[dict[str, Any]] = field(default_factory=list)
     superseded_by: str | None = None
     superseded_merged_ids: tuple[str, ...] = ()
@@ -584,6 +590,11 @@ class _RunningTurn:
         if not self.steps or self.steps[-1] != step:
             self.steps.append(step)
             self.changed.set()
+
+    def push_plan(self, plan_text: str) -> None:
+        """记下工具前的一句话规划预告并唤醒流式订阅者。"""
+        self.plans.append(plan_text)
+        self.changed.set()
 
     def push_focus(self, snapshot: dict[str, Any]) -> None:
         """记下任务板实时焦点更新并唤醒流式订阅者。"""

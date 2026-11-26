@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+import os
+
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
 
 # 管家可以随任务提高的三项每次请求预算（R6-C）
 BUDGET_KINDS = ("tokens", "butler_turns", "artisans")
+
+
+def _default_parallel_tools() -> int:
+    """有界 CPU 感知的工具并发度：下限 4、上限 16，防止容器读宿主机大核数打爆连接池。"""
+    return max(4, min(os.cpu_count() or 4, 16))
 
 
 class ButlerConfig(BaseModel):
@@ -40,6 +47,7 @@ class ButlerConfig(BaseModel):
     reconcile_interval_seconds: float | None = Field(default=None, ge=0.2, le=300.0)
     serialize_user_turns: StrictBool = False
     max_interrupt_merges: int = Field(default=5, ge=1, le=20)
+    max_parallel_tool_calls: int = Field(default_factory=_default_parallel_tools, ge=1, le=16)
     max_group_members: int = Field(default=4, ge=1, le=8)
     max_group_steps: int = Field(default=3, ge=1, le=5)
     max_consult_rounds: int = Field(default=2, ge=0, le=5)
