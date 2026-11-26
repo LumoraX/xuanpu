@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from server.engine.butler.dispatch_store import DispatchStore
     from server.engine.butler.groups.messages import MessageStore
     from server.engine.butler.groups.store import GroupStore
+    from server.engine.butler.task_board import TaskBoardStore
     from server.engine.butler.wake_store import WakeStore
     from server.engine.runtime.receipt_store import ReceiptStore
     from server.engine.tracing.store import SpanStore
@@ -124,6 +125,11 @@ class ControlPlaneStore(Protocol):
     @property
     def group_message_store(self) -> MessageStore:
         """与控制面同后端的会诊消息区（R5-D2）。"""
+        ...
+
+    @property
+    def task_board_store(self) -> TaskBoardStore:
+        """与控制面同后端的管家跨轮持久任务板（ADR 0024）。"""
         ...
 
     # --- 租户与凭据 ---

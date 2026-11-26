@@ -136,6 +136,9 @@ class PostgresControlPlane:
         from server.engine.butler.groups.message_postgres import PostgresMessageStore
 
         self.group_message_store = PostgresMessageStore(pool, namespace=namespace)
+        from server.engine.butler.task_board import PostgresTaskBoardStore
+
+        self.task_board_store = PostgresTaskBoardStore(pool, namespace=namespace)
         self.operation_receipts = PostgresReceiptStore(pool, namespace)
         self._pool = pool
         self._namespace = namespace

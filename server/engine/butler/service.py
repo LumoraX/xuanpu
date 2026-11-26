@@ -33,8 +33,14 @@ from server.engine.butler.engine import ButlerEngines, TurnTimeout
 from server.engine.butler.groups.rater import ButlerDivergenceRater
 from server.engine.butler.groups.runner import GroupRunner
 from server.engine.butler.groups.trace import TracedGroupStore
-from server.engine.butler.pending import PendingService
+from server.engine.butler.pending import PendingService, owner_of
 from server.engine.butler.review import Reviewer
+from server.engine.butler.session_queue import (
+    ActiveSessionSlot,
+    MessageMode,  # noqa: TC001 —— Pydantic 运行时解析
+    SessionQueueCoordinator,
+)
+from server.engine.butler.task_board import board_view
 from server.engine.butler.tools import ButlerTools, has_draft
 from server.engine.butler.turn import ButlerTurn, TurnRegistry
 from server.engine.butler.wake_apply import WakeEffects
@@ -48,6 +54,7 @@ if TYPE_CHECKING:
     from server.core.tenancy import Principal
     from server.domains.work_tasks.models import WorkTaskRecord
     from server.engine.assistant.reminders import RouteOutcome
+    from server.engine.butler.session_queue import MergePayload
     from server.engine.butler.wake_bus import WakeBus
     from server.engine.runtime.models import ModelClientFactory
     from server.platform import Platform
@@ -76,6 +83,7 @@ class ButlerMessageBody(BaseModel):
     timezone: str = Field(default="Asia/Shanghai", max_length=64)
     input_files: list[InputFile] = Field(default_factory=list, max_length=8)
     location: ClientLocation | None = None
+    mode: MessageMode = "default"
 
     @field_validator("timezone")
     @classmethod
@@ -116,6 +124,8 @@ class ButlerService:
         self._locks: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
         # 进行中的轮次：键为 租户:员工:request_id；同标识重试直接回进行中回执，不再跑
         self._running: dict[str, _RunningTurn] = {}
+        self.session_queue = SessionQueueCoordinator(
+            platform, max_merges=lambda: platform.butler_config.max_interrupt_merges)
 
     async def _on_work_task_transition(self, record: WorkTaskRecord) -> None:
         """工作任务进入终态或等待本人决定时，立即向唤醒总线发事件驱动信号。"""
@@ -146,7 +156,30 @@ class ButlerService:
         if who.tenant_id is None or not self.enabled(who.tenant_id) or not who.user_id:
             return await self._route(who, body)
         await self._platform.workspace.require_employee(who)
-        running = self._start(who, body)
+        user_key = f"{who.tenant_id}:{who.user_id}"
+        merge: MergePayload | None = None
+        if body.mode == "interrupt_merge":
+            merge = await self.session_queue.interrupt_and_prepare_merge(
+                user_key, body.request_id, body.text)
+        use_queue = (
+            merge is None
+            and self.session_queue.active_slot(user_key) is not None
+            and (body.mode in ("queue", "interrupt_merge")
+                 or self._platform.butler_config.serialize_user_turns)
+            and f"{user_key}:{body.request_id}" not in self._running
+        )
+        if use_queue:
+            await self._platform.workspace.append_message(
+                who, "user", body.text, body.request_id + ":user",
+                attachments=[f.item_id for f in body.input_files])
+            _, position = await self.session_queue.enqueue(
+                user_key, body.request_id,
+                lambda: self._start(who, body, detached=True).task)
+            return {
+                "mode": "butler", "state": "queued", "request_id": body.request_id,
+                "queue_position": position,
+            }
+        running = self._start(who, body, merge=merge)
         window = self._platform.butler_config.reply_window_seconds
         try:
             done, _ = await asyncio.wait({running.task}, timeout=window)
@@ -169,7 +202,12 @@ class ButlerService:
         if who.tenant_id is None or not self.enabled(who.tenant_id) or not who.user_id:
             return await self._route(who, body)
         await self._platform.workspace.require_employee(who)
-        return self._start(who, body)
+        user_key = f"{who.tenant_id}:{who.user_id}"
+        merge: MergePayload | None = None
+        if body.mode == "interrupt_merge":
+            merge = await self.session_queue.interrupt_and_prepare_merge(
+                user_key, body.request_id, body.text)
+        return self._start(who, body, merge=merge)
 
     async def stream_events(self, body: ButlerMessageBody, running: _RunningTurn,
                             ) -> AsyncIterator[tuple[str, dict[str, Any]]]:
@@ -180,6 +218,7 @@ class ButlerService:
         yield "started", {"mode": "butler", "request_id": body.request_id, "trace_id": running.trace_id}
         sent = 0
         sent_steps = 0
+        sent_focus = 0
         try:
             while True:
                 waiter = asyncio.ensure_future(running.changed.wait())
@@ -191,26 +230,54 @@ class ButlerService:
                 while sent_steps < len(running.steps):
                     yield "step", {"text": running.steps[sent_steps]}
                     sent_steps += 1
+                while sent_focus < len(running.focus_updates):
+                    yield "focus", running.focus_updates[sent_focus]
+                    sent_focus += 1
                 if len(running.deltas) > sent:
                     yield "delta", {"text": "".join(running.deltas[sent:])}
                     sent = len(running.deltas)
+                if running.superseded_by is not None:
+                    yield "superseded", {
+                        "request_id": body.request_id,
+                        "superseded_by": running.superseded_by,
+                        "merged_request_ids": list(running.superseded_merged_ids),
+                    }
+                    return
                 if running.task.done():
                     break
         except BaseException:
             running.detached = True
             raise
+        if running.superseded_by is not None:
+            yield "superseded", {
+                "request_id": body.request_id,
+                "superseded_by": running.superseded_by,
+                "merged_request_ids": list(running.superseded_merged_ids),
+            }
+            return
         yield _final(running.task)
 
     def _start(self, who: Principal, body: ButlerMessageBody, *,
-               detached: bool = False) -> _RunningTurn:
+               detached: bool = False, merge: MergePayload | None = None) -> _RunningTurn:
         """登记并启动一轮后台任务；同一句话已在本进程里跑则复用。"""
-        key = f"{who.tenant_id}:{who.user_id}:{body.request_id}"
+        user_key = f"{who.tenant_id}:{who.user_id}"
+        key = f"{user_key}:{body.request_id}"
         running = self._running.get(key)
         if running is None:
             running = _RunningTurn(trace_id=new_id("trc"), detached=detached)
-            running.task = asyncio.create_task(self._serve(who, body, running))
+            running.task = asyncio.create_task(self._serve(who, body, running, merge=merge))
             self._running[key] = running
             running.task.add_done_callback(functools.partial(self._finished, key))
+            self.session_queue.register_active(ActiveSessionSlot(
+                user_key=user_key,
+                request_id=body.request_id,
+                text=merge.merged_text if merge is not None else body.text,
+                who=who,
+                task=running.task,
+                on_superseded=running.mark_superseded,
+                merged_request_ids=merge.merged_request_ids if merge is not None else (),
+                merge_count=merge.merge_count if merge is not None else 0,
+            ))
         return running
 
     async def resume_stale(self, tenant: str) -> int:
@@ -245,7 +312,7 @@ class ButlerService:
             logger.info("管家后台轮次以错误结束：%s", type(task.exception()).__name__)
 
     async def _serve(self, who: Principal, body: ButlerMessageBody,
-                     running: _RunningTurn) -> dict[str, Any]:
+                     running: _RunningTurn, *, merge: MergePayload | None = None) -> dict[str, Any]:
         """后台的一轮：认领、续租、处理、完成。回复窗口过后失败的，在主对话写明并保留原话。"""
         p = self._platform
         lock = self._locks.setdefault(f"{who.tenant_id}:{who.user_id}:{body.request_id}",
@@ -255,11 +322,12 @@ class ButlerService:
             await p.workspace.append_message(
                 who, "user", body.text, body.request_id + ":user",
                 attachments=[f.item_id for f in body.input_files])
+            claim_body = body.model_dump(exclude={"request_id", "mode"}, exclude_none=True)
             try:
                 claim = await p.workspace.claim_route(
                     who,
                     "butler:" + body.request_id,
-                    body.model_dump(exclude={"request_id"}, exclude_none=True),
+                    claim_body,
                 )
             except RouteBusyError:
                 # 同一句话正由另一实例处理（租约未过期）：照常回「进行中」，结果由那边写进主对话
@@ -271,12 +339,13 @@ class ButlerService:
             resumes = int(claim.get("resumes", 0)) + (1 if "butler_input" in claim else 0)
             await p.workspace.annotate_route(
                 who, "butler:" + body.request_id, claim["token"],
-                {"butler_input": body.model_dump(mode="json", exclude={"request_id"}, exclude_none=True),
+                {"butler_input": body.model_dump(mode="json", exclude={"request_id", "mode"}, exclude_none=True),
                  "resumes": resumes})
             renewer = asyncio.create_task(self._renew(who, body.request_id, claim["token"]))
             try:
                 receipt = await self._handle(
-                    who, body, running.trace_id, running.hear, running.push_step
+                    who, body, running.trace_id, running.hear, running.push_step,
+                    on_focus=running.push_focus, merge=merge,
                 )
                 await p.workspace.complete_route(who, "butler:" + body.request_id,
                                                  claim["token"], receipt)
@@ -319,16 +388,25 @@ class ButlerService:
 
     async def _handle(self, who: Principal, body: ButlerMessageBody, trace_id: str,
                       on_text: Callable[[str], None] | None = None,
-                      on_step: Callable[[str], None] | None = None) -> dict[str, Any]:
+                      on_step: Callable[[str], None] | None = None, *,
+                      on_focus: Callable[[dict[str, Any]], None] | None = None,
+                      merge: MergePayload | None = None) -> dict[str, Any]:
         """跑一轮管家并写助手消息；失败统一成可重试的错误，输入已保留。"""
         p, tenant = self._platform, who.require_tenant()
         await p.quota.check_new_turn(tenant)
-        turn = ButlerTurn(who=who, request_id=body.request_id, trace_id=trace_id,
-                          timezone=body.timezone, materials=tuple(body.input_files),
-                          user_text=body.text, on_text=on_text, on_step=on_step)
+        effective_text = merge.merged_text if merge is not None else body.text
+        turn = ButlerTurn(
+            who=who, request_id=body.request_id, trace_id=trace_id,
+            timezone=body.timezone, materials=tuple(body.input_files),
+            user_text=effective_text, on_text=on_text, on_step=on_step,
+            on_focus=on_focus,
+            merged_request_ids=merge.merged_request_ids if merge is not None else (),
+            prior_in_flight=merge.prior_in_flight if merge is not None else None,
+        )
+        self.session_queue.bind_turn(f"{who.tenant_id}:{who.user_id}", body.request_id, turn)
         await p.sessions.admit_routing(tenant)
         try:
-            reply = await self.engines.run(turn, await self._payload(who, body))
+            reply = await self.engines.run(turn, await self._payload(who, body, merge=merge))
         except TurnTimeout as exc:
             reply = _timed_out(turn, exc)
         except PlatformError:
@@ -342,14 +420,22 @@ class ButlerService:
         saved = outcome.saved()
         if turn.executed_actions:
             saved["executed_actions"] = list(turn.executed_actions)
+        butler_meta: dict[str, Any] = {"trace_id": turn.trace_id}
+        if turn.merged_request_ids:
+            butler_meta["merged_request_ids"] = list(turn.merged_request_ids)
         await p.workspace.append_message(
             who, "assistant", outcome.message or "已办妥。", body.request_id + ":assistant",
-            metadata={"route": saved, "butler": {"trace_id": turn.trace_id}})
-        return {"mode": "butler", "state": "done", "request_id": body.request_id,
-                "trace_id": turn.trace_id,
-                **saved, "dispatches": [_dispatch_view(r) for r in turn.dispatches],
-                "groups": list(turn.groups),
-                "answered_pending": list(turn.answered)}
+            metadata={"route": saved, "butler": butler_meta})
+        result: dict[str, Any] = {
+            "mode": "butler", "state": "done", "request_id": body.request_id,
+            "trace_id": turn.trace_id,
+            **saved, "dispatches": [_dispatch_view(r) for r in turn.dispatches],
+            "groups": list(turn.groups),
+            "answered_pending": list(turn.answered),
+        }
+        if turn.merged_request_ids:
+            result["merged_request_ids"] = list(turn.merged_request_ids)
+        return result
 
     def _outcome(self, turn: ButlerTurn, reply: str) -> RouteOutcome:
         """回复文本为准；有草稿时带上卡片并以本请求作为待确认标识。"""
@@ -360,8 +446,10 @@ class ButlerService:
         return replace(turn.proposal, message=reply or turn.proposal.message,
                        proposal_id=turn.request_id if has_draft(turn.proposal) else None)
 
-    async def _payload(self, who: Principal, body: ButlerMessageBody) -> str:
-        """本轮输入：最近对话、当前时间与原话，全部作为数据交给管家。"""
+    async def _payload(
+        self, who: Principal, body: ButlerMessageBody, *, merge: MergePayload | None = None,
+    ) -> str:
+        """本轮输入：最近对话、活跃任务板工作记忆、当前时间与原话，全部作为数据交给管家。"""
         recent = await self._platform.workspace.messages(who, limit=HISTORY_MESSAGES + 1,
                                                          latest=True, private_only=True)
         history = [{"role": m["role"], "text": m["text"][-2000:]} for m in recent
@@ -378,6 +466,17 @@ class ButlerService:
             for s in raw_skills
             if s["data"].get("enabled", True)
         ][:8]
+        owner = owner_of(who)
+        active_boards = await self._platform.store.task_board_store.list_active(owner, limit=5)
+        recent_dispatches = await self._platform.dispatches.list_recent(owner, limit=5)
+        working_context: dict[str, Any] = {
+            "task_boards": [board_view(b) for b in active_boards],
+            "active_dispatches": [
+                _dispatch_view(d) for d in recent_dispatches if d.active
+            ],
+        }
+        if merge is not None and merge.prior_in_flight is not None:
+            working_context["prior_in_flight"] = merge.prior_in_flight
         payload: dict[str, Any] = {
             "now": datetime.fromtimestamp(self._now(), ZoneInfo(body.timezone)).isoformat(),
             "timezone": body.timezone, "turn_seconds": self._platform.butler_config.turn_seconds,
@@ -388,8 +487,10 @@ class ButlerService:
                 "auto_execute_personal": bool(settings.get("auto_execute_personal", True)),
                 "skills": skills,
             },
+            "working_context": working_context,
             "history": history, "pending_questions": questions,
-            "materials": [f.model_dump() for f in body.input_files], "text": body.text,
+            "materials": [f.model_dump() for f in body.input_files],
+            "text": merge.merged_text if merge is not None else body.text,
         }
         if body.location is not None:
             payload["location"] = body.location.model_dump(exclude_none=True)
@@ -400,7 +501,8 @@ class ButlerService:
         self.wakeup.start()
 
     async def close(self) -> None:
-        """先停后台轮次与唤醒，再关引擎池。被取消的一轮不写半截回复，认领随之释放。"""
+        """先停后台轮次、队列与唤醒，再关引擎池。被取消的一轮不写半截回复，认领随之释放。"""
+        await self.session_queue.close()
         running = [r.task for r in self._running.values()]
         for task in running:
             task.cancel()
@@ -467,6 +569,9 @@ class _RunningTurn:
     # 管家回复的文本增量与过程步骤（R7 流式回执）：按到达顺序累积，多个订阅者各自记读到哪里
     deltas: list[str] = field(default_factory=list)
     steps: list[str] = field(default_factory=list)
+    focus_updates: list[dict[str, Any]] = field(default_factory=list)
+    superseded_by: str | None = None
+    superseded_merged_ids: tuple[str, ...] = ()
     changed: asyncio.Event = field(default_factory=asyncio.Event)
 
     def hear(self, delta: str) -> None:
@@ -479,3 +584,14 @@ class _RunningTurn:
         if not self.steps or self.steps[-1] != step:
             self.steps.append(step)
             self.changed.set()
+
+    def push_focus(self, snapshot: dict[str, Any]) -> None:
+        """记下任务板实时焦点更新并唤醒流式订阅者。"""
+        self.focus_updates.append(snapshot)
+        self.changed.set()
+
+    def mark_superseded(self, new_request_id: str, merged_ids: tuple[str, ...]) -> None:
+        """标记本轮已被强制插入合并取代，通知流式订阅者平滑切换。"""
+        self.superseded_by = new_request_id
+        self.superseded_merged_ids = merged_ids
+        self.changed.set()

@@ -78,6 +78,9 @@ class InMemoryControlPlane:
         from server.engine.butler.groups.messages import MemoryMessageStore
 
         self.group_message_store = MemoryMessageStore()
+        from server.engine.butler.task_board import MemoryTaskBoardStore
+
+        self.task_board_store = MemoryTaskBoardStore()
         self.reminder_store = InMemoryReminderStore(
             lambda tenant_id: (
                 tenant_id in self._tenants and self._tenants[tenant_id].status == "active"

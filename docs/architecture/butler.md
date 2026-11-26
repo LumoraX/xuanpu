@@ -60,7 +60,8 @@
 
 ## 常在线（R6，[ADR 0020](../decisions/0020-butler-always-online.md)）
 
-- **回执与一轮解耦**（`service.py`）：一轮是平台里的后台任务，请求至多等 `butler.reply_window_seconds`（默认 20 秒）。办完回完整回执（`state=done`）；没办完回 `state=running`、`trace_id`，这一轮继续，结束后回复写进主对话。员工可以接着说下一句，各轮互不阻塞。同一句话（同一 `request_id`）正由另一实例处理、租约未过期时，这边也回 `state=running`（`trace_id` 为空、`elsewhere=true`），不报 409，结果由持有者写进主对话；同一标识换了内容仍是 409 冲突（`RouteBusyError` 只用于「进行中」）。平台关闭时取消进行中的轮次，不写半截回复。
+- **回执与一轮解耦**（`service.py`、`session_queue.py`，ADR 0024）：一轮是平台里的后台任务，请求至多等 `butler.reply_window_seconds`（默认 20 秒）。办完回完整回执（`state=done`）；没办完回 `state=running`、`trace_id`，这一轮继续，结束后回复写进主对话。开启 `serialize_user_turns` 或显式传 `mode=queue` 时，同员工主会话按 FIFO 顺序排队（先落盘原话并回 `state=queued`）；显式传 `mode=interrupt_merge` 时按副作用阶段（无写直接取消合并 / 仅有可撤回私域写入倒序回滚合并 / 已有派工或编组保护性合并）安全重跑，被取代流的 SSE 收到 `event: superseded`。
+- **跨轮任务板与工作记忆**（`task_board.py`，迁移 0036，ADR 0024）：按 `(tenant_id, user_id)` 持久化 `ButlerTaskBoard`（含 `focus`、`steps[]` 与 `blocked_by` DAG 拓扑环校验），管家经 `update_task_board` 实时维护并推送 SSE `focus` 事件，同时对外提供只读接口 `GET /v1/assistant/task-boards`。每轮输入 JSON 在 `working_context` 字段自动注入本人活跃任务板与进行中派工摘要（不混入静态 `system_prompt`）。
 - **动态时限**（`engine.py`、`limits.py`）：可改期的 `asyncio.Timeout`，默认 `turn_seconds`；`extend_turn(seconds, reason)` 从现在起延长，至多到本轮开始后 `max_turn_seconds`（默认 1 天，上限 7 天），记审计 `butler_turn_extended`。输入带 `turn_seconds`，说明里要求预计超时就一开始延长；本轮用掉六成时限后，每个工具输出末尾附「本轮剩余约 N 秒」与延长提示（`limits.time_hint`，只提示，不替管家延长；纯文本生成没有工具调用时看不到这条提示）。到时限是正常结局（`TurnTimeout`）：回复说明这一轮先停下、已交出的工作仍在进行，不报 503。
 - **预算随任务提高**（`limits.py`）：`max_*_per_trace` 是起始预算；`raise_budget(budget, to, reason)` 提高这次请求的 token、管家轮数或匠人数，至多到 `max_*_per_trace_ceiling`，记审计 `butler_budget_raised`（含 `trace_id`）。`budget_config` 读出后叠加到起始预算，交给派工、编组提交、复核与会诊比对四处原有检查。租户每日 token 配额不变。
 - **中断重跑**（`service.resume_stale`、`wakeup.py`）：唤醒循环每轮先查本租户「认领中但租约已过期」的管家认领（`workspace.stale_routes`，持有进程已退出；失败释放的租约为 0，不在其中），按记下的原始输入与同一标识重跑一次；重跑过仍中断的在主对话写明没处理完并释放认领。

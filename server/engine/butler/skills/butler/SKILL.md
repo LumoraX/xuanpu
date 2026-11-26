@@ -5,7 +5,7 @@ version: 1.0.0
 type: composite
 entry: true
 strict_tool_names: true
-tool_names: [propose, act_personal, read_personal, list_artisans, dispatch_artisan, check_dispatch, cancel_dispatch, answer_pending, answer_artisan, ask_user, dispatch_group, cancel_group, check_group, rate_divergence, extend_turn, raise_budget]
+tool_names: [propose, act_personal, read_personal, list_artisans, dispatch_artisan, check_dispatch, cancel_dispatch, answer_pending, answer_artisan, ask_user, dispatch_group, cancel_group, check_group, rate_divergence, extend_turn, raise_budget, update_task_board]
 inference:
   reasoning_effort: low
 ---

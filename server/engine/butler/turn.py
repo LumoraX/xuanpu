@@ -102,6 +102,21 @@ class ButlerTurn:
     """回复文本增量的监听（R7 流式回执）；不改变回复本身，监听出错不影响本轮。"""
     on_step: Callable[[str], None] | None = None
     """过程步骤的监听（工具开始/完成等实时进度）；监听出错不影响本轮。"""
+    on_focus: Callable[[dict[str, Any]], None] | None = None
+    """任务板焦点更新监听（ADR 0024）；推送实时 focus 与步骤快照给纯 Web SSE。"""
+    merged_request_ids: tuple[str, ...] = ()
+    """若本轮由强制插入合并产生，记录被合并的全部请求标识。"""
+    prior_in_flight: dict[str, Any] | None = None
+    """阶段 3 保护性合并时继承的在途派工/编组摘要。"""
+
+    def note_focus(self, board_snapshot: dict[str, Any]) -> None:
+        """把最新任务板快照推送给流式订阅者。"""
+        if self.on_focus is None:
+            return
+        try:
+            self.on_focus(board_snapshot)
+        except Exception:
+            logger.exception("管家任务板焦点监听失败")
 
     def heard(self, delta: str) -> None:
         """把一段回复文本交给监听者；监听者自己的错误只记日志。"""

@@ -43,10 +43,10 @@ if TYPE_CHECKING:
 TOOL_NAMES = ("propose", "act_personal", "read_personal", "list_artisans", "dispatch_artisan", "check_dispatch",
               "cancel_dispatch", "answer_pending", "answer_artisan", "ask_user",
               "dispatch_group", "cancel_group", "check_group", "rate_divergence",
-              "extend_turn", "raise_budget")
+              "extend_turn", "raise_budget", "update_task_board")
 _WAKE_ONLY = frozenset({"answer_artisan", "ask_user"})
 _ANY_TURN = frozenset({"read_personal", "list_artisans", "check_dispatch", "check_group",
-                       "extend_turn", "raise_budget"})
+                       "extend_turn", "raise_budget", "update_task_board"})
 _LIST_MAX = 20
 _ERRORS_MAX = 8
 # propose 的 choice 结构：与分流共用同一份内置能力约定（包名带 @，草稿字段名固定），
@@ -249,6 +249,32 @@ class ButlerTools:
             *self._c2_specs(),
             *self._group_specs(),
             *self._limit_specs(),
+            self._spec(
+                "update_task_board",
+                "创建或更新当前 trace 的跨轮持久任务板（含 title、实时 focus、status 与支持 blocked_by DAG 的步骤列表），"
+                "用于多步任务防跨轮失忆并同步展示给员工。",
+                {
+                    "title": {"type": "string", "description": "任务板标题（1–160 字）"},
+                    "focus": {"type": ["string", "null"], "description": "当前正在推进的一句话焦点"},
+                    "status": {"type": "string", "enum": ["active", "completed", "failed", "cancelled"]},
+                    "steps": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "string"},
+                                "title": {"type": "string"},
+                                "status": {"type": "string", "enum": ["pending", "in_progress", "done", "skipped", "failed"]},
+                                "blocked_by": {"type": "array", "items": {"type": "string"}},
+                                "ref": {"type": ["string", "null"]},
+                            },
+                            "required": ["id", "title"],
+                        },
+                    },
+                },
+                ["title"],
+                self._update_task_board,
+            ),
             self._spec("rate_divergence", "（仅会诊比对时）登记各位匠人结论的分歧度与综合。",
                        {"level": {"type": "string", "enum": ["low", "medium", "high"],
                                   "description": "low 措辞差异；medium 评估不同；high 结论矛盾"},
@@ -536,3 +562,32 @@ class ButlerTools:
             "entry": record.artisan.entry,
             "materials": list(record.materials),
         }))
+
+    async def _update_task_board(self, turn: ButlerTurn, args: dict[str, Any], _call: str,
+                                 ) -> taifeng.ToolResult:
+        """创建或更新当前 trace 的跨轮持久任务板，并推送实时焦点给纯 Web 订阅者。"""
+        from datetime import UTC, datetime
+
+        from server.core.ids import new_id
+        from server.engine.butler.task_board import TaskBoardRecord, TaskBoardStep, board_view
+
+        owner = turn.owner()
+        now = datetime.fromtimestamp(self._now(), UTC)
+        raw_steps = args.get("steps") or []
+        steps = tuple(TaskBoardStep.model_validate(s) for s in raw_steps)
+        record = TaskBoardRecord(
+            board_id=new_id("btb"),
+            tenant_id=owner.tenant_id,
+            user_id=owner.user_id,
+            trace_id=turn.trace_id,
+            title=str(args["title"]).strip(),
+            focus=str(args["focus"]).strip() if isinstance(args.get("focus"), str) and args["focus"].strip() else None,
+            status=args.get("status") or "active",
+            steps=steps,
+            created_at=now,
+            updated_at=now,
+        )
+        saved = await self._platform.store.task_board_store.upsert(owner, record)
+        snapshot = board_view(saved)
+        turn.note_focus(snapshot)
+        return taifeng.ToolResult.ok(_json(snapshot))

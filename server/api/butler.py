@@ -94,6 +94,23 @@ def butler_router(platform: Platform) -> APIRouter:
         """本人仍待处理的项（不含已答复、已解决与代答记录）。"""
         return {"items": [view(i) for i in await platform.butler.pending.list(who)]}
 
+    @router.get("/v1/assistant/task-boards")
+    async def task_boards(who: Caller, active_only: bool = False, limit: int = 20) -> dict[str, Any]:
+        """本人跨轮持久任务板列表（供纯 Web Live Focus 与 Aux Pane 展示）。"""
+        from server.engine.butler.pending import owner_of
+        from server.engine.butler.task_board import board_view
+
+        await platform.workspace.require_employee(who)
+        owner = owner_of(who)
+        bounded = max(1, min(limit, 50))
+        store = platform.store.task_board_store
+        records = (
+            await store.list_active(owner, limit=bounded)
+            if active_only
+            else await store.list_recent(owner, limit=bounded)
+        )
+        return {"items": [board_view(b) for b in records]}
+
     @router.post("/v1/assistant/pending/{pending_id}/answer")
     async def answer(pending_id: str, body: PendingAnswerBody, who: Caller) -> dict[str, Any]:
         """答复一个问题项；同一请求标识重试回原结果。"""
