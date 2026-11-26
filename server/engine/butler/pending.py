@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from server.core.controlplane.models import AuditQuery
 from server.core.errors import ConflictError, InvalidRequestError
+from server.engine.butler.wake_bus import WakeSignal
 from server.engine.butler.wake_models import AnswerSource
 from server.engine.tracing.models import TraceOwner
 
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
     from server.core.tenancy import Principal
+    from server.engine.butler.wake_bus import WakeBus
     from server.engine.butler.wake_models import PendingItem
     from server.engine.runtime.sessions import Turn
     from server.platform import Platform
@@ -50,10 +52,13 @@ def forward_text(item: PendingItem, answer: str, source: AnswerSource) -> str:
 class PendingService:
     """待本人处理项的读取与答复。"""
 
-    def __init__(self, platform: Platform, *, now: Callable[[], float]) -> None:
-        """依赖由平台注入。"""
+    def __init__(
+        self, platform: Platform, *, now: Callable[[], float], bus: WakeBus | None = None,
+    ) -> None:
+        """依赖由平台注入；给出 ``bus`` 时在答复轮次结束或裁决后发事件驱动唤醒信号。"""
         self._platform = platform
         self._now = now
+        self._bus = bus
         self._drains: set[asyncio.Task[None]] = set()
         self._ruler: Ruler | None = None
 
@@ -105,10 +110,16 @@ class PendingService:
         await self._ruler(owner, item, answer, request_id)
         if item.state == "answered":
             return item
-        return await self._platform.store.wake_store.update_pending(
+        updated = await self._platform.store.wake_store.update_pending(
             owner, item.pending_id, expected_version=item.version, at=self._at(),
             state="answered", answer=answer, answer_source=AnswerSource(kind="employee", quote=answer),
             answer_request_id=request_id)
+        if self._bus is not None:
+            dispatch = await self._platform.dispatches.get(owner, item.dispatch_id)
+            if dispatch.group_id is not None:
+                await self._bus.publish(WakeSignal(
+                    tenant_id=owner.tenant_id, kind="group", target_id=dispatch.group_id))
+        return updated
 
     async def forward(self, who: Principal, item: PendingItem, answer: str, source: AnswerSource,
                       *, request_id: str) -> PendingItem:
@@ -123,7 +134,7 @@ class PendingService:
         message = forward_text(item, answer, source)
         if not await self._already_sent(who.require_tenant(), item):
             started = await self._platform.sessions.send_message(who, item.host_ref, message)
-            self._drain(started)
+            self._drain(started, item)
         await self._resume_dispatch(owner, item.dispatch_id)
         return await store.update_pending(owner, item.pending_id, expected_version=item.version,
                                           at=self._at(), state="answered")
@@ -152,12 +163,15 @@ class PendingService:
                 await store.update_pending(owner, item.pending_id, expected_version=item.version,
                                            at=self._at(), state="resolved")
 
-    def _drain(self, started: Turn) -> None:
-        """读完匠人这一轮的事件流；内容已由事件枢纽进审计与追踪。"""
+    def _drain(self, started: Turn, item: PendingItem) -> None:
+        """读完匠人这一轮的事件流并在审计落盘后立即发射唤醒信号。"""
         async def consume() -> None:
-            """逐条丢弃。"""
+            """逐条消费并在终态落盘后通知唤醒总线。"""
             async for _ in started.stream.events():
                 pass
+            if self._bus is not None:
+                await self._bus.publish(WakeSignal(
+                    tenant_id=item.tenant_id, kind="dispatch", target_id=item.dispatch_id))
 
         task = asyncio.ensure_future(consume())
         self._drains.add(task)

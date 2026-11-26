@@ -61,7 +61,11 @@ async def test_artisans_list_only_for_employee(butler: dict[str, Any]) -> None:
     """本人可用的匠人；机器身份 403。"""
     items = (await butler["http"].get("/v1/assistant/artisans")).json()["items"]
     assert {(i["package"], i["entry"]) for i in items} >= {("support-desk", "triage")}
-    assert all(set(i) == {"package", "entry", "description", "host"} for i in items)
+    expected_keys = {
+        "package", "entry", "name", "entry_name", "description", "host",
+        "accepts_materials", "connectors", "capabilities",
+    }
+    assert all(set(i) == expected_keys for i in items)
     butler["as"]["who"] = await employee(butler["world"], "usr_bob")
     assert (await butler["http"].get("/v1/assistant/artisans")).status_code == 200
     butler["as"]["who"] = butler["world"].member

@@ -25,6 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from server.core.errors import PlatformError, RouteBusyError, RuntimeUnavailableError
 from server.core.ids import new_id
+from server.domains.work_tasks.models import TERMINAL as WORK_TASK_TERMINAL
 from server.domains.work_tasks.models import InputFile  # noqa: TC001 —— Pydantic 运行时解析
 from server.engine.assistant.service import RouteBody
 from server.engine.butler.dispatcher import Dispatcher
@@ -37,6 +38,7 @@ from server.engine.butler.review import Reviewer
 from server.engine.butler.tools import ButlerTools, has_draft
 from server.engine.butler.turn import ButlerTurn, TurnRegistry
 from server.engine.butler.wake_apply import WakeEffects
+from server.engine.butler.wake_bus import MemoryWakeBus, PostgresWakeBus, WakeSignal
 from server.engine.butler.wakeup import Wakeup
 
 if TYPE_CHECKING:
@@ -44,7 +46,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from server.core.tenancy import Principal
+    from server.domains.work_tasks.models import WorkTaskRecord
     from server.engine.assistant.reminders import RouteOutcome
+    from server.engine.butler.wake_bus import WakeBus
     from server.engine.runtime.models import ModelClientFactory
     from server.platform import Platform
 
@@ -93,8 +97,9 @@ class ButlerService:
         self._platform = platform
         self._now = now
         self.turns = TurnRegistry()
-        self.dispatcher = Dispatcher(platform, now=now)
-        self.pending = PendingService(platform, now=now)
+        self.wake_bus: WakeBus = _build_wake_bus(platform)
+        self.dispatcher = Dispatcher(platform, now=now, bus=self.wake_bus)
+        self.pending = PendingService(platform, now=now, bus=self.wake_bus)
         self.group_store = TracedGroupStore(platform.store.group_store, platform.store.trace_store,
                                             lambda: platform.runtimes.defaults.execution_trace)
         self.groups = GroupRunner(platform, self.dispatcher, self.group_store, now=now)
@@ -105,10 +110,26 @@ class ButlerService:
         self.pending.bind_ruling(self.groups.rule)
         self.wakeup = Wakeup(platform, WakeEffects(platform, self.pending, now=now,
                                                    groups=self.groups),
-                             Reviewer(platform, self.engines), now=now, groups=self.groups)
+                             Reviewer(platform, self.engines), now=now, groups=self.groups,
+                             bus=self.wake_bus)
+        platform.work_tasks.store.transition_listeners.append(self._on_work_task_transition)
         self._locks: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
         # 进行中的轮次：键为 租户:员工:request_id；同标识重试直接回进行中回执，不再跑
         self._running: dict[str, _RunningTurn] = {}
+
+    async def _on_work_task_transition(self, record: WorkTaskRecord) -> None:
+        """工作任务进入终态或等待本人决定时，立即向唤醒总线发事件驱动信号。"""
+        if not self.enabled(record.tenant_id):
+            return
+        if record.status in WORK_TASK_TERMINAL or record.status == "waiting_user":
+            await self.wake_bus.publish(WakeSignal(
+                tenant_id=record.tenant_id, kind="task", target_id=record.task_id))
+
+    async def wait_turn_idle(self, trace_id: str, *, timeout: float = 5.0) -> None:
+        """若本实例上发起该 trace 的管家轮次尚未收尾，先等它写完回复与 trace 再做事件快路径唤醒。"""
+        active = [r.task for r in self._running.values() if r.trace_id == trace_id and not r.task.done()]
+        if active:
+            await asyncio.wait(active, timeout=timeout)
 
     def enabled(self, tenant: str) -> bool:
         """管家与执行追踪同时对该租户开启才走管家（派工预算与执行树依赖追踪）。"""
@@ -415,6 +436,14 @@ def _final(task: asyncio.Task[dict[str, Any]]) -> tuple[str, dict[str, Any]]:
         return "error", {"code": error.code, "message": str(error)}
     logger.error("管家一轮以意外错误结束：%s", type(error).__name__)
     return "error", {"code": "internal_error", "message": "管家处理出错，输入已保留，请稍后重试"}
+
+
+def _build_wake_bus(platform: Platform) -> WakeBus:
+    """PostgreSQL 控制面复用连接池走 LISTEN/NOTIFY，其余模式用进程内合并总线。"""
+    pool = getattr(platform.store, "_pool", None)
+    if pool is not None:
+        return PostgresWakeBus(pool)
+    return MemoryWakeBus()
 
 
 def _dispatch_view(record: Any) -> dict[str, Any]:

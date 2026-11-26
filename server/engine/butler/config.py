@@ -37,6 +37,7 @@ class ButlerConfig(BaseModel):
     max_tokens_per_trace: int = Field(default=400_000, ge=1_000, le=20_000_000)
     max_active_traces_per_tenant: int = Field(default=50, ge=1, le=10_000)
     wake_interval_seconds: float = Field(default=2.0, ge=0.2, le=300.0)
+    reconcile_interval_seconds: float | None = Field(default=None, ge=0.2, le=300.0)
     max_group_members: int = Field(default=4, ge=1, le=8)
     max_group_steps: int = Field(default=3, ge=1, le=5)
     max_consult_rounds: int = Field(default=2, ge=0, le=5)

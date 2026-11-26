@@ -66,9 +66,10 @@
 - **中断重跑**（`service.resume_stale`、`wakeup.py`）：唤醒循环每轮先查本租户「认领中但租约已过期」的管家认领（`workspace.stale_routes`，持有进程已退出；失败释放的租约为 0，不在其中），按记下的原始输入与同一标识重跑一次；重跑过仍中断的在主对话写明没处理完并释放认领。
 - 成功后写助手消息（`<request_id>:assistant`，元数据 `route` 与分流同形、另带 `butler.trace_id`），草稿因此可经既有 `/v1/assistant/proposals` 确认或取消。
 
-## 唤醒（`butler/wakeup.py`、`butler/wake_apply.py`，迁移 0023）
+## 唤醒（`butler/wakeup.py`、`butler/wake_bus.py`、`butler/wake_apply.py`，迁移 0023，ADR 0024）
 
-1. **对账**：每隔 `butler.wake_interval_seconds`，对开启管家的租户扫进行中（running / asking）的派工。持久任务到终态写 `finished`（键 `task:<状态>:<版本>`），`waiting_user` 写 `asked`；会话每结束一轮（审计里一条 `turn_text`）写一条 `finished`（键 `round:<审计标识>`）。事件按 `(租户, 派工, 键)` 去重。
+1. **事件驱动快路径 + 低频对账兜底**：会话承载匠人轮次结束、工作任务进入终态/`waiting_user`、会诊裁决提交后，立即经 `WakeBus`（内存合并队列；PostgreSQL 下叠加 `LISTEN/NOTIFY butler_wake`，Payload 只含元数据不含正文）发射唤醒信号，由 `run_for_dispatch` / `run_for_task` / `advance_group` 毫秒级定点对账与推进；原定时扫描保留为低频 Reconciler（周期由 `reconcile_interval_seconds` 或 `wake_interval_seconds` 控制），兜底崩溃、网络闪断或漏通知。条件超时器（`ConditionalTimerRegistry`）随交付自动取消，到期未终态触发回调。
+2. **对账**：扫进行中（running / asking）的派工。持久任务到终态写 `finished`（键 `task:<状态>:<版本>`），`waiting_user` 写 `asked`；会话每结束一轮（审计里一条 `turn_text`）写一条 `finished`（键 `round:<审计标识>`）。事件按 `(租户, 派工, 键)` 去重。
 2. **决定**：逐条未确认事件，读宿主得出决定并**先持久化**（先写者为准）：
    - `asked`、或这一轮以挂起结束（等审批）→ `await_approval`：建审批类待处理项（不代答），派工 → asking，提示员工去待确认处理。
    - 其余先做确定性验收（`butler/inspector.py`），再跑一轮被唤醒的管家复核（`butler/review.py`，同一 trace、根 span 仍是 butler）。复核里登记的代答经出处规则再核一次，通过 → `forward`；不通过或管家要转问 → `ask_user`；否则 → `deliver`。复核文本只作「辅助判断」，不改写验收结论；复核超出轮数或 token 预算、模型不可用时只按确定性结论交付。

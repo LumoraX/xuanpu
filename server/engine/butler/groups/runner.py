@@ -138,6 +138,16 @@ class GroupRunner:
             record = updated
         raise RuntimeError(f"编组 {group_id} 推进次数超过上限")
 
+    async def advance_group(self, tenant_id: str, group_id: str) -> bool:
+        """定点推进租户内指定未收口的编组（事件快路径）；未找到或已终态返回 False。"""
+        for record in await self._groups.active(tenant_id):
+            if record.group_id != group_id:
+                continue
+            owner = TraceOwner(tenant_id=record.tenant_id, user_id=record.user_id)
+            await self.advance(owner, record.group_id)
+            return True
+        return False
+
     async def advance_tenant(self, tenant_id: str) -> None:
         """推进租户内全部未收口的编组；单个失败记日志，下一轮重试。"""
         for record in await self._groups.active(tenant_id):

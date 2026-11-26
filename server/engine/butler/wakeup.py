@@ -25,18 +25,20 @@ from server.core.tenancy import Principal
 from server.domains.work_tasks.models import TERMINAL as TASK_TERMINAL
 from server.engine.butler.inspector import inspect, session_round, task_snapshot
 from server.engine.butler.trace_link import dispatch_span
+from server.engine.butler.wake_bus import ConditionalTimerRegistry, WakeSignal
 from server.engine.butler.wake_models import ButlerEvent, WakeDecision
 from server.engine.tracing.models import TraceOwner
 from server.engine.tracing.narration import without_narration
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable
 
     from server.engine.butler.groups.runner import GroupRunner
     from server.engine.butler.inspector import HostSnapshot
     from server.engine.butler.models import DispatchRecord
     from server.engine.butler.review import Reviewer
     from server.engine.butler.wake_apply import WakeEffects
+    from server.engine.butler.wake_bus import WakeBus
     from server.platform import Platform
 
 logger = logging.getLogger(__name__)
@@ -52,13 +54,17 @@ class Wakeup:
     """对账、处理与后台循环。"""
 
     def __init__(self, platform: Platform, effects: WakeEffects, reviewer: Reviewer | None, *,
-                 now: Callable[[], float], groups: GroupRunner | None = None) -> None:
-        """依赖由平台注入；``reviewer`` 为 None 时只做确定性验收；``groups`` 为 None 时不推进编组。"""
+                 now: Callable[[], float], groups: GroupRunner | None = None,
+                 bus: WakeBus | None = None,
+                 timers: ConditionalTimerRegistry | None = None) -> None:
+        """依赖由平台注入；``bus`` 启用事件驱动快路径，``timers`` 承载条件超时器。"""
         self._groups = groups
         self._platform = platform
         self._effects = effects
         self._reviewer = reviewer
         self._now = now
+        self._bus = bus
+        self._timers = timers if timers is not None else ConditionalTimerRegistry()
         self._lock = asyncio.Lock()
         self._task: asyncio.Task[None] | None = None
         self._seen: set[tuple[str, str]] = set()
@@ -66,6 +72,21 @@ class Wakeup:
     def _at(self) -> datetime:
         """当前时间（UTC）。"""
         return datetime.fromtimestamp(self._now(), UTC)
+
+    def _reconcile_interval(self) -> float:
+        """低频对账兜底周期；未单独配置时沿用 ``wake_interval_seconds``。"""
+        cfg = self._platform.butler_config
+        return cfg.reconcile_interval_seconds if cfg.reconcile_interval_seconds is not None else cfg.wake_interval_seconds
+
+    def arm_deadline(
+        self, key: str, deadline: float, callback: Callable[[], Awaitable[None]],
+    ) -> None:
+        """登记一条条件超时器；目标提前完成时由 ``cancel_deadline`` 取消。"""
+        self._timers.arm(key, deadline, callback)
+
+    def cancel_deadline(self, key: str) -> bool:
+        """取消挂起的条件超时器；返回是否命中。"""
+        return self._timers.cancel(key)
 
     def start(self) -> None:
         """启动后台循环。"""
@@ -77,53 +98,137 @@ class Wakeup:
             self._task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._task
+            self._task = None
 
     async def _loop(self) -> None:
-        """按配置间隔对账与处理；单轮失败记日志，下一轮重试。"""
-        while True:
-            await asyncio.sleep(self._platform.butler_config.wake_interval_seconds)
-            try:
-                await self.run_once()
-            except Exception:
-                logger.exception("管家唤醒处理失败，下一轮重试")
+        """事件驱动快路径 + 低频对账兜底；未配总线时退回定时对账。"""
+        if self._bus is None:
+            while True:
+                wait = self._timers.next_wait(self._now(), max_wait=self._reconcile_interval())
+                await asyncio.sleep(wait)
+                try:
+                    await self._timers.fire_due(self._now())
+                    await self.run_once()
+                except Exception:
+                    logger.exception("管家唤醒处理失败，下一轮重试")
+        await self._bus.start()
+        next_reconcile = self._now() + self._reconcile_interval()
+        try:
+            while True:
+                now = self._now()
+                wait = self._timers.next_wait(now, max_wait=max(0.0, next_reconcile - now))
+                signals = await self._bus.drain(wait)
+                for signal in signals:
+                    try:
+                        await self.run_signal(signal)
+                    except Exception:
+                        logger.exception("处理事件唤醒信号 %s 失败，待对账兜底", signal)
+                await self._timers.fire_due(self._now())
+                if self._now() >= next_reconcile:
+                    try:
+                        await self.run_once()
+                    except Exception:
+                        logger.exception("管家定时对账兜底失败，下一轮重试")
+                    next_reconcile = self._now() + self._reconcile_interval()
+        finally:
+            await self._bus.close()
+
+    async def run_signal(self, signal: WakeSignal) -> int:
+        """按唤醒信号类型走事件快路径；租户未开启管家直接忽略。"""
+        if not self._platform.butler.enabled(signal.tenant_id):
+            return 0
+        if signal.kind == "dispatch":
+            return await self.run_for_dispatch(signal.tenant_id, signal.target_id)
+        if signal.kind == "task":
+            return await self.run_for_task(signal.tenant_id, signal.target_id)
+        if signal.kind == "group":
+            return await self.run_for_group(signal.tenant_id, signal.target_id)
+        return await self._run_tenant(signal.tenant_id)
+
+    async def run_for_task(self, tenant_id: str, task_id: str) -> int:
+        """按工作任务标识反查活跃派工并定点唤醒。"""
+        records = await self._platform.dispatches.active(tenant_id)
+        matched = next((r for r in records if r.host == "task" and r.host_ref == task_id), None)
+        if matched is None:
+            return 0
+        return await self.run_for_dispatch(tenant_id, matched.dispatch_id)
+
+    async def run_for_dispatch(self, tenant_id: str, dispatch_id: str) -> int:
+        """定点对账并处理单条派工的唤醒事件；若属编组立即定点推进编组。"""
+        # 若发起该派工的管家首轮仍在收尾，先等其落盘回复与 trace，防止乱序交付与预算漏计
+        preview = await self._platform.dispatches.active(tenant_id)
+        found = next((r for r in preview if r.dispatch_id == dispatch_id), None)
+        if found is not None:
+            await self._platform.butler.wait_turn_idle(found.trace_id)
+        handled = 0
+        async with self._lock:
+            records = await self._platform.dispatches.active(tenant_id)
+            record = next((r for r in records if r.dispatch_id == dispatch_id), None)
+            group_id = record.group_id if record is not None else None
+            if record is not None:
+                await self._reconcile_record(record)
+            for event in await self._platform.store.wake_store.unacked(tenant_id):
+                if event.dispatch_id != dispatch_id:
+                    continue
+                await self.handle(event)
+                handled += 1
+            if self._groups is not None and group_id is not None:
+                await self._groups.advance_group(tenant_id, group_id)
+        return handled
+
+    async def run_for_group(self, tenant_id: str, group_id: str) -> int:
+        """定点推进租户内指定编组。"""
+        if self._groups is None:
+            return 0
+        async with self._lock:
+            advanced = await self._groups.advance_group(tenant_id, group_id)
+        return 1 if advanced else 0
+
+    async def _run_tenant(self, tenant: str) -> int:
+        """对单个开启管家的租户完整对账一次并处理全部未确认事件。"""
+        handled = 0
+        async with self._lock:
+            if not self._platform.butler.enabled(tenant):
+                return 0
+            await self._platform.butler.resume_stale(tenant)
+            await self.reconcile(tenant)
+            for event in await self._platform.store.wake_store.unacked(tenant):
+                try:
+                    await self.handle(event)
+                except Exception:
+                    logger.exception("处理唤醒事件 %s 失败，下一轮重试", event.event_id)
+                    continue
+                handled += 1
+            if self._groups is not None:
+                await self._groups.advance_tenant(tenant)
+        return handled
 
     async def run_once(self) -> int:
         """对每个开启管家的租户对账一次、处理全部未确认事件；返回处理条数。"""
         handled = 0
-        async with self._lock:
-            for tenant in self._platform.butler_config.tenants:
-                if not self._platform.butler.enabled(tenant):
-                    continue
-                # 进程中途退出留下的轮次：按同一请求标识重跑一次（R6-D）
-                await self._platform.butler.resume_stale(tenant)
-                await self.reconcile(tenant)
-                for event in await self._platform.store.wake_store.unacked(tenant):
-                    try:
-                        await self.handle(event)
-                    except Exception:
-                        # 单条失败不挡住后面的事件；它保持未确认，下一轮重试
-                        logger.exception("处理唤醒事件 %s 失败，下一轮重试", event.event_id)
-                        continue
-                    handled += 1
-                if self._groups is not None:
-                    # 成员结果已随事件登记；接着推进编组（启动下一成员、收口汇总）
-                    await self._groups.advance_tenant(tenant)
+        for tenant in self._platform.butler_config.tenants:
+            if not self._platform.butler.enabled(tenant):
+                continue
+            handled += await self._run_tenant(tenant)
         return handled
 
     async def reconcile(self, tenant: str) -> None:
         """扫进行中的派工，把宿主上的新事实写成事件。"""
         for record in await self._platform.dispatches.active(tenant):
-            if record.state not in ("running", "asking") or record.host_ref is None:
-                continue
-            who = principal(record.tenant_id, record.user_id)
-            try:
-                if record.host == "task":
-                    await self._reconcile_task(who, record)
-                else:
-                    await self._reconcile_session(record)
-            except Exception:
-                # 单个派工读不到宿主（例如员工已停用）不挡住其他派工；下一轮重试
-                logger.exception("对账派工 %s 失败，下一轮重试", record.dispatch_id)
+            await self._reconcile_record(record)
+
+    async def _reconcile_record(self, record: DispatchRecord) -> None:
+        """对单条活跃派工读宿主状态并写事件；单条失败记日志不阻断其他派工。"""
+        if record.state not in ("running", "asking") or record.host_ref is None:
+            return
+        who = principal(record.tenant_id, record.user_id)
+        try:
+            if record.host == "task":
+                await self._reconcile_task(who, record)
+            else:
+                await self._reconcile_session(record)
+        except Exception:
+            logger.exception("对账派工 %s 失败，下一轮重试", record.dispatch_id)
 
     async def _reconcile_task(self, who: Principal, record: DispatchRecord) -> None:
         """任务终态 → finished；等本人决定 → asked。"""
@@ -166,6 +271,8 @@ class Wakeup:
                                                await self._decide(who, event, dispatch))).decision
             assert decision is not None
             await self._effects.apply(who, event, dispatch, decision)
+            if decision.action == "deliver":
+                self._timers.cancel(f"dispatch:{event.dispatch_id}")
         await store.ack(event.tenant_id, event.event_id, self._at())
 
     async def _decide(self, who: Principal, event: ButlerEvent, dispatch: DispatchRecord,

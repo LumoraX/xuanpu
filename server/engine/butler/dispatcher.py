@@ -19,6 +19,7 @@ from server.domains.work_tasks.models import CapabilityReference, CapabilityTask
 from server.engine.butler.budget import TraceUsage, check_dispatch
 from server.engine.butler.limits import budget_config
 from server.engine.butler.models import INSTRUCTION_MAX, DispatchRecord, dispatch_fingerprint
+from server.engine.butler.wake_bus import WakeSignal
 from server.engine.tracing.models import TERMINAL_STATES, TraceOwner
 
 if TYPE_CHECKING:
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     from server.domains.work_tasks.models import InputFile
     from server.engine.butler.models import Artisan
     from server.engine.butler.turn import ButlerTurn
+    from server.engine.butler.wake_bus import WakeBus
     from server.engine.runtime.sessions import Turn
     from server.platform import Platform
 
@@ -58,10 +60,13 @@ class LaunchContext:
 class Dispatcher:
     """管家派工。启动的会话轮次在后台读完，平台关闭时取消。"""
 
-    def __init__(self, platform: Platform, *, now: Callable[[], float]) -> None:
-        """依赖由平台注入。"""
+    def __init__(
+        self, platform: Platform, *, now: Callable[[], float], bus: WakeBus | None = None,
+    ) -> None:
+        """依赖由平台注入；给出 ``bus`` 时在会话轮次结束后立即发唤醒信号。"""
         self._platform = platform
         self._now = now
+        self._bus = bus
         self._drains: set[asyncio.Task[None]] = set()
 
     def _at(self) -> datetime:
@@ -220,15 +225,18 @@ class Dispatcher:
             at=self._at(), host_ref=session.session_id)
         started = await sessions.send_message(ctx.who, session.session_id,
                                              delivered(record.instruction))
-        self._drain(started)
+        self._drain(started, running)
         return running
 
-    def _drain(self, started: Turn) -> None:
-        """读完这一轮的事件流，免得缓冲占满；内容已由事件枢纽进审计与追踪。"""
+    def _drain(self, started: Turn, record: DispatchRecord) -> None:
+        """读完这一轮的事件流并在审计落盘后立即发射事件驱动唤醒信号。"""
         async def consume() -> None:
-            """逐条丢弃。"""
+            """逐条消费并在终态落盘后通知唤醒总线。"""
             async for _ in started.stream.events():
                 pass
+            if self._bus is not None:
+                await self._bus.publish(WakeSignal(
+                    tenant_id=record.tenant_id, kind="dispatch", target_id=record.dispatch_id))
 
         task = asyncio.ensure_future(consume())
         self._drains.add(task)

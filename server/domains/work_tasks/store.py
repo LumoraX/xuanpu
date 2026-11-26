@@ -18,6 +18,7 @@ from server.domains.workspace.rules import audit, get_item
 
 if TYPE_CHECKING:
     import builtins
+    from collections.abc import Awaitable, Callable
 
     from server.core.tenancy import Principal
     from server.domains.workspace.models import WorkspaceState
@@ -79,6 +80,7 @@ class WorkTaskStore:
         self.workspace = workspace
         self.max_tasks = 1000
         self.durable_config: Any = None
+        self.transition_listeners: list[Callable[[WorkTaskRecord], Awaitable[None]]] = []
 
     async def create_or_replay(
         self, who: Principal, task: WorkTaskRecord
@@ -150,14 +152,26 @@ class WorkTaskStore:
         self, who: Principal, task_id: str, status: str, *, expected_version: int,
         at: float, event_kind: str = "state_changed", **changes: Any,
     ) -> WorkTaskRecord:
-        """员工锁内CAS更新任务、持久事件和审计，异常时整体回滚。"""
+        """员工锁内CAS更新任务、持久事件和审计，异常时整体回滚；提交后通知状态监听者。"""
         async with self.workspace.transaction(who, "work-task:one:" + task_id) as state:
             task = require_task(state, task_id)
             if task.state_version >= 256 and status in {"running", "waiting_user"}:
                 raise ConflictError("任务状态更新次数已达上限，请人工核实")
             updated = advance(task, status, expected_version=expected_version, at=at, **changes)
             save_record(state, updated, event_kind)
-            return updated
+        await self._emit_transition(updated)
+        return updated
+
+    async def _emit_transition(self, record: WorkTaskRecord) -> None:
+        """事务提交后通知外部状态监听者（例如管家事件驱动唤醒）；单条失败记日志不回滚已提交状态。"""
+        for listener in getattr(self, "transition_listeners", ()):
+            try:
+                await listener(record)
+            except Exception:
+                import logging
+
+                logging.getLogger(__name__).exception(
+                    "工作任务 %s 状态监听通知失败（由对账兜底）", record.task_id)
 
     async def lifecycle_task(self, tenant: str, user: str, task_id: str) -> WorkTaskRecord:
         """内部单项补领不装载员工全部任务。"""
