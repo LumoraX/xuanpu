@@ -63,19 +63,22 @@ class ButlerEngines:
         self._tools = tools
         self._turns = turns
         self._data_dir = data_dir
-        self._pools: dict[str, taifeng.EnginePool] = {}
+        self._pools: dict[tuple[str, bool], taifeng.EnginePool] = {}
         self._lock = asyncio.Lock()
 
-    async def pool(self, tenant: str) -> taifeng.EnginePool:
-        """取（必要时新建）租户的管家引擎池。"""
+    async def pool(self, tenant: str, *, include_soul: bool = True) -> taifeng.EnginePool:
+        """取（必要时新建）租户的管家引擎池；会诊客观比对轮可传 ``include_soul=False`` 跳过 SOUL 注入。"""
+        key = (tenant, include_soul)
         async with self._lock:
-            existing = self._pools.get(tenant)
+            existing = self._pools.get(key)
             if existing is not None:
                 return existing
-            threads = self._data_dir / "butler" / tenant_directory(tenant) / "threads"
+            threads = self._data_dir / "butler" / tenant_directory(tenant) / (
+                "threads" if include_soul else "threads_compare"
+            )
             await asyncio.to_thread(threads.mkdir, parents=True, exist_ok=True)
             layers: list[taifeng.InstructionLayer] = []
-            if SOUL_PATH.is_file():
+            if include_soul and SOUL_PATH.is_file():
                 soul_text = await asyncio.to_thread(SOUL_PATH.read_text, encoding="utf-8")
                 layers.append(taifeng.InstructionLayer(
                     name="butler-soul",
@@ -100,7 +103,7 @@ class ButlerEngines:
                 ),
                 enable_request_capture=self._platform.runtimes.defaults.capture_requests,
             )
-            self._pools[tenant] = pool
+            self._pools[key] = pool
             return pool
 
     async def run(
@@ -117,7 +120,7 @@ class ButlerEngines:
             RuntimeUnavailableError: 本轮没有正常完成（失败、挂起或回复为空）。
         """
         tenant = turn.who.require_tenant()
-        pool = await self.pool(tenant)
+        pool = await self.pool(tenant, include_soul=turn.compare is None)
         session_id = "bt_" + secrets.token_hex(12)
         engine = await pool.get_or_create(session_id=session_id, entry_skill_id=SKILL_ID)
         self._turns.bind(engine.thread_id, turn)

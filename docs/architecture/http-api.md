@@ -1133,6 +1133,11 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | GET /v1/assistant/task-boards | active_only=true/false、limit=1–50 | 本人跨轮持久任务板列表（`title`、`focus`、`status`、`steps` 及 `blocked_by` DAG、版本与时间），见 ADR 0024 |
 | GET /v1/assistant/briefings/daily | timezone、deliver=true/false | 高信噪比今日要点晨报（冲突预警、1–3 条重点待办与今日提醒；`deliver=true` 时受 Attention Budget 门控） |
 | GET /v1/assistant/briefings/pre-meeting | timezone、window_minutes=30、deliver=true/false | 会前 30 分钟 1 分钟速览卡（聚合关联项目、参会人与待核对待办） |
+| POST /v1/assistant/traces/{trace_id}/converge-grant | 可选 budget_ceiling（默认 2000000） | 从本人试运行 Trace 与派工记录收敛最小权限 Grant 提案（精确匠人版本、实测工具集与 1.5x Token 预算，严禁通配符） |
+| GET /v1/assistant/topic-watches | 无 | 列出本人登记的长期静默追踪主题清单（落盘持久化，重启不丢） |
+| POST /v1/assistant/topic-watches | topic（1–200 字符） | 登记一条新的长期静默追踪主题 |
+| DELETE /v1/assistant/topic-watches/{watch_id} | 无 | 移除本人一条长期静默追踪主题 |
+| POST /v1/assistant/topic-watches/{watch_id}/evaluate | signal、timezone、deliver、daily_bg_tokens_used | 评估追踪动态信号：无变化保持静默；有新变化经 Attention Budget 放行并刷新基线，可选投递主对话 |
 | GET /v1/assistant/actions/{request_id} | 无 | 查询某轮自主办理动作的已撤回清单（`undone`） |
 | POST /v1/assistant/actions/{request_id}/{action_id}/undo | 无 | 一键幂等撤回本轮管家自主办理的某项个人操作（支持待办/日程/提醒/文件局部编辑/回收恢复），仅本人可用 |
 

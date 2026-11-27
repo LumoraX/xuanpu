@@ -127,8 +127,10 @@ class ButlerService:
         self.session_queue = SessionQueueCoordinator(
             platform, max_merges=lambda: platform.butler_config.max_interrupt_merges)
         from server.engine.butler.proactive_briefing import ProactiveBriefingService
+        from server.engine.butler.topic_watch import TopicWatchStore
 
         self.briefings = ProactiveBriefingService(platform, now=now)
+        self.topic_watches = TopicWatchStore(data_dir)
 
     async def _on_work_task_transition(self, record: WorkTaskRecord) -> None:
         """工作任务进入终态或等待本人决定时，立即向唤醒总线发事件驱动信号。"""

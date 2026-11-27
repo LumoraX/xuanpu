@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
     from server.engine.tracing.config import ExecutionTraceConfig
     from server.engine.tracing.store import SpanStore
@@ -26,9 +27,15 @@ class TraceRetention:
     def __init__(
         self, store: SpanStore, config: ExecutionTraceConfig, *,
         now: Callable[[], float], interval: float = INTERVAL_SECONDS,
+        data_dir: Path | None = None,
+        transcript_ttl_days: int = 14,
+        transcript_max_bytes: int = 2 * 1024 * 1024 * 1024,
     ) -> None:
-        """配置与时钟由平台装配注入。"""
+        """配置与时钟由平台装配注入；传入 ``data_dir`` 时同步定期裁剪本地热盘 Transcript。"""
         self._store, self._config, self._now, self._interval = store, config, now, interval
+        self._data_dir = data_dir
+        self._transcript_ttl_seconds = max(3600.0, float(transcript_ttl_days) * 86400.0)
+        self._transcript_max_bytes = max(1024 * 1024, int(transcript_max_bytes))
         self._task: asyncio.Task[None] | None = None
 
     def start(self) -> None:
@@ -57,6 +64,19 @@ class TraceRetention:
                         break
             except Exception:
                 logger.exception("清理租户 %s 的执行追踪失败，下一轮重试", tenant)
+        if self._data_dir is not None:
+            try:
+                from server.engine.transcripts.writer import prune_local_transcripts
+
+                await asyncio.to_thread(
+                    prune_local_transcripts,
+                    self._data_dir,
+                    max_age_seconds=self._transcript_ttl_seconds,
+                    max_total_bytes=self._transcript_max_bytes,
+                    now=self._now(),
+                )
+            except Exception:
+                logger.exception("裁剪本地热盘 Transcript 失败，下一轮重试")
         return removed
 
     async def _loop(self) -> None:

@@ -7,6 +7,8 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from server.domains.proactive.service import ProactiveService
 
 logger = logging.getLogger(__name__)
@@ -15,9 +17,16 @@ logger = logging.getLogger(__name__)
 class ProactiveWorker:
     """所有后台任务由生命周期拥有，关闭时取消并回收模型任务。"""
 
-    def __init__(self, service: ProactiveService, *, scan_seconds: float = 60.0) -> None:
+    def __init__(
+        self,
+        service: ProactiveService,
+        *,
+        scan_seconds: float = 60.0,
+        briefings_scan: Callable[[], Awaitable[int]] | None = None,
+    ) -> None:
         """频率由部署配置注入，不从环境变量读取。"""
         self.service, self.scan_seconds = service, scan_seconds
+        self._briefings_scan = briefings_scan
         self._task: asyncio.Task[None] | None = None
 
     def start(self) -> None:
@@ -37,6 +46,8 @@ class ProactiveWorker:
             await asyncio.sleep(self.scan_seconds)
             try:
                 await self.service.run_owners(kind)
+                if kind == 'rules' and self._briefings_scan is not None:
+                    await self._briefings_scan()
             except Exception:
                 logger.exception('proactive_%s_cycle_failed', kind)
 

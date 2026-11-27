@@ -393,7 +393,7 @@ class Platform:
         from server.engine.tracing.retention import TraceRetention
 
         self.trace_retention = TraceRetention(
-            store.trace_store, self.runtimes.defaults.execution_trace, now=now)
+            store.trace_store, self.runtimes.defaults.execution_trace, now=now, data_dir=data_dir)
         self.runtimes.bind_sources(self.shared_contexts)
         self.sessions.bind_sources(self.shared_contexts)
         self.task_actions = ActionProposalService(self.workspace, self.work_tasks.store,
@@ -436,7 +436,11 @@ class Platform:
         self.proactive = ProactiveService(workspace=self.workspace, control=store,
             identity=identity_store, sample=self.assistant.sample_proactive, now=now,
             semantic_interval=proactive_interval, reminders=self.reminders)
-        self.proactive_worker = ProactiveWorker(self.proactive, scan_seconds=proactive_scan_seconds)
+        self.proactive_worker = ProactiveWorker(
+            self.proactive,
+            scan_seconds=proactive_scan_seconds,
+            briefings_scan=self.butler.briefings.scan_once,
+        )
         # 员工停用后关掉他名下的会话：身份域不依赖运行时，监听者在这里接上会话管理
         self.identity.disabling.register("close_work_tasks", self.task_registry)
         self.identity.disabling.register("revoke_organization", self.organization_lifecycle)

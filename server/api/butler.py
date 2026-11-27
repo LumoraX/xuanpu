@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Request
@@ -25,11 +26,18 @@ from pydantic import BaseModel, ConfigDict, Field
 from server.api.auth import Caller  # noqa: TC001 —— FastAPI 运行时解析
 from server.api.localization import request_locale
 from server.core.errors import NotFoundError
+from server.engine.butler.grant_converger import (
+    MAX_BUDGET_TOKENS,
+    MIN_BUDGET_TOKENS,
+    converge_grant_from_trace,
+)
 from server.engine.butler.pending import view
 from server.engine.butler.personal_actions import undo_executed_action
 from server.engine.butler.service import (
     ButlerMessageBody,  # noqa: TC001 —— FastAPI 运行时解析
 )
+from server.engine.butler.topic_watch import evaluate_watch_signal
+from server.engine.tracing.models import TraceOwner
 from spec.localization import display_name_for
 
 if TYPE_CHECKING:
@@ -49,6 +57,30 @@ class PendingAnswerBody(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     request_id: str = Field(min_length=1, max_length=80, pattern=r"^[a-zA-Z0-9_.:-]+$")
     text: str = Field(min_length=1, max_length=2000, pattern=r"\S")
+
+
+class ConvergeGrantBody(BaseModel):
+    """试运行 Trace 收敛最小权限 Grant 的可选参数。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    budget_ceiling: int = Field(default=MAX_BUDGET_TOKENS, ge=MIN_BUDGET_TOKENS, le=MAX_BUDGET_TOKENS)
+
+
+class TopicWatchCreateBody(BaseModel):
+    """登记长期静默追踪主题的请求体。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    topic: str = Field(min_length=1, max_length=200, pattern=r"\S")
+
+
+class TopicWatchEvaluateBody(BaseModel):
+    """评估一次静默追踪动态信号的请求体。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    signal: str | None = Field(default=None, max_length=4000)
+    timezone: str = Field(default="Asia/Shanghai", min_length=1, max_length=64)
+    deliver: bool = False
+    daily_bg_tokens_used: int = Field(default=0, ge=0)
 
 
 def butler_router(platform: Platform) -> APIRouter:
@@ -134,6 +166,72 @@ def butler_router(platform: Platform) -> APIRouter:
             who, timezone=timezone, window_minutes=window_minutes, deliver=deliver,
         )
         return {"items": items}
+
+    @router.post("/v1/assistant/traces/{trace_id}/converge-grant")
+    async def converge_grant(
+        trace_id: str, who: Caller, body: ConvergeGrantBody | None = None,
+    ) -> dict[str, Any]:
+        """从本人一次试运行 Trace 与派工记录收敛最小权限 Grant 提案（严禁通配符）。"""
+        tenant_id, user_id = await platform.workspace.require_employee(who)
+        owner = TraceOwner(tenant_id=tenant_id, user_id=user_id)
+        trace = await platform.store.trace_store.get(owner, trace_id)
+        dispatches = await platform.store.dispatch_store.list_for_trace(owner, trace_id)
+        ceiling = body.budget_ceiling if body is not None else MAX_BUDGET_TOKENS
+        proposal = converge_grant_from_trace(trace, dispatches, budget_ceiling=ceiling)
+        return proposal.model_dump(mode="json")
+
+    @router.get("/v1/assistant/topic-watches")
+    async def list_topic_watches(who: Caller) -> dict[str, Any]:
+        """列出本人登记的全部长期静默追踪主题。"""
+        await platform.workspace.require_employee(who)
+        items = await platform.butler.topic_watches.list(who)
+        return {"items": [item.model_dump(mode="json") for item in items]}
+
+    @router.post("/v1/assistant/topic-watches")
+    async def create_topic_watch(body: TopicWatchCreateBody, who: Caller) -> dict[str, Any]:
+        """登记一条新的长期静默追踪主题并落盘持久化。"""
+        await platform.workspace.require_employee(who)
+        created = await platform.butler.topic_watches.create(who, body.topic)
+        return created.model_dump(mode="json")
+
+    @router.delete("/v1/assistant/topic-watches/{watch_id}")
+    async def delete_topic_watch(watch_id: str, who: Caller) -> dict[str, Any]:
+        """删除本人一条长期静默追踪主题。"""
+        await platform.workspace.require_employee(who)
+        await platform.butler.topic_watches.delete(who, watch_id)
+        return {"deleted": True, "watch_id": watch_id}
+
+    @router.post("/v1/assistant/topic-watches/{watch_id}/evaluate")
+    async def evaluate_topic_watch(
+        watch_id: str, body: TopicWatchEvaluateBody, who: Caller,
+    ) -> dict[str, Any]:
+        """比对新动态与上次已汇报基线：无实质新变化保持静默；有新变化经注意力门控放行并刷新基线。"""
+        tenant_id, user_id = await platform.workspace.require_employee(who)
+        items = await platform.butler.topic_watches.list(who)
+        target = next((item for item in items if item.watch_id == watch_id), None)
+        if target is None:
+            raise NotFoundError("追踪主题不存在")
+        result = evaluate_watch_signal(
+            target,
+            body.signal,
+            user_key=f"{tenant_id}:{user_id}",
+            now=time.time(),
+            gate=platform.butler.briefings.gate,
+            timezone=body.timezone,
+            daily_bg_tokens_used=body.daily_bg_tokens_used,
+        )
+        if result.notify:
+            await platform.butler.topic_watches.save(who, result.updated_watch)
+            if body.deliver and result.message:
+                digest = result.updated_watch.last_signal_digest or "latest"
+                await platform.workspace.append_message(
+                    who,
+                    "assistant",
+                    result.message,
+                    f"tw:{watch_id}:{digest[:16]}",
+                    metadata={"kind": "topic_watch", "watch_id": watch_id},
+                )
+        return result.model_dump(mode="json")
 
     @router.post("/v1/assistant/pending/{pending_id}/answer")
     async def answer(pending_id: str, body: PendingAnswerBody, who: Caller) -> dict[str, Any]:

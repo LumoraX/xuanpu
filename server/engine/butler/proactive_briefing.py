@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal
@@ -23,6 +24,8 @@ if TYPE_CHECKING:
 
     from server.core.tenancy import Principal
     from server.platform import Platform
+
+logger = logging.getLogger(__name__)
 
 BriefPriority = Literal["pre_meeting_brief", "daily_brief", "periodic_review", "topic_watch"]
 
@@ -323,3 +326,38 @@ class ProactiveBriefingService:
                 self.gate.record_sent(user_key, topic_key=f"daily_brief:{day_str}", now=now, timezone=timezone)
                 result["delivered"] = True
         return result
+
+    async def scan_once(self) -> int:
+        """后台定时巡检开启管家的租户活跃员工，按注意力预算自动推送会前速览与晨报。"""
+        from server.core.tenancy import Principal
+        from server.domains.identity.models import UserQuery
+
+        cfg = self._platform.butler_config
+        if not (cfg.enabled and cfg.tenants):
+            return 0
+        delivered = 0
+        now = self._now()
+        for tenant_id in cfg.tenants:
+            users = await self._platform.identity.store.list_users(
+                tenant_id, UserQuery(status="active", limit=200),
+            )
+            for user in users:
+                who = Principal(role=user.role, tenant_id=tenant_id, user_id=user.user_id, key_id=None)
+                try:
+                    settings = await self._platform.workspace.settings(who)
+                    tz = str(settings.get("timezone") or "Asia/Shanghai")
+                    pm = await self.build_pre_meeting_briefs(who, timezone=tz, window_minutes=30, deliver=True)
+                    delivered += sum(1 for item in pm if item.get("delivered"))
+                    # 仅在员工本地时间上午 08:00–10:00 窗口自动推送当日要点晨报（由冷却/日上限与幂等键去重）
+                    local_hour = datetime.fromtimestamp(now, ZoneInfo(tz)).hour
+                    if 8 <= local_hour < 10:
+                        daily = await self.build_daily_brief(who, timezone=tz, deliver=True)
+                        if daily.get("delivered"):
+                            delivered += 1
+                except Exception:
+                    logger.warning(
+                        "管家后台简报扫描单员工失败，跳过继续下一位（tenant=%s user=%s）",
+                        tenant_id, user.user_id, exc_info=True,
+                    )
+                    continue
+        return delivered
