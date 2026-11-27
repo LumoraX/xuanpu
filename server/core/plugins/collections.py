@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
+    from server.core.plugins.collection_backend import PluginCollectionBackend
     from server.core.tenancy import Principal
 
 _SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$")
@@ -43,11 +44,22 @@ def _fs_segment(ident: str) -> str:
 
 
 class PluginCollectionStore:
-    """按 ``(tenant_id, plugin_id, user_id, collection)`` 隔离落盘的插件扩展集合存储。"""
+    """按 ``(tenant_id, plugin_id, user_id, collection)`` 隔离持久化的插件扩展集合存储。
 
-    def __init__(self, data_dir: Path, *, now: Callable[[], float] = time.time) -> None:
-        """绑定数据根目录与时钟。"""
+    - 控制面为共享后端（如 PostgreSQL ``is_shared=True``）时直接读写控制面表，天然支持多节点共享与 ACID 乐观锁；
+    - 控制面为本地内存模式时自动落盘到本地 ``0700/0600`` 原子 JSON 文件，保证单机重启不丢数据。
+    """
+
+    def __init__(
+        self,
+        data_dir: Path,
+        *,
+        backend: PluginCollectionBackend | None = None,
+        now: Callable[[], float] = time.time,
+    ) -> None:
+        """绑定数据根目录、可选共享控制面后端与时钟。"""
         self._root = data_dir / "plugin_collections"
+        self._backend = backend if (backend is not None and backend.is_shared) else None
         self._now = now
         self._lock = asyncio.Lock()
 
@@ -86,7 +98,11 @@ class PluginCollectionStore:
         self, who: Principal, plugin_id: str, collection: str, *, limit: int = 100,
     ) -> list[PluginCollectionItem]:
         """列出本人在指定插件集合下的全部记录（按更新时间倒序）。"""
-        _, _, path = self._collection_path(who, plugin_id, collection)
+        tenant, user_id, path = self._collection_path(who, plugin_id, collection)
+        if self._backend is not None:
+            return await self._backend.list_items(
+                tenant, plugin_id.strip(), user_id, collection.strip(), limit=limit,
+            )
         items = await asyncio.to_thread(self._read_sync, path)
         items.sort(key=lambda r: r.updated_at, reverse=True)
         return items[: max(1, min(limit, _MAX_ITEMS_PER_COLLECTION))]
@@ -95,7 +111,11 @@ class PluginCollectionStore:
         self, who: Principal, plugin_id: str, collection: str, record_id: str,
     ) -> PluginCollectionItem:
         """按 ID 读取单条记录；不存在抛出 NotFoundError。"""
-        _, _, path = self._collection_path(who, plugin_id, collection)
+        tenant, user_id, path = self._collection_path(who, plugin_id, collection)
+        if self._backend is not None:
+            return await self._backend.get_item(
+                tenant, plugin_id.strip(), user_id, collection.strip(), record_id,
+            )
         items = await asyncio.to_thread(self._read_sync, path)
         for item in items:
             if item.record_id == record_id:
@@ -120,6 +140,17 @@ class PluginCollectionStore:
             raise InvalidRequestError(f"单条插件记录体积超过 {_MAX_RECORD_BYTES} 字节上限")
 
         tenant, user_id, path = self._collection_path(who, plugin_id, collection)
+        if self._backend is not None:
+            return await self._backend.put_item(
+                tenant_id=tenant,
+                plugin_id=plugin_id.strip(),
+                user_id=user_id,
+                collection=collection.strip(),
+                record_id=record_id or new_id("plr"),
+                data=dict(data),
+                expected_version=expected_version,
+                now=self._now(),
+            )
         async with self._lock:
             items = await asyncio.to_thread(self._read_sync, path)
             ts = self._now()
@@ -159,7 +190,11 @@ class PluginCollectionStore:
         self, who: Principal, plugin_id: str, collection: str, record_id: str,
     ) -> bool:
         """删除本人一条插件集合记录；不存在抛出 NotFoundError。"""
-        _, _, path = self._collection_path(who, plugin_id, collection)
+        tenant, user_id, path = self._collection_path(who, plugin_id, collection)
+        if self._backend is not None:
+            return await self._backend.delete_item(
+                tenant, plugin_id.strip(), user_id, collection.strip(), record_id,
+            )
         async with self._lock:
             items = await asyncio.to_thread(self._read_sync, path)
             remaining = [i for i in items if i.record_id != record_id]

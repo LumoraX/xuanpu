@@ -148,6 +148,9 @@ class PostgresControlPlane:
         from server.engine.forge.releases import PostgresReleaseNodeStore
 
         self.release_store = PostgresReleaseNodeStore(pool, namespace=namespace)
+        from server.core.plugins.collection_backend import PostgresPluginCollectionBackend
+
+        self.plugin_collection_store = PostgresPluginCollectionBackend(pool, namespace=namespace)
         self.operation_receipts = PostgresReceiptStore(pool, namespace)
         self._pool = pool
         self._namespace = namespace

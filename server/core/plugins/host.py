@@ -194,7 +194,9 @@ class PluginHost:
         """绑定平台微内核、数据目录与时钟。"""
         self.platform = platform
         self._now = now
-        self.collections = PluginCollectionStore(data_dir, now=now)
+        self.collections = PluginCollectionStore(
+            data_dir, backend=platform.store.plugin_collection_store, now=now,
+        )
         self._entries: dict[str, _MountedEntry] = {}
         self._lock = asyncio.Lock()
 

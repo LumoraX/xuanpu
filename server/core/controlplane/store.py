@@ -24,6 +24,7 @@ if TYPE_CHECKING:
         UsageRecord,
     )
     from server.core.coordination.store import CoordinationStore
+    from server.core.plugins.collection_backend import PluginCollectionBackend
     from server.core.tenancy import ApiKeyRecord, Tenant
     from server.domains.capabilities.bindings import BindingStore
     from server.domains.connections.store import ConnectionStore
@@ -148,6 +149,11 @@ class ControlPlaneStore(Protocol):
     @property
     def release_store(self) -> ReleaseNodeStore:
         """与控制面同后端的三层不可变发布节点账本（ADR 0025）。"""
+        ...
+
+    @property
+    def plugin_collection_store(self) -> PluginCollectionBackend:
+        """与控制面同后端的微内核插件与管家扩展集合存储（ADR 0027）。"""
         ...
 
     # --- 租户与凭据 ---

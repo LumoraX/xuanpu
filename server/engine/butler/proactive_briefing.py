@@ -138,9 +138,32 @@ class AttentionBudgetGate:
         self._daily_counts[(user_key, day_str)] = self._daily_counts.get((user_key, day_str), 0) + 1
         self._cooldowns[(user_key, topic_key)] = now
 
+    def export_user_state(self, user_key: str) -> dict[str, Any]:
+        """导出单个员工的日推送计数与冷却时间戳快照，供持久化落库。"""
+        daily = {day: cnt for (uk, day), cnt in self._daily_counts.items() if uk == user_key}
+        cooldowns = {topic: ts for (uk, topic), ts in self._cooldowns.items() if uk == user_key}
+        return {"daily_counts": daily, "cooldowns": cooldowns}
+
+    def import_user_state(self, user_key: str, data: dict[str, Any]) -> None:
+        """从持久化快照恢复单个员工的日推送计数与冷却时间戳（取最大值合并，不丢增量）。"""
+        raw_daily = data.get("daily_counts")
+        if isinstance(raw_daily, dict):
+            for day, cnt in raw_daily.items():
+                key = (user_key, str(day))
+                self._daily_counts[key] = max(self._daily_counts.get(key, 0), int(cnt))
+        raw_cd = data.get("cooldowns")
+        if isinstance(raw_cd, dict):
+            for topic, ts in raw_cd.items():
+                key = (user_key, str(topic))
+                self._cooldowns[key] = max(self._cooldowns.get(key, 0.0), float(ts))
+
 
 class ProactiveBriefingService:
-    """确定性会前 30 分钟速览与高信噪比每日晨报服务（统一以管家单人格输出）。"""
+    """确定性会前 30 分钟速览与高信噪比每日晨报服务（统一以管家单人格输出，状态持久化）。"""
+
+    _ATTN_PLUGIN_ID = "butler:attention"
+    _BUDGET_COLLECTION = "budget"
+    _HABIT_COLLECTION = "habit"
 
     def __init__(
         self,
@@ -153,6 +176,80 @@ class ProactiveBriefingService:
         self._platform = platform
         self.gate = gate or AttentionBudgetGate()
         self._now = now
+
+    @staticmethod
+    def _user_key(who: Principal) -> str:
+        """构造员工唯一注意力键。"""
+        return f"{who.tenant_id}:{who.user_id}"
+
+    async def hydrate_attention(self, who: Principal) -> None:
+        """从共享/落盘集合恢复该员工的注意力预算计数与主题冷却时间戳。"""
+        from server.core.errors import NotFoundError
+
+        try:
+            rec = await self._platform.plugins.collections.get(
+                who, self._ATTN_PLUGIN_ID, self._BUDGET_COLLECTION, "state",
+            )
+            self.gate.import_user_state(self._user_key(who), rec.data)
+        except NotFoundError:
+            return
+
+    async def persist_attention(self, who: Principal) -> None:
+        """将当前员工的注意力预算计数与冷却时间戳持久化写入控制面集合。"""
+        await self._platform.plugins.collections.put(
+            who,
+            self._ATTN_PLUGIN_ID,
+            self._BUDGET_COLLECTION,
+            self.gate.export_user_state(self._user_key(who)),
+            record_id="state",
+        )
+
+    async def get_habit(self, who: Principal) -> HabitCalibration:
+        """读取该员工的持久化隐式习惯校准档案（无记录返回默认空档案）。"""
+        from server.core.errors import NotFoundError
+
+        try:
+            rec = await self._platform.plugins.collections.get(
+                who, self._ATTN_PLUGIN_ID, self._HABIT_COLLECTION, "profile",
+            )
+            return HabitCalibration.model_validate(rec.data)
+        except NotFoundError:
+            return HabitCalibration()
+
+    async def record_habit_action(
+        self, who: Principal, category: str, *, undone: bool,
+    ) -> HabitCalibration:
+        """记录某类私域自主办理的执行或撤回样本并持久化，用于自动降级判断。"""
+        habit = await self.get_habit(who)
+        counts = dict(habit.action_undo_counts)
+        prev_undone, prev_total = counts.get(category, (0, 0))
+        counts[category] = (prev_undone + (1 if undone else 0), prev_total + 1)
+        updated = habit.model_copy(update={"action_undo_counts": counts})
+        await self._platform.plugins.collections.put(
+            who,
+            self._ATTN_PLUGIN_ID,
+            self._HABIT_COLLECTION,
+            updated.model_dump(mode="json"),
+            record_id="profile",
+        )
+        return updated
+
+    async def record_habit_ignored(
+        self, who: Principal, topic_kind: str, *, reset: bool = False,
+    ) -> HabitCalibration:
+        """记录（或清零）某类主动简报的连续忽略次数并持久化。"""
+        habit = await self.get_habit(who)
+        streaks = dict(habit.topic_ignored_streaks)
+        streaks[topic_kind] = 0 if reset else streaks.get(topic_kind, 0) + 1
+        updated = habit.model_copy(update={"topic_ignored_streaks": streaks})
+        await self._platform.plugins.collections.put(
+            who,
+            self._ATTN_PLUGIN_ID,
+            self._HABIT_COLLECTION,
+            updated.model_dump(mode="json"),
+            record_id="profile",
+        )
+        return updated
 
     async def build_pre_meeting_briefs(
         self,
@@ -212,6 +309,8 @@ class ProactiveBriefingService:
                 "delivered": False,
             }
             if deliver:
+                await self.hydrate_attention(who)
+                habit = await self.get_habit(who)
                 decision = self.gate.evaluate(
                     user_key,
                     priority="pre_meeting_brief",
@@ -219,6 +318,7 @@ class ProactiveBriefingService:
                     now=now,
                     timezone=timezone,
                     daily_bg_tokens_used=daily_bg_tokens_used,
+                    habit=habit,
                 )
                 entry["attention_decision"] = decision.model_dump()
                 if decision.allowed:
@@ -227,6 +327,7 @@ class ProactiveBriefingService:
                         metadata={"butler": {"event": "pre_meeting_brief", "event_id": ev["id"]}},
                     )
                     self.gate.record_sent(user_key, topic_key=f"pre_meeting:{ev['id']}", now=now, timezone=timezone)
+                    await self.persist_attention(who)
                     entry["delivered"] = True
             briefs.append(entry)
         return briefs
@@ -308,6 +409,8 @@ class ProactiveBriefingService:
             "delivered": False,
         }
         if deliver:
+            await self.hydrate_attention(who)
+            habit = await self.get_habit(who)
             user_key = f"{who.tenant_id}:{who.user_id}"
             decision = self.gate.evaluate(
                 user_key,
@@ -316,6 +419,7 @@ class ProactiveBriefingService:
                 now=now,
                 timezone=timezone,
                 daily_bg_tokens_used=daily_bg_tokens_used,
+                habit=habit,
             )
             result["attention_decision"] = decision.model_dump()
             if decision.allowed:
@@ -324,6 +428,7 @@ class ProactiveBriefingService:
                     metadata={"butler": {"event": "daily_brief", "date": day_str}},
                 )
                 self.gate.record_sent(user_key, topic_key=f"daily_brief:{day_str}", now=now, timezone=timezone)
+                await self.persist_attention(who)
                 result["delivered"] = True
         return result
 

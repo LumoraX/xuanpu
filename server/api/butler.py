@@ -211,6 +211,8 @@ def butler_router(platform: Platform) -> APIRouter:
         target = next((item for item in items if item.watch_id == watch_id), None)
         if target is None:
             raise NotFoundError("追踪主题不存在")
+        await platform.butler.briefings.hydrate_attention(who)
+        habit = await platform.butler.briefings.get_habit(who)
         result = evaluate_watch_signal(
             target,
             body.signal,
@@ -219,9 +221,11 @@ def butler_router(platform: Platform) -> APIRouter:
             gate=platform.butler.briefings.gate,
             timezone=body.timezone,
             daily_bg_tokens_used=body.daily_bg_tokens_used,
+            habit=habit,
         )
         if result.notify:
             await platform.butler.topic_watches.save(who, result.updated_watch)
+            await platform.butler.briefings.persist_attention(who)
             if body.deliver and result.message:
                 digest = result.updated_watch.last_signal_digest or "latest"
                 await platform.workspace.append_message(
@@ -275,6 +279,9 @@ def butler_router(platform: Platform) -> APIRouter:
                 "result": prior["metadata"].get("result"),
             }
         result = await undo_executed_action(platform, who, target)
+        await platform.butler.briefings.record_habit_action(
+            who, str(target.get("action") or "personal"), undone=True,
+        )
         label = str(target.get("title") or "操作")
         summary = str(target.get("summary") or "")
         note = f"已撤回：{label}（{summary}）" if summary else f"已撤回：{label}"

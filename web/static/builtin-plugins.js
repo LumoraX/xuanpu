@@ -203,4 +203,75 @@
       return mounted.frame;
     },
   });
+
+  // 5. 插件中心 L2 工作台插件：实时展示前后端所有已挂载插件、健康状态、版本与路由
+  XuanpuPluginHost.register({
+    plugin_id: "builtin:plugin-manager",
+    title: "插件中心",
+    slots: ["aux-tab"],
+    mode: "declarative",
+    source_layer: "L2_builtin",
+    version: "1.0.0",
+    render: (container) => {
+      const box = el("div", null, "wb-plugin-manager");
+      const statusLine = el("p", "正在加载微内核前后端插件清单…", "meta");
+      box.appendChild(statusLine);
+      container.appendChild(box);
+      const isAdmin = Boolean(entry.me && (entry.me.role === "tenant_admin" || entry.me.role === "platform_admin"));
+      Promise.all([
+        entryApi("GET", "/v1/plugins").catch(() => ({ items: [] })),
+        entryApi("GET", "/v1/plugins/ui").catch(() => ({ items: [] })),
+      ]).then(([be, fe]) => {
+        box.replaceChildren();
+        box.appendChild(el("h3", "后端微内核插件（L2 BackendPlugin）"));
+        const beItems = Array.isArray(be && be.items) ? be.items : [];
+        if (!beItems.length) {
+          box.appendChild(el("p", "暂无已挂载后端插件。", "meta"));
+        } else {
+          for (const p of beItems) {
+            const card = el("article", null, "wb-card");
+            const head = el("div", null, "wb-card-head");
+            const ok = Boolean(p.health && p.health.ok);
+            head.append(
+              el("strong", `${p.display_name || p.plugin_id} (${p.plugin_id}@${p.version})`),
+              el("span", ok ? "healthy" : (p.state || "unmounted"), "wb-badge " + (ok ? "active" : "failed")),
+            );
+            card.appendChild(head);
+            if (p.description) card.appendChild(el("p", p.description, "meta"));
+            if (Array.isArray(p.routes) && p.routes.length) {
+              card.appendChild(el("p", "动态路由：" + p.routes.join(" · "), "meta"));
+            }
+            if (isAdmin && p.state === "mounted") {
+              const actions = el("div", null, "wb-actions");
+              actions.appendChild(button("干净卸载", async () => {
+                await entryApi("POST", "/v1/plugins/" + encodeURIComponent(p.plugin_id) + "/unmount");
+                announce("已干净卸载插件：" + p.plugin_id);
+                if (typeof renderWorkbenchDrawer === "function") renderWorkbenchDrawer();
+              }));
+              card.appendChild(actions);
+            }
+            box.appendChild(card);
+          }
+        }
+        box.appendChild(el("h3", "前端微内核插件（L2 内置 + L1 匠人同包 UI）"));
+        const feItems = Array.isArray(fe && fe.items) ? fe.items : [];
+        for (const u of feItems) {
+          const card = el("article", null, "wb-card");
+          const head = el("div", null, "wb-card-head");
+          head.append(
+            el("strong", `${u.title} (${u.plugin_id}@${u.version})`),
+            el("span", `${u.source_layer} · ${u.slot}`, "wb-badge active"),
+          );
+          card.appendChild(head);
+          if (Array.isArray(u.bridge_permissions) && u.bridge_permissions.length) {
+            card.appendChild(el("p", "Bridge 权限：" + u.bridge_permissions.join(", "), "meta"));
+          }
+          box.appendChild(card);
+        }
+      }).catch((err) => {
+        statusLine.textContent = (err && err.message) || "加载插件清单失败";
+      });
+      return box;
+    },
+  });
 })();

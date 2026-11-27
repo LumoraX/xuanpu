@@ -90,6 +90,9 @@ class InMemoryControlPlane:
         from server.engine.forge.releases import MemoryReleaseNodeStore
 
         self.release_store = MemoryReleaseNodeStore()
+        from server.core.plugins.collection_backend import MemoryPluginCollectionBackend
+
+        self.plugin_collection_store = MemoryPluginCollectionBackend()
         self.reminder_store = InMemoryReminderStore(
             lambda tenant_id: (
                 tenant_id in self._tenants and self._tenants[tenant_id].status == "active"

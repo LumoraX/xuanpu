@@ -7,17 +7,13 @@
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
-import json
-import os
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from server.core.errors import NotFoundError
 from server.core.ids import new_id
-from server.core.tenancy import tenant_directory
+from server.core.plugins.collections import PluginCollectionStore
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -94,72 +90,47 @@ def evaluate_watch_signal(
 
 
 class TopicWatchStore:
-    """按 ``(tenant_id, user_id)`` 隔离落盘的长期静默追踪存储（目录 0700、文件 0600，重启持久）。"""
+    """基于微内核统一 ``PluginCollectionStore`` 的长期静默追踪存储（PG 共享 / 本地磁盘原子落盘双支持）。"""
 
-    def __init__(self, data_dir: Path) -> None:
-        """绑定数据目录。"""
-        self._root = data_dir / "topic_watches"
+    _PLUGIN_ID = "butler:topic-watch"
+    _COLLECTION = "watches"
 
-    def _file_path(self, who: Principal) -> Path:
-        """计算员工私域追踪清单路径。"""
-        tenant = who.require_tenant()
-        user_id = who.user_id or who.actor
-        safe_user = "".join(ch if ch.isalnum() or ch in ("_", "-") else "_" for ch in user_id)
-        return self._root / tenant_directory(tenant) / f"{safe_user}.json"
-
-    def _read_sync(self, path: Path) -> list[TopicWatchItem]:
-        """同步读取追踪列表。"""
-        if not path.is_file():
-            return []
-        raw = json.loads(path.read_text(encoding="utf-8"))
-        return [TopicWatchItem.model_validate(item) for item in raw]
-
-    def _write_sync(self, path: Path, items: list[TopicWatchItem]) -> None:
-        """原子写入追踪列表并收紧文件权限。"""
-        path.parent.mkdir(parents=True, exist_ok=True)
-        os.chmod(path.parent, 0o700)
-        tmp = path.with_suffix(".tmp")
-        tmp.write_text(
-            json.dumps([i.model_dump(mode="json") for i in items], ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        os.chmod(tmp, 0o600)
-        tmp.replace(path)
+    def __init__(
+        self, data_dir: Path, *, collections: PluginCollectionStore | None = None,
+    ) -> None:
+        """绑定数据目录或平台共享的插件集合存储。"""
+        self._collections = collections or PluginCollectionStore(data_dir)
 
     async def list(self, who: Principal) -> list[TopicWatchItem]:
         """列出本人全部长期静默追踪主题。"""
-        return await asyncio.to_thread(self._read_sync, self._file_path(who))
+        rows = await self._collections.list(who, self._PLUGIN_ID, self._COLLECTION, limit=200)
+        return [TopicWatchItem.model_validate(r.data) for r in rows]
 
     async def create(self, who: Principal, topic: str) -> TopicWatchItem:
         """登记一条新的长期静默追踪主题。"""
-        path = self._file_path(who)
-        items = await asyncio.to_thread(self._read_sync, path)
         created = TopicWatchItem(watch_id=new_id("tw"), topic=topic.strip())
-        items.append(created)
-        await asyncio.to_thread(self._write_sync, path, items)
+        await self._collections.put(
+            who,
+            self._PLUGIN_ID,
+            self._COLLECTION,
+            created.model_dump(mode="json"),
+            record_id=created.watch_id,
+        )
         return created
 
     async def delete(self, who: Principal, watch_id: str) -> bool:
         """移除一条追踪主题；不存在抛出 NotFoundError。"""
-        path = self._file_path(who)
-        items = await asyncio.to_thread(self._read_sync, path)
-        remaining = [i for i in items if i.watch_id != watch_id]
-        if len(remaining) == len(items):
-            raise NotFoundError("追踪主题不存在")
-        await asyncio.to_thread(self._write_sync, path, remaining)
-        return True
+        return await self._collections.delete(who, self._PLUGIN_ID, self._COLLECTION, watch_id)
 
     async def save(self, who: Principal, updated: TopicWatchItem) -> TopicWatchItem:
         """持久化更新一条追踪主题的最新基线摘要。"""
-        path = self._file_path(who)
-        items = await asyncio.to_thread(self._read_sync, path)
-        replaced = False
-        for idx, item in enumerate(items):
-            if item.watch_id == updated.watch_id:
-                items[idx] = updated
-                replaced = True
-                break
-        if not replaced:
-            raise NotFoundError("追踪主题不存在")
-        await asyncio.to_thread(self._write_sync, path, items)
+        existing = await self._collections.get(who, self._PLUGIN_ID, self._COLLECTION, updated.watch_id)
+        await self._collections.put(
+            who,
+            self._PLUGIN_ID,
+            self._COLLECTION,
+            updated.model_dump(mode="json"),
+            record_id=updated.watch_id,
+            expected_version=existing.version,
+        )
         return updated

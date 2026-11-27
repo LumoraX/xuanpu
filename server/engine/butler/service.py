@@ -54,7 +54,9 @@ if TYPE_CHECKING:
     from server.core.tenancy import Principal
     from server.domains.work_tasks.models import WorkTaskRecord
     from server.engine.assistant.reminders import RouteOutcome
+    from server.engine.butler.proactive_briefing import ProactiveBriefingService
     from server.engine.butler.session_queue import MergePayload
+    from server.engine.butler.topic_watch import TopicWatchStore
     from server.engine.butler.wake_bus import WakeBus
     from server.engine.runtime.models import ModelClientFactory
     from server.platform import Platform
@@ -129,8 +131,8 @@ class ButlerService:
         from server.engine.butler.proactive_briefing import ProactiveBriefingService
         from server.engine.butler.topic_watch import TopicWatchStore
 
-        self.briefings = ProactiveBriefingService(platform, now=now)
-        self.topic_watches = TopicWatchStore(data_dir)
+        self.briefings: ProactiveBriefingService = ProactiveBriefingService(platform, now=now)
+        self.topic_watches: TopicWatchStore = TopicWatchStore(data_dir, collections=platform.plugins.collections)
 
     async def _on_work_task_transition(self, record: WorkTaskRecord) -> None:
         """工作任务进入终态或等待本人决定时，立即向唤醒总线发事件驱动信号。"""

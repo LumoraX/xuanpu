@@ -416,6 +416,15 @@ class Platform:
         # 受保护知识问答：采样走助理路由同一配额与计量，来源删除即时使依赖上下文失效
         self.knowledge_contexts = KnowledgeContexts(self.knowledge, store.context_store, self.assistant.sample_protected)
         self.knowledge.removal_listeners.append(self.knowledge_contexts.source_removed)
+        from server.core.plugins.builtins import CustomRecordsPlugin
+        from server.core.plugins.domain_plugins import (
+            PeopleGraphBackendPlugin,
+            ProactiveBriefingBackendPlugin,
+            TopicWatchBackendPlugin,
+        )
+        from server.core.plugins.host import PluginHost
+
+        self.plugins = PluginHost(self, data_dir=data_dir, now=now)
         self.butler = ButlerService(self, models, data_dir=data_dir, now=now)
         from server.engine.artifacts.service import TraceArtifactService
 
@@ -432,11 +441,13 @@ class Platform:
 
         self.releases = ReleaseLedgerService(store.release_store, now=now)
         self.forge = ArtisanForgeService(self, self.releases, data_dir=data_dir, now=now)
-        from server.core.plugins.builtins import CustomRecordsPlugin
-        from server.core.plugins.host import PluginHost
-
-        self.plugins = PluginHost(self, data_dir=data_dir, now=now)
-        self.plugins.register(CustomRecordsPlugin())
+        for plugin in (
+            CustomRecordsPlugin(),
+            TopicWatchBackendPlugin(),
+            ProactiveBriefingBackendPlugin(),
+            PeopleGraphBackendPlugin(),
+        ):
+            self.plugins.register(plugin)
         self.dashboard = DashboardService(self, now=now)
         self.proactive = ProactiveService(workspace=self.workspace, control=store,
             identity=identity_store, sample=self.assistant.sample_proactive, now=now,

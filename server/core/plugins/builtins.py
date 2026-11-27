@@ -60,6 +60,14 @@ BUILTIN_UI_PLUGINS: tuple[UiPluginDescriptor, ...] = (
         mime_types=("text/html", "image/svg+xml"),
         bridge_permissions=("artifact.read", "collection.read", "collection.write", "workspace.propose"),
     ),
+    UiPluginDescriptor(
+        plugin_id="builtin:plugin-manager",
+        title="插件中心",
+        slot="aux-tab",
+        mode="declarative",
+        source_layer="L2_builtin",
+        version="1.0.0",
+    ),
 )
 
 
