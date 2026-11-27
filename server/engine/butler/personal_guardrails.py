@@ -11,7 +11,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from server.core.errors import InvalidRequestError, NotFoundError
+from server.core.errors import ConflictError, InvalidRequestError, NotFoundError
+from server.core.ids import new_id
+from server.domains.people.models import MergeInput, UnmergeInput
 
 if TYPE_CHECKING:
     from server.core.tenancy import Principal
@@ -115,3 +117,87 @@ async def trash_personal_item(
     }
     turn.executed_actions.append(entry)
     return {"ok": True, "action_id": action_id, "item": trashed}
+
+
+async def merge_personal_people(
+    platform: Platform,
+    turn: ButlerTurn,
+    *,
+    action_id: str,
+    req_id: str,
+    source_id: str,
+    target_id: str,
+) -> dict[str, Any]:
+    """将本人名下两位重复人物软合并，并登记可一键 ``/undo`` 撤销的回执。"""
+    who = turn.who
+    src = (await platform.people.get_person(who, source_id))["person"]
+    tgt = (await platform.people.get_person(who, target_id))["person"]
+    body = MergeInput(
+        request_id=req_id,
+        target_id=target_id,
+        source_version=int(src["version"]),
+        target_version=int(tgt["version"]),
+    )
+    merged = await platform.people.merge_people(who, source_id, body)
+    entry = {
+        "action_id": action_id,
+        "action": "merge_people",
+        "title": "已合并重复人物档案",
+        "summary": f"{src.get('name', source_id)} → {tgt.get('name', target_id)}",
+        "undoable": True,
+        "undo": {
+            "kind": "people_unmerge",
+            "source_id": source_id,
+            "target_id": target_id,
+        },
+    }
+    turn.executed_actions.append(entry)
+    return {"ok": True, "action_id": action_id, "result": merged}
+
+
+async def undo_people_unmerge(
+    platform: Platform, who: Principal, undo: dict[str, Any],
+) -> tuple[int, int]:
+    """逆转一次 ``merge_people`` 软合并，返回 ``(undone, skipped)``。"""
+    source_id = str(undo["source_id"])
+    target_id = str(undo["target_id"])
+    try:
+        src = (await platform.people.get_person(who, source_id))["person"]
+        tgt = (await platform.people.get_person(who, target_id))["person"]
+        await platform.people.unmerge_people(
+            who,
+            source_id,
+            UnmergeInput(
+                request_id=new_id("unm"),
+                source_version=int(src["version"]),
+                target_version=int(tgt["version"]),
+            ),
+        )
+        return 1, 0
+    except (NotFoundError, ConflictError):
+        return 0, 1
+
+
+async def undo_bundle_profile_updates(
+    platform: Platform, who: Principal, undo: dict[str, Any],
+) -> tuple[int, int]:
+    """还原 ``capture_bundle`` 对既有公司/人物档案的合并更新快照，补齐完整真撤回。"""
+    undone = 0
+    skipped = 0
+    for snap in undo.get("prev_orgs") or []:
+        try:
+            oid = str(snap["org_id"])
+            cur = (await platform.people.get_org(who, oid))["org"]
+            await platform.people.update_org(who, oid, dict(snap["profile"]), int(cur["version"]))
+            undone += 1
+        except (NotFoundError, ConflictError, KeyError):
+            skipped += 1
+    for snap in undo.get("prev_persons") or []:
+        try:
+            pid = str(snap["person_id"])
+            cur = (await platform.people.get_person(who, pid))["person"]
+            await platform.people.update_person(who, pid, dict(snap["profile"]), int(cur["version"]))
+            undone += 1
+        except (NotFoundError, ConflictError, KeyError):
+            skipped += 1
+    return undone, skipped

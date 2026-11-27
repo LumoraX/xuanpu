@@ -448,7 +448,16 @@ class Platform:
     def _session_manager(
         self, submissions: SubmissionIndex, lease_seconds: float
     ) -> SessionManager:
-        """会话管理：用上已经建好的控制面部件、身份存储、运行时组装器与指标。"""
+        """会话管理：用上已经建好的控制面部件、身份存储、运行时组装器、指标与本地 Transcript 落盘器。"""
+        from server.engine.transcripts.recorder import TranscriptSinkConfig
+
+        sink = TranscriptSinkConfig(
+            data_dir=self.data_dir,
+            objects=self.objects,
+            node_id=self.instance_id,
+            node_addr=self.node_addr,
+            now=self._now,
+        )
         return SessionManager(
             store=self.store,
             users=self.identity.store,
@@ -460,6 +469,7 @@ class Platform:
             metrics=self.metrics,
             instance_id=self.instance_id,
             lease_seconds=lease_seconds,
+            transcript_sink=sink,
             now=self._now,
         )
 

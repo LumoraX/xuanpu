@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
@@ -28,6 +29,7 @@ from server.engine.runtime.connectors import ConnectorSet
 from server.engine.runtime.execution_scope import ExecutionScope
 from server.engine.runtime.sandbox import DEFAULT_BASE_ENV
 from server.engine.runtime.script_executors import ScriptObserver, script_executors
+from server.engine.runtime.security_hooks import build_runtime_hooks
 from server.engine.runtime.skill_assembly import (
     AssembledSkills,
     CategorizedSkillRecall,
@@ -115,6 +117,9 @@ class RuntimeDefaults:
     execution_trace: ExecutionTraceConfig = field(default_factory=ExecutionTraceConfig)
     otel_export: OtelExport | None = None
     trace_binder: TraceBinder | None = None
+    max_parallel_tool_calls: int = field(
+        default_factory=lambda: max(4, min(os.cpu_count() or 4, 16))
+    )
 
     @property
     def trace_wiring(self) -> TraceWiring:
@@ -614,6 +619,8 @@ class RuntimeAssembler:
                 script_executors={} if protected else script_executors(sandbox, script_observer),
                 context_engine=SourceContextEngine(source.check) if source is not None else None,
                 permission_policy=policy,
+                hooks=build_runtime_hooks(package),
+                max_parallel_tool_calls=defaults.max_parallel_tool_calls,
                 skill_recall=CategorizedSkillRecall(assembled.entries),
                 recall_threshold=recall.threshold,
                 recall_default_top_k=recall.default_top_k,

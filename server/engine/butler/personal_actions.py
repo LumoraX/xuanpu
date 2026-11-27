@@ -27,7 +27,10 @@ from server.domains.reminders.models import ReminderInput
 from server.engine.butler.personal_guardrails import (
     assert_wake_personal_action_allowed,
     detect_event_conflicts,
+    merge_personal_people,
     trash_personal_item,
+    undo_bundle_profile_updates,
+    undo_people_unmerge,
 )
 
 if TYPE_CHECKING:
@@ -365,16 +368,20 @@ async def execute_personal_action(
         normalized = _normalize_bundle_timestamps(raw_bundle, tz)
         hydrated = await hydrate_bundle_updates(platform, who, normalized)
         validated = PeopleBundleInput.model_validate(hydrated).model_dump()
-        # 对更新已有公司/人物自动安全合并既有字段并补全版本，防止覆盖丢失原信息
+        # 对更新已有公司/人物自动安全合并既有字段并补全版本，同时留存修改前快照供一键真撤回
+        prev_orgs: list[dict[str, Any]] = []
+        prev_persons: list[dict[str, Any]] = []
         for org in validated.get("orgs", []):
             if org["action"] == "update" and org.get("org_id"):
                 existing_org = (await platform.people.get_org(who, org["org_id"]))["org"]
+                prev_orgs.append({"org_id": org["org_id"], "profile": dict(existing_org["profile"])})
                 org["profile"] = merge_org_profile_patch(existing_org["profile"], org["profile"])
                 if org.get("expected_version") is None:
                     org["expected_version"] = existing_org["version"]
         for person in validated.get("persons", []):
             if person["action"] == "update" and person.get("person_id"):
                 existing_p = (await platform.people.get_person(who, person["person_id"]))["person"]
+                prev_persons.append({"person_id": person["person_id"], "profile": dict(existing_p["profile"])})
                 person["profile"] = merge_profile_patch(existing_p["profile"], person["profile"])
                 if person.get("expected_version") is None:
                     person["expected_version"] = existing_p["version"]
@@ -424,12 +431,15 @@ async def execute_personal_action(
             "undoable": bool(
                 note_id or created_org_ids or created_person_ids or created_matter_ids
                 or created_todos or created_events or created_reminders
+                or prev_orgs or prev_persons
             ),
             "undo": {
                 "kind": "bundle",
                 "note_id": note_id,
                 "org_ids": created_org_ids,
                 "person_ids": created_person_ids,
+                "prev_orgs": prev_orgs,
+                "prev_persons": prev_persons,
                 "matter_ids": created_matter_ids,
                 "todo_ids": created_todos,
                 "event_ids": created_events,
@@ -580,6 +590,14 @@ async def execute_personal_action(
             platform, turn, action=action, action_id=action_id,
             expected_kind="todo", item_id=item_id,
             not_found_msg="待办不存在或已回收", title_label="已移出待办",
+        )
+
+    if action == "merge_people":
+        source_id = _require_text(args.get("source_id"), "source_id")
+        target_id = _require_text(args.get("target_id"), "target_id")
+        return await merge_personal_people(
+            platform, turn, action_id=action_id, req_id=req_id,
+            source_id=source_id, target_id=target_id,
         )
 
     if action == "create_reminder":
@@ -870,6 +888,10 @@ async def undo_executed_action(
             who, item_id, prev_bytes, mime, int(item["version"]), new_id("undo"),
         )
         undone += 1
+    elif kind == "people_unmerge":
+        u, s = await undo_people_unmerge(platform, who, undo)
+        undone += u
+        skipped += s
     elif kind == "reminder_cancel":
         await _cancel_reminder(str(undo["reminder_id"]))
     elif kind == "bundle":
@@ -909,6 +931,9 @@ async def undo_executed_action(
             await _trash_workspace(str(mid))
         for rid in undo.get("reminder_ids") or []:
             await _cancel_reminder(str(rid))
+        u, s = await undo_bundle_profile_updates(platform, who, undo)
+        undone += u
+        skipped += s
     else:
         raise InvalidRequestError("未知撤回类型")
 

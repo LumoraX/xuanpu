@@ -75,6 +75,7 @@ ACT_PERSONAL_DESCRIPTION = (
     "- create_reminder / cancel_reminder：设置或取消本人提醒（传 title/due_at/timezone/repeat 或 reminder_id）；\n"
     "- create_matter / update_matter：新建或更新本人项目事项（传 title/description/status 或 item_id）；\n"
     "- act_followup：处理本人主动感知跟进（传 followup_id、followup_action=complete|postpone|ignore_stage|set_reminder|progress 及可选 due_at）；\n"
+    "- merge_people：将两位重复的本人人物档案软合并（传 source_id、target_id，支持一键撤回拆分）；\n"
     "- save_note_file：把你整理好的会议纪要、项目全景简报、周报或方案保存为本人工作台 Markdown 文件（传 name/content，可选 matter_id/parent_id）；\n"
     "- patch_personal_file：对本人已有 UTF-8 文本/Markdown 文件做精准局部块替换（传 item_id、edits=[{target, replacement}] 及可选 expected_version，严格唯一锚定并返回 Unified Diff，支持一键撤回）。"
 )
@@ -156,11 +157,14 @@ class ButlerTools:
                             "create_matter",
                             "update_matter",
                             "act_followup",
+                            "merge_people",
                             "save_note_file",
                             "patch_personal_file",
                         ],
                     },
                     "bundle": {"type": ["object", "null"], "description": "capture_bundle 时的复合整理包（结构同 people_draft）"},
+                    "source_id": {"type": ["string", "null"], "description": "merge_people 时被合并的源人物 ID"},
+                    "target_id": {"type": ["string", "null"], "description": "merge_people 时保留的目标人物 ID"},
                     "item_id": {"type": ["string", "null"], "description": "待办/日程/事项的 ID（更新或完成时必填）"},
                     "reminder_id": {"type": ["string", "null"], "description": "cancel_reminder 时的提醒 ID"},
                     "followup_id": {"type": ["string", "null"], "description": "act_followup 时的跟进 ID"},

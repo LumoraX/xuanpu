@@ -75,6 +75,7 @@ if TYPE_CHECKING:
     from server.engine.packages import PackageRegistry
     from server.engine.runtime.assembler import RuntimeAssembler, TenantRuntime
     from server.engine.runtime.resolutions import ResolutionWatch
+    from server.engine.transcripts.recorder import TranscriptSinkConfig
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +124,7 @@ class SessionManager:
         metrics: PlatformMetrics,
         instance_id: str,
         lease_seconds: float = 60.0,
+        transcript_sink: TranscriptSinkConfig | None = None,
         now: Callable[[], float] = time.time,
     ) -> None:
         """
@@ -155,6 +157,7 @@ class SessionManager:
             store, instance_id=instance_id, lease_seconds=lease_seconds, now=now
         )
         self._now = now
+        self._transcript_sink = transcript_sink
         self._live: dict[SessionKey, _LiveSession] = {}
         self._locks: WeakValueDictionary[SessionKey, asyncio.Lock] = WeakValueDictionary()
         self._heartbeat: asyncio.Task[None] | None = None
@@ -446,6 +449,8 @@ class SessionManager:
                 on_turn_end=turn_ended,
                 user_id=record.user_id,
                 users=self._users,
+                transcript_sink=self._transcript_sink,
+                transcript_kind="work_task" if record.work_task_id is not None else "artisan",
             )
             await hub.start()
         except BaseException:

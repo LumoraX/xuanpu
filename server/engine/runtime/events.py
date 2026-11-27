@@ -34,6 +34,8 @@ if TYPE_CHECKING:
     from server.engine.runtime.resolutions import ResolutionWatch
     from server.engine.tracing.config import TraceWiring
     from server.engine.tracing.models import SpanState
+    from server.engine.transcripts.models import TranscriptKind
+    from server.engine.transcripts.recorder import SessionTranscriptRecorder, TranscriptSinkConfig
 
 logger = logging.getLogger(__name__)
 
@@ -192,6 +194,8 @@ class EngineEventHub:
         user_id: str | None = None,
         users: IdentityStore | None = None,
         tracing: TraceWiring | None = None,
+        transcript_sink: TranscriptSinkConfig | None = None,
+        transcript_kind: TranscriptKind = "artisan",
     ) -> None:
         """
         Args:
@@ -231,6 +235,19 @@ class EngineEventHub:
         from server.engine.tracing.collector import tracer_for
 
         self._tracer = tracer_for(store, tracing, tenant_id, session_id, user_id)
+        self._transcript: SessionTranscriptRecorder | None = None
+        if transcript_sink is not None:
+            from server.engine.transcripts.recorder import SessionTranscriptRecorder
+
+            self._transcript = SessionTranscriptRecorder(
+                sink=transcript_sink,
+                store=store,
+                tenant_id=tenant_id,
+                session_id=session_id,
+                user_id=user_id,
+                kind="work_task" if self._task_accounted else transcript_kind,
+                tracing=tracing,
+            )
         export = None if tracing is None else tracing.otel_for(tenant_id)
         self._otel = None if export is None else export.sink_for(tenant_id)
         # 引擎每次被创建是一条新的事件流，序号从头计
@@ -311,6 +328,8 @@ class EngineEventHub:
         kind = event.msg.kind
         if self._tracer is not None:
             self._tracer.handle(event)
+        if self._transcript is not None:
+            await self._transcript.on_event(event)
         if self._otel is not None:
             # 内核 sink 自己吞掉导出异常，不会打断审计与对话
             await self._otel.handle(event)
@@ -351,6 +370,11 @@ class EngineEventHub:
         if event.msg.kind not in RESUME_ENDING_KINDS and outcome != "aborted":
             self._buffer.append(self._record("turn_text", event, {"text": text}, seq=None))
             await self._account(event)
+            if self._transcript is not None:
+                err_code = str(event.msg.data.get("kind") or "") or None if outcome == "failed" else None
+                await self._transcript.finish_turn(
+                    event.submission_id, text=text, outcome=outcome, error_code=err_code,
+                )
         await self._flush()
         if self._buffer:
             raise RuntimeError('终态审计尚未落盘，不发布成功终态')
