@@ -80,7 +80,7 @@ function harness(routes) {
 }
 
 function load(h, dir) {
-  for (const name of ["entry.js", "entry-notifications.js", "capture-card.js", "people-graph.js", "contacts-drawer.js", "board-drawer.js", "workbench-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]) {
+  for (const name of ["entry.js", "bubble-format.js", "entry-notifications.js", "capture-card.js", "people-graph.js", "contacts-drawer.js", "board-drawer.js", "workbench-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]) {
     vm.runInContext(fs.readFileSync(path.join(dir, name), "utf8"), h.context, { filename: name });
   }
 }

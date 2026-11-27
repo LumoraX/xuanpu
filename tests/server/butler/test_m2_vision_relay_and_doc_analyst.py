@@ -115,6 +115,50 @@ async def test_doc_analyst_package_validates_packs_loads_and_runs_csv_script(
     assert out["numeric_stats"]["amount"]["sum"] == 600.0
     assert out["numeric_stats"]["amount"]["mean"] == 200.0
 
+    # 执行文档版本比对脚本 diff_texts.py
+    old_txt = tmp_path / "v1.txt"
+    new_txt = tmp_path / "v2.txt"
+    old_txt.write_text("条款一：交付周期 30 天\n条款二：付款 50%\n", encoding="utf-8")
+    new_txt.write_text("条款一：交付周期 20 天\n条款二：付款 50%\n条款三：增加验收里程碑\n", encoding="utf-8")
+    diff_proc = subprocess.run(
+        [sys.executable, str(pkg_dir / "skills/doc-diff/scripts/diff_texts.py"), str(old_txt), str(new_txt)],
+        capture_output=True, text=True, check=True,
+    )
+    diff_out = json.loads(diff_proc.stdout)
+    assert diff_out["changed"] is True
+    assert diff_out["added_lines"] == 2 and diff_out["removed_lines"] == 1
+    assert "@@" in diff_out["unified_diff"]
+
+    # 执行 Mermaid 静态校验脚本 check_mermaid.py（合规返回 0，违规返回 2）
+    good_mmd = tmp_path / "good.mmd"
+    good_mmd.write_text('flowchart LR\n  A["输入(已脱敏)"] --> B["输出"]\n', encoding="utf-8")
+    ok_mmd = subprocess.run(
+        [sys.executable, str(pkg_dir / "skills/diagram-compose/scripts/check_mermaid.py"), str(good_mmd)],
+        capture_output=True, text=True, check=False,
+    )
+    assert ok_mmd.returncode == 0 and json.loads(ok_mmd.stdout)["valid"] is True
+
+    bad_mmd = tmp_path / "bad.mmd"
+    bad_mmd.write_text("flowchart TD\n  A[未加引号(危险)] --> B[ok]\n", encoding="utf-8")
+    ng_mmd = subprocess.run(
+        [sys.executable, str(pkg_dir / "skills/diagram-compose/scripts/check_mermaid.py"), str(bad_mmd)],
+        capture_output=True, text=True, check=False,
+    )
+    assert ng_mmd.returncode == 2 and json.loads(ng_mmd.stdout)["valid"] is False
+
+    # 执行独立安全 HTML 报告渲染脚本 render_html_report.py（确保脚本标签被安全转义）
+    md_file = tmp_path / "report.md"
+    html_file = tmp_path / "report.html"
+    md_file.write_text("# Q4 复盘\n\n| 区域 | 销售额 |\n|---|---|\n| 华东 | 100 |\n\n<script>alert(1)</script>\n", encoding="utf-8")
+    html_proc = subprocess.run(
+        [sys.executable, str(pkg_dir / "skills/markdown-publish/scripts/render_html_report.py"), str(md_file), str(html_file)],
+        capture_output=True, text=True, check=True,
+    )
+    assert json.loads(html_proc.stdout)["bytes"] > 100
+    rendered_html = html_file.read_text(encoding="utf-8")
+    assert "<table>" in rendered_html
+    assert "<script>" not in rendered_html and "&lt;script&gt;" in rendered_html
+
 
 async def test_bounded_dynamic_relay_from_wake_turn_enforces_max_hops(
     butler: dict[str, Any], step: Any,
