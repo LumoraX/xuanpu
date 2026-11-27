@@ -28,6 +28,18 @@ spec:
       - diagram-compose
       - markdown-publish
       - doc-diff
+  ui:
+    dir: ui
+    plugins:
+      - id: report-preview
+        title: 数据分析预览台
+        slot: artifact-viewer
+        mode: sandbox_iframe
+        entry: report-preview/index.html
+        mimeTypes:
+          - application/vnd.xuanpu.analysis+json
+        bridgePermissions:
+          - artifact.read
   evals:
     - name: offline-csv-summary
       entry: analyze

@@ -159,6 +159,107 @@ async def test_doc_analyst_package_validates_packs_loads_and_runs_csv_script(
     assert "<table>" in rendered_html
     assert "<script>" not in rendered_html and "&lt;script&gt;" in rendered_html
 
+    # 执行 Excel 生成与解析脚本（含动态公式校验）
+    xlsx_spec = tmp_path / "sales_spec.json"
+    xlsx_out = tmp_path / "sales.xlsx"
+    xlsx_spec.write_text(
+        json.dumps({
+            "sheet": "Q4营收",
+            "headers": ["区域", "营收"],
+            "rows": [["华东", 100], ["华南", 200], ["合计", "=SUM(B2:B3)"]],
+        }, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    subprocess.run(
+        [sys.executable, str(pkg_dir / "skills/excel-analysis/scripts/excel_tool.py"), "build", str(xlsx_spec), str(xlsx_out)],
+        capture_output=True, text=True, check=True,
+    )
+    xlsx_sum = json.loads(
+        subprocess.run(
+            [sys.executable, str(pkg_dir / "skills/excel-analysis/scripts/excel_tool.py"), "summarize", str(xlsx_out)],
+            capture_output=True, text=True, check=True,
+        ).stdout
+    )
+    assert xlsx_sum["sheets"][0]["row_count"] == 4
+    assert any("=SUM(B2:B3)" in f for f in xlsx_sum["sheets"][0]["formulas"])
+
+    # 执行 Word (.docx) 生成与核验脚本
+    docx_spec = tmp_path / "doc_spec.json"
+    docx_out = tmp_path / "report.docx"
+    docx_spec.write_text(
+        json.dumps({
+            "title": "年度经营复盘",
+            "sections": [{"heading": "核心结论", "paragraphs": ["营收同比增长 22%"], "bullets": ["现金流稳健"]}],
+        }, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    subprocess.run(
+        [sys.executable, str(pkg_dir / "skills/docx-compose/scripts/build_docx.py"), "build", str(docx_spec), str(docx_out)],
+        capture_output=True, text=True, check=True,
+    )
+    docx_read = json.loads(
+        subprocess.run(
+            [sys.executable, str(pkg_dir / "skills/docx-compose/scripts/build_docx.py"), "read", str(docx_out)],
+            capture_output=True, text=True, check=True,
+        ).stdout
+    )
+    assert any("年度经营复盘" in p for p in docx_read["paragraphs"])
+
+    # 执行 PPT (.pptx) 生成与核验脚本
+    pptx_spec = tmp_path / "deck_spec.json"
+    pptx_out = tmp_path / "deck.pptx"
+    pptx_spec.write_text(
+        json.dumps({"slides": [{"title": "Q4 汇报", "bullets": ["目标达成 115%", "下季重点扩展插件生态"]}]}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    subprocess.run(
+        [sys.executable, str(pkg_dir / "skills/pptx-compose/scripts/build_pptx.py"), "build", str(pptx_spec), str(pptx_out)],
+        capture_output=True, text=True, check=True,
+    )
+    pptx_info = json.loads(
+        subprocess.run(
+            [sys.executable, str(pkg_dir / "skills/pptx-compose/scripts/build_pptx.py"), "inspect", str(pptx_out)],
+            capture_output=True, text=True, check=True,
+        ).stdout
+    )
+    assert pptx_info["slide_count"] == 1
+    assert any("Q4 汇报" in line for line in pptx_info["slides"][0]["lines"])
+
+    # 执行图表渲染脚本（SVG + PNG 魔数核验）
+    chart_spec = tmp_path / "chart_spec.json"
+    chart_svg = tmp_path / "chart.svg"
+    chart_png = tmp_path / "chart.png"
+    chart_spec.write_text(
+        json.dumps({"type": "bar", "title": "区域营收", "labels": ["华东", "华南"], "values": [100, 200], "unit": "万"}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    chart_res = json.loads(
+        subprocess.run(
+            [sys.executable, str(pkg_dir / "skills/chart-render/scripts/render_chart.py"), str(chart_spec), str(chart_svg), str(chart_png)],
+            capture_output=True, text=True, check=True,
+        ).stdout
+    )
+    assert "<svg" in chart_svg.read_text(encoding="utf-8")
+    assert chart_res["png_created"] is True
+    assert sniff_image_media_type(chart_png.read_bytes()) == "image/png"
+
+    # 执行 PDF 解析脚本（用 pypdf 构造真实单页 PDF 后解析）
+    from pypdf import PdfWriter
+
+    pdf_path = tmp_path / "sample.pdf"
+    writer = PdfWriter()
+    writer.add_blank_page(width=200, height=200)
+    writer.add_metadata({"/Title": "Q4 审计简报"})
+    with pdf_path.open("wb") as fh:
+        writer.write(fh)
+    pdf_res = json.loads(
+        subprocess.run(
+            [sys.executable, str(pkg_dir / "skills/pdf-parse/scripts/parse_pdf.py"), str(pdf_path)],
+            capture_output=True, text=True, check=True,
+        ).stdout
+    )
+    assert pdf_res["total_pages"] == 1 and pdf_res["metadata"]["title"] == "Q4 审计简报"
+
 
 async def test_bounded_dynamic_relay_from_wake_turn_enforces_max_hops(
     butler: dict[str, Any], step: Any,

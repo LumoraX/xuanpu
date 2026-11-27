@@ -1,11 +1,17 @@
 ---
 name: excel-analysis
-display_name: 表格与 CSV 数据分析
-description: 读取多工作表 Excel/CSV，用 Python 脚本计算汇总、同比环比、异常值与透视结果。
+display_name: Excel 工作簿分析与生成
+description: 读取或生成带动态 Excel 公式的 .xlsx 工作簿，严禁硬编码计算结果。
 version: 1.0.0
 type: atomic
+scripts:
+  - name: excel_tool
+    language: python
+    path: scripts/excel_tool.py
+    timeout_seconds: 30
+    description: 支持 build 生成含动态公式的 .xlsx 与 summarize 解析工作表/公式摘要。
 ---
 
-# 表格与 CSV 数据分析
+# Excel 工作簿分析与生成
 
-读取多工作表 Excel/CSV，用 Python 脚本计算汇总、同比环比、异常值与透视结果。
+生成 `.xlsx` 时数值汇总一律写入 Excel 公式（如 `=SUM(B2:B4)`），并通过 `excel_tool summarize` 做交付前复核。
