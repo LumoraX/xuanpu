@@ -416,6 +416,7 @@ class Platform:
         # 受保护知识问答：采样走助理路由同一配额与计量，来源删除即时使依赖上下文失效
         self.knowledge_contexts = KnowledgeContexts(self.knowledge, store.context_store, self.assistant.sample_protected)
         self.knowledge.removal_listeners.append(self.knowledge_contexts.source_removed)
+        from server.core.plugins.browser_plugin import BrowserSandboxBackendPlugin
         from server.core.plugins.builtins import CustomRecordsPlugin
         from server.core.plugins.domain_plugins import (
             PeopleGraphBackendPlugin,
@@ -446,6 +447,7 @@ class Platform:
             TopicWatchBackendPlugin(),
             ProactiveBriefingBackendPlugin(),
             PeopleGraphBackendPlugin(),
+            BrowserSandboxBackendPlugin(artifacts=self.trace_artifacts),
         ):
             self.plugins.register(plugin)
         self.dashboard = DashboardService(self, now=now)
