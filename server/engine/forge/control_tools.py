@@ -222,3 +222,96 @@ def forge_bump_version(draft_dir: Path, *, bump: BumpKind = "patch") -> ControlM
             meta["version"] = f"{major}.{minor}.{patch + 1}"
 
     return _apply_and_write(draft_dir, _mutate, f"语义化递增版本（{bump}）")
+
+
+_UI_STARTER_HTML = """<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>{title}</title>
+<style>
+  body {{ font-family: system-ui, sans-serif; margin: 12px; color: #1f2328; background: #fff; }}
+  h3 {{ margin: 0 0 8px; font-size: 15px; }}
+  pre {{ background: #f6f8fa; padding: 8px; border-radius: 6px; overflow: auto; font-size: 12px; }}
+</style>
+</head>
+<body>
+  <h3>{title}</h3>
+  <div id="app">等待宿主注入上下文…</div>
+  <script>
+    window.addEventListener("message", function (ev) {{
+      var msg = ev.data || {{}};
+      if (msg.type === "xuanpu:init") {{
+        var el = document.getElementById("app");
+        el.textContent = "已连接宿主槽位：" + (msg.slot || "aux-tab");
+      }}
+    }});
+    window.parent.postMessage({{ type: "xuanpu:ready" }}, "*");
+  </script>
+</body>
+</html>
+"""
+
+
+def forge_register_ui_plugin(
+    draft_dir: Path,
+    *,
+    plugin_id: str,
+    title: str,
+    slot: Literal["header-pill", "message-renderer", "aux-tab", "artifact-viewer"] = "aux-tab",
+    mode: Literal["declarative", "sandbox_iframe"] = "sandbox_iframe",
+    entry: str | None = None,
+    mime_types: tuple[str, ...] = (),
+    bridge_permissions: tuple[str, ...] = (),
+) -> ControlMutationResult:
+    """强类型登记随匠人同包版本化的前端插件声明，并初始化安全沙盒入口骨架（ADR 0027）。"""
+    if not _SKILL_ID_RE.fullmatch(plugin_id):
+        raise InvalidRequestError(f"无效前端插件标识：{plugin_id!r}")
+    entry_rel = entry or f"{plugin_id}/index.html"
+
+    def _mutate(raw: dict[str, Any]) -> None:
+        spec = raw.setdefault("spec", {})
+        ui = spec.setdefault("ui", {"dir": "ui", "plugins": []})
+        plugins: list[dict[str, Any]] = [
+            p for p in (ui.get("plugins") or []) if p.get("id") != plugin_id
+        ]
+        item: dict[str, Any] = {
+            "id": plugin_id,
+            "title": title.strip() or plugin_id,
+            "slot": slot,
+            "mode": mode,
+            "entry": entry_rel,
+        }
+        if mime_types:
+            item["mimeTypes"] = list(mime_types)
+        if bridge_permissions:
+            item["bridgePermissions"] = list(bridge_permissions)
+        plugins.append(item)
+        ui["plugins"] = plugins
+
+    res = _apply_and_write(draft_dir, _mutate, f"登记同包前端插件 {plugin_id}")
+    ui_dir = draft_dir / (res.manifest.spec.ui.dir if res.manifest.spec.ui else "ui")
+    entry_file = ui_dir / entry_rel
+    if not entry_file.exists():
+        entry_file.parent.mkdir(parents=True, exist_ok=True)
+        entry_file.write_text(_UI_STARTER_HTML.format(title=title.strip() or plugin_id), encoding="utf-8")
+    return res
+
+
+def forge_remove_ui_plugin(draft_dir: Path, *, plugin_id: str) -> ControlMutationResult:
+    """强类型移除业务包清单中的指定前端插件声明。"""
+
+    def _mutate(raw: dict[str, Any]) -> None:
+        ui = raw.get("spec", {}).get("ui")
+        if not isinstance(ui, dict):
+            raise InvalidRequestError(f"前端插件 {plugin_id} 不存在")
+        plugins: list[dict[str, Any]] = list(ui.get("plugins") or [])
+        remaining = [p for p in plugins if p.get("id") != plugin_id]
+        if len(remaining) == len(plugins):
+            raise InvalidRequestError(f"前端插件 {plugin_id} 不存在")
+        if remaining:
+            ui["plugins"] = remaining
+        else:
+            raw["spec"].pop("ui", None)
+
+    return _apply_and_write(draft_dir, _mutate, f"移除同包前端插件 {plugin_id}")

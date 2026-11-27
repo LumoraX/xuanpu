@@ -432,6 +432,11 @@ class Platform:
 
         self.releases = ReleaseLedgerService(store.release_store, now=now)
         self.forge = ArtisanForgeService(self, self.releases, data_dir=data_dir, now=now)
+        from server.core.plugins.builtins import CustomRecordsPlugin
+        from server.core.plugins.host import PluginHost
+
+        self.plugins = PluginHost(self, data_dir=data_dir, now=now)
+        self.plugins.register(CustomRecordsPlugin())
         self.dashboard = DashboardService(self, now=now)
         self.proactive = ProactiveService(workspace=self.workspace, control=store,
             identity=identity_store, sample=self.assistant.sample_proactive, now=now,
@@ -524,6 +529,7 @@ class Platform:
             self.proactive_worker.start()
             self.trace_retention.start()
             self.butler.start()
+            await self.plugins.mount_all()
             self._started = True
         except BaseException:
             await self.close()
@@ -537,7 +543,8 @@ class Platform:
             self._closed = True
             self.sessions.stop_accepting()
             errors: list[BaseException] = []
-            actions = (self.shared_notifications.close, self.shared_publication_recovery.close, self.shared_materials.publications.close,
+            actions = (self.plugins.close,
+                       self.shared_notifications.close, self.shared_publication_recovery.close, self.shared_materials.publications.close,
                        self.capabilities.evaluations.close,
                        self.capabilities.installations.preflight.inventory.close,
                        self.organization_lifecycle.close, self.trigger_worker.close, self.task_registry.close, self.proactive_worker.close, self.reminders.close,

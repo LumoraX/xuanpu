@@ -21,7 +21,9 @@ from server.engine.forge.control_tools import (
     ControlMutationResult,
     forge_add_entry,
     forge_bump_version,
+    forge_register_ui_plugin,
     forge_remove_entry,
+    forge_remove_ui_plugin,
     forge_set_connector_tools,
     forge_set_policy,
     forge_upsert_eval,
@@ -289,6 +291,19 @@ class ArtisanForgeService:
                 )
             if action == "bump_version":
                 return forge_bump_version(draft_dir, bump=params.get("bump", "patch"))
+            if action == "register_ui_plugin":
+                return forge_register_ui_plugin(
+                    draft_dir,
+                    plugin_id=str(params["plugin_id"]),
+                    title=str(params.get("title") or params["plugin_id"]),
+                    slot=params.get("slot", "aux-tab"),
+                    mode=params.get("mode", "sandbox_iframe"),
+                    entry=params.get("entry"),
+                    mime_types=tuple(params.get("mime_types") or ()),
+                    bridge_permissions=tuple(params.get("bridge_permissions") or ()),
+                )
+            if action == "remove_ui_plugin":
+                return forge_remove_ui_plugin(draft_dir, plugin_id=str(params["plugin_id"]))
             raise InvalidRequestError(f"不支持的 L-Control 动作：{action}")
 
         result = await asyncio.to_thread(_exec)

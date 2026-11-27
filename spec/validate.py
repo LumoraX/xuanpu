@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
@@ -292,6 +293,67 @@ def _check_remote_connector(connector: ConnectorSpec, findings: _Findings) -> No
         )
 
 
+_MAX_UI_ASSET_BYTES = 512 * 1024
+_UI_FORBIDDEN_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"\bdocument\.cookie\b"), "禁止访问 document.cookie"),
+    (re.compile(r"\bwindow\.top\b"), "禁止越界访问 window.top"),
+    (re.compile(r"\bwindow\.parent\.document\b"), "禁止访问宿主 window.parent.document"),
+    (re.compile(r"\beval\s*\("), "禁止使用 eval()"),
+    (re.compile(r"\bnew\s+Function\s*\("), "禁止使用 new Function()"),
+    (re.compile(r"""<script[^>]+src\s*=\s*["']https?://""", re.IGNORECASE), "禁止加载外部 CDN 脚本"),
+    (re.compile(r"\b(?:fetch|XMLHttpRequest|WebSocket)\s*\("), "禁止在沙盒插件内直接发起网络请求，请改走 postMessage Bridge"),
+)
+
+
+def scan_ui_asset_security(relpath: str, text: str) -> list[str]:
+    """静态扫描前端插件文本资源中的高危越权模式，返回违规项列表。"""
+    problems: list[str] = []
+    if len(text.encode("utf-8")) > _MAX_UI_ASSET_BYTES:
+        problems.append(f"UI 资源 {relpath!r} 超过 {_MAX_UI_ASSET_BYTES} 字节上限")
+    for pattern, reason in _UI_FORBIDDEN_PATTERNS:
+        if pattern.search(text):
+            problems.append(f"UI 资源 {relpath!r} 触发安全红线：{reason}")
+    return problems
+
+
+def _check_ui(root: Path, manifest: PackageManifest, findings: _Findings) -> None:
+    """校验可选 ``spec.ui`` 目录、入口文件及静态安全红线（ADR 0027）。"""
+    ui_spec = manifest.spec.ui
+    if ui_spec is None:
+        return
+    if not is_safe_relative(ui_spec.dir):
+        findings.errors.append(f"ui.dir 必须是包内的相对路径：{ui_spec.dir!r}")
+        return
+    ui_root = (root / ui_spec.dir).resolve()
+    if not ui_root.is_dir():
+        findings.errors.append(f"ui 目录 {ui_spec.dir!r} 不存在")
+        return
+    for plugin in ui_spec.plugins:
+        if not is_safe_relative(plugin.entry):
+            findings.errors.append(f"UI 插件 {plugin.id!r} 的 entry 不是合法相对路径：{plugin.entry!r}")
+            continue
+        entry_path = (ui_root / plugin.entry).resolve()
+        try:
+            entry_path.relative_to(ui_root)
+        except ValueError:
+            findings.errors.append(f"UI 插件 {plugin.id!r} 的 entry 越出 ui 目录：{plugin.entry!r}")
+            continue
+        if not entry_path.is_file():
+            findings.errors.append(f"UI 插件 {plugin.id!r} 的入口文件不存在：{ui_spec.dir}/{plugin.entry}")
+    for path in sorted(ui_root.rglob("*")):
+        if not path.is_file():
+            continue
+        if path.suffix.lower() not in (".html", ".htm", ".js", ".mjs", ".css", ".svg"):
+            continue
+        rel = path.relative_to(root).as_posix()
+        try:
+            content = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            findings.errors.append(f"UI 资源 {rel!r} 必须是 UTF-8 编码文本")
+            continue
+        findings.errors.extend(scan_ui_asset_security(rel, content))
+
+
 def _check_policy(manifest: PackageManifest, findings: _Findings) -> None:
     """对偏宽松的策略组合给出提醒。"""
     policy = manifest.spec.policy
@@ -331,6 +393,7 @@ def validate_package(
             _check_http_connector(root, connector, findings)
         elif connector.transport == "remote":
             _check_remote_connector(connector, findings)
+    _check_ui(root, manifest, findings)
     _check_policy(manifest, findings)
     return ValidationReport(
         manifest=manifest, errors=tuple(findings.errors), warnings=tuple(findings.warnings)
@@ -344,6 +407,7 @@ __all__ = [
     "category_matches",
     "connector_tool_name",
     "is_safe_relative",
+    "scan_ui_asset_security",
     "split_tool_name",
     "validate_package",
 ]

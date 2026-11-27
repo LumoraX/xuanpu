@@ -481,6 +481,51 @@ class EvalCase(_Strict):
     expect: EvalExpectation = EvalExpectation()
 
 
+UiSlot = Literal["header-pill", "message-renderer", "aux-tab", "artifact-viewer"]
+UiMode = Literal["declarative", "sandbox_iframe"]
+UiBridgePermission = Literal[
+    "artifact.read", "collection.read", "collection.write", "workspace.propose",
+]
+
+
+class UiPluginSpec(_Strict):
+    """随业务匠人同包版本化的单个前端交互插件声明（ADR 0027）。"""
+
+    id: Name
+    title: Annotated[str, StringConstraints(min_length=1, max_length=80)]
+    slot: UiSlot = "aux-tab"
+    mode: UiMode = "sandbox_iframe"
+    entry: RelativePath = "index.html"
+    mime_types: Annotated[tuple[str, ...], Field(alias="mimeTypes")] = ()
+    bridge_permissions: Annotated[
+        tuple[UiBridgePermission, ...], Field(alias="bridgePermissions")
+    ] = ()
+
+    @model_validator(mode="after")
+    def _validate_permissions(self) -> UiPluginSpec:
+        """去重校验权限与 MIME 声明。"""
+        if len(set(self.bridge_permissions)) != len(self.bridge_permissions):
+            raise ValueError("ui.plugins.bridgePermissions 里有重复权限")
+        if len(set(self.mime_types)) != len(self.mime_types):
+            raise ValueError("ui.plugins.mimeTypes 里有重复 MIME 类型")
+        return self
+
+
+class UiSpec(_Strict):
+    """业务包可选的同包前端插件目录与插件声明列表。"""
+
+    dir: RelativePath = "ui"
+    plugins: tuple[UiPluginSpec, ...] = ()
+
+    @model_validator(mode="after")
+    def _unique_ids(self) -> UiSpec:
+        """同一业务包内的前端插件 id 不能重复。"""
+        ids = [p.id for p in self.plugins]
+        if len(set(ids)) != len(ids):
+            raise ValueError("ui.plugins 里有重名的插件 id")
+        return self
+
+
 class PackageSpec(_Strict):
     """清单的主体。"""
 
@@ -489,6 +534,7 @@ class PackageSpec(_Strict):
     policy: PolicySpec = PolicySpec()
     connectors: tuple[ConnectorSpec, ...] = ()
     evals: tuple[EvalCase, ...] = ()
+    ui: UiSpec | None = None
 
     @model_validator(mode="after")
     def _cross_references(self) -> PackageSpec:
@@ -574,5 +620,10 @@ __all__ = [
     "SkillRecallSpec",
     "SkillsSpec",
     "Transport",
+    "UiBridgePermission",
+    "UiMode",
+    "UiPluginSpec",
+    "UiSlot",
+    "UiSpec",
     "version_key",
 ]

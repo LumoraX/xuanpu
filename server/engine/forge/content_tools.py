@@ -17,10 +17,10 @@ from typing import Any
 import taifeng
 
 from server.domains.workspace.patch import make_unified_diff
-from spec import MANIFEST_FILENAME
+from spec import MANIFEST_FILENAME, scan_ui_asset_security
 from spec.skills import scan_skills
 
-_ALLOWED_PREFIXES = ("skills/", "tests/")
+_ALLOWED_PREFIXES = ("skills/", "tests/", "ui/")
 _FORBIDDEN_NAMES = frozenset({MANIFEST_FILENAME, "delivery.json"})
 
 
@@ -73,7 +73,7 @@ class ForgeContentEditor:
                 )
             if not is_content_path_allowed(path):
                 return taifeng.HookDecision.deny(
-                    f"路径 {path!r} 不在允许的内容白名单（skills/ 或 tests/）内"
+                    f"路径 {path!r} 不在允许的内容白名单（skills/、tests/ 或 ui/）内"
                 )
         return taifeng.HookDecision.ok()
 
@@ -97,6 +97,11 @@ class ForgeContentEditor:
                     compile(source, rel, "exec")
                 except SyntaxError as exc:
                     warnings.append(f"{rel} 存在 Python 语法错误（第 {exc.lineno} 行）：{exc.msg}")
+            if rel.startswith("ui/") and target.is_file() and target.suffix.lower() in (
+                ".html", ".htm", ".js", ".mjs", ".css", ".svg"
+            ):
+                source = await asyncio.to_thread(target.read_text, encoding="utf-8")
+                warnings.extend(scan_ui_asset_security(rel, source))
             if target.name == "SKILL.md":
                 touched_skill = True
         if touched_skill and (self._draft_dir / "skills").is_dir():

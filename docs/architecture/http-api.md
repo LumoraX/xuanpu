@@ -1140,6 +1140,12 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | POST /v1/assistant/topic-watches/{watch_id}/evaluate | signal、timezone、deliver、daily_bg_tokens_used | 评估追踪动态信号：无变化保持静默；有新变化经 Attention Budget 放行并刷新基线，可选投递主对话 |
 | GET /v1/assistant/actions/{request_id} | 无 | 查询某轮自主办理动作的已撤回清单（`undone`） |
 | POST /v1/assistant/actions/{request_id}/{action_id}/undo | 无 | 一键幂等撤回本轮管家自主办理的某项个人操作（支持待办/日程/提醒/文件局部编辑/回收恢复），仅本人可用 |
+| GET /v1/plugins | 无 | 列出后端微内核已挂载插件清单及实时健康探活状态（ADR 0027） |
+| POST /v1/plugins/{plugin_id}/unmount | 无 | 租户或平台管理员运行时干净卸载（Clean Unmounting）指定非内核后端插件 |
+| GET /v1/plugins/ui | 无 | 返回本租户生效的 L2 内置前端插件与 L1 匠人同包 `ui/` 插件清单及权限声明 |
+| GET /v1/plugins/ui/{package}/{version}/{asset_path} | 无 | 以严格沙盒 CSP（禁用网络与越权）托管不可变 L1 前端插件静态资源 |
+| POST /v1/plugins/bridge/rpc | plugin_id、method、params | Web 主壳代理沙盒 iframe 发起的白名单 RPC 网关（服务端权威校验 `bridgePermissions`） |
+| GET/POST/PUT/DELETE /v1/plugins/ext/{plugin_id}/{subpath} | 视插件路由而定 | 动态分派至已挂载后端插件路由（支持热插拔与卸载后即时 404） |
 
 ### 过程产物与跨节点只读接力（ADR 0025）
 

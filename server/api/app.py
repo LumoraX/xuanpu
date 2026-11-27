@@ -44,6 +44,7 @@ from server.api.organization import organization_router
 from server.api.organizational_approvals import organizational_approvals_router
 from server.api.outcomes import outcomes_router
 from server.api.people import people_router
+from server.api.plugins import plugins_router
 from server.api.proactive import proactive_router
 from server.api.reminders import reminders_router
 from server.api.shared_contexts import shared_contexts_router
@@ -208,6 +209,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
     app.include_router(transcripts_router(platform))
     app.include_router(artifacts_router(platform))
     app.include_router(forge_router(platform))
+    app.include_router(plugins_router(platform))
     app.include_router(dashboard_router(platform))
     app.include_router(file_bridge_router(platform))
     app.include_router(work_tasks_router(platform))
