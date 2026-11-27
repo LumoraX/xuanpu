@@ -763,7 +763,13 @@ async def execute_personal_action(
             "undo": {"kind": "workspace_trash", "item_id": saved["id"]},
         }
         turn.executed_actions.append(entry)
-        return {"ok": True, "action_id": action_id, "file": saved}
+        from server.engine.butler.multimodal import validate_mermaid_blocks
+
+        mermaid_warnings = validate_mermaid_blocks(text)
+        out_note: dict[str, Any] = {"ok": True, "action_id": action_id, "file": saved}
+        if mermaid_warnings:
+            out_note["mermaid_warnings"] = mermaid_warnings
+        return out_note
 
     if action == "patch_personal_file":
         from server.domains.workspace.patch import TextPatchEdit, apply_exact_edits

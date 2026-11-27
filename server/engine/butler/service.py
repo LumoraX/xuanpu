@@ -411,7 +411,12 @@ class ButlerService:
         self.session_queue.bind_turn(f"{who.tenant_id}:{who.user_id}", body.request_id, turn)
         await p.sessions.admit_routing(tenant)
         try:
-            reply = await self.engines.run(turn, await self._payload(who, body, merge=merge))
+            from server.engine.butler.multimodal import collect_inline_images
+
+            images = await collect_inline_images(p, who, body.input_files)
+            reply = await self.engines.run(
+                turn, await self._payload(who, body, merge=merge), attachments=images,
+            )
         except TurnTimeout as exc:
             reply = _timed_out(turn, exc)
         except PlatformError:

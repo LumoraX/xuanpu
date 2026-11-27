@@ -801,7 +801,7 @@ R4-B/C 新增 0028_capability_assignments（能力分配与调用绑定）、002
 
 开启后，名单内租户的员工经 `POST /v1/assistant/messages` 对管家说话（见[管家](../architecture/butler.md)）；未开启的租户同一入口走既有分流。管家引擎每租户一个，线程文件在 `<data_dir>/butler/<租户目录>/threads`，每轮新建、结束即释放；一轮在平台后台任务里跑，进行中每 20 秒续一次认领租约。管家处理失败记标准错误日志「管家处理失败」：回复窗口内返回 503，窗口过后写进员工主对话，原话都已保留。进程中途退出时，进行中的一轮在租约（60 秒）过期后由唤醒循环按同一请求标识重跑一次。
 
-R5-C2 新增 `0023_butler_wakeup`（尚未正式部署）：`butler_event`（唤醒事件，按派工与宿主事实去重、带处理决定与确认标记）与 `butler_pending`（待本人处理项与代答记录，含答复原文及出处），均按租户与员工归属，外键到派工与员工表；另给派工表加进行中派工的部分索引。`butler.wake_interval_seconds` 默认 2（0.2–300），升级事件驱动唤醒后另可配置 `butler.reconcile_interval_seconds` 作为低频对账兜底周期（默认沿用 `wake_interval_seconds`）；同会话并发排队与三阶段强制插入合并由 `butler.serialize_user_turns`（默认 `true`）与 `butler.max_interrupt_merges`（默认 3，0–10）控制；只读工具默认并发上限由 `butler.max_parallel_tool_calls`（默认 `max(4, min(cpu_count, 16))`，1–32）控制。唤醒后的复核会再跑一轮管家，计入 `max_butler_turns_per_trace` 与 token 上限，超限时只做确定性验收后交付。员工侧用法见[管家使用说明](butler.md)。
+R5-C2 新增 `0023_butler_wakeup`（尚未正式部署）：`butler_event`（唤醒事件，按派工与宿主事实去重、带处理决定与确认标记）与 `butler_pending`（待本人处理项与代答记录，含答复原文及出处），均按租户与员工归属，外键到派工与员工表；另给派工表加进行中派工的部分索引。`butler.wake_interval_seconds` 默认 2（0.2–300），升级事件驱动唤醒后另可配置 `butler.reconcile_interval_seconds` 作为低频对账兜底周期（默认沿用 `wake_interval_seconds`）；同会话并发排队与三阶段强制插入合并由 `butler.serialize_user_turns`（默认 `true`）与 `butler.max_interrupt_merges`（默认 3，0–10）控制；只读工具默认并发上限由 `butler.max_parallel_tool_calls`（默认 `max(4, min(cpu_count, 16))`，1–32）控制；有界动态多步接力上限由 `butler.max_dynamic_relay_hops`（默认 3，0–5）控制。唤醒后的复核会再跑一轮管家，计入 `max_butler_turns_per_trace` 与 token 上限，超限时只做确定性验收后交付。员工侧用法见[管家使用说明](butler.md)。
 
 后续控制面迁移 `0036_butler_task_board.sql`（跨轮持久任务板）、`0037_transcript_index.sql`（双层本地脱敏 Transcript 全局索引）、`0038_trace_artifacts.sql`（过程产物分层表）与 `0039_release_nodes.sql`（L1/L2/L3 不可变发布节点账本）支撑 ADR 0024–0026。
 

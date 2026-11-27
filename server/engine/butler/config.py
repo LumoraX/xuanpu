@@ -48,6 +48,7 @@ class ButlerConfig(BaseModel):
     serialize_user_turns: StrictBool = False
     max_interrupt_merges: int = Field(default=5, ge=1, le=20)
     max_parallel_tool_calls: int = Field(default_factory=_default_parallel_tools, ge=1, le=16)
+    max_dynamic_relay_hops: int = Field(default=3, ge=0, le=5)
     max_group_members: int = Field(default=4, ge=1, le=8)
     max_group_steps: int = Field(default=3, ge=1, le=5)
     max_consult_rounds: int = Field(default=2, ge=0, le=5)

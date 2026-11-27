@@ -91,6 +91,9 @@ class ButlerEngines:
                 instruction_layers=layers or None,
                 max_parallel_tool_calls=self._platform.butler_config.max_parallel_tool_calls,
                 max_iterations=MAX_ITERATIONS, max_session_tokens=MAX_SESSION_TOKENS,
+                image_input_policy=taifeng.ImageInputPolicy(
+                    enabled=True, max_images=3, max_item_bytes=5 * 1024 * 1024, max_total_bytes=12 * 1024 * 1024,
+                ),
                 doom_loop_config=taifeng.DoomLoopConfig(
                     max_consecutive_repeats=3,
                     max_consecutive_errors=2,
@@ -100,7 +103,13 @@ class ButlerEngines:
             self._pools[tenant] = pool
             return pool
 
-    async def run(self, turn: ButlerTurn, payload: str) -> str:
+    async def run(
+        self,
+        turn: ButlerTurn,
+        payload: str,
+        *,
+        attachments: list[dict[str, Any]] | None = None,
+    ) -> str:
         """跑一轮，返回管家给员工的回复文本。
 
         Raises:
@@ -129,7 +138,19 @@ class ButlerEngines:
         try:
             hub = self._hub(engine, turn, session_id)
             await hub.start()
-            submission = await engine.submit(taifeng.UserMessage(text=payload))
+            if attachments:
+                try:
+                    submission = await engine.submit(
+                        taifeng.UserMessage(text=payload, attachments=list(attachments))
+                    )
+                except Exception as exc:
+                    if type(exc).__name__ != "UnsupportedModalityError":
+                        raise
+                    # 若当前租户模型不支持图片输入，优雅退回纯文本输入（材料引用仍在 payload.materials 中）
+                    logger.warning("当前租户模型不支持图片直读，退回纯文本模式（trace=%s）", turn.trace_id)
+                    submission = await engine.submit(taifeng.UserMessage(text=payload))
+            else:
+                submission = await engine.submit(taifeng.UserMessage(text=payload))
             stream = hub.open_stream(submission)
             seconds = self._platform.butler_config.turn_seconds
             try:

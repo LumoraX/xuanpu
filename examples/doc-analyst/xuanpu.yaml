@@ -1,0 +1,37 @@
+apiVersion: xuanpu/v1
+metadata:
+  name: doc-analyst
+  displayName: 通用文档与数据分析匠人
+  version: 1.0.0
+  description: 断网隔离沙盒内的通用文档解析、Python 数据分析、图表绘制与富文件交付匠人（含 8 项共享文档技能）。
+spec:
+  model:
+    tier: balanced
+  policy:
+    approval: standard
+    sandbox:
+      network: false
+      shell: true
+    budget:
+      maxSessionTokens: 300000
+      maxIterations: 24
+  skills:
+    dir: skills
+    entries:
+      - analyze
+    exports:
+      - pdf-parse
+      - excel-analysis
+      - docx-compose
+      - pptx-compose
+      - chart-render
+      - diagram-compose
+      - markdown-publish
+      - doc-diff
+  evals:
+    - name: offline-csv-summary
+      entry: analyze
+      input: 请对输入目录中的 CSV 数据做统计摘要并产出结构化结论。
+      expect:
+        contains:
+          - 统计
