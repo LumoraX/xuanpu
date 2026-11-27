@@ -208,7 +208,9 @@ class ArtisanForgeService:
             updated_at=now,
         )
         self._baselines[(tenant, draft_id)] = {}
-        return self._save(rec)
+        saved = self._save(rec)
+        await self._mirror_draft_to_controlplane(who, saved)
+        return saved
 
     async def checkout_draft(
         self, who: Principal, *, package_name: str, version: str | None = None,
@@ -243,7 +245,24 @@ class ArtisanForgeService:
             updated_at=now,
         )
         self._baselines[(tenant, draft_id)] = baseline
-        return self._save(rec)
+        saved = self._save(rec)
+        await self._mirror_draft_to_controlplane(who, saved)
+        return saved
+
+    async def _mirror_draft_to_controlplane(self, who: Principal, rec: ForgeDraftRecord) -> None:
+        """将造匠草稿元数据镜像写入共享 PluginCollectionStore（支撑多节点统一可见与查询）。"""
+        await self._platform.plugins.collections.put(
+            who,
+            "kernel:forge",
+            "drafts",
+            rec.model_dump(mode="json"),
+            record_id=rec.draft_id,
+        )
+
+    async def list_persisted_drafts(self, who: Principal, *, limit: int = 50) -> list[ForgeDraftRecord]:
+        """从控制面统一集合列出本人/管理员造匠草稿清单（跨节点可见）。"""
+        rows = await self._platform.plugins.collections.list(who, "kernel:forge", "drafts", limit=limit)
+        return [ForgeDraftRecord.model_validate(r.data) for r in rows]
 
     async def apply_control(
         self, who: Principal, draft_id: str, action: str, params: dict[str, Any],

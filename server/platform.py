@@ -418,6 +418,7 @@ class Platform:
         self.knowledge.removal_listeners.append(self.knowledge_contexts.source_removed)
         from server.core.plugins.browser_plugin import BrowserSandboxBackendPlugin
         from server.core.plugins.builtins import CustomRecordsPlugin
+        from server.core.plugins.channel_plugins import ImOutreachChannelPlugin
         from server.core.plugins.domain_plugins import (
             PeopleGraphBackendPlugin,
             ProactiveBriefingBackendPlugin,
@@ -448,6 +449,7 @@ class Platform:
             ProactiveBriefingBackendPlugin(),
             PeopleGraphBackendPlugin(),
             BrowserSandboxBackendPlugin(artifacts=self.trace_artifacts),
+            ImOutreachChannelPlugin(),
         ):
             self.plugins.register(plugin)
         self.dashboard = DashboardService(self, now=now)
