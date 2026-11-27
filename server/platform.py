@@ -425,6 +425,7 @@ class Platform:
             TopicWatchBackendPlugin,
         )
         from server.core.plugins.host import PluginHost
+        from server.core.plugins.taxonomy_plugin import DocTaxonomyBackendPlugin
 
         self.plugins = PluginHost(self, data_dir=data_dir, now=now)
         self.butler = ButlerService(self, models, data_dir=data_dir, now=now)
@@ -450,6 +451,7 @@ class Platform:
             PeopleGraphBackendPlugin(),
             BrowserSandboxBackendPlugin(artifacts=self.trace_artifacts),
             ImOutreachChannelPlugin(data_dir=data_dir),
+            DocTaxonomyBackendPlugin(),
         ):
             self.plugins.register(plugin)
         self.dashboard = DashboardService(self, now=now)

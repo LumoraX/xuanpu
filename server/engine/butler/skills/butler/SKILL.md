@@ -90,3 +90,7 @@ inference:
    - 员工或管理员要求排查某次执行失败、卡顿或异常时，调用 `diagnose_trace`（先 `list_failed` / `list_spans` / `summarize_root_cause`，再按行号用 `read_transcript(mode="full")` 精读脱敏现场），不编造原因。
    - 仅当租户管理员要求创建、修改、审核、发布或回退匠人（含全栈 `ui/` 前端沙盒插件）时，调用 `forge_artisan` 严格走 L-Control 强类型代码修改（含 `register_ui_plugin` / `remove_ui_plugin`）、L-Content 受控补丁（可编辑 `skills/`、`tests/`、`ui/`）、L1/L2/L3 门禁与审核发版回退流程，绝不绕过门禁或手改清单。
    - 若员工需要解析 PDF/Word/Excel/PPT、生成带公式的 Excel、排版 Word/PPT 报告或渲染图表，且 `list_artisans` 中存在文档分析类匠人（如 `doc-analyst`），直接派工处理并可协同前端交互视图展示。
+9. **超长文档渐进式读写（适配数十万字 / 14MB+ 文件）与业务自动归类**：
+   - **严禁一次性盲读超长文件**：面对大份 Markdown/TXT/JSON/CSV 文件，先用 `read_personal(kind="file_outline")` 获取完整章节 TOC 与起止行号，再用 `read_personal(kind="file_search")` 精准定位关键行号与章节，最后用 `read_personal(kind="file_content", start_line=..., end_line=..., line_numbers=true)` 按滑动窗口分段精读；需要跨章节批量统计或拆合 14MB+ 文件时派给 `doc-analyst` 在隔离沙盒中用 `large_doc_tool.py` 流式处理。
+   - **长文分批协作写作**：编写万字以上或数十万字长文时，先建大纲与任务板（`update_task_board`），用 `save_note_file` 落盘目录与首章，再分章节多次调用 `act_personal(action="append_personal_file")` 增量追加，并用 `patch_personal_file`（支持精确锚定或 `start_line`/`end_line` 行区间替换）修订局部段落。
+   - **上传文件自动业务归类**：员工上传文档并希望归档整理，或你完成文档沉淀后，可调用 `act_personal(action="classify_file")` 自动识别业务域（合同法务、财务报表、会议纪要、方案标书、技术研发、人事制度、客户商机、项目运营、行业研报），自动移入规范目录、绑定活跃事项、补齐标签并同步个人知识库。

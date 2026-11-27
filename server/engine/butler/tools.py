@@ -76,8 +76,10 @@ ACT_PERSONAL_DESCRIPTION = (
     "- create_matter / update_matter：新建或更新本人项目事项（传 title/description/status 或 item_id）；\n"
     "- act_followup：处理本人主动感知跟进（传 followup_id、followup_action=complete|postpone|ignore_stage|set_reminder|progress 及可选 due_at）；\n"
     "- merge_people：将两位重复的本人人物档案软合并（传 source_id、target_id，支持一键撤回拆分）；\n"
-    "- save_note_file：把你整理好的会议纪要、项目全景简报、周报或方案保存为本人工作台 Markdown 文件（传 name/content，可选 matter_id/parent_id）；\n"
-    "- patch_personal_file：对本人已有 UTF-8 文本/Markdown 文件做精准局部块替换（传 item_id、edits=[{target, replacement}] 及可选 expected_version，严格唯一锚定并返回 Unified Diff，支持一键撤回）。"
+    "- save_note_file：把你整理好的会议纪要、项目全景简报、周报、方案或长文首章保存为本人工作台 Markdown 文件（传 name/content，可选 matter_id/parent_id）；\n"
+    "- append_personal_file：向已有个人 UTF-8/Markdown 文档增量追加下一章节（传 item_id、content 及可选 separator/expected_version），用于分批协作编写数十万字/14MB 级超长文章，每次追加均生成不可变版本并支持一键撤回；\n"
+    "- patch_personal_file：对本人已有 UTF-8 文本/Markdown 文件做精准局部编辑（支持 edits=[{target, replacement}] 唯一锚定，或传 start_line/end_line/content 按行区间替换，均支持 14MB+ 快速 Unified Diff 与一键撤回）；\n"
+    "- classify_file：自动识别工作台文件的企业业务类别（合同法务/财务报表/会议纪要/方案标书/技术研发/人事制度/客户商机/项目运营/行业研报），自动归入对应业务目录、绑定活跃事项、打标签并可选入知识库（传 item_id，可选 apply/index_knowledge，支持一键撤回）。"
 )
 
 
@@ -162,7 +164,9 @@ class ButlerTools:
                             "act_followup",
                             "merge_people",
                             "save_note_file",
+                            "append_personal_file",
                             "patch_personal_file",
+                            "classify_file",
                         ],
                     },
                     "bundle": {"type": ["object", "null"], "description": "capture_bundle 时的复合整理包（结构同 people_draft）"},
@@ -200,14 +204,19 @@ class ButlerTools:
                         },
                         "description": "patch_personal_file 的精确局部替换列表",
                     },
-                    "expected_version": {"type": ["integer", "null"], "minimum": 1, "description": "patch_personal_file 可选 CAS 版本号"},
+                    "expected_version": {"type": ["integer", "null"], "minimum": 1, "description": "patch_personal_file / append_personal_file 可选 CAS 版本号"},
+                    "separator": {"type": ["string", "null"], "description": "append_personal_file 追加连接符，默认 \\n\\n"},
+                    "start_line": {"type": ["integer", "null"], "minimum": 1, "description": "patch_personal_file 行区间替换的起始行号（1-based）"},
+                    "end_line": {"type": ["integer", "null"], "minimum": 1, "description": "patch_personal_file 行区间替换的结束行号（1-based，含）"},
+                    "apply": {"type": ["boolean", "null"], "description": "classify_file 是否实际移动目录/更新标签（默认 true；false 仅预览建议）"},
+                    "index_knowledge": {"type": ["boolean", "null"], "description": "classify_file 归档后是否自动入个人知识库（默认 true）"},
                 },
                 ["action"],
                 self._act_personal,
             ),
             self._spec(
                 "read_personal",
-                "查本人的今日全景（today）、待办（todos）、日程（events）、提醒（reminders）、最近匠人派工（dispatches）、工作任务（work_tasks）、个人文件清单与文本正文（files/file_content）、个人知识库与记忆（knowledge）、主动业务跟进（followups）、以及个人知识图谱（orgs_search/people_search/matters/records_search/entity_graph/person_detail/matter_people）（全部只读）。",
+                "查本人的今日全景（today）、待办（todos）、日程（events）、提醒（reminders）、最近匠人派工（dispatches）、工作任务（work_tasks）、个人文件清单/文档结构大纲/文件内正则定位/分段窗口精读（files/file_outline/file_search/file_content）、个人知识库与记忆（knowledge/hybrid_recall）、主动业务跟进（followups）、以及个人知识图谱（orgs_search/people_search/matters/records_search/entity_graph/person_detail/matter_people）（全部只读）。",
                 {
                     "kind": {
                         "type": "string",
@@ -219,6 +228,8 @@ class ButlerTools:
                             "dispatches",
                             "files",
                             "file_content",
+                            "file_outline",
+                            "file_search",
                             "knowledge",
                             "hybrid_recall",
                             "followups",
@@ -232,10 +243,16 @@ class ButlerTools:
                             "matter_people",
                         ],
                     },
-                    "query": {"type": ["string", "null"], "description": "关键词（todos/events/files/knowledge/people_search/orgs_search/matters/records_search）；查全部或最近时留空或填 null"},
+                    "query": {"type": ["string", "null"], "description": "关键词或正则（todos/events/files/file_search/knowledge/people_search/orgs_search/matters/records_search）；查全部或最近时留空或填 null"},
                     "status": {"type": ["string", "null"], "description": "todos 状态过滤（open/done/all）"},
-                    "item_id": {"type": ["string", "null"], "description": "file_content 要读取的本人文件 ID"},
-                    "revision": {"type": ["integer", "null"], "minimum": 1, "description": "file_content 可选版本号"},
+                    "item_id": {"type": ["string", "null"], "description": "file_content / file_outline / file_search 要读取的本人文件 ID"},
+                    "revision": {"type": ["integer", "null"], "minimum": 1, "description": "file_content / file_outline / file_search 可选版本号"},
+                    "start_line": {"type": ["integer", "null"], "minimum": 1, "description": "file_content 分段精读起始行号（1-based）"},
+                    "end_line": {"type": ["integer", "null"], "minimum": 1, "description": "file_content 分段精读结束行号（1-based，含）"},
+                    "char_offset": {"type": ["integer", "null"], "minimum": 0, "description": "file_content 按字符偏移续读（适配单行大 JSON/日志）"},
+                    "max_chars": {"type": ["integer", "null"], "minimum": 500, "maximum": 46000, "description": "file_content 单次窗口字符上限"},
+                    "line_numbers": {"type": ["boolean", "null"], "description": "file_content 是否附带行号前缀以便后续行区间精确编辑"},
+                    "regex": {"type": ["boolean", "null"], "description": "file_search 是否将 query 按正则表达式解析"},
                     "limit": {"type": ["integer", "null"], "minimum": 1, "maximum": 50, "description": "最多返回条数"},
                     "organization": {"type": ["string", "null"], "description": "people_search 的公司过滤；不筛选时留空或填 null"},
                     "tag": {"type": ["string", "null"], "description": "people_search 或 orgs_search 的标签过滤；不筛选时留空或填 null"},

@@ -39,15 +39,87 @@ class PatchResult:
 
 
 def make_unified_diff(original: str, updated: str, *, filename: str) -> str:
-    """生成标准 Unified Diff 字符串，供前端 Diff 面板与审核记录展示。"""
-    diff_lines = difflib.unified_diff(
-        original.splitlines(keepends=True),
-        updated.splitlines(keepends=True),
-        fromfile=f"a/{filename}",
-        tofile=f"b/{filename}",
-        lineterm="",
+    """生成标准 Unified Diff 字符串；对超长文档自动裁切首尾未变更公共行，避免 O(N^2) 性能退化。"""
+    orig_lines = original.splitlines()
+    upd_lines = updated.splitlines()
+    # 先跳过首尾完全相同的公共前后缀，仅保留变更窗上下各 3 行上下文做精确 Diff
+    prefix = 0
+    min_len = min(len(orig_lines), len(upd_lines))
+    while prefix < min_len and orig_lines[prefix] == upd_lines[prefix]:
+        prefix += 1
+    suffix = 0
+    while (
+        suffix < (min_len - prefix)
+        and orig_lines[len(orig_lines) - 1 - suffix] == upd_lines[len(upd_lines) - 1 - suffix]
+    ):
+        suffix += 1
+    if prefix == len(orig_lines) == len(upd_lines):
+        return ""
+
+    ctx = 3
+    start = max(0, prefix - ctx)
+    orig_end = len(orig_lines) - max(0, suffix - ctx)
+    upd_end = len(upd_lines) - max(0, suffix - ctx)
+
+    if start == 0 and orig_end == len(orig_lines) and upd_end == len(upd_lines):
+        diff_lines = difflib.unified_diff(
+            [ln + "\n" for ln in orig_lines],
+            [ln + "\n" for ln in upd_lines],
+            fromfile=f"a/{filename}",
+            tofile=f"b/{filename}",
+            lineterm="",
+        )
+        return "\n".join(line.rstrip("\n") for line in diff_lines)
+
+    slice_orig = [ln + "\n" for ln in orig_lines[start:orig_end]]
+    slice_upd = [ln + "\n" for ln in upd_lines[start:upd_end]]
+    raw_diff = list(
+        difflib.unified_diff(
+            slice_orig,
+            slice_upd,
+            fromfile=f"a/{filename}",
+            tofile=f"b/{filename}",
+            lineterm="",
+        )
     )
-    return "\n".join(line.rstrip("\n") for line in diff_lines)
+    # 将局部切片的 hunk 起始行号平移回真实全文行号
+    adjusted: list[str] = []
+    for line in raw_diff:
+        if line.startswith("@@ "):
+            parts = line.split(" ")
+            if len(parts) >= 4 and parts[1].startswith("-") and parts[2].startswith("+"):
+                a_info = parts[1][1:].split(",")
+                b_info = parts[2][1:].split(",")
+                a_start = int(a_info[0]) + start
+                b_start = int(b_info[0]) + start
+                a_span = f",{a_info[1]}" if len(a_info) > 1 else ""
+                b_span = f",{b_info[1]}" if len(b_info) > 1 else ""
+                adjusted.append(f"@@ -{a_start}{a_span} +{b_start}{b_span} @@")
+                continue
+        adjusted.append(line.rstrip("\n"))
+    return "\n".join(adjusted)
+
+
+def replace_line_range(
+    original: str,
+    *,
+    start_line: int,
+    end_line: int,
+    replacement: str,
+    filename: str = "document.md",
+) -> PatchResult:
+    """按 1-based 精确行号区间替换超长文档片段并返回快速 Unified Diff。"""
+    lines = original.splitlines()
+    total = len(lines)
+    if start_line < 1 or end_line < start_line or start_line > max(1, total):
+        raise InvalidRequestError(f"行号区间无效：{start_line}..{end_line}（文档共 {total} 行）")
+    clamped_end = min(end_line, total)
+    rep_lines = replacement.splitlines() if replacement else []
+    new_lines = lines[: start_line - 1] + rep_lines + lines[clamped_end:]
+    trailing = "\n" if original.endswith("\n") else ""
+    new_text = "\n".join(new_lines) + trailing
+    diff = make_unified_diff(original, new_text, filename=filename)
+    return PatchResult(new_text=new_text, diff=diff, applied_count=1)
 
 
 def apply_exact_edits(

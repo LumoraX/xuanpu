@@ -34,10 +34,16 @@ if TYPE_CHECKING:
 
 OFFICE_PACKAGE = "office-assistant"
 MAX_INPUT_BYTES = 20 * 1024 * 1024
-EXTENSIONS = {"text/plain": "txt", "text/markdown": "md", "text/csv": "csv",
+EXTENSIONS = {
+    "text/plain": "txt",
+    "text/markdown": "md",
+    "text/csv": "csv",
+    "application/json": "json",
     "application/pdf": "pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx"}
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+}
 
 
 class TaskExecutor(Protocol):

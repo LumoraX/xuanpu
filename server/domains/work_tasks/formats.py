@@ -10,6 +10,7 @@ from server.core.errors import InvalidRequestError
 OOXML = {
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'word/document.xml',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xl/workbook.xml',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'ppt/presentation.xml',
 }
 
 
@@ -17,7 +18,7 @@ def validate_content(content: bytes, mime: str) -> None:
     """只接受实际格式匹配且在压缩资源上限内的办公输入。"""
     if not content:
         raise InvalidRequestError('文件内容为空')
-    if mime in {'text/plain', 'text/markdown', 'text/csv'}:
+    if mime in {'text/plain', 'text/markdown', 'text/csv', 'application/json'}:
         try:
             text = content.decode('utf-8-sig')
         except UnicodeDecodeError as exc:

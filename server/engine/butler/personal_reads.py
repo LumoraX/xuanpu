@@ -14,6 +14,13 @@ from zoneinfo import ZoneInfo
 from server.core.errors import InvalidRequestError
 from server.domains.dashboard.service import day_bounds
 from server.domains.knowledge.service import SearchInput
+from server.domains.workspace.document_io import (
+    DEFAULT_WINDOW_CHARS,
+    DEFAULT_WINDOW_LINES,
+    inspect_document_outline,
+    read_text_window,
+    search_document,
+)
 
 if TYPE_CHECKING:
     from server.core.tenancy import Principal
@@ -128,27 +135,56 @@ async def read_extended_personal(
             for d in folders[:limit]
         ]
         return {"files": file_items, "folders": folder_items}
-    if kind == "file_content":
+    if kind in ("file_content", "file_outline", "file_search"):
         item_id = args.get("item_id")
         if not isinstance(item_id, str) or not item_id.strip():
-            raise InvalidRequestError("file_content 需要提供 item_id")
+            raise InvalidRequestError(f"{kind} 需要提供 item_id")
         rev_raw = args.get("revision")
         revision = rev_raw if type(rev_raw) is int and rev_raw >= 1 else None
         raw, mime, name = await platform.workspace.download(who, item_id.strip(), revision)
         if b"\x00" in raw:
-            raise InvalidRequestError(f"文件「{name}」为二进制格式（{mime}），暂不支持直接文本读取")
+            raise InvalidRequestError(f"文件「{name}」为二进制格式（{mime}），请派给文档分析匠人在隔离沙盒解析")
         try:
-            text = raw.decode("utf-8")
+            text = raw.decode("utf-8-sig")
         except UnicodeDecodeError as exc:
             raise InvalidRequestError(f"文件「{name}」不是 UTF-8 文本，无法直接读取正文") from exc
-        truncated = len(text) > _FILE_PREVIEW_CHARS
+        if kind == "file_outline":
+            outline = inspect_document_outline(text, filename=name, mime_type=mime)
+            return {"item_id": item_id.strip(), **outline}
+        if kind == "file_search":
+            if not search:
+                raise InvalidRequestError("file_search 需要提供 query 关键词或正则表达式")
+            found = search_document(
+                text,
+                search,
+                regex=bool(args.get("regex")),
+                max_matches=limit,
+            )
+            return {"item_id": item_id.strip(), "name": name, "mime_type": mime, **found}
+        start_line = args.get("start_line") if type(args.get("start_line")) is int else None
+        end_line = args.get("end_line") if type(args.get("end_line")) is int else None
+        char_offset = args.get("char_offset") if type(args.get("char_offset")) is int else None
+        max_chars_raw = args.get("max_chars")
+        max_chars = (
+            max_chars_raw
+            if type(max_chars_raw) is int and max_chars_raw >= 500
+            else (DEFAULT_WINDOW_CHARS if (start_line or end_line or char_offset is not None) else _FILE_PREVIEW_CHARS)
+        )
+        win = read_text_window(
+            text,
+            start_line=start_line,
+            end_line=end_line,
+            char_offset=char_offset,
+            max_lines=DEFAULT_WINDOW_LINES,
+            max_chars=max_chars,
+            with_line_numbers=bool(args.get("line_numbers")),
+        )
         return {
             "item_id": item_id.strip(),
             "name": name,
             "mime_type": mime,
             "size": len(raw),
-            "truncated": truncated,
-            "content": text[:_FILE_PREVIEW_CHARS],
+            **win,
         }
     if kind == "knowledge":
         return await _read_knowledge(platform, who, search=search, limit=min(limit, 10))

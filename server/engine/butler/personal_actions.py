@@ -40,7 +40,8 @@ if TYPE_CHECKING:
     from server.platform import Platform
 
 logger = logging.getLogger(__name__)
-_MAX_NOTE_CHARS = 200_000
+# 单次写入/编辑最终文件体积上限与个人工作台单文件上限（20 MiB）保持一致，支撑 14MB+ / 数十万字长文分批写作与精编
+_MAX_NOTE_BYTES = 20 * 1024 * 1024
 
 
 def _normalize_bundle_timestamps(bundle: dict[str, Any], timezone: str) -> dict[str, Any]:
@@ -472,8 +473,9 @@ async def execute_personal_action(
         text = str(args.get("content") or "")
         if not text.strip():
             raise InvalidRequestError("save_note_file 的 content 不能为空")
-        if len(text) > _MAX_NOTE_CHARS:
-            raise InvalidRequestError("文档正文超过上限")
+        encoded = text.encode("utf-8")
+        if len(encoded) > min(_MAX_NOTE_BYTES, platform.workspace.max_file_bytes):
+            raise InvalidRequestError("文档正文超过单文件 20 MiB 上限")
         mime = "text/markdown"
         if safe_name.lower().endswith(".txt"):
             mime = "text/plain"
@@ -484,7 +486,7 @@ async def execute_personal_action(
         saved = await platform.workspace.upload(
             who,
             safe_name,
-            text.encode("utf-8"),
+            encoded,
             mime,
             req_id,
             parent_id=_opt_text(args.get("parent_id")),
@@ -507,14 +509,65 @@ async def execute_personal_action(
             out_note["mermaid_warnings"] = mermaid_warnings
         return out_note
 
+    if action == "append_personal_file":
+        item_id = _require_text(args.get("item_id"), "item_id")
+        chunk_text = str(args.get("content") or "")
+        if not chunk_text.strip():
+            raise InvalidRequestError("append_personal_file 的 content 不能为空")
+        sep = "\n\n" if args.get("separator") is None else str(args.get("separator"))
+        item = await platform.workspace.get(who, item_id)
+        if item["kind"] != "file" or item.get("trashed_at") is not None:
+            raise NotFoundError("目标个人文件不存在或已回收")
+        expected_version = args.get("expected_version")
+        if expected_version is not None and int(expected_version) != int(item["version"]):
+            raise ConflictError("文件版本已变化，请先重新读取最新状态")
+        raw_bytes, mime, filename = await platform.workspace.download(who, item_id)
+        if b"\x00" in raw_bytes:
+            raise InvalidRequestError("append_personal_file 仅支持 UTF-8 文本文件")
+        try:
+            original = raw_bytes.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise InvalidRequestError("append_personal_file 仅支持 UTF-8 文本文件") from exc
+        combined = (original.rstrip("\n") + sep + chunk_text) if original else chunk_text
+        encoded = combined.encode("utf-8")
+        if len(encoded) > min(_MAX_NOTE_BYTES, platform.workspace.max_file_bytes):
+            raise InvalidRequestError("追加后文档体积超过 20 MiB 上限")
+        prev_revision = int(item["data"]["current_revision"])
+        saved = await platform.workspace.replace_content(
+            who, item_id, encoded, mime, int(item["version"]), req_id,
+        )
+        entry = {
+            "action_id": action_id,
+            "action": action,
+            "title": "已分批追加长文",
+            "summary": f"{filename}（+{len(chunk_text)} 字，总计 {len(combined)} 字）",
+            "undoable": True,
+            "undo": {"kind": "workspace_restore_revision", "item_id": item_id, "revision": prev_revision},
+        }
+        turn.executed_actions.append(entry)
+        return {
+            "ok": True,
+            "action_id": action_id,
+            "file": saved,
+            "appended_chars": len(chunk_text),
+            "total_chars": len(combined),
+            "total_lines": combined.count("\n") + 1,
+        }
+
     if action == "patch_personal_file":
-        from server.domains.workspace.patch import TextPatchEdit, apply_exact_edits
+        from server.domains.workspace.patch import (
+            TextPatchEdit,
+            apply_exact_edits,
+            replace_line_range,
+        )
 
         item_id = _require_text(args.get("item_id"), "item_id")
         raw_edits = args.get("edits")
-        if not isinstance(raw_edits, list) or not raw_edits:
-            raise InvalidRequestError("patch_personal_file 需要非空 edits 列表")
-        edits = [TextPatchEdit.model_validate(e) for e in raw_edits]
+        start_line = args.get("start_line") if type(args.get("start_line")) is int else None
+        end_line = args.get("end_line") if type(args.get("end_line")) is int else None
+        has_range = start_line is not None and end_line is not None
+        if not has_range and (not isinstance(raw_edits, list) or not raw_edits):
+            raise InvalidRequestError("patch_personal_file 需要提供 edits 列表或 start_line/end_line 行区间")
         item = await platform.workspace.get(who, item_id)
         if item["kind"] != "file" or item.get("trashed_at") is not None:
             raise NotFoundError("目标个人文件不存在或已回收")
@@ -526,12 +579,24 @@ async def execute_personal_action(
             original = raw_bytes.decode("utf-8")
         except UnicodeDecodeError as exc:
             raise InvalidRequestError("patch_personal_file 仅支持 UTF-8 文本文件") from exc
-        patched = apply_exact_edits(original, edits, filename=filename)
-        if len(patched.new_text) > _MAX_NOTE_CHARS:
-            raise InvalidRequestError("编辑后文档正文超过上限")
+        if has_range:
+            assert start_line is not None and end_line is not None
+            patched = replace_line_range(
+                original,
+                start_line=start_line,
+                end_line=end_line,
+                replacement=str(args.get("content") or ""),
+                filename=filename,
+            )
+        else:
+            edits = [TextPatchEdit.model_validate(e) for e in raw_edits]  # type: ignore[union-attr]
+            patched = apply_exact_edits(original, edits, filename=filename)
+        encoded = patched.new_text.encode("utf-8")
+        if len(encoded) > min(_MAX_NOTE_BYTES, platform.workspace.max_file_bytes):
+            raise InvalidRequestError("编辑后文档体积超过 20 MiB 上限")
         prev_revision = int(item["data"]["current_revision"])
         saved = await platform.workspace.replace_content(
-            who, item_id, patched.new_text.encode("utf-8"), mime, int(item["version"]), req_id,
+            who, item_id, encoded, mime, int(item["version"]), req_id,
         )
         entry = {
             "action_id": action_id,
@@ -554,6 +619,34 @@ async def execute_personal_action(
             "diff": patched.diff,
             "applied_count": patched.applied_count,
         }
+
+    if action == "classify_file":
+        from server.domains.workspace.taxonomy import (
+            CustomTaxonomyRule,
+            auto_file_workspace_document,
+        )
+
+        item_id = _require_text(args.get("item_id"), "item_id")
+        apply_flag = True if args.get("apply") is None else bool(args.get("apply"))
+        index_kb = True if args.get("index_knowledge") is None else bool(args.get("index_knowledge"))
+        rule_rows = await platform.plugins.collections.list(who, "doc-taxonomy", "rules", limit=100)
+        custom_rules = [CustomTaxonomyRule.model_validate(r.data) for r in rule_rows]
+        res = await auto_file_workspace_document(
+            platform, who, item_id, apply=apply_flag, index_knowledge=index_kb,
+            custom_rules=custom_rules, request_id=req_id,
+        )
+        if apply_flag:
+            cls_info = res["classification"]
+            entry = {
+                "action_id": action_id,
+                "action": action,
+                "title": "已自动业务归类归档",
+                "summary": f"{res['filename']} → {cls_info['folder_name']}（{cls_info['category_name']}）",
+                "undoable": True,
+                "undo": {"kind": "workspace_restore_data", "item_id": item_id, "prev_data": res["prev_data"]},
+            }
+            turn.executed_actions.append(entry)
+        return {"ok": True, "action_id": action_id, **{k: v for k, v in res.items() if k != "prev_data"}}
 
     raise InvalidRequestError(f"不支持的私人办理动作：{action}")
 

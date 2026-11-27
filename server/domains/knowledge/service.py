@@ -112,22 +112,50 @@ def extract(content: bytes, mime_type: str) -> str:
 
 
 def chunk(source_id: str, text: str) -> list[Chunk]:
-    """按行聚成约 1000 字的块（超长单行按长度切开）；空白文件不产生块。"""
+    """按行聚成约 1000 字的块；对 Markdown 标题自动维护章节面包屑并在跨章节时自然切分，极大提升超长文档检索精度。"""
     pieces: list[str] = []
     buffer = ''
-    for line in text.splitlines(keepends=True):
-        while len(line) > CHUNK_CHARS:
-            if buffer:
-                pieces.append(buffer)
-                buffer = ''
-            pieces.append(line[:CHUNK_CHARS])
-            line = line[CHUNK_CHARS:]
-        if len(buffer) + len(line) > CHUNK_CHARS and buffer:
+    heading_stack: list[tuple[int, str]] = []
+    in_fence = False
+
+    def _breadcrumb() -> str:
+        return f"[章节：{' > '.join(t for _, t in heading_stack)[:120]}]\n" if heading_stack else ''
+
+    def _flush() -> None:
+        nonlocal buffer
+        if buffer.strip():
             pieces.append(buffer)
-            buffer = ''
+        buffer = ''
+
+    for line in text.splitlines(keepends=True):
+        stripped = line.strip()
+        if stripped.startswith(('```', '~~~')):
+            in_fence = not in_fence
+        elif not in_fence and stripped.startswith('#'):
+            hashes = len(stripped) - len(stripped.lstrip('#'))
+            if 1 <= hashes <= 6 and len(stripped) > hashes and stripped[hashes] == ' ':
+                # 遇到新 Markdown 标题先收口前一段，确保语义边界清晰
+                _flush()
+                title = stripped[hashes:].strip().rstrip('#').strip()
+                while heading_stack and heading_stack[-1][0] >= hashes:
+                    heading_stack.pop()
+                heading_stack.append((hashes, title))
+
+        while len(line) > CHUNK_CHARS:
+            _flush()
+            prefix = _breadcrumb()
+            take = max(200, CHUNK_CHARS - len(prefix))
+            pieces.append(prefix + line[:take])
+            line = line[take:]
+
+        if not buffer and heading_stack and not stripped.startswith('#'):
+            buffer = _breadcrumb()
+        if len(buffer) + len(line) > CHUNK_CHARS and buffer:
+            _flush()
+            if heading_stack and not stripped.startswith('#'):
+                buffer = _breadcrumb()
         buffer += line
-    if buffer:
-        pieces.append(buffer)
+    _flush()
     return [Chunk(source_id=source_id, ordinal=i, text=p) for i, p in enumerate(pieces) if p.strip()]
 
 
