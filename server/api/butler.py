@@ -235,6 +235,15 @@ def butler_router(platform: Platform) -> APIRouter:
                     f"tw:{watch_id}:{digest[:16]}",
                     metadata={"kind": "topic_watch", "watch_id": watch_id},
                 )
+                await platform.plugins.emit_event(
+                    "briefing.delivered",
+                    {
+                        "who": who,
+                        "card_kind": "topic_watch",
+                        "title": f"持续关注动态 · {target.topic}",
+                        "body": result.message,
+                    },
+                )
         return result.model_dump(mode="json")
 
     @router.post("/v1/assistant/pending/{pending_id}/answer")

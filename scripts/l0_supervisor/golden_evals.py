@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import secrets
 from pathlib import Path
@@ -186,3 +187,39 @@ def run_golden_suite(
         by_category={k: (v[0], v[1]) for k, v in cat_counts.items()},
         failures=tuple(o for o in outcomes if not o.passed),
     )
+
+
+def main(argv: list[str] | None = None) -> int:
+    """命令行入口：检查黄金评测集清单或向真实运行的玄圃实例执行 Live-LLM 端到端评测。"""
+    parser = argparse.ArgumentParser(description="L0 不可变 Live-LLM 黄金评测裁判")
+    parser.add_argument("--cases", type=Path, default=DEFAULT_CASES_PATH, help="黄金用例 JSON 路径")
+    parser.add_argument("--list-only", action="store_true", help="仅校验并列出黄金用例清单（不联网）")
+    parser.add_argument("--base-url", type=str, help="目标玄圃实例地址（如 http://127.0.0.1:8082）")
+    parser.add_argument("--token", type=str, help="员工或代调用 Bearer Token")
+    parser.add_argument("--min-pass-rate", type=float, default=0.90, help="最低通过率阈值（默认 0.90）")
+    parser.add_argument("--timeout", type=float, default=60.0, help="单条用例请求超时秒数")
+    args = parser.parse_args(argv)
+
+    cases = load_golden_cases(args.cases)
+    if args.list_only:
+        by_cat: dict[str, int] = {}
+        for c in cases:
+            by_cat[c.category] = by_cat.get(c.category, 0) + 1
+        print(json.dumps({
+            "total": len(cases),
+            "by_category": by_cat,
+            "case_ids": [c.id for c in cases],
+        }, ensure_ascii=False, indent=2))
+        return 0
+
+    if not args.base_url or not args.token:
+        parser.error("执行实测时必须同时提供 --base-url 与 --token（离线检查请使用 --list-only）")
+
+    executor = HttpLiveButlerExecutor(args.base_url, args.token, timeout=args.timeout)
+    report = run_golden_suite(executor, cases=cases, min_pass_rate=args.min_pass_rate)
+    print(report.model_dump_json(indent=2))
+    return 0 if report.passed else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

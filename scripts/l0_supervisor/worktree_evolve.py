@@ -7,13 +7,15 @@
 
 from __future__ import annotations
 
+import argparse
+import json
 import subprocess
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
     from scripts.l0_supervisor.supervisor import L0PromotionOutcome, L0Supervisor
 
@@ -131,3 +133,31 @@ def evolve_kernel_from_worktree(
         if reload_proxy is not None:
             reload_proxy(upstream_path)
     return outcome
+
+
+def main(argv: list[str] | None = None) -> int:
+    """命令行入口：对指定 Git Worktree 执行 L0 防自篡改与 SQL 迁移安全预检。"""
+    from scripts.l0_supervisor.supervisor import L0Supervisor
+
+    parser = argparse.ArgumentParser(description="L0 隔离 Git Worktree 候选变更检查器")
+    parser.add_argument("--worktree", type=Path, required=True, help="待检查的 Git Worktree 目录")
+    parser.add_argument("--base-ref", type=str, default="HEAD", help="比较基线 Git ref（默认 HEAD）")
+    parser.add_argument("--ledger", type=Path, default=Path(".xuanpu/l0_ledger.json"), help="L0 账本路径")
+    args = parser.parse_args(argv)
+
+    changed, migrations = collect_worktree_changes(args.worktree, base_ref=args.base_ref)
+    sup = L0Supervisor(args.ledger)
+    report = sup.evaluate_candidate(changed_files=changed, candidate_migrations=migrations)
+    print(json.dumps({
+        "passed": report.passed,
+        "changed_files": changed,
+        "checked_migrations": sorted(migrations),
+        "tamper_errors": list(report.tamper_errors),
+        "migration_errors": list(report.migration_errors),
+        "gate_errors": list(report.gate_errors),
+    }, ensure_ascii=False, indent=2))
+    return 0 if report.passed else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

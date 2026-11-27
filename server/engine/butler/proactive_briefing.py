@@ -328,6 +328,15 @@ class ProactiveBriefingService:
                     )
                     self.gate.record_sent(user_key, topic_key=f"pre_meeting:{ev['id']}", now=now, timezone=timezone)
                     await self.persist_attention(who)
+                    await self._platform.plugins.emit_event(
+                        "briefing.delivered",
+                        {
+                            "who": who,
+                            "card_kind": "pre_meeting_brief",
+                            "title": f"会前 {minutes_left} 分钟速览：{data['title']}",
+                            "body": summary,
+                        },
+                    )
                     entry["delivered"] = True
             briefs.append(entry)
         return briefs
@@ -429,6 +438,15 @@ class ProactiveBriefingService:
                 )
                 self.gate.record_sent(user_key, topic_key=f"daily_brief:{day_str}", now=now, timezone=timezone)
                 await self.persist_attention(who)
+                await self._platform.plugins.emit_event(
+                    "briefing.delivered",
+                    {
+                        "who": who,
+                        "card_kind": "daily_brief",
+                        "title": f"今日要点晨报 · {day_str}",
+                        "body": summary,
+                    },
+                )
                 result["delivered"] = True
         return result
 

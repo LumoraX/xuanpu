@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
+import os
 import secrets
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal, Protocol
@@ -21,11 +23,35 @@ from server.core.ids import new_id
 from server.core.plugins.models import BackendPluginManifest, PluginHealth
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from server.core.plugins.host import PluginContext
     from server.core.tenancy import Principal
 
+logger = logging.getLogger(__name__)
+
 ChannelKind = Literal["feishu", "wecom"]
 CardKind = Literal["daily_brief", "pre_meeting_brief", "topic_watch", "approval_card"]
+
+
+def _load_or_create_signing_secret(data_dir: Path | None) -> str:
+    """持久化加载或首次生成 HMAC 回调签名密钥（目录 0700、文件 0600），确保重启后在途审批卡片仍可验签。"""
+    if data_dir is None:
+        return secrets.token_hex(24)
+    key_dir = data_dir / "secrets"
+    key_file = key_dir / "im_outreach_hmac.key"
+    if key_file.is_file():
+        existing = key_file.read_text(encoding="utf-8").strip()
+        if existing:
+            return existing
+    key_dir.mkdir(parents=True, exist_ok=True)
+    os.chmod(key_dir, 0o700)
+    generated = secrets.token_hex(32)
+    tmp = key_file.with_suffix(".tmp")
+    tmp.write_text(generated, encoding="utf-8")
+    os.chmod(tmp, 0o600)
+    tmp.replace(key_file)
+    return generated
 
 
 class ChannelBinding(BaseModel):
@@ -144,19 +170,44 @@ class ImOutreachChannelPlugin:
         *,
         transport: ChannelTransport | None = None,
         callback_secret: str | None = None,
+        data_dir: Path | None = None,
     ) -> None:
-        """注入底层 IM 发送器与回调签名密钥。"""
+        """注入底层 IM 发送器与持久化回调签名密钥（提供 data_dir 时跨重启稳定保留）。"""
         self._transport: ChannelTransport = transport or DryRunChannelTransport()
-        self._secret = callback_secret or secrets.token_hex(24)
+        self._secret = callback_secret or _load_or_create_signing_secret(data_dir)
         self._ctx: PluginContext | None = None
 
     async def mount(self, ctx: PluginContext) -> None:
-        """注册绑定管理、卡片投递与签名拍板回调动态路由。"""
+        """注册绑定管理、卡片投递、签名拍板回调动态路由，并订阅管家主动简报事件自动外推。"""
         self._ctx = ctx
         ctx.add_route("GET", "binding", self._get_binding)
         ctx.add_route("PUT", "binding", self._put_binding)
         ctx.add_route("POST", "dispatch", self._dispatch_card)
         ctx.add_route("POST", "card-callback", self._card_callback)
+        ctx.on_event("briefing.delivered", self._on_briefing_delivered)
+
+    async def _on_briefing_delivered(self, _event_name: str, payload: dict[str, Any]) -> None:
+        """监听管家晨报/会前速览/追踪信号投递事件：若该员工已绑定 IM 通道则自动推送交互卡片。"""
+        if self._ctx is None:
+            return
+        who = payload.get("who")
+        if who is None:
+            return
+        try:
+            await self._dispatch_card(
+                who,
+                "dispatch",
+                {
+                    "card_kind": payload.get("card_kind", "daily_brief"),
+                    "title": payload.get("title", "玄圃管家简报"),
+                    "body": payload.get("body", ""),
+                },
+            )
+        except NotFoundError:
+            # 员工尚未绑定 IM 通道，静默跳过
+            return
+        except Exception:
+            logger.warning("管家简报自动外推 IM 卡片失败", exc_info=True)
 
     async def health(self) -> PluginHealth:
         """探活检查。"""

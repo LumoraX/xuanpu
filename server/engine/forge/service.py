@@ -208,9 +208,7 @@ class ArtisanForgeService:
             updated_at=now,
         )
         self._baselines[(tenant, draft_id)] = {}
-        saved = self._save(rec)
-        await self._mirror_draft_to_controlplane(who, saved)
-        return saved
+        return await self._save_and_mirror(who, rec)
 
     async def checkout_draft(
         self, who: Principal, *, package_name: str, version: str | None = None,
@@ -245,6 +243,10 @@ class ArtisanForgeService:
             updated_at=now,
         )
         self._baselines[(tenant, draft_id)] = baseline
+        return await self._save_and_mirror(who, rec)
+
+    async def _save_and_mirror(self, who: Principal, rec: ForgeDraftRecord) -> ForgeDraftRecord:
+        """本地原子落盘草稿元数据，并同步镜像到控制面 PluginCollectionStore（保证跨节点状态始终一致）。"""
         saved = self._save(rec)
         await self._mirror_draft_to_controlplane(who, saved)
         return saved
@@ -326,7 +328,7 @@ class ArtisanForgeService:
             raise InvalidRequestError(f"不支持的 L-Control 动作：{action}")
 
         result = await asyncio.to_thread(_exec)
-        self._save(rec.model_copy(update={
+        await self._save_and_mirror(who, rec.model_copy(update={
             "status": "editing", "l1_report": None, "l2_report": None,
             "l3_report": None, "review": None, "updated_at": self._at(),
         }))
@@ -342,7 +344,7 @@ class ArtisanForgeService:
         editor = ForgeContentEditor(draft_dir)
         outcome = await editor.apply_patches(patches)
         if outcome.ok:
-            self._save(rec.model_copy(update={
+            await self._save_and_mirror(who, rec.model_copy(update={
                 "status": "editing", "l1_report": None, "l2_report": None,
                 "l3_report": None, "review": None, "updated_at": self._at(),
             }))
@@ -383,7 +385,7 @@ class ArtisanForgeService:
             errors=tuple(errors),
             checked_at=self._at(),
         )
-        self._save(rec.model_copy(update={
+        await self._save_and_mirror(who, rec.model_copy(update={
             "l1_report": gate,
             "status": "validated" if passed else "editing",
             "updated_at": self._at(),
@@ -400,7 +402,7 @@ class ArtisanForgeService:
                 level="L2", passed=True,
                 summary="草稿未声明额外脚本单测，L2 默认通过", checked_at=self._at(),
             )
-            self._save(rec.model_copy(update={"l2_report": gate, "updated_at": self._at()}))
+            await self._save_and_mirror(who, rec.model_copy(update={"l2_report": gate, "updated_at": self._at()}))
             return gate
 
         errors: list[str] = []
@@ -430,7 +432,7 @@ class ArtisanForgeService:
             errors=tuple(errors),
             checked_at=self._at(),
         )
-        self._save(rec.model_copy(update={
+        await self._save_and_mirror(who, rec.model_copy(update={
             "l2_report": gate,
             "status": "tested" if passed else "editing",
             "updated_at": self._at(),
@@ -468,7 +470,7 @@ class ArtisanForgeService:
             errors=tuple(errors),
             checked_at=self._at(),
         )
-        self._save(rec.model_copy(update={"l3_report": gate, "updated_at": self._at()}))
+        await self._save_and_mirror(who, rec.model_copy(update={"l3_report": gate, "updated_at": self._at()}))
         return gate
 
     async def review_draft(
@@ -499,7 +501,7 @@ class ArtisanForgeService:
             reviewer=who.user_id or who.actor,
             reviewed_at=self._at(),
         )
-        return self._save(rec.model_copy(update={
+        return await self._save_and_mirror(who, rec.model_copy(update={
             "review": review,
             "status": "reviewed" if approved else "editing",
             "updated_at": self._at(),
@@ -527,7 +529,7 @@ class ArtisanForgeService:
             built_by=rec.built_by,
             evidence_ref=f"forge:{draft_id}",
         )
-        updated = self._save(rec.model_copy(update={
+        updated = await self._save_and_mirror(who, rec.model_copy(update={
             "status": "published",
             "published_version": manifest.metadata.version,
             "published_digest": digest,

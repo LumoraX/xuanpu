@@ -17,8 +17,14 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from server.core.errors import InvalidRequestError, PermissionDeniedError, RuntimeUnavailableError
+from server.core.errors import (
+    InvalidRequestError,
+    NotFoundError,
+    PermissionDeniedError,
+    RuntimeUnavailableError,
+)
 from server.core.plugins.models import BackendPluginManifest, PluginHealth
+from server.core.tenancy import Principal as PrincipalModel
 from server.engine.tracing.models import TraceOwner
 
 if TYPE_CHECKING:
@@ -195,7 +201,8 @@ class BrowserSandboxBackendPlugin:
         display_name="受控无头浏览器",
         description="带 SSRF 防护、域名白名单、CAPTCHA/支付硬停机、写操作审批与污点截图产物的受控浏览器插件。",
         trust_level="isolated_worker",
-        permissions=("browser.read", "browser.interact", "artifact.publish"),
+        permissions=("browser.read", "browser.interact", "artifact.publish", "collection.read", "collection.write"),
+        collections=("policy",),
     )
 
     def __init__(
@@ -209,12 +216,15 @@ class BrowserSandboxBackendPlugin:
         self.policy = policy or BrowserPolicy()
         self._driver: BrowserDriver = driver or PlaywrightBrowserDriver()
         self._artifacts = artifacts
+        self._ctx: PluginContext | None = None
         self._mounted = False
 
     async def mount(self, ctx: PluginContext) -> None:
-        """注册受控浏览路由与管家工具（不访问 ctx.platform，严守 isolated_worker 隔离边界）。"""
+        """注册受控浏览与租户白名单策略管理路由（不访问 ctx.platform，严守 isolated_worker 隔离边界）。"""
+        self._ctx = ctx
         self._mounted = True
         ctx.add_route("GET", "policy", self._get_policy)
+        ctx.add_route("PUT", "policy", self._put_policy)
         ctx.add_route("POST", "read", self._read)
         ctx.add_route("POST", "interact", self._interact)
         ctx.add_tool(
@@ -237,10 +247,45 @@ class BrowserSandboxBackendPlugin:
         """关闭浏览器驱动并标记已卸载。"""
         _ = drain_timeout
         self._mounted = False
+        self._ctx = None
         await self._driver.close()
 
-    async def _get_policy(self, _who: Principal, _sub: str, _payload: dict[str, Any]) -> dict[str, Any]:
-        return self.policy.model_dump(mode="json")
+    @staticmethod
+    def _tenant_scope(who: Principal) -> Principal:
+        """构造租户级策略存储主体（同一租户全部员工共享管理员审批的浏览器域名白名单）。"""
+        return PrincipalModel(
+            role="tenant_admin", tenant_id=who.require_tenant(), user_id="__tenant_policy__", key_id=None,
+        )
+
+    async def _effective_policy(self, who: Principal) -> BrowserPolicy:
+        """优先读取本租户持久化的浏览器白名单策略，未配置时回退默认安全策略。"""
+        if self._ctx is None:
+            return self.policy
+        try:
+            rec = await self._ctx.collections.get(
+                self._tenant_scope(who), self.manifest.plugin_id, "policy", "default",
+            )
+            return BrowserPolicy.model_validate(rec.data)
+        except NotFoundError:
+            return self.policy
+
+    async def _get_policy(self, who: Principal, _sub: str, _payload: dict[str, Any]) -> dict[str, Any]:
+        policy = await self._effective_policy(who)
+        return policy.model_dump(mode="json")
+
+    async def _put_policy(self, who: Principal, _sub: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """仅租户/平台管理员可在线更新并持久化本租户的受控浏览器域名白名单策略。"""
+        who.require_tenant_admin()
+        updated = BrowserPolicy.model_validate(payload)
+        if self._ctx is not None:
+            await self._ctx.collections.put(
+                self._tenant_scope(who),
+                self.manifest.plugin_id,
+                "policy",
+                updated.model_dump(mode="json"),
+                record_id="default",
+            )
+        return updated.model_dump(mode="json")
 
     async def _publish_screenshot(
         self, who: Principal, trace_id: str | None, png: bytes | None,
@@ -260,10 +305,11 @@ class BrowserSandboxBackendPlugin:
         return art.artifact_id
 
     async def _read(self, who: Principal, _sub: str, payload: dict[str, Any]) -> dict[str, Any]:
-        url = validate_browser_url(str(payload.get("url") or ""), self.policy)
-        snap = await self._driver.read_page(url, timeout_seconds=self.policy.timeout_seconds)
+        policy = await self._effective_policy(who)
+        url = validate_browser_url(str(payload.get("url") or ""), policy)
+        snap = await self._driver.read_page(url, timeout_seconds=policy.timeout_seconds)
         # 重定向落地地址再次走 SSRF + 白名单复检
-        validate_browser_url(snap.final_url, self.policy)
+        validate_browser_url(snap.final_url, policy)
         block = detect_page_block(snap)
         if block is not None:
             return {
@@ -278,13 +324,14 @@ class BrowserSandboxBackendPlugin:
             "status": "ok",
             "final_url": snap.final_url,
             "title": snap.title[:200],
-            "text": snap.text[: self.policy.max_text_chars],
+            "text": snap.text[: policy.max_text_chars],
             "screenshot_artifact_id": artifact_id,
             "contains_external_input": True,
         }
 
     async def _interact(self, who: Principal, _sub: str, payload: dict[str, Any]) -> dict[str, Any]:
-        url = validate_browser_url(str(payload.get("url") or ""), self.policy)
+        policy = await self._effective_policy(who)
+        url = validate_browser_url(str(payload.get("url") or ""), policy)
         actions = payload.get("actions")
         if not isinstance(actions, list) or not actions:
             raise InvalidRequestError("interact 必须提供非空 actions 列表")
@@ -296,8 +343,8 @@ class BrowserSandboxBackendPlugin:
                 "action_count": len(actions),
                 "message": "网页写入/提交交互属于外部副作用，需员工明确批准（approved=true + approval_id）后方可执行。",
             }
-        snap = await self._driver.interact_page(url, actions, timeout_seconds=self.policy.timeout_seconds)
-        validate_browser_url(snap.final_url, self.policy)
+        snap = await self._driver.interact_page(url, actions, timeout_seconds=policy.timeout_seconds)
+        validate_browser_url(snap.final_url, policy)
         block = detect_page_block(snap)
         if block is not None:
             return {
@@ -312,7 +359,7 @@ class BrowserSandboxBackendPlugin:
             "status": "ok",
             "final_url": snap.final_url,
             "title": snap.title[:200],
-            "text": snap.text[: self.policy.max_text_chars],
+            "text": snap.text[: policy.max_text_chars],
             "screenshot_artifact_id": artifact_id,
             "contains_external_input": True,
         }

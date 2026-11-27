@@ -318,7 +318,7 @@ class ButlerTools:
             ),
             self._spec(
                 "forge_artisan",
-                "（仅租户管理员）受控造匠工作坊与三层不可变发布节点工具（ADR 0025）：支持 create_draft / checkout_draft / control_mutate（强类型改 xuanpu.yaml）/ content_patch（Hook 护栏编辑 skills 与 tests）/ diff / run_gates（L1+L2+L3）/ review / publish / list_releases / rollback / disable。",
+                "（仅租户管理员）受控全栈造匠工作坊与三层不可变发布节点工具（ADR 0025/0027）：支持 create_draft / checkout_draft / control_mutate（强类型改 xuanpu.yaml，含 add_entry / set_policy / set_connector_tools / upsert_eval / bump_version / register_ui_plugin / remove_ui_plugin）/ content_patch（Hook 护栏编辑 skills、tests 与 ui 前端静态插件）/ diff / run_gates（L1+L2+L3）/ review / publish / list_releases / rollback / disable。",
                 {
                     "op": {
                         "type": "string",

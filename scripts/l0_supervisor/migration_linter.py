@@ -7,11 +7,10 @@
 
 from __future__ import annotations
 
+import argparse
+import json
 import re
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
 _COMMENT_LINE_RE = re.compile(r"--[^\n]*")
 _BLOCK_COMMENT_RE = re.compile(r"/\*[\s\S]*?\*/")
@@ -62,3 +61,34 @@ def lint_migration_files(files: list[Path]) -> list[str]:
             continue
         errors.extend(lint_migration_sql(path.name, path.read_text(encoding="utf-8")))
     return errors
+
+
+def _collect_sql_targets(raw_paths: list[str]) -> list[Path]:
+    """将命令行传入的文件或目录路径展开为有序 SQL 迁移文件列表。"""
+    targets: list[Path] = []
+    for raw in raw_paths:
+        p = Path(raw)
+        if p.is_dir():
+            targets.extend(sorted(p.glob("*.sql")))
+        elif p.is_file():
+            targets.append(p)
+    return targets
+
+
+def main(argv: list[str] | None = None) -> int:
+    """命令行入口：对指定迁移文件或目录执行 Expand-and-Contract 静态检查并输出 JSON 报告。"""
+    parser = argparse.ArgumentParser(description="L0 SQL 迁移 Expand-and-Contract 静态检查器")
+    parser.add_argument("paths", nargs="+", help="SQL 文件或包含 *.sql 迁移的目录路径")
+    args = parser.parse_args(argv)
+    targets = _collect_sql_targets(args.paths)
+    errors = lint_migration_files(targets)
+    print(json.dumps({
+        "ok": not errors,
+        "checked_files": [p.name for p in targets if p.suffix.lower() == ".sql"],
+        "errors": errors,
+    }, ensure_ascii=False, indent=2))
+    return 0 if not errors else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

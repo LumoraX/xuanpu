@@ -449,7 +449,7 @@ class Platform:
             ProactiveBriefingBackendPlugin(),
             PeopleGraphBackendPlugin(),
             BrowserSandboxBackendPlugin(artifacts=self.trace_artifacts),
-            ImOutreachChannelPlugin(),
+            ImOutreachChannelPlugin(data_dir=data_dir),
         ):
             self.plugins.register(plugin)
         self.dashboard = DashboardService(self, now=now)
