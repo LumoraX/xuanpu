@@ -43,10 +43,10 @@ if TYPE_CHECKING:
 TOOL_NAMES = ("propose", "act_personal", "read_personal", "list_artisans", "dispatch_artisan", "check_dispatch",
               "cancel_dispatch", "answer_pending", "answer_artisan", "ask_user",
               "dispatch_group", "cancel_group", "check_group", "rate_divergence",
-              "extend_turn", "raise_budget", "update_task_board")
+              "extend_turn", "raise_budget", "update_task_board", "diagnose_trace", "forge_artisan")
 _WAKE_ONLY = frozenset({"answer_artisan", "ask_user"})
 _ANY_TURN = frozenset({"read_personal", "list_artisans", "check_dispatch", "check_group",
-                       "extend_turn", "raise_budget", "update_task_board"})
+                       "extend_turn", "raise_budget", "update_task_board", "diagnose_trace"})
 _LIST_MAX = 20
 _ERRORS_MAX = 8
 # propose 的 choice 结构：与分流共用同一份内置能力约定（包名带 @，草稿字段名固定），
@@ -295,6 +295,53 @@ class ButlerTools:
                 },
                 ["title"],
                 self._update_task_board,
+            ),
+            self._spec(
+                "diagnose_trace",
+                "跨节点只读自排查工具（ADR 0026）：按 trace/span 检索近期失败记录、列表或按行号读取本地/跨节点/冷归档脱敏 Transcript（compact/full），并输出确定性根因定位摘要。",
+                {
+                    "op": {"type": "string", "enum": ["list_failed", "list_spans", "read_transcript", "summarize_root_cause"]},
+                    "trace_id": {"type": ["string", "null"], "description": "目标 trace_id（list_spans / summarize_root_cause 必填）"},
+                    "span_id": {"type": ["string", "null"], "description": "目标 span_id（read_transcript 必填）"},
+                    "mode": {"type": ["string", "null"], "enum": ["compact", "full", None]},
+                    "start_line": {"type": ["integer", "null"], "minimum": 1},
+                    "end_line": {"type": ["integer", "null"], "minimum": 1},
+                    "limit": {"type": ["integer", "null"], "minimum": 1, "maximum": 50},
+                },
+                ["op"],
+                self._diagnose_trace,
+                parallel=True,
+            ),
+            self._spec(
+                "forge_artisan",
+                "（仅租户管理员）受控造匠工作坊与三层不可变发布节点工具（ADR 0025）：支持 create_draft / checkout_draft / control_mutate（强类型改 xuanpu.yaml）/ content_patch（Hook 护栏编辑 skills 与 tests）/ diff / run_gates（L1+L2+L3）/ review / publish / list_releases / rollback / disable。",
+                {
+                    "op": {
+                        "type": "string",
+                        "enum": [
+                            "create_draft", "checkout_draft", "control_mutate", "content_patch",
+                            "diff", "run_gates", "review", "publish",
+                            "list_releases", "rollback", "disable",
+                        ],
+                    },
+                    "draft_id": {"type": ["string", "null"]},
+                    "package_name": {"type": ["string", "null"]},
+                    "description": {"type": ["string", "null"]},
+                    "entry": {"type": ["string", "null"]},
+                    "display_name": {"type": ["string", "null"]},
+                    "version": {"type": ["string", "null"]},
+                    "action": {"type": ["string", "null"], "description": "control_mutate 动作名"},
+                    "params": {"type": ["object", "null"], "description": "control_mutate 强类型参数"},
+                    "patches": {"type": ["array", "null"], "items": {"type": "object"}},
+                    "summary": {"type": ["string", "null"]},
+                    "approved": {"type": ["boolean", "null"]},
+                    "layer": {"type": ["string", "null"], "enum": ["artisan", "forge", "kernel", None]},
+                    "target_name": {"type": ["string", "null"]},
+                    "to_release_id": {"type": ["string", "null"]},
+                    "mode": {"type": ["string", "null"], "enum": ["retired", "revoked", None]},
+                },
+                ["op"],
+                self._forge_artisan,
             ),
             self._spec("rate_divergence", "（仅会诊比对时）登记各位匠人结论的分歧度与综合。",
                        {"level": {"type": "string", "enum": ["low", "medium", "high"],
@@ -612,3 +659,17 @@ class ButlerTools:
         snapshot = board_view(saved)
         turn.note_focus(snapshot)
         return taifeng.ToolResult.ok(_json(snapshot))
+
+    async def _diagnose_trace(self, turn: ButlerTurn, args: dict[str, Any], _call: str,
+                              ) -> taifeng.ToolResult:
+        """跨节点只读自排查：检索失败记录、回读脱敏 Transcript 与定位根因。"""
+        from server.engine.butler.ops_tools import run_diagnose_trace
+
+        return taifeng.ToolResult.ok(_json(await run_diagnose_trace(self._platform, turn, args)))
+
+    async def _forge_artisan(self, turn: ButlerTurn, args: dict[str, Any], _call: str,
+                             ) -> taifeng.ToolResult:
+        """受控造匠工作坊与三层不可变发布节点操作（仅租户管理员）。"""
+        from server.engine.butler.ops_tools import run_forge_artisan
+
+        return taifeng.ToolResult.ok(_json(await run_forge_artisan(self._platform, turn, args)))

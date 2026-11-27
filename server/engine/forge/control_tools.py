@@ -83,7 +83,7 @@ def forge_add_entry(
         desc = description or f"{title} 技能入口"
         skill_file.write_text(
             f"---\nname: {skill_id}\ndisplay_name: {title}\ndescription: {desc}\n"
-            f"version: 1.0.0\ntype: composite\nentry: true\n---\n\n# {title}\n\n{desc}\n",
+            f"version: 1.0.0\ntype: composite\nentry: true\ntool_names: [file_read]\n---\n\n# {title}\n\n{desc}\n",
             encoding="utf-8",
         )
     return res

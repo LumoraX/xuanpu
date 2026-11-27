@@ -155,7 +155,7 @@ class ArtisanForgeService:
             title = display_name or package_name
             (draft_dir / "skills" / entry / "SKILL.md").write_text(
                 f"---\nname: {entry}\ndisplay_name: {title}\ndescription: {description}\n"
-                f"version: 1.0.0\ntype: composite\nentry: true\n---\n\n# {title}\n\n{description}\n",
+                f"version: 1.0.0\ntype: composite\nentry: true\ntool_names: [file_read]\n---\n\n# {title}\n\n{description}\n",
                 encoding="utf-8",
             )
 
