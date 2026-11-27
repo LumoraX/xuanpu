@@ -172,6 +172,13 @@ async def read_extended_personal(
         }
     if kind == "knowledge":
         return await _read_knowledge(platform, who, search=search, limit=min(limit, 10))
+    if kind == "hybrid_recall":
+        from server.domains.people.hybrid_recall import hybrid_recall_personal
+
+        if not search:
+            raise InvalidRequestError("hybrid_recall 需要提供 query 关键词或模糊描述")
+        hits = await hybrid_recall_personal(platform, who, search, now=now, limit=min(limit, 15))
+        return {"query": search, "items": hits}
     if kind == "dispatches":
         records = await platform.dispatches.list_recent(turn.owner(), limit=limit)
         items = []

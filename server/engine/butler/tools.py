@@ -220,6 +220,7 @@ class ButlerTools:
                             "files",
                             "file_content",
                             "knowledge",
+                            "hybrid_recall",
                             "followups",
                             "work_tasks",
                             "matters",

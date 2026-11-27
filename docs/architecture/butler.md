@@ -132,6 +132,10 @@
   - 工具调用前的开场规划文本通过独立 SSE `event: plan` 推送并单独落盘，不再混入最终落盘回复正文。
   - 被唤醒复核轮（`turn.wake != None`）下 `act_personal` 收窄为纯追加安全白名单，阻断二阶提示注入；`create_event` / `update_event` 由代码确定性检测时间冲突（`conflicts`）与 60 分钟内紧邻日程（`adjacent_events`）；`cancel_event` / `delete_todo` 走软回收站支持 `/undo` 一键恢复。
   - `server/engine/butler/grant_converger.py` 提供试运行 `TraceView` → 最小权限 `ConvergedGrantProposal`（实测 Token × 1.5、严禁通配符）收敛引擎。
+  - **M2–M4 生产力、主动简报与演进底座**：
+    - `server/engine/butler/multimodal.py` 提供 1–3 张图片魔数直读与 Mermaid 轻量确定性语法检查；`examples/doc-analyst/` 提供断网通用分析与制作匠人包（含 8 项共享 `document-skills`）；唤醒轮支持有界动态多步接力（`max_dynamic_relay_hops`，默认 3 跳）。
+    - `server/engine/butler/ops_tools.py` 向管家暴露 `diagnose_trace`（跨节点只读自排查）与 `forge_artisan`（租户管理员受控造匠/发布/回退）；`server/engine/runtime/security_hooks.py` 与 `server/engine/transcripts/recorder.py` 覆盖匠人运行时的 5 级安全 `HookRunner` 与双层 Transcript 自动落盘。
+    - `server/engine/butler/proactive_briefing.py` 与 `topic_watch.py` 落位 Attention Budget、后台配额分级降级、习惯校准、会前 30 分钟速览、每日高信噪比晨报与长期静默追踪；`server/domains/people/hybrid_recall.py` 落位语义+图谱+时效衰减混合召回（`read_personal(kind="hybrid_recall")`）；`scripts/release/l3_blue_green_release.py` 提供 L3 内核蓝绿探活与追加式回退流水线。
 - 持久任务承载的派工路径只有单元级覆盖（本机测试环境无法运行办公容器）；会话承载有端到端测试。
 - 说话约定在任务承载时随任务的 `text` 保存，员工在「更多」的交办工作里会看到这一行，也计入任务请求的幂等指纹；若将来改动约定文字，已建任务按同一请求标识重新受理会冲突（目前没有重新受理的路径）。
 - 真实模型下的误派、漏派率尚未测量：回归集与脚本已就绪（`scripts/acceptance/r5_butler_regression.py`），本环境没有真实模型凭据，未执行。
