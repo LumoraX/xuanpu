@@ -13,7 +13,7 @@ import pytest
 from web import static_dir
 
 COURTYARD_SCRIPTS = ["courtyard-art.js", "courtyard-model.js", "courtyard-scene.js", "courtyard-card.js", "courtyard-stage.js"]
-ENTRY_SCRIPTS = ["entry.js", "entry-notifications.js", "capture-card.js", "contacts-drawer.js", "board-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", *COURTYARD_SCRIPTS, "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]
+ENTRY_SCRIPTS = ["entry.js", "entry-notifications.js", "capture-card.js", "people-graph.js", "contacts-drawer.js", "board-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", *COURTYARD_SCRIPTS, "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]
 
 
 def test_entry_behavior() -> None:
@@ -63,6 +63,6 @@ def test_entry_only_uses_original_endpoints() -> None:
         "/v1/reminders", "/v1/notifications", "/v1/notifications/events", "/v1/work-tasks", "/v1/traces", "/v1/dashboard",
         "/v1/proactive", "/v1/task-definitions", "/v1/me/connections", "/v1/shared-matters",
         "/v1/handoffs", "/v1/approval-requests", "/v1/organization/people", "/v1/approval-policies",
-        "/v1/people", "/v1/people/orgs", "/v1/people/notes", "/v1/people/import", "/v1/people/google",
+        "/v1/people", "/v1/people/orgs", "/v1/people/notes", "/v1/people/graph", "/v1/people/import", "/v1/people/google",
         "/v1/me/knowledge", "/v1/me/work-memory",
     }, paths

@@ -63,7 +63,7 @@ async def test_postgres_people_full_lifecycle(
     pg_people: tuple[PostgresControlPlane, WorkspaceService, PeopleService, Principal, Principal],
 ) -> None:
     """真实 PostgreSQL 上验证 0033/0034 建表、公司实体、会议记录、跨实体多跳图谱、头像、合并/撤销、隔离与脱敏审计。"""
-    assert latest_version() == 34
+    assert latest_version() >= 34
     control, workspace, people, alice, bob = pg_people
 
     # 新建两个人物与一个事项

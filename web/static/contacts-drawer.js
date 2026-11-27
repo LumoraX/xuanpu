@@ -171,6 +171,7 @@ function closeContactsDrawer(resetData = false) {
     abState.orgFilter = "";
     abState.error = "";
     abState.status = "";
+    if (typeof resetPeopleGraphState === "function") resetPeopleGraphState();
   }
   const overlay = $("contacts-overlay");
   if (overlay) {
@@ -185,7 +186,7 @@ async function openContactsDrawer(options = {}) {
   if (typeof closeBoardDrawer === "function") closeBoardDrawer();
   abBindKeys();
   abState.open = true;
-  const validTabs = new Set(["people", "orgs", "matters", "notes", "files", "knowledge"]);
+  const validTabs = new Set(["people", "orgs", "matters", "graph", "notes", "files", "knowledge"]);
   if (options.tab && validTabs.has(options.tab)) abState.tab = options.tab;
   if (options.personId) { abState.tab = "people"; abState.selectedPersonId = options.personId; }
   if (options.orgId) { abState.tab = "orgs"; abState.selectedOrgId = options.orgId; }
@@ -268,6 +269,11 @@ async function abSyncSelectionForTab() {
     }
     if (abState.selectedMatterId) await loadMatterDetail(abState.selectedMatterId);
     else { abState.matterPeople = []; renderContactsDrawer(); }
+    return;
+  }
+  if (abState.tab === "graph") {
+    if (typeof loadPeopleGraph === "function") await loadPeopleGraph();
+    else renderContactsDrawer();
     return;
   }
   if (abState.tab === "notes") {
@@ -427,7 +433,7 @@ function renderContactsDrawer() {
   }
   overlay.classList.remove("hidden");
   const activeId = document.activeElement ? document.activeElement.id : null;
-  const caretPos = activeId === "ab-search-input" || activeId === "ab-kb-input" ? document.activeElement.selectionStart : null;
+  const caretPos = activeId === "ab-search-input" || activeId === "ab-kb-input" || activeId === "ab-graph-search" ? document.activeElement.selectionStart : null;
 
   const sheet = el("section", null, "ab-sheet");
   sheet.addEventListener("click", (e) => e.stopPropagation());
@@ -445,6 +451,7 @@ function renderContactsDrawer() {
     { id: "people", label: "通讯录", count: abState.people.length },
     { id: "orgs", label: "公司", count: abState.orgs.length },
     { id: "matters", label: "项目", count: abState.matters.length },
+    { id: "graph", label: "关系图", count: 0 },
     { id: "notes", label: "记录", count: abState.notes.length },
     { id: "files", label: "文件", count: abState.files.length },
   ];
@@ -503,16 +510,19 @@ function renderContactsDrawer() {
   if (abState.error) sheet.appendChild(el("p", abState.error, "ab-banner error"));
   if (abState.status) sheet.appendChild(el("p", abState.status, "ab-banner ok"));
 
-  const body = el("div", null, abState.tab === "knowledge" ? "ab-body single" : "ab-body");
+  const isSingle = abState.tab === "knowledge" || abState.tab === "graph";
+  const body = el("div", null, isSingle ? "ab-body single" + (abState.tab === "graph" ? " graph-body" : "") : "ab-body");
   if (abState.tab === "knowledge") {
     body.appendChild(buildKnowledgePane());
+  } else if (abState.tab === "graph" && typeof buildPeopleGraphPane === "function") {
+    body.appendChild(buildPeopleGraphPane());
   } else {
     body.append(buildAbListPane(), buildAbDetailPane());
   }
   sheet.appendChild(body);
   overlay.replaceChildren(sheet);
 
-  if (activeId === "ab-search-input" || activeId === "ab-kb-input") {
+  if (activeId === "ab-search-input" || activeId === "ab-kb-input" || activeId === "ab-graph-search") {
     const inp = $(activeId);
     if (inp) {
       inp.focus();
@@ -735,6 +745,9 @@ function buildPersonDetailView(pane, detail) {
   hero.appendChild(heroMain);
 
   const actions = el("div", null, "ab-hero-actions");
+  if (typeof openEntityInGraph === "function") {
+    actions.appendChild(button("关系图", () => openEntityInGraph("person", person.id), "ab-act-btn"));
+  }
   actions.appendChild(button("问管家", () => {
     closeContactsDrawer();
     const box = $("message");
@@ -918,6 +931,9 @@ function buildOrgDetailView(pane, detail) {
   if (sub) heroMain.appendChild(el("div", sub, "ab-hero-sub"));
   hero.appendChild(heroMain);
   const actions = el("div", null, "ab-hero-actions");
+  if (typeof openEntityInGraph === "function") {
+    actions.appendChild(button("关系图", () => openEntityInGraph("org", org.id), "ab-act-btn"));
+  }
   actions.appendChild(button("问管家", () => {
     closeContactsDrawer();
     const box = $("message");
@@ -990,6 +1006,9 @@ function buildMatterDetailView(pane, matter) {
   heroMain.appendChild(nameRow);
   hero.appendChild(heroMain);
   const actions = el("div", null, "ab-hero-actions");
+  if (typeof openEntityInGraph === "function") {
+    actions.appendChild(button("关系图", () => openEntityInGraph("matter", matter.id), "ab-act-btn"));
+  }
   actions.appendChild(button("问管家", () => {
     closeContactsDrawer();
     const box = $("message");

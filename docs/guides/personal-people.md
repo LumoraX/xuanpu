@@ -24,6 +24,8 @@
 | `GET/PUT/DELETE /v1/people/{id}` | 读取详情 / 版本 CAS 更新 / 移入回收站 |
 | `POST /v1/people/{id}/restore` | 从回收站恢复 |
 | `POST /v1/people/{id}/merge` · `/unmerge` | 可逆软合并与撤销合并 |
+| `GET /v1/people/graph` | 读取本人全景关系图（`limit` 1–500、`include_isolated`） |
+| `GET /v1/people/graph/{kind}/{id}` | 以人物/公司/事项/记录为中心展开 1–3 跳图谱与溯源记录 |
 | `GET /v1/people/{id}/graph` | 展开 1–2 跳关系图（`depth`、`include_matters`） |
 | `PUT/GET/DELETE /v1/people/{id}/avatar` | 上传 / 受权读取 / 删除头像 |
 | `POST/PUT/DELETE /v1/people/relations[/{id}]` | 维护人↔人、人↔事项关系边 |

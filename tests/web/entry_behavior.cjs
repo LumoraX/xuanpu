@@ -65,14 +65,14 @@ function harness(routes) {
   };
   const context = vm.createContext({
     console: { error() {}, log: console.log }, crypto, AbortController, DOMException, TextDecoder, TextEncoder, URLSearchParams, Intl,
-    document: { getElementById: node, createElement: element }, fetch, Math, JSON, Date, Promise, Map, Set,
+    document: { getElementById: node, createElement: element, createElementNS: (_, tag) => element(tag) }, fetch, Math, JSON, Date, Promise, Map, Set,
     location: { search: "", pathname: "/console/entry.html", assign() {}, replaced: null, replace(to) { this.replaced = to; } },
   });
   return { context, nodes: node, calls };
 }
 
 function load(h, dir) {
-  for (const name of ["entry.js", "entry-notifications.js", "capture-card.js", "contacts-drawer.js", "board-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]) {
+  for (const name of ["entry.js", "entry-notifications.js", "capture-card.js", "people-graph.js", "contacts-drawer.js", "board-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]) {
     vm.runInContext(fs.readFileSync(path.join(dir, name), "utf8"), h.context, { filename: name });
   }
 }
@@ -901,6 +901,109 @@ async function boardDrawerCompletedRemindersAndTimestamp(dir) {
   assert.ok(h.nodes("transcript").textContent.includes("已提醒"));
 }
 
+async function contactsDrawerPeopleGraph(dir) {
+  let fullGraphCalls = 0;
+  let focusGraphUrl = null;
+  const h = harness({
+    "GET /v1/me": () => ME,
+    "GET /v1/workspace/settings": () => ({ json: { auto_execute_personal: true } }),
+    "GET /v1/dashboard/overview": () => OVERVIEW,
+    "GET /v1/workspace/messages": () => ({ json: { items: [] } }),
+    "GET /v1/assistant/pending": () => ({ json: { items: [] } }),
+    "GET /v1/notifications": () => ({ json: { items: [] } }),
+    "GET /v1/notifications/events": (_, init) => ({ stream: pendingStream(init) }),
+    "GET /v1/people": () => ({ json: { items: [
+      { id: "per_1", name: "袁新", organization: "上海理想", version: 1, profile: { name: "袁新", organization: "上海理想", title: "总监" } },
+      { id: "per_2", name: "王强", organization: "上海理想", version: 1, profile: { name: "王强", organization: "上海理想", title: "经理" } },
+    ] } }),
+    "GET /v1/people/orgs": () => ({ json: { items: [
+      { id: "org_1", name: "上海理想", version: 1, profile: { name: "上海理想", city: "上海" } },
+    ] } }),
+    "GET /v1/workspace/items": () => ({ json: { items: [] } }),
+    "GET /v1/people/notes": () => ({ json: { items: [] } }),
+    "GET /v1/me/knowledge/sources": () => ({ status: 404, json: {} }),
+    "GET /v1/me/work-memory": () => ({ status: 404, json: {} }),
+    "GET /v1/people/per_1": () => ({ json: {
+      person: { id: "per_1", name: "袁新", organization: "上海理想", version: 1, profile: { name: "袁新", organization: "上海理想" } },
+      relations: [{ id: "rel_1", from_kind: "person", from_person_id: "per_1", target_kind: "org", target_id: "org_1", relation_type: "works_at", role: "总监", is_symmetric: false }],
+      notes: [],
+    } }),
+    "GET /v1/people/graph": () => {
+      fullGraphCalls += 1;
+      return { json: {
+        nodes: [
+          { kind: "person", id: "per_1", name: "袁新", organization: "上海理想", subtitle: "上海理想 · 总监", summary: "", version: 1, degree: 1 },
+          { kind: "person", id: "per_2", name: "王强", organization: "上海理想", subtitle: "上海理想 · 经理", summary: "", version: 1, degree: 0 },
+          { kind: "org", id: "org_1", name: "上海理想", subtitle: "上海", summary: "", version: 1, degree: 1 },
+        ],
+        edges: [
+          { id: "rel_1", from_kind: "person", from_person_id: "per_1", target_kind: "org", target_id: "org_1", relation_type: "works_at", role: "总监", is_symmetric: false },
+        ],
+        truncated: false,
+        stats: { total_persons: 2, total_orgs: 1, total_matters: 0, total_edges: 1, shown_nodes: 3, shown_edges: 1 },
+      } };
+    },
+    "GET /v1/people/graph/person/per_1": (call) => {
+      focusGraphUrl = call.url;
+      return { json: {
+        center: { kind: "person", id: "per_1" },
+        depth: 2,
+        nodes: [
+          { kind: "person", id: "per_1", name: "袁新", organization: "上海理想", subtitle: "上海理想 · 总监", summary: "", version: 1 },
+          { kind: "org", id: "org_1", name: "上海理想", subtitle: "上海", summary: "", version: 1 },
+          { kind: "matter", id: "mat_1", name: "壁仞项目", subtitle: "active", summary: "", version: 1 },
+          { kind: "person", id: "per_2", name: "王强", organization: "", subtitle: "", summary: "", version: 1 },
+        ],
+        edges: [
+          { id: "rel_1", from_kind: "person", from_person_id: "per_1", target_kind: "org", target_id: "org_1", relation_type: "works_at", role: "总监", is_symmetric: false },
+          { id: "rel_2", from_kind: "person", from_person_id: "per_1", target_kind: "matter", target_id: "mat_1", relation_type: "project_introducer", role: "项目介绍人", is_symmetric: false },
+          { id: "rel_3", from_kind: "person", from_person_id: "per_2", target_kind: "matter", target_id: "mat_1", relation_type: "co_creator", role: "", is_symmetric: false },
+        ],
+        records: [{ id: "note_1", title: "半岛酒店沟通会", occurred_at: 1700000000, summary: "确认壁仞项目推进节奏", content: "确认壁仞项目推进节奏" }],
+      } };
+    },
+  });
+  load(h, dir); await flush();
+
+  // 打开书架资料室，切到「关系图」Tab，验证全景 SVG 与自动同公司连线渲染
+  h.nodes("entry-contacts").listeners.click();
+  await flush();
+  const overlay = h.nodes("contacts-overlay");
+  const graphTab = byText(overlay, "button", "关系图")[0];
+  assert.ok(graphTab, "书架资料室应包含「关系图」页签");
+  graphTab.listeners.click();
+  await flush();
+  assert.equal(fullGraphCalls, 1, "切到关系图页签应请求 GET /v1/people/graph");
+  const svgs = all(overlay, n => n.tag === "svg");
+  assert.equal(svgs.length, 1, "关系图应渲染原生 SVG 画布");
+  assert.ok(overlay.textContent.includes("袁新") && overlay.textContent.includes("上海理想"));
+  assert.ok(overlay.textContent.includes("任职于"), "应展示中文关系标签");
+  assert.ok(overlay.textContent.includes("同公司"), "默认开启同公司连线时应为王强补齐虚线聚合边");
+
+  // 选中节点后点击「以它为中心」进入 2 跳聚焦模式，展示溯源记录
+  const perNode = all(overlay, n => n.tag === "g" && n.dataset && n.dataset.nodeKey === "person:per_1")[0];
+  assert.ok(perNode, "应找到袁新图谱节点");
+  perNode.listeners.click({ stopPropagation() {} });
+  await flush();
+  const focusBtn = byText(overlay, "button", "以它为中心")[0];
+  assert.ok(focusBtn, "右侧详情应提供「以它为中心」按钮");
+  focusBtn.listeners.click();
+  await flush();
+  assert.ok(focusGraphUrl && focusGraphUrl.includes("/v1/people/graph/person/per_1?depth=2"), "应拉取 2 跳聚焦图谱接口");
+  assert.ok(overlay.textContent.includes("半岛酒店沟通会"), "聚焦模式右侧应展示溯源记录");
+  assert.ok(overlay.textContent.includes("项目介绍人") && !overlay.textContent.includes("project_introducer"), "英文关系类型应展示为中文角色");
+  assert.ok(overlay.textContent.includes("共创人"), "co_creator 应翻译为中文");
+  // 验证聚焦 2 跳布局不会退化为竖直共线（x 坐标应横向充分展开，且每对节点间保持安全间距）
+  const posList = vm.runInContext("[...abGraphState.positions.values()]", h.context);
+  const xs = posList.map(p => p.x);
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 250, "2 跳聚焦节点应横向展开而非竖排重叠");
+  for (let i = 0; i < posList.length; i += 1) {
+    for (let j = i + 1; j < posList.length; j += 1) {
+      assert.ok(Math.hypot(posList[i].x - posList[j].x, posList[i].y - posList[j].y) >= 120, "任意两节点距离应 >= 120px 避免文字重叠");
+    }
+  }
+}
+
 (async () => {
   const dir = process.argv[2];
   dir_ = dir;
@@ -924,6 +1027,7 @@ async function boardDrawerCompletedRemindersAndTimestamp(dir) {
   await executedActionsCardAndUndo(dir);
   await contactsDrawerAddressBook(dir);
   await contactsDrawerFileImport(dir);
+  await contactsDrawerPeopleGraph(dir);
   await boardDrawerTodosAndQuickAdd(dir);
   await liveNotificationsAndBrowserPopup(dir);
   await chatReminderPromptRequestsDesktopPermission(dir);

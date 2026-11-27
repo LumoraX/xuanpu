@@ -796,3 +796,32 @@ async def test_knowledge_graph_meeting_capture_orgs_traversal_and_raw_only(env) 
     # 6. 跨用户严格隔离
     assert (await client.get(f"/v1/people/orgs/{telecom_id}", headers=env.users["usr_b"])).status_code == 404
     assert (await client.get(f"/v1/people/graph/org/{telecom_id}", headers=env.users["usr_b"])).status_code == 404
+
+    # 7. 全景关系图接口：返回连通实体、支持 include_isolated 与 limit 有界截断，并严格按本人隔离
+    solo_resp = await client.post(
+        "/v1/people",
+        headers=hdr(env),
+        json={"request_id": "kg-solo-1", "profile": {"name": "孤立联系人", "organization": "独立工作室"}},
+    )
+    assert solo_resp.status_code == 201, solo_resp.text
+
+    full_conn = await client.get("/v1/people/graph", headers=env.users["usr_a"])
+    assert full_conn.status_code == 200, full_conn.text
+    fc = full_conn.json()
+    fc_names = {n["name"] for n in fc["nodes"]}
+    assert {"中国电信股份有限公司上海分公司", "上海理想信息产业（集团）有限公司", "袁新", "壁仞项目"} <= fc_names
+    assert "孤立联系人" not in fc_names
+    assert fc["truncated"] is False
+    assert fc["stats"]["total_edges"] == 5 and len(fc["edges"]) == 5
+
+    full_all = await client.get("/v1/people/graph?include_isolated=true", headers=env.users["usr_a"])
+    assert full_all.status_code == 200, full_all.text
+    assert "孤立联系人" in {n["name"] for n in full_all.json()["nodes"]}
+
+    full_cut = await client.get("/v1/people/graph?limit=2", headers=env.users["usr_a"])
+    assert full_cut.status_code == 200, full_cut.text
+    cut_body = full_cut.json()
+    assert len(cut_body["nodes"]) == 2 and cut_body["truncated"] is True
+
+    other_full = await client.get("/v1/people/graph?include_isolated=true", headers=env.users["usr_b"])
+    assert other_full.status_code == 200 and other_full.json()["nodes"] == [] and other_full.json()["edges"] == []

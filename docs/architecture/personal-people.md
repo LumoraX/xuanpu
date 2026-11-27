@@ -23,6 +23,7 @@
    - `from_kind` 与 `target_kind` 均覆盖 `person` / `org` / `matter`，原生表达公司母子（`subsidiary_of`）、人任职公司（`works_at`）、人际关系（`friend`/`colleague`/`introduced_by`）、人参与项目（`matter_role`）与公司合作项目（`org_matter_role`）。
    - 带 `role`、`note`、可选起止时间 `valid_from`/`valid_to` 及溯源引用 `source_note_id`。
    - 跨实体图谱查询（`GET /v1/people/graph/{entity_kind}/{entity_id}?depth=1..3`）支持以任意 `person`/`org`/`matter`/`record` 为中心做 1–3 跳 BFS 穿透并附带溯源原始记录；中心为 `matter` 时自动聚合关联待办、日程与活跃提醒全景。
+   - 全景关系图查询（`GET /v1/people/graph?limit=1..500&include_isolated=false`）按连接度与活跃度有界返回本人全部活动人物/公司/事项节点及关系边，供前端小院「书架资料 → 关系图」（`web/static/people-graph.js`）做零依赖原生 SVG 力导向全景、1–3 跳聚焦穿透、类型筛选与同公司虚线聚合展示。
 4. **`xp_personal_note`（通用原始记录，迁移 0034 升格）**
    - 支持 `record_kind`（`note` / `meeting` / `card` / `call` / `other`）、`title`、`location`、`occurred_at`、`end_at`、`content`、`summary`、`decisions[]`、`open_questions[]`，并双向记录关联的 `person_ids`、`org_ids`、`matter_ids`、`todo_ids`、`event_ids`、`reminder_ids` 与 `attachment_file_ids`（允许纯会议记录零人物独立存盘）。
 5. **`xp_personal_people_request`（幂等回执）**
