@@ -417,8 +417,11 @@ class ButlerService:
             from server.engine.butler.multimodal import collect_inline_images
 
             images = await collect_inline_images(p, who, body.input_files)
-            reply = await self.engines.run(
-                turn, await self._payload(who, body, merge=merge), attachments=images,
+            payload = await self._payload(who, body, merge=merge)
+            reply = (
+                await self.engines.run(turn, payload, attachments=images)
+                if images
+                else await self.engines.run(turn, payload)
             )
         except TurnTimeout as exc:
             reply = _timed_out(turn, exc)
