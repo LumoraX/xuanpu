@@ -20,6 +20,14 @@ function element(tag = "div") {
       toggle: (v, yes) => { const on = yes === undefined ? !classes.has(v) : yes; if (on) classes.add(v); else classes.delete(v); return on; },
     },
     appendChild(child) { if (child.parentNode) child.remove(); this.children.push(child); child.parentNode = this; return child; },
+    insertBefore(child, ref) {
+      if (child.parentNode) child.remove();
+      const idx = this.children.indexOf(ref);
+      if (idx === -1) this.children.push(child);
+      else this.children.splice(idx, 0, child);
+      child.parentNode = this;
+      return child;
+    },
     append(...items) { for (const item of items) this.appendChild(item); },
     replaceChildren(...items) { for (const c of this.children) c.parentNode = null; this.children = []; this.append(...items); },
     remove() { if (this.parentNode) { this.parentNode.children = this.parentNode.children.filter(n => n !== this); this.parentNode = null; } },
@@ -72,7 +80,7 @@ function harness(routes) {
 }
 
 function load(h, dir) {
-  for (const name of ["entry.js", "entry-notifications.js", "capture-card.js", "people-graph.js", "contacts-drawer.js", "board-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]) {
+  for (const name of ["entry.js", "entry-notifications.js", "capture-card.js", "people-graph.js", "contacts-drawer.js", "board-drawer.js", "workbench-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]) {
     vm.runInContext(fs.readFileSync(path.join(dir, name), "utf8"), h.context, { filename: name });
   }
 }
@@ -1004,6 +1012,87 @@ async function contactsDrawerPeopleGraph(dir) {
   }
 }
 
+async function planFocusSupersededDiffAndWorkbench(dir) {
+  let promoted = false;
+  let rolledBack = false;
+  const h = harness({
+    ...base({
+      "GET /v1/me": () => ({ json: { user_id: "usr_alice", tenant_id: "acme", display_name: "Alice", role: "tenant_admin", entry: "minimal" } }),
+      "POST /v1/assistant/messages": () => ({
+        headers: { "content-type": "text/event-stream" },
+        stream: sse([
+          ["started", { mode: "butler", request_id: "req_plan", trace_id: "trc_wb" }],
+          ["plan", { text: "先查档案，再局部修订周报" }],
+          ["focus", { board_id: "btb_1", trace_id: "trc_wb", title: "修订周报", focus: "正在更新进度", status: "active", steps: [{ id: "s1", title: "读周报", status: "done" }, { id: "s2", title: "改进度", status: "in_progress" }] }],
+          ["delta", { text: "已更新周报。" }],
+          ["receipt", {
+            mode: "butler", state: "done", request_id: "req_plan", trace_id: "trc_wb",
+            message: "| 项目 | 状态 |\n| --- | --- |\n| 周报 | 完成 |",
+            executed_actions: [{
+              action_id: "act_1", action: "patch_personal_file", title: "已局部编辑文档",
+              summary: "weekly.md（1 处修改）", diff: "--- a/weekly.md\n+++ b/weekly.md\n@@ -1 +1 @@\n-80%\n+100%",
+              undoable: true,
+            }],
+          }],
+        ]),
+      }),
+      "GET /v1/traces/trc_wb/events": () => ({ stream: sse([["snapshot", { title: "butler", active: false, spans: [] }], ["end", {}]]) }),
+      "GET /v1/assistant/task-boards": () => ({ json: { items: [{ board_id: "btb_1", trace_id: "trc_wb", title: "修订周报", focus: "正在更新进度", status: "active", steps: [{ id: "s1", title: "读周报", status: "done" }] }] } }),
+      "GET /v1/traces/trc_wb/artifacts": () => ({ json: { items: [{ artifact_id: "art_1", name: "report.md", mime_type: "text/markdown", contains_external_input: true, promoted_item_id: null }] } }),
+      "GET /v1/artifacts/art_1/preview": () => ({ json: { text: "# 报告\n\n核心结论 A" } }),
+      "POST /v1/artifacts/art_1/promote": () => { promoted = true; return { json: { ok: true } }; },
+      "GET /v1/diagnostics/failed-transcripts": () => ({ json: { items: [{ trace_id: "trc_err", span_id: "sp_err", status: "failed", error_code: "timeout", node_id: "node-a", line_count: 12 }] } }),
+      "GET /v1/traces/trc_err/transcripts/sp_err": () => ({ json: { mode: "compact", source: "remote_node", lines: [{ kind: "error", status: "failed", payload: { error_code: "timeout" } }] } }),
+      "GET /v1/releases/artisan/support-desk": () => ({ json: { items: [{ release_id: "rel_1", generation: 1, target_name: "support-desk", version: "1.0.0", state: "retired" }, { release_id: "rel_2", generation: 2, target_name: "support-desk", version: "1.1.0", state: "active" }] } }),
+      "POST /v1/releases/artisan/support-desk/rollback": () => { rolledBack = true; return { json: { generation: 3, state: "active" } }; },
+    }),
+  });
+  load(h, dir); await flush();
+
+  // 1. 发送消息并验证 SSE plan / focus / 表格渲染 / Unified Diff
+  h.nodes("message").value = "把周报进度改成 100%";
+  h.nodes("composer").requestSubmit();
+  await flush();
+  assert.ok(!h.nodes("entry-live-focus").classList.contains("hidden"), "Live Focus 胶囊应显示");
+  assert.ok(h.nodes("entry-live-focus").textContent.includes("正在更新进度"));
+  assert.ok(h.nodes("transcript").textContent.includes("查看修改 Diff"), "局部编辑回执卡应包含 Unified Diff 折叠视图");
+  assert.ok(all(h.nodes("transcript"), n => n.tag === "table").length >= 1, "气泡应支持轻 Markdown 表格渲染");
+
+  // 2. 打开辅助工作台，依次验证任务板、过程产物预览+转存、跨节点诊断、发布节点回退
+  h.nodes("entry-workbench").listeners.click();
+  await flush();
+  const wb = h.nodes("workbench-overlay");
+  assert.ok(wb.textContent.includes("修订周报"), "任务板应展示跨轮任务");
+
+  byText(wb, "button", "过程产物")[0].listeners.click();
+  await flush();
+  assert.ok(wb.textContent.includes("report.md") && wb.textContent.includes("外部联网输入"));
+  byText(wb, "button", "预览正文")[0].listeners.click();
+  await flush();
+  assert.ok(wb.textContent.includes("核心结论 A"));
+  byText(wb, "button", "转存个人空间")[0].listeners.click();
+  await flush();
+  assert.equal(promoted, true, "点击转存应调用 POST /v1/artifacts/art_1/promote");
+
+  byText(wb, "button", "跨节点诊断")[0].listeners.click();
+  await flush();
+  assert.ok(wb.textContent.includes("sp_err"));
+  byText(wb, "button", "读紧凑版")[0].listeners.click();
+  await flush();
+  assert.ok(wb.textContent.includes("remote_node"));
+
+  byText(wb, "button", "发布与回退")[0].listeners.click();
+  await flush();
+  const relInput = all(wb, n => n.tag === "input")[0];
+  relInput.value = "support-desk";
+  byText(wb, "button", "查询代次")[0].listeners.click();
+  await flush();
+  assert.ok(wb.textContent.includes("R1 · support-desk@1.0.0"));
+  byText(wb, "button", "回退到此版本")[0].listeners.click();
+  await flush();
+  assert.equal(rolledBack, true, "点击回退应调用 POST /v1/releases/artisan/support-desk/rollback");
+}
+
 (async () => {
   const dir = process.argv[2];
   dir_ = dir;
@@ -1032,5 +1121,6 @@ async function contactsDrawerPeopleGraph(dir) {
   await liveNotificationsAndBrowserPopup(dir);
   await chatReminderPromptRequestsDesktopPermission(dir);
   await boardDrawerCompletedRemindersAndTimestamp(dir);
+  await planFocusSupersededDiffAndWorkbench(dir);
   console.log("entry behavior passed");
 })().catch(error => { console.error(error); process.exit(1); });

@@ -74,6 +74,24 @@ function bootEntry() {
   if (boardBtn && typeof openBoardDrawer === "function") {
     boardBtn.addEventListener("click", () => { openBoardDrawer().catch(report); });
   }
+  const wbBtn = $("entry-workbench");
+  if (wbBtn && typeof openWorkbenchDrawer === "function") {
+    wbBtn.addEventListener("click", () => { openWorkbenchDrawer().catch(report); });
+  }
+  const liveFocusBtn = $("entry-live-focus");
+  if (liveFocusBtn && typeof openWorkbenchDrawer === "function") {
+    liveFocusBtn.addEventListener("click", () => { openWorkbenchDrawer({ tab: "tasks" }).catch(report); });
+  }
+  const msgInput = $("message");
+  if (msgInput && typeof uploadAttachmentFiles === "function") {
+    msgInput.addEventListener("paste", (event) => {
+      const items = event.clipboardData && event.clipboardData.files;
+      if (items && items.length) {
+        event.preventDefault();
+        uploadAttachmentFiles(items).catch(report);
+      }
+    });
+  }
   const autonomyBtn = $("entry-autonomy");
   if (autonomyBtn && typeof toggleAutonomySetting === "function") {
     autonomyBtn.addEventListener("click", () => { toggleAutonomySetting().catch(report); });

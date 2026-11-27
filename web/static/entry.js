@@ -281,23 +281,75 @@ function renderAssistantBubble(node, rawText) {
 
   const lines = bodyText.split("\n");
   let list = null;
+  let codeLines = null;
+  let codeLang = "";
+  let tableRows = null;
   const flushList = () => { if (list) { node.appendChild(list); list = null; } };
+  const flushTable = () => {
+    if (!tableRows || !tableRows.length) { tableRows = null; return; }
+    const tbl = el("table", null, "msg-table");
+    tableRows.forEach((cells, rIdx) => {
+      const tr = el("tr");
+      cells.forEach((cell) => {
+        const td = el(rIdx === 0 ? "th" : "td");
+        appendFormattedInline(td, cell);
+        tr.appendChild(td);
+      });
+      tbl.appendChild(tr);
+    });
+    node.appendChild(tbl);
+    tableRows = null;
+  };
   for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line) { flushList(); continue; }
-    if (/^[-•*]\s+/.test(line)) {
+    const trimmed = rawLine.trim();
+    if (trimmed.startsWith("```")) {
+      flushList();
+      flushTable();
+      if (codeLines === null) {
+        codeLines = [];
+        codeLang = trimmed.slice(3).trim().toLowerCase();
+      } else {
+        const wrap = el("div", null, codeLang === "mermaid" ? "msg-mermaid-block" : "msg-code-block");
+        if (codeLang === "mermaid") wrap.appendChild(el("div", "Mermaid 图示源码（可在工作台预览器展开）", "msg-code-label"));
+        wrap.appendChild(el("pre", codeLines.join("\n")));
+        node.appendChild(wrap);
+        codeLines = null;
+        codeLang = "";
+      }
+      continue;
+    }
+    if (codeLines !== null) {
+      codeLines.push(rawLine);
+      continue;
+    }
+    if (!trimmed) { flushList(); flushTable(); continue; }
+    if (trimmed.startsWith("|") && trimmed.endsWith("|") && trimmed.length > 2) {
+      flushList();
+      if (/^\|[\s:|-]+\|$/.test(trimmed)) continue;
+      if (!tableRows) tableRows = [];
+      tableRows.push(trimmed.slice(1, -1).split("|").map((c) => c.trim()));
+      continue;
+    }
+    flushTable();
+    if (/^[-•*]\s+/.test(trimmed)) {
       if (!list) list = el("ul", null, "msg-list");
       const li = el("li");
-      appendFormattedInline(li, line.replace(/^[-•*]\s+/, ""));
+      appendFormattedInline(li, trimmed.replace(/^[-•*]\s+/, ""));
       list.appendChild(li);
     } else {
       flushList();
-      const para = el("p", null, /^#{1,6}\s+/.test(line) ? "msg-para msg-heading" : "msg-para");
-      appendFormattedInline(para, line);
+      const para = el("p", null, /^#{1,6}\s+/.test(trimmed) ? "msg-para msg-heading" : "msg-para");
+      appendFormattedInline(para, trimmed);
       node.appendChild(para);
     }
   }
+  if (codeLines !== null) {
+    const wrap = el("div", null, "msg-code-block");
+    wrap.appendChild(el("pre", codeLines.join("\n")));
+    node.appendChild(wrap);
+  }
   flushList();
+  flushTable();
 
   if (reviewBody) {
     const details = el("details", null, "msg-review");
@@ -611,16 +663,20 @@ async function postMessage(body, epoch, live) {
   if (!response.ok || !type.includes("text/event-stream") || !response.body || typeof readFrames !== "function") {
     return readJson(response, epoch);
   }
-  let receipt = null, failure = null;
+  let receipt = null, failure = null, superseded = null;
   await readFrames(response, (name, data) => {
     if (isStale(epoch)) return;
     if (name === "started") onStarted(data, live);
+    else if (name === "plan") onPlan(data, live);
+    else if (name === "focus") onFocus(data, live);
     else if (name === "step") onStep(data, live);
     else if (name === "delta") onDelta(data, live);
+    else if (name === "superseded") { superseded = data; onSuperseded(data, live); }
     else if (name === "receipt") receipt = data;
     else if (name === "error") failure = Object.assign(new Error(data.message || "管家暂时无法处理"), { code: data.code, status: 503 });
   });
   if (failure) throw failure;
+  if (superseded && !receipt) return { mode: "butler", state: "superseded", ...superseded };
   // 流断了但这一轮还在后台办：不当作失败，结果会经补读出现在对话里
   if (!receipt) throw Object.assign(new Error("连接断了，这件事还在后台办，结果会出现在这里。"), { soft: true });
   return receipt;
@@ -643,6 +699,32 @@ function ensureLiveRegions(live) {
     live.steps = [];
     live.bubble.replaceChildren(live.stepsBox, live.textBox);
   }
+}
+
+function onPlan(data, live) {
+  const planText = (data && data.text) || "";
+  if (!planText) return;
+  const near = nearBottom();
+  ensureLiveRegions(live);
+  if (!live.planBox) {
+    live.planBox = el("div", null, "live-plan");
+    live.bubble.insertBefore(live.planBox, live.stepsBox);
+  }
+  live.planBox.textContent = "规划：" + planText;
+  // 开场规划已物理分离，清空前置文本缓冲以便只展示末轮正文
+  if (live.textBox) live.textBox.textContent = "";
+  stickBottom(near);
+}
+
+function onFocus(data, live) {
+  if (!data) return;
+  if (typeof updateLiveFocusPill === "function") updateLiveFocusPill(data);
+  if (data.focus) recordButlerStep(live.traceId || data.trace_id, data.focus);
+}
+
+function onSuperseded(data, live) {
+  endBubble(live, "已并入后续新消息合并重办…", "meta");
+  recordButlerStep(live.traceId, "");
 }
 
 function onStep(data, live) {
@@ -695,6 +777,14 @@ function endBubble(live, text, extra) {
 // 回执到了：回复以回执为准（流里拼的只是过程），再出卡片。
 function finishReply(id, reply, live) {
   const traceId = reply.trace_id || live.traceId || null;
+  if (reply.state === "superseded") {
+    return;
+  }
+  if (reply.state === "queued") {
+    const pos = reply.queue_position ? "（第 " + reply.queue_position + " 位）" : "";
+    endBubble(live, "已排入队列" + pos + "，前一条办完后会自动接着处理。", "meta");
+    return;
+  }
   if (reply.state === "running") {
     const text = "收到，正在处理。好了我会在这里告诉你，你可以先说别的。";
     endBubble(live, text, "meta");

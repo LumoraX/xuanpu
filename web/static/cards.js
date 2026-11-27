@@ -54,6 +54,21 @@ function executedActionsCard(actions, requestId, options = {}) {
     const info = el("div", null, "auto-action-info");
     info.append(el("span", item.title || "已办理", "auto-action-tag"));
     if (item.summary) info.append(el("span", item.summary, "auto-action-summary"));
+    if (item.diff) {
+      const det = el("details", null, "action-diff");
+      det.appendChild(el("summary", "查看修改 Diff"));
+      const pre = el("pre", null, "diff-lines");
+      for (const line of String(item.diff).split("\n")) {
+        const cls = line.startsWith("+") && !line.startsWith("+++")
+          ? "diff-add"
+          : line.startsWith("-") && !line.startsWith("---")
+            ? "diff-del"
+            : line.startsWith("@@") ? "diff-hunk" : "diff-ctx";
+        pre.appendChild(el("span", line + "\n", cls));
+      }
+      det.appendChild(pre);
+      info.appendChild(det);
+    }
     li.appendChild(info);
     const status = el("span", "", "meta auto-action-state");
     if (item.action === "capture_bundle" && typeof openContactsDrawer === "function") {

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>玄圃</title>
-<link rel="stylesheet" href="entry.css?v=718b3b75ca647ca2">
+<link rel="stylesheet" href="entry.css?v=57b1e69b1de26738">
 <link rel="stylesheet" href="courtyard.css?v=2b3a8f9fa52fd24b">
 </head>
 <body class="unauthenticated">
@@ -42,6 +42,8 @@
   </div>
   <nav class="entry-nav" aria-label="工作台操作">
     <span id="entry-user" class="entry-user"></span>
+    <button id="entry-live-focus" type="button" class="nav-pill live-focus-pill hidden" title="当前进行中的跨轮任务焦点"></button>
+    <button id="entry-workbench" type="button" class="nav-pill" aria-pressed="false" title="打开辅助工作台（任务板、过程产物、跨节点诊断与发布回退）">工作台</button>
     <button id="entry-contacts" type="button" class="nav-pill" aria-pressed="false" title="打开书架资料室（通讯录、公司、项目、记录与文件）">书架资料</button>
     <button id="entry-board" type="button" class="nav-pill" aria-pressed="false" title="打开看板（待办、日程与提醒）">看板</button>
     <button id="entry-autonomy" data-autonomy="1" type="button" class="nav-pill active" aria-pressed="true" title="开启后，私人助理可直接帮你整理随手记/会议纪要并办理个人待办、日程与提醒（均可一键撤回）；关闭后每次先出确认卡">自主办理：开</button>
@@ -72,18 +74,20 @@
 </main>
 <div id="contacts-overlay" class="ab-overlay hidden" role="dialog" aria-modal="true" aria-label="书架资料室"></div>
 <div id="board-overlay" class="ab-overlay hidden" role="dialog" aria-modal="true" aria-label="看板"></div>
+<div id="workbench-overlay" class="ab-overlay hidden" role="dialog" aria-modal="true" aria-label="辅助工作台"></div>
 <aside id="entry-notification-alerts" class="entry-notif-alerts hidden" aria-label="新通知提示">
   <div id="entry-notification-alert-list" class="entry-notif-list"></div>
   <button id="entry-notification-alert-more" type="button" class="entry-notif-more hidden">更多通知，点击查看全部</button>
 </aside>
 <div id="entry-status" class="sr-only" role="status" aria-live="polite"></div>
-<script src="entry.js?v=d3121fb261217b7a"></script>
+<script src="entry.js?v=6667fd9ea3e27a4f"></script>
 <script src="entry-notifications.js?v=7bc1f3f119a1154a"></script>
 <script src="capture-card.js?v=0b0eefb921849b68"></script>
 <script src="people-graph.js?v=94fe847fb6980576"></script>
 <script src="contacts-drawer.js?v=fe0a388cc7c6e9c8"></script>
 <script src="board-drawer.js?v=80c7f1f93ab7bd94"></script>
-<script src="cards.js?v=c69a7b51842aed5f"></script>
+<script src="workbench-drawer.js?v=5688e7222986337c"></script>
+<script src="cards.js?v=1c788439444c3daf"></script>
 <script src="module-cards.js?v=7282668ce36bcc5d"></script>
 <script src="collab-cards.js?v=5595dd061d6b6522"></script>
 <script src="courtyard-art.js?v=7b6a2fb2519e7cd9"></script>
@@ -94,6 +98,6 @@
 <script src="progress-card.js?v=1c2ab42304f33338"></script>
 <script src="dashboard.js?v=2105cdfd5e6a71e3"></script>
 <script src="tips.js?v=7dc2ec3cf51ba655"></script>
-<script src="entry-boot.js?v=8435d70145c5e7fc"></script>
+<script src="entry-boot.js?v=5f3c4a085e83e8be"></script>
 </body>
 </html>
