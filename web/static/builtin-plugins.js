@@ -45,40 +45,91 @@
     return { nodes: [...nodes.values()], edges };
   }
 
+  function parseSequenceDiagram(source) {
+    const participants = [];
+    const ensurePart = (name) => {
+      const clean = name.trim();
+      if (clean && !participants.includes(clean)) participants.push(clean);
+      return clean;
+    };
+    const msgs = [];
+    for (const raw of source.split("\n")) {
+      const line = raw.trim();
+      if (!line || line.startsWith("%%") || /^sequenceDiagram\b/i.test(line)) continue;
+      const pDecl = line.match(/^participant\s+(\S+)(?:\s+as\s+(.+))?$/i);
+      if (pDecl) { ensurePart(pDecl[1]); continue; }
+      const m = line.match(/^([A-Za-z0-9_\u4e00-\u9fa5-]+)\s*(--?>>?)\s*([A-Za-z0-9_\u4e00-\u9fa5-]+)\s*:\s*(.*)$/);
+      if (m) {
+        msgs.push({ from: ensurePart(m[1]), to: ensurePart(m[3]), dashed: m[2].startsWith("--"), label: m[4].trim() });
+      }
+    }
+    return { participants, msgs };
+  }
+
   function renderMermaidSvg(container, source) {
     const wrap = el("div", null, "msg-mermaid-block plugin-mermaid-card");
     const header = el("div", null, "plugin-card-bar");
     header.append(el("span", "Mermaid 矢量图示（离线渲染）", "msg-code-label"));
     wrap.appendChild(header);
 
-    const parsed = parseFlowchart(source);
-    if (parsed.nodes.length) {
-      const boxW = 148, boxH = 42, gapX = 48, padX = 20, padY = 24;
-      const cols = Math.min(4, parsed.nodes.length);
-      const rows = Math.ceil(parsed.nodes.length / cols);
-      const width = padX * 2 + cols * boxW + (cols - 1) * gapX;
-      const height = padY * 2 + rows * boxH + Math.max(0, rows - 1) * 56;
-      const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, class: "mermaid-svg", role: "img", "aria-label": "Mermaid 图示" });
-      const coords = new Map();
-      parsed.nodes.forEach((n, idx) => {
-        const col = idx % cols, row = Math.floor(idx / cols);
-        const x = padX + col * (boxW + gapX), y = padY + row * (boxH + 56);
-        coords.set(n.id, { x, y, cx: x + boxW / 2, cy: y + boxH / 2 });
-      });
-      for (const edge of parsed.edges) {
-        const a = coords.get(edge.from), b = coords.get(edge.to);
-        if (!a || !b) continue;
-        svg.appendChild(svgEl("line", { x1: a.cx, y1: a.cy, x2: b.cx, y2: b.cy, stroke: "#60a5fa", "stroke-width": 2 }));
-        if (edge.label) {
-          svg.appendChild(svgEl("text", { x: (a.cx + b.cx) / 2, y: (a.cy + b.cy) / 2 - 6, fill: "#cbd5e1", "font-size": 11, "text-anchor": "middle" }, edge.label));
+    const isSeq = /^\s*sequenceDiagram\b/im.test(source);
+    if (isSeq) {
+      const seq = parseSequenceDiagram(source);
+      if (seq.participants.length) {
+        const colW = 140, padX = 24, topY = 20, rowH = 40;
+        const width = Math.max(360, padX * 2 + seq.participants.length * colW);
+        const height = topY + 60 + Math.max(1, seq.msgs.length) * rowH + 24;
+        const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, class: "mermaid-svg", role: "img", "aria-label": "Mermaid 时序图" });
+        const xMap = new Map();
+        seq.participants.forEach((p, idx) => {
+          const cx = padX + idx * colW + colW / 2;
+          xMap.set(p, cx);
+          svg.appendChild(svgEl("rect", { x: cx - 54, y: topY, width: 108, height: 30, rx: 6, fill: "#1e293b", stroke: "#38bdf8", "stroke-width": 1.5 }));
+          svg.appendChild(svgEl("text", { x: cx, y: topY + 19, fill: "#f8fafc", "font-size": 12, "text-anchor": "middle" }, p.slice(0, 14)));
+          svg.appendChild(svgEl("line", { x1: cx, y1: topY + 30, x2: cx, y2: height - 16, stroke: "#475569", "stroke-dasharray": "4,4", "stroke-width": 1.2 }));
+        });
+        seq.msgs.forEach((m, idx) => {
+          const x1 = xMap.get(m.from), x2 = xMap.get(m.to);
+          if (x1 == null || x2 == null) return;
+          const y = topY + 58 + idx * rowH;
+          const attrs = { x1, y1: y, x2, y2: y, stroke: m.dashed ? "#94a3b8" : "#60a5fa", "stroke-width": 1.8 };
+          if (m.dashed) attrs["stroke-dasharray"] = "5,3";
+          svg.appendChild(svgEl("line", attrs));
+          svg.appendChild(svgEl("circle", { cx: x2, cy: y, r: 3, fill: "#38bdf8" }));
+          svg.appendChild(svgEl("text", { x: (x1 + x2) / 2, y: y - 6, fill: "#e2e8f0", "font-size": 11, "text-anchor": "middle" }, m.label.slice(0, 28)));
+        });
+        wrap.appendChild(svg);
+      }
+    } else {
+      const parsed = parseFlowchart(source);
+      if (parsed.nodes.length) {
+        const boxW = 148, boxH = 42, gapX = 48, padX = 20, padY = 24;
+        const cols = Math.min(4, parsed.nodes.length);
+        const rows = Math.ceil(parsed.nodes.length / cols);
+        const width = padX * 2 + cols * boxW + (cols - 1) * gapX;
+        const height = padY * 2 + rows * boxH + Math.max(0, rows - 1) * 56;
+        const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, class: "mermaid-svg", role: "img", "aria-label": "Mermaid 图示" });
+        const coords = new Map();
+        parsed.nodes.forEach((n, idx) => {
+          const col = idx % cols, row = Math.floor(idx / cols);
+          const x = padX + col * (boxW + gapX), y = padY + row * (boxH + 56);
+          coords.set(n.id, { x, y, cx: x + boxW / 2, cy: y + boxH / 2 });
+        });
+        for (const edge of parsed.edges) {
+          const a = coords.get(edge.from), b = coords.get(edge.to);
+          if (!a || !b) continue;
+          svg.appendChild(svgEl("line", { x1: a.cx, y1: a.cy, x2: b.cx, y2: b.cy, stroke: "#60a5fa", "stroke-width": 2 }));
+          if (edge.label) {
+            svg.appendChild(svgEl("text", { x: (a.cx + b.cx) / 2, y: (a.cy + b.cy) / 2 - 6, fill: "#cbd5e1", "font-size": 11, "text-anchor": "middle" }, edge.label));
+          }
         }
+        for (const n of parsed.nodes) {
+          const c = coords.get(n.id);
+          svg.appendChild(svgEl("rect", { x: c.x, y: c.y, width: boxW, height: boxH, rx: 8, fill: "#1e293b", stroke: "#38bdf8", "stroke-width": 1.5 }));
+          svg.appendChild(svgEl("text", { x: c.cx, y: c.cy + 4, fill: "#f8fafc", "font-size": 12, "text-anchor": "middle" }, n.label.slice(0, 18)));
+        }
+        wrap.appendChild(svg);
       }
-      for (const n of parsed.nodes) {
-        const c = coords.get(n.id);
-        svg.appendChild(svgEl("rect", { x: c.x, y: c.y, width: boxW, height: boxH, rx: 8, fill: "#1e293b", stroke: "#38bdf8", "stroke-width": 1.5 }));
-        svg.appendChild(svgEl("text", { x: c.cx, y: c.cy + 4, fill: "#f8fafc", "font-size": 12, "text-anchor": "middle" }, n.label.slice(0, 18)));
-      }
-      wrap.appendChild(svg);
     }
 
     const srcDetails = el("details", null, "mermaid-src-toggle");
@@ -272,6 +323,126 @@
         statusLine.textContent = (err && err.message) || "加载插件清单失败";
       });
       return box;
+    },
+  });
+
+  // 6. 离线零依赖数学公式渲染插件（纯 DOM 排版分式、上下标与希腊/数学符号，零 XSS 风险）
+  const MATH_SYMBOLS = {
+    "\\alpha": "α", "\\beta": "β", "\\gamma": "γ", "\\delta": "δ", "\\Delta": "Δ",
+    "\\sigma": "σ", "\\Sigma": "Σ", "\\pi": "π", "\\mu": "μ", "\\lambda": "λ",
+    "\\sum": "∑", "\\prod": "∏", "\\int": "∫", "\\infty": "∞", "\\times": "×",
+    "\\cdot": "·", "\\pm": "±", "\\le": "≤", "\\ge": "≥", "\\ne": "≠",
+    "\\approx": "≈", "\\rightarrow": "→", "\\to": "→", "\\Rightarrow": "⇒", "\\sqrt": "√",
+  };
+
+  function appendMathExpr(parent, expr) {
+    let s = String(expr || "").trim();
+    for (const [k, v] of Object.entries(MATH_SYMBOLS)) s = s.split(k).join(v);
+    let i = 0;
+    while (i < s.length) {
+      if (s.startsWith("\\frac{", i)) {
+        const numEnd = s.indexOf("}", i + 6);
+        if (numEnd > 0 && s[numEnd + 1] === "{") {
+          const denEnd = s.indexOf("}", numEnd + 2);
+          if (denEnd > 0) {
+            const frac = el("span", null, "math-frac");
+            const num = el("span", null, "math-num");
+            const den = el("span", null, "math-den");
+            appendMathExpr(num, s.slice(i + 6, numEnd));
+            appendMathExpr(den, s.slice(numEnd + 2, denEnd));
+            frac.append(num, den);
+            parent.appendChild(frac);
+            i = denEnd + 1;
+            continue;
+          }
+        }
+      }
+      if ((s[i] === "^" || s[i] === "_") && i + 1 < s.length) {
+        const tag = s[i] === "^" ? "sup" : "sub";
+        if (s[i + 1] === "{") {
+          const close = s.indexOf("}", i + 2);
+          if (close > 0) {
+            parent.appendChild(el(tag, s.slice(i + 2, close)));
+            i = close + 1;
+            continue;
+          }
+        } else {
+          parent.appendChild(el(tag, s[i + 1]));
+          i += 2;
+          continue;
+        }
+      }
+      const nextSpecial = s.slice(i).search(/\\frac\{|[\^_]/);
+      const end = nextSpecial <= 0 ? (nextSpecial === 0 ? i + 1 : s.length) : i + nextSpecial;
+      parent.appendChild(el("span", s.slice(i, end)));
+      i = end;
+    }
+  }
+
+  XuanpuPluginHost.register({
+    plugin_id: "builtin:math-formula",
+    title: "数学公式离线排版",
+    slots: ["message-renderer", "artifact-viewer"],
+    mode: "declarative",
+    source_layer: "L2_builtin",
+    version: "1.0.0",
+    mime_types: ["text/x-latex"],
+    match: (ctx) => ctx.lang === "math" || ctx.lang === "latex" || ctx.mimeType === "text/x-latex",
+    render: (container, ctx) => {
+      const wrap = el("div", null, "plugin-math-block");
+      const formula = el("div", null, "plugin-math-expr");
+      appendMathExpr(formula, ctx.text || "");
+      wrap.appendChild(formula);
+      container.appendChild(wrap);
+      return wrap;
+    },
+  });
+
+  // 7. 离线多语言代码语法高亮插件（Python / JS / TS / SQL / JSON / YAML / Bash）
+  const CODE_LANGS = new Set(["python", "py", "javascript", "js", "typescript", "ts", "sql", "json", "yaml", "yml", "bash", "sh"]);
+  const CODE_KW = new Set([
+    "def", "async", "await", "class", "return", "if", "elif", "else", "for", "while", "import", "from", "as", "try", "except", "with", "yield", "True", "False", "None",
+    "function", "const", "let", "var", "new", "throw", "catch", "export", "default", "true", "false", "null",
+    "SELECT", "FROM", "WHERE", "INSERT", "INTO", "UPDATE", "DELETE", "CREATE", "TABLE", "ALTER", "JOIN", "ORDER", "BY", "LIMIT",
+  ]);
+
+  XuanpuPluginHost.register({
+    plugin_id: "builtin:code-highlight",
+    title: "离线代码语法高亮",
+    slots: ["message-renderer"],
+    mode: "declarative",
+    source_layer: "L2_builtin",
+    version: "1.0.0",
+    match: (ctx) => CODE_LANGS.has((ctx.lang || "").toLowerCase()),
+    render: (container, ctx) => {
+      const wrap = el("div", null, "msg-code-block plugin-code-card");
+      const bar = el("div", null, "plugin-card-bar");
+      bar.append(el("span", (ctx.lang || "code").toUpperCase(), "msg-code-label"));
+      wrap.appendChild(bar);
+      const pre = el("pre", null, "plugin-code-pre");
+      const tokRe = /(#[^\n]*|\/\/[^\n]*|--[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b\d+(?:\.\d+)?\b|\b[A-Za-z_][A-Za-z0-9_]*\b)/g;
+      const lines = String(ctx.text || "").split("\n");
+      lines.forEach((line, idx) => {
+        let last = 0;
+        let m;
+        tokRe.lastIndex = 0;
+        while ((m = tokRe.exec(line)) !== null) {
+          if (m.index > last) pre.appendChild(el("span", line.slice(last, m.index)));
+          const tok = m[0];
+          let cls = "";
+          if (tok.startsWith("#") || tok.startsWith("//") || tok.startsWith("--")) cls = "tok-com";
+          else if (tok.startsWith('"') || tok.startsWith("'")) cls = "tok-str";
+          else if (/^\d/.test(tok)) cls = "tok-num";
+          else if (CODE_KW.has(tok) || CODE_KW.has(tok.toUpperCase())) cls = "tok-kw";
+          pre.appendChild(el("span", tok, cls || null));
+          last = m.index + tok.length;
+        }
+        if (last < line.length) pre.appendChild(el("span", line.slice(last)));
+        if (idx < lines.length - 1) pre.appendChild(el("span", "\n"));
+      });
+      wrap.appendChild(pre);
+      container.appendChild(wrap);
+      return wrap;
     },
   });
 })();

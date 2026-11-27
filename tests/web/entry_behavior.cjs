@@ -1130,20 +1130,23 @@ async function frontendPluginHostBridgeAndRichRenderers(dir) {
   load(h, dir);
   await flush();
 
-  // 1. 验证 L2 内置消息渲染插件：离线 Mermaid SVG + 行级 Diff + 声明式指标卡
+  // 1. 验证 L2 内置消息渲染插件：离线 Mermaid SVG（含时序图）+ 行级 Diff + 声明式指标卡 + 数学公式 + 代码高亮
   const bubble = h.context.document.createElement("div");
   h.context.renderAssistantBubble(
     bubble,
-    '架构如下：\n```mermaid\nflowchart LR\n  A["微内核"] --> B["插件总线"]\n```\n```diff\n@@ -1 +1 @@\n-旧文案\n+新文案\n```\n```xuanpu-ui\n{"title":"Q4 概览","metrics":[{"label":"营收","value":"1200万","delta":"+18%"}]}\n```'
+    '架构如下：\n```mermaid\nsequenceDiagram\n  Butler->>Artisan: 派工\n  Artisan-->>Butler: 返回产物\n```\n```diff\n@@ -1 +1 @@\n-旧文案\n+新文案\n```\n$$\\frac{\\Delta y}{x^2} = \\sigma$$\n```python\n# 计算\ndef run():\n    return "ok"\n```\n```xuanpu-ui\n{"title":"Q4 概览","metrics":[{"label":"营收","value":"1200万","delta":"+18%"}]}\n```'
   );
-  assert.ok(all(bubble, n => n.tag === "svg").length >= 1, "Mermaid 插件应渲染离线 SVG");
+  assert.ok(all(bubble, n => n.tag === "svg").length >= 1, "Mermaid 插件应渲染离线 SVG 时序图");
   assert.ok(all(bubble, n => n.className.includes("diff-add")).length === 1, "Diff 插件应高亮新增行");
+  assert.ok(all(bubble, n => n.className.includes("math-frac")).length === 1, "数学公式插件应渲染分式");
+  assert.ok(all(bubble, n => n.className.includes("tok-kw")).length >= 2, "代码高亮插件应高亮关键字");
   assert.ok(bubble.textContent.includes("Q4 概览") && bubble.textContent.includes("1200万"), "声明式 UI 插件应渲染指标卡");
 
-  // 2. 验证右侧工作台自动挂载 L1 匠人 aux-tab 插件与安全沙盒 iframe（绝不含 allow-same-origin）
+  // 2. 验证右侧工作台自动挂载分屏调宽手柄、L1 匠人 aux-tab 插件与安全沙盒 iframe（绝不含 allow-same-origin）
   h.nodes("entry-workbench").listeners.click();
   await flush();
   const wb = h.nodes("workbench-overlay");
+  assert.ok(all(wb, n => n.className.includes("wb-resizer")).length === 1, "右侧分屏工作台应提供拖拽调宽手柄");
   const tabBtns = byText(wb, "button", "审单对照台");
   assert.equal(tabBtns.length, 1, "工作台应动态挂出 L1 匠人插件标签页");
   tabBtns[0].listeners.click();

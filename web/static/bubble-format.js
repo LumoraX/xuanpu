@@ -89,6 +89,7 @@ function renderAssistantBubble(node, rawText) {
   let list = null;
   let codeLines = null;
   let codeLang = "";
+  let mathLines = null;
   let tableRows = null;
   const flushList = () => { if (list) { node.appendChild(list); list = null; } };
   const flushTable = () => {
@@ -134,6 +135,35 @@ function renderAssistantBubble(node, rawText) {
     }
     if (codeLines !== null) {
       codeLines.push(rawLine);
+      continue;
+    }
+    if (trimmed === "$$") {
+      flushList();
+      flushTable();
+      if (mathLines === null) {
+        mathLines = [];
+      } else {
+        const expr = mathLines.join("\n").trim();
+        const handled = globalThis.XuanpuPluginHost && XuanpuPluginHost.renderMessageBlock(node, {
+          slot: "message-renderer", lang: "math", text: expr,
+        });
+        if (!handled) node.appendChild(el("pre", expr, "msg-code-block"));
+        mathLines = null;
+      }
+      continue;
+    }
+    if (mathLines !== null) {
+      mathLines.push(rawLine);
+      continue;
+    }
+    if (trimmed.startsWith("$$") && trimmed.endsWith("$$") && trimmed.length > 4) {
+      flushList();
+      flushTable();
+      const expr = trimmed.slice(2, -2).trim();
+      const handled = globalThis.XuanpuPluginHost && XuanpuPluginHost.renderMessageBlock(node, {
+        slot: "message-renderer", lang: "math", text: expr,
+      });
+      if (!handled) node.appendChild(el("pre", expr, "msg-code-block"));
       continue;
     }
     if (!trimmed) { flushList(); flushTable(); continue; }

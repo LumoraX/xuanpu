@@ -444,9 +444,20 @@ a { color: var(--accent); }
 .wb-sandbox-frame { width: 100%; height: 320px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; }
 /* 桌面端右侧常驻分屏工作台 + 前端插件槽与富渲染样式（ADR 0027） */
 .entry-plugin-pills { display: inline-flex; gap: 6px; align-items: center; }
-body.workbench-open #entry-main { margin-right: min(46vw, 620px); transition: margin-right .18s ease; }
-body.workbench-open #workbench-overlay { left: auto; right: 0; top: 54px; width: min(46vw, 620px); height: calc(100dvh - 54px); background: transparent; padding: 0; justify-content: flex-end; align-items: stretch; pointer-events: none; }
-body.workbench-open #workbench-overlay .wb-drawer { width: 100%; height: 100%; max-height: none; border-radius: 0; border-left: 1px solid #cbd5e1; box-shadow: -8px 0 24px rgba(15, 23, 42, .08); pointer-events: auto; }
+body.workbench-open #entry-main { margin-right: var(--wb-width, min(46vw, 620px)); transition: margin-right .18s ease; }
+body.workbench-open #workbench-overlay { left: auto; right: 0; top: 54px; width: var(--wb-width, min(46vw, 620px)); height: calc(100dvh - 54px); background: transparent; padding: 0; justify-content: flex-end; align-items: stretch; pointer-events: none; }
+body.workbench-open #workbench-overlay .wb-drawer { position: relative; width: 100%; height: 100%; max-height: none; border-radius: 0; border-left: 1px solid #cbd5e1; box-shadow: -8px 0 24px rgba(15, 23, 42, .08); pointer-events: auto; }
+.wb-resizer { position: absolute; left: -3px; top: 0; bottom: 0; width: 7px; cursor: col-resize; z-index: 5; }
+.wb-resizer:hover { background: rgba(59, 130, 246, .28); }
+.plugin-math-block { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin: 8px 0; text-align: center; font-family: Georgia, "Times New Roman", serif; font-size: 16px; color: #0f172a; }
+.math-frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 3px; }
+.math-num { border-bottom: 1px solid #0f172a; padding: 0 4px; font-size: 0.9em; }
+.math-den { padding: 0 4px; font-size: 0.9em; }
+.plugin-code-pre { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; line-height: 1.5; }
+.tok-kw { color: #93c5fd; font-weight: 600; }
+.tok-str { color: #86efac; }
+.tok-num { color: #fcd34d; }
+.tok-com { color: #94a3b8; font-style: italic; }
 body.workbench-open #workbench-overlay .wb-body { max-height: none; flex: 1; }
 .plugin-card-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
 .mermaid-svg { width: 100%; max-height: 320px; display: block; background: #0f172a; border-radius: 6px; }

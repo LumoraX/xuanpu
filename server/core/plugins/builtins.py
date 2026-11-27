@@ -68,6 +68,23 @@ BUILTIN_UI_PLUGINS: tuple[UiPluginDescriptor, ...] = (
         source_layer="L2_builtin",
         version="1.0.0",
     ),
+    UiPluginDescriptor(
+        plugin_id="builtin:math-formula",
+        title="数学公式离线排版",
+        slot="message-renderer",
+        mode="declarative",
+        source_layer="L2_builtin",
+        version="1.0.0",
+        mime_types=("text/x-latex",),
+    ),
+    UiPluginDescriptor(
+        plugin_id="builtin:code-highlight",
+        title="离线代码语法高亮",
+        slot="message-renderer",
+        mode="declarative",
+        source_layer="L2_builtin",
+        version="1.0.0",
+    ),
 )
 
 

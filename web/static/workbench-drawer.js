@@ -108,6 +108,32 @@ function renderWorkbenchDrawer() {
   overlay.classList.remove("hidden");
 
   const panel = el("section", null, "ab-drawer wb-drawer");
+  // 桌面端右侧常驻分屏拖拽调宽手柄
+  const resizer = el("div", null, "wb-resizer");
+  resizer.setAttribute("role", "separator");
+  resizer.setAttribute("aria-orientation", "vertical");
+  resizer.title = "拖动调整工作台分屏宽度";
+  resizer.addEventListener("mousedown", (startEv) => {
+    if (typeof startEv.preventDefault === "function") startEv.preventDefault();
+    const onMove = (ev) => {
+      const vw = globalThis.innerWidth || 1280;
+      const next = Math.max(320, Math.min(Math.round(vw * 0.72), vw - (ev.clientX || 0)));
+      if (document.documentElement && document.documentElement.style && document.documentElement.style.setProperty) {
+        document.documentElement.style.setProperty("--wb-width", next + "px");
+      }
+    };
+    const onUp = () => {
+      if (globalThis.removeEventListener) {
+        globalThis.removeEventListener("mousemove", onMove);
+        globalThis.removeEventListener("mouseup", onUp);
+      }
+    };
+    if (globalThis.addEventListener) {
+      globalThis.addEventListener("mousemove", onMove);
+      globalThis.addEventListener("mouseup", onUp);
+    }
+  });
+  panel.appendChild(resizer);
   const head = el("header", null, "ab-head");
   const titleWrap = el("div");
   titleWrap.append(el("h2", "辅助工作台"), el("p", "跨轮任务板、过程产物预览、跨节点诊断与发布回退", "meta"));
