@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import shutil
 import sys
 import time
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal
+
+import taifeng
 
 from server.core.errors import ConflictError, InvalidRequestError, NotFoundError
 from server.core.ids import new_id
@@ -104,17 +107,43 @@ class ArtisanForgeService:
         """返回指定草稿的隔离沙盒目录。"""
         return self._root / tenant_directory(tenant_id) / draft_id
 
+    def _meta_path(self, tenant_id: str, draft_id: str) -> Path:
+        """草稿持久化元数据路径（存放在草稿包目录之外，绝不混入打包归档）。"""
+        return self._root / tenant_directory(tenant_id) / ".meta" / f"{draft_id}.json"
+
+    def _load_persisted(self, tenant_id: str, draft_id: str) -> ForgeDraftRecord | None:
+        """若内存中无记录，从磁盘持久化文件恢复草稿状态与基线快照（保障重启不丢草稿）。"""
+        meta_path = self._meta_path(tenant_id, draft_id)
+        if not meta_path.is_file():
+            return None
+        payload = json.loads(meta_path.read_text(encoding="utf-8"))
+        rec = ForgeDraftRecord.model_validate(payload["draft"])
+        self._drafts[(tenant_id, draft_id)] = rec
+        baselines = payload.get("baselines")
+        if isinstance(baselines, dict):
+            self._baselines[(tenant_id, draft_id)] = {str(k): str(v) for k, v in baselines.items()}
+        return rec
+
     def _require_draft(self, who: Principal, draft_id: str) -> tuple[ForgeDraftRecord, Path]:
-        """校验租户与创建者归属，返回草稿记录与目录。"""
+        """校验租户与创建者归属，返回草稿记录与目录（内存未命中时自动从磁盘恢复）。"""
         tenant = who.require_tenant()
-        rec = self._drafts.get((tenant, draft_id))
+        rec = self._drafts.get((tenant, draft_id)) or self._load_persisted(tenant, draft_id)
         if rec is None or (who.role != "tenant_admin" and rec.user_id != who.user_id):
             raise NotFoundError("造匠草稿不存在")
         return rec, self._draft_dir(tenant, draft_id)
 
     def _save(self, rec: ForgeDraftRecord) -> ForgeDraftRecord:
-        """保存草稿状态。"""
+        """内存缓存并原子落盘草稿元数据与基线快照，进程重启可无损续做。"""
         self._drafts[(rec.tenant_id, rec.draft_id)] = rec
+        meta_path = self._meta_path(rec.tenant_id, rec.draft_id)
+        meta_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "draft": rec.model_dump(mode="json"),
+            "baselines": self._baselines.get((rec.tenant_id, rec.draft_id), {}),
+        }
+        tmp = meta_path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(meta_path)
         return rec
 
     async def create_draft(
@@ -375,19 +404,33 @@ class ArtisanForgeService:
         return gate
 
     async def run_l3_eval_check(self, who: Principal, draft_id: str) -> GateCheckReport:
-        """L3 门禁：核验评测集契约（至少声明 1 条有效 eval 且目标入口存在）。"""
+        """L3 门禁：强制至少 1 条有效评测用例、验证内核可真实装载全部 Skill 且目标入口有效。"""
         rec, draft_dir = self._require_draft(who, draft_id)
         manifest = await asyncio.to_thread(load_manifest, draft_dir / MANIFEST_FILENAME)
         errors: list[str] = []
         entries = set(manifest.spec.skills.entries)
+        if not manifest.spec.evals:
+            errors.append("L3 门禁要求至少声明 1 条有效评测用例（请使用 forge_upsert_eval 添加）")
         for case in manifest.spec.evals:
             if case.entry not in entries:
                 errors.append(f"评测用例 {case.name} 引用了未知入口 {case.entry}")
+        # 真实调用 taifeng 内核加载器检验所有 Skill frontmatter、脚本声明与入口合法性
+        skills_dir = draft_dir / manifest.spec.skills.dir
+        try:
+            registry = await taifeng.FilesystemSkillRegistry.load(skills_dir)
+            for entry in entries:
+                if registry.get(entry) is None:
+                    errors.append(f"内核未加载到入口技能：{entry}")
+        except Exception as exc:
+            errors.append(f"taifeng 内核装载草稿技能失败：{exc}")
         passed = not errors
         gate = GateCheckReport(
             level="L3",
             passed=passed,
-            summary=f"L3 评测契约核验通过（{len(manifest.spec.evals)} 条用例）" if passed else "L3 评测契约校验失败",
+            summary=(
+                f"L3 评测契约与内核装载校验通过（{len(manifest.spec.evals)} 条用例）"
+                if passed else "L3 评测与装载门禁未通过"
+            ),
             errors=tuple(errors),
             checked_at=self._at(),
         )

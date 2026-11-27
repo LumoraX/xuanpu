@@ -426,6 +426,7 @@ class Platform:
             node_id=self.instance_id,
             now=now,
         )
+        self.task_runner.trace_artifacts = self.trace_artifacts
         from server.engine.forge.releases import ReleaseLedgerService
         from server.engine.forge.service import ArtisanForgeService
 

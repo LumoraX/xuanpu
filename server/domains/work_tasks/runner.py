@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from server.core.tenancy import Principal
+    from server.engine.artifacts.service import TraceArtifactService
     from server.engine.packages import PackageRegistry, ResolvedPackage
     from server.engine.runtime.assembler import RuntimeAssembler, TenantRuntime
     from server.engine.runtime.sessions import SessionManager
@@ -48,10 +50,12 @@ class TaskRunner:
 
     def __init__(self, store: WorkTaskStore, packages: PackageRegistry, runtimes: RuntimeAssembler,
                  sessions: SessionManager, inputs: InputSnapshotService, artifacts: ArtifactService,
-                 proposals: ActionProposalService) -> None:
+                 proposals: ActionProposalService,
+                 trace_artifacts: TraceArtifactService | None = None) -> None:
         """注入宿主已有的会话、工作区和沙盒能力，不从业务包加载进程内代码。"""
         self.store, self.packages, self.runtimes, self.sessions = store, packages, runtimes, sessions
         self.inputs, self.artifacts, self.proposals = inputs, artifacts, proposals
+        self.trace_artifacts = trace_artifacts
         self._contexts: dict[tuple[str, str], TaskContext] = {}
 
     async def run(self, who: Principal, task: WorkTaskRecord, decision: TaskDecision | None = None) -> dict[str, Any]:
@@ -146,6 +150,7 @@ class TaskRunner:
             if package.record.digest.removeprefix('sha256:') != task.package_digest:
                 raise ConflictError('任务固定能力版本摘要不匹配')
             root = await self.inputs.stage(who, task)
+            await self._materialize_relay_artifacts(task, root)
             from .execution_context import current_execution
 
             binding = current_execution.get()
@@ -179,6 +184,18 @@ class TaskRunner:
             await self.inputs.cleanup(task)
             await self.store.resources_closed(task, at=self.artifacts.now())
             raise
+
+    async def _materialize_relay_artifacts(self, task: WorkTaskRecord, input_root: Path) -> None:
+        """若任务说明引用了前步冻结的 ``artifact_id=art_...``，自动以 0444 只读挂载至 ``from_prev_step/``。"""
+        if self.trace_artifacts is None:
+            return
+        ids = list(dict.fromkeys(re.findall(r"artifact_id=(art_[A-Za-z0-9_-]+)", task.text)))
+        if not ids:
+            return
+        from server.engine.tracing.models import TraceOwner
+
+        owner = TraceOwner(tenant_id=task.tenant_id, user_id=task.user_id)
+        await self.trace_artifacts.materialize_readonly_inputs(owner, ids, input_root / "from_prev_step")
 
     async def _discard_preparation(self, task: WorkTaskRecord, runtime: TenantRuntime | None, session: Any) -> None:
         """准备失败时先释放明确持有的运行时，异常保留原清理责任。"""

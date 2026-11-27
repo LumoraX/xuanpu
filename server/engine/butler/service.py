@@ -210,6 +210,25 @@ class ButlerService:
         if body.mode == "interrupt_merge":
             merge = await self.session_queue.interrupt_and_prepare_merge(
                 user_key, body.request_id, body.text)
+        elif (
+            self._platform.butler_config.serialize_user_turns
+            and self.session_queue.active_slot(user_key) is not None
+            and f"{who.tenant_id}:{who.user_id}:{body.request_id}" not in self._running
+        ):
+            # SSE 入口与 JSON 入口保持一致：同员工前轮进行中时先落盘原文并按 FIFO 入队
+            await self._platform.workspace.append_message(
+                who, "user", body.text, body.request_id + ":user",
+                attachments=[f.item_id for f in body.input_files])
+            _, position = await self.session_queue.enqueue(
+                user_key, body.request_id,
+                lambda: self._start(who, body, detached=True).task,
+            )
+            return {
+                "mode": "butler",
+                "state": "queued",
+                "request_id": body.request_id,
+                "queue_position": position,
+            }
         return self._start(who, body, merge=merge)
 
     async def stream_events(self, body: ButlerMessageBody, running: _RunningTurn,
