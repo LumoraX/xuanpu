@@ -1,9 +1,15 @@
 // 面向终端用户的助手气泡排版：纯 DOM textContent，无原始 JSON、自动拆分来源头、Markdown 表格/代码/Mermaid 与可折叠复核说明。
 "use strict";
 
-// 过滤面向终端用户回复里意外出现的原始 JSON 对象或代码块，提取其中的自然语言说明。
+// 过滤面向终端用户回复里意外出现的原始 JSON 对象或代码块，提取其中的自然语言说明（保留声明式 xuanpu-ui 插件块）。
 function cleanUserText(raw) {
   let text = String(raw || "");
+  const keptBlocks = [];
+  text = text.replace(/```xuanpu-ui\b[\s\S]*?```/gi, (block) => {
+    const token = "@@XUANPU_UI_BLOCK_" + keptBlocks.length + "@@";
+    keptBlocks.push(block);
+    return token;
+  });
   text = text.replace(/```(?:json)?\s*\{[\s\S]*?\}\s*```/gi, "").trim();
   let out = "", i = 0;
   while (i < text.length) {
@@ -41,7 +47,11 @@ function cleanUserText(raw) {
       i = start + 1;
     }
   }
-  return out.replace(/\n{3,}/g, "\n\n").trim();
+  let restored = out.replace(/\n{3,}/g, "\n\n").trim();
+  for (let k = 0; k < keptBlocks.length; k++) {
+    restored = restored.replace("@@XUANPU_UI_BLOCK_" + k + "@@", keptBlocks[k]);
+  }
+  return restored;
 }
 
 // 安全渲染单行内的 **加粗**，全部走 textContent/DOM 节点，不拼 HTML。
@@ -105,10 +115,18 @@ function renderAssistantBubble(node, rawText) {
         codeLines = [];
         codeLang = trimmed.slice(3).trim().toLowerCase();
       } else {
-        const wrap = el("div", null, codeLang === "mermaid" ? "msg-mermaid-block" : "msg-code-block");
-        if (codeLang === "mermaid") wrap.appendChild(el("div", "Mermaid 图示源码（可在工作台预览器展开）", "msg-code-label"));
-        wrap.appendChild(el("pre", codeLines.join("\n")));
-        node.appendChild(wrap);
+        const blockText = codeLines.join("\n");
+        const handled = globalThis.XuanpuPluginHost && XuanpuPluginHost.renderMessageBlock(node, {
+          slot: "message-renderer",
+          lang: codeLang,
+          text: blockText,
+        });
+        if (!handled) {
+          const wrap = el("div", null, codeLang === "mermaid" ? "msg-mermaid-block" : "msg-code-block");
+          if (codeLang === "mermaid") wrap.appendChild(el("div", "Mermaid 图示源码（可在工作台预览器展开）", "msg-code-label"));
+          wrap.appendChild(el("pre", blockText));
+          node.appendChild(wrap);
+        }
         codeLines = null;
         codeLang = "";
       }

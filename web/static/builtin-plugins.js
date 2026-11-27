@@ -1,0 +1,206 @@
+// 内置 L2 前端富交互插件包（ADR 0027）：离线 Mermaid 矢量图、行级彩色 Diff、声明式 UI 卡片与沙盒 iframe 预览。
+// 所有非内核 UI 渲染能力均通过 XuanpuPluginHost 标准契约注册，支持独立替换与干净卸载。
+"use strict";
+
+(function registerBuiltinFrontendPlugins() {
+  if (!globalThis.XuanpuPluginHost) return;
+  const SVG_NS = "http://www.w3.org/2000/svg";
+
+  function svgEl(tag, attrs = {}, text = null) {
+    const node = document.createElementNS ? document.createElementNS(SVG_NS, tag) : el(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (typeof node.setAttribute === "function") node.setAttribute(k, String(v));
+    }
+    if (text !== null) node.textContent = String(text);
+    return node;
+  }
+
+  // 1. 离线零依赖 Mermaid 矢量图渲染器（支持 flowchart/graph 与 sequenceDiagram，纯 DOM/SVG 零 innerHTML）
+  function parseFlowchart(source) {
+    const nodes = new Map();
+    const edges = [];
+    const ensureNode = (id, label) => {
+      const cleanId = id.trim();
+      if (!cleanId) return null;
+      const cleanLabel = (label || cleanId).replace(/^["']|["']$/g, "").trim();
+      if (!nodes.has(cleanId)) nodes.set(cleanId, { id: cleanId, label: cleanLabel });
+      else if (label) nodes.get(cleanId).label = cleanLabel;
+      return cleanId;
+    };
+    const tokenRe = /([A-Za-z0-9_-]+)(?:\[([^\]]+)\]|\(([^)]+)\)|\{([^}]+)\})?/;
+    for (const raw of source.split("\n")) {
+      const line = raw.trim();
+      if (!line || line.startsWith("%%") || /^(?:flowchart|graph|subgraph|end)\b/i.test(line)) continue;
+      const arrow = line.match(/^(.+?)\s*(?:-->|-\.->|==>)\s*(?:\|([^|]+)\|\s*)?(.+)$/);
+      if (arrow) {
+        const left = arrow[1].trim().match(tokenRe);
+        const right = arrow[3].trim().match(tokenRe);
+        if (left && right) {
+          const from = ensureNode(left[1], left[2] || left[3] || left[4]);
+          const to = ensureNode(right[1], right[2] || right[3] || right[4]);
+          if (from && to) edges.push({ from, to, label: (arrow[2] || "").trim() });
+        }
+      }
+    }
+    return { nodes: [...nodes.values()], edges };
+  }
+
+  function renderMermaidSvg(container, source) {
+    const wrap = el("div", null, "msg-mermaid-block plugin-mermaid-card");
+    const header = el("div", null, "plugin-card-bar");
+    header.append(el("span", "Mermaid 矢量图示（离线渲染）", "msg-code-label"));
+    wrap.appendChild(header);
+
+    const parsed = parseFlowchart(source);
+    if (parsed.nodes.length) {
+      const boxW = 148, boxH = 42, gapX = 48, padX = 20, padY = 24;
+      const cols = Math.min(4, parsed.nodes.length);
+      const rows = Math.ceil(parsed.nodes.length / cols);
+      const width = padX * 2 + cols * boxW + (cols - 1) * gapX;
+      const height = padY * 2 + rows * boxH + Math.max(0, rows - 1) * 56;
+      const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, class: "mermaid-svg", role: "img", "aria-label": "Mermaid 图示" });
+      const coords = new Map();
+      parsed.nodes.forEach((n, idx) => {
+        const col = idx % cols, row = Math.floor(idx / cols);
+        const x = padX + col * (boxW + gapX), y = padY + row * (boxH + 56);
+        coords.set(n.id, { x, y, cx: x + boxW / 2, cy: y + boxH / 2 });
+      });
+      for (const edge of parsed.edges) {
+        const a = coords.get(edge.from), b = coords.get(edge.to);
+        if (!a || !b) continue;
+        svg.appendChild(svgEl("line", { x1: a.cx, y1: a.cy, x2: b.cx, y2: b.cy, stroke: "#60a5fa", "stroke-width": 2 }));
+        if (edge.label) {
+          svg.appendChild(svgEl("text", { x: (a.cx + b.cx) / 2, y: (a.cy + b.cy) / 2 - 6, fill: "#cbd5e1", "font-size": 11, "text-anchor": "middle" }, edge.label));
+        }
+      }
+      for (const n of parsed.nodes) {
+        const c = coords.get(n.id);
+        svg.appendChild(svgEl("rect", { x: c.x, y: c.y, width: boxW, height: boxH, rx: 8, fill: "#1e293b", stroke: "#38bdf8", "stroke-width": 1.5 }));
+        svg.appendChild(svgEl("text", { x: c.cx, y: c.cy + 4, fill: "#f8fafc", "font-size": 12, "text-anchor": "middle" }, n.label.slice(0, 18)));
+      }
+      wrap.appendChild(svg);
+    }
+
+    const srcDetails = el("details", null, "mermaid-src-toggle");
+    srcDetails.append(el("summary", "查看 Mermaid 源码"), el("pre", source));
+    wrap.appendChild(srcDetails);
+    container.appendChild(wrap);
+    return wrap;
+  }
+
+  XuanpuPluginHost.register({
+    plugin_id: "builtin:mermaid-svg",
+    title: "Mermaid 离线矢量图渲染",
+    slots: ["message-renderer", "artifact-viewer"],
+    mode: "declarative",
+    source_layer: "L2_builtin",
+    version: "1.0.0",
+    mime_types: ["text/vnd.mermaid"],
+    match: (ctx) => ctx.lang === "mermaid" || ctx.mimeType === "text/vnd.mermaid",
+    render: (container, ctx) => renderMermaidSvg(container, ctx.text || ""),
+  });
+
+  // 2. 行级彩色 Unified Diff 审阅器插件
+  function renderUnifiedDiff(container, text) {
+    const lines = String(text || "").split("\n");
+    let added = 0, removed = 0;
+    const pre = el("div", null, "diff-lines plugin-diff-view");
+    for (const line of lines) {
+      let cls = "diff-ctx";
+      if (line.startsWith("+") && !line.startsWith("+++")) { cls = "diff-add"; added++; }
+      else if (line.startsWith("-") && !line.startsWith("---")) { cls = "diff-del"; removed++; }
+      else if (line.startsWith("@@") || line.startsWith("---") || line.startsWith("+++")) { cls = "diff-hunk"; }
+      pre.appendChild(el("div", line || " ", cls));
+    }
+    const wrap = el("div", null, "plugin-diff-card");
+    const bar = el("div", null, "plugin-card-bar");
+    bar.append(el("span", "变更对照（Unified Diff）", "msg-code-label"), el("span", `+${added} / -${removed}`, "wb-badge"));
+    wrap.append(bar, pre);
+    container.appendChild(wrap);
+    return wrap;
+  }
+
+  XuanpuPluginHost.register({
+    plugin_id: "builtin:unified-diff",
+    title: "行级彩色 Diff 审阅器",
+    slots: ["message-renderer", "artifact-viewer"],
+    mode: "declarative",
+    source_layer: "L2_builtin",
+    version: "1.0.0",
+    mime_types: ["text/x-diff"],
+    match: (ctx) => ctx.lang === "diff" || ctx.mimeType === "text/x-diff",
+    render: (container, ctx) => renderUnifiedDiff(container, ctx.text || ""),
+  });
+
+  // 3. 声明式业务卡片与指标看板插件（Level A 零 JS 风险）
+  function renderDeclarativeUi(container, rawText) {
+    let spec = null;
+    try { spec = JSON.parse(rawText); } catch { return null; }
+    if (!spec || typeof spec !== "object" || Array.isArray(spec)) return null;
+    const wrap = el("section", null, "plugin-decl-card");
+    if (spec.title) wrap.appendChild(el("h4", String(spec.title), "plugin-decl-title"));
+    if (Array.isArray(spec.metrics) && spec.metrics.length) {
+      const grid = el("div", null, "plugin-metric-grid");
+      for (const m of spec.metrics) {
+        const tile = el("div", null, "plugin-metric-tile");
+        tile.append(el("span", String(m.label || ""), "plugin-metric-label"), el("strong", String(m.value ?? ""), "plugin-metric-value"));
+        if (m.delta) tile.appendChild(el("span", String(m.delta), "plugin-metric-delta"));
+        grid.appendChild(tile);
+      }
+      wrap.appendChild(grid);
+    }
+    if (spec.table && Array.isArray(spec.table.headers) && Array.isArray(spec.table.rows)) {
+      const tbl = el("table", null, "msg-table");
+      const headTr = el("tr");
+      for (const h of spec.table.headers) headTr.appendChild(el("th", String(h)));
+      tbl.appendChild(headTr);
+      for (const row of spec.table.rows) {
+        const tr = el("tr");
+        for (const cell of (Array.isArray(row) ? row : [])) tr.appendChild(el("td", String(cell)));
+        tbl.appendChild(tr);
+      }
+      wrap.appendChild(tbl);
+    }
+    if (Array.isArray(spec.callout) || (spec.callout && typeof spec.callout === "object")) {
+      const list = Array.isArray(spec.callout) ? spec.callout : [spec.callout];
+      for (const c of list) {
+        wrap.appendChild(el("p", String(c.text || ""), "plugin-callout " + String(c.tone || "info")));
+      }
+    }
+    container.appendChild(wrap);
+    return wrap;
+  }
+
+  XuanpuPluginHost.register({
+    plugin_id: "builtin:declarative-ui",
+    title: "声明式业务卡片与指标看板",
+    slots: ["message-renderer", "artifact-viewer"],
+    mode: "declarative",
+    source_layer: "L2_builtin",
+    version: "1.0.0",
+    mime_types: ["application/vnd.xuanpu.ui+json"],
+    match: (ctx) => ctx.lang === "xuanpu-ui" || ctx.mimeType === "application/vnd.xuanpu.ui+json",
+    render: (container, ctx) => renderDeclarativeUi(container, ctx.text || ""),
+  });
+
+  // 4. 沙盒交互式 HTML/SVG 产物渲染插件（经安全 sandbox="allow-scripts" 与 Bridge 挂载）
+  XuanpuPluginHost.register({
+    plugin_id: "builtin:sandbox-iframe",
+    title: "沙盒交互式产物视图",
+    slots: ["artifact-viewer"],
+    mode: "sandbox_iframe",
+    source_layer: "L2_builtin",
+    version: "1.0.0",
+    mime_types: ["text/html", "image/svg+xml"],
+    bridge_permissions: ["artifact.read", "collection.read", "collection.write", "workspace.propose"],
+    match: (ctx) => (ctx.mimeType || "").includes("html") || (ctx.mimeType || "").includes("svg"),
+    render: (container, ctx) => {
+      const mounted = XuanpuPluginHost.mountSandboxIframe(container, {
+        plugin_id: "builtin:sandbox-iframe",
+        version: "1.0.0",
+        bridge_permissions: ["artifact.read", "collection.read", "collection.write", "workspace.propose"],
+      }, ctx);
+      return mounted.frame;
+    },
+  });
+})();

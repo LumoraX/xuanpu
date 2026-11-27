@@ -47,6 +47,9 @@ function closeWorkbenchDrawer() {
     overlay.classList.add("hidden");
     overlay.replaceChildren();
   }
+  if (document.body && document.body.classList) {
+    document.body.classList.remove("workbench-open");
+  }
   const btn = $("entry-workbench");
   if (btn) btn.setAttribute("aria-pressed", "false");
 }
@@ -56,6 +59,9 @@ async function openWorkbenchDrawer(options = {}) {
   if (options.tab) workbenchState.tab = options.tab;
   if (options.traceId) workbenchState.traceId = options.traceId;
   workbenchState.open = true;
+  if (document.body && document.body.classList) {
+    document.body.classList.add("workbench-open");
+  }
   const btn = $("entry-workbench");
   if (btn) btn.setAttribute("aria-pressed", "true");
   renderWorkbenchDrawer();
@@ -117,6 +123,11 @@ function renderWorkbenchDrawer() {
   if (entry.me && (entry.me.role === "tenant_admin" || entry.me.role === "platform_admin")) {
     tabDefs.push(["releases", "发布与回退"]);
   }
+  if (globalThis.XuanpuPluginHost) {
+    for (const plugin of XuanpuPluginHost.list("aux-tab")) {
+      tabDefs.push(["plugin:" + plugin.plugin_id, plugin.title]);
+    }
+  }
   for (const [id, label] of tabDefs) {
     const tBtn = button(label, () => {
       workbenchState.tab = id;
@@ -132,6 +143,19 @@ function renderWorkbenchDrawer() {
   else if (workbenchState.tab === "artifacts") renderArtifactsTab(body);
   else if (workbenchState.tab === "diagnostics") renderDiagnosticsTab(body);
   else if (workbenchState.tab === "releases") renderReleasesTab(body);
+  else if (workbenchState.tab.startsWith("plugin:") && globalThis.XuanpuPluginHost) {
+    const pid = workbenchState.tab.slice("plugin:".length);
+    const plugin = XuanpuPluginHost.get(pid);
+    if (plugin) {
+      if (plugin.mode === "sandbox_iframe") {
+        XuanpuPluginHost.mountSandboxIframe(body, plugin, { slot: "aux-tab" });
+      } else if (plugin.render) {
+        plugin.render(body, { slot: "aux-tab", plugin });
+      }
+    } else {
+      body.appendChild(el("p", "该插件已卸载或不再可用。", "meta"));
+    }
+  }
   panel.appendChild(body);
 
   overlay.replaceChildren(panel);
@@ -221,13 +245,8 @@ function renderArtifactsTab(container) {
     const pv = workbenchState.preview;
     const box = el("section", null, "wb-preview");
     box.appendChild(el("h3", "产物预览：" + pv.artifact.name));
-    if ((pv.artifact.mime_type || "").includes("html") || (pv.artifact.mime_type || "").includes("svg")) {
-      // 安全沙盒 iframe（空 sandbox 禁脚本、禁同源、禁外联）
-      const frame = el("iframe", null, "wb-sandbox-frame");
-      frame.setAttribute("sandbox", "");
-      frame.setAttribute("srcdoc", String((pv.data && pv.data.text) || ""));
-      box.appendChild(frame);
-    } else {
+    const handled = globalThis.XuanpuPluginHost && XuanpuPluginHost.renderArtifact(box, pv.artifact, pv.data);
+    if (!handled) {
       const pre = el("pre", String((pv.data && pv.data.text) || ""), "wb-code");
       box.appendChild(pre);
     }

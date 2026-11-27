@@ -35,6 +35,8 @@ function resetEntry() {
   renderComposerFiles();
   if (typeof closeContactsDrawer === "function") closeContactsDrawer(true);
   if (typeof closeBoardDrawer === "function") closeBoardDrawer(true);
+  if (typeof closeWorkbenchDrawer === "function") closeWorkbenchDrawer();
+  if (globalThis.XuanpuPluginHost) XuanpuPluginHost.resetTenantPlugins();
   if (typeof resetEntryNotifications === "function") resetEntryNotifications();
   for (const id of ["overview", "stage", "transcript", "tips"]) if ($(id)) $(id).replaceChildren();
   $("message").value = "";
@@ -298,6 +300,7 @@ async function connectEntry() {
     if (globalThis.Courtyard && Courtyard.stage) Courtyard.stage.mount($("stage"), { onSelect: (s, k) => Courtyard.card.select(s, k) });
     probeLocationPermission().catch(() => {});
     loadAutonomySetting(epoch).catch(() => {});
+    if (globalThis.XuanpuPluginHost) XuanpuPluginHost.loadRemotePlugins(epoch).catch(() => {});
     // 历史与概览各自失败只提示，不当作未登录
     await Promise.all([loadHistory(epoch).catch(report), refreshOverview().catch(report), refreshTips()]);
     followMessages(epoch);

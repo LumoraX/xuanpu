@@ -13,7 +13,7 @@ import pytest
 from web import static_dir
 
 COURTYARD_SCRIPTS = ["courtyard-art.js", "courtyard-model.js", "courtyard-scene.js", "courtyard-card.js", "courtyard-stage.js"]
-ENTRY_SCRIPTS = ["entry.js", "bubble-format.js", "entry-notifications.js", "capture-card.js", "people-graph.js", "contacts-drawer.js", "board-drawer.js", "workbench-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", *COURTYARD_SCRIPTS, "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]
+ENTRY_SCRIPTS = ["entry.js", "plugin-host.js", "builtin-plugins.js", "bubble-format.js", "entry-notifications.js", "capture-card.js", "people-graph.js", "contacts-drawer.js", "board-drawer.js", "workbench-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", *COURTYARD_SCRIPTS, "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]
 
 
 def test_entry_behavior() -> None:
@@ -61,6 +61,7 @@ def test_entry_only_uses_original_endpoints() -> None:
         "/v1/workspace/files", "/v1/workspace/settings", "/v1/assistant/messages", "/v1/assistant/proposals", "/v1/assistant/pending",
         "/v1/assistant/actions", "/v1/assistant/dispatches", "/v1/assistant/groups", "/v1/assistant/artisans",
         "/v1/assistant/task-boards", "/v1/artifacts", "/v1/diagnostics/failed-transcripts", "/v1/releases/artisan",
+        "/v1/plugins/ui", "/v1/plugins/bridge",
         "/v1/reminders", "/v1/notifications", "/v1/notifications/events", "/v1/work-tasks", "/v1/traces", "/v1/dashboard",
         "/v1/proactive", "/v1/task-definitions", "/v1/me/connections", "/v1/shared-matters",
         "/v1/handoffs", "/v1/approval-requests", "/v1/organization/people", "/v1/approval-policies",

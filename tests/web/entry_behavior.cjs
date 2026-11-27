@@ -9,7 +9,7 @@ const vm = require("node:vm");
 function element(tag = "div") {
   const classes = new Set();
   const node = {
-    tag, children: [], listeners: {}, dataset: {}, style: {}, value: "", disabled: false, parentNode: null,
+    tag, children: [], listeners: {}, dataset: {}, style: {}, attrs: {}, value: "", disabled: false, parentNode: null,
     _text: "", rows: 0, href: "", type: "",
     get textContent() { return this._text + this.children.map(c => c.textContent).join(""); },
     set textContent(value) { this._text = String(value); this.children = []; },
@@ -33,7 +33,7 @@ function element(tag = "div") {
     remove() { if (this.parentNode) { this.parentNode.children = this.parentNode.children.filter(n => n !== this); this.parentNode = null; } },
     addEventListener(name, callback) { this.listeners[name] = callback; },
     focus() {}, scrollIntoView() {}, requestSubmit() { this.listeners.submit({ preventDefault() {} }); },
-    setAttribute() {},
+    setAttribute(k, v) { this.attrs[k] = String(v); },
   };
   return node;
 }
@@ -80,7 +80,7 @@ function harness(routes) {
 }
 
 function load(h, dir) {
-  for (const name of ["entry.js", "bubble-format.js", "entry-notifications.js", "capture-card.js", "people-graph.js", "contacts-drawer.js", "board-drawer.js", "workbench-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]) {
+  for (const name of ["entry.js", "plugin-host.js", "builtin-plugins.js", "bubble-format.js", "entry-notifications.js", "capture-card.js", "people-graph.js", "contacts-drawer.js", "board-drawer.js", "workbench-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]) {
     vm.runInContext(fs.readFileSync(path.join(dir, name), "utf8"), h.context, { filename: name });
   }
 }
@@ -1093,6 +1093,93 @@ async function planFocusSupersededDiffAndWorkbench(dir) {
   assert.equal(rolledBack, true, "点击回退应调用 POST /v1/releases/artisan/support-desk/rollback");
 }
 
+async function frontendPluginHostBridgeAndRichRenderers(dir) {
+  const rpcCalls = [];
+  const h = harness({
+    "GET /v1/me": () => ME,
+    "GET /v1/workspace/settings": () => ({ json: { auto_execute_personal: true } }),
+    "GET /v1/workspace/messages": () => ({ json: { items: [], has_more: false } }),
+    "GET /v1/dashboard": () => OVERVIEW,
+    "GET /v1/notifications": () => ({ json: { items: [], unread_count: 0 } }),
+    "GET /v1/notifications/events": (_, init) => pendingStream(init),
+    "GET /v1/workspace/messages/events": (_, init) => pendingStream(init),
+    "GET /v1/assistant/task-boards": () => ({ json: { items: [] } }),
+    "GET /v1/plugins/ui": () => ({
+      json: {
+        items: [
+          {
+            plugin_id: "artisan:invoice-bot:invoice-board",
+            title: "审单对照台",
+            slot: "aux-tab",
+            mode: "sandbox_iframe",
+            source_layer: "L1_artisan",
+            package: "invoice-bot",
+            version: "0.1.0",
+            entry_url: "/v1/plugins/ui/invoice-bot/0.1.0/invoice-board/index.html",
+            mime_types: [],
+            bridge_permissions: ["collection.write", "workspace.propose"],
+          },
+        ],
+      },
+    }),
+    "POST /v1/plugins/bridge/rpc": (call) => {
+      rpcCalls.push(call.body);
+      return { json: { ok: true, result: { record_id: "plr_1", version: 1 } } };
+    },
+  });
+  load(h, dir);
+  await flush();
+
+  // 1. 验证 L2 内置消息渲染插件：离线 Mermaid SVG + 行级 Diff + 声明式指标卡
+  const bubble = h.context.document.createElement("div");
+  h.context.renderAssistantBubble(
+    bubble,
+    '架构如下：\n```mermaid\nflowchart LR\n  A["微内核"] --> B["插件总线"]\n```\n```diff\n@@ -1 +1 @@\n-旧文案\n+新文案\n```\n```xuanpu-ui\n{"title":"Q4 概览","metrics":[{"label":"营收","value":"1200万","delta":"+18%"}]}\n```'
+  );
+  assert.ok(all(bubble, n => n.tag === "svg").length >= 1, "Mermaid 插件应渲染离线 SVG");
+  assert.ok(all(bubble, n => n.className.includes("diff-add")).length === 1, "Diff 插件应高亮新增行");
+  assert.ok(bubble.textContent.includes("Q4 概览") && bubble.textContent.includes("1200万"), "声明式 UI 插件应渲染指标卡");
+
+  // 2. 验证右侧工作台自动挂载 L1 匠人 aux-tab 插件与安全沙盒 iframe（绝不含 allow-same-origin）
+  h.nodes("entry-workbench").listeners.click();
+  await flush();
+  const wb = h.nodes("workbench-overlay");
+  const tabBtns = byText(wb, "button", "审单对照台");
+  assert.equal(tabBtns.length, 1, "工作台应动态挂出 L1 匠人插件标签页");
+  tabBtns[0].listeners.click();
+  await flush();
+  const frames = all(wb, n => n.tag === "iframe");
+  assert.equal(frames.length, 1, "点击插件标签应挂载沙盒 iframe");
+  assert.equal(frames[0].attrs.sandbox, "allow-scripts", "沙盒 iframe 严禁包含 allow-same-origin");
+  assert.equal(frames[0].attrs.src, "/v1/plugins/ui/invoice-bot/0.1.0/invoice-board/index.html");
+
+  // 3. 验证 postMessage Bridge：放行声明权限、拦截未声明权限
+  const posted = [];
+  const fakeWin = { postMessage(msg) { posted.push(msg); } };
+  frames[0].contentWindow = fakeWin;
+  frames[0].listeners.load();
+
+  await h.context.XuanpuPluginHost.handleBridgeMessage({
+    source: fakeWin,
+    data: { type: "xuanpu:rpc", reqId: "r1", method: "collection.write", params: { collection: "c1", data: { k: 1 } } },
+  });
+  assert.equal(rpcCalls.length, 1);
+  assert.equal(rpcCalls[0].method, "collection.write");
+  assert.equal(posted.find(m => m.reqId === "r1").ok, true);
+
+  await h.context.XuanpuPluginHost.handleBridgeMessage({
+    source: fakeWin,
+    data: { type: "xuanpu:rpc", reqId: "r2", method: "artifact.read", params: { artifact_id: "art_1" } },
+  });
+  assert.equal(rpcCalls.length, 1, "未授权方法必须在宿主侧直接拦截，不得转发后端");
+  assert.equal(posted.find(m => m.reqId === "r2").error, "permission_denied");
+
+  // 4. Clean Unmounting：注销插件后 Bridge 句柄与注册表彻底清空
+  assert.equal(h.context.XuanpuPluginHost.unregister("artisan:invoice-bot:invoice-board"), true);
+  assert.equal(h.context.XuanpuPluginHost.get("artisan:invoice-bot:invoice-board"), null);
+  assert.equal(h.context.XuanpuPluginHost._mountedFrames.has(fakeWin), false);
+}
+
 (async () => {
   const dir = process.argv[2];
   dir_ = dir;
@@ -1122,5 +1209,6 @@ async function planFocusSupersededDiffAndWorkbench(dir) {
   await chatReminderPromptRequestsDesktopPermission(dir);
   await boardDrawerCompletedRemindersAndTimestamp(dir);
   await planFocusSupersededDiffAndWorkbench(dir);
+  await frontendPluginHostBridgeAndRichRenderers(dir);
   console.log("entry behavior passed");
 })().catch(error => { console.error(error); process.exit(1); });
