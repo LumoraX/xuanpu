@@ -111,6 +111,30 @@ def butler_router(platform: Platform) -> APIRouter:
         )
         return {"items": [board_view(b) for b in records]}
 
+    @router.get("/v1/assistant/briefings/daily")
+    async def daily_briefing(
+        who: Caller, timezone: str = "Asia/Shanghai", deliver: bool = False,
+    ) -> dict[str, Any]:
+        """按本人时区生成高信噪比今日要点晨报（可选经 Attention Budget 写入主对话）。"""
+        await platform.workspace.require_employee(who)
+        return await platform.butler.briefings.build_daily_brief(
+            who, timezone=timezone, deliver=deliver,
+        )
+
+    @router.get("/v1/assistant/briefings/pre-meeting")
+    async def pre_meeting_briefings(
+        who: Caller,
+        timezone: str = "Asia/Shanghai",
+        window_minutes: int = 30,
+        deliver: bool = False,
+    ) -> dict[str, Any]:
+        """扫描未来 30 分钟内即将开始的日程，生成会前 1 分钟速览卡。"""
+        await platform.workspace.require_employee(who)
+        items = await platform.butler.briefings.build_pre_meeting_briefs(
+            who, timezone=timezone, window_minutes=window_minutes, deliver=deliver,
+        )
+        return {"items": items}
+
     @router.post("/v1/assistant/pending/{pending_id}/answer")
     async def answer(pending_id: str, body: PendingAnswerBody, who: Caller) -> dict[str, Any]:
         """答复一个问题项；同一请求标识重试回原结果。"""

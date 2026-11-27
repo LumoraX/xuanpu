@@ -1131,6 +1131,8 @@ GET /v1/notifications的shared字段、GET /v1/shared-notifications及POST /v1/s
 | GET /v1/assistant/groups/{group_id}/messages | 无 | items：会诊消息区，按序号（seq、step、author=member/butler、member 从 1 起、round、mentions 从 1 起、text、created_at）；只追加。权限同上 |
 | GET /v1/assistant/dispatches/{dispatch_id} | 无 | 本人一次派工的细节（R7）：dispatch_id、trace_id、group_id、artisan（package、entry）、host=task/session、state、end_reason、instruction、created_at、updated_at、checks（terminal、succeeded、outputs、no_pending、no_unknown；还没验收为 null）、result（匠人回复摘录，最多 600 字；没有为 null）、items（pending_id、kind=question/approval/ruling/proxied、question、state、answer、source_quote、created_at）；不含匠人内部过程。权限同上 |
 | GET /v1/assistant/task-boards | active_only=true/false、limit=1–50 | 本人跨轮持久任务板列表（`title`、`focus`、`status`、`steps` 及 `blocked_by` DAG、版本与时间），见 ADR 0024 |
+| GET /v1/assistant/briefings/daily | timezone、deliver=true/false | 高信噪比今日要点晨报（冲突预警、1–3 条重点待办与今日提醒；`deliver=true` 时受 Attention Budget 门控） |
+| GET /v1/assistant/briefings/pre-meeting | timezone、window_minutes=30、deliver=true/false | 会前 30 分钟 1 分钟速览卡（聚合关联项目、参会人与待核对待办） |
 | GET /v1/assistant/actions/{request_id} | 无 | 查询某轮自主办理动作的已撤回清单（`undone`） |
 | POST /v1/assistant/actions/{request_id}/{action_id}/undo | 无 | 一键幂等撤回本轮管家自主办理的某项个人操作（支持待办/日程/提醒/文件局部编辑/回收恢复），仅本人可用 |
 
