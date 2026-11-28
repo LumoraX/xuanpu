@@ -12,6 +12,10 @@ const ENTRY_LOGIN_ERRORS = {
 };
 
 function bootEntry() {
+  if (location.hash && new URLSearchParams(location.hash.slice(1)).get("password_setup")) {
+    location.replace("/workspace" + (location.search || "") + location.hash);
+    return;
+  }
   $("composer").addEventListener("submit", (event) => {
     event.preventDefault();
     const text = $("message").value;
@@ -33,7 +37,7 @@ function bootEntry() {
     location.assign("/v1/auth/feishu/login?" + params);
   });
   const loginTenant = new URLSearchParams(location.search).get("tenant");
-  if (loginTenant) $("entry-password-login").href = "index.html?tenant=" + encodeURIComponent(loginTenant);
+  if (loginTenant) $("entry-password-login").href = "/workspace?tenant=" + encodeURIComponent(loginTenant);
   const passwordForm = $("entry-password-form");
   if (passwordForm) {
     passwordForm.addEventListener("submit", async (event) => {

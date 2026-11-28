@@ -29,7 +29,7 @@ from server.platform import ROOT_PRINCIPAL
 
 ZHANG = {"union_id": "on_zhang", "open_id": "ou_zhang", "name": "张三"}
 LI = {"union_id": "on_li", "open_id": "ou_li", "name": "李四"}
-LANDING = "/console/"
+LANDING = "/"
 WRITE = {"X-Requested-By": "xuanpu"}
 
 

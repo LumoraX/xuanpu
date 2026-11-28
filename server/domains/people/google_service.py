@@ -194,7 +194,7 @@ class GoogleContactsService:
         }
 
     async def start_connect(
-        self, who: Principal, *, return_to: str = "/console/entry.html"
+        self, who: Principal, *, return_to: str = "/"
     ) -> dict[str, Any]:
         """为当前浏览器登录员工生成 Google OAuth2 + PKCE 授权跳转地址与一次性绑定 Cookie。"""
         if who.key_id is not None:
@@ -208,7 +208,7 @@ class GoogleContactsService:
         state = secrets.token_hex(32)
         cookie = secrets.token_urlsafe(32)
         code_verifier = secrets.token_urlsafe(48)
-        safe_target = safe_return_to(return_to, fallback="/console/entry.html")
+        safe_target = safe_return_to(return_to, fallback="/")
 
         await self._store.put_attempt(
             GoogleAttempt(

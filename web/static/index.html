@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>玄圃 · 个人工作站</title>
-<link rel="stylesheet" href="style.css?v=7517076d6cc2d179">
-<link rel="stylesheet" href="workspace.css?v=4ddbccecd3565ccc">
+<link rel="stylesheet" href="/assets/style.css?v=7517076d6cc2d179">
+<link rel="stylesheet" href="/assets/workspace.css?v=4ddbccecd3565ccc">
 </head>
 <body class="unauthenticated">
 <section id="auth-gate" class="auth-gate" aria-label="登录玄圃">
@@ -43,13 +43,13 @@
       </form>
     </details>
   </div>
-  <div class="auth-links"><a href="?admin=1">管理员入口</a> · <a href="?">员工入口</a></div>
+  <div class="auth-links"><a href="/admin">管理员入口</a> · <a href="/">员工入口</a></div>
 </section>
 <header class="topbar app-shell">
   <div class="brand"><span class="brand-seal sm" aria-hidden="true">玄</span>玄圃 <span class="sub">个人工作站</span></div>
   <div class="topbar-right">
     <span id="conn-status" class="status">请先登录</span>
-    <div id="current-user" class="row hidden"><a id="switch-courtyard" class="nav-switch hidden" href="entry.html" title="切换到玄圃小院工作台">切换到小院</a><button id="notification-toggle" type="button" class="ghost hidden" aria-haspopup="dialog" aria-expanded="false" aria-controls="notifications-panel">通知</button><img id="user-avatar" class="avatar hidden" alt=""><span id="user-name"></span><button id="change-password-toggle" type="button" class="ghost hidden">改口令</button><button id="logout" type="button" class="ghost">退出</button></div>
+    <div id="current-user" class="row hidden"><a id="switch-courtyard" class="nav-switch hidden" href="/" title="切换到玄圃小院工作台">切换到小院</a><button id="notification-toggle" type="button" class="ghost hidden" aria-haspopup="dialog" aria-expanded="false" aria-controls="notifications-panel">通知</button><img id="user-avatar" class="avatar hidden" alt=""><span id="user-name"></span><button id="change-password-toggle" type="button" class="ghost hidden">改口令</button><button id="logout" type="button" class="ghost">退出</button></div>
   </div>
 </header>
 <section id="password-setup" class="password-panel hidden" aria-labelledby="password-setup-title">
@@ -328,51 +328,51 @@
   </section>
 </main>
 
-<footer class="entry-footer app-shell"><a href="?admin=1">管理员入口</a> · <a href="?">员工入口</a></footer>
+<footer class="entry-footer app-shell"><a href="/admin">管理员入口</a> · <a href="/">员工入口</a></footer>
 <div id="toast" class="toast hidden"></div>
 <div id="notification-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 <aside id="notification-alerts" class="notification-alerts hidden" aria-label="新通知提示">
   <div id="notification-alert-list"></div>
   <button id="notification-alert-more" type="button" class="notification-alert-more hidden">更多通知，请到通知中心查看</button>
 </aside>
-<script src="app.js?v=624b0ab58921db2b"></script>
-<script src="notification-alerts.js?v=2d6ce46dc83c6537"></script>
-<script src="notification-center.js?v=d05ed649a76b8947"></script>
-<script src="reminders.js?v=2c4f522e621b56e1"></script>
-<script src="workspace.js?v=455930aea1c302e1"></script>
-<script src="workspace-forms.js?v=9d69974b0e24955b"></script>
-<script src="workspace-files.js?v=c831d2284229bd2d"></script>
-<script src="workspace-chat.js?v=97ec05c4f485913c"></script>
-<script src="work-tasks.js?v=ffff7d71d6d0343a"></script>
-<script src="task-definitions.js?v=0bd3fb8e2ad1f7dd"></script>
-<script src="proactive.js?v=309c9879b190024a"></script>
-<script src="connections.js?v=123abc4542d2d122"></script>
-<script src="capabilities.js?v=6877ce67969068a2"></script>
-<script src="capability-operations.js?v=b372ed429790c7ed"></script>
-<script src="capability-release.js?v=35f3548cd693cbf7"></script>
-<script src="knowledge.js?v=af07aadecbbfb1d5"></script>
-<script src="people.js?v=0ba59c89c3ab0e10"></script>
-<script src="organization-forms.js?v=9dc49322557870a3"></script>
-<script src="organization.js?v=627d9b5ce73be6cc"></script>
-<script src="shared-matters.js?v=f1e21f19a2b914d3"></script>
-<script src="shared-materials.js?v=67c898a1edf4ec54"></script>
-<script src="shared-conversation.js?v=895518d982b4eca4"></script>
-<script src="shared-notifications.js?v=c9ecefeb4ae941bc"></script>
-<script src="collaboration-core.js?v=e3b8b54b96244544"></script>
-<script src="handoffs.js?v=916a4c22b753d153"></script>
-<script src="handoff-results.js?v=6047171d1525ad0c"></script>
-<script src="organizational-approvals.js?v=ab3d145d4d7d52da"></script>
-<script src="collaboration-notifications.js?v=b01d4131bcb6422e"></script>
-<script src="finance.js?v=7c54da9ce5715054"></script>
-<script src="finance_settlement.js?v=3d308d141a6399b6"></script>
-<script src="finance_funding.js?v=528330addc6e822a"></script>
-<script src="finance_records.js?v=aea2647444527e3a"></script>
-<script src="finance_materials.js?v=be00f569e75318ef"></script>
-<script src="finance_compliance.js?v=7b77ed4645f3abe4"></script>
-<script src="finance_operations.js?v=f6cbdc373230e97e"></script>
-<script src="identity.js?v=56a5379fe0c87738"></script>
-<script src="accounts.js?v=96487108f0ce3ca5"></script>
-<script src="secrets.js?v=1f400ca3bf2187a4"></script>
-<script src="marketplace.js?v=8dbacd008e9b94e5"></script>
+<script src="/assets/app.js?v=5deef29613190aeb"></script>
+<script src="/assets/notification-alerts.js?v=2d6ce46dc83c6537"></script>
+<script src="/assets/notification-center.js?v=d05ed649a76b8947"></script>
+<script src="/assets/reminders.js?v=2c4f522e621b56e1"></script>
+<script src="/assets/workspace.js?v=455930aea1c302e1"></script>
+<script src="/assets/workspace-forms.js?v=9d69974b0e24955b"></script>
+<script src="/assets/workspace-files.js?v=c831d2284229bd2d"></script>
+<script src="/assets/workspace-chat.js?v=97ec05c4f485913c"></script>
+<script src="/assets/work-tasks.js?v=ffff7d71d6d0343a"></script>
+<script src="/assets/task-definitions.js?v=0bd3fb8e2ad1f7dd"></script>
+<script src="/assets/proactive.js?v=309c9879b190024a"></script>
+<script src="/assets/connections.js?v=123abc4542d2d122"></script>
+<script src="/assets/capabilities.js?v=6877ce67969068a2"></script>
+<script src="/assets/capability-operations.js?v=b372ed429790c7ed"></script>
+<script src="/assets/capability-release.js?v=35f3548cd693cbf7"></script>
+<script src="/assets/knowledge.js?v=af07aadecbbfb1d5"></script>
+<script src="/assets/people.js?v=28cf029465011e79"></script>
+<script src="/assets/organization-forms.js?v=9dc49322557870a3"></script>
+<script src="/assets/organization.js?v=627d9b5ce73be6cc"></script>
+<script src="/assets/shared-matters.js?v=f1e21f19a2b914d3"></script>
+<script src="/assets/shared-materials.js?v=67c898a1edf4ec54"></script>
+<script src="/assets/shared-conversation.js?v=895518d982b4eca4"></script>
+<script src="/assets/shared-notifications.js?v=c9ecefeb4ae941bc"></script>
+<script src="/assets/collaboration-core.js?v=e3b8b54b96244544"></script>
+<script src="/assets/handoffs.js?v=916a4c22b753d153"></script>
+<script src="/assets/handoff-results.js?v=6047171d1525ad0c"></script>
+<script src="/assets/organizational-approvals.js?v=ab3d145d4d7d52da"></script>
+<script src="/assets/collaboration-notifications.js?v=b01d4131bcb6422e"></script>
+<script src="/assets/finance.js?v=7c54da9ce5715054"></script>
+<script src="/assets/finance_settlement.js?v=3d308d141a6399b6"></script>
+<script src="/assets/finance_funding.js?v=528330addc6e822a"></script>
+<script src="/assets/finance_records.js?v=aea2647444527e3a"></script>
+<script src="/assets/finance_materials.js?v=be00f569e75318ef"></script>
+<script src="/assets/finance_compliance.js?v=7b77ed4645f3abe4"></script>
+<script src="/assets/finance_operations.js?v=f6cbdc373230e97e"></script>
+<script src="/assets/identity.js?v=d60d6c1a8be7d2e4"></script>
+<script src="/assets/accounts.js?v=96487108f0ce3ca5"></script>
+<script src="/assets/secrets.js?v=1f400ca3bf2187a4"></script>
+<script src="/assets/marketplace.js?v=8dbacd008e9b94e5"></script>
 </body>
 </html>

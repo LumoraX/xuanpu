@@ -107,12 +107,42 @@
 .cy-stage-toggle, .cy-stage-action, .cy-stage-shortcut { border-radius: 999px; padding: 3px 12px; font-size: 13px; }
 .cy-caption-link { margin-left: 8px; color: var(--accent); font-weight: 500; text-decoration: none; }
 .cy-caption-link:hover { text-decoration: underline; }
-.cy-reply-card { background: var(--card); border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line)); border-left: 4px solid var(--accent); border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 2px 10px rgba(18, 28, 24, 0.04); }
+.cy-reply-card { background: var(--card); border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line)); border-left: 3px solid var(--accent); border-radius: 10px; padding: 5px 10px; display: flex; flex-direction: column; gap: 3px; }
+.cy-reply-card.hidden { display: none; }
 .cy-reply-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.cy-reply-title { font-size: 13px; font-weight: 600; color: var(--accent); letter-spacing: .01em; }
-.cy-reply-toggle { padding: 2px 10px; font-size: 12px; border-radius: 999px; color: var(--muted); }
-.cy-reply-body { font-size: 14px; line-height: 1.6; color: var(--fg); max-height: 112px; overflow-y: auto; overflow-wrap: anywhere; }
-.cy-reply-card.expanded .cy-reply-body { max-height: 300px; }
+.cy-reply-title { font-size: 11.5px; color: var(--accent, #2f6f5e); font-weight: 600; }
+.cy-reply-toggle { padding: 1px 8px; font-size: 11.5px; border-radius: 999px; color: var(--muted); }
+.cy-reply-body { font-size: 12.5px; line-height: 1.45; color: var(--fg); max-height: 36px; overflow: hidden; overflow-wrap: anywhere; }
+.cy-reply-card.expanded .cy-reply-body { max-height: 240px; overflow-y: auto; }
+/* 主界面常驻成果与执行编排看板（始终可见，不藏在抽屉里） */
+.cy-hub { background: var(--card); border: 1px solid var(--line); border-radius: 14px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; box-shadow: 0 2px 10px rgba(15, 23, 42, .04); }
+.cy-hub-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--line); background: #f8fafc; }
+.cy-hub-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.cy-hub-tab { padding: 5px 12px; border-radius: 999px; border: 1px solid #cbd5e1; background: #fff; color: #334155; font-size: 12.5px; font-weight: 500; cursor: pointer; }
+.cy-hub-tab.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+.cy-hub-tab.live { border-color: #2563eb; color: #1d4ed8; background: #eff6ff; }
+.cy-hub-tab.active.live { background: #1d4ed8; color: #fff; }
+.cy-hub-body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; }
+.cy-hub-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(240px, 0.9fr); gap: 12px; align-items: start; }
+.cy-hub-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cy-hub-switcher { display: flex; gap: 6px; flex-wrap: wrap; }
+.cy-hub-pill { font-size: 11.5px; padding: 3px 9px; border-radius: 999px; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; cursor: pointer; }
+.cy-hub-pill.active { background: #e0f2fe; border-color: #7dd3fc; color: #0369a1; font-weight: 600; }
+.cy-hub-note-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cy-hub-note-title { font-size: 15px; color: #0f172a; }
+.cy-hub-empty { padding: 18px 12px; text-align: center; display: flex; flex-direction: column; gap: 6px; color: #475569; }
+.cy-hub-todo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cy-hub-todo-row { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; }
+.cy-hub-todo-row input[type="checkbox"] { margin-top: 3px; cursor: pointer; }
+.cy-hub-todo-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.cy-hub-todo-title { font-size: 12.5px; font-weight: 500; color: #0f172a; line-height: 1.4; }
+.cy-hub-todo-sub { font-size: 11px; color: #64748b; }
+.cy-hub-file-list { display: flex; flex-direction: column; gap: 6px; }
+.cy-hub-file-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 9px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; }
+.cy-hub-file-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.cy-hub-file-name { font-size: 12.5px; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cy-hub-dag-wrap { display: flex; flex-direction: column; gap: 10px; }
+.cy-hub-audit-box { border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; background: #f8fafc; display: flex; flex-direction: column; gap: 6px; }
 .cy-stage-drawer { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 0; overflow-y: auto; }
 .cy-stage-drawer > .courtyard { margin-top: 0; }
 .progress-inline { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 10px 12px;
@@ -126,7 +156,7 @@
   .entry-main {
     flex: 1; min-height: 0; max-width: none; width: 100%; margin: 0; padding: 12px 16px;
     display: grid; gap: 10px 16px;
-    grid-template-columns: minmax(0, 1fr) minmax(380px, 30vw);
+    grid-template-columns: minmax(0, 1.15fr) minmax(400px, 37vw);
     grid-template-rows: auto minmax(0, 1fr) auto auto;
     grid-template-areas: "stage overview" "stage transcript" "stage tips" "composer composer";
   }
@@ -139,12 +169,13 @@
   .entry-main > .transcript { grid-area: transcript; min-height: 0; overflow-y: auto; padding-right: 4px; }
   .entry-main > .tips { grid-area: tips; }
   .entry-main > .composer { grid-area: composer; position: static; padding: 0; }
-  .stage > .cy-stage-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
-  .stage .cy-stage { flex: 1 1 56%; min-height: 220px; border-radius: 14px;
+  .stage > .cy-stage-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+  .stage .cy-stage { flex: 0 0 42%; min-height: 200px; max-height: 44vh; border-radius: 14px;
     /* 画面按比例放进整块区域，留白处自动对齐当前空间风格（小院墙地 / 四合院青砖 / 故宫宫道） */
     background: var(--cy-backdrop, linear-gradient(#e3ece6 0 32%, #cddbd3 32% 38.5%, #ecdcc0 38.5%)); }
   .stage .cy-stage .courtyard-svg { width: 100%; height: 100%; }
-  .stage .cy-stage-drawer { flex: 0 1 44%; max-height: 44%; }
+  .stage .cy-hub { flex: 1 1 58%; min-height: 220px; }
+  .stage .cy-stage-drawer { flex: 0 1 36%; max-height: 36%; }
   .stage .cy-stage-drawer .cy-feed { max-height: none; }
   .entry-footer { padding: 6px 16px; }
 }

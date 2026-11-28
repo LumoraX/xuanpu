@@ -175,7 +175,7 @@ function spanLabel(span) {
 }
 
 // 将扁平的执行 span 按时间波次聚合成 DAG 编排图（并行调用落入同一纵列，串行波次用箭头连接）。
-function renderExecutionDag(progress, spans, tree) {
+function renderExecutionDag(progress, spans, tree, onNodeSelect) {
   if (!spans || !spans.length) return null;
   const ordered = [...spans].sort((a, b) => (Date.parse(a.started_at || 0) - Date.parse(b.started_at || 0)) || (a.span_id < b.span_id ? -1 : 1));
   const roots = ordered.filter((s) => s.kind === "butler" && !s.parent_span_id);
@@ -213,6 +213,10 @@ function renderExecutionDag(progress, spans, tree) {
       const subText = [STATE_NAMES[sp.state] || sp.state, dur].filter(Boolean).join(" · ");
       nodeBtn.append(head, el("div", subText, "exec-dag-node-sub"));
       nodeBtn.addEventListener("click", () => {
+        if (typeof onNodeSelect === "function") {
+          onNodeSelect(sp);
+          return;
+        }
         if (progress.court && globalThis.Courtyard && Courtyard.stage && Courtyard.stage.mounted()) {
           Courtyard.stage.focus(progress.court, { expand: true });
         }

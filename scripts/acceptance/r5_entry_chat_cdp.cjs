@@ -48,7 +48,7 @@ function client(endpoint) {
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // 页面里执行的表达式：只读 DOM 与页面自己的状态，不改产品代码。
-const READY = `location.pathname.endsWith("entry.html") && !!document.getElementById("overview")
+const READY = `(location.pathname === "/" || location.pathname.endsWith("entry.html")) && !!document.getElementById("overview")
   && document.getElementById("overview").children.length > 0 && !!entry.me`;
 const COUNT = `document.getElementById("transcript").children.length`;
 const submit = text => `(() => { const box = document.getElementById("message");

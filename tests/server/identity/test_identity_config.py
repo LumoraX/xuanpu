@@ -37,7 +37,7 @@ def test_defaults() -> None:
     identity = config.identity
     assert (identity.session_ttl_seconds, identity.cookie_secure) == (604800, True)
     assert identity.reconcile_interval_seconds == 86400
-    assert (identity.default_tenant, identity.login_landing_path) == (None, "/console/")
+    assert (identity.default_tenant, identity.login_landing_path) == (None, "/")
     assert identity.feishu_open_base == "https://open.feishu.cn"
     assert identity.feishu_accounts_base == "https://accounts.feishu.cn"
 

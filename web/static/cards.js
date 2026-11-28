@@ -4,7 +4,7 @@
 
 const LIST_KINDS = { reminder: "提醒", todo: "待办", event: "日程", matter: "事项", file: "文件" };
 const MORE = {
-  workspace: ["个人工作台", "index.html?classic=1#functions"],
+  workspace: ["个人工作台", "/workspace/functions"],
 };
 
 function card(title, className) {
@@ -501,7 +501,7 @@ function mutate(method, path, json, reload) {
 function workTaskCard(taskId) {
   const node = card("交办工作"), status = el("p", "读取中…", "meta");
   const link = el("a", "在「更多」里查看成果");
-  link.href = "index.html?classic=1#functions";
+  link.href = "/workspace/functions";
   node.append(status, link);
   const epoch = entry.epoch;
   entryApi("GET", "/v1/work-tasks/" + encodeURIComponent(taskId)).then(task => {

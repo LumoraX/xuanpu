@@ -1416,7 +1416,7 @@ async function abStartGoogleConnect() {
   renderContactsDrawer();
   try {
     const res = await entryApi("POST", "/v1/people/google/connect/start", {
-      json: { return_to: "/console/entry.html" },
+      json: { return_to: "/" },
     });
     if (isStale(epoch) || !abState.open) return;
     if (res && res.authorization_url && typeof location !== "undefined" && typeof location.assign === "function") {

@@ -5,7 +5,29 @@ const $ = (id) => document.getElementById(id);
 
 // ---------- 连接 ----------
 
-const adminMode = new URLSearchParams(location.search).get("admin") === "1";
+const CONSOLE_TABS = new Set(["sessions", "functions", "marketplace", "packages", "secrets", "capabilities", "audit", "usage", "users"]);
+function isAdminPath(pathname = location.pathname) {
+  return pathname === "/admin" || pathname.startsWith("/admin/");
+}
+function isWorkspacePath(pathname = location.pathname) {
+  return pathname === "/workspace" || pathname.startsWith("/workspace/");
+}
+function routeBasePath(pathname = location.pathname) {
+  return isAdminPath(pathname) ? "/admin" : "/workspace";
+}
+function tabFromLocation() {
+  const path = location.pathname || "";
+  for (const base of ["/workspace", "/admin"]) {
+    if (path.startsWith(base + "/")) {
+      const seg = path.slice(base.length + 1).split("/")[0];
+      if (CONSOLE_TABS.has(seg)) return seg;
+    }
+  }
+  const hash = (location.hash || "").replace(/^#/, "");
+  if (CONSOLE_TABS.has(hash)) return hash;
+  return "sessions";
+}
+const adminMode = isAdminPath() || new URLSearchParams(location.search).get("admin") === "1";
 const conn = {
   baseUrl: adminMode ? localStorage.getItem("xuanpu.baseUrl") || "" : "",
   apiKey: adminMode ? sessionStorage.getItem("xuanpu.apiKey") || "" : "",
@@ -71,29 +93,51 @@ function when(seconds) {
 
 // ---------- 标签页 ----------
 
-$("tabs").addEventListener("click", (event) => {
-  const button = event.target.closest("button[data-tab]");
-  if (!button || button.classList.contains("hidden")) return;
-  if (button.classList.contains("active")) return;
+function activateTab(tab, { syncUrl = true, button: clicked = null } = {}) {
+  const tabsEl = $("tabs");
+  const button = clicked || (tabsEl && tabsEl.querySelector ? tabsEl.querySelector(`button[data-tab="${tab}"]`) : null);
+  if (!button || button.classList.contains("hidden")) return false;
   // 切页保留输入，但旧识别结果不得抢占新打开的功能表单。
   if (chat.routing) chat.generation++;
-  dismissReminderContext();
-  if(typeof dismissProactiveContext==="function")dismissProactiveContext();
-  for (const item of $("tabs").querySelectorAll("button")) item.classList.toggle("active", item === button);
+  if (typeof dismissReminderContext === "function") dismissReminderContext();
+  if (typeof dismissProactiveContext === "function") dismissProactiveContext();
+  for (const item of tabsEl.querySelectorAll("button")) item.classList.toggle("active", item === button);
   for (const section of document.querySelectorAll(".tab")) {
-    section.classList.toggle("active", section.id === "tab-" + button.dataset.tab);
+    section.classList.toggle("active", section.id === "tab-" + tab);
   }
-  if (button.dataset.tab === "users") loadUsers(true).catch(fail);
-  if (button.dataset.tab === "marketplace" && typeof loadMarketplace === "function") loadMarketplace().catch(fail);
-  if (button.dataset.tab === "secrets" && typeof loadSecrets === "function") loadSecrets().catch(fail);
-  if (button.dataset.tab === "capabilities") openCapabilities(true).catch(fail);
-  if (button.dataset.tab === "usage" && !$("usage-since").value) {
+  if (syncUrl && typeof history !== "undefined" && history && typeof history.pushState === "function") {
+    const base = routeBasePath();
+    const targetPath = tab === "sessions" ? base : base + "/" + tab;
+    const nextUrl = targetPath + (location.search || "");
+    if (location.pathname !== targetPath) {
+      try { history.pushState(null, "", nextUrl); } catch {}
+    }
+  }
+  if (tab === "users") loadUsers(true).catch(fail);
+  if (tab === "marketplace" && typeof loadMarketplace === "function") loadMarketplace().catch(fail);
+  if (tab === "secrets" && typeof loadSecrets === "function") loadSecrets().catch(fail);
+  if (tab === "capabilities") openCapabilities(true).catch(fail);
+  if (tab === "usage" && !$("usage-since").value) {
     const today = new Date().toISOString().slice(0, 10);
     $("usage-until").value = today;
     $("usage-since").value = new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
     loadUsage().catch(fail);
   }
+  return true;
+}
+
+$("tabs").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-tab]");
+  if (!button || button.classList.contains("hidden")) return;
+  if (button.classList.contains("active")) return;
+  activateTab(button.dataset.tab, { syncUrl: true, button });
 });
+
+if (typeof window !== "undefined" && window && typeof window.addEventListener === "function") {
+  window.addEventListener("popstate", () => {
+    if (conn.ready) activateTab(tabFromLocation(), { syncUrl: false });
+  });
+}
 
 // ---------- 会话 ----------
 

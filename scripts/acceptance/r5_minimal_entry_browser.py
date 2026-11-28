@@ -100,7 +100,7 @@ def add_login(app: FastAPI, cookies: dict[str, str]) -> None:
     @app.get("/__acceptance__/login/{actor}")
     async def login(actor: str, classic: bool = False) -> RedirectResponse:
         """未知角色不发 cookie。``classic`` 为真时直接进「更多」（功能页），同一次浏览器会话内完成。"""
-        target = "/console/index.html?classic=1" if classic else "/console/"
+        target = "/workspace" if classic else "/"
         response = RedirectResponse(target, status_code=303)
         if actor in ("alice", "bob"):
             response.set_cookie(cookies["cookie_name"], cookies[actor], httponly=True, samesite="lax")
@@ -125,8 +125,8 @@ def page_weight() -> dict[str, Any]:
 
     directory = static_dir()
     html = (directory / "entry.html").read_text(encoding="utf-8")
-    scripts = [s.split("?")[0] for s in re.findall(r'<script src="([^"]+)"', html)]
-    styles = [s.split("?")[0] for s in re.findall(r'<link rel="stylesheet" href="([^"]+)"', html)]
+    scripts = [s.split("?")[0].removeprefix("/assets/") for s in re.findall(r'<script src="([^"]+)"', html)]
+    styles = [s.split("?")[0].removeprefix("/assets/") for s in re.findall(r'<link rel="stylesheet" href="([^"]+)"', html)]
     return {"scripts": len(scripts), "script_bytes": sum((directory / s).stat().st_size for s in scripts),
             "style_bytes": sum((directory / s).stat().st_size for s in styles), "files": scripts + styles}
 
@@ -136,7 +136,7 @@ def check_dom(dom: str, *, own: bool) -> dict[str, Any]:
     return {
         "four_parts": all(part in dom for part in PARTS),
         "blocks": sorted(set(re.findall(r'data-key="([a-z_]+)"', dom))),
-        "more_link": 'href="index.html?classic=1"' in dom,
+        "more_link": 'href="/workspace"' in dom,
         "tips_rendered": bool(re.search(r'id="tips"[^>]*>\s*<button', dom)),
         "alice_data_visible": ALICE_ONLY in dom,
         "classic_scripts_loaded": "app.js" in dom,

@@ -44,7 +44,7 @@ class WeComLogin:
         await self.service.store.put_attempt(login_token_hash(state),{
             'tenant_id':tenant,'connection_id':cid,'installation_version':install['version'],
             'corp_id':install['corp_id'],'target_user':target,'cookie_hash':login_token_hash(cookie),
-            'return_to':safe_return_to(return_to,fallback='/console/'),'expires_at':self.service.now()+300},now=self.service.now())
+            'return_to':safe_return_to(return_to,fallback='/'),'expires_at':self.service.now()+300},now=self.service.now())
         query=urlencode({'appid':install['corp_id'],'agentid':install['agent_id'],
             'redirect_uri':self.settings.public_url+'/v1/auth/wecom/callback',
             'response_type':'code','scope':'snsapi_base','state':state})

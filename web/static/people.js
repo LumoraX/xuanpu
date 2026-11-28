@@ -805,7 +805,7 @@ function showPeopleImportPanel(epoch, generation) {
         st.busy = true;
         render();
         try {
-          const res = await api("POST", "/v1/people/google/connect/start", { json: { return_to: "/console/index.html" } });
+          const res = await api("POST", "/v1/people/google/connect/start", { json: { return_to: "/workspace" } });
           if (res && res.authorization_url) location.assign(res.authorization_url);
         } catch (error) {
           st.busy = false;

@@ -57,7 +57,7 @@ SECRET_REFS = {
     "verification_token_ref": "feishu-verification-token",
 }
 """飞书配置引用的三个密钥名。"""
-LANDING = "/console/"
+LANDING = "/"
 """默认的落地页（``identity.login_landing_path``）。"""
 _TOKEN_PATH = "/open-apis/authen/v2/oauth/token"
 _USER_INFO_PATH = "/open-apis/authen/v1/user_info"

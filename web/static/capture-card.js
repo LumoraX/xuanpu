@@ -520,7 +520,7 @@ function peopleContactCard(draft, proposalId, options = {}) {
         row.append(button("在通讯录中查看 →", () => openContactsDrawer().catch(report), "link pcard-link"));
       } else {
         const link = el("a", "在「人脉与图谱」中查看 →", "pcard-link");
-        link.href = "index.html?classic=1#functions";
+        link.href = "/workspace/functions";
         row.append(link);
       }
     }

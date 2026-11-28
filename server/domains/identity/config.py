@@ -106,7 +106,7 @@ class IdentityConfig(BaseModel):
     cookie_secure: bool = True
     reconcile_interval_seconds: float = Field(default=86400.0, ge=60)
     default_tenant: str | None = None
-    login_landing_path: str = Field(default="/console/", pattern=SITE_PATH)
+    login_landing_path: str = Field(default="/", pattern=SITE_PATH)
     feishu_open_base: str = "https://open.feishu.cn"
     feishu_accounts_base: str = "https://accounts.feishu.cn"
 

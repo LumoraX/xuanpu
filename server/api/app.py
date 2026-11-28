@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import FastAPI, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from prometheus_client import CONTENT_TYPE_PLAIN_0_0_4
 
 from server import __version__
@@ -26,7 +26,7 @@ from server.api.butler import butler_router
 from server.api.capabilities import capabilities_router
 from server.api.collaboration_notifications import collaboration_notifications_router
 from server.api.connections import connections_router
-from server.api.console import ConsoleStaticFiles
+from server.api.console import register_console_routes
 from server.api.dashboard import dashboard_router
 from server.api.dispatches import dispatches_router
 from server.api.file_bridge import file_bridge_router
@@ -157,7 +157,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
 
     Args:
         platform: 装配好的平台。
-        console_dir: 控制台静态页面的目录；给了就挂在 ``/console/``。
+        console_dir: 前端静态页面的目录；给了就挂在根路径（``/``、``/workspace/*``、``/admin/*``、``/assets/*``）。
     """
 
     @asynccontextmanager
@@ -516,13 +516,7 @@ def create_app(  # noqa: PLR0915, C901 —— 路由登记的平铺清单
         return result
 
     if console_dir is not None:
-
-        @app.get("/", include_in_schema=False)
-        async def _root_redirect() -> RedirectResponse:
-            """根路径默认进入控制台。"""
-            return RedirectResponse(url="/console/", status_code=307)
-
-        app.mount("/console", ConsoleStaticFiles(directory=str(console_dir), html=True), name="console")
+        register_console_routes(app, console_dir)
 
     return app
 

@@ -17,27 +17,32 @@ def test_static_files_present() -> None:
     assert (directory / "style.css").is_file()
     html = (directory / "index.html").read_text(encoding="utf-8")
     referenced = {v.split('?')[0] if not v.startswith('?') else v for v in re.findall(r'(?:src|href)="([^"]+)"', html)}
-    assert referenced == {
-        "app.js", "identity.js", "reminders.js", "notification-alerts.js", "notification-center.js", "style.css",
-        "?admin=1", "?", "entry.html", "workspace.css", "workspace.js", "workspace-forms.js",
-        "collaboration-core.js", "handoffs.js", "handoff-results.js", "organizational-approvals.js", "collaboration-notifications.js",
-        "shared-matters.js", "shared-materials.js", "shared-conversation.js", "shared-notifications.js",
-        "connections.js", "organization.js", "organization-forms.js", "workspace-files.js", "workspace-chat.js", "proactive.js", "work-tasks.js", "task-definitions.js",
-        "capabilities.js", "capability-operations.js", "capability-release.js", "knowledge.js", "people.js", "accounts.js", "secrets.js", "marketplace.js",
-        "finance.js", "finance_settlement.js", "finance_compliance.js", "finance_operations.js", "finance_funding.js", "finance_records.js", "finance_materials.js",
+    expected_assets = {
+        "/assets/" + name
+        for name in (
+            "app.js", "identity.js", "reminders.js", "notification-alerts.js", "notification-center.js", "style.css",
+            "workspace.css", "workspace.js", "workspace-forms.js",
+            "collaboration-core.js", "handoffs.js", "handoff-results.js", "organizational-approvals.js", "collaboration-notifications.js",
+            "shared-matters.js", "shared-materials.js", "shared-conversation.js", "shared-notifications.js",
+            "connections.js", "organization.js", "organization-forms.js", "workspace-files.js", "workspace-chat.js", "proactive.js", "work-tasks.js", "task-definitions.js",
+            "capabilities.js", "capability-operations.js", "capability-release.js", "knowledge.js", "people.js", "accounts.js", "secrets.js", "marketplace.js",
+            "finance.js", "finance_settlement.js", "finance_compliance.js", "finance_operations.js", "finance_funding.js", "finance_records.js", "finance_materials.js",
+        )
     }
+    assert referenced == expected_assets | {"/admin", "/"}
 
 
 def test_asset_urls_change_with_actual_content() -> None:
     """升级页面不能沿用浏览器缓存的旧脚本，地址指纹跟随实际资源字节。"""
     directory = static_dir()
     html = (directory / 'index.html').read_text()
-    urls = re.findall(r'(?:src|href)="([^"?]+\.(?:js|css)(?:\?[^\"]*)?)"', html)
+    urls = re.findall(r'(?:src|href)="(/assets/[^"?]+\.(?:js|css)(?:\?[^\"]*)?)"', html)
     assert urls
     for url in urls:
-        name = url.split('?')[0]
+        path_part = url.split('?')[0]
+        name = path_part.removeprefix('/assets/')
         digest = hashlib.sha256((directory / name).read_bytes()).hexdigest()[:16]
-        assert url == name + '?v=' + digest, name
+        assert url == '/assets/' + name + '?v=' + digest, name
 
 
 def test_console_only_talks_to_documented_endpoints() -> None:
@@ -99,8 +104,8 @@ def test_proactive_chat_routes_and_cleanup_are_connected() -> None:
 
 
 def test_classic_page_hands_over_to_minimal_entry() -> None:
-    """启用极简入口的员工默认进新页；?classic=1 与管理员入口留在旧页；旧页功能脚本保留。"""
+    """启用极简入口的员工默认进根路径小院；显式访问 /workspace/*、?classic=1 或 /admin 留在完整工作台。"""
     identity = (static_dir() / "identity.js").read_text(encoding="utf-8")
-    assert 'me.entry === "minimal" && !adminMode' in identity
-    assert 'get("classic") !== "1"' in identity
-    assert 'location.replace("entry.html")' in identity
+    assert "isWorkspacePath()" in identity
+    assert 'me.entry === "minimal" && !adminMode && !explicitWorkspace' in identity
+    assert 'location.replace("/")' in identity

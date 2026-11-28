@@ -87,7 +87,7 @@ function harness(routes) {
   const context = vm.createContext({
     console: { error() {}, log: console.log }, crypto, AbortController, DOMException, TextDecoder, TextEncoder, URL, URLSearchParams, Uint8Array, Intl,
     document: { getElementById: node, createElement: element, createElementNS: (_, tag) => element(tag) }, fetch, Math, JSON, Date, Promise, Map, Set,
-    location: { search: "", pathname: "/console/entry.html", assign() {}, replaced: null, replace(to) { this.replaced = to; } },
+    location: { search: "", hash: "", pathname: "/", assign() {}, replaced: null, replace(to) { this.replaced = to; } },
   });
   return { context, nodes: node, calls };
 }
@@ -325,7 +325,7 @@ async function runningReplyFollowsLater(dir) {
 async function classicTenantGoesBack(dir) {
   const h = harness(base({ "GET /v1/me": () => ({ json: { ...ME.json, entry: "classic" } }) }));
   load(h, dir); await flush();
-  assert.equal(h.context.location.replaced, "index.html");
+  assert.equal(h.context.location.replaced, "/workspace");
   assert.ok(h.nodes("entry-main").classList.contains("hidden"));
   assert.ok(!h.calls.some(c => c.url.startsWith("/v1/dashboard")), "未启用的租户不读概览");
 }
@@ -1353,9 +1353,19 @@ async function outcomeShowcaseAndDagFlow(dir) {
   assert.ok(!wb.classList.contains("hidden") && wb.textContent.includes("分批开具发票"), "点击后应在右侧分屏工作台展示文档全文");
 }
 
+async function passwordSetupHashRedirectsToWorkspace(dir) {
+  const h = harness(base());
+  h.context.location.hash = "#password_setup=tok_setup_1";
+  h.context.location.search = "?tenant=acme";
+  load(h, dir); await flush();
+  assert.equal(h.context.location.replaced, "/workspace?tenant=acme#password_setup=tok_setup_1");
+  assert.equal(h.calls.length, 0, "口令设置链接应立即转入完整工作台处理");
+}
+
 (async () => {
   const dir = process.argv[2];
   dir_ = dir;
+  await passwordSetupHashRedirectsToWorkspace(dir);
   await classicTenantGoesBack(dir);
   await overviewAndTips(dir);
   await sendAndConfirm(dir);

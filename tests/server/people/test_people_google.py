@@ -256,7 +256,7 @@ async def test_google_oauth_pkce_encrypted_storage_sync_refresh_and_unlink(
         start = await env.client.post(
             "/v1/people/google/connect/start",
             headers=hdr(env, "usr_a"),
-            json={"return_to": "/console/entry.html"},
+            json={"return_to": "/"},
         )
         assert start.status_code == 200, start.text
         auth_url = start.json()["authorization_url"]
@@ -280,7 +280,7 @@ async def test_google_oauth_pkce_encrypted_storage_sync_refresh_and_unlink(
         start2 = await env.client.post(
             "/v1/people/google/connect/start",
             headers=hdr(env, "usr_a"),
-            json={"return_to": "/console/entry.html"},
+            json={"return_to": "/"},
         )
         state2 = parse_qs(urlsplit(start2.json()["authorization_url"]).query)["state"][0]
         cookie2 = start2.cookies.get("__Host-xuanpu_google")
@@ -298,7 +298,7 @@ async def test_google_oauth_pkce_encrypted_storage_sync_refresh_and_unlink(
         start3 = await env.client.post(
             "/v1/people/google/connect/start",
             headers=hdr(env, "usr_a"),
-            json={"return_to": "/console/entry.html"},
+            json={"return_to": "/"},
         )
         state3 = parse_qs(urlsplit(start3.json()["authorization_url"]).query)["state"][0]
         cookie3 = start3.cookies.get("__Host-xuanpu_google")
@@ -309,7 +309,7 @@ async def test_google_oauth_pkce_encrypted_storage_sync_refresh_and_unlink(
             headers={"Cookie": both_cookies},
         )
         assert ok_cb.status_code == 302
-        assert ok_cb.headers["location"] == "/console/entry.html?google_contacts=linked"
+        assert ok_cb.headers["location"] == "/?google_contacts=linked"
         assert fake.exchanged[-1]["code"] == "auth-code-ok"
 
         # 确认底层存储的令牌是密文，不含明文 token

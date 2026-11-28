@@ -48,7 +48,7 @@ const MEASURE = `(() => {
     scroll_width: document.documentElement.scrollWidth, send_right: Math.round(send.right),
     blocks: overview ? overview.children.length : 0 });
 })()`;
-const READY = `location.pathname.endsWith("entry.html") && !!document.getElementById("overview")
+const READY = `(location.pathname === "/" || location.pathname.endsWith("entry.html")) && !!document.getElementById("overview")
   && document.getElementById("overview").children.length > 0`;
 
 async function main() {

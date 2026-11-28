@@ -101,7 +101,7 @@ async def test_admin_creates_account_and_employee_sets_password(accounts_world: 
         link = created["setup_link"]
         assert created["user"]["display_name"] == "张三"
         assert link["username"] == "zhang.san" and link["purpose"] == "setup"
-        assert link["url"].startswith("https://xuanpu.example.com/console/#password_setup=")
+        assert link["url"].startswith("https://xuanpu.example.com/#password_setup=")
         body = {"token": token_of(link)}
         inspected = await post(ident, "/v1/auth/password/setup/inspect", body, **WRITE)
         assert inspected.json()["username"] == "zhang.san"

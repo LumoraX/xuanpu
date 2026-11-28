@@ -61,7 +61,7 @@ async def test_login_works_without_event_secrets(identity_world: Any) -> None:
         state, code = ident.feishu.authorize(started.headers["location"], person)
         binding = ident.cookie_value(started, login_attempt_cookie_name(ident.secure))
         done = await ident.callback(binding=binding, state=state, code=code)
-        assert done.headers["location"] == "/console/"
+        assert done.headers["location"] == "/"
         me = await ident.get("/v1/me", headers=ident.cookie(ident.session_token(done)))
         assert me.status_code == 200
         assert me.json()["display_name"] == "员工"

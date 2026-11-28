@@ -30,26 +30,26 @@ def test_entry_behavior() -> None:
 
 
 def test_entry_assets_and_fingerprints() -> None:
-    """新页只引用自己的脚本与样式，地址指纹跟随实际字节；默认不加载功能页脚本。"""
+    """新页只引用自己的脚本与样式（统一走 /assets/ 路径），地址指纹跟随实际字节；默认不加载功能页脚本。"""
     directory = static_dir()
     html = (directory / "entry.html").read_text(encoding="utf-8")
-    urls = re.findall(r'(?:src|href)="([^"]+\.(?:js|css)\?v=[0-9a-f]{16})"', html)
-    names = [url.split("?")[0] for url in urls]
+    urls = re.findall(r'(?:src|href)="(/assets/[^"]+\.(?:js|css)\?v=[0-9a-f]{16})"', html)
+    names = [url.split("?")[0].removeprefix("/assets/") for url in urls]
     assert names == ["entry.css", "courtyard.css", *ENTRY_SCRIPTS]
     for url in urls:
-        name = url.split("?")[0]
+        name = url.split("?")[0].removeprefix("/assets/")
         digest = hashlib.sha256((directory / name).read_bytes()).hexdigest()[:16]
-        assert url == name + "?v=" + digest, name
+        assert url == "/assets/" + name + "?v=" + digest, name
     for classic in ("app.js", "workspace.js", "reminders.js", "finance.js"):
         assert classic not in html
 
 
 def test_entry_has_four_parts_and_more_link() -> None:
-    """首屏四样（概览、对话、提示、输入）；「更多」进入功能页兜底。"""
+    """首屏四样（概览、对话、提示、输入）；「更多」进入 /workspace 完整工作台。"""
     html = (static_dir() / "entry.html").read_text(encoding="utf-8")
     for part in ('id="overview"', 'id="transcript"', 'id="tips"', 'id="composer"'):
         assert part in html
-    assert 'href="index.html?classic=1"' in html and ">更多<" in html
+    assert 'href="/workspace"' in html and ">更多<" in html
 
 
 def test_entry_only_uses_original_endpoints() -> None:

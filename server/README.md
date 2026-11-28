@@ -25,7 +25,7 @@ async with open_platform(config) as platform:
     app = create_app(platform)      # 交给任意 ASGI 服务器；应用的生命周期里会启动与关闭平台
 ```
 
-`create_app(platform, console_dir=…)` 给了 `console_dir` 就把控制台挂在 `/console/`。
+`create_app(platform, console_dir=…)` 给了 `console_dir` 就自动注册前端干净路由（`/`、`/workspace/*`、`/admin/*`、`/assets/*`，并保留旧 `/console/*` 重定向兼容）。
 
 多实例部署装 `postgres` 与 `s3` 两个 extra：`xuanpu-server[postgres,s3]`（控制面、状态面进 Postgres，业务包归档进 S3 兼容的对象存储）。
 

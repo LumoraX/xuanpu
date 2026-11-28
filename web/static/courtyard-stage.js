@@ -8,6 +8,8 @@
   const stage = { scene: null, focus: null, played: new WeakMap(), roster: [], rosterLoaded: false, caption: null,
     drawer: null, toggle: null, action: null, themeButtons: [], openPendingId: null, expanded: false, looks: null, log: [],
     replyBox: null, replyTitle: null, replyBody: null, replyExpand: null, replyExpanded: false, replies: new Map(), steps: new Map(), latestReply: "",
+    hub: null, hubTab: "outcome", hubBody: null, hubTabs: null, hubNoteIdx: 0, hubAudit: null,
+    worldData: { notes: [], todos: [], events: [], reminders: [], people: [], orgs: [], matters: [], files: [], folders: [] },
     worldCounts: { openTodos: 0, activeReminders: 0 } };
   // 最近演了什么（排查用）：每帧一条，记焦点、帧类型、是对齐终态还是出节拍
   function note(entry) { stage.log.push({ at: Date.now(), ...entry }); if (stage.log.length > 80) stage.log.shift(); }
@@ -25,7 +27,7 @@
       );
       if (globalThis.entry && entry.me && entry.me.role === "tenant_admin") {
         const link = el("a", "去能力市场添匠人", "cy-caption-link");
-        link.href = "index.html?classic=1#marketplace";
+        link.href = "/workspace/marketplace";
         stage.caption.append(link);
       }
       return;
@@ -198,7 +200,8 @@
     stage.replyBody = el("div", null, "cy-reply-body");
     stage.replyBox.append(replyHead, stage.replyBody);
     stage.drawer = el("div", null, "cy-stage-drawer hidden");
-    box.append(host, bar, stage.replyBox, stage.drawer);
+    stage.hub = buildMainHub();
+    box.append(host, bar, stage.replyBox, stage.hub, stage.drawer);
     container.replaceChildren(box);
     stage.scene = C().scene.create(host, {
       look: key => C().art.resolveLook(stage.looks(), key),
@@ -233,33 +236,408 @@
       drawer: null, toggle: null, action: null, themeButtons: [], openPendingId: null, expanded: false,
       replyBox: null, replyTitle: null, replyBody: null, replyExpand: null, replyExpanded: false,
       replies: new Map(), steps: new Map(), latestReply: "",
+      hub: null, hubTab: "outcome", hubBody: null, hubTabs: null, hubNoteIdx: 0, hubAudit: null,
+      worldData: { notes: [], todos: [], events: [], reminders: [], people: [], orgs: [], matters: [], files: [], folders: [] },
       worldCounts: { openTodos: 0, activeReminders: 0 } });
+  }
+
+  function fmtHubTime(ts) {
+    if (!ts) return "";
+    const d = new Date(Number(ts) * 1000);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function fmtHubDate(ts) {
+    if (!ts) return "";
+    const d = new Date(Number(ts) * 1000);
+    if (Number.isNaN(d.getTime())) return "";
+    return `${d.getMonth() + 1}月${d.getDate()}日`;
+  }
+
+  function fmtHubSize(bytes) {
+    const n = Number(bytes) || 0;
+    if (n >= 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + " MB";
+    if (n >= 1024) return (n / 1024).toFixed(1) + " KB";
+    return n + " B";
+  }
+
+  function buildMainHub() {
+    const hub = el("section", null, "cy-hub");
+    hub.setAttribute("aria-label", "主界面成果与编排看板");
+    const head = el("div", null, "cy-hub-head");
+    stage.hubTabs = el("div", null, "cy-hub-tabs");
+    head.append(stage.hubTabs);
+    stage.hubBody = el("div", null, "cy-hub-body");
+    hub.append(head, stage.hubBody);
+    renderMainHub();
+    return hub;
+  }
+
+  function setHubTab(tab) {
+    stage.hubTab = tab;
+    renderMainHub();
+  }
+
+  async function toggleHubTodo(item) {
+    if (!item || !item.id || typeof entryApi !== "function") return;
+    const isDone = String((item.data && item.data.status) || "").toLowerCase() === "done";
+    try {
+      await entryApi("PATCH", "/v1/workspace/items/" + encodeURIComponent(item.id), {
+        json: { version: item.version, data: { status: isDone ? "open" : "done" } },
+      });
+      await refreshWorld();
+      if (typeof refreshOverview === "function") refreshOverview().catch(() => {});
+    } catch (error) {
+      if (typeof report === "function") report(error);
+    }
+  }
+
+  async function inspectHubSpan(progress, span) {
+    if (!progress || !span) return;
+    stage.hubAudit = { span, loading: true, data: null, error: null };
+    renderMainHub();
+    const epoch = entry.epoch;
+    try {
+      const data = await entryApi(
+        "GET",
+        "/v1/traces/" + encodeURIComponent(progress.traceId) + "/spans/" + encodeURIComponent(span.span_id) + "/audit"
+      );
+      if (isStale(epoch)) return;
+      stage.hubAudit = { span, loading: false, data, error: null };
+    } catch (error) {
+      if (isStale(epoch)) return;
+      stage.hubAudit = { span, loading: false, data: null, error: (error && error.message) || "读取失败" };
+    }
+    renderMainHub();
+  }
+
+  function renderMainHub() {
+    if (!stage.hub || !stage.hubTabs || !stage.hubBody) return;
+    const wd = stage.worldData;
+    const spans = stage.focus && Array.isArray(stage.focus.prev) ? stage.focus.prev : [];
+    const running = spans.length > 0 && C().model && !C().model.finished(spans);
+    const openTodosCount = (wd.todos || []).filter(t => String((t.data && t.data.status) || "open").toLowerCase() !== "done").length;
+
+    const defs = [
+      ["outcome", "最新成果" + (wd.notes.length ? " (" + wd.notes.length + ")" : "")],
+      ["dag", "执行编排 DAG" + (running ? " · 进行中" : spans.length ? " (" + spans.length + "步)" : "")],
+      ["assets", "待办与文档" + (openTodosCount || wd.files.length ? ` (${openTodosCount}/${wd.files.length})` : "")],
+    ];
+    stage.hubTabs.replaceChildren(...defs.map(([id, label]) => {
+      const b = button(label, () => setHubTab(id), "cy-hub-tab" + (stage.hubTab === id ? " active" : "") + (id === "dag" && running ? " live" : ""));
+      b.dataset.hubTab = id;
+      return b;
+    }));
+
+    if (stage.hubTab === "dag") {
+      renderHubDag(spans);
+    } else if (stage.hubTab === "assets") {
+      renderHubAssets(wd);
+    } else {
+      renderHubOutcome(wd);
+    }
+  }
+
+  function renderHubOutcome(wd) {
+    const body = stage.hubBody;
+    const notes = wd.notes || [];
+    const openTodos = (wd.todos || []).filter(t => String((t.data && t.data.status) || "open").toLowerCase() !== "done");
+    const files = wd.files || [];
+    const folderMap = new Map((wd.folders || []).map(f => [f.id, (f.data && f.data.name) || ""]));
+    const matterMap = new Map((wd.matters || []).map(m => [m.id, (m.data && m.data.title) || ""]));
+    const orgMap = new Map((wd.orgs || []).map(o => [o.id, o.name || ""]));
+    const personMap = new Map((wd.people || []).map(p => [p.id, p]));
+    const openShelf = typeof openBookshelfDrawer === "function" ? openBookshelfDrawer : (typeof openContactsDrawer === "function" ? openContactsDrawer : null);
+
+    const grid = el("div", null, "cy-hub-grid");
+
+    // 左列：最新会议/整理成果全景（标题、时间、摘要、核心结论、待确认、实体与文档直达）
+    const left = el("div", null, "cy-hub-col primary");
+    if (!notes.length) {
+      const empty = el("div", null, "cy-hub-empty");
+      empty.append(
+        el("strong", "暂无会议纪要或整理记录"),
+        el("p", "直接上传会议录音/文档或发一句话，管家会自动拆解结论、人脉、待办与正式纪要，并实时展示在这里。", "meta")
+      );
+      left.append(empty);
+    } else {
+      const idx = Math.min(stage.hubNoteIdx, notes.length - 1);
+      const note = notes[idx];
+      if (notes.length > 1) {
+        const switcher = el("div", null, "cy-hub-switcher");
+        notes.slice(0, 4).forEach((n, i) => {
+          const label = (n.title || n.summary || "记录").slice(0, 14);
+          switcher.append(button(label, () => { stage.hubNoteIdx = i; renderMainHub(); }, "cy-hub-pill" + (i === idx ? " active" : "")));
+        });
+        left.append(switcher);
+      }
+      const kindMap = { meeting: "会议纪要", note: "随手记", card: "名片", call: "通话记录" };
+      const top = el("div", null, "cy-hub-note-head");
+      top.append(
+        el("span", kindMap[note.record_kind] || "记录", "outcome-kind-badge"),
+        el("strong", note.title || "未命名记录", "cy-hub-note-title")
+      );
+      left.append(top);
+      const meta = [
+        note.occurred_at ? "时间：" + fmtHubTime(note.occurred_at) : "",
+        note.location ? "地点：" + note.location : "",
+      ].filter(Boolean).join(" · ");
+      if (meta) left.append(el("div", meta, "outcome-meta"));
+      if (note.summary) left.append(el("p", note.summary, "outcome-summary"));
+
+      const decisions = Array.isArray(note.decisions) ? note.decisions : [];
+      const questions = Array.isArray(note.open_questions) ? note.open_questions : [];
+      if (decisions.length || questions.length) {
+        const cols = el("div", null, "outcome-cols");
+        if (decisions.length) {
+          const box = el("div", null, "outcome-panel decisions");
+          box.append(el("div", "核心结论（" + decisions.length + "）", "outcome-panel-title"));
+          const ul = el("ul", null, "outcome-bullets");
+          for (const d of decisions) ul.append(el("li", d));
+          box.append(ul);
+          cols.append(box);
+        }
+        if (questions.length) {
+          const box = el("div", null, "outcome-panel questions");
+          box.append(el("div", "待确认项（" + questions.length + "）", "outcome-panel-title"));
+          const ul = el("ul", null, "outcome-bullets");
+          for (const q of questions) ul.append(el("li", q));
+          box.append(ul);
+          cols.append(box);
+        }
+        left.append(cols);
+      }
+
+      // 关联实体芯片（项目 / 公司 / 人脉）
+      const chips = el("div", null, "outcome-entities");
+      for (const mid of note.matter_ids || (note.matter_id ? [note.matter_id] : [])) {
+        const title = matterMap.get(mid);
+        if (title) chips.append(button("项目 · " + title, () => openShelf && openShelf({ tab: "matters" }).catch(report), "outcome-chip matter"));
+      }
+      for (const oid of note.org_ids || []) {
+        const name = orgMap.get(oid);
+        if (name) chips.append(button("公司 · " + name, () => openShelf && openShelf({ tab: "orgs" }).catch(report), "outcome-chip org"));
+      }
+      for (const pid of note.person_ids || []) {
+        const p = personMap.get(pid);
+        if (p) chips.append(button("人脉 · " + p.name, () => openShelf && openShelf({ tab: "people" }).catch(report), "outcome-chip person"));
+      }
+      if (chips.children.length) left.append(chips);
+    }
+
+    // 右列：活跃待办（可就地勾选）+ 最近文档与纪要（一键分屏看全文）
+    const right = el("div", null, "cy-hub-col side");
+    const todoCard = el("div", null, "outcome-panel todos");
+    const todoHead = el("div", null, "outcome-panel-head");
+    todoHead.append(el("span", "活跃待办（" + openTodos.length + "）", "outcome-panel-title"));
+    if (typeof openBoardDrawer === "function") {
+      todoHead.append(button("全部待办", () => openBoardDrawer({ tab: "todos" }).catch(report), "outcome-mini-btn"));
+    }
+    todoCard.append(todoHead);
+    if (!openTodos.length) {
+      todoCard.append(el("p", "当前暂无未完成待办。", "meta"));
+    } else {
+      const ul = el("ul", null, "cy-hub-todo-list");
+      for (const t of openTodos.slice(0, 5)) {
+        const d = t.data || {};
+        const li = el("li", null, "cy-hub-todo-row");
+        const chk = document.createElement("input");
+        chk.type = "checkbox";
+        chk.checked = false;
+        chk.title = "勾选标记已完成";
+        chk.addEventListener("change", () => toggleHubTodo(t));
+        const textWrap = el("div", null, "cy-hub-todo-main");
+        textWrap.append(el("div", d.title || "待办", "cy-hub-todo-title"));
+        const subParts = [d.matter_id ? matterMap.get(d.matter_id) : "", d.due_at ? "截止 " + fmtHubDate(d.due_at) : ""].filter(Boolean);
+        if (subParts.length) textWrap.append(el("div", subParts.join(" · "), "cy-hub-todo-sub"));
+        li.append(chk, textWrap);
+        ul.append(li);
+      }
+      todoCard.append(ul);
+    }
+    right.append(todoCard);
+
+    const fileCard = el("div", null, "outcome-panel files");
+    const fileHead = el("div", null, "outcome-panel-head");
+    fileHead.append(el("span", "最近文档与纪要（" + files.length + "）", "outcome-panel-title"));
+    if (openShelf) {
+      fileHead.append(button("全部文件", () => openShelf({ tab: "files" }).catch(report), "outcome-mini-btn"));
+    }
+    fileCard.append(fileHead);
+    if (!files.length) {
+      fileCard.append(el("p", "尚未上传或生成工作台文档。", "meta"));
+    } else {
+      const list = el("div", null, "cy-hub-file-list");
+      for (const f of files.slice(0, 4)) {
+        const d = f.data || {};
+        const row = el("div", null, "cy-hub-file-row");
+        const metaWrap = el("div", null, "cy-hub-file-meta");
+        metaWrap.append(el("strong", d.name || f.id, "cy-hub-file-name"));
+        const badges = el("div", null, "outcome-file-badges");
+        const folderName = d.parent_id ? folderMap.get(d.parent_id) : "";
+        if (folderName) badges.append(el("span", folderName, "outcome-folder-pill"));
+        const mTitle = d.matter_id ? matterMap.get(d.matter_id) : "";
+        if (mTitle) badges.append(el("span", mTitle, "outcome-tag-pill"));
+        badges.append(el("span", fmtHubSize(d.size), "meta"));
+        metaWrap.append(badges);
+        row.append(metaWrap);
+        if (typeof openWorkspaceFilePreview === "function") {
+          row.append(button("看全文", () => openWorkspaceFilePreview(f.id, d.name || f.id).catch(report), "primary outcome-mini-btn"));
+        }
+        list.append(row);
+      }
+      fileCard.append(list);
+    }
+    right.append(fileCard);
+
+    grid.append(left, right);
+    body.replaceChildren(grid);
+  }
+
+  function renderHubDag(spans) {
+    const body = stage.hubBody;
+    if (!spans.length) {
+      const empty = el("div", null, "cy-hub-empty");
+      empty.append(
+        el("strong", "等待执行编排"),
+        el("p", "发送一条任务或上传文档后，这里会以宽屏 DAG 节点流实时展示每一步并行与串行编排，并与上方小院联动。", "meta")
+      );
+      body.replaceChildren(empty);
+      return;
+    }
+    const wrap = el("div", null, "cy-hub-dag-wrap");
+    const tipRow = el("div", null, "outcome-panel-head");
+    tipRow.append(
+      el("span", "执行编排图（点击任意工具节点可直接查看入参、返回与耗时）", "outcome-panel-title"),
+      button("查看完整执行树", () => setExpanded(true), "outcome-mini-btn")
+    );
+    wrap.append(tipRow);
+
+    if (typeof renderExecutionDag === "function" && stage.focus && stage.focus.progress) {
+      const dag = renderExecutionDag(stage.focus.progress, spans, null, (sp) => {
+        if (sp.kind === "tool") inspectHubSpan(stage.focus.progress, sp);
+      });
+      if (dag) wrap.append(dag);
+    }
+    if (stage.hubAudit) {
+      const box = el("div", null, "cy-hub-audit-box");
+      const h = el("div", null, "outcome-panel-head");
+      h.append(
+        el("strong", "节点审计：" + (stage.hubAudit.span.name || stage.hubAudit.span.span_id)),
+        button("关闭", () => { stage.hubAudit = null; renderMainHub(); }, "outcome-mini-btn")
+      );
+      box.append(h);
+      if (typeof renderAuditDetailBox === "function") {
+        box.append(renderAuditDetailBox(stage.hubAudit));
+      }
+      wrap.append(box);
+    }
+    body.replaceChildren(wrap);
+  }
+
+  function renderHubAssets(wd) {
+    const body = stage.hubBody;
+    const folderMap = new Map((wd.folders || []).map(f => [f.id, (f.data && f.data.name) || ""]));
+    const matterMap = new Map((wd.matters || []).map(m => [m.id, (m.data && m.data.title) || ""]));
+    const wrap = el("div", null, "cy-hub-grid");
+
+    const todoCol = el("div", null, "cy-hub-col");
+    const openTodos = (wd.todos || []).filter(t => String((t.data && t.data.status) || "open").toLowerCase() !== "done");
+    todoCol.append(el("div", "全部未完成待办（" + openTodos.length + "）", "outcome-panel-title"));
+    const ul = el("ul", null, "cy-hub-todo-list");
+    for (const t of openTodos) {
+      const d = t.data || {};
+      const li = el("li", null, "cy-hub-todo-row");
+      const chk = document.createElement("input");
+      chk.type = "checkbox";
+      chk.addEventListener("change", () => toggleHubTodo(t));
+      const tw = el("div", null, "cy-hub-todo-main");
+      tw.append(el("div", d.title || "待办", "cy-hub-todo-title"));
+      const sub = [d.matter_id ? matterMap.get(d.matter_id) : "", d.due_at ? "截止 " + fmtHubDate(d.due_at) : "", d.description ? String(d.description).slice(0, 60) : ""].filter(Boolean).join(" · ");
+      if (sub) tw.append(el("div", sub, "cy-hub-todo-sub"));
+      li.append(chk, tw);
+      ul.append(li);
+    }
+    if (!openTodos.length) todoCol.append(el("p", "暂无待办。", "meta"));
+    else todoCol.append(ul);
+
+    const fileCol = el("div", null, "cy-hub-col");
+    const files = wd.files || [];
+    fileCol.append(el("div", "工作台全部文档（" + files.length + "）", "outcome-panel-title"));
+    const fl = el("div", null, "cy-hub-file-list");
+    for (const f of files) {
+      const d = f.data || {};
+      const row = el("div", null, "cy-hub-file-row");
+      const mw = el("div", null, "cy-hub-file-meta");
+      mw.append(el("strong", d.name || f.id, "cy-hub-file-name"));
+      const badges = el("div", null, "outcome-file-badges");
+      if (d.parent_id && folderMap.get(d.parent_id)) badges.append(el("span", folderMap.get(d.parent_id), "outcome-folder-pill"));
+      for (const tg of (d.tags || []).slice(0, 3)) badges.append(el("span", "#" + tg, "outcome-tag-pill"));
+      badges.append(el("span", fmtHubSize(d.size), "meta"));
+      mw.append(badges);
+      row.append(mw);
+      if (typeof openWorkspaceFilePreview === "function") {
+        row.append(button("看全文", () => openWorkspaceFilePreview(f.id, d.name || f.id).catch(report), "primary outcome-mini-btn"));
+      }
+      fl.append(row);
+    }
+    if (!files.length) fileCol.append(el("p", "暂无文档。", "meta"));
+    else fileCol.append(fl);
+
+    wrap.append(todoCol, fileCol);
+    body.replaceChildren(wrap);
   }
 
   async function refreshWorld() {
     if (!stage.scene || typeof stage.scene.setWorld !== "function") return;
     const epoch = entry.epoch;
-    const [todosRes, eventsRes, remRes, peopleRes, mattersRes] = await Promise.all([
+    const [todosRes, eventsRes, remRes, peopleRes, orgsRes, mattersRes, notesRes, filesRes, foldersRes] = await Promise.all([
       entryApi("GET", "/v1/workspace/items?kind=todo").catch(() => ({ items: [] })),
       entryApi("GET", "/v1/workspace/items?kind=event").catch(() => ({ items: [] })),
       entryApi("GET", "/v1/reminders?status=active").catch(() => ({ items: [] })),
       entryApi("GET", "/v1/people").catch(() => ({ items: [] })),
+      entryApi("GET", "/v1/people/orgs").catch(() => ({ items: [] })),
       entryApi("GET", "/v1/workspace/items?kind=matter").catch(() => ({ items: [] })),
+      entryApi("GET", "/v1/people/notes?limit=6").catch(() => ({ items: [] })),
+      entryApi("GET", "/v1/workspace/items?kind=file").catch(() => ({ items: [] })),
+      entryApi("GET", "/v1/workspace/items?kind=folder").catch(() => ({ items: [] })),
     ]);
     if (isStale(epoch) || !stage.scene || typeof stage.scene.setWorld !== "function") return;
-    const todos = (todosRes.items || []).filter(i => i && !i.trashed_at).map(i => {
+    const rawTodos = (todosRes.items || []).filter(i => i && !i.trashed_at);
+    const rawEvents = (eventsRes.items || []).filter(i => i && !i.trashed_at);
+    const rawMatters = (mattersRes.items || []).filter(i => i && !i.trashed_at);
+    const rawFiles = (filesRes.items || []).filter(i => i && !i.trashed_at).sort((a, b) => (b.updated_at || 0) - (a.updated_at || 0));
+    const rawFolders = (foldersRes.items || []).filter(i => i && !i.trashed_at);
+    const rawNotes = (notesRes.items || []).filter(n => n && !n.trashed_at);
+    const rawPeople = (peopleRes.items || []).filter(p => p && !p.trashed_at);
+    const rawOrgs = (orgsRes.items || []).filter(o => o && !o.trashed_at);
+    const todos = rawTodos.map(i => {
       const d = i.data || {};
       const st = String(d.status || "").toLowerCase();
       return { id: i.id, title: d.title || d.text || d.summary || "待办", done: st === "done" || st === "completed" || st === "closed" };
     });
-    const events = (eventsRes.items || []).filter(i => i && !i.trashed_at).map(i => {
+    const events = rawEvents.map(i => {
       const d = i.data || {};
       return { id: i.id, title: d.title || d.name || "日程" };
     });
     const reminders = (remRes.items || []).filter(r => r && r.status !== "cancelled").map(r => ({ id: r.reminder_id || r.id, title: r.title || "提醒" }));
-    const booksCount = (peopleRes.items || []).length + (mattersRes.items || []).filter(i => i && !i.trashed_at).length;
+    const booksCount = rawPeople.length + rawMatters.length;
     stage.worldCounts = { openTodos: todos.filter(t => !t.done).length, activeReminders: reminders.length };
+    stage.worldData = {
+      notes: rawNotes,
+      todos: rawTodos,
+      events: rawEvents,
+      reminders,
+      people: rawPeople,
+      orgs: rawOrgs,
+      matters: rawMatters,
+      files: rawFiles,
+      folders: rawFolders,
+    };
     stage.scene.setWorld({ todos, events, reminders, booksCount });
+    renderMainHub();
   }
 
   async function loadRoster() {
@@ -312,6 +690,7 @@
     if (options.expand) setExpanded(true);
     describe(state);
     syncFocusedReply();
+    renderMainHub();
   }
 
   // 卡片每处理完一帧交过来；不是焦点的卡片不演（员工点「在小院里看」才切过来）。
@@ -333,9 +712,17 @@
       stage.scene.idle().then(() => { if (stage.played.get(state) === next) stage.scene.settle(model.poses(next, state.details())); });
     }
     stage.played.set(state, next);
-    if (model.finished(next) && (!before || !model.finished(before))) {
+    const isNowFinished = model.finished(next);
+    if (!isNowFinished && next.length > 0) {
+      // 任务执行中自动把宽屏主面板切到 DAG 编排图，与上方小院动画实时联动
+      stage.hubTab = "dag";
+    } else if (isNowFinished && (!before || !model.finished(before))) {
+      // 刚完成时切回「最新成果」并立刻刷新数据，让最终成果直接呈现在主界面
+      stage.hubTab = "outcome";
+      stage.hubNoteIdx = 0;
       refreshWorld().catch(() => {});
     }
+    renderMainHub();
     describe(state);
     handBack(state, next, details);
   }
@@ -384,7 +771,7 @@
   function isExpanded() { return stage.expanded; }
 
   globalThis.Courtyard = globalThis.Courtyard || {};
-  globalThis.Courtyard.stage = { mount, mounted, focus, update, select, restyle, setTheme, setReply, setStep, stepOf, refreshWorld, isFocus, hasFocus,
+  globalThis.Courtyard.stage = { mount, mounted, focus, update, select, restyle, setTheme, setReply, setStep, stepOf, refreshWorld, setHubTab, isFocus, hasFocus,
     setExpanded, isExpanded, recent: () => stage.log.slice(),
     // 测试用：交还焦点不等待
     immediate: on => { stage.immediate = Boolean(on); } };

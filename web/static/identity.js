@@ -128,9 +128,11 @@ async function connectIdentity({ automatic = false } = {}) {
   const epoch = conn.epoch;
   try {
     const me = await api("GET", "/v1/me");
-    // 租户启用极简入口的员工默认进新页；?classic=1（新页的「更多」）与管理员入口留在本页
-    if (me.entry === "minimal" && !adminMode && new URLSearchParams(location.search).get("classic") !== "1") {
-      location.replace("entry.html");
+    // 租户启用极简入口的员工默认进根路径小院；显式访问 /workspace/*、?classic=1 或管理后台 /admin 留在本页
+    const explicitWorkspace = (typeof isWorkspacePath === "function" && isWorkspacePath())
+      || new URLSearchParams(location.search).get("classic") === "1";
+    if (me.entry === "minimal" && !adminMode && !explicitWorkspace) {
+      location.replace("/");
       return false;
     }
     conn.me = me;
@@ -152,6 +154,8 @@ async function connectIdentity({ automatic = false } = {}) {
     if (epoch !== conn.epoch) return false;
     conn.ready = true;
     applyPermissions();
+    const initialTab = typeof tabFromLocation === "function" ? tabFromLocation() : "sessions";
+    if (initialTab !== "sessions" && typeof activateTab === "function") activateTab(initialTab, { syncUrl: false });
     if (typeof openConnections === "function" && new URLSearchParams(location.search).get("connections") === "1") openConnections().catch(fail);
     startReminders().catch(fail);
     if (typeof startWorkspace === "function") startWorkspace().catch(fail);

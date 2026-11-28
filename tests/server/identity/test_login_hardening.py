@@ -15,7 +15,7 @@ import pytest
 from server.domains.identity.limits import FEISHU_CALLS_PER_TENANT
 
 ZHANG = {"union_id": "on_zhang", "open_id": "ou_zhang", "name": "张三"}
-LANDING = "/console/"
+LANDING = "/"
 
 
 def person(index: int) -> dict[str, str]:

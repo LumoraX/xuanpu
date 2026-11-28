@@ -54,7 +54,7 @@ async def test_login_uses_real_identity_exchange_and_keeps_usr(r3_http,r3_world)
         state=parse_qs(urlsplit(response.headers['location']).query)['state'][0]
         response=await r3_http['alice'].get('/v1/auth/wecom/callback?state='+state+'&code=code-a')
         assert response.status_code==302,response.text
-        assert response.headers['location']=='/console/'
+        assert response.headers['location']=='/'
         me=await r3_http['alice'].get('/v1/me')
         assert me.json()['user_id']=='usr_alice'
         assert me.json()['display_name']=='同名员工'

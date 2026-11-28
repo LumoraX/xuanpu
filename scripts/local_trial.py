@@ -301,7 +301,7 @@ async def up(args: argparse.Namespace, directory: Path) -> None:
 def show_addresses(directory: Path, port: int) -> None:
     """交付可访问地址与凭据位置，从不输出凭据值。"""
     base = f'http://127.0.0.1:{port}'
-    print(f'控制台：{base}/console/\n飞书回调：{base}/v1/auth/feishu/callback\n事件地址：{base}/v1/identity/feishu/events/acme\n管理员凭据文件：{directory / "credentials.json"}')
+    print(f'控制台：{base}/\n完整工作台：{base}/workspace\n管理后台：{base}/admin\n飞书回调：{base}/v1/auth/feishu/callback\n事件地址：{base}/v1/identity/feishu/events/acme\n管理员凭据文件：{directory / "credentials.json"}')
 
 
 async def run(args: argparse.Namespace, directory: Path) -> None:

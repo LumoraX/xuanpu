@@ -32,14 +32,14 @@ def wecom_router(platform: Platform) -> APIRouter:
 
     @router.get('/v1/auth/wecom/start')
     async def start(tenant: str=Query(max_length=63),connection: str=Query(max_length=100),
-                    return_to: str=Query(default='/console/',max_length=2048)) -> RedirectResponse:
+                    return_to: str=Query(default='/',max_length=2048)) -> RedirectResponse:
         """预配员工的企业微信客户端授权入口。"""
         return await begin(tenant,connection,return_to)
 
     @router.post('/v1/me/connections/{cid}/binding/start')
     async def bind_start(cid: str,who: Caller) -> JSONResponse:
         """当前员工本人确认链接自己的企微身份。"""
-        outcome=await platform.wecom_login.start(who.require_tenant(),cid,'/console/',who=who)
+        outcome=await platform.wecom_login.start(who.require_tenant(),cid,'/',who=who)
         response=JSONResponse({'authorization_url':outcome['url']},headers={'Cache-Control':'no-store'})
         response.set_cookie(cookie_name,outcome['cookie'],max_age=300,path='/',secure=secure,httponly=True,samesite='lax')
         return response

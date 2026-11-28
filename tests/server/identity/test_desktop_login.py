@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     import httpx
 
 ZHANG = {"union_id": "on_zhang", "open_id": "ou_zhang", "name": "张三"}
-LANDING = "/console/"
+LANDING = "/"
 STATUS = "/v1/auth/feishu/desktop/status"
 REDEEM = "/v1/auth/feishu/desktop/redeem"
 CONFIRM = "/v1/auth/feishu/desktop/confirm"

@@ -85,7 +85,7 @@ uv run xuanpu pack examples/support-desk -o support-desk.zip
 | 平台服务（管家、编排、执行追踪、运行时、控制面） | `xuanpu-server` | 可用；R5 功能按租户开启 |
 | 命令行 | `xuanpu-cli` | 可用 |
 | Python 客户端 | `xuanpu-sdk-py` | 可用（含管家、待处理项、执行追踪与概览接口） |
-| 控制台 | `xuanpu-console` | 可用：极简入口 `/console/entry.html` 与「更多」功能页 |
+| 控制台 | `xuanpu-console` | 可用：小院入口 `/`、完整工作台 `/workspace/*` 与管理后台 `/admin`（兼容旧 `/console/*` 重定向） |
 | macOS 桌面客户端 | `xuanpu-desktop` | Apple Silicon；首次打开填写服务器地址；[安装与边界](docs/guides/desktop-client.md) |
 | MCP 网关 | — | 暂缓（ADR 0006）；部署在别处的 MCP server 经 `transport: remote` 直连（ADR 0013） |
 | JavaScript 客户端 | `xuanpu-sdk-js` | 未开始 |

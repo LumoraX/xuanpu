@@ -102,7 +102,7 @@ function handoffActions(row, record, path, reload) {
   }
   if (HANDOFF_NATIVE.some(a => actions.has(a))) {
     const link = el("a", "转交、补充资料或提交成果（需要选择文件）请在「更多」里完成");
-    link.href = "index.html?classic=1#functions";
+    link.href = "/workspace/functions";
     row.appendChild(link);
   }
 }

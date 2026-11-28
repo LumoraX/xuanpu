@@ -81,7 +81,7 @@ class ImportCommitBody(StrictModel):
 class GoogleConnectStartBody(StrictModel):
     """发起 Google 账号关联请求体。"""
 
-    return_to: str = Field(default="/console/entry.html", max_length=2048)
+    return_to: str = Field(default="/", max_length=2048)
 
 
 class GooglePreviewBody(StrictModel):
@@ -176,7 +176,7 @@ def people_router(platform: Platform) -> APIRouter:
         who: Caller, body: GoogleConnectStartBody | None = None
     ) -> JSONResponse:
         """发起本人浏览器 Google OAuth2 + PKCE 授权，并种下五分钟一次性绑定 Cookie。"""
-        target = body.return_to if body is not None else "/console/entry.html"
+        target = body.return_to if body is not None else "/"
         outcome = await google.start_connect(who, return_to=target)
         response = JSONResponse(
             {"authorization_url": outcome["authorization_url"]},

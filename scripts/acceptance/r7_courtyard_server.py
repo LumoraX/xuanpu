@@ -148,8 +148,9 @@ async def serve(args: argparse.Namespace) -> None:
                     print(f"""
 ==================== 小院试用服务已就绪 ====================
 模型        {env['LLM_BOOTSTRAP_MODEL']}
-员工入口    {origin}/console/
-管理入口    {origin}/console/index.html?admin=1
+员工入口    {origin}/
+工作台入口  {origin}/workspace
+管理入口    {origin}/admin
 租户        acme
 员工账号    {args.username} / {password}{"" if compliant else "（仅本机试用）"}
 管理员账号  admin / admin（可在顶部「密钥」页配置 amap-key）

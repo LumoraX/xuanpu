@@ -392,23 +392,55 @@ async def test_unexpected_error_does_not_leak_details(
 
 
 async def test_console_is_served_when_configured(world: Any, tmp_path: Any) -> None:
-    """给了静态目录就挂在 /console/，不给就没有。"""
+    """给了静态目录就注册干净前端路由（/、/workspace/*、/admin/*、/assets/*）与旧 /console/* 重定向，不给就没有。"""
     console = tmp_path / "console"
     console.mkdir()
+    (console / "entry.html").write_text("<title>xuanpu 小院</title>")
     (console / "index.html").write_text("<title>xuanpu 控制台</title>")
     (console / "app.js").write_text("console.log(1)")
     with_console = httpx.ASGITransport(app=create_app(world.platform, console_dir=console))
     async with httpx.AsyncClient(transport=with_console, base_url="http://xuanpu") as http:
-        page = await http.get("/console/")
-        assert page.status_code == 200
-        assert "xuanpu 控制台" in page.text
-        assert page.headers["x-frame-options"] == "DENY"
+        root = await http.get("/")
+        assert root.status_code == 200
+        assert "xuanpu 小院" in root.text
+        assert root.headers["x-frame-options"] == "DENY"
+        assert root.headers["cache-control"] == "no-cache"
+
+        for clean_path in ("/workspace", "/workspace/functions", "/workspace/marketplace", "/admin", "/admin/users"):
+            page = await http.get(clean_path)
+            assert page.status_code == 200, clean_path
+            assert "xuanpu 控制台" in page.text
+            assert page.headers["x-frame-options"] == "DENY"
+
+        assert (await http.get("/workspace/not-a-tab")).status_code == 404
+        assert (await http.get("/admin/not-a-tab")).status_code == 404
+
+        asset = await http.get("/assets/app.js?v=1234567890abcdef")
+        assert asset.status_code == 200
+        assert asset.headers["x-frame-options"] == "DENY"
+        assert "immutable" in asset.headers["cache-control"]
+        assert (await http.get("/assets/index.html")).status_code == 404
+        assert (await http.get("/assets/../xuanpu.yaml")).status_code in (400, 404)
+
+        # 旧版 /console/* 与 *.html 路由均 307 重定向到干净路由（保留无关查询参数）
+        r_console = await http.get("/console/?tenant=acme")
+        assert r_console.status_code == 307 and r_console.headers["location"] == "/?tenant=acme"
+        r_entry = await http.get("/console/entry.html?tenant=acme")
+        assert r_entry.status_code == 307 and r_entry.headers["location"] == "/?tenant=acme"
+        r_classic = await http.get("/console/index.html?classic=1&tenant=acme")
+        assert r_classic.status_code == 307 and r_classic.headers["location"] == "/workspace?tenant=acme"
+        r_admin = await http.get("/console/?admin=1&tenant=acme")
+        assert r_admin.status_code == 307 and r_admin.headers["location"] == "/admin?tenant=acme"
+        r_tab = await http.get("/console/marketplace")
+        assert r_tab.status_code == 307 and r_tab.headers["location"] == "/workspace/marketplace"
         assert (await http.get("/console/app.js")).status_code == 200
         assert (await http.get("/console/../xuanpu.yaml")).status_code in (400, 404)
         # 控制台不需要凭据，但接口仍然需要
         assert (await http.get("/v1/sessions")).status_code == 401
     without = httpx.ASGITransport(app=create_app(world.platform))
     async with httpx.AsyncClient(transport=without, base_url="http://xuanpu") as http:
+        assert (await http.get("/")).status_code == 404
+        assert (await http.get("/workspace")).status_code == 404
         assert (await http.get("/console/")).status_code == 404
 
 
