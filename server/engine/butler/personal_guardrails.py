@@ -178,10 +178,135 @@ async def undo_people_unmerge(
         return 0, 1
 
 
+def build_note_file_details(saved: dict[str, Any], name: str, mime: str, size: int, text: str) -> dict[str, Any]:
+    """为 ``save_note_file`` 构造成果展示卡片的文档预览与元数据明细。"""
+    return {
+        "item_id": saved["id"],
+        "name": name,
+        "mime_type": mime,
+        "size": size,
+        "matter_id": saved["data"].get("matter_id"),
+        "preview": text[:1600],
+    }
+
+
+def build_classify_details(item_id: str, res: dict[str, Any]) -> dict[str, Any]:
+    """为 ``classify_file`` 构造归类目录、标签与知识库状态明细。"""
+    cls_info = res["classification"]
+    return {
+        "item_id": item_id,
+        "name": res["filename"],
+        "category_name": cls_info["category_name"],
+        "folder_name": cls_info["folder_name"],
+        "tags": list(cls_info.get("suggested_tags") or ()),
+        "knowledge_indexed": bool(res.get("knowledge_indexed")),
+        "matter_id": res["file"]["data"].get("matter_id"),
+    }
+
+
+def build_bundle_outcome_details(result: dict[str, Any]) -> dict[str, Any]:
+    """为 ``capture_bundle`` 构造前端一次性成果展示所需的精简结构化明细。"""
+    rec = result.get("record")
+    record_view: dict[str, Any] | None = None
+    if isinstance(rec, dict):
+        record_view = {
+            "id": rec.get("id"),
+            "record_kind": rec.get("record_kind") or "note",
+            "title": str(rec.get("title") or ""),
+            "location": str(rec.get("location") or ""),
+            "occurred_at": rec.get("occurred_at"),
+            "summary": str(rec.get("summary") or "")[:600],
+            "decisions": [str(x) for x in (rec.get("decisions") or ())[:12]],
+            "open_questions": [str(x) for x in (rec.get("open_questions") or ())[:12]],
+            "attachment_file_ids": [str(x) for x in (rec.get("attachment_file_ids") or ())[:10]],
+        }
+    return {
+        "record": record_view,
+        "orgs": [{"id": o["id"], "name": o["name"]} for o in (result.get("orgs") or ())[:12]],
+        "persons": [
+            {"id": p["id"], "name": p["name"], "organization": str(p.get("organization") or "")}
+            for p in (result.get("persons") or ())[:16]
+        ],
+        "matters": [
+            {"id": m["id"], "title": str(m.get("data", {}).get("title") or "")}
+            for m in (result.get("matters") or ())[:8]
+        ],
+        "todos": [
+            {
+                "id": t["id"],
+                "title": str(t.get("data", {}).get("title") or ""),
+                "due_at": t.get("data", {}).get("due_at"),
+                "status": str(t.get("data", {}).get("status") or "open"),
+            }
+            for t in (result.get("todos") or ())[:16]
+        ],
+        "events": [
+            {
+                "id": e["id"],
+                "title": str(e.get("data", {}).get("title") or ""),
+                "start_at": e.get("data", {}).get("start_at"),
+                "end_at": e.get("data", {}).get("end_at"),
+            }
+            for e in (result.get("events") or ())[:10]
+        ],
+        "reminders": [
+            {
+                "id": r.get("reminder_id"),
+                "title": str(r.get("title") or ""),
+                "due_at": r.get("due_at"),
+            }
+            for r in (result.get("reminders") or ())[:10]
+        ],
+        "relations_count": len(result.get("relations") or ()),
+    }
+
+
+def attach_turn_materials_to_bundle(
+    normalized: dict[str, Any], turn: ButlerTurn,
+) -> dict[str, Any]:
+    """将本轮员工附带的 ``materials`` 自动补齐到 ``record.attachment_file_ids``，避免模型漏传导致原件断链。"""
+    if not turn.materials:
+        return normalized
+    rec = normalized.get("record")
+    if not isinstance(rec, dict):
+        return normalized
+    existing = [str(fid).strip() for fid in (rec.get("attachment_file_ids") or ()) if str(fid).strip()]
+    merged = list(dict.fromkeys([*existing, *(m.item_id for m in turn.materials)]))[:10]
+    return {**normalized, "record": {**rec, "attachment_file_ids": merged}}
+
+
+async def bind_bundle_attachment_matters(
+    platform: Platform, who: Principal, result: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """若 ``capture_bundle`` 落库了原始记录且关联了事项，则将未绑定事项的附件文件同步绑定，并返回撤回快照。"""
+    rec = result.get("record")
+    if not isinstance(rec, dict):
+        return []
+    file_ids = [str(fid) for fid in (rec.get("attachment_file_ids") or ()) if str(fid).strip()]
+    matter_ids = rec.get("matter_ids")
+    matter_id = rec.get("matter_id") or (matter_ids[0] if isinstance(matter_ids, list) and matter_ids else None)
+    if not file_ids or not isinstance(matter_id, str) or not matter_id:
+        return []
+    prev_files: list[dict[str, Any]] = []
+    for fid in file_ids:
+        try:
+            item = await platform.workspace.get(who, fid)
+            if item["kind"] != "file" or item.get("trashed_at") is not None:
+                continue
+            if item["data"].get("matter_id") is not None:
+                continue
+            prev_data = {k: v for k, v in item["data"].items() if k in ("name", "parent_id", "matter_id", "tags")}
+            await platform.workspace.update(who, fid, {"matter_id": matter_id}, int(item["version"]))
+            prev_files.append({"item_id": fid, "prev_data": prev_data})
+        except (NotFoundError, ConflictError):
+            continue
+    return prev_files
+
+
 async def undo_bundle_profile_updates(
     platform: Platform, who: Principal, undo: dict[str, Any],
 ) -> tuple[int, int]:
-    """还原 ``capture_bundle`` 对既有公司/人物档案的合并更新快照，补齐完整真撤回。"""
+    """还原 ``capture_bundle`` 对既有公司/人物档案及附件元数据的合并更新快照，补齐完整真撤回。"""
     undone = 0
     skipped = 0
     for snap in undo.get("prev_orgs") or []:
@@ -198,6 +323,17 @@ async def undo_bundle_profile_updates(
             cur = (await platform.people.get_person(who, pid))["person"]
             await platform.people.update_person(who, pid, dict(snap["profile"]), int(cur["version"]))
             undone += 1
+        except (NotFoundError, ConflictError, KeyError):
+            skipped += 1
+    for snap in undo.get("prev_files") or []:
+        try:
+            fid = str(snap["item_id"])
+            cur_f = await platform.workspace.get(who, fid)
+            if cur_f.get("trashed_at") is None:
+                await platform.workspace.update(who, fid, dict(snap["prev_data"]), int(cur_f["version"]))
+                undone += 1
+            else:
+                skipped += 1
         except (NotFoundError, ConflictError, KeyError):
             skipped += 1
     return undone, skipped

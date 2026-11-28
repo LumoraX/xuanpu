@@ -273,7 +273,60 @@ _TOOL_STEP_LABELS = {
     "check_dispatch": "正在查看匠人进展…",
     "check_group": "正在查看编组进展…",
     "answer_pending": "正在把你的答复转给匠人…",
+    "update_task_board": "正在更新执行编排任务板…",
+    "diagnose_trace": "正在排查跨节点执行记录…",
+    "forge_artisan": "正在操作造匠工作坊…",
 }
+
+_READ_SUB_LABELS = {
+    "file_content": "正在精读上传文档正文…",
+    "file_outline": "正在扫描长文档章节骨架…",
+    "file_search": "正在文档内检索关键段落…",
+    "people_search": "正在检索已有联系人档案…",
+    "orgs_search": "正在检索已有公司组织档案…",
+    "matters": "正在检索关联项目事项…",
+    "knowledge": "正在检索个人知识库…",
+    "hybrid_recall": "正在进行图谱混合记忆召回…",
+}
+
+_ACT_SUB_LABELS = {
+    "capture_bundle": "正在拆解落库会议记录、人物关系与待办…",
+    "save_note_file": "正在生成并保存正式 Markdown 纪要文档…",
+    "append_personal_file": "正在增量续写长文档章节…",
+    "patch_personal_file": "正在精准局部修订文档…",
+    "classify_file": "正在自动业务归类、归档目录并同步知识库…",
+    "create_todo": "正在创建待办事项…",
+    "create_event": "正在安排日程并检查冲突…",
+    "create_reminder": "正在设置提醒…",
+}
+
+
+def _describe_tool_step(tool_name: str, data: dict[str, Any]) -> str:
+    """结合工具名与入参子动作，生成面向用户的清晰中文执行步骤说明。"""
+    raw_args = data.get("arguments")
+    parsed: dict[str, Any] = {}
+    if isinstance(raw_args, dict):
+        parsed = raw_args
+    elif isinstance(raw_args, str) and raw_args.strip().startswith("{"):
+        import json as _json
+
+        try:
+            obj = _json.loads(raw_args)
+            if isinstance(obj, dict):
+                parsed = obj
+        except ValueError:
+            parsed = {}
+    if tool_name == "read_personal":
+        sub = str(parsed.get("kind") or "")
+        if sub in _READ_SUB_LABELS:
+            return _READ_SUB_LABELS[sub]
+    if tool_name == "act_personal":
+        sub = str(parsed.get("action") or "")
+        if sub in _ACT_SUB_LABELS:
+            return _ACT_SUB_LABELS[sub]
+    if tool_name == "dispatch_artisan" and parsed.get("package"):
+        return f"正在派发任务给匠人（{parsed['package']}）…"
+    return _TOOL_STEP_LABELS.get(tool_name, "正在调用内置工具处理…")
 
 
 async def _read_reply(
@@ -303,7 +356,7 @@ async def _read_reply(
                         await writer.append(kind="plan", payload={"text": planned}, ts=ts)
                 text.clear()
             tool_name = str(event.msg.data.get("name", ""))
-            turn.note_step(_TOOL_STEP_LABELS.get(tool_name, "正在调用内置工具处理…"))
+            turn.note_step(_describe_tool_step(tool_name, event.msg.data))
             if writer is not None:
                 await writer.append(kind="tool_call_started", payload=dict(event.msg.data), ts=ts)
         elif kind == "tool_call_completed":

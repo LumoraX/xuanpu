@@ -308,8 +308,10 @@
     skin(look) {
       this.look = look;
       this.skinNode.innerHTML = art().charMarkup(look);
-      this.tag.textContent = look.name;
-      this.g.setAttribute("aria-label", look.name);
+      const fullName = String(look.name || "");
+      const compact = fullName.length > 6 ? fullName.replace(/^通用/, "").slice(0, 6) + "…" : fullName;
+      this.tag.textContent = compact;
+      this.g.setAttribute("aria-label", fullName);
       this.place();
     }
     place() {

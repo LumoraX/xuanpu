@@ -21,7 +21,7 @@
 
 只有四样：概览、对话、提示、输入；页脚是「更多 · 通知 · 退出」。「更多」进入功能页（`index.html?classic=1`），新页默认不加载功能页的脚本。
 
-- **对话**：`POST /v1/assistant/messages`（每次新请求标识 `web-<uuid>`）；支持顶栏「自主办理：开/关」一键切换本人设置 `auto_execute_personal`，以及输入框「附件」上传个人工作台文件（`POST /v1/workspace/files`）并随 `input_files` 交由管家自动读取整理。回执与主对话历史里的助手消息按 `metadata.route` 渲染卡片（含「助理已办好」自主办理回执卡与一键「撤回」按钮，调用 `/v1/assistant/actions/{request_id}/{action_id}/undo`），按 `metadata.butler.trace_id` 渲染进展卡。管家 503 时原话回到输入框，提示位置显示系统状态。
+- **对话**：`POST /v1/assistant/messages`（每次新请求标识 `web-<uuid>`）；支持顶栏「自主办理：开/关」一键切换本人设置 `auto_execute_personal`，以及输入框「附件」上传个人工作台文件（`POST /v1/workspace/files`）并随 `input_files` 交由管家自动读取整理。待发输入区与对话气泡（含刷新后由 `GET /v1/workspace/messages` 恢复的历史消息）里的附件均渲染为可交互条（`entry-attachments.js`）：点击文件名可在页内安全预览（支持 Markdown 排版/原文切换、纯文本、图片、PDF 及二进制下载兜底），点击「下载」直接经 `/v1/workspace/files/{id}/content` 下载原件。回执与主对话历史里的助手消息按 `metadata.route` 渲染卡片（含「助理已办好」自主办理回执卡与一键「撤回」按钮，调用 `/v1/assistant/actions/{request_id}/{action_id}/undo`），按 `metadata.butler.trace_id` 渲染进展卡。管家 503 时原话回到输入框，提示位置显示系统状态。
 - **卡片**调用原模块接口、原幂等键与版本号：草稿确认卡（`/v1/assistant/proposals`）、列表卡（提醒、待办、日程、事项、文件）、交办工作状态卡、匠人提问答复卡、通知卡；业务跟进、执行安排、企业连接（`module-cards.js`）与共享事项、工作交接、组织审批（`collab-cards.js`）的列表与确认卡。必须本人选择或确认的动作（授权同意、审批决定、交接对象与资料版本、跟进时间）都由本人在卡片里点击，模型不代做；同一张卡重试复用冻结的请求。需要原生页面的少数动作留在「更多」：企业微信绑定（跳转官方授权页）、交接的转交与补充资料、提交与交付成果、下载核验固定成果。
 - **进展卡**：一条 trace 一张，订阅 `/v1/traces/{id}/events`；记录不完整时标注；刷新后由历史重建并重新订阅（最近 3 张自动订阅）。浏览器支持 SVG 时是「小院」（R7，见下节），否则只显示执行树与瀑布。
 

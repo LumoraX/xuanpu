@@ -21,6 +21,11 @@ from server.domains.proactive.models import ActionInput
 from server.domains.reminders.models import ReminderInput
 from server.engine.butler.personal_guardrails import (
     assert_wake_personal_action_allowed,
+    attach_turn_materials_to_bundle,
+    bind_bundle_attachment_matters,
+    build_bundle_outcome_details,
+    build_classify_details,
+    build_note_file_details,
     detect_event_conflicts,
     merge_personal_people,
     trash_personal_item,
@@ -102,7 +107,7 @@ async def execute_personal_action(
         raw_bundle = args.get("bundle")
         if not isinstance(raw_bundle, dict):
             raise InvalidRequestError("capture_bundle 需要提供 bundle 对象")
-        normalized = _normalize_bundle_timestamps(raw_bundle, tz)
+        normalized = attach_turn_materials_to_bundle(_normalize_bundle_timestamps(raw_bundle, tz), turn)
         hydrated = await hydrate_bundle_updates(platform, who, normalized)
         validated = PeopleBundleInput.model_validate(hydrated).model_dump()
         # 对更新已有公司/人物自动安全合并既有字段并补全版本，同时留存修改前快照供一键真撤回
@@ -123,6 +128,7 @@ async def execute_personal_action(
                 if person.get("expected_version") is None:
                     person["expected_version"] = existing_p["version"]
         result = await platform.people.apply_bundle(who, validated, req_id)
+        prev_files = await bind_bundle_attachment_matters(platform, who, result)
         created_org_ids = [
             o["id"]
             for spec, o in zip(validated.get("orgs", []), result.get("orgs", []), strict=False)
@@ -165,10 +171,11 @@ async def execute_personal_action(
             "action": action,
             "title": "已自动整理归档",
             "summary": summary,
+            "details": build_bundle_outcome_details(result),
             "undoable": bool(
                 note_id or created_org_ids or created_person_ids or created_matter_ids
                 or created_todos or created_events or created_reminders
-                or prev_orgs or prev_persons
+                or prev_orgs or prev_persons or prev_files
             ),
             "undo": {
                 "kind": "bundle",
@@ -177,6 +184,7 @@ async def execute_personal_action(
                 "person_ids": created_person_ids,
                 "prev_orgs": prev_orgs,
                 "prev_persons": prev_persons,
+                "prev_files": prev_files,
                 "matter_ids": created_matter_ids,
                 "todo_ids": created_todos,
                 "event_ids": created_events,
@@ -497,6 +505,7 @@ async def execute_personal_action(
             "action": action,
             "title": "已保存整理文档",
             "summary": safe_name,
+            "details": build_note_file_details(saved, safe_name, mime, len(encoded), text),
             "undoable": True,
             "undo": {"kind": "workspace_trash", "item_id": saved["id"]},
         }
@@ -633,7 +642,7 @@ async def execute_personal_action(
         custom_rules = [CustomTaxonomyRule.model_validate(r.data) for r in rule_rows]
         res = await auto_file_workspace_document(
             platform, who, item_id, apply=apply_flag, index_knowledge=index_kb,
-            custom_rules=custom_rules, request_id=req_id,
+            matter_id=_opt_text(args.get("matter_id")), custom_rules=custom_rules, request_id=req_id,
         )
         if apply_flag:
             cls_info = res["classification"]
@@ -642,6 +651,7 @@ async def execute_personal_action(
                 "action": action,
                 "title": "已自动业务归类归档",
                 "summary": f"{res['filename']} → {cls_info['folder_name']}（{cls_info['category_name']}）",
+                "details": build_classify_details(item_id, res),
                 "undoable": True,
                 "undo": {"kind": "workspace_restore_data", "item_id": item_id, "prev_data": res["prev_data"]},
             }

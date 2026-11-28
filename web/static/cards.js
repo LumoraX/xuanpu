@@ -43,10 +43,204 @@ function renderRouteCards(route, options = {}) {
   if (route.handoff_draft || route.open_collaboration) appendCard(collaborationCard(route.handoff_draft, proposalId));
 }
 
-// 私人助理自主办理回执卡：展示已直接落库的动作清单，支持一键撤回并在刷新后恢复撤回态。
+function fmtOutcomeTime(ts) {
+  if (!ts) return "";
+  const d = new Date(Number(ts) * 1000);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fmtOutcomeDate(ts) {
+  if (!ts) return "";
+  const d = new Date(Number(ts) * 1000);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
+// 一次性最终成果可视化总览：把本轮落库的会议记录、核心结论、实体、待办/日程、正式文档与归档状态一屏展示。
+function buildOutcomeShowcase(actions) {
+  const bundleAct = actions.find((a) => a && a.action === "capture_bundle" && a.details);
+  const noteActs = actions.filter((a) => a && a.action === "save_note_file" && a.details);
+  const clsActs = actions.filter((a) => a && a.action === "classify_file" && a.details);
+  if (!bundleAct && !noteActs.length && !clsActs.length) return null;
+
+  const wrap = el("div", null, "outcome-showcase");
+  const details = bundleAct ? bundleAct.details : null;
+  const rec = details && details.record ? details.record : null;
+
+  // 合并文档与归类结果（按 item_id 聚合为一张份文档卡）
+  const filesMap = new Map();
+  for (const act of noteActs) {
+    const d = act.details;
+    filesMap.set(d.item_id, {
+      item_id: d.item_id,
+      name: d.name,
+      preview: d.preview || "",
+      size: d.size || 0,
+      isGenerated: true,
+      folder_name: null,
+      category_name: null,
+      tags: [],
+      knowledge_indexed: false,
+    });
+  }
+  for (const act of clsActs) {
+    const d = act.details;
+    const prev = filesMap.get(d.item_id) || {
+      item_id: d.item_id,
+      name: d.name,
+      preview: "",
+      size: 0,
+      isGenerated: false,
+    };
+    filesMap.set(d.item_id, {
+      ...prev,
+      folder_name: d.folder_name || prev.folder_name,
+      category_name: d.category_name || prev.category_name,
+      tags: Array.isArray(d.tags) ? d.tags : (prev.tags || []),
+      knowledge_indexed: Boolean(d.knowledge_indexed || prev.knowledge_indexed),
+    });
+  }
+  const files = [...filesMap.values()];
+
+  // 1. 头部总览条：标题 + 时间地点 + 成果统计 KPI 胶囊
+  const hero = el("div", null, "outcome-hero");
+  const kindMap = { meeting: "会议纪要", note: "随手记", card: "名片", call: "通话记录" };
+  const titleRow = el("div", null, "outcome-title-row");
+  titleRow.append(
+    el("span", (rec && kindMap[rec.record_kind]) || "成果交付", "outcome-kind-badge"),
+    el("strong", (rec && rec.title) || (files[0] && files[0].name) || "本轮整理成果", "outcome-title")
+  );
+  hero.appendChild(titleRow);
+  const metaParts = [];
+  if (rec && rec.occurred_at) metaParts.push("时间：" + fmtOutcomeTime(rec.occurred_at));
+  if (rec && rec.location) metaParts.push("地点：" + rec.location);
+  if (metaParts.length) hero.appendChild(el("div", metaParts.join(" · "), "outcome-meta"));
+
+  const metrics = el("div", null, "outcome-kpis");
+  if (details && details.orgs && details.orgs.length) metrics.appendChild(el("span", details.orgs.length + " 家公司", "outcome-kpi"));
+  if (details && details.persons && details.persons.length) metrics.appendChild(el("span", details.persons.length + " 位人物", "outcome-kpi"));
+  if (details && details.todos && details.todos.length) metrics.appendChild(el("span", details.todos.length + " 条待办", "outcome-kpi accent"));
+  if (details && details.events && details.events.length) metrics.appendChild(el("span", details.events.length + " 条日程", "outcome-kpi accent"));
+  if (files.length) metrics.appendChild(el("span", files.length + " 份归档文档", "outcome-kpi"));
+  if (files.some((f) => f.knowledge_indexed)) metrics.appendChild(el("span", "知识库已同步", "outcome-kpi ok"));
+  if (metrics.children.length) hero.appendChild(metrics);
+  wrap.appendChild(hero);
+
+  // 2. 摘要 + 核心结论 + 待确认
+  if (rec && (rec.summary || (rec.decisions && rec.decisions.length) || (rec.open_questions && rec.open_questions.length))) {
+    if (rec.summary) wrap.appendChild(el("p", rec.summary, "outcome-summary"));
+    const cols = el("div", null, "outcome-cols");
+    if (rec.decisions && rec.decisions.length) {
+      const box = el("div", null, "outcome-panel decisions");
+      box.appendChild(el("div", "核心结论（" + rec.decisions.length + "）", "outcome-panel-title"));
+      const ul = el("ul", null, "outcome-bullets");
+      for (const item of rec.decisions) ul.appendChild(el("li", item));
+      box.appendChild(ul);
+      cols.appendChild(box);
+    }
+    if (rec.open_questions && rec.open_questions.length) {
+      const box = el("div", null, "outcome-panel questions");
+      box.appendChild(el("div", "待确认项（" + rec.open_questions.length + "）", "outcome-panel-title"));
+      const ul = el("ul", null, "outcome-bullets");
+      for (const item of rec.open_questions) ul.appendChild(el("li", item));
+      box.appendChild(ul);
+      cols.appendChild(box);
+    }
+    if (cols.children.length) wrap.appendChild(cols);
+  }
+
+  // 3. 关联实体芯片栏（公司 / 人物 / 项目）
+  if (details && ((details.matters && details.matters.length) || (details.orgs && details.orgs.length) || (details.persons && details.persons.length))) {
+    const row = el("div", null, "outcome-entities");
+    const openShelf = typeof openBookshelfDrawer === "function" ? openBookshelfDrawer : (typeof openContactsDrawer === "function" ? openContactsDrawer : null);
+    for (const m of details.matters || []) {
+      const chip = button("项目 · " + m.title, () => openShelf && openShelf({ tab: "matters" }).catch(report), "outcome-chip matter");
+      row.appendChild(chip);
+    }
+    for (const o of details.orgs || []) {
+      const chip = button("公司 · " + o.name, () => openShelf && openShelf({ tab: "orgs" }).catch(report), "outcome-chip org");
+      row.appendChild(chip);
+    }
+    for (const p of details.persons || []) {
+      const label = p.organization ? `${p.name}（${p.organization}）` : p.name;
+      const chip = button("人脉 · " + label, () => openShelf && openShelf({ tab: "people" }).catch(report), "outcome-chip person");
+      row.appendChild(chip);
+    }
+    wrap.appendChild(row);
+  }
+
+  // 4. 待办与日程行动清单
+  if (details && ((details.todos && details.todos.length) || (details.events && details.events.length))) {
+    const sec = el("div", null, "outcome-panel todos");
+    const head = el("div", null, "outcome-panel-head");
+    head.appendChild(el("span", "行动清单与日程", "outcome-panel-title"));
+    if (typeof openBoardDrawer === "function") {
+      head.appendChild(button("打开看板", () => openBoardDrawer({ tab: "todos" }).catch(report), "outcome-mini-btn"));
+    }
+    sec.appendChild(head);
+    const ul = el("ul", null, "outcome-todo-list");
+    for (const ev of details.events || []) {
+      const li = el("li", null, "outcome-todo-item");
+      li.append(el("span", "日程", "outcome-tag event"), el("span", ev.title, "outcome-todo-text"));
+      if (ev.start_at) li.appendChild(el("span", fmtOutcomeTime(ev.start_at), "outcome-due"));
+      ul.appendChild(li);
+    }
+    for (const td of details.todos || []) {
+      const li = el("li", null, "outcome-todo-item");
+      li.append(el("span", "待办", "outcome-tag todo"), el("span", td.title, "outcome-todo-text"));
+      if (td.due_at) li.appendChild(el("span", "截止 " + fmtOutcomeDate(td.due_at), "outcome-due"));
+      ul.appendChild(li);
+    }
+    sec.appendChild(ul);
+    wrap.appendChild(sec);
+  }
+
+  // 5. 沉淀文档与归档成果（含直接 Markdown 预览 + 右侧分屏一键展开全文）
+  if (files.length) {
+    const sec = el("div", null, "outcome-panel files");
+    sec.appendChild(el("div", "文档沉淀与业务归档（" + files.length + "）", "outcome-panel-title"));
+    for (const f of files) {
+      const cardRow = el("div", null, "outcome-file-card");
+      const top = el("div", null, "outcome-file-head");
+      const nameWrap = el("div", null, "outcome-file-meta");
+      nameWrap.appendChild(el("strong", f.name, "outcome-file-name"));
+      const badges = el("div", null, "outcome-file-badges");
+      if (f.folder_name) badges.appendChild(el("span", f.folder_name, "outcome-folder-pill"));
+      for (const tg of (f.tags || []).slice(0, 4)) badges.appendChild(el("span", "#" + tg, "outcome-tag-pill"));
+      if (f.knowledge_indexed) badges.appendChild(el("span", "已入知识库", "outcome-kb-pill"));
+      if (badges.children.length) nameWrap.appendChild(badges);
+      top.appendChild(nameWrap);
+      if (typeof openWorkspaceFilePreview === "function") {
+        top.appendChild(button("在工作台看全文", () => openWorkspaceFilePreview(f.item_id, f.name, f.preview).catch(report), "primary outcome-mini-btn"));
+      }
+      cardRow.appendChild(top);
+      if (f.preview) {
+        const det = el("details", null, "outcome-doc-preview");
+        det.open = f.isGenerated;
+        det.appendChild(el("summary", f.isGenerated ? "正式会议纪要预览（点击收起/展开）" : "文档节选预览"));
+        const body = el("div", null, "outcome-doc-body");
+        if (typeof renderAssistantBubble === "function") renderAssistantBubble(body, f.preview);
+        else body.textContent = f.preview;
+        det.appendChild(body);
+        cardRow.appendChild(det);
+      }
+      sec.appendChild(cardRow);
+    }
+    wrap.appendChild(sec);
+  }
+
+  return wrap;
+}
+
+// 私人助理自主办理回执卡：先给一次性最终成果可视化总览，再附逐项动作清单与一键撤回。
 function executedActionsCard(actions, requestId, options = {}) {
   const reqId = String(requestId || "").replace(/:assistant$/, "");
   const node = card("助理已办好", "auto-actions-card");
+  const showcase = buildOutcomeShowcase(actions);
+  if (showcase) node.appendChild(showcase);
   const list = el("ul", null, "auto-actions-list");
   const controls = new Map();
   for (const item of actions) {

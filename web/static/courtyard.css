@@ -115,11 +115,12 @@
 .cy-reply-card.expanded .cy-reply-body { max-height: 300px; }
 .cy-stage-drawer { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 0; overflow-y: auto; }
 .cy-stage-drawer > .courtyard { margin-top: 0; }
-.progress-inline { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 10px;
-  border: 1px solid var(--line); border-radius: 999px; background: var(--card); font-size: 12.5px; color: var(--muted);
-  align-self: flex-start; max-width: 100%; }
+.progress-inline { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--card); font-size: 12.5px; color: var(--muted);
+  align-self: stretch; width: 100%; max-width: 100%; box-sizing: border-box; }
+.progress-inline-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
 .progress-inline .meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.progress-inline button { padding: 2px 10px; font-size: 12.5px; border-radius: 999px; flex: none; }
+.progress-inline-head button { padding: 2px 10px; font-size: 12px; border-radius: 999px; flex: none; }
 @media (min-width: 1100px) {
   body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
   .entry-main {

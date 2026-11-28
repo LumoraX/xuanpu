@@ -1184,8 +1184,11 @@ function buildFileDetailView(pane, file) {
   const actions = el("div", null, "ab-hero-actions");
   const dl = el("a", "下载原件", "ab-act-btn primary-soft");
   dl.href = "/v1/workspace/files/" + encodeURIComponent(file.id) + "/content";
-  dl.target = "_blank";
   dl.rel = "noopener noreferrer";
+  dl.setAttribute("download", d.name || "");
+  if (typeof openAttachmentViewer === "function") {
+    actions.append(button("预览内容", () => { openAttachmentViewer(file).catch(report); }, "ab-act-btn"));
+  }
   actions.append(
     dl,
     button("让管家总结", () => {

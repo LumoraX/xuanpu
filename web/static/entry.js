@@ -7,7 +7,7 @@ const entry = {
   epoch: 0, controller: new AbortController(), me: null, inflight: 0,
   cards: new Map(), cleanups: new Set(), seen: 0, shown: new Set(),
   location: null, locationState: "unknown", replies: new Map(), steps: new Map(), latestReply: "",
-  attachments: [], settings: null,
+  attachments: [], fileMeta: new Map(), fileMetaPending: new Map(), settings: null,
 };
 // 管家常在线（ADR 0020）：结果随时可能写进主对话（进行中的一轮结束、匠人回报），按游标补读
 const FOLLOW_MS = 5000;
@@ -31,8 +31,11 @@ function resetEntry() {
   entry.steps = new Map();
   entry.latestReply = "";
   entry.attachments = [];
+  entry.fileMeta = new Map();
+  entry.fileMetaPending = new Map();
   entry.settings = null;
   renderComposerFiles();
+  if (typeof closeAttachmentViewer === "function") closeAttachmentViewer();
   if (typeof closeContactsDrawer === "function") closeContactsDrawer(true);
   if (typeof closeBoardDrawer === "function") closeBoardDrawer(true);
   if (typeof closeWorkbenchDrawer === "function") closeWorkbenchDrawer();
@@ -259,10 +262,17 @@ function nearBottom() {
   return typeof list.scrollHeight !== "number" || list.scrollHeight - list.scrollTop - list.clientHeight < 160;
 }
 
-function append(role, text, extra) {
+function append(role, text, extra, options) {
   const near = nearBottom();
-  const node = el("div", role === "assistant" && !extra ? null : text, "msg " + role + (extra ? " " + extra : ""));
-  if (role === "assistant" && !extra && text) renderAssistantBubble(node, text);
+  const hasAttachments = options && Array.isArray(options.attachments) && options.attachments.length > 0;
+  const node = el("div", (role === "assistant" && !extra) || hasAttachments ? null : text, "msg " + role + (extra ? " " + extra : ""));
+  if (role === "assistant" && !extra && text) {
+    renderAssistantBubble(node, text);
+  } else if (hasAttachments) {
+    if (text) node.appendChild(el("div", text, "msg-user-text"));
+    if (typeof renderMessageAttachments === "function") renderMessageAttachments(node, options.attachments);
+    else node.appendChild(el("div", "[附件：" + options.attachments.map(f => (typeof f === "string" ? f : f.name || f.item_id)).join("、") + "]", "msg-attachments-fallback"));
+  }
   $("transcript").appendChild(node);
   stickBottom(near);
   return node;
@@ -300,6 +310,7 @@ async function connectEntry() {
     if (globalThis.Courtyard && Courtyard.stage) Courtyard.stage.mount($("stage"), { onSelect: (s, k) => Courtyard.card.select(s, k) });
     probeLocationPermission().catch(() => {});
     loadAutonomySetting(epoch).catch(() => {});
+    if (typeof syncLiveFocusPill === "function") syncLiveFocusPill(epoch).catch(() => {});
     if (globalThis.XuanpuPluginHost) XuanpuPluginHost.loadRemotePlugins(epoch).catch(() => {});
     // 历史与概览各自失败只提示，不当作未登录
     await Promise.all([loadHistory(epoch).catch(report), refreshOverview().catch(report), refreshTips()]);
@@ -336,7 +347,8 @@ function showMessage(message, options = {}) {
   const key = message.request_id || "";
   if (key && entry.shown.has(key)) return;
   if (key) entry.shown.add(key);
-  append(message.role === "user" ? "user" : "assistant", message.text);
+  const attachments = Array.isArray(message.attachments) && message.attachments.length ? message.attachments : null;
+  append(message.role === "user" ? "user" : "assistant", message.text, null, attachments ? { attachments } : undefined);
   const traceId = message.metadata && message.metadata.butler && message.metadata.butler.trace_id;
   if (message.role !== "user" && message.text) recordButlerReply(traceId || null, message.text, { streaming: false });
   renderMessageCards(message.metadata || {}, key, options);
@@ -421,10 +433,15 @@ function renderComposerFiles() {
   box.classList.remove("hidden");
   box.replaceChildren(...entry.attachments.map((file, idx) => {
     const chip = el("span", null, "composer-file-chip");
-    chip.append(
-      el("span", file.name),
-      button("×", () => { entry.attachments.splice(idx, 1); renderComposerFiles(); })
-    );
+    const nameBtn = button(file.name, () => {
+      if (typeof openAttachmentViewer === "function") openAttachmentViewer(file).catch(report);
+    }, "composer-file-view");
+    nameBtn.title = "点击查看附件内容";
+    const dl = typeof buildDownloadLink === "function" ? buildDownloadLink(file, "composer-file-dl", "下载") : null;
+    const removeBtn = button("×", () => { entry.attachments.splice(idx, 1); renderComposerFiles(); }, "composer-file-remove");
+    removeBtn.title = "移除附件";
+    if (dl) chip.append(nameBtn, dl, removeBtn);
+    else chip.append(nameBtn, removeBtn);
     return chip;
   }));
 }
@@ -449,11 +466,16 @@ async function uploadAttachmentFiles(fileList) {
     });
     const saved = await readJson(response, epoch);
     if (isStale(epoch)) return;
-    entry.attachments.push({
+    const meta = {
       item_id: saved.id,
       revision: (saved.data && saved.data.current_revision) || 1,
       name: (saved.data && saved.data.name) || file.name,
-    });
+      mime_type: (saved.data && saved.data.mime_type) || file.type || "",
+      size: (saved.data && typeof saved.data.size === "number") ? saved.data.size : (file.size || 0),
+    };
+    if (typeof attCacheMeta === "function") attCacheMeta(meta);
+    else if (entry.fileMeta) entry.fileMeta.set(meta.item_id, meta);
+    entry.attachments.push(meta);
     renderComposerFiles();
   }
   announce("附件已上传，发送消息即可让助理自动整理");
@@ -474,8 +496,7 @@ async function sendMessage(text) {
   entry.shown.add(id + ":user");
   entry.attachments = [];
   renderComposerFiles();
-  const display = attached.length ? cleanText + "\n[附件：" + attached.map(f => f.name).join("、") + "]" : cleanText;
-  append("user", display);
+  append("user", cleanText, null, attached.length ? { attachments: attached } : undefined);
   // 员工在对话里设置提醒时，趁当前发送手势顺便请求浏览器系统弹窗权限，避免到点时因未授权而无系统通知。
   if (REMINDER_HINT_RE.test(cleanText) &&
       typeof browserNotificationState === "function" && browserNotificationState() === "default" &&
@@ -593,6 +614,9 @@ function onStep(data, live) {
   live.steps.push(label);
   recordButlerStep(live.traceId, label);
   recordButlerReply(live.traceId, label, { streaming: true });
+  if (typeof updateLiveFocusPill === "function" && (!workbenchState.liveFocus || workbenchState.liveFocus.status !== "active")) {
+    updateLiveFocusPill({ status: "step", focus: label, trace_id: live.traceId || null });
+  }
   stickBottom(near);
 }
 
@@ -620,9 +644,26 @@ function onDelta(data, live) {
 
 function endBubble(live, text, extra) {
   if (!live.bubble) { append("assistant", text, extra); return; }
+  const savedSteps = Array.isArray(live.steps) ? live.steps.slice() : [];
+  const savedPlan = live.planBox ? live.planBox.textContent : "";
   live.bubble.className = "msg assistant" + (extra ? " " + extra : "");
-  if (!extra) renderAssistantBubble(live.bubble, text);
-  else live.bubble.textContent = text;
+  if (!extra) {
+    renderAssistantBubble(live.bubble, text);
+    // 保留本轮执行过程摘要为可展开折叠条，避免完成后规划与步骤瞬间消失
+    if (savedSteps.length || savedPlan) {
+      const recap = el("details", null, "live-trace-recap");
+      recap.appendChild(el("summary", "执行过程（" + Math.max(1, savedSteps.length) + " 步）"));
+      if (savedPlan) recap.appendChild(el("div", savedPlan, "live-plan"));
+      for (const st of savedSteps) {
+        const row = el("div", null, "live-step");
+        row.append(el("span", "✓"), el("span", st));
+        recap.appendChild(row);
+      }
+      live.bubble.insertBefore(recap, live.bubble.firstChild || null);
+    }
+  } else {
+    live.bubble.textContent = text;
+  }
 }
 
 // 回执到了：回复以回执为准（流里拼的只是过程），再出卡片。
@@ -650,6 +691,7 @@ function finishReply(id, reply, live) {
   recordButlerStep(traceId, "");
   recordButlerReply(traceId, finalText, { streaming: false });
   renderMessageCards({ route: reply, butler: traceId ? { trace_id: traceId } : null }, id);
+  if (typeof syncLiveFocusPill === "function") syncLiveFocusPill(entry.epoch).catch(() => {});
   refreshOverview().catch(report);
 }
 

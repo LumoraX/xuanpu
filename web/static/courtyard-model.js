@@ -15,6 +15,7 @@
     check_group: "我去问了问编组进展。", answer_pending: "我把你的答复转给匠人了。",
     cancel_dispatch: "我请匠人先停下。", cancel_group: "我请大家先停下。", ask_user: "匠人的问题我转给你了。",
     extend_turn: "这事要多花点时间，我把时限放宽了。", raise_budget: "这事比较大，我提高了这次的预算。",
+    update_task_board: "我更新了这次任务的编排进度。", diagnose_trace: "我排查了执行记录。", forge_artisan: "我在造匠工作坊里处理匠人。",
   };
   const BUTLER_TOOL_BUBBLES = {
     read_personal: "正在查询个人档案与工作台记录…",
@@ -33,11 +34,14 @@
     ask_user: "正在把问题转给你…",
     extend_turn: "正在放宽处理时限…",
     raise_budget: "正在调整本次预算…",
+    update_task_board: "正在同步执行编排任务板…",
+    diagnose_trace: "正在排查执行记录…",
+    forge_artisan: "正在造匠工作坊处理匠人…",
   };
   const THINKING_STEP = "正在理解你的请求…";
-  const BUTLER_PROPS = { list_artisans: "book", answer_artisan: "phone", rate_divergence: "magnifier", propose: "quill", act_personal: "quill", read_personal: "book", check_dispatch: "folder", check_group: "folder" };
+  const BUTLER_PROPS = { list_artisans: "book", answer_artisan: "phone", rate_divergence: "magnifier", propose: "quill", act_personal: "quill", read_personal: "book", check_dispatch: "folder", check_group: "folder", update_task_board: "sticky", diagnose_trace: "magnifier", forge_artisan: "wrench" };
   const BOARD_HINT_RE = /待办|日程|提醒|看板|todo|event|reminder|schedule/i;
-  const ARCHIVE_HINT_RE = /派工|编组|审批|交接|报销|财务|dispatch|group|approval/i;
+  const ARCHIVE_HINT_RE = /派工|编组|审批|交接|报销|财务|文件|纪要|归类|文档|dispatch|group|approval|file|classify|save_note/i;
 
   // 实体工具映射：无论是管家还是匠人调用工具，都对应到「去哪个工位 + 从架上拿起什么实体道具」。
   function butlerToolTarget(name, hint = "") {

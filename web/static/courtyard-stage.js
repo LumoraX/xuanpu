@@ -285,6 +285,12 @@
     }
   }
 
+  // 保留常驻待命匠人（如文档分析、联网调研匠人）在各自垫子上，不因本轮未派工而消失。
+  function castFor(spans) {
+    const active = C().model.artisans(spans || []);
+    return [...new Set([...stage.roster, ...active])];
+  }
+
   // 让小院演这件事：先把画面对齐到它此刻的事实，之后的帧再出动画。已在焦点时不重复 settle，避免打断正在走的动画。
   function focus(state, options = {}) {
     if (!mounted() || !state) return;
@@ -298,7 +304,7 @@
     note({ focus: true, spans: (state.prev || []).length });
     stage.focus = state;
     const spans = state.prev || [];
-    stage.scene.cast(C().model.artisans(spans));
+    stage.scene.cast(castFor(spans));
     stage.scene.settle(C().model.poses(spans, state.details()));
     stage.played.set(state, spans);
     stage.scene.select(state.sel);
@@ -315,7 +321,7 @@
     if (stage.focus !== state) return;
     attachPanel(state);
     const model = C().model, before = stage.played.get(state);
-    stage.scene.cast(model.artisans(next));
+    stage.scene.cast(castFor(next));
     if (!before || frame === "snapshot" || reducedMotion()) {
       note({ frame, settle: true, spans: next.length });
       stage.scene.settle(model.poses(next, details));

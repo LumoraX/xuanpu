@@ -17,6 +17,7 @@ from server.domains.knowledge.service import SearchInput
 from server.domains.workspace.document_io import (
     DEFAULT_WINDOW_CHARS,
     DEFAULT_WINDOW_LINES,
+    MAX_WINDOW_LINES,
     inspect_document_outline,
     read_text_window,
     search_document,
@@ -28,7 +29,7 @@ if TYPE_CHECKING:
     from server.platform import Platform
 
 _LIST_MAX = 25
-_FILE_PREVIEW_CHARS = 12_000
+_FILE_PREVIEW_CHARS = 24_000
 
 
 def parse_timestamp(value: Any, timezone: str) -> float | None:
@@ -170,22 +171,33 @@ async def read_extended_personal(
             if type(max_chars_raw) is int and max_chars_raw >= 500
             else (DEFAULT_WINDOW_CHARS if (start_line or end_line or char_offset is not None) else _FILE_PREVIEW_CHARS)
         )
+        # 未显式指定 end_line 时放宽至 MAX_WINDOW_LINES，避免传入 start_line=1 读取语音转写等短行文档时在 250 行处过早截断
+        max_lines = MAX_WINDOW_LINES if end_line is None else DEFAULT_WINDOW_LINES
         win = read_text_window(
             text,
             start_line=start_line,
             end_line=end_line,
             char_offset=char_offset,
-            max_lines=DEFAULT_WINDOW_LINES,
+            max_lines=max_lines,
             max_chars=max_chars,
             with_line_numbers=bool(args.get("line_numbers")),
         )
-        return {
+        out_payload: dict[str, Any] = {
             "item_id": item_id.strip(),
             "name": name,
             "mime_type": mime,
             "size": len(raw),
             **win,
         }
+        if win.get("has_more"):
+            next_line = win.get("next_start_line")
+            next_off = win.get("next_char_offset")
+            cont = f"start_line={next_line}" if next_line is not None else f"char_offset={next_off}"
+            out_payload["next_read_hint"] = (
+                f"文档尚未读完（当前第 {win['start_line']}-{win['end_line']}/{win['total_lines']} 行），"
+                f"请继续调用 read_personal(kind='file_content', item_id='{item_id.strip()}', {cont}) 读完全文后再整理。"
+            )
+        return out_payload
     if kind == "knowledge":
         return await _read_knowledge(platform, who, search=search, limit=min(limit, 10))
     if kind == "hybrid_recall":

@@ -79,7 +79,7 @@ ACT_PERSONAL_DESCRIPTION = (
     "- save_note_file：把你整理好的会议纪要、项目全景简报、周报、方案或长文首章保存为本人工作台 Markdown 文件（传 name/content，可选 matter_id/parent_id）；\n"
     "- append_personal_file：向已有个人 UTF-8/Markdown 文档增量追加下一章节（传 item_id、content 及可选 separator/expected_version），用于分批协作编写数十万字/14MB 级超长文章，每次追加均生成不可变版本并支持一键撤回；\n"
     "- patch_personal_file：对本人已有 UTF-8 文本/Markdown 文件做精准局部编辑（支持 edits=[{target, replacement}] 唯一锚定，或传 start_line/end_line/content 按行区间替换，均支持 14MB+ 快速 Unified Diff 与一键撤回）；\n"
-    "- classify_file：自动识别工作台文件的企业业务类别（合同法务/财务报表/会议纪要/方案标书/技术研发/人事制度/客户商机/项目运营/行业研报），自动归入对应业务目录、绑定活跃事项、打标签并可选入知识库（传 item_id，可选 apply/index_knowledge，支持一键撤回）。"
+    "- classify_file：自动识别工作台文件的企业业务类别（合同法务/财务报表/会议纪要/方案标书/技术研发/人事制度/客户商机/项目运营/行业研报），自动归入对应业务目录、绑定活跃事项、打标签并可选入知识库（传 item_id，可选 matter_id/apply/index_knowledge，支持一键撤回）。"
 )
 
 

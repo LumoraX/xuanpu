@@ -54,8 +54,16 @@ BUILTIN_CATEGORIES: tuple[BusinessCategorySpec, ...] = (
         display_name="会议纪要",
         folder_name="03-会议纪要",
         default_tags=("会议纪要",),
-        title_keywords=("会议纪要", "纪要", "周会", "例会", "复盘会", "评审会", "晨会", "访谈记录", "minutes", "meeting"),
-        body_keywords=("参会人", "主持人", "会议时间", "会议议题", "会议决议", "待办事项", "行动项", "action items", "下一步计划", "纪要整理"),
+        title_keywords=(
+            "会议纪要", "纪要", "周会", "例会", "复盘会", "评审会", "晨会",
+            "访谈记录", "会议记录", "交流记录", "沟通记录", "录音原文", "录音转写", "语音转写",
+            "minutes", "meeting", "transcript",
+        ),
+        body_keywords=(
+            "参会人", "主持人", "会议时间", "会议议题", "会议决议", "待办事项",
+            "行动项", "action items", "下一步计划", "纪要整理",
+            "录音原文", "说话人1", "说话人2", "说话人", "语音转写", "会议记录", "当面交流",
+        ),
     ),
     BusinessCategorySpec(
         category_id="proposal_bid",
@@ -292,6 +300,7 @@ async def auto_file_workspace_document(
     *,
     apply: bool = True,
     index_knowledge: bool = True,
+    matter_id: str | None = None,
     custom_rules: list[CustomTaxonomyRule] | None = None,
     request_id: str,
 ) -> dict[str, Any]:
@@ -351,9 +360,9 @@ async def auto_file_workspace_document(
             folder_id = str(created["id"])
             created_folder_id = folder_id
 
-        # 2. 合并标签并更新文件元数据（保留人工已选事项，未选时绑定自动匹配事项）
+        # 2. 合并标签并更新文件元数据（优先保留人工已选事项，其次采用调用方显式指定事项，再退回自动匹配）
         merged_tags = list(dict.fromkeys([*(prev_data.get("tags") or ()), *classification.suggested_tags]))[:30]
-        target_matter = prev_data.get("matter_id") or classification.matched_matter_id
+        target_matter = prev_data.get("matter_id") or matter_id or classification.matched_matter_id
         patch: dict[str, Any] = {
             "parent_id": folder_id,
             "tags": merged_tags,

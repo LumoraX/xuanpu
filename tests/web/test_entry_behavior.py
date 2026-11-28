@@ -13,7 +13,7 @@ import pytest
 from web import static_dir
 
 COURTYARD_SCRIPTS = ["courtyard-art.js", "courtyard-model.js", "courtyard-scene.js", "courtyard-card.js", "courtyard-stage.js"]
-ENTRY_SCRIPTS = ["entry.js", "plugin-host.js", "builtin-plugins.js", "bubble-format.js", "entry-notifications.js", "capture-card.js", "people-graph.js", "contacts-drawer.js", "board-drawer.js", "workbench-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", *COURTYARD_SCRIPTS, "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]
+ENTRY_SCRIPTS = ["entry.js", "plugin-host.js", "builtin-plugins.js", "bubble-format.js", "entry-attachments.js", "entry-notifications.js", "capture-card.js", "people-graph.js", "contacts-drawer.js", "board-drawer.js", "workbench-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", *COURTYARD_SCRIPTS, "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]
 
 
 def test_entry_behavior() -> None:

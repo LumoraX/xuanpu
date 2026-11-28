@@ -69,10 +69,23 @@ function harness(routes) {
     const result = await handler(call, init);
     const status = result.status || 200;
     const headers = { get: name => (result.headers || {})[name.toLowerCase()] || null };
-    return { ok: status < 400, status, headers, text: async () => JSON.stringify(result.json || {}), body: result.stream };
+    const rawBytes = result.bytes !== undefined
+      ? Buffer.from(result.bytes)
+      : (result.text !== undefined ? Buffer.from(String(result.text), "utf8") : null);
+    return {
+      ok: status < 400,
+      status,
+      headers,
+      text: async () => (result.text !== undefined ? String(result.text) : JSON.stringify(result.json || {})),
+      arrayBuffer: async () => {
+        const buf = rawBytes || Buffer.from(JSON.stringify(result.json || {}), "utf8");
+        return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+      },
+      body: result.stream,
+    };
   };
   const context = vm.createContext({
-    console: { error() {}, log: console.log }, crypto, AbortController, DOMException, TextDecoder, TextEncoder, URLSearchParams, Intl,
+    console: { error() {}, log: console.log }, crypto, AbortController, DOMException, TextDecoder, TextEncoder, URL, URLSearchParams, Uint8Array, Intl,
     document: { getElementById: node, createElement: element, createElementNS: (_, tag) => element(tag) }, fetch, Math, JSON, Date, Promise, Map, Set,
     location: { search: "", pathname: "/console/entry.html", assign() {}, replaced: null, replace(to) { this.replaced = to; } },
   });
@@ -80,7 +93,7 @@ function harness(routes) {
 }
 
 function load(h, dir) {
-  for (const name of ["entry.js", "plugin-host.js", "builtin-plugins.js", "bubble-format.js", "entry-notifications.js", "capture-card.js", "people-graph.js", "contacts-drawer.js", "board-drawer.js", "workbench-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]) {
+  for (const name of ["entry.js", "plugin-host.js", "builtin-plugins.js", "bubble-format.js", "entry-attachments.js", "entry-notifications.js", "capture-card.js", "people-graph.js", "contacts-drawer.js", "board-drawer.js", "workbench-drawer.js", "cards.js", "module-cards.js", "collab-cards.js", "progress-card.js", "dashboard.js", "tips.js", "entry-boot.js"]) {
     vm.runInContext(fs.readFileSync(path.join(dir, name), "utf8"), h.context, { filename: name });
   }
 }
@@ -1183,6 +1196,163 @@ async function frontendPluginHostBridgeAndRichRenderers(dir) {
   assert.equal(h.context.XuanpuPluginHost._mountedFrames.has(fakeWin), false);
 }
 
+async function chatAttachmentsPreviewAndDownload(dir) {
+  const mdBody = "# 会议纪要\n\n- 参会人：**袁新**、石总\n- 附带配置 `{env: \"prod\"}` 需原样保留\n";
+  const h = harness(base({
+    "GET /v1/workspace/messages": () => ({
+      json: {
+        items: [
+          {
+            id: 10, role: "user", text: "历史上传的会议材料", request_id: "hist-1:user",
+            attachments: ["itm_hist_md", "itm_hist_xlsx"], metadata: {},
+          },
+        ],
+      },
+    }),
+    "GET /v1/workspace/items/itm_hist_md": () => ({
+      json: { id: "itm_hist_md", kind: "file", data: { name: "历史纪要.md", mime_type: "text/plain", size: 128, current_revision: 2 } },
+    }),
+    "GET /v1/workspace/items/itm_hist_xlsx": () => ({
+      json: { id: "itm_hist_xlsx", kind: "file", data: { name: "报价单.xlsx", mime_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: 4096, current_revision: 1 } },
+    }),
+    "POST /v1/workspace/files": () => ({
+      json: { id: "itm_new_md", kind: "file", data: { name: "周五 14点45分.md", mime_type: "text/plain", size: 96, current_revision: 1 } },
+    }),
+    "GET /v1/workspace/files/itm_new_md/content": () => ({
+      text: mdBody,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    }),
+    "GET /v1/workspace/files/itm_hist_md/content": () => ({
+      text: "## 历史回顾\n\n内容正常可读。",
+      headers: { "content-type": "text/markdown; charset=utf-8" },
+    }),
+    "POST /v1/assistant/messages": () => ({
+      json: { mode: "butler", state: "done", message: "已帮你记录本次壁仞科技交流。" },
+    }),
+  }));
+  load(h, dir); await flush();
+
+  // 1. 刷新恢复的历史消息附件：自动补齐文件名，提供点击查看与直接下载
+  const transcript = h.nodes("transcript");
+  const histViewBtns = all(transcript, n => n.tag === "button" && n.classList.contains("msg-att-view"));
+  assert.equal(histViewBtns.length, 2, "历史消息的两个附件都渲染为可点击查看按钮");
+  assert.ok(histViewBtns[0].textContent.includes("历史纪要.md"));
+  assert.ok(histViewBtns[1].textContent.includes("报价单.xlsx"));
+  const histDls = all(transcript, n => n.tag === "a" && n.classList.contains("msg-att-dl"));
+  assert.equal(histDls[0].href, "/v1/workspace/files/itm_hist_md/content?revision=2");
+  assert.equal(histDls[0].attrs.download, "历史纪要.md");
+  assert.equal(histDls[1].href, "/v1/workspace/files/itm_hist_xlsx/content?revision=1");
+
+  // 点击不支持内联预览的二进制附件：不拉取大文件字节，直接显示下载引导
+  histViewBtns[1].listeners.click(); await flush();
+  const overlay = h.nodes("attachment-overlay");
+  assert.ok(!overlay.classList.contains("hidden"));
+  assert.ok(overlay.textContent.includes("报价单.xlsx"));
+  assert.ok(overlay.textContent.includes("暂不支持网页内直接预览正文"));
+  assert.ok(!h.calls.some(c => c.url.includes("/itm_hist_xlsx/content")), "二进制附件预览不应多余下载正文");
+  byText(overlay, "button", "关闭")[0].listeners.click();
+  assert.ok(overlay.classList.contains("hidden"));
+
+  // 2. 新上传附件并发送：输入区和已发气泡均支持查看与下载，不再是静态 [附件：...] 纯文本
+  const fileInput = h.nodes("entry-file-input");
+  fileInput.files = [{ name: "周五 14点45分.md", type: "", size: 96 }];
+  fileInput.listeners.change(); await flush();
+  const composerFiles = h.nodes("composer-files");
+  assert.ok(!composerFiles.classList.contains("hidden"));
+  assert.equal(all(composerFiles, n => n.tag === "button" && n.classList.contains("composer-file-view")).length, 1);
+  assert.equal(all(composerFiles, n => n.tag === "a" && n.classList.contains("composer-file-dl"))[0].href, "/v1/workspace/files/itm_new_md/content?revision=1");
+
+  h.nodes("message").value = "帮我记录一下这个会议";
+  h.nodes("composer").listeners.submit({ preventDefault() {} }); await flush();
+  assert.ok(!transcript.textContent.includes("[附件："), "发送后的消息不应再退化成不可点击的纯文本附件标签");
+
+  const newViewBtn = all(transcript, n => n.tag === "button" && n.classList.contains("msg-att-view") && n.textContent.includes("周五 14点45分.md"))[0];
+  assert.ok(newViewBtn, "刚发送的消息气泡内应有可点击的附件按钮");
+  const newDlLink = all(transcript, n => n.tag === "a" && n.classList.contains("msg-att-dl") && n.attrs.download === "周五 14点45分.md")[0];
+  assert.ok(newDlLink && newDlLink.href === "/v1/workspace/files/itm_new_md/content?revision=1", "刚发送的附件应提供带版本的直接下载链接");
+
+  // 3. 点击刚发送的 Markdown 附件查看正文、切换原文，并验证原文花括号未被误清洗
+  newViewBtn.listeners.click(); await flush();
+  assert.ok(!overlay.classList.contains("hidden"));
+  assert.ok(overlay.textContent.includes("会议纪要"));
+  assert.ok(overlay.textContent.includes('{env: "prod"}'), "附件中的 JSON/花括号必须忠实保留");
+  assert.ok(all(overlay, n => n.tag === "a" && n.href === "/v1/workspace/files/itm_new_md/content?revision=1").length >= 1, "预览弹窗顶部应有下载原件按钮");
+
+  const rawBtn = byText(overlay, "button", "查看原文")[0];
+  assert.ok(rawBtn, "Markdown 附件应提供查看原文切换按钮");
+  rawBtn.listeners.click();
+  assert.ok(all(overlay, n => n.tag === "pre" && n.textContent.includes("# 会议纪要")).length === 1, "切换后应以源码 pre 展示原始 Markdown");
+
+  // 4. 退出/切换身份时应自动关闭附件预览弹窗
+  h.context.resetEntry();
+  assert.ok(overlay.classList.contains("hidden"), "身份重置时必须关闭已打开的附件预览弹窗");
+}
+
+async function outcomeShowcaseAndDagFlow(dir) {
+  const routes = base({
+    "GET /v1/workspace/files/ws_doc_1/content": () => ({ text: "# 壁仞科技会议纪要\n\n- 12月3日完成第一阶段交付\n- 分批开具发票" }),
+    "GET /v1/traces/trc_dag_1/events": () => ({
+      stream: sse([
+        [
+          "snapshot",
+          {
+            trace_id: "trc_dag_1", title: "butler", active: false,
+            spans: [
+              { span_id: "ex.1", kind: "butler", name: "butler", state: "completed", started_at: "2026-11-28T00:39:00Z", ended_at: "2026-11-28T00:40:00Z", parent_span_id: null },
+              { span_id: "tl.1", kind: "tool", name: "read_personal", state: "completed", started_at: "2026-11-28T00:39:02Z", ended_at: "2026-11-28T00:39:03Z", parent_span_id: "ex.1" },
+              { span_id: "tl.2", kind: "tool", name: "act_personal", state: "completed", started_at: "2026-11-28T00:39:10Z", ended_at: "2026-11-28T00:39:11Z", parent_span_id: "ex.1" },
+            ],
+          },
+        ],
+        ["end", {}],
+      ]),
+    }),
+    "POST /v1/assistant/messages": call => ({
+      json: {
+        mode: "butler", state: "done", request_id: call.body.request_id, trace_id: "trc_dag_1",
+        message: "已整理并归档本次会议纪要。",
+        executed_actions: [
+          {
+            action_id: "act_b1", action: "capture_bundle", title: "已自动整理归档", summary: "公司：壁仞科技；1 条待办", undoable: true,
+            details: {
+              record: { id: "pnote_1", record_kind: "meeting", title: "壁仞科技项目当面交流", location: "上海壁仞科技", occurred_at: 1795761900, summary: "对齐第一阶段交付与开票。", decisions: ["12月3日完成第一阶段交付"], open_questions: ["确认发票月份"], attachment_file_ids: ["ws_raw_1"] },
+              orgs: [{ id: "org_1", name: "壁仞科技" }],
+              persons: [{ id: "per_1", name: "石总", organization: "壁仞科技" }],
+              matters: [{ id: "ws_m1", title: "壁仞项目" }],
+              todos: [{ id: "ws_t1", title: "准备第一阶段交付成果", due_at: 1796292000, status: "open" }],
+              events: [], reminders: [], relations_count: 4,
+            },
+          },
+          {
+            action_id: "act_f1", action: "save_note_file", title: "已保存整理文档", summary: "2026-11-27-壁仞科技会议纪要.md", undoable: true,
+            details: { item_id: "ws_doc_1", name: "2026-11-27-壁仞科技会议纪要.md", size: 800, preview: "# 壁仞科技会议纪要\n\n- 12月3日完成第一阶段交付" },
+          },
+          {
+            action_id: "act_c1", action: "classify_file", title: "已自动业务归类归档", summary: "2026-11-27-壁仞科技会议纪要.md → 03-会议纪要", undoable: true,
+            details: { item_id: "ws_doc_1", name: "2026-11-27-壁仞科技会议纪要.md", category_name: "会议纪要", folder_name: "03-会议纪要", tags: ["会议纪要", "壁仞项目"], knowledge_indexed: true },
+          },
+        ],
+      },
+    }),
+  });
+  const h = harness(routes);
+  load(h, dir); await flush();
+  h.nodes("message").value = "整理会议纪要";
+  h.nodes("composer").listeners.submit({ preventDefault() {} });
+  await flush(); await flush();
+  const transcript = h.nodes("transcript");
+  assert.ok(transcript.textContent.includes("壁仞科技项目当面交流"), "应渲染一次性成果总览标题");
+  assert.ok(transcript.textContent.includes("核心结论（1）"), "应渲染核心结论区");
+  assert.ok(transcript.textContent.includes("03-会议纪要") && transcript.textContent.includes("已入知识库"), "应渲染归档目录与知识库状态");
+  assert.ok(transcript.textContent.includes("管家主控") && transcript.textContent.includes("查资料 / 读文档"), "对话内应直接渲染执行编排 DAG 节点");
+  const previewBtn = byText(transcript, "button", "在工作台看全文")[0];
+  assert.ok(previewBtn, "成果卡文档应提供右侧工作台全文预览按钮");
+  previewBtn.listeners.click();
+  await flush();
+  const wb = h.nodes("workbench-overlay");
+  assert.ok(!wb.classList.contains("hidden") && wb.textContent.includes("分批开具发票"), "点击后应在右侧分屏工作台展示文档全文");
+}
+
 (async () => {
   const dir = process.argv[2];
   dir_ = dir;
@@ -1213,5 +1383,7 @@ async function frontendPluginHostBridgeAndRichRenderers(dir) {
   await boardDrawerCompletedRemindersAndTimestamp(dir);
   await planFocusSupersededDiffAndWorkbench(dir);
   await frontendPluginHostBridgeAndRichRenderers(dir);
+  await chatAttachmentsPreviewAndDownload(dir);
+  await outcomeShowcaseAndDagFlow(dir);
   console.log("entry behavior passed");
 })().catch(error => { console.error(error); process.exit(1); });

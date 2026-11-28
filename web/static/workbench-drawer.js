@@ -11,6 +11,7 @@ const workbenchState = {
   boards: [],
   artifacts: [],
   preview: null,
+  docPreview: null,
   failedTranscripts: [],
   transcriptPage: null,
   releasePackage: "",
@@ -18,25 +19,56 @@ const workbenchState = {
 };
 
 function updateLiveFocusPill(snapshot) {
-  if (snapshot) workbenchState.liveFocus = snapshot;
+  if (snapshot !== undefined) workbenchState.liveFocus = snapshot;
   const pill = $("entry-live-focus");
   if (!pill) return;
   const snap = workbenchState.liveFocus;
-  if (!snap || snap.status !== "active") {
-    pill.classList.add("hidden");
-    pill.textContent = "";
+  pill.classList.remove("hidden", "active", "done", "idle");
+  if (snap && snap.status === "active") {
+    const steps = Array.isArray(snap.steps) ? snap.steps : [];
+    const done = steps.filter((s) => s.status === "done").length;
+    const focusText = snap.focus || snap.title || "推进中";
+    const progress = steps.length ? ` (${done}/${steps.length})` : "";
+    pill.textContent = "● 焦点：" + focusText + progress;
+    pill.title = "点击打开辅助工作台查看跨轮任务板与编排进度";
+    pill.classList.add("active");
+    if (snap.trace_id) workbenchState.traceId = snap.trace_id;
+    if (workbenchState.open && workbenchState.tab === "tasks") {
+      renderWorkbenchDrawer();
+    }
     return;
   }
-  const steps = Array.isArray(snap.steps) ? snap.steps : [];
-  const done = steps.filter((s) => s.status === "done").length;
-  const focusText = snap.focus || snap.title || "推进中";
-  const progress = steps.length ? ` (${done}/${steps.length})` : "";
-  pill.textContent = "焦点：" + focusText + progress;
-  pill.title = "点击打开辅助工作台查看跨轮任务板与产物";
-  pill.classList.remove("hidden");
-  if (snap.trace_id) workbenchState.traceId = snap.trace_id;
-  if (workbenchState.open && workbenchState.tab === "tasks") {
-    renderWorkbenchDrawer();
+  if (snap && snap.status === "step" && snap.focus) {
+    pill.textContent = "▸ " + snap.focus;
+    pill.title = "当前执行步骤；点击打开辅助工作台查看编排与产物";
+    pill.classList.add("active");
+    if (snap.trace_id) workbenchState.traceId = snap.trace_id;
+    return;
+  }
+  if (snap && snap.status === "completed") {
+    const label = snap.title || snap.focus || "最近任务";
+    pill.textContent = "✓ 最近：" + label;
+    pill.title = "点击打开辅助工作台查看最近任务板与产物";
+    pill.classList.add("done");
+    if (snap.trace_id) workbenchState.traceId = snap.trace_id;
+    return;
+  }
+  pill.textContent = "● 任务焦点：待命";
+  pill.title = "点击打开辅助工作台查看任务板与过程产物";
+  pill.classList.add("idle");
+}
+
+async function syncLiveFocusPill(epoch) {
+  try {
+    const res = await entryApi("GET", "/v1/assistant/task-boards?limit=5");
+    if (epoch !== undefined && isStale(epoch)) return;
+    const items = Array.isArray(res.items) ? res.items : [];
+    workbenchState.boards = items;
+    const active = items.find((b) => b.status === "active") || null;
+    const latest = active || items[0] || null;
+    updateLiveFocusPill(latest);
+  } catch {
+    if (epoch === undefined || !isStale(epoch)) updateLiveFocusPill(workbenchState.liveFocus);
   }
 }
 
@@ -52,6 +84,81 @@ function closeWorkbenchDrawer() {
   }
   const btn = $("entry-workbench");
   if (btn) btn.setAttribute("aria-pressed", "false");
+}
+
+async function openWorkspaceFilePreview(itemId, filename, fallbackText = "") {
+  if (!entry.me || !itemId) return;
+  workbenchState.docPreview = {
+    itemId: String(itemId),
+    name: String(filename || itemId),
+    loading: true,
+    text: String(fallbackText || ""),
+    error: null,
+  };
+  workbenchState.tab = "doc";
+  workbenchState.open = true;
+  if (document.body && document.body.classList) {
+    document.body.classList.add("workbench-open");
+  }
+  const btn = $("entry-workbench");
+  if (btn) btn.setAttribute("aria-pressed", "true");
+  renderWorkbenchDrawer();
+  const epoch = entry.epoch;
+  try {
+    const resp = await fetch("/v1/workspace/files/" + encodeURIComponent(itemId) + "/content", {
+      credentials: "same-origin",
+      headers: { "X-Requested-By": "xuanpu" },
+    });
+    if (isStale(epoch)) return;
+    if (!resp.ok) throw new Error("读取文档失败（" + resp.status + "）");
+    const fullText = await resp.text();
+    if (isStale(epoch)) return;
+    workbenchState.docPreview = {
+      itemId: String(itemId),
+      name: String(filename || itemId),
+      loading: false,
+      text: fullText,
+      error: null,
+    };
+  } catch (error) {
+    if (isStale(epoch)) return;
+    workbenchState.docPreview = {
+      itemId: String(itemId),
+      name: String(filename || itemId),
+      loading: false,
+      text: String(fallbackText || ""),
+      error: fallbackText ? null : (error.message || "文档读取失败"),
+    };
+  }
+  if (workbenchState.open) renderWorkbenchDrawer();
+}
+
+function renderDocPreviewTab(container) {
+  const dp = workbenchState.docPreview;
+  if (!dp) {
+    container.appendChild(el("p", "在对话成果卡中点击任意文档即可在此右侧分屏查阅全文。", "meta"));
+    return;
+  }
+  const head = el("div", null, "wb-card-head");
+  head.append(el("strong", dp.name), el("span", dp.loading ? "加载中…" : "全文预览", "wb-badge active"));
+  container.appendChild(head);
+  const actions = el("div", null, "wb-actions");
+  const dl = el("a", "下载原件", "wb-tab");
+  dl.href = "/v1/workspace/files/" + encodeURIComponent(dp.itemId) + "/content";
+  dl.setAttribute("download", dp.name);
+  actions.append(dl);
+  container.appendChild(actions);
+  if (dp.error) {
+    container.appendChild(el("p", dp.error, "warn"));
+    return;
+  }
+  const box = el("div", null, "wb-doc-markdown");
+  if (typeof renderAssistantBubble === "function") {
+    renderAssistantBubble(box, dp.text || "（空文档）");
+  } else {
+    box.appendChild(el("pre", dp.text || "（空文档）", "wb-code"));
+  }
+  container.appendChild(box);
 }
 
 async function openWorkbenchDrawer(options = {}) {
@@ -146,6 +253,9 @@ function renderWorkbenchDrawer() {
     ["artifacts", "过程产物"],
     ["diagnostics", "跨节点诊断"],
   ];
+  if (workbenchState.docPreview) {
+    tabDefs.unshift(["doc", "文档预览"]);
+  }
   if (entry.me && (entry.me.role === "tenant_admin" || entry.me.role === "platform_admin")) {
     tabDefs.push(["releases", "发布与回退"]);
   }
@@ -165,7 +275,8 @@ function renderWorkbenchDrawer() {
   panel.appendChild(tabs);
 
   const body = el("div", null, "wb-body");
-  if (workbenchState.tab === "tasks") renderTaskBoardsTab(body);
+  if (workbenchState.tab === "doc") renderDocPreviewTab(body);
+  else if (workbenchState.tab === "tasks") renderTaskBoardsTab(body);
   else if (workbenchState.tab === "artifacts") renderArtifactsTab(body);
   else if (workbenchState.tab === "diagnostics") renderDiagnosticsTab(body);
   else if (workbenchState.tab === "releases") renderReleasesTab(body);
